@@ -1,0 +1,8 @@
+apiVersion: kesc.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: example-scaledobject
+spec:
+  deploymentName: azure-functions-deployment
+  type: azure-queue
+  secretRef: azure-queue-connection
