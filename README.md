@@ -1,3 +1,69 @@
+# Kore -  Event driven autoscaler and scale to zero for Kubernetes
+
+Kore allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.
+Kore serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated CRD.
+
+Kore can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
+
+![k](https://user-images.githubusercontent.com/645740/51940231-46cf5380-23c6-11e9-9433-39cdd4055b4c.gif)
+
+## Setup
+
+### Prerequisites
+
+1. A Kubernetes cluster [(instructions)](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
+    
+    Make sure your Kubernetes cluster is RBAC enabled.
+    For AKS cluster ensure that you download the AKS cluster credentials with the following CLI
+
+  ```cli
+    az aks get-credentials -n <cluster-name> -g <resource-group>
+  ```
+
+2. *Kubectl* has been installed and configured to work with your cluster [(instructions)](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
+
+### Deploy Kore
+
+Clone the repo:
+
+```
+git clone https://github.com/Azure/Kore.git
+```
+
+Deploy:
+
+```
+kubectl apply -f ./Kore/deploy
+```
+
+## Getting Started
+
+
+## Development
+
+### Prerequisites
+
+1. The Go language environment [(instructions)](https://golang.org/doc/install).
+
+    Make sure you've already configured your GOPATH and GOROOT environment variables.
+2. Dep [(instructions)](https://github.com/golang/dep).
+
+### Environment set up
+
+First, clone the repo into your GOPATH:
+
+```
+cd $GOPATH/src
+mkdir -p github.com/Azure/Kore
+git clone https://github.com/Azure/Kore
+```
+
+Run dep:
+
+```
+cd $GOPATH/src/github.com/Azure/Kore
+dep ensure
+```
 
 # Contributing
 
