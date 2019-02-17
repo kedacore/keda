@@ -9,3 +9,4 @@ spec:
     kind: ScaledObject
     plural: scaledobjects
   scope: Namespaced
+---
