@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kesc/v1alpha1"
+	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
 	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	koreinformer_v1alpha1 "github.com/Azure/Kore/pkg/client/informers/externalversions/kesc/v1alpha1"
+	koreinformer_v1alpha1 "github.com/Azure/Kore/pkg/client/informers/externalversions/kore/v1alpha1"
 	log "github.com/Sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

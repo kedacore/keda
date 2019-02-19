@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	kescv1alpha1 "github.com/Azure/Kore/pkg/apis/kesc/v1alpha1"
+	korev1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,7 +31,7 @@ var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 var parameterCodec = runtime.NewParameterCodec(scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
-	kescv1alpha1.AddToScheme,
+	korev1alpha1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

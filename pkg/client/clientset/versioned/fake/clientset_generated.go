@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	kescv1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kesc/v1alpha1"
-	fakekescv1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kesc/v1alpha1/fake"
+	korev1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kore/v1alpha1"
+	fakekorev1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kore/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -71,12 +71,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// KescV1alpha1 retrieves the KescV1alpha1Client
-func (c *Clientset) KescV1alpha1() kescv1alpha1.KescV1alpha1Interface {
-	return &fakekescv1alpha1.FakeKescV1alpha1{Fake: &c.Fake}
+// KoreV1alpha1 retrieves the KoreV1alpha1Client
+func (c *Clientset) KoreV1alpha1() korev1alpha1.KoreV1alpha1Interface {
+	return &fakekorev1alpha1.FakeKoreV1alpha1{Fake: &c.Fake}
 }
 
-// Kesc retrieves the KescV1alpha1Client
-func (c *Clientset) Kesc() kescv1alpha1.KescV1alpha1Interface {
-	return &fakekescv1alpha1.FakeKescV1alpha1{Fake: &c.Fake}
+// Kore retrieves the KoreV1alpha1Client
+func (c *Clientset) Kore() korev1alpha1.KoreV1alpha1Interface {
+	return &fakekorev1alpha1.FakeKoreV1alpha1{Fake: &c.Fake}
 }

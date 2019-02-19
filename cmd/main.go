@@ -10,6 +10,8 @@ import (
 
 	// workaround go dep management system
 	_ "k8s.io/code-generator/pkg/util"
+	_ "k8s.io/gengo/parser"
+	_ "golang.org/x/tools/imports"
 )
 
 func main() {
