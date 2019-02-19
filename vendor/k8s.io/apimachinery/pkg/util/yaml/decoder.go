@@ -217,9 +217,11 @@ func (d *YAMLOrJSONDecoder) Decode(into interface{}) error {
 	if d.decoder == nil {
 		buffer, origData, isJSON := GuessJSONStream(d.r, d.bufferSize)
 		if isJSON {
+			klog.V(4).Infof("decoding stream as JSON")
 			d.decoder = json.NewDecoder(buffer)
 			d.rawData = origData
 		} else {
+			klog.V(4).Infof("decoding stream as YAML")
 			d.decoder = NewYAMLToJSONDecoder(buffer)
 		}
 	}

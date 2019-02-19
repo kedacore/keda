@@ -7,6 +7,9 @@ import (
 	"github.com/Azure/Kore/pkg/kubernetes"
 	"github.com/Azure/Kore/pkg/signals"
 	log "github.com/Sirupsen/logrus"
+
+	// workaround go dep management system
+	_ "k8s.io/code-generator/pkg/util"
 )
 
 func main() {
