@@ -23,6 +23,10 @@
   version = "kubernetes-1.13.3"
 
 [[constraint]]
+  branch = "master"
+  name = "k8s.io/gengo"
+
+[[constraint]]
   name = "k8s.io/klog"
   version = "0.2.0"
 
@@ -42,3 +46,7 @@
     unused-packages = false
     non-go = false
     go-tests = false
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/tools"

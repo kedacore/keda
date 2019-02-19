@@ -1,6 +1,11 @@
 #! /bin/sh
 
-$GOPATH/src/k8s.io/code-generator/generate-groups.sh all \
+set -e
+
+DIR="$(dirname $0)"
+
+
+$DIR/../vendor/k8s.io/code-generator/generate-groups.sh all \
     github.com/Azure/Kore/pkg/client \
     github.com/Azure/Kore/pkg/apis \
-    kesc:v1alpha1
+    kore:v1alpha1
