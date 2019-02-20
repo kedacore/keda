@@ -1,3 +1,7 @@
+| Branch | Status |
+|--------|--------|
+| master |[![CircleCI](https://circleci.com/gh/Azure/Kore.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/Azure/Kore)|
+
 # Kore -  Event driven autoscaler and scale to zero for Kubernetes
 
 Kore allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.
@@ -12,7 +16,7 @@ Kore can run on both the cloud and the edge, integrates natively with Kubernetes
 ### Prerequisites
 
 1. A Kubernetes cluster [(instructions)](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
-    
+
     Make sure your Kubernetes cluster is RBAC enabled.
     For AKS cluster ensure that you download the AKS cluster credentials with the following CLI
 
