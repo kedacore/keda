@@ -26,12 +26,14 @@ type controller struct {
 	ctx                   context.Context
 	koreClient            clientset.Interface
 	kubeClient            kubernetes.Interface
+	scaleHandler          *scalers.ScaleHandler
 }
 
-func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface) Controller {
+func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *scalers.ScaleHandler) Controller {
 	c := &controller{
-		koreClient: koreClient,
-		kubeClient: kubeClient,
+		koreClient:   koreClient,
+		kubeClient:   kubeClient,
+		scaleHandler: scaleHandler,
 		scaledObjectsInformer: koreinformer_v1alpha1.NewScaledObjectInformer(
 			koreClient,
 			meta_v1.NamespaceAll,
@@ -66,9 +68,7 @@ func (c *controller) syncScaledObject(obj interface{}) {
 
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
 
-	scaleManager := scalers.NewScaleManager(scaledObject, c.koreClient, c.kubeClient)
-
-	go scaleManager.HandleScale()
+	go c.scaleHandler.HandleScale(scaledObject)
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
