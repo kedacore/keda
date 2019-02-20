@@ -29,7 +29,6 @@ type ObjectReference struct {
 type ScaleTriggers struct {
 	Type       string                     `json:"type"`
 	Name       string                     `json:"name"`
-	SecretRefs map[string]SecretReference `json:"secretRefs"`
 	Metadata   map[string]string          `json:"metadata"`
 }
 
