@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Azure/Kore/pkg/scalers"
 	"time"
 
 	"github.com/Azure/Kore/pkg/controller"
@@ -21,7 +22,8 @@ func main() {
 	}
 
 	ctx := signals.Context()
-	controller.NewController(koreClient, kubeClient).Run(ctx)
+	scaleHandler := scalers.NewScaleHandler(koreClient, kubeClient)
+	controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
 
 	shutdownDuration := 5 * time.Second
 	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
