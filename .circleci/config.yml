@@ -1,13 +1,12 @@
 version: 2
 
-base-go-image: &base-go-image
-  docker:
-    - image: circleci/golang:1.10
-  working_directory: /go/src/github.com/Azure/Kore
-
 jobs:
   build:
-    <<: *base-go-image
+    docker:
+      - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/Azure/Kore
     steps:
       - checkout
-      - run: make build
+      - setup_remote_docker
+      - run: docker login -u "${ACR_USERNAME}" -p "${ACR_PASSWORD}" ${ACR_REGISTRY}
+      - run: make ci-build-all
