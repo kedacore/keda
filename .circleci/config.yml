@@ -1,0 +1,13 @@
+version: 2
+
+base-go-image: &base-go-image
+  docker:
+    - image: circleci/golang:1.10
+  working_directory: /go/src/github.com/Azure/Kore
+
+jobs:
+  build:
+    <<: *base-go-image
+    steps:
+      - checkout
+      - run: make build
