@@ -30,13 +30,13 @@ Kore can run on both the cloud and the edge, integrates natively with Kubernetes
 
 Clone the repo:
 
-```
+```bash
 git clone https://github.com/Azure/Kore.git
 ```
 
-Deploy:
+Deploy CRD to your cluster:
 
-```
+```bash
 kubectl apply -f ./Kore/deploy
 ```
 
@@ -56,7 +56,7 @@ kubectl apply -f ./Kore/deploy
 
 First, clone the repo into your GOPATH:
 
-```
+```bash
 cd $GOPATH/src
 mkdir -p github.com/Azure/Kore
 git clone https://github.com/Azure/Kore
@@ -64,9 +64,112 @@ git clone https://github.com/Azure/Kore
 
 Run dep:
 
-```
+```bash
 cd $GOPATH/src/github.com/Azure/Kore
 dep ensure
+```
+
+Run the code locally:
+
+```bash
+# bash
+CONFIG=/path/to/.kube/config go run cmd/main.go
+
+#Powershell
+$Env:CONFIG=/path/to/.kube/config
+go run cmd/main.go
+```
+
+### Create a functions project:
+
+1. Create a standard functions project:
+
+* [Using vscode](https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-first-function-vs-code)
+* [Using Visual Studio](https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-your-first-function-visual-studio)
+* [Using `func` cli](https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-first-function-python)
+
+2. Build a docker container for your functions:
+<details>
+Add a `.dockerignore`
+```
+local.settings.json
+deploy.yaml
+```
+
+Add a `Dockerfile` depending on the language of your functions
+
+**dotnet:**
+```dockerfile
+FROM microsoft/dotnet:2.1-sdk AS installer-env
+
+COPY . /src/dotnet-function-app
+RUN cd /src/dotnet-function-app && \
+    mkdir -p /home/site/wwwroot && \
+    dotnet publish *.csproj --output /home/site/wwwroot
+
+FROM mcr.microsoft.com/azure-functions/dotnet:2.0
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot
+
+COPY --from=installer-env ["/home/site/wwwroot", "/home/site/wwwroot"]
+```
+
+**javascript:**
+```dockerfile
+FROM mcr.microsoft.com/azure-functions/node:2.0
+
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot
+COPY . /home/site/wwwroot
+RUN cd /home/site/wwwroot && \
+    npm install
+```
+**python:**
+```dockerfile
+FROM mcr.microsoft.com/azure-functions/python:2.0
+
+COPY . /home/site/wwwroot
+
+RUN cd /home/site/wwwroot && \
+    pip install -r requirements.txt
+```
+
+Build your container
+```bash
+docker build -t {IMAGE_NAME} .
+```
+
+Push your container to a container registry
+```bash
+docker push {IMAGE_NAME}
+```
+</details>
+
+3. Add your connection strings in `local.settings.json`
+
+e.g:
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    ...
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName={name};AccountKey=......",
+    ...
+  }
+}
+```
+
+4. Download this build of `core-tools`:
+   1. [windows](https://ahmelsayed.blob.core.windows.net/public/Azure.Functions.Cli.win-x86.2.4.9999.zip)
+   2. [linux](https://ahmelsayed.blob.core.windows.net/public/Azure.Functions.Cli.linux-x64.2.4.9999.zip)
+   3. [mac](https://ahmelsayed.blob.core.windows.net/public/Azure.Functions.Cli.osx-x64.2.4.9999.zip)
+
+5. Run
+```bash
+func kdeploy --image-name {image_name_from_above}
+```
+
+6. Deploy to your k8s cluster
+```bash
+kubectl create -f deploy.yaml
 ```
 
 # Contributing
