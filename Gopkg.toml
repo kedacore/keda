@@ -50,3 +50,7 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/tools"
+
+[[constraint]]
+  name = "github.com/Azure/azure-storage-queue-go"
+  version = "0.2.0"

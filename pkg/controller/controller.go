@@ -3,6 +3,9 @@ package controller
 import (
 	"context"
 	"sync"
+	"time"
+
+	"github.com/Azure/Kore/pkg/scalers"
 
 	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
 	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
@@ -32,7 +35,12 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 		scaledObjectsInformer: koreinformer_v1alpha1.NewScaledObjectInformer(
 			koreClient,
 			meta_v1.NamespaceAll,
-			0,
+			// https://groups.google.com/d/msg/kubernetes-sig-api-machinery/PbSCXdLDno0/dRLsMoLkDAAJ
+			// Based on the discussion above, it seems that resyncPeriod can be
+			// used for polling external systems like we have with autoscalers.
+			// This however makes it not possible to have a custom check interval
+			// per ScaledObject or deployment.
+			time.Second*30,
 			cache.Indexers{},
 		),
 		opsLock: sync.Mutex{},
@@ -41,12 +49,8 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 	c.scaledObjectsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.syncScaledObject,
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			new := newObj.(*kore_v1alpha1.ScaledObject)
-			old := oldObj.(*kore_v1alpha1.ScaledObject)
-			if new.ResourceVersion == old.ResourceVersion {
-				return
-			}
-
+			// always call syncScaledObject even on resync
+			// this uses the informer cache for updates rather than maintaining another cache
 			c.syncScaledObject(newObj)
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
@@ -61,19 +65,10 @@ func (c *controller) syncScaledObject(obj interface{}) {
 	defer c.opsLock.Unlock()
 
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
-	deploymentName := scaledObject.Spec.DeploymentName
-	if deploymentName == "" {
-		log.Infof("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return
-	}
 
-	deployment, err := c.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
-	if err != nil {
-		log.Errorf("Error getting deployment: %s", err)
-		return
-	}
+	scaleManager := scalers.NewScaleManager(scaledObject, c.koreClient, c.kubeClient)
 
-	log.Infof("Starting autoscalers for: %s. target deployment: %s", scaledObject.GetName(), deployment.GetName())
+	go scaleManager.HandleScale()
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
