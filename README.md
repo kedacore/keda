@@ -90,7 +90,9 @@ go run cmd/main.go
 
 2. Build a docker container for your functions:
 <details>
+
 Add a `.dockerignore`
+
 ```
 local.settings.json
 deploy.yaml
