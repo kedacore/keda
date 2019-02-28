@@ -75,7 +75,7 @@ func (h *ScaleHandler) handleScale() {
 		return
 	}
 
-	defer h.workqueue.AddAfter(obj, time.Second * 30)
+	defer h.workqueue.AddAfter(obj, time.Second*30)
 
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
@@ -221,12 +221,13 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 }
 
 func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (Scaler, error) {
-	if trigger.Type == "azure-queue" {
+	switch trigger.Type {
+	case "azure-queue":
 		return &azureQueueScaler{
 			metadata:        &trigger.Metadata,
 			resolvedSecrets: resolvedSecrets,
 		}, nil
+	default:
+		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
-
-	return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 }
