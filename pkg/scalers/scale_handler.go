@@ -76,32 +76,30 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
-		deploymentCopy := deployment.DeepCopy()
 
 		// TODO: we should also have a "status" for the ScaledObject
 		// TODO: where we can store information like:
 		// TODO: LastScaleTime, LastActiveTime, CurrentReplicas, and DesiredReplicas
-		// scaledObjectCopy := scaledObject.DeepCopy()
-		// scaledObjectCopy.Status.LastScaleTime = &currentTime
-		// scaledObjectCopy.Status.LastActiveTime = &currentTime
-		// scaledObjectCopy.Status.CurrentReplicas = *deploymentCopy.Spec.Replicas
-		// scaledObjectCopy.Status.DesiredReplicas = scaleDecision
+		// scaledObject.Status.LastScaleTime = &currentTime
+		// scaledObject.Status.LastActiveTime = &currentTime
+		// scaledObject.Status.CurrentReplicas = *deploymentCopy.Spec.Replicas
+		// scaledObject.Status.DesiredReplicas = scaleDecision
 
-		*deploymentCopy.Spec.Replicas = scaleDecision
-		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deploymentCopy)
+		*deployment.Spec.Replicas = scaleDecision
+		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
 		if err != nil {
 			log.Errorf("Error updating replica count on deployment (%s/%s) from %d to %d. Error: %s",
 				deployment.GetNamespace(),
 				deployment.GetName(),
 				deployment.Spec.Replicas,
-				deploymentCopy.Spec.Replicas,
+				deployment.Spec.Replicas,
 				err)
 		} else {
 			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
 				deployment.Spec.Replicas,
-				deploymentCopy.Spec.Replicas)
+				deployment.Spec.Replicas)
 		}
 	} else {
 		log.Infof("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
