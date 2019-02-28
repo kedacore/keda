@@ -2,6 +2,10 @@ package scalers
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	apps_v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
@@ -12,28 +16,67 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler struct {
-	koreClient clientset.Interface
-	kubeClient kubernetes.Interface
+	koreClient          clientset.Interface
+	kubeClient          kubernetes.Interface
+	workqueue           workqueue.DelayingInterface
+	activeScaledObjects map[string]*kore_v1alpha1.ScaledObject
+	opsLock             sync.RWMutex
 }
 
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
 	handler := &ScaleHandler{
-		koreClient: koreClient,
-		kubeClient: kubeClient,
+		koreClient:          koreClient,
+		kubeClient:          kubeClient,
+		workqueue:           workqueue.NewNamedDelayingQueue("ScaledObjects"),
+		activeScaledObjects: make(map[string]*kore_v1alpha1.ScaledObject),
+		opsLock:             sync.RWMutex{},
 	}
 
 	return handler
 }
 
-// HandleScale gets called for every scaledObject on a timer based on the resyncPeriod
-// of the controller. This method should be called in an async goroutine
-func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) Run(stopCh <-chan struct{}) {
+	defer h.workqueue.ShutDown()
+
+	log.Info("Starting ScaleHandler workqueue")
+	go wait.Until(h.handleScale, time.Second, stopCh)
+	<-stopCh
+	log.Info("Shutting down ScaleHaldner workqueue")
+}
+
+func (h *ScaleHandler) handleScale() {
+	obj, shutdown := h.workqueue.Get()
+
+	if shutdown {
+		// queue is shutting down
+		return
+	}
+
+	defer h.workqueue.Done(obj)
+
+	var key string
+	var ok bool
+	if key, ok = obj.(string); !ok {
+		return
+	}
+
+	h.opsLock.RLock()
+	scaledObject := h.activeScaledObjects[key]
+	h.opsLock.RUnlock()
+
+	if scaledObject == nil {
+		return
+	}
+
+	defer h.workqueue.AddAfter(obj, time.Second * 30)
+
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
 		log.Infof("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
@@ -75,6 +118,34 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 	h.scaleDeployment(deployment, scaleDecision)
 }
 
+// WatchScaledObject enqueues the ScaledObject into the work queue
+func (h *ScaleHandler) WatchScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
+	scaledObjectKey, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Cannot get key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
+
+	h.opsLock.Lock()
+	h.activeScaledObjects[scaledObjectKey] = scaledObject
+	h.opsLock.Unlock()
+
+	h.workqueue.Add(scaledObjectKey)
+}
+
+func (h *ScaleHandler) StopWatchingScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
+	scaledObjectKey, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Cannot get key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
+
+	h.opsLock.Lock()
+	defer h.opsLock.Unlock()
+
+	delete(h.activeScaledObjects, scaledObjectKey)
+}
+
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
 
@@ -92,15 +163,15 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDeci
 			log.Errorf("Error updating replica count on deployment (%s/%s) from %d to %d. Error: %s",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas,
+				*deployment.Spec.Replicas,
+				*deployment.Spec.Replicas,
 				err)
 		} else {
 			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas)
+				*deployment.Spec.Replicas,
+				*deployment.Spec.Replicas)
 		}
 	} else {
 		log.Infof("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
