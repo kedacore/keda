@@ -404,7 +404,7 @@
   version = "kubernetes-1.13.3"
 
 [[projects]]
-  digest = "1:874728415c1fde5a6b9613c27b49b485a03820c2271e8c0df19780cdc7905f79"
+  digest = "1:9499403617d2a01ab56154391af9e1417909ae355b8d5866160e639080465ac7"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -468,6 +468,7 @@
     "util/homedir",
     "util/integer",
     "util/retry",
+    "util/workqueue",
   ]
   pruneopts = "NUT"
   revision = "6e4752048fde21176ab35eb54ec1117359830d8a"
@@ -524,6 +525,8 @@
     "github.com/Sirupsen/logrus",
     "github.com/kelseyhightower/envconfig",
     "golang.org/x/tools/imports",
+    "k8s.io/api/apps/v1",
+    "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/labels",
@@ -532,6 +535,7 @@
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
@@ -541,6 +545,7 @@
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/util/flowcontrol",
+    "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/pkg/util",
     "k8s.io/gengo/parser",
   ]
