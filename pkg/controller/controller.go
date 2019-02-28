@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/Azure/Kore/pkg/scalers"
 
@@ -37,12 +36,7 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 		scaledObjectsInformer: koreinformer_v1alpha1.NewScaledObjectInformer(
 			koreClient,
 			meta_v1.NamespaceAll,
-			// https://groups.google.com/d/msg/kubernetes-sig-api-machinery/PbSCXdLDno0/dRLsMoLkDAAJ
-			// Based on the discussion above, it seems that resyncPeriod can be
-			// used for polling external systems like we have with autoscalers.
-			// This however makes it not possible to have a custom check interval
-			// per ScaledObject or deployment.
-			time.Second*30,
+			0,
 			cache.Indexers{},
 		),
 		opsLock: sync.Mutex{},
@@ -51,8 +45,11 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 	c.scaledObjectsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.syncScaledObject,
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			// always call syncScaledObject even on resync
-			// this uses the informer cache for updates rather than maintaining another cache
+			new := newObj.(*kore_v1alpha1.ScaledObject)
+			old := oldObj.(*kore_v1alpha1.ScaledObject)
+			if new.ResourceVersion == old.ResourceVersion {
+				return
+			}
 			c.syncScaledObject(newObj)
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
@@ -63,17 +60,14 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 
 //TODO: might need seperate method for updates to reconcile differences when removing/changing properties
 func (c *controller) syncScaledObject(obj interface{}) {
-	c.opsLock.Lock()
-	defer c.opsLock.Unlock()
-
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
-
-	go c.scaleHandler.HandleScale(scaledObject)
+	c.scaleHandler.WatchScaledObject(scaledObject)
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
 	log.Infof("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
+	c.scaleHandler.StopWatchingScaledObject(scaledObject)
 }
 
 func (c *controller) Run(ctx context.Context) {
@@ -85,6 +79,7 @@ func (c *controller) Run(ctx context.Context) {
 		log.Infof("Controller is shutting down")
 	}()
 	log.Infof("Controller is started")
+	go c.scaleHandler.Run(ctx.Done())
 	c.scaledObjectsInformer.Run(ctx.Done())
 	cancel()
 }
