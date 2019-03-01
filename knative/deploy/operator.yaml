@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knative
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: knative
+  template:
+    metadata:
+      labels:
+        name: knative
+    spec:
+      serviceAccountName: knative
+      containers:
+        - name: knative
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - knative
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "knative"
