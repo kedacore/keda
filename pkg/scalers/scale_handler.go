@@ -49,6 +49,7 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 	resolvedSecrets, err := h.resolveSecrets(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
+		return
 	}
 
 	var scaleDecision int32
