@@ -62,6 +62,10 @@ required = [
   branch = "master" #osdk_branch_annotation
   # version = "=v0.5.0" #osdk_version_annotation
 
+[[constraint]]
+  name = "github.com/knative/serving"
+  version = "=v0.4.0"
+
 [prune]
   go-tests = true
   non-go = true

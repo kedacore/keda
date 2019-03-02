@@ -8,6 +8,8 @@ import (
 	"runtime"
 
 	"github.com/Azure/Kore/knative/pkg/apis"
+	_ "github.com/Azure/Kore/knative/pkg/apis/autoscaling/v1alpha1"
+	_ "github.com/Azure/Kore/knative/pkg/apis/kore/v1alpha1"
 	"github.com/Azure/Kore/knative/pkg/controller"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"

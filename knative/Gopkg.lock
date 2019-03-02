@@ -10,6 +10,17 @@
   version = "v0.36.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:6b992c228c194b597498ee8927377183ba58d6d95826db08194c7af8d2b80b45"
+  name = "github.com/Azure/Kore"
+  packages = [
+    "pkg/apis/kore",
+    "pkg/apis/kore/v1alpha1",
+  ]
+  pruneopts = "NT"
+  revision = "fc7c8efcc643537c406cd74ee2525d2137b064fe"
+
+[[projects]]
   digest = "1:0a111edd8693fd977f42a0c4f199a0efb13c20aec9da99ad8830c7bb6a87e8d6"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -72,6 +83,14 @@
   pruneopts = "NT"
   revision = "85d198d05a92d31823b852b4a5928114912e8949"
   version = "v2.9.0"
+
+[[projects]]
+  digest = "1:820227d03dc661d34f837f3704626d2837dbfbf9f0ec8fdf1f58e683dc5f56fc"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "72bf35d0ff611848c1dc9df0f976c81192392fa5"
+  version = "v4.1.0"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -187,6 +206,26 @@
   revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
 
 [[projects]]
+  digest = "1:2ddc4fb22e0f7c7f6ce615f8b453aeb1c7d0eec746c1a5a62244363e1a836462"
+  name = "github.com/google/go-cmp"
+  packages = [
+    "cmp",
+    "cmp/internal/diff",
+    "cmp/internal/function",
+    "cmp/internal/value",
+  ]
+  pruneopts = "NT"
+  revision = "3af367b6b30c263d47e8895973edcca9a49cf029"
+  version = "v0.2.0"
+
+[[projects]]
+  digest = "1:27b01c6accfd4d577b3bc9c0cae2be1d267220182471ac3a5df9661877c0bdfc"
+  name = "github.com/google/go-containerregistry"
+  packages = ["pkg/name"]
+  pruneopts = "NT"
+  revision = "dbc4da98389f9d0c42eb314c2b346bf1d2a27310"
+
+[[projects]]
   branch = "master"
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
   name = "github.com/google/gofuzz"
@@ -261,6 +300,46 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:b4f7300fda95a158ae4b6b59533cf64c81c7e46caf98a27dc210b37b06b60b9b"
+  name = "github.com/knative/build"
+  packages = [
+    "pkg/apis/build",
+    "pkg/apis/build/v1alpha1",
+  ]
+  pruneopts = "NT"
+  revision = "ee63efca9865c41732883f4eb0aef3be13becedd"
+  version = "v0.4.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:34f0bae7f30bb57f66f5861e3d70fba3edcaeff6e913a494820bca05fe2c9401"
+  name = "github.com/knative/pkg"
+  packages = [
+    "apis",
+    "apis/duck",
+    "apis/duck/v1alpha1",
+    "kmeta",
+    "kmp",
+  ]
+  pruneopts = "NT"
+  revision = "a3220b881c4d2316a3d811766968e5ba08f21c2b"
+
+[[projects]]
+  digest = "1:d9f060568e794dab3c472590e65f5d1e208ec5488c66b17408a7d31bd72e2df2"
+  name = "github.com/knative/serving"
+  packages = [
+    "pkg/apis/autoscaling",
+    "pkg/apis/autoscaling/v1alpha1",
+    "pkg/apis/networking",
+    "pkg/apis/networking/v1alpha1",
+    "pkg/apis/serving",
+    "pkg/apis/serving/v1alpha1",
+  ]
+  pruneopts = "NT"
+  revision = "b3c82dc7afcca05ed03cd52df0860ad866fabd41"
+  version = "v0.4.0"
+
+[[projects]]
   branch = "master"
   digest = "1:4925ec3736ef6c299cfcf61597782e3d66ec13114f7476019d04c742a7be55d0"
   name = "github.com/mailru/easyjson"
@@ -279,6 +358,14 @@
   pruneopts = "NT"
   revision = "24b83195037b3bc61fcda2d28b7b0518bce293b6"
   version = "v1.0.4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0e9bfc47ab9941ecc3344e580baca5deb4091177e84dd9773b48b38ec26b93d5"
+  name = "github.com/mattbaird/jsonpatch"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
 
 [[projects]]
   digest = "1:ea1db000388d88b31db7531c83016bef0d6db0d908a07794bfc36aca16fbf935"
@@ -649,12 +736,15 @@
   digest = "1:15b5c41ff6faa4d0400557d4112d6337e1abc961c65513d44fce7922e32c9ca7"
   name = "k8s.io/apimachinery"
   packages = [
+    "pkg/api/equality",
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/api/validation",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -851,15 +941,25 @@
     "pkg/client",
     "pkg/client/apiutil",
     "pkg/client/config",
+    "pkg/controller",
+    "pkg/controller/controllerutil",
+    "pkg/event",
+    "pkg/handler",
+    "pkg/internal/controller",
+    "pkg/internal/controller/metrics",
     "pkg/internal/recorder",
     "pkg/leaderelection",
     "pkg/manager",
     "pkg/metrics",
     "pkg/patch",
+    "pkg/predicate",
+    "pkg/reconcile",
     "pkg/recorder",
     "pkg/runtime/inject",
     "pkg/runtime/log",
     "pkg/runtime/signals",
+    "pkg/source",
+    "pkg/source/internal",
     "pkg/webhook/admission",
     "pkg/webhook/admission/types",
     "pkg/webhook/internal/metrics",
@@ -896,13 +996,19 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Azure/Kore/pkg/apis/kore/v1alpha1",
+    "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/log/zap",
     "github.com/operator-framework/operator-sdk/pkg/metrics",
     "github.com/operator-framework/operator-sdk/version",
     "github.com/spf13/pflag",
+    "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/runtime",
+    "k8s.io/apimachinery/pkg/types",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/conversion-gen",
@@ -912,10 +1018,16 @@
     "k8s.io/code-generator/cmd/lister-gen",
     "k8s.io/gengo/args",
     "k8s.io/kube-openapi/cmd/openapi-gen",
+    "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
+    "sigs.k8s.io/controller-runtime/pkg/controller",
+    "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil",
+    "sigs.k8s.io/controller-runtime/pkg/handler",
     "sigs.k8s.io/controller-runtime/pkg/manager",
+    "sigs.k8s.io/controller-runtime/pkg/reconcile",
     "sigs.k8s.io/controller-runtime/pkg/runtime/log",
     "sigs.k8s.io/controller-runtime/pkg/runtime/signals",
+    "sigs.k8s.io/controller-runtime/pkg/source",
     "sigs.k8s.io/controller-tools/pkg/crd/generator",
   ]
   solver-name = "gps-cdcl"

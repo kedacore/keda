@@ -3,7 +3,8 @@ package podautoscaler
 import (
 	"context"
 
-	servingv1alpha1 "github.com/Azure/Kore/knative/pkg/apis/serving/v1alpha1"
+	korev1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
+	autoscalingv1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -47,7 +48,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource PodAutoscaler
-	err = c.Watch(&source.Kind{Type: &servingv1alpha1.PodAutoscaler{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &autoscalingv1alpha1.PodAutoscaler{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner PodAutoscaler
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &servingv1alpha1.PodAutoscaler{},
+		OwnerType:    &autoscalingv1alpha1.PodAutoscaler{},
 	})
 	if err != nil {
 		return err
@@ -87,7 +88,7 @@ func (r *ReconcilePodAutoscaler) Reconcile(request reconcile.Request) (reconcile
 	reqLogger.Info("Reconciling PodAutoscaler")
 
 	// Fetch the PodAutoscaler instance
-	instance := &servingv1alpha1.PodAutoscaler{}
+	instance := &autoscalingv1alpha1.PodAutoscaler{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -100,20 +101,28 @@ func (r *ReconcilePodAutoscaler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// TODO: We should filter what we watch instead of filtering
+	// during reconcile
+	if instance.Annotations["autoscaling.knative.dev/class"] != "kore" {
+		reqLogger.Info("Ignoring PodAutoscaler", "PodAutoscaler.Name", instance.Name)
+		// Not our PodAutoscaler, ignore
+		return reconcile.Result{}, nil
+	}
+
+	// Define a new ScaledObject
+	scaledObject := newScaledObjectForCR(instance)
 
 	// Set PodAutoscaler instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, scaledObject, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	// Check if this ScaledObject already exists
+	found := &korev1alpha1.ScaledObject{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: scaledObject.Name, Namespace: scaledObject.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new ScaledObject", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name)
+		err = r.client.Create(context.TODO(), scaledObject)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -125,27 +134,30 @@ func (r *ReconcilePodAutoscaler) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	reqLogger.Info("Skip reconcile: ScaledObject already exists", "ScaledObject.Namespace", found.Namespace, "ScaledObject.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *servingv1alpha1.PodAutoscaler) *corev1.Pod {
+// newScaledObjectForCR returns a ScaledObject with the same name/namespace as the cr
+func newScaledObjectForCR(cr *autoscalingv1alpha1.PodAutoscaler) *korev1alpha1.ScaledObject {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &corev1.Pod{
+
+	return &korev1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-pod",
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
+		Spec: korev1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: korev1alpha1.ObjectReference{
+				DeploymentName: cr.Spec.ScaleTargetRef.Name,
+			},
+			Triggers: []korev1alpha1.ScaleTriggers{
+				korev1alpha1.ScaleTriggers{
+					Type: "azure-queue",
+					Name: "azure-queue",
 				},
 			},
 		},

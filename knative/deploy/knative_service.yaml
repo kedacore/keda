@@ -1,0 +1,17 @@
+apiVersion: serving.knative.dev/v1alpha1
+kind: Service
+metadata:
+  name: helloworld-go
+spec:
+  runLatest:
+    configuration:
+      revisionTemplate:
+        metadata:
+          annotations:
+            autoscaling.knative.dev/class: kore
+        spec:
+          container:
+            image: gcr.io/knative-samples/helloworld-go
+            env:
+            - name: TARGET
+              value: "Go Sample v1"
