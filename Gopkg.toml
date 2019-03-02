@@ -1,3 +1,5 @@
+ignored = ["github.com/Azure/kore/knative"]
+
 [[constraint]]
   name = "github.com/Sirupsen/logrus"
   version = "1.3.0"
