@@ -148,29 +148,21 @@ func (h *ScaleHandler) StopWatchingScaledObject(scaledObject *kore_v1alpha1.Scal
 
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
-
-		// TODO: we should also have a "status" for the ScaledObject
-		// TODO: where we can store information like:
-		// TODO: LastScaleTime, LastActiveTime, CurrentReplicas, and DesiredReplicas
-		// scaledObject.Status.LastScaleTime = &currentTime
-		// scaledObject.Status.LastActiveTime = &currentTime
-		// scaledObject.Status.CurrentReplicas = *deploymentCopy.Spec.Replicas
-		// scaledObject.Status.DesiredReplicas = scaleDecision
-
+		currentReplicas := *deployment.Spec.Replicas
 		*deployment.Spec.Replicas = scaleDecision
 		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
 		if err != nil {
 			log.Errorf("Error updating replica count on deployment (%s/%s) from %d to %d. Error: %s",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				*deployment.Spec.Replicas,
+				currentReplicas,
 				*deployment.Spec.Replicas,
 				err)
 		} else {
 			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				*deployment.Spec.Replicas,
+				currentReplicas,
 				*deployment.Spec.Replicas)
 		}
 	} else {
