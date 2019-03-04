@@ -9,9 +9,16 @@ spec:
         metadata:
           annotations:
             autoscaling.knative.dev/class: kore
+            kore/connection: myconnection
+            kore/queueName: demo
         spec:
           container:
             image: gcr.io/knative-samples/helloworld-go
             env:
             - name: TARGET
               value: "Go Sample v1"
+            - name: myconnection
+              valueFrom:
+                secretKeyRef:
+                  name: koredemo
+                  key: connection
