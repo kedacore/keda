@@ -116,7 +116,7 @@ func (h *ScaleHandler) processNextItem() bool {
 	resolvedSecrets, err := h.resolveSecrets(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return
+		return true
 	}
 
 	var scaleDecision int32
