@@ -146,7 +146,7 @@ func newScaledObjectForCR(cr *autoscalingv1alpha1.PodAutoscaler) *korev1alpha1.S
 
 	return &korev1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
+			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
@@ -158,6 +158,10 @@ func newScaledObjectForCR(cr *autoscalingv1alpha1.PodAutoscaler) *korev1alpha1.S
 				korev1alpha1.ScaleTriggers{
 					Type: "azure-queue",
 					Name: "azure-queue",
+					Metadata: map[string]string{
+						"connection": cr.Annotations["kore/connection"],
+						"queueName":  cr.Annotations["kore/queueName"],
+					},
 				},
 			},
 		},
