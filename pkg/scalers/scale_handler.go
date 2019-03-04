@@ -75,7 +75,13 @@ func (h *ScaleHandler) handleScale() {
 		return
 	}
 
-	defer h.workqueue.AddAfter(obj, time.Second*30)
+	enqueueAfter := time.Second * 30 //Default pollingInterval is 30 seconds
+
+	if (scaledObject.Spec.PollingInterval != nil) {
+		enqueueAfter = time.Second*time.Duration(*scaledObject.Spec.PollingInterval)
+	}
+
+	defer h.workqueue.AddAfter(obj, enqueueAfter)
 
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
