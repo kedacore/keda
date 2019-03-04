@@ -49,6 +49,7 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 	resolvedSecrets, err := h.resolveSecrets(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
+		return
 	}
 
 	var scaleDecision int32
@@ -85,21 +86,22 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDeci
 		// scaledObject.Status.CurrentReplicas = *deploymentCopy.Spec.Replicas
 		// scaledObject.Status.DesiredReplicas = scaleDecision
 
+		oldReplicas := *deployment.Spec.Replicas
 		*deployment.Spec.Replicas = scaleDecision
-		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
+		_, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
 		if err != nil {
 			log.Errorf("Error updating replica count on deployment (%s/%s) from %d to %d. Error: %s",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas,
+				oldReplicas,
+				scaleDecision,
 				err)
 		} else {
 			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas)
+				oldReplicas,
+				scaleDecision)
 		}
 	} else {
 		log.Infof("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
@@ -114,19 +116,32 @@ func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (*map[stri
 		return nil, err
 	}
 
+	containerIndex := 0
 	if len(deployment.Spec.Template.Spec.Containers) < 1 {
 		return nil, fmt.Errorf("Deployment (%s) doesn't have containers", deploymentKey)
 	} else if len(deployment.Spec.Template.Spec.Containers) > 1 {
-		return nil, fmt.Errorf("Deployment (%s) has more than one container", deploymentKey)
+		// Knative deployments have more than one container but only 1
+		// that is supplied by the user. It has a name of 'user-container'.
+		foundKnative := false
+		for i, container := range deployment.Spec.Template.Spec.Containers {
+			if container.Name == "user-container" {
+				containerIndex = i
+				foundKnative = true
+				break
+			}
+		}
+		if !foundKnative {
+			return nil, fmt.Errorf("Deployment (%s) has more than one container", deploymentKey)
+		}
 	}
 
-	container := deployment.Spec.Template.Spec.Containers[0]
+	container := deployment.Spec.Template.Spec.Containers[containerIndex]
 	resolved := make(map[string]string)
 	for _, envVar := range container.Env {
 		if envVar.Value != "" {
 			resolved[envVar.Name] = envVar.Value
 		} else if envVar.ValueFrom != nil && envVar.ValueFrom.SecretKeyRef != nil {
-			value, err := h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.Name, deployment.GetNamespace())
+			value, err := h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, deployment.GetNamespace())
 			if err != nil {
 				return nil, err
 			}
@@ -138,14 +153,14 @@ func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (*map[stri
 	return &resolved, nil
 }
 
-func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelector, keyName, namespace string) (string, error) {
+func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelector, namespace string) (string, error) {
 	secretCollection, err := h.kubeClient.CoreV1().Secrets(namespace).Get(secretKeyRef.Name, meta_v1.GetOptions{})
 
 	if err != nil {
 		return "", err
 	}
 
-	return string(secretCollection.Data[keyName]), nil
+	return string(secretCollection.Data[secretKeyRef.Key]), nil
 }
 
 func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (Scaler, error) {
