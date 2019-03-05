@@ -26,6 +26,8 @@ Kore can run on both the cloud and the edge, integrates natively with Kubernetes
 
 2. *Kubectl* has been installed and configured to work with your cluster [(instructions)](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
 
+3. `docker login -u "b514b60c-68cc-4f12-b361-3858878b2479" -p '4jX5vkPTSrUQ96UBbU/B7CQrBoJwT62WSs5WfZtFbB8=' projectkore.azurecr.io`
+
 ### Deploy Kore
 
 Clone the repo:
