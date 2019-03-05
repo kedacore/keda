@@ -6,14 +6,15 @@ CGO?=0
 TARGET_OS?=linux
 
 ##################################################
-# Docker variables                               #
+# Variables                                      #
 ##################################################
 
 BASE_IMAGE_NAME := kore
-IMAGE_NAMESPACE := project-kore
 IMAGE_TAG       := $(CIRCLE_BRANCH)
+IMAGE_NAME      := $(ACR_REGISTRY)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
 
-IMAGE_NAME      := $(ACR_REGISTRY)/$(IMAGE_NAMESPACE)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
+GIT_VERSION = $(shell git describe --always --abbrev=7)
+DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 ##################################################
 # Tests                                          #
@@ -41,3 +42,20 @@ build-container: build
 push-container: build-container
 	docker push $(IMAGE_NAME)
 
+
+##################################################
+# Helm Chart tasks                               #
+##################################################
+.PHONY: publish-edge-chart
+publish-edge-chart:
+	rm -rf /tmp/kore-edge
+	cp -r -L chart/kore /tmp/kore-edge
+	sed -i "s/^name:.*/name: kore-edge/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^version:.*/version: 0.0.1-$(DATE)-$(GIT_VERSION)/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^appVersion:.*/appVersion: $(GIT_VERSION)/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^  tag:.*/  tag: master/g" /tmp/kore-edge/values.yaml
+
+	helm lint /tmp/kore-edge/
+	helm package /tmp/kore-edge/
+	az login --service-principal -u '$(AZURE_SP_ID)' -p '$(AZURE_SP_KEY)' --tenant '$(AZURE_SP_TENANT)'
+	az acr helm push -n projectkore kore-edge-0.0.1-$(DATE)-$(GIT_VERSION).tgz
