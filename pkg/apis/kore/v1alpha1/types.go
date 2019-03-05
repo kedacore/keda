@@ -18,8 +18,9 @@ type ScaledObject struct {
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
-	ScaleTargetRef ObjectReference `json:"scaleTargetRef"`
-	Triggers       []ScaleTriggers `json:"triggers"`
+	ScaleTargetRef  ObjectReference `json:"scaleTargetRef"`
+	PollingInterval *int32         `json:"pollingInterval"`
+	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
 type ObjectReference struct {
@@ -27,9 +28,9 @@ type ObjectReference struct {
 }
 
 type ScaleTriggers struct {
-	Type       string                     `json:"type"`
-	Name       string                     `json:"name"`
-	Metadata   map[string]string          `json:"metadata"`
+	Type     string            `json:"type"`
+	Name     string            `json:"name"`
+	Metadata map[string]string `json:"metadata"`
 }
 
 // ScaledObjectStatus is the status for a ScaledObject resource
@@ -39,11 +40,6 @@ type ScaledObjectStatus struct {
 	CurrentReplicas int32             `json:"currentReplicas"`
 	DesiredReplicas int32             `json:"desiredReplicas"`
 	CurrentMetrics  map[string]string `json:"currentMetrics"`
-}
-
-type SecretReference struct {
-	Name string `json:"name"`
-	Key  string `json:"key"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

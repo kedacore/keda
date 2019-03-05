@@ -1,7 +1,9 @@
 package scalers
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	apps_v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
@@ -21,6 +23,8 @@ type ScaleHandler struct {
 	kubeClient kubernetes.Interface
 }
 
+const defaultPollingInterval = 30
+
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
 	handler := &ScaleHandler{
@@ -31,12 +35,37 @@ func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Inter
 	return handler
 }
 
-// HandleScale gets called for every scaledObject on a timer based on the resyncPeriod
-// of the controller. This method should be called in an async goroutine
-func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
+// WatchScaledObjectWithContext enqueues the ScaledObject into the work queue
+func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+	go h.handleScaleLoop(ctx, scaledObject)
+}
+
+func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+	h.handleScale(ctx, scaledObject)
+
+	pollingInterval := time.Second * time.Duration(defaultPollingInterval)
+
+	if scaledObject.Spec.PollingInterval != nil {
+		pollingInterval = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
+	}
+
+	log.Debugf("watching scaledObject (%s/%s) with pollingInterval: %d", scaledObject.GetNamespace(), scaledObject.GetName(), pollingInterval)
+
+	for {
+		select {
+		case <-time.After(pollingInterval):
+			h.handleScale(ctx, scaledObject)
+		case <-ctx.Done():
+			log.Debugf("context for scaledObject (%s/%s) canceled", scaledObject.GetNamespace(), scaledObject.GetName())
+			return
+		}
+	}
+}
+
+func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
-		log.Infof("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 		return
 	}
 
@@ -61,7 +90,7 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 			continue
 		}
 
-		sd, err := scaler.GetScaleDecision()
+		sd, err := scaler.GetScaleDecision(ctx)
 		if err != nil {
 			log.Errorf("error getting scale decision for trigger #%d: %s", i, err)
 			continue
@@ -70,40 +99,34 @@ func (h *ScaleHandler) HandleScale(scaledObject *kore_v1alpha1.ScaledObject) {
 		scaleDecision += sd
 	}
 
-	log.Infof("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
+	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
 
 	h.scaleDeployment(deployment, scaleDecision)
+
+	return
 }
 
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
-
-		// TODO: we should also have a "status" for the ScaledObject
-		// TODO: where we can store information like:
-		// TODO: LastScaleTime, LastActiveTime, CurrentReplicas, and DesiredReplicas
-		// scaledObject.Status.LastScaleTime = &currentTime
-		// scaledObject.Status.LastActiveTime = &currentTime
-		// scaledObject.Status.CurrentReplicas = *deploymentCopy.Spec.Replicas
-		// scaledObject.Status.DesiredReplicas = scaleDecision
-
+		currentReplicas := *deployment.Spec.Replicas
 		*deployment.Spec.Replicas = scaleDecision
 		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
 		if err != nil {
 			log.Errorf("Error updating replica count on deployment (%s/%s) from %d to %d. Error: %s",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas,
+				currentReplicas,
+				*deployment.Spec.Replicas,
 				err)
 		} else {
-			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
+			log.Debugf("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
-				deployment.Spec.Replicas,
-				deployment.Spec.Replicas)
+				currentReplicas,
+				*deployment.Spec.Replicas)
 		}
 	} else {
-		log.Infof("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
+		log.Debugf("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
 			deployment.GetNamespace(),
 			deployment.GetName())
 	}
@@ -150,12 +173,13 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 }
 
 func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (Scaler, error) {
-	if trigger.Type == "azure-queue" {
+	switch trigger.Type {
+	case "azure-queue":
 		return &azureQueueScaler{
 			metadata:        &trigger.Metadata,
 			resolvedSecrets: resolvedSecrets,
 		}, nil
+	default:
+		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
-
-	return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 }

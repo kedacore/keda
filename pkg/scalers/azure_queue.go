@@ -10,7 +10,7 @@ import (
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 )
 
-func getQueueLength(connectionString, queueName string) (int32, error) {
+func getQueueLength(ctx context.Context, connectionString, queueName string) (int32, error) {
 	// From the Azure portal, get your Storage account's name and account key.
 	accountName, accountKey, err := accountInfo(connectionString)
 
@@ -40,7 +40,6 @@ func getQueueLength(connectionString, queueName string) (int32, error) {
 	// Now, you can use the serviceURL to perform various queue operations.
 
 	// All HTTP operations allow you to specify a Go context.Context object to control cancellation/timeout.
-	ctx := context.TODO() // This example uses a never-expiring context.
 
 	// Create a URL that references a queue in your Azure Storage account.
 	// This returns a QueueURL object that wraps the queue's URL and a request pipeline (inherited from serviceURL)
