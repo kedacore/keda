@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/Azure/Kore/pkg/scalers"
 
@@ -22,11 +21,11 @@ type Controller interface {
 
 type controller struct {
 	scaledObjectsInformer cache.SharedInformer
-	opsLock               sync.Mutex
 	ctx                   context.Context
 	koreClient            clientset.Interface
 	kubeClient            kubernetes.Interface
 	scaleHandler          *scalers.ScaleHandler
+	scaledObjectsContexts *sync.Map
 }
 
 func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *scalers.ScaleHandler) Controller {
@@ -37,22 +36,20 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 		scaledObjectsInformer: koreinformer_v1alpha1.NewScaledObjectInformer(
 			koreClient,
 			meta_v1.NamespaceAll,
-			// https://groups.google.com/d/msg/kubernetes-sig-api-machinery/PbSCXdLDno0/dRLsMoLkDAAJ
-			// Based on the discussion above, it seems that resyncPeriod can be
-			// used for polling external systems like we have with autoscalers.
-			// This however makes it not possible to have a custom check interval
-			// per ScaledObject or deployment.
-			time.Second*30,
+			0,
 			cache.Indexers{},
 		),
-		opsLock: sync.Mutex{},
+		scaledObjectsContexts: &sync.Map{},
 	}
 
 	c.scaledObjectsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.syncScaledObject,
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			// always call syncScaledObject even on resync
-			// this uses the informer cache for updates rather than maintaining another cache
+			new := newObj.(*kore_v1alpha1.ScaledObject)
+			old := oldObj.(*kore_v1alpha1.ScaledObject)
+			if new.ResourceVersion == old.ResourceVersion {
+				return
+			}
 			c.syncScaledObject(newObj)
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
@@ -61,19 +58,47 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 	return c
 }
 
-//TODO: might need seperate method for updates to reconcile differences when removing/changing properties
 func (c *controller) syncScaledObject(obj interface{}) {
-	c.opsLock.Lock()
-	defer c.opsLock.Unlock()
-
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
 
-	go c.scaleHandler.HandleScale(scaledObject)
+	ctx, cancel := context.WithCancel(c.ctx)
+
+	value, loaded := c.scaledObjectsContexts.LoadOrStore(key, cancel)
+	if loaded {
+		cancelValue, ok := value.(context.CancelFunc)
+		if ok {
+			cancelValue()
+		}
+		c.scaledObjectsContexts.Store(key, cancel)
+	}
+	c.scaleHandler.WatchScaledObjectWithContext(ctx, scaledObject)
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
-	log.Infof("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
+	log.Debugf("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
+
+	result, ok := c.scaledObjectsContexts.Load(key)
+	if ok {
+		cancel, ok := result.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+		c.scaledObjectsContexts.Delete(key)
+	} else {
+		log.Debugf("ScaledObject %s not found in controller cache", key)
+	}
 }
 
 func (c *controller) Run(ctx context.Context) {

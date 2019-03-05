@@ -1,5 +1,9 @@
 package scalers
 
+import (
+	"context"
+)
+
 type Scaler interface {
-	GetScaleDecision() (int32, error)
+	GetScaleDecision(ctx context.Context) (int32, error)
 }
