@@ -1,8 +1,16 @@
 apiVersion: kore.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
-  name: example-scaledobject
+  name: functions-example-scaledobject
 spec:
-  deploymentName: azure-functions-deployment
-  type: azure-queue
-  secretRef: azure-queue-connection
+  scaleTargetRef:
+    deploymentName: functions-example-deployment
+  triggers:
+  pollingInterval: 30
+  - type: blobTrigger
+    metadata:
+      name: myBlob
+      type: blobTrigger
+      direction: in
+      path: samples-workitems/{name}
+      connection: 'AzureStorageConnectionString'

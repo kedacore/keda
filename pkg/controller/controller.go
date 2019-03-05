@@ -21,11 +21,11 @@ type Controller interface {
 
 type controller struct {
 	scaledObjectsInformer cache.SharedInformer
-	opsLock               sync.Mutex
 	ctx                   context.Context
 	koreClient            clientset.Interface
 	kubeClient            kubernetes.Interface
 	scaleHandler          *scalers.ScaleHandler
+	scaledObjectsContexts *sync.Map
 }
 
 func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *scalers.ScaleHandler) Controller {
@@ -39,7 +39,7 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 			0,
 			cache.Indexers{},
 		),
-		opsLock: sync.Mutex{},
+		scaledObjectsContexts: &sync.Map{},
 	}
 
 	c.scaledObjectsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -58,16 +58,47 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 	return c
 }
 
-//TODO: might need seperate method for updates to reconcile differences when removing/changing properties
 func (c *controller) syncScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
-	c.scaleHandler.WatchScaledObject(scaledObject)
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
+
+	ctx, cancel := context.WithCancel(c.ctx)
+
+	value, loaded := c.scaledObjectsContexts.LoadOrStore(key, cancel)
+	if loaded {
+		cancelValue, ok := value.(context.CancelFunc)
+		if ok {
+			cancelValue()
+		}
+		c.scaledObjectsContexts.Store(key, cancel)
+	}
+	c.scaleHandler.WatchScaledObjectWithContext(ctx, scaledObject)
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
-	log.Infof("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
-	c.scaleHandler.StopWatchingScaledObject(scaledObject)
+	log.Debugf("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
+		return
+	}
+
+	result, ok := c.scaledObjectsContexts.Load(key)
+	if ok {
+		cancel, ok := result.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+		c.scaledObjectsContexts.Delete(key)
+	} else {
+		log.Debugf("ScaledObject %s not found in controller cache", key)
+	}
 }
 
 func (c *controller) Run(ctx context.Context) {
@@ -79,7 +110,6 @@ func (c *controller) Run(ctx context.Context) {
 		log.Infof("Controller is shutting down")
 	}()
 	log.Infof("Controller is started")
-	go c.scaleHandler.Run(ctx.Done())
 	c.scaledObjectsInformer.Run(ctx.Done())
 	cancel()
 }
