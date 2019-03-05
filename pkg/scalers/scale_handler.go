@@ -1,11 +1,9 @@
 package scalers
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"time"
-
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	apps_v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
@@ -16,7 +14,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
@@ -24,14 +21,6 @@ import (
 type ScaleHandler struct {
 	koreClient clientset.Interface
 	kubeClient kubernetes.Interface
-	// A delaying workqueue is used to re-enqueue the watched
-	// scaledObjects based on their polling interval.
-	// Default pollingInterval is 30 seconds.
-	workqueue workqueue.DelayingInterface
-	// While scaledObjects are in the workqueue, they could become invalid due to either
-	// a delete call on the scaledObject, or an update call. The activeScaledObjects
-	// is a shared cache for the current valid scaledObjects.
-	cache *scaleHandlerSharedCache
 }
 
 const defaultPollingInterval = 30
@@ -41,82 +30,55 @@ func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Inter
 	handler := &ScaleHandler{
 		koreClient: koreClient,
 		kubeClient: kubeClient,
-		workqueue:  workqueue.NewNamedDelayingQueue("ScaledObjects"),
-		cache: &scaleHandlerSharedCache{
-			activeScaledObjects: make(map[string]*kore_v1alpha1.ScaledObject),
-			opsLock:             sync.RWMutex{},
-		},
 	}
 
 	return handler
 }
 
-// Run starts a goroutine that dequeues workitems from the workqueue
-func (h *ScaleHandler) Run(stopCh <-chan struct{}) {
-	defer h.workqueue.ShutDown()
-
-	log.Info("Starting ScaleHandler workqueue")
-	go wait.Until(h.handleScale, time.Second, stopCh)
-	<-stopCh
-	log.Info("Shutting down ScaleHaldner workqueue")
+// WatchScaledObjectWithContext enqueues the ScaledObject into the work queue
+func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+	go h.handleScaleLoop(ctx, scaledObject)
 }
 
-// handleScale just calls processNextItem in a forever loop
-// until a shutdown signal is raised.
-func (h *ScaleHandler) handleScale() {
-	for h.processNextItem() {
-	}
-}
+func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+	h.handleScale(ctx, scaledObject)
 
-// processNextItem pulls items off the workqueue and checks for their scale state.
-// It'll also re-enqueue the item with its pollingInterval after it's done.
-// Returns false only if the queue is shutting down.
-func (h *ScaleHandler) processNextItem() bool {
-	obj, shutdown := h.workqueue.Get()
-
-	if shutdown {
-		// queue is shutting down
-		return false
-	}
-
-	defer h.workqueue.Done(obj)
-
-	var key string
-	var ok bool
-	if key, ok = obj.(string); !ok {
-		return true
-	}
-
-	scaledObject := h.cache.get(key)
-
-	if scaledObject == nil {
-		return true
-	}
-
-	enqueueAfter := time.Second * time.Duration(defaultPollingInterval)
+	pollingInterval := time.Second * time.Duration(defaultPollingInterval)
 
 	if scaledObject.Spec.PollingInterval != nil {
-		enqueueAfter = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
+		pollingInterval = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
 	}
 
-	defer h.workqueue.AddAfter(obj, enqueueAfter)
+	log.Debugf("watching scaledObject (%s/%s) with pollingInterval: %d", scaledObject.GetNamespace(), scaledObject.GetName(), pollingInterval)
 
+	for {
+		select {
+		case <-time.After(pollingInterval):
+			h.handleScale(ctx, scaledObject)
+		case <-ctx.Done():
+			log.Debugf("context for scaledObject (%s/%s) canceled", scaledObject.GetNamespace(), scaledObject.GetName())
+			return
+		}
+	}
+}
+
+func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
-		log.Infof("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return true
+		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		return
 	}
 
 	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
 	if err != nil {
 		log.Errorf("Error getting deployment: %s", err)
-		return true
+		return
 	}
 
 	resolvedSecrets, err := h.resolveSecrets(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return true
+		return
 	}
 
 	var scaleDecision int32
@@ -128,7 +90,7 @@ func (h *ScaleHandler) processNextItem() bool {
 			continue
 		}
 
-		sd, err := scaler.GetScaleDecision()
+		sd, err := scaler.GetScaleDecision(ctx)
 		if err != nil {
 			log.Errorf("error getting scale decision for trigger #%d: %s", i, err)
 			continue
@@ -137,34 +99,11 @@ func (h *ScaleHandler) processNextItem() bool {
 		scaleDecision += sd
 	}
 
-	log.Infof("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
+	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
 
 	h.scaleDeployment(deployment, scaleDecision)
 
-	return true
-}
-
-// WatchScaledObject enqueues the ScaledObject into the work queue
-func (h *ScaleHandler) WatchScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
-	scaledObjectKey, err := cache.MetaNamespaceKeyFunc(scaledObject)
-	if err != nil {
-		log.Errorf("Cannot get key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
-		return
-	}
-
-	h.cache.set(scaledObjectKey, scaledObject)
-	h.workqueue.Add(scaledObjectKey)
-}
-
-// StopWatchingScaledObject deletes the scaledObject from the cache
-func (h *ScaleHandler) StopWatchingScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
-	scaledObjectKey, err := cache.MetaNamespaceKeyFunc(scaledObject)
-	if err != nil {
-		log.Errorf("Cannot get key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
-		return
-	}
-
-	h.cache.delete(scaledObjectKey)
+	return
 }
 
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
@@ -180,14 +119,14 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDeci
 				*deployment.Spec.Replicas,
 				err)
 		} else {
-			log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
+			log.Debugf("Successfully updated deployment (%s/%s) from %d to %d replicas",
 				deployment.GetNamespace(),
 				deployment.GetName(),
 				currentReplicas,
 				*deployment.Spec.Replicas)
 		}
 	} else {
-		log.Infof("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
+		log.Debugf("Current replica count for deployment (%s/%s) is the same as update replica count. Skipping..",
 			deployment.GetNamespace(),
 			deployment.GetName())
 	}

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -9,11 +10,11 @@ type azureQueueScaler struct {
 }
 
 // GetScaleDecision is a func
-func (s *azureQueueScaler) GetScaleDecision() (int32, error) {
+func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
 	connectionString := getConnectionString(s)
 	queueName := getQueueName(s)
 
-	length, err := getQueueLength(connectionString, queueName)
+	length, err := getQueueLength(ctx, connectionString, queueName)
 
 	if err != nil {
 		log.Errorf("error %s", err)
