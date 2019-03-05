@@ -3,7 +3,10 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.10
+      - image: projectkore.azurecr.io/build-tools:latest
+        auth:
+            username: $ACR_USERNAME
+            password: $ACR_PASSWORD
     working_directory: /go/src/github.com/Azure/Kore
     steps:
       - checkout
@@ -11,3 +14,4 @@ jobs:
       - run: docker login -u "${ACR_USERNAME}" -p "${ACR_PASSWORD}" ${ACR_REGISTRY}
       - run: make test
       - run: make ci-build-all
+      - run: make publish-edge-chart

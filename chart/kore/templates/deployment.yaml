@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "kore.labels" . | nindent 4 }}
+  name: {{ template "kore.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      name: {{ template "kore.fullname" . }}
+      instance: {{ template "kore.fullname" . }}-instance
+  template:
+    metadata:
+      labels:
+        name: {{ template "kore.fullname" . }}
+        instance: {{ template "kore.fullname" . }}-instance
+    spec:
+      serviceAccountName: {{ template "kore.serviceAccountName" . }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+      imagePullSecrets:
+      - name: {{ template "kore.fullname" . }}-docker-auth
