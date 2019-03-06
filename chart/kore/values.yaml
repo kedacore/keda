@@ -14,3 +14,5 @@ rbac:
 serviceAccount:
   create: true
   name: kore-service-account
+
+disableTLSVerification: false
