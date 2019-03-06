@@ -12,7 +12,7 @@ import (
 
 func getQueueLength(ctx context.Context, connectionString, queueName string) (int32, error) {
 	// From the Azure portal, get your Storage account's name and account key.
-	accountName, accountKey, err := accountInfo(connectionString)
+	accountName, accountKey, err := parseConnectionString(connectionString)
 
 	if err != nil {
 		return -1, err
@@ -60,7 +60,7 @@ func getQueueLength(ctx context.Context, connectionString, queueName string) (in
 	return props.ApproximateMessagesCount(), nil
 }
 
-func accountInfo(connectionString string) (string, string, error) {
+func parseConnectionString(connectionString string) (string, string, error) {
 	parts := strings.Split(connectionString, ";")
 
 	var name, key string
