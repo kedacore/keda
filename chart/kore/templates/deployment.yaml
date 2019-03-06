@@ -22,5 +22,9 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+{{- if .Values.disableTLSVerification }}
+          - --disableTLSVerification
+{{- end }}
       imagePullSecrets:
       - name: {{ template "kore.fullname" . }}-docker-auth
