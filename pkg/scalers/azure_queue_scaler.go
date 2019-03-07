@@ -5,12 +5,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type azureQueueScaler struct {
-	resolvedSecrets, metadata *map[string]string
+type AzureQueueScaler struct {
+	ResolvedSecrets, Metadata *map[string]string
 }
 
 // GetScaleDecision is a func
-func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
+func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
 	connectionString := getConnectionString(s)
 	queueName := getQueueName(s)
 
@@ -28,15 +28,15 @@ func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 	return 0, nil
 }
 
-func getConnectionString(s *azureQueueScaler) string {
-	connectionSettingName := (*s.metadata)["connection"]
+func getConnectionString(s *AzureQueueScaler) string {
+	connectionSettingName := (*s.Metadata)["connection"]
 	if connectionSettingName == "" {
 		connectionSettingName = "AzureWebJobsStorage"
 	}
 
-	return (*s.resolvedSecrets)[connectionSettingName]
+	return (*s.ResolvedSecrets)[connectionSettingName]
 }
 
-func getQueueName(s *azureQueueScaler) string {
-	return (*s.metadata)["queueName"]
+func getQueueName(s *AzureQueueScaler) string {
+	return (*s.Metadata)["queueName"]
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Azure/Kore/pkg/scalers"
+	"github.com/Azure/Kore/pkg/handler"
 
 	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
 	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
@@ -24,11 +24,11 @@ type controller struct {
 	ctx                   context.Context
 	koreClient            clientset.Interface
 	kubeClient            kubernetes.Interface
-	scaleHandler          *scalers.ScaleHandler
+	scaleHandler          *handler.ScaleHandler
 	scaledObjectsContexts *sync.Map
 }
 
-func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *scalers.ScaleHandler) Controller {
+func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *handler.ScaleHandler) Controller {
 	c := &controller{
 		koreClient:   koreClient,
 		kubeClient:   kubeClient,
