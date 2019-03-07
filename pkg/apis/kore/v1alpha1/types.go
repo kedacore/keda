@@ -39,7 +39,6 @@ type ScaledObjectStatus struct {
 	LastActiveTime  *metav1.Time      `json:"lastActiveTime,omitempty"`
 	CurrentReplicas int32             `json:"currentReplicas"`
 	DesiredReplicas int32             `json:"desiredReplicas"`
-	CurrentMetrics  map[string]string `json:"currentMetrics"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

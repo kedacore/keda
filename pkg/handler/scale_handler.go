@@ -1,9 +1,11 @@
-package scalers
+package handler
 
 import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/Azure/Kore/pkg/scalers"
 
 	apps_v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
@@ -132,7 +134,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDeci
 	}
 }
 
-func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (*map[string]string, error) {
+func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (map[string]string, error) {
 	deploymentKey, err := cache.MetaNamespaceKeyFunc(deployment)
 	if err != nil {
 		return nil, err
@@ -159,7 +161,7 @@ func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (*map[stri
 		}
 	}
 
-	return &resolved, nil
+	return resolved, nil
 }
 
 func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelector, keyName, namespace string) (string, error) {
@@ -172,12 +174,12 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 	return string(secretCollection.Data[keyName]), nil
 }
 
-func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (Scaler, error) {
+func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-		return &azureQueueScaler{
-			metadata:        &trigger.Metadata,
-			resolvedSecrets: resolvedSecrets,
+		return &scalers.AzureQueueScaler{
+			Metadata:        trigger.Metadata,
+			ResolvedSecrets: resolvedSecrets,
 		}, nil
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)

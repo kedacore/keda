@@ -164,13 +164,6 @@ func (in *ScaledObjectStatus) DeepCopyInto(out *ScaledObjectStatus) {
 		in, out := &in.LastActiveTime, &out.LastActiveTime
 		*out = (*in).DeepCopy()
 	}
-	if in.CurrentMetrics != nil {
-		in, out := &in.CurrentMetrics, &out.CurrentMetrics
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 
