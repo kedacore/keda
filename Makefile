@@ -46,8 +46,8 @@ push-container: build-container
 ##################################################
 # Helm Chart tasks                               #
 ##################################################
-.PHONY: publish-edge-chart
-publish-edge-chart:
+.PHONY: build-chart-edge
+build-chart-edge:
 	rm -rf /tmp/kore-edge
 	cp -r -L chart/kore /tmp/kore-edge
 	sed -i "s/^name:.*/name: kore-edge/g" /tmp/kore-edge/Chart.yaml
@@ -57,5 +57,8 @@ publish-edge-chart:
 
 	helm lint /tmp/kore-edge/
 	helm package /tmp/kore-edge/
+
+.PHONY: publish-edge-chart
+publish-edge-chart: build-chart-edge
 	az login --service-principal -u '$(AZURE_SP_ID)' -p '$(AZURE_SP_KEY)' --tenant '$(AZURE_SP_TENANT)'
 	az acr helm push -n projectkore kore-edge-0.0.1-$(DATE)-$(GIT_VERSION).tgz
