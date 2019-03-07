@@ -1,6 +1,7 @@
-package scalers
+package handler
 
 import (
+	"github.com/Azure/Kore/pkg/scalers"
 	"context"
 	"fmt"
 	"time"
@@ -172,12 +173,12 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 	return string(secretCollection.Data[keyName]), nil
 }
 
-func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (Scaler, error) {
+func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets *map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-		return &azureQueueScaler{
-			metadata:        &trigger.Metadata,
-			resolvedSecrets: resolvedSecrets,
+		return &scalers.AzureQueueScaler{
+			Metadata:        &trigger.Metadata,
+			ResolvedSecrets: resolvedSecrets,
 		}, nil
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
