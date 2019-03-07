@@ -6,7 +6,7 @@ import (
 )
 
 type AzureQueueScaler struct {
-	ResolvedSecrets, Metadata *map[string]string
+	ResolvedSecrets, Metadata map[string]string
 }
 
 // GetScaleDecision is a func
@@ -29,14 +29,14 @@ func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 }
 
 func getConnectionString(s *AzureQueueScaler) string {
-	connectionSettingName := (*s.Metadata)["connection"]
+	connectionSettingName := s.Metadata["connection"]
 	if connectionSettingName == "" {
 		connectionSettingName = "AzureWebJobsStorage"
 	}
 
-	return (*s.ResolvedSecrets)[connectionSettingName]
+	return s.ResolvedSecrets[connectionSettingName]
 }
 
 func getQueueName(s *AzureQueueScaler) string {
-	return (*s.Metadata)["queueName"]
+	return s.Metadata["queueName"]
 }
