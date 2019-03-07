@@ -2,10 +2,11 @@ package main
 
 import (
 	"crypto/tls"
-	"net/http"
 	"flag"
-	"github.com/Azure/Kore/pkg/scalers"
+	"net/http"
 	"time"
+
+	"github.com/Azure/Kore/pkg/handler"
 
 	"github.com/Azure/Kore/pkg/controller"
 	"github.com/Azure/Kore/pkg/kubernetes"
@@ -13,9 +14,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	// workaround go dep management system
+	_ "golang.org/x/tools/imports"
 	_ "k8s.io/code-generator/pkg/util"
 	_ "k8s.io/gengo/parser"
-	_ "golang.org/x/tools/imports"
 )
 
 var (
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	ctx := signals.Context()
-	scaleHandler := scalers.NewScaleHandler(koreClient, kubeClient)
+	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
 	controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
 
 	shutdownDuration := 5 * time.Second
