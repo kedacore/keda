@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/tls"
+	"net/http"
+	"flag"
 	"github.com/Azure/Kore/pkg/scalers"
 	"time"
 
@@ -13,6 +16,10 @@ import (
 	_ "k8s.io/code-generator/pkg/util"
 	_ "k8s.io/gengo/parser"
 	_ "golang.org/x/tools/imports"
+)
+
+var (
+	disableTLSVerification = flag.Bool("disableTLSVerification", false, "Disable TLS certificate verification")
 )
 
 func main() {
@@ -28,4 +35,13 @@ func main() {
 	shutdownDuration := 5 * time.Second
 	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
 	<-time.After(shutdownDuration)
+}
+
+func init() {
+	flag.Parse()
+
+	if *disableTLSVerification {
+		log.Infof("Setting TLSClientConfig InsecureSkipVerify to true because --disableTLSVerification was passed")
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 }
