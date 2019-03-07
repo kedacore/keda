@@ -26,10 +26,6 @@
   branch = "master"
   name = "k8s.io/gengo"
 
-[[constraint]]
-  name = "k8s.io/klog"
-  version = "0.2.0"
-
 [prune]
   non-go = true
   go-tests = true
