@@ -21,7 +21,7 @@ IMAGE_NAME      := $(ACR_REGISTRY)/$(IMAGE_NAMESPACE)/$(BASE_IMAGE_NAME):$(IMAGE
 .PHONY: test
 test:
 	# Add actual test script
-	go version
+	go test ./...
 
 ##################################################
 # Build                                          #
