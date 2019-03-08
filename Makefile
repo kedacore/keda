@@ -60,5 +60,4 @@ build-chart-edge:
 
 .PHONY: publish-edge-chart
 publish-edge-chart: build-chart-edge
-	az login --service-principal -u '$(AZURE_SP_ID)' -p '$(AZURE_SP_KEY)' --tenant '$(AZURE_SP_TENANT)'
 	az acr helm push -n projectkore kore-edge-0.0.1-$(DATE)-$(GIT_VERSION).tgz
