@@ -12,6 +12,7 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: docker login -u "${ACR_USERNAME}" -p "${ACR_PASSWORD}" ${ACR_REGISTRY}
+      - run: az login --service-principal -u "${AZURE_SP_ID}" -p "${AZURE_SP_KEY}" --tenant "${AZURE_SP_TENANT}"
       - run: make test
       - run: make ci-build-all
       - run: make publish-edge-chart
