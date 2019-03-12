@@ -28,14 +28,14 @@ test:
 # Build                                          #
 ##################################################
 .PHONY: ci-build-all
-ci-build-all: build build-container push-container
+ci-build-all: build-container push-container
 
 .PHONY: build
 build:
 	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build -o dist/kore cmd/main.go
 
 .PHONY: build-container
-build-container: build
+build-container:
 	docker build -t $(IMAGE_NAME) .
 
 .PHONY: push-container
