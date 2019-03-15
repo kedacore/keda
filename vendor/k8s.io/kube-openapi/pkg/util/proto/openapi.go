@@ -173,8 +173,6 @@ type Kind struct {
 	RequiredFields []string
 	// Maps field names to types.
 	Fields map[string]Schema
-	// FieldOrder reports the canonical order for the fields.
-	FieldOrder []string
 }
 
 var _ Schema = &Kind{}

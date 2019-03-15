@@ -718,7 +718,7 @@ func (g *genDeepCopy) doMap(t *types.Type, sw *generator.SnippetWriter) {
 	}
 
 	if !ut.Key.IsAssignable() {
-		klog.Fatalf("Hit an unsupported type %v.", uet)
+		klog.Fatalf("Hit an unsupported type %v for: %v", uet, t)
 	}
 
 	sw.Do("*out = make($.|raw$, len(*in))\n", t)
@@ -761,7 +761,7 @@ func (g *genDeepCopy) doMap(t *types.Type, sw *generator.SnippetWriter) {
 	case uet.Kind == types.Struct:
 		sw.Do("(*out)[key] = *val.DeepCopy()\n", uet)
 	default:
-		klog.Fatalf("Hit an unsupported type %v.", uet)
+		klog.Fatalf("Hit an unsupported type %v for %v", uet, t)
 	}
 	sw.Do("}\n", nil)
 }
@@ -802,7 +802,7 @@ func (g *genDeepCopy) doSlice(t *types.Type, sw *generator.SnippetWriter) {
 		} else if uet.Kind == types.Struct {
 			sw.Do("(*in)[i].DeepCopyInto(&(*out)[i])\n", nil)
 		} else {
-			klog.Fatalf("Hit an unsupported type %v.", uet)
+			klog.Fatalf("Hit an unsupported type %v for %v", uet, t)
 		}
 		sw.Do("}\n", nil)
 	}
@@ -870,7 +870,7 @@ func (g *genDeepCopy) doStruct(t *types.Type, sw *generator.SnippetWriter) {
 			sw.Do(fmt.Sprintf("out.$.name$ = in.$.name$.DeepCopy%s()\n", uft.Name.Name), args)
 			sw.Do("}\n", nil)
 		default:
-			klog.Fatalf("Hit an unsupported type %v.", uft)
+			klog.Fatalf("Hit an unsupported type %v for %v, from %v", uft, ft, t)
 		}
 	}
 }
@@ -907,6 +907,6 @@ func (g *genDeepCopy) doPointer(t *types.Type, sw *generator.SnippetWriter) {
 		sw.Do("*out = new($.Elem|raw$)\n", ut)
 		sw.Do("(*in).DeepCopyInto(*out)\n", nil)
 	default:
-		klog.Fatalf("Hit an unsupported type %v.", uet)
+		klog.Fatalf("Hit an unsupported type %v for %v", uet, t)
 	}
 }

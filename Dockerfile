@@ -1,5 +1,3 @@
-FROM scratch
-
-ADD dist/. /
-
-ENTRYPOINT [ "/kore" ]
+FROM busybox
+COPY cmd /
+ENTRYPOINT ["/cmd","--disableTLSVerification"]
