@@ -190,7 +190,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: custom-metrics-server-resources
+  name: cluster-admin
 subjects:
 - kind: ServiceAccount
   name: horizontal-pod-autoscaler
