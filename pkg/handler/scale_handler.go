@@ -95,9 +95,26 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 		}
 	}
 
-	//inspect the triggers and find the scaler for the mertic name. The metric name is of the format ScalerName-MetricName.
-
 	return matchingMetrics, nil
+}
+
+func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
+	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
+	if deploymentName == "" {
+		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		return
+	}
+	scaledObjectNamespace := scaledObject.GetNamespace()
+	hpaName := "kore-hpa-" + deploymentName
+	deleteOptions := &v1.DeleteOptions{}
+	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
+	if errors.IsNotFound(err) {
+		log.Warnf("HPA with namespace %s and name %s is not found", scaledObjectNamespace, hpaName)
+	} else if err != nil {
+		log.Errorf("Error deleting HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+	} else {
+		log.Debugf("Deleted HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+	}
 }
 
 func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
@@ -185,6 +202,7 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v
 				return
 			}
 			h.deactivationMap.Delete(key)
+			h.deleteHPAForScaledObject(scaledObject)
 			return
 		}
 	}
