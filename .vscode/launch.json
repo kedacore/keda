@@ -11,9 +11,12 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/main.go",
             "env": {
-                "CONFIG": "$HOME/.kube/config"
+                "CONFIG": "C:\\Users\\aarthisk\\.kube\\config"
             },
-            "args": [ ]
+            "args": [ 
+                "--lister-kubeconfig", 
+                "C:\\Users\\aarthisk\\.kube\\config"
+            ]
         }
     ]
 }
