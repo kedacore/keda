@@ -258,7 +258,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 			deactivationTime := value.(time.Time)
 			diff := time.Now().Sub(deactivationTime)
 			log.Debugf("scaledObject: %s, target deployment: %s, %f minutes have elapsed since deactivation was noted", scaledObject.GetName(), deployment.GetName(), diff.Minutes())
-			if diff.Minutes() >= 2 {
+			if diff.Minutes() >= 1 {
 				h.scaleDeployment(deployment, scaleDecision)
 			}
 		}
@@ -274,6 +274,13 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
 		currentReplicas := *deployment.Spec.Replicas
+		if scaleDecision != 0 && currentReplicas > 1 {
+			log.Debugf("Calculated replica count of 1 for deployment (%s/%s) is lesser than the current replica count %d. Skipping..",
+				deployment.GetNamespace(),
+				deployment.GetName(),
+				currentReplicas)
+			return
+		}
 		*deployment.Spec.Replicas = scaleDecision
 		deployment, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
 		if err != nil {
