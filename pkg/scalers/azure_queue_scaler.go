@@ -38,14 +38,14 @@ func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 
 	if err != nil {
 		log.Errorf("error %s", err)
-		return -1, err
+		return false, err
 	}
 
 	if length > 0 {
-		return 1, nil
+		return true, nil
 	}
 
-	return 0, nil
+	return false, nil
 }
 
 func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
