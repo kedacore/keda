@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
-	"net/http"
 	"time"
 
 	"github.com/Azure/Kore/pkg/handler"
@@ -17,10 +15,6 @@ import (
 	_ "golang.org/x/tools/imports"
 	_ "k8s.io/code-generator/pkg/util"
 	_ "k8s.io/gengo/parser"
-)
-
-var (
-	disableTLSVerification = flag.Bool("disableTLSVerification", false, "Disable TLS certificate verification")
 )
 
 func main() {
@@ -40,9 +34,4 @@ func main() {
 
 func init() {
 	flag.Parse()
-
-	if *disableTLSVerification {
-		log.Infof("Setting TLSClientConfig InsecureSkipVerify to true because --disableTLSVerification was passed")
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
 }
