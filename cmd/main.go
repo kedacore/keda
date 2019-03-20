@@ -17,6 +17,10 @@ import (
 	_ "k8s.io/gengo/parser"
 )
 
+var (
+	logLevel = flag.String("log-level", "info", "Options are debug, info, warning, error, fatal, or panic. (default info)")
+)
+
 func main() {
 	koreClient, kubeClient, err := kubernetes.GetClients()
 	if err != nil {
@@ -34,4 +38,12 @@ func main() {
 
 func init() {
 	flag.Parse()
+
+	parsedLogLevel, err := log.ParseLevel(*logLevel)
+	if err == nil {
+		log.SetLevel(parsedLogLevel)
+		log.Infof("Log level set to: %s", parsedLogLevel)
+	} else {
+		log.Fatalf("Invalid value for --log-level: %s", *logLevel)
+	}
 }
