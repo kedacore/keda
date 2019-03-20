@@ -23,8 +23,6 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
-{{- if .Values.disableTLSVerification }}
-          - --disableTLSVerification
-{{- end }}
+          - --log-level {{ .Values.logLevel }}
       imagePullSecrets:
       - name: {{ template "kore.fullname" . }}-docker-auth
