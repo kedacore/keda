@@ -55,7 +55,7 @@ func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledO
 // the metric adapter uses this to get the value for a metric for a scaled object or objects
 func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector labels.Selector, merticName string) ([]external_metrics.ExternalMetricValue, error) {
 	// get the scaled objects matching namespace and labels
-	log.Infof("GetScaledObjectMetrics: Called for namespace %s MetricName %s Metric Selector %s", namespace, merticName, metricSelector.String())
+	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, merticName, metricSelector.String())
 	scaledObjectQuerier := h.koreClient.KoreV1alpha1().ScaledObjects(namespace)
 	scaledObjects, error := scaledObjectQuerier.List(v1.ListOptions{LabelSelector: metricSelector.String()})
 	if error != nil {
@@ -81,13 +81,13 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 		for i, trigger := range scaledObject.Spec.Triggers {
 			scaler, err := getScaler(trigger, resolvedSecrets)
 			if err != nil {
-				log.Errorf("error for trigger #%d: %s", i, err)
+				log.Errorf("Error getting scaler for trigger #%d: %s", i, err)
 				continue
 			}
 
 			metrics, err := scaler.GetMetrics(context.TODO(), merticName, metricSelector)
 			if err != nil {
-				log.Errorf("error getting metric for trigger #%d: %s", i, err)
+				log.Errorf("Error getting metric for trigger #%d: %s", i, err)
 				continue
 			}
 
@@ -140,30 +140,25 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	for i, trigger := range scaledObject.Spec.Triggers {
 		scaler, err := getScaler(trigger, resolvedSecrets)
 		if err != nil {
-			log.Errorf("error for trigger #%d: %s", i, err)
+			log.Errorf("Error getting the trigger for scaler #%d: %s", i, err)
 			continue
 		}
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
-		// add the Kore-ScaledObject-Deployment label
+		// add the deploymentName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 		for _, metricSpec := range metricSpecs {
-			var labels map[string]string
-			if metricSpec.External.MetricSelector != nil {
-				labels = metricSpec.External.MetricSelector.MatchLabels
-			}
-			if labels == nil {
-				labels = make(map[string]string)
-			}
-
-			labels["deploymentName"] = deploymentName
+			metricSpec.External.MetricSelector = &meta_v1.LabelSelector{MatchLabels: make(map[string]string)}
+			metricSpec.External.MetricSelector.MatchLabels["deploymentName"] = deploymentName
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 	}
 
 	kvr := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
 	var minReplicas int32 = 1
-	var maxReplicas int32 = 10
+	// setting to a max of 100 replicas
+	// TODO: scaled objects should be able to override it
+	var maxReplicas int32 = 100
 	scaledObjectNamespace := scaledObject.GetNamespace()
 	hpaName := "kore-hpa-" + deploymentName
 	newHpaSpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: &minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvr}
@@ -274,6 +269,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDecision int32) {
 	if *deployment.Spec.Replicas != scaleDecision {
 		currentReplicas := *deployment.Spec.Replicas
+		// skip setting replica count as 1 if HPA has already scaled the replica count to >1
 		if scaleDecision != 0 && currentReplicas > 1 {
 			log.Debugf("Calculated replica count of 1 for deployment (%s/%s) is lesser than the current replica count %d. Skipping..",
 				deployment.GetNamespace(),
