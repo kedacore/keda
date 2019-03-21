@@ -15,4 +15,4 @@ serviceAccount:
   create: true
   name:
 
-disableTLSVerification: false
+logLevel: info

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
-	"net/http"
 	"time"
 
 	"github.com/Azure/Kore/pkg/handler"
@@ -20,7 +18,7 @@ import (
 )
 
 var (
-	disableTLSVerification = flag.Bool("disableTLSVerification", false, "Disable TLS certificate verification")
+	logLevel = flag.String("log-level", "info", "Options are debug, info, warning, error, fatal, or panic. (default info)")
 )
 
 func main() {
@@ -41,8 +39,11 @@ func main() {
 func init() {
 	flag.Parse()
 
-	if *disableTLSVerification {
-		log.Infof("Setting TLSClientConfig InsecureSkipVerify to true because --disableTLSVerification was passed")
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	parsedLogLevel, err := log.ParseLevel(*logLevel)
+	if err == nil {
+		log.SetLevel(parsedLogLevel)
+		log.Infof("Log level set to: %s", parsedLogLevel)
+	} else {
+		log.Fatalf("Invalid value for --log-level: %s", *logLevel)
 	}
 }
