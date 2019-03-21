@@ -32,7 +32,7 @@ func getQueueLength(ctx context.Context, connectionString, queueName string) (in
 	// From the Azure portal, get your Storage account queue service URL endpoint.
 	// The URL typically looks like this:
 	// https throws in aks, investigate
-	u, _ := url.Parse(fmt.Sprintf("http://%s.queue.core.windows.net", accountName))
+	u, _ := url.Parse(fmt.Sprintf("https://%s.queue.core.windows.net", accountName))
 
 	// Create an ServiceURL object that wraps the service URL and a request pipeline.
 	serviceURL := azqueue.NewServiceURL(*u, p)
