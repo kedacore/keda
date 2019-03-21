@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	log "github.com/Sirupsen/logrus"
+
+	"github.com/Azure/Kore/pkg/helpers"
 )
 
 type AzureQueueScaler struct {
@@ -14,7 +16,7 @@ func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 	connectionString := getConnectionString(s)
 	queueName := getQueueName(s)
 
-	length, err := getQueueLength(ctx, connectionString, queueName)
+	length, err := helpers.GetAzureQueueLength(ctx, connectionString, queueName)
 
 	if err != nil {
 		log.Errorf("error %s", err)
