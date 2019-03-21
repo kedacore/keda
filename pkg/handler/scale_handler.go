@@ -359,6 +359,8 @@ func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSe
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedSecrets, trigger.Metadata), nil
+	case "kafka":
+		return scalers.NewKafkaScaler(resolvedSecrets, trigger.Metadata), nil
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
