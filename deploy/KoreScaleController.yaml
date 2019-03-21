@@ -13,13 +13,13 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: custom-metrics
+  name: kore
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -32,12 +32,12 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: custom-metrics:system:auth-delegator
+  name: kore:system:auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -45,12 +45,12 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: custom-metrics-auth-reader
+  name: kore-auth-reader
   namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -59,7 +59,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -67,7 +67,7 @@ metadata:
   labels:
     app: service-controller
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 spec:
   replicas: 1
   selector:
@@ -111,13 +111,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: service-controller
-  namespace: custom-metrics
+  namespace: kore
 spec:
   ports:
   - name: https
@@ -136,7 +136,7 @@ metadata:
 spec:
   service:
     name: service-controller
-    namespace: custom-metrics
+    namespace: kore
   group: custom.metrics.k8s.io
   version: v1beta1
   insecureSkipTLSVerify: true
@@ -150,7 +150,7 @@ metadata:
 spec:
   service:
     name: service-controller
-    namespace: custom-metrics
+    namespace: kore
   group: external.metrics.k8s.io
   version: v1beta1
   insecureSkipTLSVerify: true
