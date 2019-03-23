@@ -22,7 +22,6 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        args:
-          - --log-level {{ .Values.logLevel }}
+        args: [ "--log-level", "{{ .Values.logLevel }}" ]
       imagePullSecrets:
       - name: {{ template "kore.fullname" . }}-docker-auth
