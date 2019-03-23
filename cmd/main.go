@@ -1,22 +1,15 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
-	"net/http"
-	"os"
 	"time"
 
+	adapter "github.com/Azure/Kore/pkg/adapter"
 	"github.com/Azure/Kore/pkg/controller"
 	"github.com/Azure/Kore/pkg/handler"
 	"github.com/Azure/Kore/pkg/kubernetes"
-	koreprov "github.com/Azure/Kore/pkg/provider"
 	"github.com/Azure/Kore/pkg/signals"
 	log "github.com/Sirupsen/logrus"
-	"github.com/golang/glog"
-	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	// workaround go dep management system
@@ -26,29 +19,8 @@ import (
 )
 
 var (
-	disableTLSVerification = flag.Bool("disableTLSVerification", false, "Disable TLS certificate verification")
+	logLevel = flag.String("log-level", "info", "Options are debug, info, warning, error, fatal, or panic. (default info)")
 )
-
-type KoreAdapter struct {
-	basecmd.AdapterBase
-
-	// Message is printed on succesful startup
-	Message string
-}
-
-func (a *KoreAdapter) makeProviderOrDie(scaleHandler *handler.ScaleHandler) provider.ExternalMetricsProvider {
-	client, err := a.DynamicClient()
-	if err != nil {
-		glog.Fatalf("unable to construct dynamic client: %v", err)
-	}
-
-	mapper, err := a.RESTMapper()
-	if err != nil {
-		glog.Fatalf("unable to construct discovery REST mapper: %v", err)
-	}
-
-	return koreprov.NewProvider(client, mapper, scaleHandler)
-}
 
 func main() {
 
@@ -56,15 +28,16 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	//basecmd.AdapterBase{Name: "scale-controller"}, "Started metrics server in scale controller"
-	cmd := &KoreAdapter{}
-	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the glog flags
-	cmd.Flags().Parse(os.Args)
+	adapter := &adapter.KoreAdapter{}
+	adapter.Flags().StringVar(&adapter.Message, "msg", "starting adapter...", "startup message")
+	adapter.Flags().AddGoFlagSet(flag.CommandLine)
 
-	if *disableTLSVerification {
-		log.Infof("Setting TLSClientConfig InsecureSkipVerify to true because --disableTLSVerification was passed")
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	parsedLogLevel, err := log.ParseLevel(*logLevel)
+	if err == nil {
+		log.SetLevel(parsedLogLevel)
+		log.Infof("Log level set to: %s", parsedLogLevel)
+	} else {
+		log.Fatalf("Invalid value for --log-level: %s", *logLevel)
 	}
 
 	koreClient, kubeClient, err := kubernetes.GetClients()
@@ -72,12 +45,10 @@ func main() {
 		panic(err)
 	}
 	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
-	provider := cmd.makeProviderOrDie(scaleHandler)
-	cmd.WithExternalMetrics(provider)
-	glog.Infof(cmd.Message)
+	adapter.NewExternalMetricsProvider(scaleHandler)
 	go controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
-	if err := cmd.Run(wait.NeverStop); err != nil {
-		glog.Fatalf("unable to run custom metrics adapter: %v", err)
+	if err := adapter.Run(ctx.Done()); err != nil {
+		log.Fatalf("unable to run custom metrics adapter: %v", err)
 	}
 
 	shutdownDuration := 5 * time.Second
