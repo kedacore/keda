@@ -13,13 +13,13 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kore
+  name: custom-metrics
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -32,12 +32,12 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kore:system:auth-delegator
+  name: custom-metrics:system:auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -45,12 +45,12 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: kore-auth-reader
+  name: custom-metrics-auth-reader
   namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -59,7 +59,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -67,7 +67,7 @@ metadata:
   labels:
     app: service-controller
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 spec:
   replicas: 1
   selector:
@@ -111,13 +111,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: service-controller
-  namespace: kore
+  namespace: custom-metrics
 spec:
   ports:
   - name: https
@@ -136,7 +136,7 @@ metadata:
 spec:
   service:
     name: service-controller
-    namespace: kore
+    namespace: custom-metrics
   group: custom.metrics.k8s.io
   version: v1beta1
   insecureSkipTLSVerify: true
@@ -150,7 +150,7 @@ metadata:
 spec:
   service:
     name: service-controller
-    namespace: kore
+    namespace: custom-metrics
   group: external.metrics.k8s.io
   version: v1beta1
   insecureSkipTLSVerify: true
@@ -190,7 +190,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: custom-metrics-server-resources
 subjects:
 - kind: ServiceAccount
   name: horizontal-pod-autoscaler
