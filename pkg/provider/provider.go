@@ -2,6 +2,7 @@ package provider
 
 import (
 	"github.com/Azure/Kore/pkg/handler"
+	log "github.com/Sirupsen/logrus"
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -46,11 +47,10 @@ func (p *KoreProvider) GetExternalMetric(namespace string, metricSelector labels
 	// Note:
 	//		metric name and namespace is used to lookup for the CRD which contains configuration to call azure
 	// 		if not found then ignored and label selector is parsed for all the metrics
-	glog.V(0).Infof("Received request for namespace: %s, metric name: %s, metric selectors: %s", namespace, info.Metric, metricSelector.String())
-
-	externalmetrics, error := p.scaleHandler.GetScaledObjectMetrics(namespace, metricSelector, info.Metric)
-	if error != nil {
-		return nil, error
+	log.Debugf("Received request for namespace: %s, metric name: %s, metric selectors: %s", namespace, info.Metric, metricSelector.String())
+	externalmetrics, err := p.scaleHandler.GetScaledObjectMetrics(namespace, metricSelector, info.Metric)
+	if err != nil {
+		return nil, err
 	}
 
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
@@ -62,6 +62,7 @@ func (p *KoreProvider) GetExternalMetric(namespace string, metricSelector labels
 
 }
 
+// ListAllExternalMetrics returns the supported externl metrics for this provider
 func (p *KoreProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	externalMetricsInfo := []provider.ExternalMetricInfo{}
 
