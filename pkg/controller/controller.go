@@ -53,10 +53,8 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
 	})
-
 	return c
 }
-
 
 func (c *controller) syncScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
