@@ -14,7 +14,6 @@ import (
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -58,43 +57,25 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 	// get the scaled objects matching namespace and labels
 	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, merticName, metricSelector.String())
 	scaledObjectQuerier := h.koreClient.KoreV1alpha1().ScaledObjects(namespace)
-	scaledObjects, error := scaledObjectQuerier.List(v1.ListOptions{LabelSelector: metricSelector.String()})
+	scaledObjects, error := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
 	if error != nil {
 		return nil, error
 	}
 
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-
-	for _, scaledObject := range scaledObjects.Items {
-		deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-		deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
+	metricFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
+		metrics, err := scaler.GetMetrics(context.TODO(), merticName, metricSelector)
 		if err != nil {
-			log.Errorf("Error getting deployment: %s", err)
-			return matchingMetrics, err
-		}
-
-		resolvedSecrets, err := h.resolveSecrets(deployment)
-		if err != nil {
-			log.Errorf("Error resolving secrets for deployment: %s", err)
-			return matchingMetrics, err
-		}
-
-		for i, trigger := range scaledObject.Spec.Triggers {
-			scaler, err := getScaler(trigger, resolvedSecrets)
-			if err != nil {
-				log.Errorf("error for trigger #%d: %s", i, err)
-				continue
-			}
-
-			metrics, err := scaler.GetMetrics(context.TODO(), merticName, metricSelector)
-			if err != nil {
-				log.Errorf("error getting metric for trigger #%d: %s", i, err)
-				continue
-			}
-
+			log.Errorf("error getting metric for scaler : %s", err)
+		} else {
 			matchingMetrics = append(matchingMetrics, metrics...)
 		}
 	}
+
+	for _, scaledObject := range scaledObjects.Items {
+		h.executeCallbackForEachScaler(nil, &scaledObject, metricFunc)
+	}
+
 	return matchingMetrics, nil
 }
 
@@ -106,7 +87,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.Scal
 	}
 	scaledObjectNamespace := scaledObject.GetNamespace()
 	hpaName := "kore-hpa-" + deploymentName
-	deleteOptions := &v1.DeleteOptions{}
+	deleteOptions := &meta_v1.DeleteOptions{}
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
 	if errors.IsNotFound(err) {
 		log.Warnf("HPA with namespace %s and name %s is not found", scaledObjectNamespace, hpaName)
@@ -125,26 +106,8 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		return
 	}
 
-	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
-	if err != nil {
-		log.Errorf("Error getting deployment: %s", err)
-		return
-	}
-
-	resolvedSecrets, err := h.resolveSecrets(deployment)
-	if err != nil {
-		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return
-	}
-
 	var scaledObjectMetricSpecs []v2beta1.MetricSpec
-	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := getScaler(trigger, resolvedSecrets)
-		if err != nil {
-			log.Errorf("error for trigger #%d: %s", i, err)
-			continue
-		}
-
+	metricSpecFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
 		// add the deploymentName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
@@ -155,6 +118,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 	}
 
+	h.executeCallbackForEachScaler(ctx, scaledObject, metricSpecFunc)
 	kvd := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
 	var minReplicas int32 = 1
 	var maxReplicas int32 = 100
@@ -163,7 +127,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: &minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
 	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
-	newHPA, err = h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
+	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
 	if errors.IsAlreadyExists(err) {
 		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
 	} else if err != nil {
@@ -196,44 +160,22 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v
 }
 
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
-	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	if deploymentName == "" {
-		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return
-	}
-
-	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
-	if err != nil {
-		log.Errorf("Error getting deployment: %s", err)
-		return
-	}
-
-	resolvedSecrets, err := h.resolveSecrets(deployment)
-	if err != nil {
-		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return
-	}
 
 	var scaleDecision int32
-
-	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := getScaler(trigger, resolvedSecrets)
-		if err != nil {
-			log.Errorf("error for trigger #%d: %s", i, err)
-			continue
-		}
-
+	var scaledObjectDeployment *apps_v1.Deployment
+	scaleDecisionFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
 		sd, err := scaler.GetScaleDecision(ctx)
 		if err != nil {
-			log.Errorf("error getting scale decision for trigger #%d: %s", i, err)
-			continue
+			log.Errorf("error getting scale decision: %s", err)
+			return
 		}
-
+		scaledObjectDeployment = deployment
 		scaleDecision += sd
 	}
 
-	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
-	h.scaleDeployment(deployment, scaleDecision)
+	h.executeCallbackForEachScaler(ctx, scaledObject, scaleDecisionFunc)
+	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), scaledObjectDeployment.GetName(), scaleDecision)
+	h.scaleDeployment(scaledObjectDeployment, scaleDecision)
 	return
 }
 
@@ -308,6 +250,36 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 	}
 
 	return string(secretCollection.Data[keyName]), nil
+}
+
+func (h *ScaleHandler) executeCallbackForEachScaler(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, callback func(context.Context, scalers.Scaler, *apps_v1.Deployment)) {
+	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
+	if deploymentName == "" {
+		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		return
+	}
+
+	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
+	if err != nil {
+		log.Errorf("Error getting deployment: %s", err)
+		return
+	}
+
+	resolvedSecrets, err := h.resolveSecrets(deployment)
+	if err != nil {
+		log.Errorf("Error resolving secrets for deployment: %s", err)
+		return
+	}
+
+	for i, trigger := range scaledObject.Spec.Triggers {
+		scaler, err := getScaler(trigger, resolvedSecrets)
+		if err != nil {
+			log.Errorf("error for trigger #%d: %s", i, err)
+			continue
+		}
+
+		callback(ctx, scaler, deployment)
+	}
 }
 
 func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	adapter "github.com/Azure/Kore/pkg/adapter"
@@ -31,6 +32,7 @@ func main() {
 	adapter := &adapter.KoreAdapter{}
 	adapter.Flags().StringVar(&adapter.Message, "msg", "starting adapter...", "startup message")
 	adapter.Flags().AddGoFlagSet(flag.CommandLine)
+	adapter.Flags().Parse(os.Args)
 
 	parsedLogLevel, err := log.ParseLevel(*logLevel)
 	if err == nil {
