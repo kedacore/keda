@@ -43,6 +43,11 @@
   name = "github.com/ugorji/go"
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
 
+[[override]]
+  name = "github.com/emicklei/go-restful"
+  revision = "e64cccdfee8896c036b8a88d560c5e3ae15d904d"
+
+
 [[constraint]]
   name = "k8s.io/client-go"
     branch = "release-9.0"
