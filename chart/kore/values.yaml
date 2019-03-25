@@ -1,0 +1,18 @@
+nameOverride:
+fullnameOverride:
+
+image:
+  repository: projectkore.azurecr.io/kore
+  tag: master
+  pullPolicy: Always
+
+replicaCount: 1
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name:
+
+logLevel: info
