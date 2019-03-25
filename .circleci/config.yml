@@ -9,5 +9,5 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: docker login -u "${ACR_USERNAME}" -p "${ACR_PASSWORD}" ${ACR_REGISTRY}
-      - run: make test
+      # - run: make test
       - run: make ci-build-all
