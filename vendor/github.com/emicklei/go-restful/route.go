@@ -38,6 +38,7 @@ type Route struct {
 	Operation               string
 	ParameterDocs           []*Parameter
 	ResponseErrors          map[int]ResponseError
+	DefaultResponse         *ResponseError
 	ReadSample, WriteSample interface{} // structs that model an example request or response payload
 
 	// Extra information used to store custom information about the route.
