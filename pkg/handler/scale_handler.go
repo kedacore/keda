@@ -12,7 +12,7 @@ import (
 	apps_v1 "k8s.io/api/apps/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	core_v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -29,6 +29,8 @@ type ScaleHandler struct {
 
 const (
 	defaultPollingInterval = 30
+	minReplicas            = 1
+	maxReplicas            = 100
 )
 
 // NewScaleHandler creates a ScaleHandler object
@@ -57,23 +59,23 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 	// get the scaled objects matching namespace and labels
 	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, merticName, metricSelector.String())
 	scaledObjectQuerier := h.koreClient.KoreV1alpha1().ScaledObjects(namespace)
-	scaledObjects, error := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
-	if error != nil {
-		return nil, error
+	scaledObjects, err := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
+	if err != nil {
+		return nil, err
+	} else if len(scaledObjects.Items) != 1 {
+		return nil, fmt.Errorf("Exactly one scaled object should match label %s", metricSelector.String())
 	}
 
+	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	metricFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
+	scalers, _ := h.getScalers(scaledObject)
+	for _, scaler := range scalers {
 		metrics, err := scaler.GetMetrics(context.TODO(), merticName, metricSelector)
 		if err != nil {
 			log.Errorf("error getting metric for scaler : %s", err)
 		} else {
 			matchingMetrics = append(matchingMetrics, metrics...)
 		}
-	}
-
-	for _, scaledObject := range scaledObjects.Items {
-		h.executeCallbackForEachScaler(nil, &scaledObject, metricFunc)
 	}
 
 	return matchingMetrics, nil
@@ -89,7 +91,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.Scal
 	hpaName := "kore-hpa-" + deploymentName
 	deleteOptions := &meta_v1.DeleteOptions{}
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		log.Warnf("HPA with namespace %s and name %s is not found", scaledObjectNamespace, hpaName)
 
 	} else if err != nil {
@@ -107,7 +109,8 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	}
 
 	var scaledObjectMetricSpecs []v2beta1.MetricSpec
-	metricSpecFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
+	scalers, _ := h.getScalers(scaledObject)
+	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
 		// add the deploymentName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
@@ -118,17 +121,15 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 	}
 
-	h.executeCallbackForEachScaler(ctx, scaledObject, metricSpecFunc)
 	kvd := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
-	var minReplicas int32 = 1
-	var maxReplicas int32 = 100
+	var minReplicasVar int32 = minReplicas
 	scaledObjectNamespace := scaledObject.GetNamespace()
 	hpaName := "kore-hpa-" + deploymentName
-	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: &minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
+	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: &minReplicasVar, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
 	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
 	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
-	if errors.IsAlreadyExists(err) {
+	if apierrors.IsAlreadyExists(err) {
 		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
 	} else if err != nil {
 		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
@@ -162,20 +163,18 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
 
 	var scaleDecision int32
-	var scaledObjectDeployment *apps_v1.Deployment
-	scaleDecisionFunc := func(ctx context.Context, scaler scalers.Scaler, deployment *apps_v1.Deployment) {
+	scalers, deployment := h.getScalers(scaledObject)
+	for _, scaler := range scalers {
 		sd, err := scaler.GetScaleDecision(ctx)
 		if err != nil {
 			log.Errorf("error getting scale decision: %s", err)
 			return
 		}
-		scaledObjectDeployment = deployment
 		scaleDecision += sd
 	}
 
-	h.executeCallbackForEachScaler(ctx, scaledObject, scaleDecisionFunc)
-	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), scaledObjectDeployment.GetName(), scaleDecision)
-	h.scaleDeployment(scaledObjectDeployment, scaleDecision)
+	log.Debugf("scaledObject: %s, target deployment: %s, scale decision: %d", scaledObject.GetName(), deployment.GetName(), scaleDecision)
+	h.scaleDeployment(deployment, scaleDecision)
 	return
 }
 
@@ -212,6 +211,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaleDeci
 			deployment.GetName())
 	}
 }
+
 func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (map[string]string, error) {
 	deploymentKey, err := cache.MetaNamespaceKeyFunc(deployment)
 	if err != nil {
@@ -252,37 +252,40 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 	return string(secretCollection.Data[keyName]), nil
 }
 
-func (h *ScaleHandler) executeCallbackForEachScaler(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, callback func(context.Context, scalers.Scaler, *apps_v1.Deployment)) {
+func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment) {
+	scalers := []scalers.Scaler{}
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
 		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return
+		return scalers, nil
 	}
 
 	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
 	if err != nil {
 		log.Errorf("Error getting deployment: %s", err)
-		return
+		return scalers, nil
 	}
 
 	resolvedSecrets, err := h.resolveSecrets(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return
+		return scalers, nil
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := getScaler(trigger, resolvedSecrets)
+		scaler, err := h.getScaler(trigger, resolvedSecrets)
 		if err != nil {
 			log.Errorf("error for trigger #%d: %s", i, err)
 			continue
 		}
 
-		callback(ctx, scaler, deployment)
+		scalers = append(scalers, scaler)
 	}
+
+	return scalers, deployment
 }
 
-func getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
 		return &scalers.AzureQueueScaler{
