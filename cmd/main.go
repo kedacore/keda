@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 	"time"
 
 	adapter "github.com/Azure/Kore/pkg/adapter"
@@ -24,15 +23,28 @@ var (
 )
 
 func main() {
-
-	ctx := signals.Context()
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	adapter := &adapter.KoreAdapter{}
-	adapter.Flags().StringVar(&adapter.Message, "msg", "starting adapter...", "startup message")
-	adapter.Flags().AddGoFlagSet(flag.CommandLine)
-	adapter.Flags().Parse(os.Args)
+	koreClient, kubeClient, err := kubernetes.GetClients()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx := signals.Context()
+	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
+	go controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
+	if err := adapter.NewAdapter(scaleHandler).Run(ctx.Done()); err != nil {
+		log.Fatalf("unable to run custom metrics adapter: %v", err)
+	}
+
+	shutdownDuration := 5 * time.Second
+	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
+	<-time.After(shutdownDuration)
+}
+
+func init() {
+	flag.Parse()
 
 	parsedLogLevel, err := log.ParseLevel(*logLevel)
 	if err == nil {
@@ -41,19 +53,4 @@ func main() {
 	} else {
 		log.Fatalf("Invalid value for --log-level: %s", *logLevel)
 	}
-
-	koreClient, kubeClient, err := kubernetes.GetClients()
-	if err != nil {
-		panic(err)
-	}
-	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
-	adapter.NewExternalMetricsProvider(scaleHandler)
-	go controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
-	if err := adapter.Run(ctx.Done()); err != nil {
-		log.Fatalf("unable to run custom metrics adapter: %v", err)
-	}
-
-	shutdownDuration := 5 * time.Second
-	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
-	<-time.After(shutdownDuration)
 }
