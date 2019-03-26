@@ -1,21 +1,27 @@
 package adapter
 
 import (
+	"flag"
+	"os"
+
 	"github.com/Azure/Kore/pkg/handler"
 	koreprov "github.com/Azure/Kore/pkg/provider"
 	log "github.com/Sirupsen/logrus"
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 )
 
-type KoreAdapter struct {
+type Adapter struct {
 	basecmd.AdapterBase
 
 	// Message is printed on succesful startup
 	Message string
 }
 
-func (a *KoreAdapter) NewExternalMetricsProvider(scaleHandler *handler.ScaleHandler) provider.ExternalMetricsProvider {
+func NewAdapter(scaleHandler *handler.ScaleHandler) *Adapter {
+	a := &Adapter{}
+	a.Flags().StringVar(&a.Message, "msg", "starting adapter...", "startup message")
+	a.Flags().AddGoFlagSet(flag.CommandLine)
+	a.Flags().Parse(os.Args)
 	client, err := a.DynamicClient()
 	if err != nil {
 		log.Fatalf("unable to construct dynamic client: %v", err)
@@ -28,5 +34,5 @@ func (a *KoreAdapter) NewExternalMetricsProvider(scaleHandler *handler.ScaleHand
 
 	provider := koreprov.NewProvider(client, mapper, scaleHandler)
 	a.WithExternalMetrics(provider)
-	return provider
+	return a
 }
