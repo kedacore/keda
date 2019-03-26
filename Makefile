@@ -6,14 +6,15 @@ CGO?=0
 TARGET_OS?=linux
 
 ##################################################
-# Docker variables                               #
+# Variables                                      #
 ##################################################
 
 BASE_IMAGE_NAME := kore
-IMAGE_NAMESPACE := project-kore
 IMAGE_TAG       := $(CIRCLE_BRANCH)
+IMAGE_NAME      := $(ACR_REGISTRY)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
 
-IMAGE_NAME      := $(ACR_REGISTRY)/$(IMAGE_NAMESPACE)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
+GIT_VERSION = $(shell git describe --always --abbrev=7)
+DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 ##################################################
 # Tests                                          #
@@ -27,17 +28,36 @@ test:
 # Build                                          #
 ##################################################
 .PHONY: ci-build-all
-ci-build-all: build build-container push-container
+ci-build-all: build-container push-container
 
 .PHONY: build
 build:
 	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build -o dist/kore cmd/main.go
 
 .PHONY: build-container
-build-container: build
+build-container:
 	docker build -t $(IMAGE_NAME) .
 
 .PHONY: push-container
 push-container: build-container
 	docker push $(IMAGE_NAME)
 
+
+##################################################
+# Helm Chart tasks                               #
+##################################################
+.PHONY: build-chart-edge
+build-chart-edge:
+	rm -rf /tmp/kore-edge
+	cp -r -L chart/kore /tmp/kore-edge
+	sed -i "s/^name:.*/name: kore-edge/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^version:.*/version: 0.0.1-$(DATE)-$(GIT_VERSION)/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^appVersion:.*/appVersion: $(GIT_VERSION)/g" /tmp/kore-edge/Chart.yaml
+	sed -i "s/^  tag:.*/  tag: master/g" /tmp/kore-edge/values.yaml
+
+	helm lint /tmp/kore-edge/
+	helm package /tmp/kore-edge/
+
+.PHONY: publish-edge-chart
+publish-edge-chart: build-chart-edge
+	az acr helm push -n projectkore $(shell find . -maxdepth 1 -type f -iname 'kore-edge-0.0.1-*' -print -quit)
