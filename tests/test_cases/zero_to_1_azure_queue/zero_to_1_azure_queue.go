@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Azure/Kore/pkg/helpers"
+	"github.com/Azure/Kore/pkg/scalers"
+
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 )
 
@@ -22,7 +23,7 @@ func main() {
 	if args[0] == "create" {
 		createMessages(args[1], args[2])
 	} else if args[0] == "get-length" {
-		length, err := helpers.GetAzureQueueLength(context.TODO(), args[1], args[2])
+		length, err := scalers.GetAzureQueueLength(context.TODO(), args[1], args[2])
 		if err != nil {
 			panic(err)
 		}
@@ -43,7 +44,7 @@ func createMessages(connectionString, queueName string) {
 }
 
 func getQueueURL(connectionString, queueName string) (context.Context, azqueue.QueueURL) {
-	accountName, accountKey, err := helpers.ParseAzureStorageConnectionString(connectionString)
+	accountName, accountKey, err := scalers.ParseAzureStorageConnectionString(connectionString)
 	if err != nil {
 		panic(err)
 	}
