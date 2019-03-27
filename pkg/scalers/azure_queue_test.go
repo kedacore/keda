@@ -1,8 +1,8 @@
-package helpers
+package scalers
 
 import (
-	"strings"
 	"context"
+	"strings"
 	"testing"
 )
 
