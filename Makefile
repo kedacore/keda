@@ -26,7 +26,7 @@ test:
 
 .PHONY: e2e-test
 e2e-test:
-	./tests/run_tests
+	./tests/run_tests.sh
 
 ##################################################
 # Build                                          #
