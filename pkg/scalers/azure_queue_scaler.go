@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 
+	"github.com/Azure/Kore/pkg/helpers"
 	log "github.com/Sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,7 +28,7 @@ func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 	connectionString := getConnectionString(s)
 	queueName := getQueueName(s)
 
-	length, err := getQueueLength(ctx, connectionString, queueName)
+	length, err := helpers.GetAzureQueueLength(ctx, connectionString, queueName)
 
 	if err != nil {
 		log.Errorf("error %s", err)
@@ -48,12 +49,12 @@ func (s *AzureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-// returns value for a supported metric and an error if there is a problem getting the metric
+//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *AzureQueueScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	connectionString := getConnectionString(s)
 	queueName := getQueueName(s)
 
-	queuelen, err := getQueueLength(ctx, connectionString, queueName)
+	queuelen, err := helpers.GetAzureQueueLength(ctx, connectionString, queueName)
 
 	if err != nil {
 		log.Errorf("error getting queue lenngth %s", err)

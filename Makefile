@@ -24,6 +24,10 @@ test:
 	# Add actual test script
 	go test ./...
 
+.PHONY: e2e-test
+e2e-test:
+	./tests/run_tests.sh
+
 ##################################################
 # Build                                          #
 ##################################################
