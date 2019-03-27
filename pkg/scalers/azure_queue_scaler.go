@@ -25,8 +25,8 @@ type AzureQueueScaler struct {
 
 // GetScaleDecision is a func
 func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
-	connectionString := getConnectionString(s)
-	queueName := getQueueName(s)
+	connectionString := s.getConnectionString()
+	queueName := s.getQueueName()
 
 	length, err := helpers.GetAzureQueueLength(ctx, connectionString, queueName)
 
@@ -51,8 +51,8 @@ func (s *AzureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *AzureQueueScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	connectionString := getConnectionString(s)
-	queueName := getQueueName(s)
+	connectionString := s.getConnectionString()
+	queueName := s.getQueueName()
 
 	queuelen, err := helpers.GetAzureQueueLength(ctx, connectionString, queueName)
 
@@ -70,7 +70,7 @@ func (s *AzureQueueScaler) GetMetrics(ctx context.Context, merticName string, me
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func getConnectionString(s *AzureQueueScaler) string {
+func (s *AzureQueueScaler) getConnectionString() string {
 	connectionSettingName := s.Metadata["connection"]
 	if connectionSettingName == "" {
 		connectionSettingName = "AzureWebJobsStorage"
@@ -79,6 +79,6 @@ func getConnectionString(s *AzureQueueScaler) string {
 	return s.ResolvedSecrets[connectionSettingName]
 }
 
-func getQueueName(s *AzureQueueScaler) string {
+func (s *AzureQueueScaler) getQueueName() string {
 	return s.Metadata["queueName"]
 }
