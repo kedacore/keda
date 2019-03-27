@@ -21,7 +21,7 @@ import (
 	"reflect"
 
 	"github.com/davecgh/go-spew/spew"
-	"sigs.k8s.io/yaml"
+	"github.com/ghodss/yaml"
 )
 
 // PreconditionFunc asserts that an incompatible change is not present within a patch.
