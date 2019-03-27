@@ -4,11 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Azure/Kore/pkg/handler"
-
 	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
 	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
 	koreinformer_v1alpha1 "github.com/Azure/Kore/pkg/client/informers/externalversions/kore/v1alpha1"
+	"github.com/Azure/Kore/pkg/handler"
 	log "github.com/Sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -54,7 +53,6 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
 	})
-
 	return c
 }
 

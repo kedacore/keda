@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/klog"
+	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -106,7 +106,7 @@ func (f *FakeWatcher) Stop() {
 	f.Lock()
 	defer f.Unlock()
 	if !f.Stopped {
-		klog.V(4).Infof("Stopping fake watcher.")
+		glog.V(4).Infof("Stopping fake watcher.")
 		close(f.result)
 		f.Stopped = true
 	}
@@ -173,7 +173,7 @@ func (f *RaceFreeFakeWatcher) Stop() {
 	f.Lock()
 	defer f.Unlock()
 	if !f.Stopped {
-		klog.V(4).Infof("Stopping fake watcher.")
+		glog.V(4).Infof("Stopping fake watcher.")
 		close(f.result)
 		f.Stopped = true
 	}

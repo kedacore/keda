@@ -11,9 +11,20 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/main.go",
             "env": {
-                "CONFIG": "$HOME/.kube/config"
             },
-            "args": [ ]
+            "args": [ 
+
+                "--lister-kubeconfig",
+                "${env:HOME}/.kube/config"
+
+            ],
+            "windows": {
+
+                "args": [
+                    "--lister-kubeconfig",
+                    "${env:USERPROFILE}\\.kube\\config"
+                ]
+            }
         }
     ]
 }
