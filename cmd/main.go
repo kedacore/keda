@@ -4,12 +4,13 @@ import (
 	"flag"
 	"time"
 
-	"github.com/Azure/Kore/pkg/handler"
-
+	adapter "github.com/Azure/Kore/pkg/adapter"
 	"github.com/Azure/Kore/pkg/controller"
+	"github.com/Azure/Kore/pkg/handler"
 	"github.com/Azure/Kore/pkg/kubernetes"
 	"github.com/Azure/Kore/pkg/signals"
 	log "github.com/Sirupsen/logrus"
+	"k8s.io/apiserver/pkg/util/logs"
 
 	// workaround go dep management system
 	_ "golang.org/x/tools/imports"
@@ -22,6 +23,9 @@ var (
 )
 
 func main() {
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
 	koreClient, kubeClient, err := kubernetes.GetClients()
 	if err != nil {
 		panic(err)
@@ -29,7 +33,10 @@ func main() {
 
 	ctx := signals.Context()
 	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
-	controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
+	go controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
+	if err := adapter.NewAdapter(scaleHandler).Run(ctx.Done()); err != nil {
+		log.Fatalf("unable to run custom metrics adapter: %v", err)
+	}
 
 	shutdownDuration := 5 * time.Second
 	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
