@@ -39,6 +39,13 @@ RUN wget https://storage.googleapis.com/kubernetes-helm/helm-v2.13.0-linux-amd64
     rm -rf linux-amd64 helm-v2.13.0-linux-amd64.tar.gz && \
     helm init --client-only
 
+# Install kubectl
+RUN apt-get update && apt-get install -y apt-transport-https && \
+    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
+    echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list && \
+    apt-get update && \
+    apt-get install -y kubectl
+
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
     GOPATH=/go
