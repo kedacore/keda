@@ -18,12 +18,19 @@ const (
 	externalMetricType    = "External"
 )
 
-type AzureQueueScaler struct {
-	ResolvedSecrets, Metadata map[string]string
+type azureQueueScaler struct {
+	resolvedSecrets, metadata map[string]string
+}
+
+func NewAzureQueueScaler(resolvedSecrets, metadata map[string]string) Scaler {
+	return &azureQueueScaler{
+		resolvedSecrets: resolvedSecrets,
+		metadata:        metadata,
+	}
 }
 
 // GetScaleDecision is a func
-func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
+func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
 	connectionString := s.getConnectionString()
 	queueName := s.getQueueName()
 
@@ -41,7 +48,7 @@ func (s *AzureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 	return 0, nil
 }
 
-func (s *AzureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(targetQueueLength, resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
@@ -49,7 +56,7 @@ func (s *AzureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *AzureQueueScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureQueueScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	connectionString := s.getConnectionString()
 	queueName := s.getQueueName()
 
@@ -69,15 +76,15 @@ func (s *AzureQueueScaler) GetMetrics(ctx context.Context, merticName string, me
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *AzureQueueScaler) getConnectionString() string {
-	connectionSettingName := s.Metadata["connection"]
+func (s *azureQueueScaler) getConnectionString() string {
+	connectionSettingName := s.metadata["connection"]
 	if connectionSettingName == "" {
 		connectionSettingName = "AzureWebJobsStorage"
 	}
 
-	return s.ResolvedSecrets[connectionSettingName]
+	return s.resolvedSecrets[connectionSettingName]
 }
 
-func (s *AzureQueueScaler) getQueueName() string {
-	return s.Metadata["queueName"]
+func (s *azureQueueScaler) getQueueName() string {
+	return s.metadata["queueName"]
 }
