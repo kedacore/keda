@@ -19,13 +19,13 @@ const (
 )
 
 type azureQueueScaler struct {
-	ResolvedSecrets, Metadata map[string]string
+	resolvedSecrets, metadata map[string]string
 }
 
 func NewAzureQueueScaler(resolvedSecrets, metadata map[string]string) Scaler {
 	return &azureQueueScaler{
-		ResolvedSecrets: resolvedSecrets,
-		Metadata:        metadata,
+		resolvedSecrets: resolvedSecrets,
+		metadata:        metadata,
 	}
 }
 
@@ -77,14 +77,14 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, merticName string, me
 }
 
 func (s *azureQueueScaler) getConnectionString() string {
-	connectionSettingName := s.Metadata["connection"]
+	connectionSettingName := s.metadata["connection"]
 	if connectionSettingName == "" {
 		connectionSettingName = "AzureWebJobsStorage"
 	}
 
-	return s.ResolvedSecrets[connectionSettingName]
+	return s.resolvedSecrets[connectionSettingName]
 }
 
 func (s *azureQueueScaler) getQueueName() string {
-	return s.Metadata["queueName"]
+	return s.metadata["queueName"]
 }
