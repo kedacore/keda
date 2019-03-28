@@ -288,10 +288,7 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-		return &scalers.AzureQueueScaler{
-			Metadata:        trigger.Metadata,
-			ResolvedSecrets: resolvedSecrets,
-		}, nil
+		return scalers.NewAzureQueueScaler(resolvedSecrets, trigger.Metadata), nil
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
