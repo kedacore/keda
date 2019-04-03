@@ -31,7 +31,7 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		scaler := &KafkaScaler{
+		scaler := &kafkaScaler{
 			Metadata: testData.metadata,
 		}
 		meta, err := scaler.parseKafkaMetadata()
