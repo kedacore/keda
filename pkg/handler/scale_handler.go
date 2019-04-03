@@ -31,12 +31,10 @@ const (
 	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
 	defaultPollingInterval = 30
 	// Default cooldown period for a deployment if no cooldownPeriod is defined on the scaledObject
-	const defaultCooldownPeriod = 5 * 60 // 5 minutes
-	minReplicas            = 1
-	maxReplicas            = 100
+	defaultCooldownPeriod = 5 * 60 // 5 minutes
+	minReplicas           = 1
+	maxReplicas           = 100
 )
-const defaultPollingInterval = 30 // 30 seconds
-
 
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
@@ -149,8 +147,6 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, isDue bool) {
 	h.handleScale(ctx, scaledObject)
 
-	pollingInterval := time.Second * time.Duration(defaultPollingInterval)
-
 	var pollingInterval time.Duration
 	if scaledObject.Spec.PollingInterval != nil {
 		pollingInterval = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
@@ -182,9 +178,8 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+	isScaledObjectActive := false
 
-	var isScaledObjectActive bool
-	var scaleDecision int32
 	scalers, deployment := h.getScalers(scaledObject)
 	for _, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
@@ -193,7 +188,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Trigger %s for scaledObject %s/%s is active", trigger, scaledObject.GetNamespace(), scaledObject.GetName())
+			log.Debugf("Scallr %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
 	}
 
@@ -206,11 +201,11 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
-		h.scaleDeploymentUp(deployment, scaledObject)
+		h.scaleFromZero(deployment, scaledObject)
 	} else if !isActive && *deployment.Spec.Replicas > 0 {
 		// there are no active triggers, but the deployment has replicas.
 		// Try to scale it down.
-		h.tryScaleDeploymentDown(deployment, scaledObject)
+		h.scaleToZero(deployment, scaledObject)
 	} else if isActive {
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.
@@ -232,7 +227,7 @@ func (h *ScaleHandler) updateScaledObject(scaledObject *kore_v1alpha1.ScaledObje
 
 // A deployment will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
-func (h *ScaleHandler) tryScaleDeploymentDown(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
 	var cooldownPeriod time.Duration
 
 	if scaledObject.Spec.CooldownPeriod != nil {
@@ -250,10 +245,6 @@ func (h *ScaleHandler) tryScaleDeploymentDown(deployment *apps_v1.Deployment, sc
 		err := h.updateDeployment(deployment)
 		if err == nil {
 			log.Debugf("Successfully scaled deployment (%s/%s) to 0 replicas", deployment.GetNamespace(), deployment.GetName())
-			// Scale was successful. Update lastScaleTime on the scaledObject status
-			now := meta_v1.Now()
-			scaledObject.Status.LastScaleTime = &now
-			h.updateScaledObject(scaledObject)
 		}
 	} else {
 		log.Debugf("scaledObject (%s/%s) cooling down. Last active time %v, cooldownPeriod %d",
@@ -264,7 +255,7 @@ func (h *ScaleHandler) tryScaleDeploymentDown(deployment *apps_v1.Deployment, sc
 	}
 }
 
-func (h *ScaleHandler) scaleDeploymentUp(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
 	*deployment.Spec.Replicas = 1
 	err := h.updateDeployment(deployment)
@@ -278,7 +269,6 @@ func (h *ScaleHandler) scaleDeploymentUp(deployment *apps_v1.Deployment, scaledO
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
 		now := meta_v1.Now()
-		scaledObject.Status.LastScaleTime = &now
 		scaledObject.Status.LastActiveTime = &now
 		h.updateScaledObject(scaledObject)
 	}
