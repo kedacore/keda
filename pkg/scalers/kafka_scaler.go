@@ -12,7 +12,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
-// kafkaScaler is a scaler for Apache Kafka
 type kafkaScaler struct {
 	ResolvedSecrets, Metadata map[string]string
 }
@@ -23,6 +22,7 @@ type kafkaMetadata struct {
 	topic   string
 }
 
+// NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedSecrets, metadata map[string]string) Scaler {
 	return &kafkaScaler{
 		Metadata:        metadata,
@@ -51,9 +51,18 @@ func (s *kafkaScaler) parseKafkaMetadata() (kafkaMetadata, error) {
 	return meta, nil
 }
 
-// GetScaleDecision determines what the watched Kafka topic should
-// scale to
-func (s *kafkaScaler) GetScaleDecision(ctx context.Context) (int32, error) {
+// IsActive determines if we need to scale from zero
+func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
+	lag, err := s.getKafkaOffsetLag()
+	if err != nil {
+		log.Errorf("error %s", err)
+		return false, err
+	}
+
+	return lag > 0, nil
+}
+
+func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
 	meta, err := s.parseKafkaMetadata()
 	if err != nil {
 		log.Errorf("erring parsing kafka metadata: %s\n", err)
