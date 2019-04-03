@@ -13,8 +13,5 @@ FROM scratch
 
 COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build-env /kore /kore
-COPY config /config
-
-ENV CONFIG /config
 
 ENTRYPOINT [ "/kore" ]
