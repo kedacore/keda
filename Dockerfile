@@ -9,9 +9,13 @@ COPY . .
 
 RUN make build && mv dist/kore /kore
 
+RUN mkdir -p /tmp/empty
+
 FROM scratch
 
 COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build-env /kore /kore
+# make sure /tmp exists
+COPY --from=build-env /tmp/empty /tmp
 
 ENTRYPOINT [ "/kore" ]
