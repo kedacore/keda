@@ -42,21 +42,23 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 	}
 
 	c.scaledObjectsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: c.syncScaledObject,
+		AddFunc: func(obj interface{}) {
+			c.syncScaledObject(obj, false)
+		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			new := newObj.(*kore_v1alpha1.ScaledObject)
 			old := oldObj.(*kore_v1alpha1.ScaledObject)
 			if new.ResourceVersion == old.ResourceVersion {
 				return
 			}
-			c.syncScaledObject(newObj)
+			c.syncScaledObject(newObj, true)
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
 	})
 	return c
 }
 
-func (c *controller) syncScaledObject(obj interface{}) {
+func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
@@ -74,7 +76,9 @@ func (c *controller) syncScaledObject(obj interface{}) {
 		}
 		c.scaledObjectsContexts.Store(key, cancel)
 	}
-	c.scaleHandler.WatchScaledObjectWithContext(ctx, scaledObject)
+	// Tell the handler if this is an Update call to ScaledObject
+	// to avoid status update/check loop.
+	c.scaleHandler.WatchScaledObjectWithContext(ctx, scaledObject, !isUpdate)
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
