@@ -30,7 +30,7 @@ func NewAzureQueueScaler(resolvedSecrets, metadata map[string]string) Scaler {
 }
 
 // GetScaleDecision is a func
-func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
+func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	connectionString := s.getConnectionString()
 	queueName := s.getQueueName()
 
@@ -38,14 +38,10 @@ func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) 
 
 	if err != nil {
 		log.Errorf("error %s", err)
-		return -1, err
+		return false, err
 	}
 
-	if length > 0 {
-		return 1, nil
-	}
-
-	return 0, nil
+	return length > 0, nil
 }
 
 func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
