@@ -30,7 +30,7 @@ func NewAzureQueueScaler(resolvedSecrets, metadata map[string]string) Scaler {
 }
 
 // GetScaleDecision is a func
-func (s *azureQueueScaler) GetScaleDecision(ctx context.Context) (int32, error) {
+func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	connectionString := s.getConnectionString()
 	queueName := s.getQueueName()
 
