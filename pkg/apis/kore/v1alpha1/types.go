@@ -18,12 +18,16 @@ type ScaledObject struct {
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
-	ScaleTargetRef   ObjectReference `json:"scaleTargetRef"`
-	PollingInterval  *int32          `json:"pollingInterval"`
-	CooldownPeriod *int32          `json:"cooldownPeriod"`
-	Triggers         []ScaleTriggers `json:"triggers"`
+	ScaleTargetRef  ObjectReference `json:"scaleTargetRef"`
+	PollingInterval *int32          `json:"pollingInterval"`
+	CooldownPeriod  *int32          `json:"cooldownPeriod"`
+	MinReplicaCount *int32          `json:"minReplicaCount"`
+	MaxReplicaCount *int32          `json:"maxReplicaCount"`
+	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
+// ObjectReference holds the a reference to the deployment this
+// ScaledObject applies
 type ObjectReference struct {
 	DeploymentName string `json:"deploymentName"`
 }
