@@ -18,11 +18,16 @@ import (
 	_ "k8s.io/gengo/parser"
 )
 
+const koreVersion = "0.0.1"
+
 var (
-	logLevel = flag.String("log-level", "info", "Options are debug, info, warning, error, fatal, or panic. (default info)")
+	// GitCommit is set by the build using -ldflags "-X main.GitCommit=$GIT_COMMIT"
+	GitCommit string
+	logLevel  = flag.String("log-level", "info", "Options are debug, info, warning, error, fatal, or panic. (default info)")
 )
 
 func main() {
+	printVersion()
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -41,6 +46,11 @@ func main() {
 	shutdownDuration := 5 * time.Second
 	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
 	<-time.After(shutdownDuration)
+}
+
+func printVersion() {
+	log.Infof("Kore version: %s", koreVersion)
+	log.Infof("Git commit: %s", GitCommit)
 }
 
 func init() {
