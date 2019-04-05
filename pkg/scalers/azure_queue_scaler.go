@@ -19,13 +19,14 @@ const (
 )
 
 type azureQueueScaler struct {
-	resolvedSecrets, metadata map[string]string
+	resolvedEnv, metadata map[string]string
 }
 
-func NewAzureQueueScaler(resolvedSecrets, metadata map[string]string) Scaler {
+// NewAzureQueueScaler creates a new azureQueueScaler
+func NewAzureQueueScaler(resolvedEnv, metadata map[string]string) Scaler {
 	return &azureQueueScaler{
-		resolvedSecrets: resolvedSecrets,
-		metadata:        metadata,
+		resolvedEnv: resolvedEnv,
+		metadata:    metadata,
 	}
 }
 
@@ -78,7 +79,7 @@ func (s *azureQueueScaler) getConnectionString() string {
 		connectionSettingName = "AzureWebJobsStorage"
 	}
 
-	return s.resolvedSecrets[connectionSettingName]
+	return s.resolvedEnv[connectionSettingName]
 }
 
 func (s *azureQueueScaler) getQueueName() string {
