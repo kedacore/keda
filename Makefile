@@ -14,6 +14,7 @@ IMAGE_TAG       := $(CIRCLE_BRANCH)
 IMAGE_NAME      := $(ACR_REGISTRY)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
 
 GIT_VERSION = $(shell git describe --always --abbrev=7)
+GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 ##################################################
@@ -36,7 +37,10 @@ ci-build-all: build-container push-container
 
 .PHONY: build
 build:
-	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build -o dist/kore cmd/main.go
+	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build \
+		-ldflags "-X main.GitCommit=$(GIT_COMMIT)" \
+		-o dist/kore \
+		cmd/main.go
 
 .PHONY: build-container
 build-container:
