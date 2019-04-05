@@ -282,7 +282,7 @@ func (h *ScaleHandler) updateDeployment(deployment *apps_v1.Deployment) error {
 	return err
 }
 
-func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (map[string]string, error) {
+func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment) (map[string]string, error) {
 	deploymentKey, err := cache.MetaNamespaceKeyFunc(deployment)
 	if err != nil {
 		return nil, err
@@ -296,20 +296,91 @@ func (h *ScaleHandler) resolveSecrets(deployment *apps_v1.Deployment) (map[strin
 
 	container := deployment.Spec.Template.Spec.Containers[0]
 	resolved := make(map[string]string)
-	for _, envVar := range container.Env {
-		if envVar.Value != "" {
-			resolved[envVar.Name] = envVar.Value
-		} else if envVar.ValueFrom != nil && envVar.ValueFrom.SecretKeyRef != nil {
-			value, err := h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.Name, deployment.GetNamespace())
-			if err != nil {
-				return nil, err
-			}
 
+	if container.EnvFrom != nil {
+		for _, source := range container.EnvFrom {
+			if source.ConfigMapRef != nil {
+				if configMap, err := h.resolveConfigMap(source.ConfigMapRef, deployment.GetNamespace()); err == nil {
+					for k, v := range configMap {
+						resolved[k] = v
+					}
+				} else {
+					log.Errorf("Error reading config ref %s on deployment %s/%s: %s", source.ConfigMapRef, deployment.GetNamespace(), deployment.GetName(), err)
+				}
+			} else if source.SecretRef != nil {
+				if secretsMap, err := h.resolveSecretMap(source.SecretRef, deployment.GetNamespace()); err == nil {
+					for k, v := range secretsMap {
+						resolved[k] = v
+					}
+				} else {
+					log.Errorf("Error reading secret ref %s on deployment %s/%s: %s", source.SecretRef, deployment.GetNamespace(), deployment.GetName(), err)
+				}
+			}
+		}
+	}
+
+	if container.Env != nil {
+		for _, envVar := range container.Env {
+			var value string
+
+			// env is either a name/value pair or an EnvVarSource
+			if envVar.Value != "" {
+				value = envVar.Value
+			} else if envVar.ValueFrom != nil {
+				// env is an EnvVarSource, that can be one of the 4 below
+				if envVar.ValueFrom.SecretKeyRef != nil {
+					// env is a secret selector
+					value, err = h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.Name, deployment.GetNamespace())
+					if err != nil {
+						log.Errorf("Error resolving secret name %s for env %s in deployment %s/%s. Skipping",
+							envVar.ValueFrom.SecretKeyRef,
+							envVar.Name,
+							deployment.GetNamespace(),
+							deployment.GetName())
+						continue
+					}
+				} else if envVar.ValueFrom.ConfigMapKeyRef != nil {
+					// env is a configMap selector
+					value, err = h.resolveConfigValue(envVar.ValueFrom.ConfigMapKeyRef, envVar.Name, deployment.GetNamespace())
+					if err != nil {
+						log.Errorf("Error resolving config %s for env %s in deployment %s/%s. Skippking",
+							envVar.ValueFrom.ConfigMapKeyRef,
+							envVar.Name,
+							deployment.GetName(),
+							deployment.GetNamespace())
+					}
+				} else {
+					log.Errorf("Cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped. Skipping", envVar.Name)
+				}
+			}
 			resolved[envVar.Name] = value
 		}
 	}
 
 	return resolved, nil
+}
+
+func (h *ScaleHandler) resolveConfigMap(configMapRef *core_v1.ConfigMapEnvSource, namespace string) (map[string]string, error) {
+	configMap, err := h.kubeClient.CoreV1().ConfigMaps(namespace).Get(configMapRef.Name, meta_v1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return configMap.Data, nil
+}
+
+func (h *ScaleHandler) resolveSecretMap(secretMapRef *core_v1.SecretEnvSource, namespace string) (map[string]string, error) {
+	secrets, err := h.kubeClient.CoreV1().Secrets(namespace).Get(secretMapRef.Name, meta_v1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	secretsStr := make(map[string]string)
+	for k, v := range secrets.Data {
+		secretsStr[k] = string(v)
+	}
+
+	return secretsStr, nil
 }
 
 func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelector, keyName, namespace string) (string, error) {
@@ -320,6 +391,16 @@ func (h *ScaleHandler) resolveSecretValue(secretKeyRef *core_v1.SecretKeySelecto
 	}
 
 	return string(secretCollection.Data[keyName]), nil
+}
+
+func (h *ScaleHandler) resolveConfigValue(configKeyRef *core_v1.ConfigMapKeySelector, keyName, namespace string) (string, error) {
+	configCollection, err := h.kubeClient.CoreV1().ConfigMaps(namespace).Get(configKeyRef.Name, meta_v1.GetOptions{})
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(configCollection.Data[keyName]), nil
 }
 
 func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment) {
@@ -336,14 +417,14 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 		return scalers, nil
 	}
 
-	resolvedSecrets, err := h.resolveSecrets(deployment)
+	resolvedEnv, err := h.resolveEnv(deployment)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
 		return scalers, nil
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(trigger, resolvedSecrets)
+		scaler, err := h.getScaler(trigger, resolvedEnv)
 		if err != nil {
 			log.Errorf("error for trigger #%d: %s", i, err)
 			continue
@@ -355,12 +436,12 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 	return scalers, deployment
 }
 
-func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedSecrets map[string]string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedSecrets, trigger.Metadata), nil
+    return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata), nil
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedSecrets, trigger.Metadata), nil
+		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata), nil
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}

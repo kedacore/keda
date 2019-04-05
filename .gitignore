@@ -331,3 +331,8 @@ ASALocalRun/
 
 # Kore artifacts
 dist/
+
+apiserver.local.config/
+config
+*.cert
+*.key
