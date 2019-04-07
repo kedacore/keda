@@ -13,7 +13,7 @@ import (
 )
 
 type kafkaScaler struct {
-	ResolvedSecrets, Metadata map[string]string
+	resolvedSecrets, metadata map[string]string
 }
 
 type kafkaMetadata struct {
@@ -25,28 +25,28 @@ type kafkaMetadata struct {
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedSecrets, metadata map[string]string) Scaler {
 	return &kafkaScaler{
-		Metadata:        metadata,
-		ResolvedSecrets: resolvedSecrets,
+		metadata:        metadata,
+		resolvedSecrets: resolvedSecrets,
 	}
 }
 
 func (s *kafkaScaler) parseKafkaMetadata() (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if s.Metadata["brokers"] == "" {
+	if s.metadata["brokers"] == "" {
 		return meta, errors.New("no brokers given")
 	}
-	meta.brokers = strings.Split(s.Metadata["brokers"], ",")
+	meta.brokers = strings.Split(s.metadata["brokers"], ",")
 
-	if s.Metadata["groupName"] == "" {
+	if s.metadata["groupName"] == "" {
 		return meta, errors.New("no group name given")
 	}
-	meta.group = s.Metadata["groupName"]
+	meta.group = s.metadata["groupName"]
 
-	if s.Metadata["topicName"] == "" {
+	if s.metadata["topicName"] == "" {
 		return meta, errors.New("no topic name given")
 	}
-	meta.topic = s.Metadata["topicName"]
+	meta.topic = s.metadata["topicName"]
 
 	return meta, nil
 }
