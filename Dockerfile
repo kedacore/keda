@@ -1,7 +1,7 @@
 FROM golang:1.12-alpine3.9 as build-env
 
 RUN apk update && \
-    apk add --no-cache make ca-certificates && \
+    apk add --no-cache make ca-certificates git && \
     update-ca-certificates
 
 WORKDIR $GOPATH/src/github.com/Azure/Kore
