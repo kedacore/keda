@@ -15,6 +15,7 @@ jobs:
       - run: az login --service-principal -u "${AZURE_SP_ID}" -p "${AZURE_SP_KEY}" --tenant "${AZURE_SP_TENANT}"
       # - run: make test
       - run: make ci-build-all
+      - run: az login --service-principal -u "${AZURE_SP_ID}" -p "${AZURE_SP_KEY}" --tenant "${AZURE_SP_TENANT}"
       - run: make publish-edge-chart
       - store_artifacts:
           path: /tmp/test-reports
