@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: projectkore.azurecr.io/build-tools:latest
+      - image: korecr.azurecr.io/build-tools:latest
         auth:
             username: $ACR_USERNAME
             password: $ACR_PASSWORD
@@ -22,7 +22,7 @@ jobs:
           path: /tmp/test-reports
   e2e:
     docker:
-      - image: projectkore.azurecr.io/build-tools:latest
+      - image: korecr.azurecr.io/build-tools:latest
         auth:
             username: $ACR_USERNAME
             password: $ACR_PASSWORD
