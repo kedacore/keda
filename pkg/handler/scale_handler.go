@@ -31,9 +31,9 @@ const (
 	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
 	defaultPollingInterval = 30
 	// Default cooldown period for a deployment if no cooldownPeriod is defined on the scaledObject
-	defaultCooldownPeriod = 5 * 60 // 5 minutes
-	minReplicas           = 1
-	maxReplicas           = 100
+	defaultCooldownPeriod       = 5 * 60 // 5 minutes
+	defaultHPAMinReplicas int32 = 1
+	defaultHPAMaxReplicas int32 = 100
 )
 
 // NewScaleHandler creates a ScaleHandler object
@@ -124,11 +124,25 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 	}
 
+	var minReplicas *int32
+	if scaledObject.Spec.MinReplicaCount != nil {
+		minReplicas = scaledObject.Spec.MinReplicaCount
+	} else {
+		tmp := defaultHPAMinReplicas
+		minReplicas = &tmp
+	}
+
+	var maxReplicas int32
+	if scaledObject.Spec.MaxReplicaCount != nil {
+		maxReplicas = *scaledObject.Spec.MaxReplicaCount
+	} else {
+		maxReplicas = defaultHPAMaxReplicas
+	}
+
 	kvd := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
-	var minReplicasVar int32 = minReplicas
 	scaledObjectNamespace := scaledObject.GetNamespace()
 	hpaName := "kore-hpa-" + deploymentName
-	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: &minReplicasVar, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
+	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
 	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
 	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
@@ -202,8 +216,13 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
 		h.scaleFromZero(deployment, scaledObject)
-	} else if !isActive && *deployment.Spec.Replicas > 0 {
+	} else if !isActive &&
+		*deployment.Spec.Replicas > 0 &&
+		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
 		// there are no active triggers, but the deployment has replicas.
+		// AND
+		// There is no minimum configured ot minumum is set to ZERO. HPA will handles other scale down operations
+
 		// Try to scale it down.
 		h.scaleToZero(deployment, scaledObject)
 	} else if isActive {
@@ -257,7 +276,12 @@ func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject 
 
 func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
-	*deployment.Spec.Replicas = 1
+	if scaledObject.Spec.MinReplicaCount != nil {
+		deployment.Spec.Replicas = scaledObject.Spec.MinReplicaCount
+	} else {
+		*deployment.Spec.Replicas = 1
+	}
+
 	err := h.updateDeployment(deployment)
 
 	if err == nil {
@@ -439,7 +463,7 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-    return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata), nil
+		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata), nil
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata), nil
 	default:
