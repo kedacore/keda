@@ -3,7 +3,7 @@
 set -e
 
 echo "Add helm repo"
-helm repo add korecr https://korecr.azurecr.io/helm/v1/repo \
+helm repo add projectkore https://projectkore.azurecr.io/helm/v1/repo \
     --username b514b60c-68cc-4f12-b361-3858878b2479 \
     --password '4jX5vkPTSrUQ96UBbU/B7CQrBoJwT62WSs5WfZtFbB8='
 
@@ -34,5 +34,5 @@ END_RBAC_CONFIG
 
 echo "Init helm"
 helm init --service-account tiller --wait
-helm install korecr/kore-edge --name kore-test-release --devel --set logLevel=debug
+helm install projectkore/kore-edge --name kore-test-release --devel --set logLevel=debug
 

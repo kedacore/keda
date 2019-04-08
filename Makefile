@@ -68,4 +68,4 @@ build-chart-edge:
 
 .PHONY: publish-edge-chart
 publish-edge-chart: build-chart-edge
-	az acr helm push -n korecr $(shell find . -maxdepth 1 -type f -iname 'kore-edge-0.0.1-*' -print -quit)
+	az acr helm push -n projectkore $(shell find . -maxdepth 1 -type f -iname 'kore-edge-0.0.1-*' -print -quit)
