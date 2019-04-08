@@ -2,7 +2,7 @@ nameOverride:
 fullnameOverride:
 
 image:
-  repository: projectkore.azurecr.io/kore
+  repository: korecr.azurecr.io/kore
   tag: master
   pullPolicy: Always
 
