@@ -138,6 +138,16 @@ func (in *ScaledObjectSpec) DeepCopyInto(out *ScaledObjectSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.MinReplicaCount != nil {
+		in, out := &in.MinReplicaCount, &out.MinReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
+	if in.MaxReplicaCount != nil {
+		in, out := &in.MaxReplicaCount, &out.MaxReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Triggers != nil {
 		in, out := &in.Triggers, &out.Triggers
 		*out = make([]ScaleTriggers, len(*in))
