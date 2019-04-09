@@ -9,8 +9,6 @@ Kore serves as a Kubernetes Metrics Server and allows users to define autoscalin
 
 Kore can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
 
-![k](https://user-images.githubusercontent.com/645740/51940231-46cf5380-23c6-11e9-9433-39cdd4055b4c.gif)
-
 ## Setup
 
 Checkout [`wiki/Deploying-Kore-and-Functions`](https://github.com/Azure/Kore/wiki/Deploying-Kore-and-Functions)
