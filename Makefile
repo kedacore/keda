@@ -68,5 +68,25 @@ build-chart-edge:
 
 .PHONY: publish-edge-chart
 publish-edge-chart: build-chart-edge
-	az acr helm repo add -n projectkore
-	az acr helm push -n projectkore $(shell find . -maxdepth 1 -type f -iname 'kore-edge-0.0.1-*' -print -quit)
+	$(eval CHART := $(shell find . -maxdepth 1 -type f -iname 'kore-edge-0.0.1-*' -print -quit))
+	$(eval CS := $(shell az storage account show-connection-string --name projectkore --resource-group projectkore --subscription bfc7797c-d43a-4296-937f-93b8de26ba2b  --output json --query "connectionString"))
+	@az storage blob upload \
+		--container-name helm \
+		--name $(CHART) \
+		--file $(CHART) \
+		--connection-string $(CS)
+
+	@az storage blob download \
+		--container-name helm \
+		--name index.yaml \
+		--file old_index.yaml \
+		--connection-string $(CS) 2>/dev/null | true
+
+	[ -s ./old_index.yaml ] && helm repo index . --url https://projectkore.blob.core.windows.net/helm --merge old_index.yaml || true
+	[ ! -s ./old_index.yaml ] && helm repo index . --url https://projectkore.blob.core.windows.net/helm || true
+
+	@az storage blob upload \
+		--container-name helm \
+		--name index.yaml \
+		--file index.yaml \
+		--connection-string $(CS)
