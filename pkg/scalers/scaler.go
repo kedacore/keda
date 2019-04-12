@@ -18,4 +18,6 @@ type Scaler interface {
 	GetMetricSpecForScaling() []v2beta1.MetricSpec
 
 	IsActive(ctx context.Context) (bool, error)
+	// Close any resources that need disposing when scaler is no longer used or destroyed
+	Close() error
 }
