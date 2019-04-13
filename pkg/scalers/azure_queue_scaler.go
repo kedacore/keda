@@ -23,11 +23,11 @@ type azureQueueScaler struct {
 }
 
 // NewAzureQueueScaler creates a new azureQueueScaler
-func NewAzureQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
+func NewAzureQueueScaler(resolvedEnv, metadata map[string]string) Scaler {
 	return &azureQueueScaler{
 		resolvedEnv: resolvedEnv,
 		metadata:    metadata,
-	}, nil
+	}
 }
 
 // GetScaleDecision is a func
@@ -43,10 +43,6 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	return length > 0, nil
-}
-
-func (s *azureQueueScaler) Close() error {
-	return nil
 }
 
 func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
