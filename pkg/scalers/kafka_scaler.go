@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/Shopify/sarama"
@@ -14,10 +13,7 @@ import (
 )
 
 type kafkaScaler struct {
-	resolvedSecrets map[string]string
-	metadata        kafkaMetadata
-	client          sarama.Client
-	admin           sarama.ClusterAdmin
+	resolvedSecrets, metadata map[string]string
 }
 
 type kafkaMetadata struct {
@@ -27,42 +23,30 @@ type kafkaMetadata struct {
 }
 
 // NewKafkaScaler creates a new kafkaScaler
-func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
-	kafkaMetadata, err := parseKafkaMetadata(metadata)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
-	}
-
-	client, admin, err := getKafkaClients(kafkaMetadata)
-	if err != nil {
-		return nil, err
-	}
-
+func NewKafkaScaler(resolvedSecrets, metadata map[string]string) Scaler {
 	return &kafkaScaler{
-		client:          client,
-		admin:           admin,
-		metadata:        kafkaMetadata,
+		metadata:        metadata,
 		resolvedSecrets: resolvedSecrets,
-	}, nil
+	}
 }
 
-func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
+func (s *kafkaScaler) parseKafkaMetadata() (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if metadata["brokers"] == "" {
+	if s.metadata["brokers"] == "" {
 		return meta, errors.New("no brokers given")
 	}
-	meta.brokers = strings.Split(metadata["brokers"], ",")
+	meta.brokers = strings.Split(s.metadata["brokers"], ",")
 
-	if metadata["groupName"] == "" {
+	if s.metadata["groupName"] == "" {
 		return meta, errors.New("no group name given")
 	}
-	meta.group = metadata["groupName"]
+	meta.group = s.metadata["groupName"]
 
-	if metadata["topicName"] == "" {
+	if s.metadata["topicName"] == "" {
 		return meta, errors.New("no topic name given")
 	}
-	meta.topic = metadata["topicName"]
+	meta.topic = s.metadata["topicName"]
 
 	return meta, nil
 }
@@ -71,32 +55,38 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 	lag, err := s.getKafkaOffsetLag()
 	if err != nil {
-		log.Errorf("error getting offset: %s", err)
+		log.Errorf("error %s", err)
 		return false, err
 	}
 
 	return lag > 0, nil
 }
 
-func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
+func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
+	meta, err := s.parseKafkaMetadata()
+	if err != nil {
+		log.Errorf("erring parsing kafka metadata: %s\n", err)
+		return -1, err
+	}
+
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 
-	client, err := sarama.NewClient(metadata.brokers, config)
+	client, err := sarama.NewClient(meta.brokers, config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
+		log.Errorf("error creating kafka client: %s\n", err)
+		return -1, err
 	}
+	defer client.Close()
 
-	admin, err := sarama.NewClusterAdmin(metadata.brokers, config)
+	admin, err := sarama.NewClusterAdmin(meta.brokers, config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
+		log.Errorf("error creating kafka admin: %s\n", err)
+		return -1, err
 	}
+	defer admin.Close()
 
-	return client, admin, nil
-}
-
-func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
-	topicsMetadata, err := s.admin.DescribeTopics([]string{s.metadata.topic})
+	topicsMetadata, err := admin.DescribeTopics([]string{meta.topic})
 	if err != nil {
 		log.Errorf("error describing topics: %s\n", err)
 		return -1, err
@@ -111,8 +101,8 @@ func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
 		partitions[i] = p.ID
 	}
 
-	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, map[string][]int32{
-		s.metadata.topic: partitions,
+	offsets, err := admin.ListConsumerGroupOffsets(meta.group, map[string][]int32{
+		meta.topic: partitions,
 	})
 	if err != nil {
 		log.Errorf("error listing consumer group offsets: %s\n", err)
@@ -121,11 +111,11 @@ func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
 
 	totalLag := int64(0)
 	for _, partition := range partitions {
-		block := offsets.GetBlock(s.metadata.topic, partition)
+		block := offsets.GetBlock(meta.topic, partition)
 		consumerOffset := block.Offset
-		latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
+		latestOffset, err := client.GetOffset(meta.topic, partition, sarama.OffsetNewest)
 		if err != nil {
-			log.Errorf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition)
+			log.Errorf("error finding latest offset for topic %s and partition %d\n", meta.topic, partition)
 		}
 
 		var lag int64
@@ -139,7 +129,7 @@ func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
 		}
 		totalLag += lag
 
-		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition)
+		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", meta.group, lag, meta.topic, partition)
 
 		// TODO: Should we break out as soon as we detect a non-zero
 		// lag? When we scale to more than 1, we may want the total
@@ -150,19 +140,6 @@ func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
 		return 1, nil
 	}
 	return 0, nil
-}
-
-func (s *kafkaScaler) Close() error {
-	err := s.client.Close()
-	if err != nil {
-		return err
-	}
-	err = s.admin.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
