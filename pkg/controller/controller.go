@@ -66,6 +66,10 @@ func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
 		return
 	}
 
+	if !isUpdate {
+		log.Infof("Watching ScaledObject: %s", key)
+	}
+
 	ctx, cancel := context.WithCancel(c.ctx)
 
 	value, loaded := c.scaledObjectsContexts.LoadOrStore(key, cancel)
