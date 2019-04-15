@@ -79,6 +79,8 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 		} else {
 			matchingMetrics = append(matchingMetrics, metrics...)
 		}
+
+		scaler.Close()
 	}
 
 	return matchingMetrics, nil
@@ -122,6 +124,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 			metricSpec.External.MetricSelector.MatchLabels["deploymentName"] = deploymentName
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
+		scaler.Close()
 	}
 
 	var minReplicas *int32
@@ -204,6 +207,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 			isScaledObjectActive = true
 			log.Debugf("Scallr %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
+		scaler.Close()
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
@@ -463,9 +467,9 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata), nil
+		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata), nil
+		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
