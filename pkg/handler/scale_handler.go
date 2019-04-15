@@ -267,7 +267,7 @@ func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject 
 		*deployment.Spec.Replicas = 0
 		err := h.updateDeployment(deployment)
 		if err == nil {
-			log.Debugf("Successfully scaled deployment (%s/%s) to 0 replicas", deployment.GetNamespace(), deployment.GetName())
+			log.Infof("Successfully scaled deployment (%s/%s) to 0 replicas", deployment.GetNamespace(), deployment.GetName())
 		}
 	} else {
 		log.Debugf("scaledObject (%s/%s) cooling down. Last active time %v, cooldownPeriod %d",
@@ -289,7 +289,7 @@ func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObjec
 	err := h.updateDeployment(deployment)
 
 	if err == nil {
-		log.Debugf("Successfully updated deployment (%s/%s) from %d to %d replicas",
+		log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
 			deployment.GetNamespace(),
 			deployment.GetName(),
 			currentReplicas,
@@ -454,7 +454,7 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 	for i, trigger := range scaledObject.Spec.Triggers {
 		scaler, err := h.getScaler(trigger, resolvedEnv)
 		if err != nil {
-			log.Errorf("error for trigger #%d: %s", i, err)
+			log.Debugf("error for trigger #%d: %s", i, err)
 			continue
 		}
 
