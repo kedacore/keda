@@ -87,7 +87,13 @@ func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
 	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
+	if scaledObject == nil {
+		log.Errorf("Called syncDeletedScaledObject with an invalid scaledObject ptr")
+		return
+	}
+
 	log.Debugf("Notified about deletion of ScaledObject: %s", scaledObject.GetName())
+	go c.scaleHandler.HandleScaledObjectDelete(scaledObject)
 
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
