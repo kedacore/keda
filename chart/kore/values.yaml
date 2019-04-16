@@ -1,5 +1,6 @@
 nameOverride:
 fullnameOverride:
+namespaceOverride:
 
 image:
   repository: projectkore.azurecr.io/kore
@@ -12,7 +13,7 @@ rbac:
   create: true
 
 serviceAccount:
-  create: true
-  name:
+    create: true
+    name:
 
 logLevel: info

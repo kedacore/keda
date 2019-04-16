@@ -4,7 +4,7 @@ metadata:
   labels:
     {{- include "kore.labels" . | nindent 4 }}
   name: {{ template "kore.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ template "kore.namespace" }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -22,6 +22,16 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        args: [ "--log-level", "{{ .Values.logLevel }}" ]
+        args:
+        - /adapter
+        - --secure-port=6443
+        - --logtostderr=true
+        - --v=10
+        - {{- printf "--log-level=%s" .Values.logLevel -}}
+        ports:
+        - containerPort: 6443
+          name: https
+        - containerPort: 8080
+          name: http
       imagePullSecrets:
       - name: {{ template "kore.fullname" . }}-docker-auth
