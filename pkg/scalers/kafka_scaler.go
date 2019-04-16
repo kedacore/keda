@@ -164,6 +164,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
 		log.Errorf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition)
+		return 0
 	}
 
 	var lag int64
