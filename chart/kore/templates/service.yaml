@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "kore.labels" . | nindent 4 }}
+  name: {{ template "kore.fullname" . }}
+  namespace: {{ template "kore.namespace" }}
+spec:
+  ports:
+  - name: https
+    port: 443
+    targetPort: 6443
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    name: {{ template "kore.fullname" . }}
+    instance: {{ template "kore.fullname" . }}-instance

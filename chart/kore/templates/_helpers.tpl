@@ -8,6 +8,13 @@ Expand the name of the chart.
 {{- end -}}
 
 {{/*
+Expand the name of the chart.
+*/}}
+{{- define "kore.namespace" -}}
+    {{- default "kore-system" .Values.namespaceOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by DNS naming spec).
 If release name contains chart name it will be used as a full name
@@ -36,11 +43,7 @@ Create chart name and version as used by the chart label.
 Create the name of the service account to use
 */}}
 {{- define "kore.serviceAccountName" -}}
-    {{- if .Values.serviceAccount.create -}}
-        {{default (include "kore.fullname" .) .Values.serviceAccount.name }}
-    {{- else -}}
-        {{ default "default" .Values.serviceAccount.name }}
-    {{- end -}}
+	{{- default "kore-serviceaccount" .Values.serviceAccount.name -}}
 {{- end -}}
 
 {{/*
