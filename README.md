@@ -11,7 +11,7 @@ Kore can run on both the cloud and the edge, integrates natively with Kubernetes
 
 ## Setup
 
-Checkout [`wiki/Deploying-Kore-and-Functions`](https://github.com/Azure/Kore/wiki/Deploying-Kore-and-Functions)
+Checkout [`wiki/Using-core-tools-with-Kore-and-Osiris`](https://github.com/Azure/Kore/wiki/Using-core-tools-with-Kore-and-Osiris)
 
 # Contributing
 
