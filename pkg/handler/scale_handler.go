@@ -53,7 +53,7 @@ func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledO
 }
 
 // HandleScaledObjectDelete handles any cleanup when a scaled object is deleted
-func (h *ScaleHandler) HandleScaledObjectDelete(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *kore_v1alpha1.ScaledObject) {
 	h.deleteHPAForScaledObject(scaledObject)
 }
 
@@ -98,11 +98,10 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.Scal
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("HPA with namespace %s and name %s is not found", scaledObjectNamespace, hpaName)
-
 	} else if err != nil {
 		log.Errorf("Error deleting HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
 	} else {
-		log.Debugf("Deleted HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+		log.Infof("Deleted HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	}
 }
 
