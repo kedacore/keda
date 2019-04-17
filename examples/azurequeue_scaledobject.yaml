@@ -12,8 +12,5 @@ spec:
   - type: azure-queue
     name:
     metadata:
-      name: msg
-      type: queueTrigger
-      direction: in
       queueName: functionsqueue
       queueLength: 5
