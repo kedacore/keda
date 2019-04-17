@@ -534,6 +534,14 @@
   version = "v1.0.3"
 
 [[projects]]
+  branch = "master"
+  digest = "1:c93a776fca953f950adb5ff822e4de1d3363d7f50918461542e9e35579ef3de6"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "75d898a42a940fbc854dfd1a4199eabdc00cf024"
+
+[[projects]]
   digest = "1:919fc2a81add8ac4a7a236dceaf3e4c29ba4df96d13c3f2ce13a4d0132ebefb8"
   name = "github.com/ugorji/go"
   packages = ["codec"]
@@ -1138,6 +1146,7 @@
     "github.com/kelseyhightower/envconfig",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider",
+    "github.com/streadway/amqp",
     "golang.org/x/tools/imports",
     "k8s.io/api/apps/v1",
     "k8s.io/api/autoscaling/v2beta1",
