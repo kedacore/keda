@@ -16,3 +16,4 @@ spec:
       type: queueTrigger
       direction: in
       queueName: functionsqueue
+      queueLength: 5
