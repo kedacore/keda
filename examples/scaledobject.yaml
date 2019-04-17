@@ -5,8 +5,8 @@ metadata:
 spec:
   scaleTargetRef:
     deploymentName: functions-example-deployment
-  triggers:
   pollingInterval: 30
+  triggers:
   - type: blobTrigger
     metadata:
       name: myBlob
