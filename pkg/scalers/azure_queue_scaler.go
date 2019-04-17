@@ -15,7 +15,7 @@ import (
 
 const (
 	queueLengthMetricName    = "queueLength"
-	targetQueueDefaultLength = 5
+	defaultTargetQueueLength = 5
 	externalMetricType       = "External"
 	defaultConnectionSetting = "AzureWebJobsStorage"
 )
@@ -44,7 +44,7 @@ func NewAzureQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error
 
 func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQueueMetadata, error) {
 	meta := azureQueueMetadata{}
-	meta.targetQueueLength = targetQueueDefaultLength
+	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
