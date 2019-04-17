@@ -103,7 +103,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, merticName string, me
 	queuelen, err := GetAzureQueueLength(ctx, s.metadata.connection, s.metadata.queueName)
 
 	if err != nil {
-		log.Errorf("error getting queue lenngth %s", err)
+		log.Errorf("error getting queue length %s", err)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
