@@ -1,0 +1,17 @@
+apiVersion: kore.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-scaledobject
+  namespace: azure-functions
+  labels:
+spec:
+  scaleTargetRef:
+    deploymentName: rabbitmq-deployment
+  pollingInterval:
+  triggers:
+  - type: rabbitMQ
+    name:
+    metadata:
+      host: amqp://guest:guest@localhost:5672/
+      queueLength: 20
+      queueName: testqueue
