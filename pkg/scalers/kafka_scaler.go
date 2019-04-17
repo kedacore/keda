@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
@@ -21,10 +24,16 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	brokers []string
-	group   string
-	topic   string
+	brokers      []string
+	group        string
+	topic        string
+	lagThreshold int64
 }
+
+const (
+	lagThresholdMetricName = "lagThreshold"
+	kafkaMetricType        = "External"
+)
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
@@ -64,18 +73,42 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 	meta.topic = metadata["topicName"]
 
+	if metadata[lagThresholdMetricName] == "" {
+		return meta, errors.New("no lag threshold given")
+	}
+
+	t, err := strconv.ParseInt(metadata[lagThresholdMetricName], 10, 64)
+	if err == nil {
+		return meta, fmt.Errorf("couldn't parse %s", lagThresholdMetricName)
+	}
+	meta.lagThreshold = t
+
 	return meta, nil
 }
 
 // IsActive determines if we need to scale from zero
 func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
-	lag, err := s.getKafkaOffsetLag()
+	partitions, err := s.getPartitions()
 	if err != nil {
-		log.Errorf("error getting offset: %s", err)
 		return false, err
 	}
 
-	return lag > 0, nil
+	offsets, err := s.getOffsets(partitions)
+	if err != nil {
+		return false, err
+	}
+
+	for _, partition := range partitions {
+		lag := s.getLagForPartition(partition, offsets)
+		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition)
+
+		// Return as soon as a lag was detected for any partition
+		if lag > 0 {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
@@ -95,61 +128,56 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	return client, admin, nil
 }
 
-func (s *kafkaScaler) getKafkaOffsetLag() (int32, error) {
+func (s *kafkaScaler) getPartitions() ([]int32, error) {
 	topicsMetadata, err := s.admin.DescribeTopics([]string{s.metadata.topic})
 	if err != nil {
-		log.Errorf("error describing topics: %s\n", err)
-		return -1, err
+		return nil, fmt.Errorf("error describing topics: %s", err)
 	}
 	if len(topicsMetadata) != 1 {
-		log.Errorf("expected only 1 topic metadata, got %d\n", len(topicsMetadata))
-		return -1, err
+		return nil, fmt.Errorf("expected only 1 topic metadata, got %d", len(topicsMetadata))
 	}
+
 	partitionMetadata := topicsMetadata[0].Partitions
 	partitions := make([]int32, len(partitionMetadata))
 	for i, p := range partitionMetadata {
 		partitions[i] = p.ID
 	}
 
+	return partitions, nil
+}
+
+func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchResponse, error) {
 	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, map[string][]int32{
 		s.metadata.topic: partitions,
 	})
+
 	if err != nil {
-		log.Errorf("error listing consumer group offsets: %s\n", err)
-		return -1, err
+		return nil, fmt.Errorf("error listing consumer group offsets: %s", err)
 	}
 
-	totalLag := int64(0)
-	for _, partition := range partitions {
-		block := offsets.GetBlock(s.metadata.topic, partition)
-		consumerOffset := block.Offset
-		latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
-		if err != nil {
-			log.Errorf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition)
-		}
+	return offsets, nil
+}
 
-		var lag int64
-		// For now, assume a consumer group that has no committed
-		// offset will read all messages from the topic. This may be
-		// something we want to allow users to configure.
-		if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
-			lag = latestOffset
-		} else {
-			lag = latestOffset - consumerOffset
-		}
-		totalLag += lag
-
-		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition)
-
-		// TODO: Should we break out as soon as we detect a non-zero
-		// lag? When we scale to more than 1, we may want the total
-		// lag and not just whether it's zero or non-zero.
+func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) int64 {
+	block := offsets.GetBlock(s.metadata.topic, partition)
+	consumerOffset := block.Offset
+	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
+	if err != nil {
+		log.Errorf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition)
+		return 0
 	}
 
-	if totalLag > 0 {
-		return 1, nil
+	var lag int64
+	// For now, assume a consumer group that has no committed
+	// offset will read all messages from the topic. This may be
+	// something we want to allow users to configure.
+	if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
+		lag = latestOffset
+	} else {
+		lag = latestOffset - consumerOffset
 	}
-	return 0, nil
+
+	return lag
 }
 
 func (s *kafkaScaler) Close() error {
@@ -166,12 +194,43 @@ func (s *kafkaScaler) Close() error {
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	// TODO: a real metric spec
-	return []v2beta1.MetricSpec{}
+	return []v2beta1.MetricSpec{
+		{
+			External: &v2beta1.ExternalMetricSource{
+				MetricName:         lagThresholdMetricName,
+				TargetAverageValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
+			},
+			Type: kafkaMetricType,
+		},
+	}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *kafkaScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	// TODO: actual metric values
-	return []external_metrics.ExternalMetricValue{}, nil
+	partitions, err := s.getPartitions()
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, err
+	}
+
+	offsets, err := s.getOffsets(partitions)
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, err
+	}
+
+	totalLag := int64(0)
+	for _, partition := range partitions {
+		lag := s.getLagForPartition(partition, offsets)
+		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition)
+
+		totalLag += lag
+	}
+
+	// We should find a way to not scale beyond the number of partitions
+	metric := external_metrics.ExternalMetricValue{
+		MetricName: merticName,
+		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
+		Timestamp:  metav1.Now(),
+	}
+
+	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
