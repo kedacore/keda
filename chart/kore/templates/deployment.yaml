@@ -4,7 +4,7 @@ metadata:
   labels:
     {{- include "kore.labels" . | nindent 4 }}
   name: {{ template "kore.fullname" . }}
-  namespace: {{ template "kore.namespace" }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:

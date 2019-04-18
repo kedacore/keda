@@ -1,6 +1,5 @@
 nameOverride:
 fullnameOverride:
-namespaceOverride:
 
 image:
   repository: projectkore.azurecr.io/kore
