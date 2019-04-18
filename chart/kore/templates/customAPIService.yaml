@@ -5,7 +5,7 @@ metadata:
 spec:
   service:
     name: {{ template "kore.fullname" . }}
-    namespace: {{ template "kore.namespace" }}
+    namespace: {{ .Release.Namespace }}
   group: custom.metrics.k8s.io
   version: v1beta1
   insecureSkipTLSVerify: true
