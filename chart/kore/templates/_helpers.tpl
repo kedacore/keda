@@ -36,11 +36,7 @@ Create chart name and version as used by the chart label.
 Create the name of the service account to use
 */}}
 {{- define "kore.serviceAccountName" -}}
-    {{- if .Values.serviceAccount.create -}}
-        {{default (include "kore.fullname" .) .Values.serviceAccount.name }}
-    {{- else -}}
-        {{ default "default" .Values.serviceAccount.name }}
-    {{- end -}}
+	{{- default "kore-serviceaccount" .Values.serviceAccount.name -}}
 {{- end -}}
 
 {{/*
