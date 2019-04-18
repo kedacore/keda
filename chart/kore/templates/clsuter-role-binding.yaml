@@ -7,11 +7,12 @@ metadata:
   name: {{ template "kore.fullname" . }}
   namespace: {{ .Release.Namespace }}
 roleRef:
+  apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
   name: {{ template "kore.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
+  
 {{- end -}}
