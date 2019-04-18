@@ -11,6 +11,7 @@ Kore can run on both the cloud and the edge, integrates natively with Kubernetes
 
 ## Getting started:
 
+* [`ScaledObject` spec](https://github.com/Azure/Kore/wiki/ScaledObject-spec)
 * [Using Azure Functions with Kore and Osiris](https://github.com/Azure/Kore/wiki/Using-Azure-Functions-with-Kore-and-Osiris)
 * [Deploying kore with helm](https://github.com/Azure/Kore/wiki/Deploying-kore-with-helm)
 
