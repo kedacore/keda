@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "kore.labels" . | nindent 4 }}
   name: {{ template "kore.fullname" . }}
-  namespace: {{ template "kore.namespace" }}
+  namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -13,6 +13,6 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ template "kore.serviceAccountName" . }}
-  namespace: {{ template "kore.namespace" }}
+  namespace: {{ .Release.Namespace }}
   
 {{- end -}}
