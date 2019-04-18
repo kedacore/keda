@@ -8,13 +8,6 @@ Expand the name of the chart.
 {{- end -}}
 
 {{/*
-Expand the name of the chart.
-*/}}
-{{- define "kore.namespace" -}}
-    {{- default "kore-system" .Values.namespaceOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by DNS naming spec).
 If release name contains chart name it will be used as a full name
