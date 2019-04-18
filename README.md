@@ -2,12 +2,12 @@
 |--------|--------|
 | master |[![CircleCI](https://circleci.com/gh/Azure/Kore.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/Azure/Kore)|
 
-# Kore -  Event driven autoscaler and scale to zero for Kubernetes
+# Keda -  Event driven autoscaler and scale to zero for Kubernetes
 
-Kore allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.
-Kore serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated CRD.
+Keda allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.
+Keda serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated CRD.
 
-Kore can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
+Keda can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
 
 ## Getting started:
 
