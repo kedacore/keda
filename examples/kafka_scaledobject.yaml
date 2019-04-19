@@ -1,11 +1,11 @@
 apiVersion: kore.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
-  name: functions-example-kafka-scaledobject
+  name: kafka-scaledobject
+  namespace: default
 spec:
   scaleTargetRef:
     deploymentName: azure-functions-deployment
-  triggers:
   pollingInterval: 30
   triggers:
   - type: kafka
@@ -13,4 +13,4 @@ spec:
       brokers: localhost:9092 
       consumerGroup: my-group       # Make sure that this consumer group name is the same one as the one that is consuming topics
       topic: test-topic
-      lagThreshold: '50'
+      lagThreshold: "50"
