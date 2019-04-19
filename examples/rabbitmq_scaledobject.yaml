@@ -9,6 +9,7 @@ spec:
   triggers:
   - type: rabbitMQ
     metadata:
+      # Required
       host: amqp://guest:guest@localhost:5672/
-      queueLength: "20"
       queueName: testqueue
+      queueLength: "20"
