@@ -10,6 +10,7 @@ spec:
   triggers:
   - type: kafka
     metadata:
+      # Required
       brokers: localhost:9092 
       consumerGroup: my-group       # Make sure that this consumer group name is the same one as the one that is consuming topics
       topic: test-topic
