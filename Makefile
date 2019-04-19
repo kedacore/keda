@@ -10,7 +10,7 @@ TARGET_OS?=linux
 ##################################################
 
 BASE_IMAGE_NAME := kore
-IMAGE_TAG       := $(CIRCLE_BRANCH)
+IMAGE_TAG       := lecattar-dev
 IMAGE_NAME      := $(ACR_REGISTRY)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
 
 GIT_VERSION = $(shell git describe --always --abbrev=7)
