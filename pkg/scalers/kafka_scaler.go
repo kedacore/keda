@@ -78,7 +78,7 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 
 	t, err := strconv.ParseInt(metadata[lagThresholdMetricName], 10, 64)
-	if err == nil {
+	if err != nil {
 		return meta, fmt.Errorf("couldn't parse %s", lagThresholdMetricName)
 	}
 	meta.lagThreshold = t
