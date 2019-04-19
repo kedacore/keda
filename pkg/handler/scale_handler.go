@@ -146,14 +146,20 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	hpaName := "kore-hpa-" + deploymentName
 	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
-	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
-	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
+	hpa := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
+	_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(hpa)
 	if apierrors.IsAlreadyExists(err) {
-		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
+		log.Infof("HPA with namespace %s and name %s already exists.Updating..", scaledObjectNamespace, hpaName)
+		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
+		if err != nil {
+			log.Errorf("Error updating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+		} else {
+			log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+		}
 	} else if err != nil {
 		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
 	} else {
-		log.Debugf("Created HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+		log.Infof("Created HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	}
 }
 
