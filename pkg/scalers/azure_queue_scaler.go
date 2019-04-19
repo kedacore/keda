@@ -100,10 +100,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	connectionString := s.getConnectionString()
-	queueName := s.getQueueName()
-
-	queuelen, err := GetAzureQueueLength(ctx, connectionString, queueName)
+	queuelen, err := GetAzureQueueLength(ctx, s.metadata.connection, s.metadata.queueName)
 
 	if err != nil {
 		log.Errorf("error getting queue length %s", err)
