@@ -63,15 +63,15 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 	meta.brokers = strings.Split(metadata["brokers"], ",")
 
-	if metadata["groupName"] == "" {
-		return meta, errors.New("no group name given")
+	if metadata["consumerGroup"] == "" {
+		return meta, errors.New("no consumer group given")
 	}
-	meta.group = metadata["groupName"]
+	meta.group = metadata["consumerGroup"]
 
-	if metadata["topicName"] == "" {
-		return meta, errors.New("no topic name given")
+	if metadata["topic"] == "" {
+		return meta, errors.New("no topic given")
 	}
-	meta.topic = metadata["topicName"]
+	meta.topic = metadata["topic"]
 
 	if metadata[lagThresholdMetricName] == "" {
 		return meta, errors.New("no lag threshold given")
