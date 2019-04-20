@@ -147,7 +147,8 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	hpaName := "kore-hpa-" + deploymentName
 	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
-	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
+	typeSpec := &meta_v1.TypeMeta{APIVersion: "v2beta1"}
+	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec, TypeMeta: *typeSpec}
 	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
 	if apierrors.IsAlreadyExists(err) {
 		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
