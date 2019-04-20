@@ -1,16 +1,16 @@
 apiVersion: kore.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
-  name: k8spython-scaledobject
-  namespace: azure-functions
-  labels:
+  name: azure-queue-scaledobject
+  namespace: default
 spec:
   scaleTargetRef:
-    deploymentName: k8spython-deployment
-  pollingInterval:
+    deploymentName: azurequeue-function
   triggers:
   - type: azure-queue
-    name:
     metadata:
+      # Required
       queueName: functionsqueue
-      queueLength: 5
+      # Optional 
+      connection: STORAGE_CONNECTIONSTRING_ENV_NAME # default AzureWebJobsStorage
+      queueLength: "5" # default 5
