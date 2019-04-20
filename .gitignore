@@ -22,7 +22,8 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
-[Ll]og/
+# Commented out as it does nothing & was removing a vendor folder
+# [Ll]og/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
