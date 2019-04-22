@@ -14,5 +14,4 @@ subjects:
 - kind: ServiceAccount
   name: {{ template "keda.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
-
 {{- end -}}

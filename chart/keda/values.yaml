@@ -8,6 +8,9 @@ image:
 
 replicaCount: 1
 
+customResourceDefinition:
+  create: true
+
 rbac:
   create: true
 

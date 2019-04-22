@@ -1,3 +1,4 @@
+{{- if .Values.customResourceDefinition.create -}}
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -11,3 +12,4 @@ spec:
     kind: ScaledObject
     plural: scaledobjects
   scope: Namespaced
+{{- end -}}
