@@ -3,6 +3,8 @@ kind: ScaledObject
 metadata:
   name: rabbitmq-scaledobject
   namespace: default
+  label:
+    deploymentName: rabbitmq-deployment
 spec:
   scaleTargetRef:
     deploymentName: rabbitmq-deployment
