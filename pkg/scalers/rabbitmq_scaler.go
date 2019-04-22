@@ -131,8 +131,8 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{
 		{
 			External: &v2beta1.ExternalMetricSource{
-				MetricName:  rabbitQueueLengthMetricName,
-				TargetValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
+				MetricName:         rabbitQueueLengthMetricName,
+				TargetAverageValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
 			},
 			Type: rabbitMetricType,
 		},

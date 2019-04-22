@@ -198,8 +198,8 @@ func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{
 		{
 			External: &v2beta1.ExternalMetricSource{
-				MetricName:  lagThresholdMetricName,
-				TargetValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
+				MetricName:         lagThresholdMetricName,
+				TargetAverageValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
 			},
 			Type: kafkaMetricType,
 		},
