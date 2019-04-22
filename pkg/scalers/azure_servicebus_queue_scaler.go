@@ -18,9 +18,6 @@ type azureServiceBusQueueScaler struct {
 
 // NewAzureServiceBusQueueScaler creates a new AzureServiceBusQueueScaler
 func NewAzureServiceBusQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	log.Warnf("sbq metadata %v", metadata)
-	log.Warnf("sbq resolvedenv %v", resolvedEnv)
-
 	meta, err := parseAzureQueueMetadata(metadata, resolvedEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus queue metadata: %s", err)
