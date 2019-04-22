@@ -469,7 +469,7 @@ func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEn
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
-	case "serviceBusTrigger": // TODO in func core tools probably: define type for this
+	case "azure-servicebus":
 		return scalers.NewAzureServiceBusQueueScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
