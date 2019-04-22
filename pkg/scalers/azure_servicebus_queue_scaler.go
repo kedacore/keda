@@ -50,7 +50,7 @@ func (s *azureServiceBusQueueScaler) Close() error {
 // Returns an external metric spec for scaling. Follow this to see where it goes - it only uses default queue length target
 func (s *azureServiceBusQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetValue: targetQueueLengthQty}
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
 }
