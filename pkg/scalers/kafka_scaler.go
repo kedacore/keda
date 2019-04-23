@@ -31,8 +31,9 @@ type kafkaMetadata struct {
 }
 
 const (
-	lagThresholdMetricName = "lagThreshold"
-	kafkaMetricType        = "External"
+	lagThresholdMetricName   = "lagThreshold"
+	kafkaMetricType          = "External"
+	defaultKafkaLagThreshold = 10
 )
 
 // NewKafkaScaler creates a new kafkaScaler
@@ -73,15 +74,15 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 	meta.topic = metadata["topic"]
 
-	if metadata[lagThresholdMetricName] == "" {
-		return meta, errors.New("no lag threshold given")
-	}
+	meta.lagThreshold = defaultKafkaLagThreshold
 
-	t, err := strconv.ParseInt(metadata[lagThresholdMetricName], 10, 64)
-	if err != nil {
-		return meta, fmt.Errorf("couldn't parse %s", lagThresholdMetricName)
+	if val, ok := metadata[lagThresholdMetricName]; ok {
+		t, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
+		}
+		meta.lagThreshold = t
 	}
-	meta.lagThreshold = t
 
 	return meta, nil
 }
