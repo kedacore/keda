@@ -473,7 +473,7 @@ func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewAzureServiceBusQueueScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
-	case "rabbitMQ":
+	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
