@@ -31,10 +31,8 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		scaler := &kafkaScaler{
-			Metadata: testData.metadata,
-		}
-		meta, err := scaler.parseKafkaMetadata()
+
+		meta, err := parseKafkaMetadata(testData.metadata)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

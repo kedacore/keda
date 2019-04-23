@@ -10,12 +10,42 @@
   revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 
 [[projects]]
+  digest = "1:6530fc7461f14a825c6903d7611be9e180370a180ca94555c04690ffaf33bdd5"
+  name = "github.com/Azure/azure-amqp-common-go"
+  packages = [
+    ".",
+    "auth",
+    "cbs",
+    "conn",
+    "internal",
+    "internal/tracing",
+    "log",
+    "rpc",
+    "sas",
+    "uuid",
+  ]
+  pruneopts = "NUT"
+  revision = "b5ea4829bce0d96bc7b4d11bfc8ccd2afdf0ec4a"
+  version = "v1.1.4"
+
+[[projects]]
   digest = "1:d2ccb697dc13c8fbffafa37baae97594d5592ae8f7e113471084137315536e2b"
   name = "github.com/Azure/azure-pipeline-go"
   packages = ["pipeline"]
   pruneopts = "NUT"
   revision = "b8e3409182fd52e74f7d7bdfbff5833591b3b655"
   version = "v0.1.8"
+
+[[projects]]
+  digest = "1:7096eaa0aa17ad9ec8c27029d88eb3a6b7158a279f66034d3483ef66bd50ce29"
+  name = "github.com/Azure/azure-service-bus-go"
+  packages = [
+    ".",
+    "atom",
+  ]
+  pruneopts = "NUT"
+  revision = "551698499ac9fac20d8c50faad5749967e685926"
+  version = "v0.4.1"
 
 [[projects]]
   digest = "1:443f92267988b2eca0e00bbb74f7387202fe89a799bba70a8ff872213f46a5d3"
@@ -35,6 +65,22 @@
   ]
   pruneopts = "NUT"
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
+
+[[projects]]
+  digest = "1:6f002d621e5ed19423eaac8b482b54508d5d6773f586f0839af885884dee1a36"
+  name = "github.com/Azure/go-autorest"
+  packages = [
+    "autorest",
+    "autorest/adal",
+    "autorest/azure",
+    "autorest/date",
+    "autorest/to",
+    "logger",
+    "version",
+  ]
+  pruneopts = "NUT"
+  revision = "4b7f49dc5db2e1e6d528524d269b4181981a7ebf"
+  version = "v11.1.1"
 
 [[projects]]
   digest = "1:9c8312fb77e9c27242307176963dd65c02ad03016f7696026a83214fc45c6566"
@@ -135,6 +181,14 @@
   pruneopts = "NUT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:7a6852b35eb5bbc184561443762d225116ae630c26a7c4d90546619f1e7d2ad2"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   digest = "1:54ebeaf9c3bea790a6bd7e04ecf4c05a5c91b0f494cfd0b9921e823c744c12ed"
@@ -422,6 +476,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:a45ae66dea4c899d79fceb116accfa1892105c251f0dcd9a217ddc276b42ec68"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
+
+[[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
   name = "github.com/modern-go/concurrent"
   packages = ["."]
@@ -436,6 +498,18 @@
   pruneopts = "NUT"
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
+
+[[projects]]
+  digest = "1:6846140b3f116579680eefdc17145f2bcf064b68deb9febf86b4419a454049af"
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log",
+  ]
+  pruneopts = "NUT"
+  revision = "659c90643e714681897ec2521c60567dd21da733"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:93b1d84c5fa6d1ea52f4114c37714cddd84d5b78f151b62bb101128dd51399bf"
@@ -471,6 +545,14 @@
   pruneopts = "NUT"
   revision = "062282ea0dcff40c9fb8525789eef9644b1fbd6e"
   version = "v2.1.0"
+
+[[projects]]
+  digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:00e5485f002096d8284d57ce59acb8e08121a5accdf92777ca7368bf9e5e18e8"
@@ -547,6 +629,20 @@
   packages = ["codec"]
   pruneopts = "NUT"
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
+
+[[projects]]
+  digest = "1:bd58b0ae20eaa5ffcb670ce46ff2bed9b9867094fdb3e6b867741d3d02957f45"
+  name = "go.opencensus.io"
+  packages = [
+    ".",
+    "internal",
+    "trace",
+    "trace/internal",
+    "trace/tracestate",
+  ]
+  pruneopts = "NUT"
+  revision = "75c0cca22312e51bfd4fafdbe9197ae399e18b38"
+  version = "v0.20.2"
 
 [[projects]]
   branch = "master"
@@ -1135,10 +1231,22 @@
   pruneopts = "NUT"
   revision = "3954d62a524dad50e7c4bcf91a26eeef011040e2"
 
+[[projects]]
+  digest = "1:ed7442b639809b5de43b3b077a906132e8029666ae19b9de57016642a6e4a936"
+  name = "pack.ag/amqp"
+  packages = [
+    ".",
+    "internal/testconn",
+  ]
+  pruneopts = "NUT"
+  revision = "a69a1d51f8e7b55567f8d190a8fab04503a97735"
+  version = "v0.11.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Azure/azure-service-bus-go",
     "github.com/Azure/azure-storage-queue-go/azqueue",
     "github.com/Shopify/sarama",
     "github.com/Sirupsen/logrus",
