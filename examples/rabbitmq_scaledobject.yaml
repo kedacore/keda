@@ -7,7 +7,7 @@ spec:
   scaleTargetRef:
     deploymentName: rabbitmq-deployment
   triggers:
-  - type: rabbitMQ
+  - type: rabbitmq
     metadata:
       # Required
       host: amqp://guest:guest@localhost:5672/
