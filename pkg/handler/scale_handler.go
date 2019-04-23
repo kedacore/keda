@@ -46,6 +46,7 @@ func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Inter
 	return handler
 }
 
+// TODO confusing naming switching from isUpdate (controller) -> isDue (here)[]
 // WatchScaledObjectWithContext runs a handleScaleLoop go-routine for the scaledObject
 func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, isDue bool) {
 	h.createHPAForNewScaledObject(ctx, scaledObject)
@@ -58,9 +59,9 @@ func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *kore_v1alpha1.Scal
 }
 
 // GetScaledObjectMetrics is used by the  metric adapter in provider.go to get the value for a metric for a scaled object
-func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector labels.Selector, merticName string) ([]external_metrics.ExternalMetricValue, error) {
+func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector labels.Selector, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	// get the scaled objects matching namespace and labels
-	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, merticName, metricSelector.String())
+	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, metricName, metricSelector.String())
 	scaledObjectQuerier := h.koreClient.KoreV1alpha1().ScaledObjects(namespace)
 	scaledObjects, err := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
 	if err != nil {
@@ -73,7 +74,7 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
 	scalers, _ := h.getScalers(scaledObject)
 	for _, scaler := range scalers {
-		metrics, err := scaler.GetMetrics(context.TODO(), merticName, metricSelector)
+		metrics, err := scaler.GetMetrics(context.TODO(), metricName, metricSelector)
 		if err != nil {
 			log.Errorf("error getting metric for scaler : %s", err)
 		} else {
@@ -146,7 +147,8 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	hpaName := "kore-hpa-" + deploymentName
 	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
-	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec}
+	typeSpec := &meta_v1.TypeMeta{APIVersion: "v2beta1"}
+	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec, TypeMeta: *typeSpec}
 	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
 	if apierrors.IsAlreadyExists(err) {
 		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
@@ -157,7 +159,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 	}
 }
 
-// This method blocks for ever and checks the scaledObject based on its pollingInterval
+// This method blocks forever and checks the scaledObject based on its pollingInterval
 // if isDue is set to true, the method will check the scaledObject right away. Otherwise
 // it'll wait for pollingInterval then check.
 func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, isDue bool) {
@@ -204,7 +206,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Scallr %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			log.Debugf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
 		scaler.Close()
 	}
@@ -224,7 +226,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
 		// there are no active triggers, but the deployment has replicas.
 		// AND
-		// There is no minimum configured ot minumum is set to ZERO. HPA will handles other scale down operations
+		// There is no minimum configured or minumum is set to ZERO. HPA will handles other scale down operations
 
 		// Try to scale it down.
 		h.scaleToZero(deployment, scaledObject)
@@ -467,6 +469,8 @@ func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEn
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
+	case "azure-servicebus":
+		return scalers.NewAzureServiceBusQueueScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitMQ":
