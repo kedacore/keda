@@ -99,7 +99,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureQueueScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := GetAzureQueueLength(ctx, s.metadata.connection, s.metadata.queueName)
 
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, merticName string, me
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: merticName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
