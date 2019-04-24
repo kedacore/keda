@@ -93,6 +93,9 @@ spec:
           name: https
         - containerPort: 8080
           name: http
+        env:
+        - name: SSL_CERT_FILE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         volumeMounts:
         - mountPath: /tmp
           name: temp-vol
