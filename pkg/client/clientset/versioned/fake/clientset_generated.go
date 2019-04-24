@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	korev1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kore/v1alpha1"
-	fakekorev1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kore/v1alpha1/fake"
+	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1"
+	fakekedav1alpha1 "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -71,12 +71,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// KoreV1alpha1 retrieves the KoreV1alpha1Client
-func (c *Clientset) KoreV1alpha1() korev1alpha1.KoreV1alpha1Interface {
-	return &fakekorev1alpha1.FakeKoreV1alpha1{Fake: &c.Fake}
+// KedaV1alpha1 retrieves the KedaV1alpha1Client
+func (c *Clientset) KedaV1alpha1() kedav1alpha1.KedaV1alpha1Interface {
+	return &fakekedav1alpha1.FakeKedaV1alpha1{Fake: &c.Fake}
 }
 
-// Kore retrieves the KoreV1alpha1Client
-func (c *Clientset) Kore() korev1alpha1.KoreV1alpha1Interface {
-	return &fakekorev1alpha1.FakeKoreV1alpha1{Fake: &c.Fake}
+// Keda retrieves the KedaV1alpha1Client
+func (c *Clientset) Keda() kedav1alpha1.KedaV1alpha1Interface {
+	return &fakekedav1alpha1.FakeKedaV1alpha1{Fake: &c.Fake}
 }

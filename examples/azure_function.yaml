@@ -6,7 +6,7 @@ spec:
   selector:
     matchLabels:
       app: azure-functions
-  replicas: 0 # start with 0. The kore controller should scale that out to 1
+  replicas: 0 # start with 0. The keda controller should scale that out to 1
   template:
     metadata:
       labels:

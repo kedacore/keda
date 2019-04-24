@@ -5,7 +5,7 @@ import (
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
+	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	"github.com/kelseyhightower/envconfig"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -44,7 +44,7 @@ func GetClients() (*clientset.Clientset, *kubernetes.Clientset, error) {
 		return nil, nil, err
 	}
 
-	koreClient, err := clientset.NewForConfig(cfg)
+	kedaClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -54,5 +54,5 @@ func GetClients() (*clientset.Clientset, *kubernetes.Clientset, error) {
 		return nil, nil, err
 	}
 
-	return koreClient, kubeClient, nil
+	return kedaClient, kubeClient, nil
 }
