@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/Azure/Kore/pkg/client/informers/externalversions/internalinterfaces"
-	kore "github.com/Azure/Kore/pkg/client/informers/externalversions/kore"
+	versioned "github.com/kedacore/keda/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/kedacore/keda/pkg/client/informers/externalversions/internalinterfaces"
+	keda "github.com/kedacore/keda/pkg/client/informers/externalversions/keda"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Kore() kore.Interface
+	Keda() keda.Interface
 }
 
-func (f *sharedInformerFactory) Kore() kore.Interface {
-	return kore.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Keda() keda.Interface {
+	return keda.New(f, f.namespace, f.tweakListOptions)
 }

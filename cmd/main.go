@@ -4,12 +4,12 @@ import (
 	"flag"
 	"time"
 
-	adapter "github.com/Azure/Kore/pkg/adapter"
-	"github.com/Azure/Kore/pkg/controller"
-	"github.com/Azure/Kore/pkg/handler"
-	"github.com/Azure/Kore/pkg/kubernetes"
-	"github.com/Azure/Kore/pkg/signals"
+	"github.com/kedacore/keda/pkg/controller"
+	"github.com/kedacore/keda/pkg/handler"
+	"github.com/kedacore/keda/pkg/kubernetes"
+	"github.com/kedacore/keda/pkg/signals"
 	log "github.com/Sirupsen/logrus"
+	adapter "github.com/kedacore/keda/pkg/adapter"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	// workaround go dep management system
@@ -18,7 +18,7 @@ import (
 	_ "k8s.io/gengo/parser"
 )
 
-const koreVersion = "0.0.1"
+const kedaVersion = "0.0.1"
 
 var (
 	// GitCommit is set by the build using -ldflags "-X main.GitCommit=$GIT_COMMIT"
@@ -31,14 +31,14 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	koreClient, kubeClient, err := kubernetes.GetClients()
+	kedaClient, kubeClient, err := kubernetes.GetClients()
 	if err != nil {
 		panic(err)
 	}
 
 	ctx := signals.Context()
-	scaleHandler := handler.NewScaleHandler(koreClient, kubeClient)
-	go controller.NewController(koreClient, kubeClient, scaleHandler).Run(ctx)
+	scaleHandler := handler.NewScaleHandler(kedaClient, kubeClient)
+	go controller.NewController(kedaClient, kubeClient, scaleHandler).Run(ctx)
 	if err := adapter.NewAdapter(scaleHandler).Run(ctx.Done()); err != nil {
 		log.Fatalf("unable to run custom metrics adapter: %v", err)
 	}
@@ -49,7 +49,7 @@ func main() {
 }
 
 func printVersion() {
-	log.Infof("Kore version: %s", koreVersion)
+	log.Infof("Keda version: %s", kedaVersion)
 	log.Infof("Git commit: %s", GitCommit)
 }
 
