@@ -1,7 +1,7 @@
 #! /bin/bash
 
-# Remove Kore
-helm delete --purge kore-test-release
+# Remove Keda
+helm delete --purge keda-test-release
 kubectl delete crd scaledobjects.kore.k8s.io
 
 # Remove Tiller
