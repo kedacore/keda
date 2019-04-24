@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
-	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	koreinformer_v1alpha1 "github.com/Azure/Kore/pkg/client/informers/externalversions/kore/v1alpha1"
-	"github.com/Azure/Kore/pkg/handler"
+	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
+	kedainformer_v1alpha1 "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1"
+	"github.com/kedacore/keda/pkg/handler"
 	log "github.com/Sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,19 +21,19 @@ type Controller interface {
 type controller struct {
 	scaledObjectsInformer cache.SharedInformer
 	ctx                   context.Context
-	koreClient            clientset.Interface
+	kedaClient            clientset.Interface
 	kubeClient            kubernetes.Interface
 	scaleHandler          *handler.ScaleHandler
 	scaledObjectsContexts *sync.Map
 }
 
-func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *handler.ScaleHandler) Controller {
+func NewController(kedaClient clientset.Interface, kubeClient kubernetes.Interface, scaleHandler *handler.ScaleHandler) Controller {
 	c := &controller{
-		koreClient:   koreClient,
+		kedaClient:   kedaClient,
 		kubeClient:   kubeClient,
 		scaleHandler: scaleHandler,
-		scaledObjectsInformer: koreinformer_v1alpha1.NewScaledObjectInformer(
-			koreClient,
+		scaledObjectsInformer: kedainformer_v1alpha1.NewScaledObjectInformer(
+			kedaClient,
 			meta_v1.NamespaceAll,
 			0,
 			cache.Indexers{},
@@ -46,8 +46,8 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 			c.syncScaledObject(obj, false)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			new := newObj.(*kore_v1alpha1.ScaledObject)
-			old := oldObj.(*kore_v1alpha1.ScaledObject)
+			new := newObj.(*keda_v1alpha1.ScaledObject)
+			old := oldObj.(*keda_v1alpha1.ScaledObject)
 			if new.ResourceVersion == old.ResourceVersion {
 				return
 			}
@@ -59,7 +59,7 @@ func NewController(koreClient clientset.Interface, kubeClient kubernetes.Interfa
 }
 
 func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
-	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
+	scaledObject := obj.(*keda_v1alpha1.ScaledObject)
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
 		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
@@ -86,7 +86,7 @@ func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
 }
 
 func (c *controller) syncDeletedScaledObject(obj interface{}) {
-	scaledObject := obj.(*kore_v1alpha1.ScaledObject)
+	scaledObject := obj.(*keda_v1alpha1.ScaledObject)
 	if scaledObject == nil {
 		log.Errorf("Called syncDeletedScaledObject with an invalid scaledObject ptr")
 		return
