@@ -7,7 +7,7 @@ jobs:
         auth:
             username: $ACR_USERNAME
             password: $ACR_PASSWORD
-    working_directory: /go/src/github.com/Azure/Kore
+    working_directory: /go/src/github.com/kedacore/keda
     steps:
       - checkout
       - setup_remote_docker
@@ -27,24 +27,24 @@ jobs:
         auth:
             username: $ACR_USERNAME
             password: $ACR_PASSWORD
-    working_directory: /go/src/github.com/Azure/Kore
+    working_directory: /go/src/github.com/kedacore/keda
     steps:
       - checkout
       - run: make e2e-test
-  
+
 
 workflows:
   version: 2
   commit:
     jobs:
       - build
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - e2e
+  # nightly:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 0 * * *"
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #   jobs:
+  #     - e2e

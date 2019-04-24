@@ -19,7 +19,7 @@ spec:
       app: test-deployment
   template:
     metadata:
-      name: 
+      name:
       namespace:
       labels:
         app: test-deployment
@@ -27,8 +27,8 @@ spec:
       containers:
       - name: test-deployment
         image: ahmelsayed/queue-consumer:latest
-        resources: 
-        ports: 
+        resources:
+        ports:
         env:
         - name: FUNCTIONS_WORKER_RUNTIME
           value: node
@@ -39,7 +39,7 @@ spec:
               key: AzureWebJobsStorage
 
 ---
-apiVersion: kore.k8s.io/v1alpha1
+apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject

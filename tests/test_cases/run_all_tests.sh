@@ -17,7 +17,7 @@ function init_result_xml {
     rm -f $RESULT_XML_FILE_NAME
     text_count=$(find $DIR/../test_cases/ -mindepth 1 -maxdepth 1 -type d | wc -l)
     echo '<?xml version="1.0" encoding="UTF-8"?>' >> $RESULT_XML_FILE_NAME
-    echo '<testsuite name="Kore end to end tests"' >> $RESULT_XML_FILE_NAME
+    echo '<testsuite name="Keda end to end tests"' >> $RESULT_XML_FILE_NAME
     echo "    tests=\"$test_count\"" >> $RESULT_XML_FILE_NAME
     echo '    id="0"' >> $RESULT_XML_FILE_NAME
     echo '    package="test">' >> $RESULT_XML_FILE_NAME

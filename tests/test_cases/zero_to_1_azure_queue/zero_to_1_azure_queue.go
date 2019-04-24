@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Azure/Kore/pkg/scalers"
+	"github.com/kedacore/keda/pkg/scalers"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 )

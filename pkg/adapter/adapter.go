@@ -4,8 +4,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/Azure/Kore/pkg/handler"
-	koreprov "github.com/Azure/Kore/pkg/provider"
+	"github.com/kedacore/keda/pkg/handler"
+	kedaprov "github.com/kedacore/keda/pkg/provider"
 	log "github.com/Sirupsen/logrus"
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 )
@@ -32,7 +32,7 @@ func NewAdapter(scaleHandler *handler.ScaleHandler) *Adapter {
 		log.Fatalf("unable to construct discovery REST mapper: %v", err)
 	}
 
-	provider := koreprov.NewProvider(client, mapper, scaleHandler)
+	provider := kedaprov.NewProvider(client, mapper, scaleHandler)
 	a.WithExternalMetrics(provider)
 	return a
 }
