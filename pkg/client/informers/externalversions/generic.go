@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,9 +52,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=kore.k8s.io, Version=v1alpha1
+	// Group=keda.k8s.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("scaledobjects"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kore().V1alpha1().ScaledObjects().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Keda().V1alpha1().ScaledObjects().Informer()}, nil
 
 	}
 

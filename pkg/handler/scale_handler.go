@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	kore_v1alpha1 "github.com/Azure/Kore/pkg/apis/kore/v1alpha1"
-	clientset "github.com/Azure/Kore/pkg/client/clientset/versioned"
-	"github.com/Azure/Kore/pkg/scalers"
+	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
+	"github.com/kedacore/keda/pkg/scalers"
 	log "github.com/Sirupsen/logrus"
 	apps_v1 "k8s.io/api/apps/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -23,7 +23,7 @@ import (
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler struct {
-	koreClient clientset.Interface
+	kedaClient clientset.Interface
 	kubeClient kubernetes.Interface
 }
 
@@ -37,9 +37,9 @@ const (
 )
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
+func NewScaleHandler(kedaClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
 	handler := &ScaleHandler{
-		koreClient: koreClient,
+		kedaClient: kedaClient,
 		kubeClient: kubeClient,
 	}
 
@@ -48,13 +48,13 @@ func NewScaleHandler(koreClient clientset.Interface, kubeClient kubernetes.Inter
 
 // TODO confusing naming switching from isUpdate (controller) -> isDue (here)[]
 // WatchScaledObjectWithContext runs a handleScaleLoop go-routine for the scaledObject
-func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, isDue bool) {
+func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
 	h.createHPAForNewScaledObject(ctx, scaledObject)
 	go h.handleScaleLoop(ctx, scaledObject, isDue)
 }
 
 // HandleScaledObjectDelete handles any cleanup when a scaled object is deleted
-func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *keda_v1alpha1.ScaledObject) {
 	h.deleteHPAForScaledObject(scaledObject)
 }
 
@@ -62,7 +62,7 @@ func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *kore_v1alpha1.Scal
 func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector labels.Selector, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	// get the scaled objects matching namespace and labels
 	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, metricName, metricSelector.String())
-	scaledObjectQuerier := h.koreClient.KoreV1alpha1().ScaledObjects(namespace)
+	scaledObjectQuerier := h.kedaClient.KedaV1alpha1().ScaledObjects(namespace)
 	scaledObjects, err := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
 	if err != nil {
 		return nil, err
@@ -87,14 +87,14 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 	return matchingMetrics, nil
 }
 
-func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
 		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 		return
 	}
 	scaledObjectNamespace := scaledObject.GetNamespace()
-	hpaName := "kore-hpa-" + deploymentName
+	hpaName := "keda-hpa-" + deploymentName
 	deleteOptions := &meta_v1.DeleteOptions{}
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
 	if apierrors.IsNotFound(err) {
@@ -106,7 +106,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *kore_v1alpha1.Scal
 	}
 }
 
-func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
 		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
@@ -144,7 +144,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 
 	kvd := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
 	scaledObjectNamespace := scaledObject.GetNamespace()
-	hpaName := "kore-hpa-" + deploymentName
+	hpaName := "keda-hpa-" + deploymentName
 	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
 	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
 	typeSpec := &meta_v1.TypeMeta{APIVersion: "v2beta1"}
@@ -162,7 +162,7 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 // This method blocks forever and checks the scaledObject based on its pollingInterval
 // if isDue is set to true, the method will check the scaledObject right away. Otherwise
 // it'll wait for pollingInterval then check.
-func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject, isDue bool) {
+func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
 	h.handleScale(ctx, scaledObject)
 
 	var pollingInterval time.Duration
@@ -195,7 +195,7 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *kore_v
 
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
-func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
 	isScaledObjectActive := false
 
 	scalers, deployment := h.getScalers(scaledObject)
@@ -216,7 +216,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kore_v1alp
 	return
 }
 
-func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject, isActive bool) {
+func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject, isActive bool) {
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
@@ -241,8 +241,8 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 	}
 }
 
-func (h *ScaleHandler) updateScaledObject(scaledObject *kore_v1alpha1.ScaledObject) error {
-	_, err := h.koreClient.KoreV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
+func (h *ScaleHandler) updateScaledObject(scaledObject *keda_v1alpha1.ScaledObject) error {
+	_, err := h.kedaClient.KedaV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
 	if err != nil {
 		log.Errorf("Error updating scaledObject (%s/%s) status: %s", scaledObject.GetNamespace(), scaledObject.GetName(), err.Error())
 	}
@@ -251,7 +251,7 @@ func (h *ScaleHandler) updateScaledObject(scaledObject *kore_v1alpha1.ScaledObje
 
 // A deployment will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
-func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject) {
 	var cooldownPeriod time.Duration
 
 	if scaledObject.Spec.CooldownPeriod != nil {
@@ -260,7 +260,7 @@ func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject 
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
-	// LastActiveTime can be nil if the deployment was scaled outside of Kore.
+	// LastActiveTime can be nil if the deployment was scaled outside of Keda.
 	// In this case we will ignore the cooldown period and scale it down
 	if scaledObject.Status.LastActiveTime == nil ||
 		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
@@ -279,7 +279,7 @@ func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject 
 	}
 }
 
-func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObject *kore_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
 	if scaledObject.Spec.MinReplicaCount != nil {
 		deployment.Spec.Replicas = scaledObject.Spec.MinReplicaCount
@@ -432,7 +432,7 @@ func (h *ScaleHandler) resolveConfigValue(configKeyRef *core_v1.ConfigMapKeySele
 	return string(configCollection.Data[keyName]), nil
 }
 
-func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment) {
+func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment) {
 	scalers := []scalers.Scaler{}
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
@@ -465,7 +465,7 @@ func (h *ScaleHandler) getScalers(scaledObject *kore_v1alpha1.ScaledObject) ([]s
 	return scalers, deployment
 }
 
-func (h *ScaleHandler) getScaler(trigger kore_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
