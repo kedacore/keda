@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	korev1alpha1 "github.com/Azure/Kore/pkg/client/clientset/versioned/typed/kore/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -27,27 +27,27 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	KoreV1alpha1() korev1alpha1.KoreV1alpha1Interface
+	KedaV1alpha1() kedav1alpha1.KedaV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Kore() korev1alpha1.KoreV1alpha1Interface
+	Keda() kedav1alpha1.KedaV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	koreV1alpha1 *korev1alpha1.KoreV1alpha1Client
+	kedaV1alpha1 *kedav1alpha1.KedaV1alpha1Client
 }
 
-// KoreV1alpha1 retrieves the KoreV1alpha1Client
-func (c *Clientset) KoreV1alpha1() korev1alpha1.KoreV1alpha1Interface {
-	return c.koreV1alpha1
+// KedaV1alpha1 retrieves the KedaV1alpha1Client
+func (c *Clientset) KedaV1alpha1() kedav1alpha1.KedaV1alpha1Interface {
+	return c.kedaV1alpha1
 }
 
-// Deprecated: Kore retrieves the default version of KoreClient.
+// Deprecated: Keda retrieves the default version of KedaClient.
 // Please explicitly pick a version.
-func (c *Clientset) Kore() korev1alpha1.KoreV1alpha1Interface {
-	return c.koreV1alpha1
+func (c *Clientset) Keda() kedav1alpha1.KedaV1alpha1Interface {
+	return c.kedaV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -66,7 +66,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.koreV1alpha1, err = korev1alpha1.NewForConfig(&configShallowCopy)
+	cs.kedaV1alpha1, err = kedav1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.koreV1alpha1 = korev1alpha1.NewForConfigOrDie(c)
+	cs.kedaV1alpha1 = kedav1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -91,7 +91,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.koreV1alpha1 = korev1alpha1.New(c)
+	cs.kedaV1alpha1 = kedav1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

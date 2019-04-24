@@ -6,6 +6,6 @@ DIR="$(dirname $0)"
 
 
 $DIR/../vendor/k8s.io/code-generator/generate-groups.sh all \
-    github.com/Azure/Kore/pkg/client \
-    github.com/Azure/Kore/pkg/apis \
-    kore:v1alpha1
+    github.com/kedacore/keda/pkg/client \
+    github.com/kedacore/keda/pkg/apis \
+    keda:v1alpha1
