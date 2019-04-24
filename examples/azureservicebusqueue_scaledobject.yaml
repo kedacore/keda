@@ -1,4 +1,4 @@
-apiVersion: kore.k8s.io/v1alpha1
+apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
   name: azure-servicebus-queue-scaledobject
@@ -11,6 +11,6 @@ spec:
     metadata:
       # Required
       queueName: functions-sbqueue
-      # Optional 
+      # Optional
       connection: SERVICEBUS_CONNECTIONSTRING_ENV_NAME # default AzureWebJobsStorage
       queueLength: "5" # default 5

@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "keda.labels" . | nindent 4 }}
+  name: {{ template "keda.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      name: {{ template "keda.fullname" . }}
+      instance: {{ template "keda.fullname" . }}-instance
+  template:
+    metadata:
+      labels:
+        name: {{ template "keda.fullname" . }}
+        instance: {{ template "keda.fullname" . }}-instance
+    spec:
+      serviceAccountName: {{ template "keda.serviceAccountName" . }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+        - /adapter
+        - --secure-port=6443
+        - --logtostderr=true
+        - --v=10
+        - --log-level={{ .Values.logLevel }}
+        ports:
+        - containerPort: 6443
+          name: https
+        - containerPort: 8080
+          name: http
+      imagePullSecrets:
+      - name: {{ template "keda.fullname" . }}-docker-auth

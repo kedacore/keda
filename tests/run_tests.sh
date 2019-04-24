@@ -15,8 +15,8 @@ set +e
 $DIR/cleanup.sh
 set -e
 
-# # Install Kore
-$DIR/install_kore.sh
+# # Install Keda
+$DIR/install_keda.sh
 
 # Run tests
 $DIR/test_cases/run_all_tests.sh
