@@ -59,10 +59,10 @@ func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error)
 func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if metadata["brokers"] == "" {
-		return meta, errors.New("no brokers given")
+	if metadata["brokerList"] == "" {
+		return meta, errors.New("no brokerList given")
 	}
-	meta.brokers = strings.Split(metadata["brokers"], ",")
+	meta.brokers = strings.Split(metadata["brokerList"], ",")
 
 	if metadata["consumerGroup"] == "" {
 		return meta, errors.New("no consumer group given")
