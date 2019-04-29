@@ -16,16 +16,16 @@ type parseKafkaMetadataTestData struct {
 
 // A complete valid metadata example for reference
 var validMetadata = map[string]string{
-	"brokers":   "broker1:9092,broker2:9092",
-	"groupName": "my-group",
-	"topicName": "my-topic",
+	"brokerList": "broker1:9092,broker2:9092",
+	"groupName":  "my-group",
+	"topicName":  "my-topic",
 }
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{}, true, 0, nil, "", ""},
-	{map[string]string{"brokers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
-	{map[string]string{"brokers": "foo:9092,bar:9092"}, true, 2, []string{"foo:9092", "bar:9092"}, "", ""},
-	{map[string]string{"brokers": "a", "groupName": "my-group"}, true, 1, []string{"a"}, "my-group", ""},
+	{map[string]string{"brokerList": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
+	{map[string]string{"brokerList": "foo:9092,bar:9092"}, true, 2, []string{"foo:9092", "bar:9092"}, "", ""},
+	{map[string]string{"brokerList": "a", "groupName": "my-group"}, true, 1, []string{"a"}, "my-group", ""},
 	{validMetadata, false, 2, []string{"broker1:9092", "broker2:9092"}, "my-group", "my-topic"},
 }
 
