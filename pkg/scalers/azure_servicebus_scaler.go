@@ -3,6 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
+
+	servicebus "github.com/Azure/azure-service-bus-go"
 
 	log "github.com/Sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -10,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	servicebus "github.com/Azure/azure-service-bus-go"
 )
 
 type EntityType int
@@ -140,5 +142,39 @@ func (s *AzureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func GetAzureServiceBusSubLength(ctx context.Context, connectionString, topicName, subscriptionName string) (int32, error) {
+// Returns the length of the queue or subscription
+func (s *AzureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (int32, error) {
+	// get namespace
+	namespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
+	if err != nil {
+		return -1, err
+	}
+
+	// switch case for queue vs topic here
+	// return a servicebus entity
+	entity := servicebus.Entity{}
+
+	switch s.metadata.entityType {
+	case Queue:
+	case Subscription:
+	}
+
+	// return QueueEntitity.CountDetails.ActiveMessageCount
+	return *entity.CountDetails.ActiveMessageCount, nil
+}
+
+func GetQueueEntityFromNamespace(ctx context.Context, ns servicebus.Namespace, queueName string) (servicebus.Entity, error) {
+	// old code from az_sb_queue.go
+	// get queue manager from namespace
+	queueManager := namespace.NewQueueManager()
+
+	// queue manager.get(ctx, queueName) -> QueueEntitity
+	entity, err := queueManager.Get(ctx, queueName)
+	if err != nil {
+		return nil, err
+	}
+}
+
+func GetSubscriptionEntityFromNamespace(ctx context.Context, ns servicebus.Namespace, topicName, subscriptionName string) (servicebus.Entity, error) {
+	// TODO
 }
