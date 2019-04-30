@@ -62,7 +62,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQue
 	}
 
 	connectionSetting := defaultConnectionSetting
-	if val, ok := metadata["connection"]; ok {
+	if val, ok := metadata["connection"]; ok && val != "" {
 		connectionSetting = val
 	}
 
