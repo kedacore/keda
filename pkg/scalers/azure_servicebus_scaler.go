@@ -13,23 +13,26 @@ import (
 	servicebus "github.com/Azure/azure-service-bus-go"
 )
 
-type azureServiceBusMetadata struct {
-	targetDepth 	  int
-	queueName         string
-	topicName 		  string
-	subscriptionName  string
-	connection        string
-	entityType        string // Topic or Queue
-}
+type EntityType int
+
+const (
+	None         EntityType = 0
+	Queue        EntityType = 1
+	Subscription EntityType = 2
+)
 
 type azureServiceBusScaler struct {
 	metadata *azureServiceBusMetadata
 }
 
-const (
-	queueEntity = "QUEUE"
-	subscriptionEntity = "SUBSCRIPTION"
-)
+type azureServiceBusMetadata struct {
+	targetLength     int
+	queueName        string
+	topicName        string
+	subscriptionName string
+	connection       string
+	entityType       EntityType
+}
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
 func NewAzureServiceBusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
@@ -43,16 +46,18 @@ func NewAzureServiceBusScaler(resolvedEnv, metadata map[string]string) (Scaler, 
 	}, nil
 }
 
+// Creates an azureServiceBusMetadata struct from input metadata/env variables
 func parseAzureServiceBusMetadata(metadata, resolvedEnv map[string]string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
-	meta.targetDepth = defaultTargetQueueLength
+	meta.entityType = None
+	meta.targetLength = defaultTargetQueueLength
 
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err)
 		} else {
-			meta.targetDepth = queueLength
+			meta.targetLength = queueLength
 		}
 	}
 
@@ -63,7 +68,7 @@ func parseAzureServiceBusMetadata(metadata, resolvedEnv map[string]string) (*azu
 
 	if val, ok := metadata["topicName"]; ok {
 		if meta.entityType == queueEntity {
-			return nil, fmt.Errorf("Both topic and queue name metadata provided: %s", err)
+			return nil, fmt.Errorf("Both topic and queue name metadata provided")
 		}
 		meta.topicName = val
 		meta.entityType = subscriptionEntity
@@ -71,12 +76,12 @@ func parseAzureServiceBusMetadata(metadata, resolvedEnv map[string]string) (*azu
 		if val, ok := metadata["subscriptionName"]; ok {
 			meta.subscriptionName = val
 		} else {
-			return nil, fmt.Errorf("No subscription name provided: %s", err)
+			return nil, fmt.Errorf("No subscription name provided with topic name")
 		}
 	}
 
-	if meta.entityType == "" {
-		return nil, fmt.Errorf("No type set %s", err)
+	if meta.entityType == None {
+		return nil, fmt.Errorf("No service bus entity type set")
 	}
 
 	connectionSetting := defaultConnectionSetting
@@ -95,7 +100,7 @@ func parseAzureServiceBusMetadata(metadata, resolvedEnv map[string]string) (*azu
 
 // Returns true if the scaler's queue has messages in it, false otherwise
 func (s *AzureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := GetAzureServiceBusQueueLength(ctx, s.metadata.connection, s.metadata.queueName)
+	length, err := GetAzureServiceBusLength(ctx)
 	if err != nil {
 		log.Errorf("error %s", err)
 		return false, err
@@ -104,24 +109,25 @@ func (s *AzureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-// Close - nothing to close for SB Topics
+// Close - nothing to close for SB
 func (s *AzureServiceBusScaler) Close() error {
 	return nil
 }
 
-// Returns an external metric spec for scaling. Follow this to see where it goes - it only uses default queue length target
+// Returns the metric spec to be used by the HPA
 func (s *AzureServiceBusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
+	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+// Returns the current metrics to be served to the HPA
 func (s *AzureServiceBusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := GetAzureServiceBusSubLength(ctx, s.metadata.connection, s.metadata.queueName)
+	queuelen, err := s.GetAzureServiceBusLength(ctx)
 
 	if err != nil {
-		log.Errorf("error getting queue lenngth %s", err)
+		log.Errorf("error getting service bus entity length %s", err)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
