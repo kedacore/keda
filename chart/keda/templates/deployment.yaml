@@ -26,7 +26,7 @@ spec:
         - /adapter
         - --secure-port=6443
         - --logtostderr=true
-        - --v=10
+        - --v={{ .Values.glogLevel }}
         - --log-level={{ .Values.logLevel }}
         ports:
         - containerPort: 6443
