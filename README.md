@@ -8,6 +8,16 @@ KEDA allows for fine grained autoscaling (including to/from zero) for event driv
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
 
+---
+<p align="center">
+Brought to you by
+</p>
+<p align="center">
+<img src="docs/media/combinedlogo.png" width="500"/>
+  </p>
+
+---
+
 ## Getting started
 
 * [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
