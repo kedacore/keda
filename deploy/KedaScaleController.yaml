@@ -82,7 +82,7 @@ spec:
       serviceAccountName: service-controller
       containers:
       - name: service-controller
-        image: aarthisk/public
+        image: kedacore/keda:latest
         args:
         - /adapter
         - --secure-port=6443
