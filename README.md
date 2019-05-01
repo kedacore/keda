@@ -2,17 +2,47 @@
 |--------|--------|
 | master |[![CircleCI](https://circleci.com/gh/kedacore/keda.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/kedacore/keda)|
 
-# Keda -  Event driven autoscaler and scale to zero for Kubernetes
+# KEDA - Kubernetes-based Event Driven Autoscaling
 
-Keda allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.
-Keda serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated CRD.
+KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
-Keda can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
+KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
 
-## Getting started:
+## Getting started
 
-* [Deploying Keda with Helm](https://github.com/kedacore/keda/wiki/Deploying-keda-with-helm)
-* [Using Azure Functions with Keda and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
+* [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
+* [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
+
+## Setup
+
+### Deploying with a Helm chart
+
+#### Add Helm repo
+```cli
+helm repo add kedacore https://kedacore.azureedge.net/helm
+```
+
+#### Update Helm repo
+```cli
+helm repo update
+```
+
+#### Install keda-edge chart
+```cli
+helm install kedacore/keda-edge --devel --set logLevel=debug
+```
+
+### Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
+```
+func kubernetes install --namespace keda
+```
+
+
+## How KEDA works
+
+
+
+* [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
 * [`ScaledObject` spec](https://github.com/kedacore/keda/wiki/ScaledObject-spec)
 
 # Contributing
