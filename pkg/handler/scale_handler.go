@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	"github.com/kedacore/keda/pkg/scalers"
-	log "github.com/Sirupsen/logrus"
 	apps_v1 "k8s.io/api/apps/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	core_v1 "k8s.io/api/core/v1"
@@ -94,7 +94,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 		return
 	}
 	scaledObjectNamespace := scaledObject.GetNamespace()
-	hpaName := "keda-hpa-" + deploymentName
+	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
 	deleteOptions := &meta_v1.DeleteOptions{}
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
 	if apierrors.IsNotFound(err) {
@@ -142,20 +142,35 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		maxReplicas = defaultHPAMaxReplicas
 	}
 
-	kvd := &v2beta1.CrossVersionObjectReference{Name: deploymentName, Kind: "Deployment", APIVersion: "apps/v1"}
-	scaledObjectNamespace := scaledObject.GetNamespace()
-	hpaName := "keda-hpa-" + deploymentName
-	newHPASpec := &v2beta1.HorizontalPodAutoscalerSpec{MinReplicas: minReplicas, MaxReplicas: maxReplicas, Metrics: scaledObjectMetricSpecs, ScaleTargetRef: *kvd}
-	objectSpec := &meta_v1.ObjectMeta{Name: hpaName, Namespace: scaledObjectNamespace}
-	typeSpec := &meta_v1.TypeMeta{APIVersion: "v2beta1"}
-	newHPA := &v2beta1.HorizontalPodAutoscaler{Spec: *newHPASpec, ObjectMeta: *objectSpec, TypeMeta: *typeSpec}
-	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(newHPA)
+	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
+	namespace := scaledObject.GetNamespace()
+
+	newHPA := &v2beta1.HorizontalPodAutoscaler{
+		Spec: v2beta1.HorizontalPodAutoscalerSpec{
+			MinReplicas: minReplicas,
+			MaxReplicas: maxReplicas,
+			Metrics:     scaledObjectMetricSpecs,
+			ScaleTargetRef: v2beta1.CrossVersionObjectReference{
+				Name:       deploymentName,
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			}},
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      hpaName,
+			Namespace: namespace,
+		},
+		TypeMeta: meta_v1.TypeMeta{
+			APIVersion: "v2beta1",
+		},
+	}
+
+	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(namespace).Create(newHPA)
 	if apierrors.IsAlreadyExists(err) {
-		log.Warnf("HPA with namespace %s and name %s already exists", scaledObjectNamespace, hpaName)
+		log.Warnf("HPA with namespace %s and name %s already exists", namespace, hpaName)
 	} else if err != nil {
-		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", namespace, hpaName, err)
 	} else {
-		log.Debugf("Created HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+		log.Debugf("Created HPA with namespace %s and name %s", namespace, hpaName)
 	}
 }
 
