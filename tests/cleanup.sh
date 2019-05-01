@@ -2,7 +2,7 @@
 
 # Remove Keda
 helm delete --purge keda-test-release
-kubectl delete crd scaledobjects.kore.k8s.io
+kubectl delete crd scaledobjects.keda.k8s.io
 
 # Remove Tiller
 helm reset
