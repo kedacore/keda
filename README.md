@@ -4,6 +4,8 @@
 
 # KEDA - Kubernetes-based Event Driven Autoscaling
 
+<p align="center"><img src="images/keda-wordmark.png" width="300"/></p>
+
 KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
@@ -13,7 +15,7 @@ KEDA can run on both the cloud and the edge, integrates natively with Kubernetes
 In partnership with
 </p>
 <p align="center">
-<img src="docs/logos.png" width="500"/>
+<img src="images/partner-logos.png" width="500"/>
   </p>
 
 ---
@@ -50,13 +52,13 @@ func kubernetes install --namespace keda
 
 ## How KEDA works
 
-KEDA performs two key roles within Kubernetes.  First, it acts as an agent to activate a deployment that has been inactive and scaled to zero.  Second, it acts as a [Kubernetes metrics server](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics) to expose rich event data like queue length or stream lag to the horizontal pod autoscaler to drive scale out.  It is up to the deployment to then consume the events directly from the source.  This preserves rich event integration and enables gestures like completing or abandoning queue messages to work out of the box.
+KEDA performs two key roles within Kubernetes.  First, it acts as an agent to activate and deactivate a deployment to scale to and from zero on no events.  Second, it acts as a [Kubernetes metrics server](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics) to expose rich event data like queue length or stream lag to the horizontal pod autoscaler to drive scale out.  It is up to the deployment to then consume the events directly from the source.  This preserves rich event integration and enables gestures like completing or abandoning queue messages to work out of the box.
 
-![KEDA visualization](docs/keda-arch.png)
+![KEDA visualization](images/keda-arch.png)
 
 ### Event sources and scalers
 
-KEDA has a number of "scalers" that can both detect if a deployment should be activated and feed custom metrics for a specific event source.  Today there is scalar support for:
+KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scalar support for:
 
 * Kafka
 * RabbitMQ
@@ -73,7 +75,7 @@ ScaledObject examples and schemas [can be found in our wiki](https://github.com/
 
 ### HTTP scaling integration
 
-KEDA enables scaling based on event sources where the event resides somewhere to be pulled.  For events like HTTP where the event is pushed to the container, KEDA integrates seamlessly with HTTP scale-to-zero controls like [Osiris](https://github.com/deislabs/osiris) or [Knative eventing](https://github.com/knative/eventing).  By pairing KEDA with an HTTP scale-to-zero component you can provide rich event scaling for both HTTP and non-HTTP.
+KEDA enables scaling based on event sources where the event resides somewhere to be pulled.  For events like HTTP where the event is pushed to the container, KEDA works side by side with HTTP scale-to-zero components like [Osiris](https://github.com/deislabs/osiris) or [Knative serving](https://github.com/knative/serving).  By pairing KEDA with an HTTP scale-to-zero component you can provide rich event scaling for both HTTP and non-HTTP.
 
 ### Azure Functions Integration
 
