@@ -2,16 +2,9 @@ nameOverride:
 fullnameOverride:
 
 image:
-  repository: projectkore.azurecr.io/kore
-  tag: master
+  repository: kedacore/keda
+  tag: latest
   pullPolicy: Always
-
-# For private container registries, set createSecret to true & add username & password
-imageCredentials:
-  createSecret: true
-  registry: projectkore.azurecr.io
-  username: "b514b60c-68cc-4f12-b361-3858878b2479"
-  password: "4jX5vkPTSrUQ96UBbU/B7CQrBoJwT62WSs5WfZtFbB8="
 
 replicaCount: 1
 
