@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	kedainformer_v1alpha1 "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/handler"
-	log "github.com/Sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -123,5 +123,4 @@ func (c *controller) Run(ctx context.Context) {
 	}()
 	log.Infof("Controller is started")
 	c.scaledObjectsInformer.Run(ctx.Done())
-	cancel()
 }
