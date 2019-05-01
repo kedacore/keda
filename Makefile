@@ -9,7 +9,7 @@ TARGET_OS?=linux
 # Variables                                      #
 ##################################################
 
-BASE_IMAGE_NAME := kore
+BASE_IMAGE_NAME := keda
 IMAGE_TAG       := $(CIRCLE_BRANCH)
 IMAGE_NAME      := $(ACR_REGISTRY)/$(BASE_IMAGE_NAME):$(IMAGE_TAG)
 
