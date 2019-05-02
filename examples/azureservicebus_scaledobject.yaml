@@ -9,10 +9,13 @@ spec:
   scaleTargetRef:
     deploymentName: azure-servicebus-queue-function
   triggers:
-  - type: serviceBusTrigger
+  - type: azure-servicebus
     metadata:
-      # Required
+      # Required: queueName OR topicName and subscriptionName
       queueName: functions-sbqueue
+      # or
+      topicName: functions-sbtopic
+      subscriptionName: sbtopic-sub1
       # Optional
       connection: SERVICEBUS_CONNECTIONSTRING_ENV_NAME # default AzureWebJobsStorage
       queueLength: "5" # default 5
