@@ -24,7 +24,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: scale-controller-service-account-role-binding
+  name: keda-operator-service-account-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -87,7 +87,7 @@ spec:
         - /adapter
         - --secure-port=6443
         - --logtostderr=true
-        - --v=10
+        - --v=2
         ports:
         - containerPort: 6443
           name: https
