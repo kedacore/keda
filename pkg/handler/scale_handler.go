@@ -49,7 +49,7 @@ func NewScaleHandler(kedaClient clientset.Interface, kubeClient kubernetes.Inter
 // TODO confusing naming switching from isUpdate (controller) -> isDue (here)[]
 // WatchScaledObjectWithContext runs a handleScaleLoop go-routine for the scaledObject
 func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
-	h.createHPAForNewScaledObject(ctx, scaledObject)
+	h.createOrUpdateHPAForScaledObject(ctx, scaledObject)
 	go h.handleScaleLoop(ctx, scaledObject, isDue)
 }
 
@@ -106,7 +106,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 	}
 }
 
-func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
 		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
@@ -142,10 +142,9 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 		maxReplicas = defaultHPAMaxReplicas
 	}
 
+	scaledObjectNamespace := scaledObject.GetNamespace()
 	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
-	namespace := scaledObject.GetNamespace()
-
-	newHPA := &v2beta1.HorizontalPodAutoscaler{
+	hpa := &v2beta1.HorizontalPodAutoscaler{
 		Spec: v2beta1.HorizontalPodAutoscalerSpec{
 			MinReplicas: minReplicas,
 			MaxReplicas: maxReplicas,
@@ -157,20 +156,26 @@ func (h *ScaleHandler) createHPAForNewScaledObject(ctx context.Context, scaledOb
 			}},
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      hpaName,
-			Namespace: namespace,
+			Namespace: scaledObjectNamespace,
 		},
 		TypeMeta: meta_v1.TypeMeta{
 			APIVersion: "v2beta1",
 		},
 	}
 
-	newHPA, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(namespace).Create(newHPA)
+	_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(hpa)
 	if apierrors.IsAlreadyExists(err) {
-		log.Warnf("HPA with namespace %s and name %s already exists", namespace, hpaName)
+		log.Infof("HPA with namespace %s and name %s already exists.Updating..", scaledObjectNamespace, hpaName)
+		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
+		if err != nil {
+			log.Errorf("Error updating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+		} else {
+			log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+		}
 	} else if err != nil {
-		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", namespace, hpaName, err)
+		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
 	} else {
-		log.Debugf("Created HPA with namespace %s and name %s", namespace, hpaName)
+		log.Infof("Created HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	}
 }
 
