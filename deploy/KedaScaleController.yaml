@@ -18,7 +18,7 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: service-controller
+  name: keda-operator
   namespace: keda
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -31,7 +31,7 @@ roleRef:
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: service-controller
+  name: keda-operator
   namespace: keda
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -44,7 +44,7 @@ roleRef:
   name: system:auth-delegator
 subjects:
 - kind: ServiceAccount
-  name: service-controller
+  name: keda-operator
   namespace: keda
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -58,30 +58,30 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
 - kind: ServiceAccount
-  name: service-controller
+  name: keda-operator
   namespace: keda
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: service-controller
-  name: service-controller
+    app: keda-operator
+  name: keda-operator
   namespace: keda
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: service-controller
+      app: keda-operator
   template:
     metadata:
       labels:
-        app: service-controller
-      name: service-controller
+        app: keda-operator
+      name: keda-operator
     spec:
-      serviceAccountName: service-controller
+      serviceAccountName: keda-operator
       containers:
-      - name: service-controller
+      - name: keda-operator
         image: kedacore/keda:latest
         args:
         - /adapter
@@ -110,13 +110,13 @@ roleRef:
   name: custom-metrics-resource-reader
 subjects:
 - kind: ServiceAccount
-  name: service-controller
+  name: keda-operator
   namespace: keda
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: service-controller
+  name: keda-operator
   namespace: keda
 spec:
   ports:
@@ -127,7 +127,7 @@ spec:
     port: 80
     targetPort: 8080
   selector:
-    app: service-controller
+    app: keda-operator
 ---
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
@@ -135,7 +135,7 @@ metadata:
   name: v1beta1.custom.metrics.k8s.io
 spec:
   service:
-    name: service-controller
+    name: keda-operator
     namespace: keda
   group: custom.metrics.k8s.io
   version: v1beta1
@@ -149,7 +149,7 @@ metadata:
   name: v1beta1.external.metrics.k8s.io
 spec:
   service:
-    name: service-controller
+    name: keda-operator
     namespace: keda
   group: external.metrics.k8s.io
   version: v1beta1
