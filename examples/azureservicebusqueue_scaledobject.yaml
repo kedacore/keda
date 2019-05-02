@@ -9,7 +9,7 @@ spec:
   scaleTargetRef:
     deploymentName: azure-servicebus-queue-function
   triggers:
-  - type: serviceBusTrigger
+  - type: azure-servicebus
     metadata:
       # Required
       queueName: functions-sbqueue
