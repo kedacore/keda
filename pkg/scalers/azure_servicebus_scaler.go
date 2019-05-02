@@ -94,7 +94,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 
 	// get servicebus connection string
 	if val, ok := metadata["connection"]; ok {
-		connectionSetting = val
+		connectionSetting := val
 
 		if val, ok := resolvedEnv[connectionSetting]; ok {
 			meta.connection = val
