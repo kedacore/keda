@@ -54,6 +54,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 	meta.entityType = None
 	meta.targetLength = defaultTargetQueueLength
 
+	// get target metric value
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
@@ -63,6 +64,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 		}
 	}
 
+	// get queue name OR topic and subscription name & set entity type accordingly
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
 		meta.entityType = Queue
@@ -90,14 +92,16 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 		return nil, fmt.Errorf("No service bus entity type set")
 	}
 
-	connectionSetting := defaultConnectionSetting
+	// get servicebus connection string
 	if val, ok := metadata["connection"]; ok {
 		connectionSetting = val
+
+		if val, ok := resolvedEnv[connectionSetting]; ok {
+			meta.connection = val
+		}
 	}
 
-	if val, ok := resolvedEnv[connectionSetting]; ok {
-		meta.connection = val
-	} else {
+	if meta.connection == "" {
 		return nil, fmt.Errorf("no connection setting given")
 	}
 
@@ -163,7 +167,6 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 	default:
 		return -1, fmt.Errorf("No entity type")
 	}
-
 }
 
 func GetQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
