@@ -66,6 +66,10 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
 		meta.entityType = Queue
+
+		if _, ok := metadata["subscriptionName"]; ok {
+			return nil, fmt.Errorf("No subscription name provided with topic name")
+		}
 	}
 
 	if val, ok := metadata["topicName"]; ok {
