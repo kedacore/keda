@@ -2,9 +2,8 @@
 |--------|--------|
 | master |[![CircleCI](https://circleci.com/gh/kedacore/keda.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/kedacore/keda)|
 
-# KEDA - Kubernetes-based Event Driven Autoscaling
-
 <p align="center"><img src="images/keda-wordmark.png" width="300"/></p>
+<p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 
 KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
@@ -80,7 +79,7 @@ KEDA enables scaling based on event sources where the event resides somewhere to
 
 ### Azure Functions Integration
 
-While KEDA can be used with any container or deployment, the Azure Functions tooling natively integrates with KEDA for a fully managed event-driven programming model.  With functions, developers only need to write the code that should run on an event, and not have to worry about the event consuming scaffolding.  [Azure Functions is open source](https://github.com/azure/azure-functions-host), and all of the existing tooling and developer experience works regardless of the hosting option.
+While KEDA can be used with any container or deployment, the Azure Functions tooling natively integrates with KEDA for a seamless developer experience and event-driven programming model.  With functions, developers only need to write the code that should run on an event, and not have to worry about the event consuming scaffolding.  [Azure Functions is open source](https://github.com/azure/azure-functions-host), and all of the existing tooling and developer experience works regardless of the hosting option.
 
 ```javascript
 module.exports = async function (context, myQueueItem) {
