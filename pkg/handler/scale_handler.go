@@ -485,7 +485,7 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusQueueScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAzureServiceBusScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitmq":
