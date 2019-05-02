@@ -9,6 +9,7 @@ import (
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	kedainformer_v1alpha1 "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/handler"
+	"k8s.io/apimachinery/pkg/api/equality"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -51,6 +52,10 @@ func NewController(kedaClient clientset.Interface, kubeClient kubernetes.Interfa
 			if new.ResourceVersion == old.ResourceVersion {
 				return
 			}
+			if equality.Semantic.DeepEqual(old.Spec, new.Spec) {
+				return
+			}
+
 			c.syncScaledObject(newObj, true)
 		},
 		DeleteFunc: c.syncDeletedScaledObject,
