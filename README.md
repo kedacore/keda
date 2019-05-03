@@ -54,7 +54,7 @@ func kubernetes install --namespace keda
 
 KEDA performs two key roles within Kubernetes.  First, it acts as an agent to activate and deactivate a deployment to scale to and from zero on no events.  Second, it acts as a [Kubernetes metrics server](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics) to expose rich event data like queue length or stream lag to the horizontal pod autoscaler to drive scale out.  It is up to the deployment to then consume the events directly from the source.  This preserves rich event integration and enables gestures like completing or abandoning queue messages to work out of the box.
 
-![KEDA visualization](images/keda-arch.png)
+<p align="center"><img src="images/keda-arch.png" width="550"/></p>
 
 ### Event sources and scalers
 
@@ -92,6 +92,8 @@ You can containerize and deploy an existing or new Azure Function using the [Azu
 ```cli
 func kubernetes deploy --name my-function --registry my-container-registry
 ```
+
+<p><img src="images/kedascale.gif" width="650"/></p>
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
 
