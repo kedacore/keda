@@ -58,14 +58,14 @@ KEDA performs two key roles within Kubernetes.  First, it acts as an agent to ac
 
 ### Event sources and scalers
 
-KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scalar support for:
+KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scaler support for:
 
 * Kafka
 * RabbitMQ
 * Azure Storage Queues
 * Azure Service Bus Queues and Topics
 
-You can view other planned scalars [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
+You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
 #### ScaledObject custom resource definition
 
