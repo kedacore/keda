@@ -63,7 +63,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Kafka
 * RabbitMQ
 * Azure Storage Queues
-* Azure Service Bus Queues
+* Azure Service Bus Queues and Topics
 
 You can view other planned scalars [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
@@ -94,6 +94,18 @@ func kubernetes deploy --name my-function --registry my-container-registry
 ```
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
+
+## Samples
+
+[Samples and blog posts](https://github.com/kedacore/keda/wiki/Samples-and-Blog-posts)
+
+## Community Standup
+
+If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
+
+Meeting time: Weekly Thurs 10am US Pacific Time  
+Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )  
+Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 # Contributing
 
