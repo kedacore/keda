@@ -45,7 +45,6 @@ build-chart-edge:
 	sed -i "s/^name:.*/name: keda-edge/g" /tmp/keda-edge/Chart.yaml
 	sed -i "s/^version:.*/version: 0.0.1-$(DATE)-$(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
 	sed -i "s/^appVersion:.*/appVersion: $(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
-	sed -i "s/^  tag:.*/  tag: master/g" /tmp/keda-edge/values.yaml
 
 	helm lint /tmp/keda-edge/
 	helm package /tmp/keda-edge/
@@ -67,8 +66,8 @@ publish-edge-chart: build-chart-edge
 		--account-name kedacore \
 		--sas-token "$(STORAGE_HELM_SAS_TOKEN)" 2>/dev/null | true
 
-	[ -s ./old_index.yaml ] && helm repo index . --url https://kedacore.blob.core.windows.net/helm --merge old_index.yaml || true
-	[ ! -s ./old_index.yaml ] && helm repo index . --url https://kedacore.blob.core.windows.net/helm || true
+	[ -s ./old_index.yaml ] && helm repo index . --url https://kedacore.azureedge.net/helm --merge old_index.yaml || true
+	[ ! -s ./old_index.yaml ] && helm repo index . --url https://kedacore.azureedge.net/helm || true
 
 	@az storage blob upload \
 		--container-name helm \
