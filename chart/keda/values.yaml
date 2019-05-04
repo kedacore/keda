@@ -3,7 +3,7 @@ fullnameOverride:
 
 image:
   repository: kedacore/keda
-  tag: latest
+  tag: v1alpha1
   pullPolicy: Always
 
 replicaCount: 1
