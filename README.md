@@ -41,7 +41,7 @@ helm repo update
 
 #### Install keda-edge chart
 ```cli
-helm install kedacore/keda-edge --devel --set logLevel=debug
+helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda
 ```
 
 ### Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
