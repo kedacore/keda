@@ -231,7 +231,9 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 		scaler.Close()
 	}
 
-	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
+	if deployment != nil {
+		h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
+	}
 
 	return
 }
