@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	topicName        = "testtopic"
-	subscriptionName = "testsubscription"
-	queueName        = "testqueue"
+	topicName         = "testtopic"
+	subscriptionName  = "testsubscription"
+	queueName         = "testqueue"
+	connectionSetting = "none"
 )
 
 type parseServiceBusMetadataTestData struct {
@@ -20,23 +21,23 @@ type parseServiceBusMetadataTestData struct {
 
 // not testing connections so it doesn't matter what the resolved env value is for this
 var sampleResolvedEnv = map[string]string{
-	defaultConnectionSetting: "none",
+	connectionSetting: "none",
 }
 
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{}, true, None},
 	// properly formed queue
-	{map[string]string{"queueName": queueName}, false, Queue},
+	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, Queue},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName}, false, Subscription},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, Subscription},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName}, true, None},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName}, true, None},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},
 	// topic but no subscription specifed
-	{map[string]string{"topicName": topicName}, true, None},
+	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName}, true, None},
+	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
