@@ -227,7 +227,11 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, merticName string, metricS
 		totalLag += lag
 	}
 
-	// We should find a way to not scale beyond the number of partitions
+	// don't scale out beyond the number of partitions
+	if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
+		totalLag = int64(len(partitions)) * s.metadata.lagThreshold
+	}
+
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: merticName,
 		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
