@@ -379,7 +379,7 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment) (map[string]st
 				// env is an EnvVarSource, that can be one of the 4 below
 				if envVar.ValueFrom.SecretKeyRef != nil {
 					// env is a secret selector
-					value, err = h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.Name, deployment.GetNamespace())
+					value, err = h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, deployment.GetNamespace())
 					if err != nil {
 						log.Errorf("Error resolving secret name %s for env %s in deployment %s/%s. Skipping",
 							envVar.ValueFrom.SecretKeyRef,
@@ -390,7 +390,7 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment) (map[string]st
 					}
 				} else if envVar.ValueFrom.ConfigMapKeyRef != nil {
 					// env is a configMap selector
-					value, err = h.resolveConfigValue(envVar.ValueFrom.ConfigMapKeyRef, envVar.Name, deployment.GetNamespace())
+					value, err = h.resolveConfigValue(envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, deployment.GetNamespace())
 					if err != nil {
 						log.Errorf("Error resolving config %s for env %s in deployment %s/%s. Skippking",
 							envVar.ValueFrom.ConfigMapKeyRef,
