@@ -216,9 +216,13 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+	scalers, deployment := h.getScalers(scaledObject)
+	if deployment == nil {
+		return
+	}
+
 	isScaledObjectActive := false
 
-	scalers, deployment := h.getScalers(scaledObject)
 	for _, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
 		if err != nil {
