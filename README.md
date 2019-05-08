@@ -81,12 +81,6 @@ KEDA enables scaling based on event sources where the event resides somewhere to
 
 While KEDA can be used with any container or deployment, the Azure Functions tooling natively integrates with KEDA for a seamless developer experience and event-driven programming model.  With functions, developers only need to write the code that should run on an event, and not have to worry about the event consuming scaffolding.  [Azure Functions is open source](https://github.com/azure/azure-functions-host), and all of the existing tooling and developer experience works regardless of the hosting option.
 
-```javascript
-module.exports = async function (context, myQueueItem) {
-    context.log('JavaScript queue trigger function processed work item', myQueueItem);
-};
-```
-
 You can containerize and deploy an existing or new Azure Function using the [Azure Functions core tools](https://github.com/azure/azure-functions-core-tools)
 
 ```cli
