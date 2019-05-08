@@ -9,6 +9,8 @@ KEDA allows for fine grained autoscaling (including to/from zero) for event driv
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
 
+Please note this software is experimental and should not be used for anything resembling a production workload.  We want to create KEDA in the open with the community to bring event driven scale to Kubernetes.
+
 ---
 <p align="center">
 In partnership with
