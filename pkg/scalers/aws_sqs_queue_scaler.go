@@ -2,7 +2,9 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -13,9 +15,7 @@ import (
 )
 
 const (
-	queueLengthMetricName    = "queueLength"
-	defaultTargetQueueLength = 5
-	externalMetricType       = "External"
+	awsSqsQueueMetricName = "ApproximateNumberOfMessages"
 )
 
 type awsSqsQueueScaler struct {
@@ -24,7 +24,6 @@ type awsSqsQueueScaler struct {
 
 type awsSqsQueueMetadata struct {
 	targetQueueLength int
-	queueName         string
 	queueURL          string
 }
 
@@ -43,6 +42,24 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, erro
 func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
+
+	if val, ok := metadata["queueLength"]; ok {
+		queueLength, err := strconv.Atoi(val)
+		if err != nil {
+			log.Errorf("Error parsing SQS queue metadata %s: %s", "queueLength", err)
+		} else {
+			meta.targetQueueLength = queueLength
+		}
+	}
+
+	if val, ok := metadata["queueName"]; ok {
+		queueURL := val
+		if len(val) > 0 {
+			log.Errorf("Error parsing SQS queue metadata %s: %s", "queueName", errors.New("Empty queueName is not valid"))
+		} else {
+			meta.queueURL = queueURL
+		}
+	}
 
 	return &meta, nil
 }
@@ -65,7 +82,7 @@ func (s *awsSqsQueueScaler) Close() error {
 
 func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: awsSqsQueueMetricName, TargetAverageValue: targetQueueLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
 }
