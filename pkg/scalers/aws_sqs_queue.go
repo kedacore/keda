@@ -15,7 +15,7 @@ func GetAwsSqsQueueLength(ctx context.Context, queueURL string) (int32, error) {
 	sqsClient := sqs.New(sess)
 
 	if len(queueURL) == 0 {
-		return -1, errors.New("Empty queueUrl is not valid")
+		return -1, errors.New("empty queueURL is not valid")
 	}
 
 	input := &sqs.GetQueueAttributesInput{

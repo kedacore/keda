@@ -31,7 +31,7 @@ type awsSqsQueueMetadata struct {
 func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
+		return nil, fmt.Errorf("Error parsing SQS queue metadata: %s", err)
 	}
 
 	return &awsSqsQueueScaler{
@@ -52,10 +52,11 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 		}
 	}
 
-	if val, ok := metadata["queueName"]; ok {
+	if val, ok := metadata["queueURL"]; ok {
 		queueURL := val
-		if len(val) > 0 {
-			log.Errorf("Error parsing SQS queue metadata %s: %s", "queueName", errors.New("Empty queueName is not valid"))
+
+		if len(val) <= 0 {
+			log.Errorf("Error parsing SQS queue metadata %s: %s", "queueURL", errors.New("Empty queueURL is not valid"))
 		} else {
 			meta.queueURL = queueURL
 		}
@@ -69,7 +70,7 @@ func (s *awsSqsQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := GetAwsSqsQueueLength(ctx, s.metadata.queueURL)
 
 	if err != nil {
-		log.Errorf("error %s", err)
+		log.Errorf("Error %s", err)
 		return false, err
 	}
 
@@ -92,7 +93,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 	queuelen, err := GetAwsSqsQueueLength(ctx, s.metadata.queueURL)
 
 	if err != nil {
-		log.Errorf("error getting queue length %s", err)
+		log.Errorf("Error getting queue length %s", err)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
