@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: azure-functions
+        app: azure-functions
     spec:
       containers:
       - name: azure-functions-container
