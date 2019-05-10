@@ -5,7 +5,7 @@ metadata:
     {{- include "keda.labels" . | nindent 4 }}
   name: {{ template "keda.fullname" . }}
   namespace: {{ .Release.Namespace }}
-spec:
+speec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
