@@ -2,7 +2,7 @@ apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
   name: functions-example-scaledobject
-  label:
+  labels:
     deploymentName: functions-example-deployment
 spec:
   scaleTargetRef:
