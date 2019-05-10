@@ -3,7 +3,7 @@ kind: ScaledObject
 metadata:
   name: kafka-scaledobject
   namespace: default
-  label:
+  labels:
     deploymentName: azure-functions-deployment
 spec:
   scaleTargetRef:
