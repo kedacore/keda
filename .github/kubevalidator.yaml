@@ -2,6 +2,6 @@ apiversion: v1alpha
 kind: KubeValidatorConfig
 spec:
   manifests:
-  - glob: chart/keda/templates/*.yaml
+  - glob: chart/*/*.yaml
     schemas:
-    - version: 1.13.0
+    - version: 1.10.0
