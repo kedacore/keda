@@ -128,7 +128,7 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, sca
 	}
 
 	var minReplicas *int32
-	if scaledObject.Spec.MinReplicaCount != nil {
+	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		minReplicas = scaledObject.Spec.MinReplicaCount
 	} else {
 		tmp := defaultHPAMinReplicas
