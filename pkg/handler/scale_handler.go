@@ -183,7 +183,7 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, sca
 // if isDue is set to true, the method will check the scaledObject right away. Otherwise
 // it'll wait for pollingInterval then check.
 func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
-	h.handleScale(ctx, scaledObject)
+	scaledObject = h.handleScale(ctx, scaledObject)
 
 	var pollingInterval time.Duration
 	if scaledObject.Spec.PollingInterval != nil {
@@ -205,7 +205,7 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 	for {
 		select {
 		case <-time.After(getPollingInterval()):
-			h.handleScale(ctx, scaledObject)
+			scaledObject = h.handleScale(ctx, scaledObject)
 		case <-ctx.Done():
 			log.Debugf("context for scaledObject (%s/%s) canceled", scaledObject.GetNamespace(), scaledObject.GetName())
 			return
@@ -215,10 +215,10 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
-func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) *keda_v1alpha1.ScaledObject {
 	scalers, deployment := h.getScalers(scaledObject)
 	if deployment == nil {
-		return
+		return scaledObject
 	}
 
 	isScaledObjectActive := false
@@ -235,12 +235,11 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 		scaler.Close()
 	}
 
-	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
+	return h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
 
-	return
 }
 
-func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject, isActive bool) {
+func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject, isActive bool) *v1alpha1.ScaledObject {
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
@@ -259,18 +258,19 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 		// Update LastActiveTime to now.
 		now := meta_v1.Now()
 		scaledObject.Status.LastActiveTime = &now
-		h.updateScaledObject(scaledObject)
+		scaledObject, _ = h.updateScaledObject(scaledObject)
 	} else {
 		log.Debugf("deployment (%s/%s) no change", deployment.GetNamespace(), deployment.GetName())
 	}
+	return scaledObject
 }
 
-func (h *ScaleHandler) updateScaledObject(scaledObject *keda_v1alpha1.ScaledObject) error {
-	_, err := h.kedaClient.KedaV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
+func (h *ScaleHandler) updateScaledObject(scaledObject *keda_v1alpha1.ScaledObject) (*v1alpha1.ScaledObject, error) {
+	newscaledObject, err := h.kedaClient.KedaV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
 	if err != nil {
 		log.Errorf("Error updating scaledObject (%s/%s) status: %s", scaledObject.GetNamespace(), scaledObject.GetName(), err.Error())
 	}
-	return err
+	return newscaledObject, err
 }
 
 // A deployment will be scaled down to 0 only if it's passed its cooldown period
