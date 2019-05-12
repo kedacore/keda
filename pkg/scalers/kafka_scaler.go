@@ -233,7 +233,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: merticName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
