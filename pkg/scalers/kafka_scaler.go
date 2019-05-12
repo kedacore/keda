@@ -208,7 +208,7 @@ func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	partitions, err := s.getPartitions()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
@@ -233,7 +233,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, merticName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: merticName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

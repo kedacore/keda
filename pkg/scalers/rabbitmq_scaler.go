@@ -140,7 +140,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *rabbitMQScaler) GetMetrics(ctx context.Context, merticName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	messages, err := s.getQueueMessages()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting rabbitMQ: %s", err)
