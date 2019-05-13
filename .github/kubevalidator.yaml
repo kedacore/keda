@@ -2,24 +2,18 @@ apiversion: v1alpha
 kind: KubeValidatorConfig
 spec:
   manifests:
-  - glob: chart/*/*.yaml
-    schemas:	
-    - version: 1.10.0	
-    - version: 1.11.0	
-    - version: 1.12.0	
-    - version: 1.13.0	
+  - glob: chart/keda/templates/*.yaml
+    schemas:
+    - version: 1.12.0
+    - version: 1.13.0
     - version: 1.14.0
   - glob: deploy/*/*.yaml
-    schemas:	
-    - version: 1.10.0	
-    - version: 1.11.0	
-    - version: 1.12.0	
-    - version: 1.13.0	
+    schemas:
+    - version: 1.12.0
+    - version: 1.13.0
     - version: 1.14.0
-  - glob: examples/*/*.yaml
-    schemas:	
-    - version: 1.10.0	
-    - version: 1.11.0	
-    - version: 1.12.0	
-    - version: 1.13.0	
+  - glob: examples/*.yaml
+    schemas:
+    - version: 1.12.0
+    - version: 1.13.0
     - version: 1.14.0
