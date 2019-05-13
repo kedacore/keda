@@ -266,9 +266,11 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 }
 
 func (h *ScaleHandler) updateScaledObject(scaledObject *keda_v1alpha1.ScaledObject) error {
-	_, err := h.kedaClient.KedaV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
+	newScaledObject, err := h.kedaClient.KedaV1alpha1().ScaledObjects(scaledObject.GetNamespace()).Update(scaledObject)
 	if err != nil {
 		log.Errorf("Error updating scaledObject (%s/%s) status: %s", scaledObject.GetNamespace(), scaledObject.GetName(), err.Error())
+	} else {
+		*scaledObject = *newScaledObject
 	}
 	return err
 }
