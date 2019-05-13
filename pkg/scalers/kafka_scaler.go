@@ -225,7 +225,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		totalLag += lag
 	}
 
-	log.Debugf("Kafka scaler: Providing metrics based on totalLag %s, partitions %s, threshold %s", fmt.Sprintf("%v", totalLag), fmt.Sprintf("%v", len(partitions)), fmt.Sprintf("%v", s.metadata.lagThreshold))
+	log.Debugf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.lagThreshold)
 
 	// don't scale out beyond the number of partitions
 	if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
