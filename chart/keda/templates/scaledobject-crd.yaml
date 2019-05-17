@@ -10,6 +10,10 @@ spec:
   version: v1alpha1
   names:
     kind: ScaledObject
+    singular: scaledobject
     plural: scaledobjects
+    shortNames:
+    - sco
+    - so
   scope: Namespaced
 {{- end -}}
