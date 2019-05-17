@@ -4,6 +4,7 @@ description: Event based autoscaler for Azure Functions deployments on Kubernete
 version: 0.0.1
 appVersion: 0.0.1
 home: https://github.com/kedacore/keda
+icon: https://raw.githubusercontent.com/kedacore/keda/master/images/keda-logo-500x500-white.png
 sources:
 - https://github.com/kedacore/keda
 maintainers:
