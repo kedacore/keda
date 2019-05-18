@@ -14,6 +14,5 @@ spec:
     plural: scaledobjects
     shortNames:
     - sco
-    - so
   scope: Namespaced
 {{- end -}}
