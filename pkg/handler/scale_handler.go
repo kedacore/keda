@@ -307,7 +307,7 @@ func (h *ScaleHandler) scaleToZero(deployment *apps_v1.Deployment, scaledObject 
 
 func (h *ScaleHandler) scaleFromZero(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
-	if scaledObject.Spec.MinReplicaCount != nil {
+	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		deployment.Spec.Replicas = scaledObject.Spec.MinReplicaCount
 	} else {
 		*deployment.Spec.Replicas = 1
