@@ -358,6 +358,10 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment, containerName 
 				break
 			}
 		}
+
+		if &container == nil {
+			return nil, fmt.Errorf("Couldn't find container with name %s on deployment %s", containerName, deployment.GetName())
+		}
 	} else {
 		container = deployment.Spec.Template.Spec.Containers[0]
 	}
