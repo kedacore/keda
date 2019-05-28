@@ -337,7 +337,7 @@ func (h *ScaleHandler) updateDeployment(deployment *apps_v1.Deployment) error {
 	return err
 }
 
-func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment) (map[string]string, error) {
+func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment, containerName string) (map[string]string, error) {
 	deploymentKey, err := cache.MetaNamespaceKeyFunc(deployment)
 	if err != nil {
 		return nil, err
@@ -345,12 +345,26 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment) (map[string]st
 
 	if len(deployment.Spec.Template.Spec.Containers) < 1 {
 		return nil, fmt.Errorf("Deployment (%s) doesn't have containers", deploymentKey)
-	} else if len(deployment.Spec.Template.Spec.Containers) > 1 {
-		return nil, fmt.Errorf("Deployment (%s) has more than one container", deploymentKey)
 	}
 
-	container := deployment.Spec.Template.Spec.Containers[0]
 	resolved := make(map[string]string)
+
+	var container core_v1.Container
+
+	if containerName != "" {
+		for _, c := range deployment.Spec.Template.Spec.Containers {
+			if c.Name == containerName {
+				container = c
+				break
+			}
+		}
+
+		if &container == nil {
+			return nil, fmt.Errorf("Couldn't find container with name %s on deployment %s", containerName, deployment.GetName())
+		}
+	} else {
+		container = deployment.Spec.Template.Spec.Containers[0]
+	}
 
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
@@ -472,7 +486,7 @@ func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]s
 		return scalers, nil
 	}
 
-	resolvedEnv, err := h.resolveEnv(deployment)
+	resolvedEnv, err := h.resolveEnv(deployment, scaledObject.Spec.ScaleTargetRef.ContainerName)
 	if err != nil {
 		log.Errorf("Error resolving secrets for deployment: %s", err)
 		return scalers, nil
