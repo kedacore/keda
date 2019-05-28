@@ -30,6 +30,7 @@ type ScaledObjectSpec struct {
 // ScaledObject applies
 type ObjectReference struct {
 	DeploymentName string `json:"deploymentName"`
+	ContainerName  string `json:"containerName"`
 }
 
 type ScaleTriggers struct {
