@@ -73,25 +73,25 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 		return nil, fmt.Errorf("no region given")
 	}
 
-	if val, ok := resolvedEnv["awsAccessKeyID"]; ok && val != "" {
-		meta.awsAccessKeyID = val
-	} else {
-		meta.awsAccessKeyID = awsAccessKeyIDEnvVar
-	}
-    var keyName string
+	var keyName string
 	if keyName, ok := metadata["awsAccessKeyID"]; !ok || keyName == "" {
 		keyName = awsAccessKeyIDEnvVar
 	}
-	
+
 	if val, ok := resolvedEnv[keyName]; ok && val != "" {
 		meta.awsAccessKeyID = val
 	} else {
 		return nil, fmt.Errorf("cannot find awsAccessKeyId named %s in pod environment", keyName)
 	}
-	if val, ok := resolvedEnv["awsSecretAccessKey"]; ok && val != "" {
+
+	if keyName, ok := metadata["awsSecretAccessKey"]; !ok || keyName == "" {
+		keyName = awsSecretAccessKeyEnvVar
+	}
+
+	if val, ok := resolvedEnv[keyName]; ok && val != "" {
 		meta.awsSecretAccessKey = val
 	} else {
-		meta.awsSecretAccessKey = awsSecretAccessKeyEnvVar
+		return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", keyName)
 	}
 
 	return &meta, nil
