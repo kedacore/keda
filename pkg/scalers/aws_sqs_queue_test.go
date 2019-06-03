@@ -1,26 +1,35 @@
 package scalers
 
 import (
-	"context"
-	"os"
 	"testing"
 )
 
-func TestGetQueueLengthReal(t *testing.T) {
-	queueURL := os.Getenv("AWS_SQS_QUEUE_URL")
+var testAWSSQSResolvedEnv = map[string]string{
+	"awsAccessKeyID":     "none",
+	"awsSecretAccessKey": "none",
+}
 
-	t.Log("This test will use the environment variable AWS_SQS_QUEUE_URL if it is set")
-	t.Log("Ensure that AWS credentials are configured to be able to access the queue")
-	t.Log("If set, it will connect to the specified SQS Queue & check:")
-	t.Logf("\tQueue '%s' has 0 message\n", queueURL)
+type parseAWSSQSMetadataTestData struct {
+	metadata map[string]string
+	isError  bool
+}
 
-	length, err := GetAwsSqsQueueLength(context.TODO(), queueURL)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("QueueLength = ", length)
+var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
+	{map[string]string{}, true},
+	// properly formed queue and region
+	{map[string]string{"queueURL": "myqueue", "region": "eu-west-1"}, false},
+	// properly formed queue, empty region
+	{map[string]string{"queueURL": "myqueue", "region": ""}, true},
+}
 
-	if length != 0 {
-		t.Error("Expected length to be 0, but got", length)
+func TestSQSParseMetadata(t *testing.T) {
+	for _, testData := range testAWSSQSMetadata {
+		_, err := parseAwsSqsQueueMetadata(testData.metadata, testAWSSQSResolvedEnv)
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
 	}
 }
