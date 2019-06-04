@@ -52,7 +52,7 @@ func kubernetes install --namespace keda
 ```
 
 ### Deploying using the deploy yaml
-If you want to try KEDA on minikube or a different Kubernetes deployment without using HELM, you can deploy the yaml under the /deploy directory.
+If you want to try KEDA on minikube or a different Kubernetes deployment without using Helm, you can deploy the yaml under the `/deploy` directory.
 ```
 kubectl apply -f KedaScaleController.yaml
 ```
