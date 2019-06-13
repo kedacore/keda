@@ -1,9 +1,9 @@
 package provider
 
 import (
-	"github.com/kedacore/keda/pkg/handler"
 	log "github.com/Sirupsen/logrus"
 	"github.com/golang/glog"
+	"github.com/kedacore/keda/pkg/handler"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -62,16 +62,13 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 
 }
 
-// ListAllExternalMetrics returns the supported externl metrics for this provider
+// ListAllExternalMetrics returns the supported external metrics for this provider
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	externalMetricsInfo := []provider.ExternalMetricInfo{}
-
-	// not implemented yet
-
-	// TODO
-	// iterate over all of the resources we have access
-	// build metric info from https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitoring-rest-api-walkthrough#retrieve-metric-definitions-multi-dimensional-api
-	// important to remember to cache this and only get it at given interval
+	metrics := p.scaleHandler.GetExternalMetricNames()
+	for _, metric := range metrics {
+		externalMetricsInfo = append(externalMetricsInfo, provider.ExternalMetricInfo{Metric: metric})
+	}
 
 	return externalMetricsInfo
 }
