@@ -18,11 +18,10 @@ import (
 )
 
 const (
-	promServerAddress      = "serverAddress"
-	promMetricName         = "metricName"
-	promQuery              = "query"
-	promThreshold          = "threshold"
-	promDisableScaleToZero = "disableScaleToZero"
+	promServerAddress = "serverAddress"
+	promMetricName    = "metricName"
+	promQuery         = "query"
+	promThreshold     = "threshold"
 )
 
 type prometheusScaler struct {
@@ -30,11 +29,10 @@ type prometheusScaler struct {
 }
 
 type prometheusMetadata struct {
-	serverAddress      string
-	metricName         string
-	query              string
-	threshold          int
-	disableScaleToZero bool
+	serverAddress string
+	metricName    string
+	query         string
+	threshold     int
 }
 
 type promQueryResult struct {
@@ -91,23 +89,10 @@ func parsePrometheusMetadata(metadata, resolvedEnv map[string]string) (*promethe
 		meta.threshold = t
 	}
 
-	if val, ok := metadata[promDisableScaleToZero]; ok {
-		b, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s : %s", promDisableScaleToZero, err)
-		}
-
-		meta.disableScaleToZero = b
-	}
-
 	return &meta, nil
 }
 
 func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
-	if s.metadata.disableScaleToZero {
-		return true, nil
-	}
-
 	val, err := s.ExecutePromQuery()
 	if err != nil {
 		log.Errorf("error executing prometheus query: %s", err)
