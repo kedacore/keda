@@ -144,7 +144,7 @@ func (h *ScaleHandler) removeExternalMetricName(metricName string) {
 	defer h.metricNamesLock.Unlock()
 	h.externalMetricNames[metricName] = h.externalMetricNames[metricName] - 1
 	log.Debugf("ExternalMetricList: Decremented metricName %s with ref count %d", metricName, h.externalMetricNames[metricName])
-	if h.externalMetricNames[metricName] <= 0 {
+	if h.externalMetricNames[metricName] == 0 {
 		delete(h.externalMetricNames, metricName)
 		log.Debugf("ExternalMetricList: Removed metric name %s as ref count is 0", metricName)
 	}
