@@ -10,16 +10,18 @@
   revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 
 [[projects]]
-  digest = "1:6530fc7461f14a825c6903d7611be9e180370a180ca94555c04690ffaf33bdd5"
+  digest = "1:9c42fe8a82e80960d096b67f9cf6ad579cadd279fabe39f2b0227de79aa95fa6"
   name = "github.com/Azure/azure-amqp-common-go"
   packages = [
     ".",
+    "aad",
     "auth",
     "cbs",
     "conn",
     "internal",
     "internal/tracing",
     "log",
+    "persist",
     "rpc",
     "sas",
     "uuid",
@@ -29,12 +31,37 @@
   version = "v1.1.4"
 
 [[projects]]
+  digest = "1:b40bee32d20302c624b565596cea0db70eb652aebcf6131e957549a9651e0878"
+  name = "github.com/Azure/azure-event-hubs-go"
+  packages = [
+    ".",
+    "atom",
+    "eph",
+    "storage",
+  ]
+  pruneopts = "NUT"
+  revision = "d3d1b70a113ea8a9f2d7443ff7d99ab40f9b6eca"
+  version = "v1.3.1"
+
+[[projects]]
   digest = "1:d2ccb697dc13c8fbffafa37baae97594d5592ae8f7e113471084137315536e2b"
   name = "github.com/Azure/azure-pipeline-go"
   packages = ["pipeline"]
   pruneopts = "NUT"
   revision = "b8e3409182fd52e74f7d7bdfbff5833591b3b655"
   version = "v0.1.8"
+
+[[projects]]
+  digest = "1:78be39324fa57fa613089e617b7d284f229229c6f74e31d13aa4d72a6c609196"
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = [
+    "services/eventhub/mgmt/2017-04-01/eventhub",
+    "services/storage/mgmt/2017-10-01/storage",
+    "version",
+  ]
+  pruneopts = "NUT"
+  revision = "32916f57ad7b421f5fdaab86b73a795632fff117"
+  version = "v21.4.0"
 
 [[projects]]
   digest = "1:7096eaa0aa17ad9ec8c27029d88eb3a6b7158a279f66034d3483ef66bd50ce29"
@@ -46,6 +73,14 @@
   pruneopts = "NUT"
   revision = "551698499ac9fac20d8c50faad5749967e685926"
   version = "v0.4.1"
+
+[[projects]]
+  digest = "1:b15d5bdadce5d98f1e06353508a4029fccfeb68761957b3a2a8cb38ebb8caca4"
+  name = "github.com/Azure/azure-storage-blob-go"
+  packages = ["azblob"]
+  pruneopts = "NUT"
+  revision = "678206e7e6e55abf0265a6440135e92005176ebf"
+  version = "v0.6.0"
 
 [[projects]]
   digest = "1:443f92267988b2eca0e00bbb74f7387202fe89a799bba70a8ff872213f46a5d3"
@@ -67,7 +102,7 @@
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
-  digest = "1:6f002d621e5ed19423eaac8b482b54508d5d6773f586f0839af885884dee1a36"
+  digest = "1:0e816b6ff1a8c113425f16465254168b8f5fb760735fe3602a46c86625338322"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -75,6 +110,7 @@
     "autorest/azure",
     "autorest/date",
     "autorest/to",
+    "autorest/validation",
     "logger",
     "version",
   ]
@@ -462,6 +498,14 @@
   revision = "c2b33e84"
 
 [[projects]]
+  digest = "1:ebd0081aed1cd0af2f65a362c0ceea985eae9fe72efb28cefb84eca3b98dd3a3"
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
   digest = "1:4e903242fe176238aaa469f59d7035f5abf2aa9acfefb8964ddd203651b574e9"
   name = "github.com/json-iterator/go"
   packages = ["."]
@@ -677,13 +721,14 @@
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
 
 [[projects]]
-  digest = "1:bd58b0ae20eaa5ffcb670ce46ff2bed9b9867094fdb3e6b867741d3d02957f45"
+  digest = "1:9eba604a9756ed0ddc58fb933b5f710250910c83208155ac783def53690729b6"
   name = "go.opencensus.io"
   packages = [
     ".",
     "internal",
     "trace",
     "trace/internal",
+    "trace/propagation",
     "trace/tracestate",
   ]
   pruneopts = "NUT"
@@ -692,9 +737,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bbe51412d9915d64ffaa96b51d409e070665efc5194fcf145c4a27d4133107a4"
+  digest = "1:5e4639c1d29ee517777961d74071e3cf3aa7634521b0ceac3d2c8fc0334dbff9"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "pkcs12",
+    "pkcs12/internal/rc2",
+    "ssh/terminal",
+  ]
   pruneopts = "NUT"
   revision = "a5d413f7728c81fb97d96a2b722368945f651e78"
 
@@ -1292,11 +1341,16 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Azure/azure-event-hubs-go",
+    "github.com/Azure/azure-event-hubs-go/storage",
     "github.com/Azure/azure-service-bus-go",
+    "github.com/Azure/azure-storage-blob-go/azblob",
     "github.com/Azure/azure-storage-queue-go/azqueue",
+    "github.com/Azure/go-autorest/autorest/azure",
     "github.com/Shopify/sarama",
     "github.com/Sirupsen/logrus",
     "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/golang/glog",
