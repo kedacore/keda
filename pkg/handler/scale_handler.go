@@ -336,7 +336,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			log.Infof("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
 		scaler.Close()
 	}
