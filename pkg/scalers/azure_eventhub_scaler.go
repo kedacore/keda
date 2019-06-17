@@ -79,6 +79,8 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	storageConnectionSetting := defaultStorageConnectionSetting
 	if val, ok := metadata["storageConnection"]; ok && val != "" {
 		storageConnectionSetting = val
+	} else {
+		return nil, fmt.Errorf("no storage connection setting given")
 	}
 
 	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
@@ -90,6 +92,8 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	eventHubConnectionSetting := defaultEventHubConnectionSetting
 	if val, ok := metadata["connection"]; ok && val != "" {
 		eventHubConnectionSetting = val
+	} else {
+		return nil, fmt.Errorf("no event hub connection setting given")
 	}
 
 	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
