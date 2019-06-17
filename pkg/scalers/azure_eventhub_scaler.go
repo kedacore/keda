@@ -93,7 +93,7 @@ func ParseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	if val, ok := metadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			log.Errorf("Error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
+			return nil, fmt.Errorf("Error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
 		} else {
 			meta.threshold = threshold
 		}
@@ -102,6 +102,8 @@ func ParseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	storageConnectionSetting := defaultStorageConnectionString
 	if val, ok := metadata["storageConnection"]; ok && val != "" {
 		storageConnectionSetting = val
+	} else {
+		return nil, fmt.Errorf("no storage connection setting given")
 	}
 
 	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
@@ -113,6 +115,8 @@ func ParseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	eventHubConnectionSetting := defaultEventHubConnectionString
 	if val, ok := metadata["eventHubConnection"]; ok && val != "" {
 		eventHubConnectionSetting = val
+	} else {
+		return nil, fmt.Errorf("no event hub connection setting given")
 	}
 
 	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
@@ -239,7 +243,7 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, lease.Checkpoint.Offset, strconv.FormatInt(unprocessedEventCount, 10))
 	}
 
-	log.Infof("Scaling for %s total unprocessed events", strconv.FormatInt(totalUnprocessedEventCount, 10))
+	log.Debugf("Scaling for %s total unprocessed events in event hub %s", strconv.FormatInt(totalUnprocessedEventCount, 10), scaler.metadata.eventHubName)
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,

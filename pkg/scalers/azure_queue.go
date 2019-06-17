@@ -2,10 +2,8 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 )
@@ -38,29 +36,4 @@ func GetAzureQueueLength(ctx context.Context, connectionString, queueName string
 	}
 
 	return props.ApproximateMessagesCount(), nil
-}
-
-// ParseAzureStorageConnectionString parses a storage account connection string into (accountName, key)
-func ParseAzureStorageConnectionString(connectionString string) (string, string, error) {
-	parts := strings.Split(connectionString, ";")
-
-	var name, key string
-	for _, v := range parts {
-		if strings.HasPrefix(v, "AccountName") {
-			accountParts := strings.SplitN(v, "=", 2)
-			if len(accountParts) == 2 {
-				name = accountParts[1]
-			}
-		} else if strings.HasPrefix(v, "AccountKey") {
-			keyParts := strings.SplitN(v, "=", 2)
-			if len(keyParts) == 2 {
-				key = keyParts[1]
-			}
-		}
-	}
-	if name == "" || key == "" {
-		return "", "", errors.New("Can't parse connection string")
-	}
-
-	return name, key, nil
 }
