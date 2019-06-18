@@ -57,8 +57,8 @@ func kubernetes install --namespace keda
 | `rbac.create`                     | Indication to whether or not to use role-based access control | `true`            |
 | `serviceAccount.create`           | Indication to whether or not to a serivce account should be used | `true`            |
 | `serviceAccount.name`             | Name of the service account to use | ``            |
-| `logLevel`                        | Granularity of logs to use | `info`          |
-| `glogLevel`                       | Granularity of logs to use | `2`            |
+| `logLevel`                        | Granularity of KEDA logs to use which includes scale controller & metric adapter | `info`          |
+| `glogLevel`                       | Granularity of logs to use for metric adapter which is beyond KEDA scope | `2`            |
 
 ## Uninstalling the Chart
 
