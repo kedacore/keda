@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
-	storageLeaser "github.com/Azure/azure-event-hubs-go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	log "github.com/Sirupsen/logrus"
 	"k8s.io/api/autoscaling/v2beta1"
@@ -26,24 +24,10 @@ const (
 	defaultStorageConnectionString  = "AzureWebJobsStorage"
 )
 
-type Lease struct {
-	PartitionID string `json:"partitionID"`
-	Epoch       int    `json:"epoch"`
-	Owner       string `json:"owner"`
-	Checkpoint  struct {
-		Offset         string    `json:"offset"`
-		SequenceNumber int64     `json:"sequenceNumber"`
-		EnqueueTime    time.Time `json:"enqueueTime"`
-	} `json:"checkpoint"`
-	State string `json:"state"`
-	Token string `json:"token"`
-}
-
 type AzureEventHubScaler struct {
 	metadata           *EventHubMetadata
 	client             *eventhub.Hub
 	storageCredentials *azblob.SharedKeyCredential
-	leaserCheckpointer *storageLeaser.LeaserCheckpointer
 }
 
 type EventHubMetadata struct {
@@ -75,12 +59,6 @@ func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 		return &AzureEventHubScaler{}, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
 	eventHubScaler.client = hub
-
-	leaserCheckpointer, err := GetLeaserCheckpointer(parsedMetadata.storageConnection, parsedMetadata.storageContainerName)
-	if err != nil {
-		return &AzureEventHubScaler{}, fmt.Errorf("unable to get leaser/checkpointer: %s", err)
-	}
-	eventHubScaler.leaserCheckpointer = leaserCheckpointer
 
 	return &eventHubScaler, nil
 }
@@ -239,11 +217,11 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 
 		totalUnprocessedEventCount += unprocessedEventCount
 
-		log.Debugf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %s",
-			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, lease.Checkpoint.Offset, strconv.FormatInt(unprocessedEventCount, 10))
+		log.Debugf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
+			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, lease.Checkpoint.Offset, unprocessedEventCount)
 	}
 
-	log.Debugf("Scaling for %s total unprocessed events in event hub %s", strconv.FormatInt(totalUnprocessedEventCount, 10), scaler.metadata.eventHubName)
+	log.Debugf("Scaling for %d total unprocessed events in event hub %s", totalUnprocessedEventCount, scaler.metadata.eventHubName)
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
@@ -254,7 +232,7 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-// Close closes eventhub client and leasercheckpointer
+// Close closes Azure Event Hub Scaler
 func (scaler *AzureEventHubScaler) Close() error {
 	return nil
 }

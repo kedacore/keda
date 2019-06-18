@@ -51,6 +51,11 @@ helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --
 func kubernetes install --namespace keda
 ```
 
+### Deploying using the deploy yaml
+If you want to try KEDA on minikube or a different Kubernetes deployment without using Helm, you can deploy the yaml under the `/deploy` directory.
+```
+kubectl apply -f KedaScaleController.yaml
+```
 
 ## How KEDA works
 
@@ -67,12 +72,13 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Azure Storage Queues
 * Azure Service Bus Queues and Topics
 * AWS Simple Queue Service
+* Prometheus
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
 #### ScaledObject custom resource definition
 
-In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed.  The `ScaledObject` contains information on the deployment to scale.  The `ScaledObject` will result in corresponding autoscaling resource to scale the deployment.  `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period.
+In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed.  The `ScaledObject` contains information on the deployment to scale. `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period. The `ScaledObject` will result in corresponding autoscaling resource (HPA definition) to scale the deployment. When `ScaledObjects` get deleted, the corresponding HPA definition is cleaned up.
 
 ScaledObject examples and schemas [can be found in our wiki](https://github.com/kedacore/keda/wiki/ScaledObject-spec).
 

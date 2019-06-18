@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -23,8 +24,10 @@ import (
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler struct {
-	kedaClient clientset.Interface
-	kubeClient kubernetes.Interface
+	kedaClient          clientset.Interface
+	kubeClient          kubernetes.Interface
+	externalMetricNames map[string]int
+	metricNamesLock     sync.RWMutex
 }
 
 const (
@@ -39,8 +42,9 @@ const (
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(kedaClient clientset.Interface, kubeClient kubernetes.Interface) *ScaleHandler {
 	handler := &ScaleHandler{
-		kedaClient: kedaClient,
-		kubeClient: kubeClient,
+		kedaClient:          kedaClient,
+		kubeClient:          kubeClient,
+		externalMetricNames: make(map[string]int),
 	}
 
 	return handler
@@ -56,6 +60,18 @@ func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledO
 // HandleScaledObjectDelete handles any cleanup when a scaled object is deleted
 func (h *ScaleHandler) HandleScaledObjectDelete(scaledObject *keda_v1alpha1.ScaledObject) {
 	h.deleteHPAForScaledObject(scaledObject)
+}
+
+// GetExternalMetricNames returns the exteral metrics of the triggers of the current scaled objects
+func (h *ScaleHandler) GetExternalMetricNames() []string {
+	h.metricNamesLock.RLock()
+	defer h.metricNamesLock.RUnlock()
+	returnedMetrics := make([]string, 0, len(h.externalMetricNames))
+	for k := range h.externalMetricNames {
+		returnedMetrics = append(returnedMetrics, k)
+	}
+
+	return returnedMetrics
 }
 
 // GetScaledObjectMetrics is used by the  metric adapter in provider.go to get the value for a metric for a scaled object
@@ -93,7 +109,17 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 		return
 	}
+
 	scaledObjectNamespace := scaledObject.GetNamespace()
+	scalers, _ := h.getScalers(scaledObject)
+	for _, scaler := range scalers {
+		metricSpecs := scaler.GetMetricSpecForScaling()
+		for _, metricSpec := range metricSpecs {
+			h.removeExternalMetricName(metricSpec.External.MetricName)
+		}
+		scaler.Close()
+	}
+
 	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
 	deleteOptions := &meta_v1.DeleteOptions{}
 	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
@@ -103,6 +129,24 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 		log.Errorf("Error deleting HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
 	} else {
 		log.Infof("Deleted HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
+	}
+}
+
+func (h *ScaleHandler) addExternalMetricName(metricName string) {
+	h.metricNamesLock.Lock()
+	defer h.metricNamesLock.Unlock()
+	h.externalMetricNames[metricName] = h.externalMetricNames[metricName] + 1
+	log.Debugf("ExternalMetricList: Incremented metricName %s with ref count %d", metricName, h.externalMetricNames[metricName])
+}
+
+func (h *ScaleHandler) removeExternalMetricName(metricName string) {
+	h.metricNamesLock.Lock()
+	defer h.metricNamesLock.Unlock()
+	h.externalMetricNames[metricName] = h.externalMetricNames[metricName] - 1
+	log.Debugf("ExternalMetricList: Decremented metricName %s with ref count %d", metricName, h.externalMetricNames[metricName])
+	if h.externalMetricNames[metricName] == 0 {
+		delete(h.externalMetricNames, metricName)
+		log.Debugf("ExternalMetricList: Removed metric name %s as ref count is 0", metricName)
 	}
 }
 
@@ -123,6 +167,7 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, sca
 		for _, metricSpec := range metricSpecs {
 			metricSpec.External.MetricSelector = &meta_v1.LabelSelector{MatchLabels: make(map[string]string)}
 			metricSpec.External.MetricSelector.MatchLabels["deploymentName"] = deploymentName
+			h.addExternalMetricName(metricSpec.External.MetricName)
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 		scaler.Close()
@@ -184,6 +229,7 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, sca
 // if isDue is set to true, the method will check the scaledObject right away. Otherwise
 // it'll wait for pollingInterval then check.
 func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
+
 	h.handleScale(ctx, scaledObject)
 
 	var pollingInterval time.Duration
@@ -523,6 +569,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, trigger.Metadata)
+	case "prometheus":
+		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}

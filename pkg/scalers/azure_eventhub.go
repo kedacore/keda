@@ -6,12 +6,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"time"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
-	storageLeaser "github.com/Azure/azure-event-hubs-go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest/azure"
 )
+
+type Lease struct {
+	PartitionID string `json:"partitionID"`
+	Epoch       int    `json:"epoch"`
+	Owner       string `json:"owner"`
+	Checkpoint  struct {
+		Offset         string    `json:"offset"`
+		SequenceNumber int64     `json:"sequenceNumber"`
+		EnqueueTime    time.Time `json:"enqueueTime"`
+	} `json:"checkpoint"`
+	State string `json:"state"`
+	Token string `json:"token"`
+}
 
 // GetStorageCredentials returns azure env and storage credentials
 func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob.SharedKeyCredential, error) {
@@ -31,30 +44,6 @@ func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob
 	}
 
 	return azureEnv, cred, nil
-}
-
-// GetLeaserCheckpointer gets the leaser/checkpointer using storage credentials
-func GetLeaserCheckpointer(storageConnection string, storageContainerName string) (*storageLeaser.LeaserCheckpointer, error) {
-	storageAccountName, _, err := ParseAzureStorageConnectionString(storageConnection)
-	if err != nil {
-		return &storageLeaser.LeaserCheckpointer{}, fmt.Errorf("unable to parse storage connection string: %s", err)
-	}
-
-	env, cred, err := GetStorageCredentials(storageConnection)
-	if err != nil {
-		return &storageLeaser.LeaserCheckpointer{}, fmt.Errorf("unable to get storage credentials: %s", err)
-	}
-
-	leaserCheckpointer, err := storageLeaser.NewStorageLeaserCheckpointer(
-		cred,
-		storageAccountName,
-		storageContainerName,
-		env)
-	if err != nil {
-		return nil, fmt.Errorf("could not prepare a storage leaserCheckpointer: %s", err)
-	}
-
-	return leaserCheckpointer, nil
 }
 
 // GetEventHubClient returns eventhub client
