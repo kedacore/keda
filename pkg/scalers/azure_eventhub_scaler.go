@@ -40,31 +40,30 @@ type EventHubMetadata struct {
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
 func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	eventHubScaler := AzureEventHubScaler{}
-
-	parsedMetadata, err := ParseAzureEventHubMetadata(metadata, resolvedEnv)
+	parsedMetadata, err := parseAzureEventHubMetadata(metadata, resolvedEnv)
 	if err != nil {
-		return &AzureEventHubScaler{}, fmt.Errorf("unable to get eventhub metadata: %s", err)
+		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
-	eventHubScaler.metadata = parsedMetadata
 
 	_, cred, err := GetStorageCredentials(parsedMetadata.storageConnection)
 	if err != nil {
-		return &AzureEventHubScaler{}, fmt.Errorf("unable to get storage credentials: %s", err)
+		return nil, fmt.Errorf("unable to get storage credentials: %s", err)
 	}
-	eventHubScaler.storageCredentials = cred
 
 	hub, err := GetEventHubClient(parsedMetadata.eventHubConnection)
 	if err != nil {
-		return &AzureEventHubScaler{}, fmt.Errorf("unable to get eventhub client: %s", err)
+		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
-	eventHubScaler.client = hub
 
-	return &eventHubScaler, nil
+	return &AzureEventHubScaler{
+		metadata:           parsedMetadata,
+		storageCredentials: cred,
+		client:             hub,
+	}, nil
 }
 
-// ParseAzureEventHubMetadata parses metadata
-func ParseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*EventHubMetadata, error) {
+// parseAzureEventHubMetadata parses metadata
+func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*EventHubMetadata, error) {
 	meta := EventHubMetadata{}
 	meta.threshold = defaultEventHubMessageThreshold
 

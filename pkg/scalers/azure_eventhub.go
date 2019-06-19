@@ -81,7 +81,7 @@ func GetLeaseFromBlobStorage(ctx context.Context, partitionID string, storageCon
 	blobData := &bytes.Buffer{}
 	reader := get.Body(azblob.RetryReaderOptions{})
 	blobData.ReadFrom(reader)
-	reader.Close() // The client must close the response body when finished with it
+	defer reader.Close() // The client must close the response body when finished with it
 
 	var dat Lease
 
