@@ -45,6 +45,21 @@ $ helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda 
 func kubernetes install --namespace keda
 ```
 
+## Configuration
+
+| Parameter                         | Description                         | Default              |
+|:----------------------------------|:------------------------------------|:---------------------|
+| `image.repository`                | Repository which provides the image | `kedacore/keda`      |
+| `image.tag`                       | Tag of image to use | `lastest`            |
+| `image.pullPolicy`                | Policy to pull image | `Always`            |
+| `replicaCount`                    | Amount of replicas to run | `1`            |
+| `customResourceDefinition.create` | Indication to whether or not to create the custom resource definition | `true`            |
+| `rbac.create`                     | Indication to whether or not to use role-based access control | `true`            |
+| `serviceAccount.create`           | Indication to whether or not to a serivce account should be used | `true`            |
+| `serviceAccount.name`             | Name of the service account to use | ``            |
+| `logLevel`                        | Granularity of KEDA logs to use which includes scale controller & metric adapter | `info`          |
+| `glogLevel`                       | Granularity of logs to use for metric adapter which is beyond KEDA scope | `2`            |
+
 ## Uninstalling the Chart
 
 To uninstall/delete the `keda` deployment:
