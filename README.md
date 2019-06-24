@@ -46,6 +46,11 @@ helm repo update
 helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda
 ```
 
+#### Install keda-edge chart with ARM image
+```cli
+helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda --set image.tag=arm
+```
+
 ### Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
 ```
 func kubernetes install --namespace keda
