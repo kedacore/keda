@@ -50,6 +50,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	log.Debugf("Received request for namespace: %s, metric name: %s, metric selectors: %s", namespace, info.Metric, metricSelector.String())
 	externalmetrics, err := p.scaleHandler.GetScaledObjectMetrics(namespace, metricSelector, info.Metric)
 	if err != nil {
+		log.Errorf("Cannot get metrics for Namespace %s MetricSelector %s and Metrics %s. Error: %s", namespace, metricSelector, info.Metric, err)
 		return nil, err
 	}
 

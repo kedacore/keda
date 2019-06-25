@@ -5,8 +5,8 @@ import (
 )
 
 var testAWSSQSResolvedEnv = map[string]string{
-	"awsAccessKeyID":     "none",
-	"awsSecretAccessKey": "none",
+	"AWS_ACCESS_KEY":        "none",
+	"AWS_SECRET_ACCESS_KEY": "none",
 }
 
 type parseAWSSQSMetadataTestData struct {
@@ -17,9 +17,11 @@ type parseAWSSQSMetadataTestData struct {
 var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 	{map[string]string{}, true},
 	// properly formed queue and region
-	{map[string]string{"queueURL": "myqueue", "region": "eu-west-1"}, false},
+	{map[string]string{"queueURL": "myqueue", "region": "eu-west-1", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, false},
 	// properly formed queue, empty region
-	{map[string]string{"queueURL": "myqueue", "region": ""}, true},
+	{map[string]string{"queueURL": "myqueue", "region": "", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true},
+	// missing access key
+	{map[string]string{"queueURL": "myqueue", "region": "", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true},
 }
 
 func TestSQSParseMetadata(t *testing.T) {
