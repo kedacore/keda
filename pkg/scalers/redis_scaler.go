@@ -84,7 +84,7 @@ func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata
 	return &meta, nil
 }
 
-// IsActive checks if there is any element in the redis list
+// IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := getRedisListLength(
 		ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
@@ -109,7 +109,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-//GetMetrics connects to redis and fins the length of the list
+// GetMetrics connects to Redis and finds the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	listLen, err := getRedisListLength(ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
 
