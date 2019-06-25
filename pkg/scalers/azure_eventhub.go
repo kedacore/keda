@@ -4,33 +4,30 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
-	"time"
+	"strings"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest/azure"
 )
 
-type Lease struct {
-	PartitionID string `json:"partitionID"`
-	Epoch       int    `json:"epoch"`
-	Owner       string `json:"owner"`
-	Checkpoint  struct {
-		Offset         string    `json:"offset"`
-		SequenceNumber int64     `json:"sequenceNumber"`
-		EnqueueTime    time.Time `json:"enqueueTime"`
-	} `json:"checkpoint"`
-	State string `json:"state"`
-	Token string `json:"token"`
+type Checkpoint struct {
+	Epoch          int64  `json:"Epoch"`
+	Offset         string `json:"Offset"`
+	Owner          string `json:"Owner"`
+	PartitionID    string `json:"PartitionId"`
+	SequenceNumber int64  `json:"SequenceNumber"`
+	Token          string `json:"Token"`
 }
 
 // GetStorageCredentials returns azure env and storage credentials
 func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob.SharedKeyCredential, error) {
 	storageAccountName, storageAccountKey, err := ParseAzureStorageConnectionString(storageConnection)
 	if err != nil {
-		return azure.Environment{}, &azblob.SharedKeyCredential{}, fmt.Errorf("unable to parse connection string: %s\n", storageConnection)
+		return azure.Environment{}, &azblob.SharedKeyCredential{}, fmt.Errorf("unable to parse connection string: %s", storageConnection)
 	}
 
 	azureEnv, err := azure.EnvironmentFromName("AzurePublicCloud")
@@ -56,18 +53,24 @@ func GetEventHubClient(connectionString string) (*eventhub.Hub, error) {
 	return hub, nil
 }
 
-// GetLeaseFromBlobStorage accesses Blob storage and gets lease information of a partition
-func GetLeaseFromBlobStorage(ctx context.Context, partitionID string, storageConnection string, storageContainerName string) (Lease, error) {
-	storageAccountName, _, err := ParseAzureStorageConnectionString(storageConnection)
+// GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
+func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, eventHubMetadata EventHubMetadata) (Checkpoint, error) {
+	storageAccountName, _, err := ParseAzureStorageConnectionString(eventHubMetadata.storageConnection)
 	if err != nil {
-		return Lease{}, fmt.Errorf("unable to parse storage connection string: %s", err)
+		return Checkpoint{}, fmt.Errorf("unable to parse storage connection string: %s", err)
 	}
 
-	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", storageAccountName, storageContainerName, partitionID))
-
-	_, cred, err := GetStorageCredentials(storageConnection)
+	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(eventHubMetadata.eventHubConnection)
 	if err != nil {
-		return Lease{}, fmt.Errorf("unable to get storage credentials: %s", err)
+		return Checkpoint{}, fmt.Errorf("unable to parse event hub connection string: %s", err)
+	}
+
+	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
+	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/azure-webjobs-eventhub/%s/%s/%s/%s", storageAccountName, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
+
+	_, cred, err := GetStorageCredentials(eventHubMetadata.storageConnection)
+	if err != nil {
+		return Checkpoint{}, fmt.Errorf("unable to get storage credentials: %s", err)
 	}
 
 	// Create a BlockBlobURL object to a blob in the container.
@@ -75,7 +78,7 @@ func GetLeaseFromBlobStorage(ctx context.Context, partitionID string, storageCon
 
 	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false)
 	if err != nil {
-		return Lease{}, fmt.Errorf("unable to download file from blob storage: %s", err)
+		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %s", err)
 	}
 
 	blobData := &bytes.Buffer{}
@@ -83,11 +86,38 @@ func GetLeaseFromBlobStorage(ctx context.Context, partitionID string, storageCon
 	blobData.ReadFrom(reader)
 	defer reader.Close() // The client must close the response body when finished with it
 
-	var dat Lease
+	var dat Checkpoint
 
 	if err := json.Unmarshal(blobData.Bytes(), &dat); err != nil {
-		return Lease{}, fmt.Errorf("failed to decode blob data: %s", err)
+		return Checkpoint{}, fmt.Errorf("failed to decode blob data: %s", err)
 	}
 
 	return dat, nil
+}
+
+func ParseAzureEventHubConnectionString(connectionString string) (string, string, error) {
+	parts := strings.Split(connectionString, ";")
+
+	var eventHubNamespace, eventHubName string
+	for _, v := range parts {
+		if strings.HasPrefix(v, "Endpoint") {
+			endpointParts := strings.SplitN(v, "=", 2)
+			if len(endpointParts) == 2 {
+				endpointParts[1] = strings.TrimPrefix(endpointParts[1], "sb://")
+				endpointParts[1] = strings.TrimSuffix(endpointParts[1], "/")
+				eventHubNamespace = endpointParts[1]
+			}
+		} else if strings.HasPrefix(v, "EntityPath") {
+			entityPathParts := strings.SplitN(v, "=", 2)
+			if len(entityPathParts) == 2 {
+				eventHubName = entityPathParts[1]
+			}
+		}
+	}
+
+	if eventHubNamespace == "" || eventHubName == "" {
+		return "", "", errors.New("Can't parse event hub connection string")
+	}
+
+	return eventHubNamespace, eventHubName, nil
 }

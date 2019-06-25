@@ -275,7 +275,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		if err != nil {
-			log.Errorf("Error getting scale decision: %s", err)
+			log.Debugf("Error getting scale decision: %s", err)
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
@@ -567,7 +567,7 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
-	case "azure-eventhub":
+	case "eventhubtrigger":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, trigger.Metadata)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)

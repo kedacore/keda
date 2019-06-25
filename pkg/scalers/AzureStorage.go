@@ -24,7 +24,7 @@ func ParseAzureStorageConnectionString(connectionString string) (string, string,
 		}
 	}
 	if name == "" || key == "" {
-		return "", "", errors.New("Can't parse connection string")
+		return "", "", errors.New("Can't parse storage connection string")
 	}
 
 	return name, key, nil

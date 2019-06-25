@@ -20,6 +20,7 @@ const (
 	defaultEventHubMessageThreshold = 10
 	eventHubMetricType              = "External"
 	thresholdMetricName             = "unprocessedEventThreshold"
+	defaultEventHubConsumerGroup    = "$Default"
 	defaultEventHubConnectionString = "EventHub"
 	defaultStorageConnectionString  = "AzureWebJobsStorage"
 )
@@ -31,11 +32,10 @@ type AzureEventHubScaler struct {
 }
 
 type EventHubMetadata struct {
-	eventHubConnection   string
-	threshold            int64
-	eventHubName         string
-	storageConnection    string
-	storageContainerName string
+	eventHubConnection    string
+	eventHubConsumerGroup string
+	threshold             int64
+	storageConnection     string
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -71,9 +71,9 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
-		} else {
-			meta.threshold = threshold
 		}
+
+		meta.threshold = threshold
 	}
 
 	storageConnectionSetting := defaultStorageConnectionString
@@ -102,16 +102,9 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 		return nil, fmt.Errorf("no event hub connection setting given")
 	}
 
-	if val, ok := metadata["eventHubName"]; ok {
-		meta.eventHubName = val
-	} else {
-		return nil, fmt.Errorf("no eventHubName given")
-	}
-
-	if val, ok := metadata["storageContainerName"]; ok {
-		meta.storageContainerName = val
-	} else {
-		return nil, fmt.Errorf("no storageContainerName given")
+	meta.eventHubConsumerGroup = defaultEventHubConsumerGroup
+	if val, ok := metadata["consumerGroup"]; ok {
+		meta.eventHubConsumerGroup = val
 	}
 
 	return &meta, nil
@@ -124,18 +117,17 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		return -1, fmt.Errorf("unable to get partition info: %s", err)
 	}
 
-	lease, err := GetLeaseFromBlobStorage(ctx, partitionID, scaler.metadata.storageConnection, scaler.metadata.storageContainerName)
+	checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
 	if err != nil {
-		return -1, fmt.Errorf("unable to get lease from storage: %s", err)
+		return -1, fmt.Errorf("unable to get checkpoint from storage: %s", err)
 	}
-
-	checkpoint := lease.Checkpoint
 
 	unprocessedEventCountInPartition := int64(0)
 
 	if checkpoint.SequenceNumber != partitionInfo.LastSequenceNumber {
 		if partitionInfo.LastSequenceNumber > checkpoint.SequenceNumber {
 			unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
+
 			return unprocessedEventCountInPartition, nil
 		} else {
 			unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
@@ -153,6 +145,7 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
 		log.Errorf("unable to get runtimeInfo for isActive: %s", err)
+		return false, fmt.Errorf("unable to get runtimeInfo for isActive: %s", err)
 	}
 
 	partitionIDs := runtimeInfo.PartitionIDs
@@ -163,7 +156,7 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 		unprocessedEventCount, err := scaler.GetUnprocessedEventCountInPartition(ctx, partitionID)
 
 		if err != nil {
-			log.Errorf("unable to get unprocessedEventCount for isActive: %s", err)
+			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %s", err)
 		}
 
 		if unprocessedEventCount > 0 {
@@ -202,9 +195,9 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
 		}
 
-		lease, err := GetLeaseFromBlobStorage(ctx, partitionID, scaler.metadata.storageConnection, scaler.metadata.storageContainerName)
+		checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
 		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get lease from storage: %s", err)
+			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get checkpoint from storage: %s", err)
 		}
 
 		unprocessedEventCount := int64(0)
@@ -217,10 +210,10 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 		totalUnprocessedEventCount += unprocessedEventCount
 
 		log.Debugf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
-			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, lease.Checkpoint.Offset, unprocessedEventCount)
+			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount)
 	}
 
-	log.Debugf("Scaling for %d total unprocessed events in event hub %s", totalUnprocessedEventCount, scaler.metadata.eventHubName)
+	log.Debugf("Scaling for %d total unprocessed events in event hub", totalUnprocessedEventCount)
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,

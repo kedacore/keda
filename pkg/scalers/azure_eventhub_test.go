@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	eventHubName              = "testEventHubName"
-	storageContainerName      = "testStorageContainerName"
+	eventHubConsumerGroup     = "testEventHubConsumerGroup"
 	eventHubConnectionSetting = "testEventHubConnectionSetting"
 	storageConnectionSetting  = "testStorageConnectionSetting"
 )
@@ -28,25 +27,21 @@ var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: "no
 var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{}, true},
 	// properly formed event hub metadata
-	{map[string]string{"storageConnection": storageConnectionSetting, "storageContainerName": storageContainerName, "eventHubConnection": eventHubConnectionSetting, "eventHubName": eventHubName, "unprocessedEventThreshold": "15"}, false},
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing event hub connection setting
-	{map[string]string{"storageConnection": storageConnectionSetting, "storageContainerName": storageContainerName, "eventHubName": eventHubName, "unprocessedEventThreshold": "15"}, true},
-	// missing event hub name
-	{map[string]string{"storageConnection": storageConnectionSetting, "storageContainerName": storageContainerName, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"}, true},
 	// missing storage connection setting
-	{map[string]string{"storageContainerName": storageContainerName, "eventHubConnection": eventHubConnectionSetting, "eventHubName": eventHubName, "unprocessedEventThreshold": "15"}, true},
-	// missing storage container name
-	{map[string]string{"storageConnection": storageConnectionSetting, "eventHubConnection": eventHubConnectionSetting, "eventHubName": eventHubName, "unprocessedEventThreshold": "15"}, true},
+	{map[string]string{"consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	// missing event hub consumer group - should replace with default
+	{map[string]string{"storageConnection": storageConnectionSetting, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing unprocessed event threshold - should replace with default
-	{map[string]string{"storageConnection": storageConnectionSetting, "storageContainerName": storageContainerName, "eventHubConnection": eventHubConnectionSetting, "eventHubName": eventHubName}, false},
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting}, false},
 }
 
 var testEventHubScaler = AzureEventHubScaler{
 	metadata: &EventHubMetadata{
-		eventHubConnection:   "none",
-		storageConnection:    "none",
-		eventHubName:         eventHubName,
-		storageContainerName: storageContainerName,
+		eventHubConnection: "none",
+		storageConnection:  "none",
 	},
 }
 
@@ -67,7 +62,7 @@ func TestParseEventHubMetadata(t *testing.T) {
 func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	t.Log("This test will use the environment variable EVENTHUB_CONNECTION_STRING and STORAGE_CONNECTION_STRING if it is set.")
 	t.Log("If set, it will connect to the storage account and event hub to determine how many messages are in the event hub.")
-	t.Logf("\tEventHub '%s' with storage container %s has 1 message in partition 0 and 0 messages in partition 1\n", eventHubName, storageContainerName)
+	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
 	eventHubConnectionString := os.Getenv("EVENTHUB_CONNECTION_STRING")
 	storageConnectionString := os.Getenv("STORAGE_CONNECTION_STRING")
