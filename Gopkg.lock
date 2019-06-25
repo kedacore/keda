@@ -338,6 +338,22 @@
   version = "v0.19.0"
 
 [[projects]]
+  digest = "1:de44b2850368432628bec4f956a629e943af9ebe7449c1d80a3a5b6556869bb8"
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/util",
+  ]
+  pruneopts = "NUT"
+  revision = "75795aa4236dc7341eefac3bbe945e68c99ef9df"
+  version = "v6.15.3"
+
+[[projects]]
   digest = "1:37234906013da82d4c05666262eda5bdec8f736bafa7d4ec1fb3314e965b476f"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -1297,8 +1313,10 @@
     "github.com/Shopify/sarama",
     "github.com/Sirupsen/logrus",
     "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/sqs",
+    "github.com/go-redis/redis",
     "github.com/golang/glog",
     "github.com/kelseyhightower/envconfig",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd",
