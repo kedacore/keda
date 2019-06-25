@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	listLengthMetricName    = "RedisLengthOfQueue"
+	listLengthMetricName    = "RedisListLength"
 	defaultTargetListLength = 5
-	defaultRedisAddress     = "redis"
+	defaultRedisAddress     = "redis-master.default.svc.cluster.local:6379"
 	defaultRedisPassword    = ""
 )
 
@@ -36,7 +36,7 @@ type redisMetadata struct {
 func NewRedisScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	meta, err := parseRedisMetadata(metadata, resolvedEnv)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
+		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
 
 	return &redisScaler{
@@ -84,7 +84,7 @@ func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata
 	return &meta, nil
 }
 
-// GetScaleDecision is a func
+// IsActive checks if there is any element in the redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := getRedisListLength(
 		ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
@@ -101,6 +101,7 @@ func (s *redisScaler) Close() error {
 	return nil
 }
 
+// GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{MetricName: listLengthMetricName, TargetAverageValue: targetListLengthQty}
@@ -108,7 +109,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
+//GetMetrics connects to redis and fins the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	listLen, err := getRedisListLength(ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
 
