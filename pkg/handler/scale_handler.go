@@ -621,7 +621,7 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
-	case "azure-eventhub":
+	case "eventhubtrigger":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, trigger.Metadata)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
