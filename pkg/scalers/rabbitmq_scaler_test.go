@@ -13,13 +13,13 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
 	// properly formed metadata
-	{map[string]string{"queueLength": "10", "queueName": "sample", "host": "redis://redis"}, false},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "host": "amqp://rabbitmq"}, false},
 	// malformed queueLength
-	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": "redis://redis"}, true},
+	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": "amqp://rabbitmq"}, true},
 	// missing host
 	{map[string]string{"queueLength": "AA", "queueName": "sample"}, true},
 	// missing queueName
-	{map[string]string{"queueLength": "10", "host": "redis://redis"}, true},
+	{map[string]string{"queueLength": "10", "host": "amqp://rabbitmq"}, true},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
