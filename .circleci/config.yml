@@ -8,6 +8,7 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - run: make test
       - run: make build
       - run: make publish-edge-chart
       - store_artifacts:
