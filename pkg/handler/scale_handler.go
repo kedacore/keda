@@ -28,6 +28,8 @@ type ScaleHandler struct {
 	kubeClient          kubernetes.Interface
 	externalMetricNames map[string]int
 	metricNamesLock     sync.RWMutex
+	hpasToCreate        map[string]bool
+	hpaCreateLock       sync.RWMutex
 }
 
 const (
@@ -45,6 +47,7 @@ func NewScaleHandler(kedaClient clientset.Interface, kubeClient kubernetes.Inter
 		kedaClient:          kedaClient,
 		kubeClient:          kubeClient,
 		externalMetricNames: make(map[string]int),
+		hpasToCreate:        make(map[string]bool),
 	}
 
 	return handler
@@ -53,7 +56,7 @@ func NewScaleHandler(kedaClient clientset.Interface, kubeClient kubernetes.Inter
 // TODO confusing naming switching from isUpdate (controller) -> isDue (here)[]
 // WatchScaledObjectWithContext runs a handleScaleLoop go-routine for the scaledObject
 func (h *ScaleHandler) WatchScaledObjectWithContext(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
-	h.createOrUpdateHPAForScaledObject(ctx, scaledObject)
+	h.createHPAWithRetry(scaledObject, true)
 	go h.handleScaleLoop(ctx, scaledObject, isDue)
 }
 
@@ -77,7 +80,6 @@ func (h *ScaleHandler) GetExternalMetricNames() []string {
 // GetScaledObjectMetrics is used by the  metric adapter in provider.go to get the value for a metric for a scaled object
 func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector labels.Selector, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	// get the scaled objects matching namespace and labels
-	log.Debugf("Getting metrics for namespace %s MetricName %s Metric Selector %s", namespace, metricName, metricSelector.String())
 	scaledObjectQuerier := h.kedaClient.KedaV1alpha1().ScaledObjects(namespace)
 	scaledObjects, err := scaledObjectQuerier.List(meta_v1.ListOptions{LabelSelector: metricSelector.String()})
 	if err != nil {
@@ -88,7 +90,11 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 
 	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	scalers, _ := h.getScalers(scaledObject)
+	scalers, _, err := h.getScalers(scaledObject)
+	if err != nil {
+		return nil, fmt.Errorf("Error when getting scalers %s", err)
+	}
+
 	for _, scaler := range scalers {
 		metrics, err := scaler.GetMetrics(context.TODO(), metricName, metricSelector)
 		if err != nil {
@@ -103,6 +109,41 @@ func (h *ScaleHandler) GetScaledObjectMetrics(namespace string, metricSelector l
 	return matchingMetrics, nil
 }
 
+func (h *ScaleHandler) createHPAWithRetry(scaledObject *keda_v1alpha1.ScaledObject, createUpdateOverride bool) {
+	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
+	if deploymentName == "" {
+		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		return
+	}
+	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
+	existsInRetryList := h.doesHPAExistInRetryList(hpaName)
+	if existsInRetryList || createUpdateOverride {
+		err := h.createOrUpdateHPAForScaledObject(scaledObject)
+		if err != nil {
+			log.Errorf("Error creating or updating HPA for scaled object %s: %s", scaledObject.GetName(), err)
+		}
+
+		h.hpaCreateLock.Lock()
+		defer h.hpaCreateLock.Unlock()
+		if err != nil {
+			h.hpasToCreate[hpaName] = true
+			if !existsInRetryList {
+				log.Debugf("createHPAWithRetry ScaledObject %s is added to retry list", scaledObject.GetName())
+			}
+		} else if existsInRetryList {
+			delete(h.hpasToCreate, hpaName)
+			log.Debugf("createHPAWithRetry ScaledObject %s is removed from retry list", scaledObject.GetName())
+		}
+	}
+}
+
+func (h *ScaleHandler) doesHPAExistInRetryList(hpaName string) bool {
+	h.hpaCreateLock.RLock()
+	defer h.hpaCreateLock.RUnlock()
+	_, found := h.hpasToCreate[hpaName]
+	return found
+}
+
 func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.ScaledObject) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
@@ -111,7 +152,11 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 	}
 
 	scaledObjectNamespace := scaledObject.GetNamespace()
-	scalers, _ := h.getScalers(scaledObject)
+	scalers, _, err := h.getScalers(scaledObject)
+	if err != nil {
+		log.Errorf("Error when getting scalers %s", err)
+	}
+
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 		for _, metricSpec := range metricSpecs {
@@ -122,7 +167,7 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 
 	hpaName := fmt.Sprintf("keda-hpa-%s", deploymentName)
 	deleteOptions := &meta_v1.DeleteOptions{}
-	err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
+	err = h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Delete(hpaName, deleteOptions)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("HPA with namespace %s and name %s is not found", scaledObjectNamespace, hpaName)
 	} else if err != nil {
@@ -130,6 +175,10 @@ func (h *ScaleHandler) deleteHPAForScaledObject(scaledObject *keda_v1alpha1.Scal
 	} else {
 		log.Infof("Deleted HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	}
+
+	h.hpaCreateLock.Lock()
+	defer h.hpaCreateLock.Unlock()
+	delete(h.hpasToCreate, hpaName)
 }
 
 func (h *ScaleHandler) addExternalMetricName(metricName string) {
@@ -150,15 +199,17 @@ func (h *ScaleHandler) removeExternalMetricName(metricName string) {
 	}
 }
 
-func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) createOrUpdateHPAForScaledObject(scaledObject *keda_v1alpha1.ScaledObject) error {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
-		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return
+		return fmt.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 	}
 
 	var scaledObjectMetricSpecs []v2beta1.MetricSpec
-	scalers, _ := h.getScalers(scaledObject)
+	scalers, _, err := h.getScalers(scaledObject)
+	if err != nil {
+		return fmt.Errorf("Error getting scalers %s", err)
+	}
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
@@ -208,29 +259,29 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(ctx context.Context, sca
 		},
 	}
 
-	_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(hpa)
+	_, err = h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(hpa)
 	if apierrors.IsAlreadyExists(err) {
 		log.Infof("HPA with namespace %s and name %s already exists.Updating..", scaledObjectNamespace, hpaName)
 		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
 		if err != nil {
-			log.Errorf("Error updating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+			return fmt.Errorf("error updating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
 		} else {
 			log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 		}
 	} else if err != nil {
-		log.Errorf("Error creating HPA with namespace %s and name %s : %s\n", scaledObjectNamespace, hpaName, err)
+		return fmt.Errorf("error creating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
 	} else {
 		log.Infof("Created HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	}
+
+	return nil
 }
 
 // This method blocks forever and checks the scaledObject based on its pollingInterval
 // if isDue is set to true, the method will check the scaledObject right away. Otherwise
 // it'll wait for pollingInterval then check.
 func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
-
 	h.handleScale(ctx, scaledObject)
-
 	var pollingInterval time.Duration
 	if scaledObject.Spec.PollingInterval != nil {
 		pollingInterval = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
@@ -251,6 +302,7 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 	for {
 		select {
 		case <-time.After(getPollingInterval()):
+			h.createHPAWithRetry(scaledObject, false)
 			h.handleScale(ctx, scaledObject)
 		case <-ctx.Done():
 			log.Debugf("context for scaledObject (%s/%s) canceled", scaledObject.GetNamespace(), scaledObject.GetName())
@@ -262,8 +314,12 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
-	scalers, deployment := h.getScalers(scaledObject)
+	scalers, deployment, err := h.getScalers(scaledObject)
 	if deployment == nil {
+		return
+	}
+	if err != nil {
+		log.Errorf("Error getting scalers: %s", err)
 		return
 	}
 
@@ -420,7 +476,7 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment, containerName 
 						resolved[k] = v
 					}
 				} else {
-					log.Errorf("Error reading config ref %s on deployment %s/%s: %s", source.ConfigMapRef, deployment.GetNamespace(), deployment.GetName(), err)
+					return nil, fmt.Errorf("error reading config ref %s on deployment %s/%s: %s", source.ConfigMapRef, deployment.GetNamespace(), deployment.GetName(), err)
 				}
 			} else if source.SecretRef != nil {
 				if secretsMap, err := h.resolveSecretMap(source.SecretRef, deployment.GetNamespace()); err == nil {
@@ -428,7 +484,7 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment, containerName 
 						resolved[k] = v
 					}
 				} else {
-					log.Errorf("Error reading secret ref %s on deployment %s/%s: %s", source.SecretRef, deployment.GetNamespace(), deployment.GetName(), err)
+					return nil, fmt.Errorf("error reading secret ref %s on deployment %s/%s: %s", source.SecretRef, deployment.GetNamespace(), deployment.GetName(), err)
 				}
 			}
 		}
@@ -447,25 +503,24 @@ func (h *ScaleHandler) resolveEnv(deployment *apps_v1.Deployment, containerName 
 					// env is a secret selector
 					value, err = h.resolveSecretValue(envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, deployment.GetNamespace())
 					if err != nil {
-						log.Errorf("Error resolving secret name %s for env %s in deployment %s/%s. Skipping",
+						return nil, fmt.Errorf("error resolving secret name %s for env %s in deployment %s/%s",
 							envVar.ValueFrom.SecretKeyRef,
 							envVar.Name,
 							deployment.GetNamespace(),
 							deployment.GetName())
-						continue
 					}
 				} else if envVar.ValueFrom.ConfigMapKeyRef != nil {
 					// env is a configMap selector
 					value, err = h.resolveConfigValue(envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, deployment.GetNamespace())
 					if err != nil {
-						log.Errorf("Error resolving config %s for env %s in deployment %s/%s. Skippking",
+						return nil, fmt.Errorf("error resolving config %s for env %s in deployment %s/%s",
 							envVar.ValueFrom.ConfigMapKeyRef,
 							envVar.Name,
 							deployment.GetName(),
 							deployment.GetNamespace())
 					}
 				} else {
-					log.Errorf("Cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped. Skipping", envVar.Name)
+					return nil, fmt.Errorf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
 				}
 			}
 			resolved[envVar.Name] = value
@@ -518,37 +573,33 @@ func (h *ScaleHandler) resolveConfigValue(configKeyRef *core_v1.ConfigMapKeySele
 	return string(configCollection.Data[keyName]), nil
 }
 
-func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment) {
+func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]scalers.Scaler, *apps_v1.Deployment, error) {
 	scalers := []scalers.Scaler{}
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
-		log.Errorf("Notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-		return scalers, nil
+		return scalers, nil, fmt.Errorf("notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 	}
 
 	deployment, err := h.kubeClient.AppsV1().Deployments(scaledObject.GetNamespace()).Get(deploymentName, meta_v1.GetOptions{})
 	if err != nil {
-		log.Errorf("Error getting deployment: %s", err)
-		return scalers, nil
+		return scalers, nil, fmt.Errorf("error getting deployment: %s", err)
 	}
 
 	resolvedEnv, err := h.resolveEnv(deployment, scaledObject.Spec.ScaleTargetRef.ContainerName)
 	if err != nil {
-		log.Errorf("Error resolving secrets for deployment: %s", err)
-		return scalers, nil
+		return scalers, nil, fmt.Errorf("error resolving secrets for deployment: %s", err)
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
 		scaler, err := h.getScaler(trigger, resolvedEnv)
 		if err != nil {
-			log.Debugf("error for trigger #%d: %s", i, err)
-			continue
+			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
 
 		scalers = append(scalers, scaler)
 	}
 
-	return scalers, deployment
+	return scalers, deployment, nil
 }
 
 func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
@@ -565,6 +616,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
+	case "redis":
+		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
