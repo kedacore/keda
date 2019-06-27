@@ -17,12 +17,12 @@ import (
 )
 
 const (
-	defaultEventHubMessageThreshold = 10
-	eventHubMetricType              = "External"
-	thresholdMetricName             = "unprocessedEventThreshold"
-	defaultEventHubConsumerGroup    = "$Default"
-	defaultEventHubConnectionString = "EventHub"
-	defaultStorageConnectionString  = "AzureWebJobsStorage"
+	defaultEventHubMessageThreshold  = 64
+	eventHubMetricType               = "External"
+	thresholdMetricName              = "unprocessedEventThreshold"
+	defaultEventHubConsumerGroup     = "$Default"
+	defaultEventHubConnectionSetting = "EventHub"
+	defaultStorageConnectionSetting  = "AzureWebJobsStorage"
 )
 
 type AzureEventHubScaler struct {
@@ -76,30 +76,26 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 		meta.threshold = threshold
 	}
 
-	storageConnectionSetting := defaultStorageConnectionString
+	storageConnectionSetting := defaultStorageConnectionSetting
 	if val, ok := metadata["storageConnection"]; ok && val != "" {
 		storageConnectionSetting = val
-	} else {
-		return nil, fmt.Errorf("no storage connection setting given")
 	}
 
 	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
 		meta.storageConnection = val
 	} else {
-		return nil, fmt.Errorf("no storage connection setting given")
+		return nil, fmt.Errorf("no storage connection string given")
 	}
 
-	eventHubConnectionSetting := defaultEventHubConnectionString
-	if val, ok := metadata["eventHubConnection"]; ok && val != "" {
+	eventHubConnectionSetting := defaultEventHubConnectionSetting
+	if val, ok := metadata["connection"]; ok && val != "" {
 		eventHubConnectionSetting = val
-	} else {
-		return nil, fmt.Errorf("no event hub connection setting given")
 	}
 
 	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
 		meta.eventHubConnection = val
 	} else {
-		return nil, fmt.Errorf("no event hub connection setting given")
+		return nil, fmt.Errorf("no event hub connection string given")
 	}
 
 	meta.eventHubConsumerGroup = defaultEventHubConsumerGroup

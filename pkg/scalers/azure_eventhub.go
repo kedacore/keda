@@ -14,6 +14,10 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 )
 
+const (
+	environmentName = "AzurePublicCloud"
+)
+
 type Checkpoint struct {
 	Epoch          int64  `json:"Epoch"`
 	Offset         string `json:"Offset"`
@@ -30,7 +34,7 @@ func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob
 		return azure.Environment{}, &azblob.SharedKeyCredential{}, fmt.Errorf("unable to parse connection string: %s", storageConnection)
 	}
 
-	azureEnv, err := azure.EnvironmentFromName("AzurePublicCloud")
+	azureEnv, err := azure.EnvironmentFromName(environmentName)
 	if err != nil {
 		return azureEnv, nil, fmt.Errorf("could not get azure.Environment struct: %s", err)
 	}
