@@ -10,6 +10,17 @@
   revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 
 [[projects]]
+  digest = "1:030c6c159cc9a811f71fd7d4ac3d4eaab4e978192ea835e709dd14e5f3bfb870"
+  name = "cloud.google.com/go"
+  packages = [
+    "compute/metadata",
+    "monitoring/apiv3",
+  ]
+  pruneopts = "NUT"
+  revision = "457ea5c15ccf3b87db582c450e80101989da35f7"
+  version = "v0.40.0"
+
+[[projects]]
   digest = "1:6530fc7461f14a825c6903d7611be9e180370a180ca94555c04690ffaf33bdd5"
   name = "github.com/Azure/azure-amqp-common-go"
   packages = [
@@ -375,14 +386,18 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:2d0636a8c490d2272dd725db26f74a537111b99b9dbdda0d8b98febe63702aa4"
+  digest = "1:99d26c39807a3709c762366daaaa7b58805163882d9cea00076327583984f5b1"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
+    "protoc-gen-go/descriptor",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/empty",
+    "ptypes/struct",
     "ptypes/timestamp",
+    "ptypes/wrappers",
   ]
   pruneopts = "NUT"
   revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
@@ -419,6 +434,14 @@
   pruneopts = "NUT"
   revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:4b76f3e067eed897a45242383a2aa4d0a2fdbf73a8d00c03167dba80c43630b1"
+  name = "github.com/googleapis/gax-go"
+  packages = ["v2"]
+  pruneopts = "NUT"
+  revision = "bd5b16380fd03dc758d11cef74ba2e3bc8b0e8c2"
+  version = "v2.0.5"
 
 [[projects]]
   digest = "1:06a7dadb7b760767341ffb6c8d377238d68a1226f2b21b5d497d2e3f6ecf6b4e"
@@ -484,6 +507,32 @@
   pruneopts = "NUT"
   revision = "0ff49de124c6f76f8494e194af75bde0f1a49a29"
   version = "v1.1.6"
+
+[[projects]]
+  branch = "master"
+  digest = "1:638667aaeade4986944043dd5f7d9f6cb17d8f68099b8f927b1ab6d712045810"
+  name = "github.com/kedacore/keda"
+  packages = [
+    "pkg/adapter",
+    "pkg/apis/keda",
+    "pkg/apis/keda/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/keda/v1alpha1",
+    "pkg/client/clientset/versioned/typed/keda/v1alpha1/fake",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/keda",
+    "pkg/client/informers/externalversions/keda/v1alpha1",
+    "pkg/client/listers/keda/v1alpha1",
+    "pkg/controller",
+    "pkg/handler",
+    "pkg/kubernetes",
+    "pkg/provider",
+    "pkg/scalers",
+    "pkg/signals",
+  ]
+  pruneopts = "NUT"
+  revision = "0cb6bfda6395433d197c1ac0b3e504314d62b26f"
 
 [[projects]]
   digest = "1:b8870bf2606dca65dc382f4cb8b7a434f17ff36a915451bda12788e9620be368"
@@ -693,13 +742,25 @@
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
 
 [[projects]]
-  digest = "1:bd58b0ae20eaa5ffcb670ce46ff2bed9b9867094fdb3e6b867741d3d02957f45"
+  digest = "1:88e8c40d63da3b9edafa97d7b7d24f1766ab3d95a7ae2092781602452935fe8f"
   name = "go.opencensus.io"
   packages = [
     ".",
     "internal",
+    "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricproducer",
+    "plugin/ocgrpc",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
+    "resource",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag",
     "trace",
     "trace/internal",
+    "trace/propagation",
     "trace/tracestate",
   ]
   pruneopts = "NUT"
@@ -734,11 +795,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4d25d388c9ad5169b31c1a6f16cc7bcdb856489958e99f2123d8d8cdf000d7eb"
+  digest = "1:c37a4098ad0b7a4d8f350edbac365ef88984915710311f859cae17a81f23be04"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "google",
     "internal",
+    "jws",
+    "jwt",
   ]
   pruneopts = "NUT"
   revision = "c85d3e98c914e3a33234ad863dcbff5dbc425bb8"
@@ -807,15 +871,37 @@
   revision = "5a8dccf5b48ae388eebac31f4077f14adda4dbc6"
 
 [[projects]]
-  digest = "1:372cd8eba449f9b6db06677d0e73fa193ec5b19aaee148f355503ab6127045ca"
+  digest = "1:c696984f8719a8c8f19fe39a9aae8812848775d9960b813bfeee4b50797157bc"
+  name = "google.golang.org/api"
+  packages = [
+    "googleapi/transport",
+    "internal",
+    "iterator",
+    "option",
+    "transport",
+    "transport/grpc",
+    "transport/http",
+    "transport/http/internal/propagation",
+  ]
+  pruneopts = "NUT"
+  revision = "02490b97dff7cfde1995bd77de808fd27053bc87"
+  version = "v0.7.0"
+
+[[projects]]
+  digest = "1:a955e7c44c2be14b61aa2ddda744edfdfbc6817e993703a16e303c277ba84449"
   name = "google.golang.org/appengine"
   packages = [
+    ".",
     "internal",
+    "internal/app_identity",
     "internal/base",
     "internal/datastore",
     "internal/log",
+    "internal/modules",
     "internal/remote_api",
+    "internal/socket",
     "internal/urlfetch",
+    "socket",
     "urlfetch",
   ]
   pruneopts = "NUT"
@@ -824,31 +910,53 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c3076e7defee87de1236f1814beb588f40a75544c60121e6eb38b3b3721783e2"
+  digest = "1:9c98808fe70f5687f54e335f41f77f59722f02803c3ade28df53fbc4c8d98f01"
   name = "google.golang.org/genproto"
-  packages = ["googleapis/rpc/status"]
+  packages = [
+    "googleapis/api",
+    "googleapis/api/annotations",
+    "googleapis/api/distribution",
+    "googleapis/api/label",
+    "googleapis/api/metric",
+    "googleapis/api/monitoredres",
+    "googleapis/monitoring/v3",
+    "googleapis/rpc/status",
+    "protobuf/field_mask",
+  ]
   pruneopts = "NUT"
   revision = "e79c0c59cdb5e117ef82a6f885294df3d74065d5"
 
 [[projects]]
-  digest = "1:8a18c430e5ba1a3a04d09d34e605af6dd58546b2236701bd1a40c333ea637a1a"
+  digest = "1:2400b154940bac69bc17ed180daca36a5f8a823af8330d2c834dc6981f4d654d"
   name = "google.golang.org/grpc"
   packages = [
     ".",
     "balancer",
     "balancer/base",
+    "balancer/grpclb",
+    "balancer/grpclb/grpc_lb_v1",
     "balancer/roundrobin",
     "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
     "credentials",
+    "credentials/alts",
+    "credentials/alts/internal",
+    "credentials/alts/internal/authinfo",
+    "credentials/alts/internal/conn",
+    "credentials/alts/internal/handshaker",
+    "credentials/alts/internal/handshaker/service",
+    "credentials/alts/internal/proto/grpc_gcp",
+    "credentials/google",
     "credentials/internal",
+    "credentials/oauth",
     "encoding",
     "encoding/proto",
     "grpclog",
     "health/grpc_health_v1",
     "internal",
     "internal/backoff",
+    "internal/balancerload",
     "internal/binarylog",
     "internal/channelz",
     "internal/envconfig",
@@ -868,8 +976,8 @@
     "tap",
   ]
   pruneopts = "NUT"
-  revision = "3507fb8e1a5ad030303c106fef3a47c9fdad16ad"
-  version = "v1.19.1"
+  revision = "501c41df7f472c740d0674ff27122f3f48c80ce7"
+  version = "v1.21.1"
 
 [[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
@@ -1308,6 +1416,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/monitoring/apiv3",
     "github.com/Azure/azure-service-bus-go",
     "github.com/Azure/azure-storage-queue-go/azqueue",
     "github.com/Shopify/sarama",
@@ -1318,11 +1427,32 @@
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/go-redis/redis",
     "github.com/golang/glog",
+    "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/kedacore/keda/pkg/adapter",
+    "github.com/kedacore/keda/pkg/apis/keda",
+    "github.com/kedacore/keda/pkg/apis/keda/v1alpha1",
+    "github.com/kedacore/keda/pkg/client/clientset/versioned",
+    "github.com/kedacore/keda/pkg/client/clientset/versioned/scheme",
+    "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1",
+    "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1/fake",
+    "github.com/kedacore/keda/pkg/client/informers/externalversions/internalinterfaces",
+    "github.com/kedacore/keda/pkg/client/informers/externalversions/keda",
+    "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1",
+    "github.com/kedacore/keda/pkg/client/listers/keda/v1alpha1",
+    "github.com/kedacore/keda/pkg/controller",
+    "github.com/kedacore/keda/pkg/handler",
+    "github.com/kedacore/keda/pkg/kubernetes",
+    "github.com/kedacore/keda/pkg/provider",
+    "github.com/kedacore/keda/pkg/scalers",
+    "github.com/kedacore/keda/pkg/signals",
     "github.com/kelseyhightower/envconfig",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider",
     "github.com/streadway/amqp",
     "golang.org/x/tools/imports",
+    "google.golang.org/api/iterator",
+    "google.golang.org/api/option",
+    "google.golang.org/genproto/googleapis/monitoring/v3",
     "k8s.io/api/apps/v1",
     "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/core/v1",
