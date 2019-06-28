@@ -625,6 +625,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
 	case "redis":
 		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
+	case "gcp-pubsub":
+		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
