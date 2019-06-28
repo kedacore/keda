@@ -10,7 +10,7 @@ import (
 
 // GetAzureQueueLength returns the length of a queue in int
 func GetAzureQueueLength(ctx context.Context, connectionString, queueName string) (int32, error) {
-	accountName, accountKey, err := ParseAzureStorageConnectionString(connectionString)
+	_, accountName, accountKey, _, err := ParseAzureStorageConnectionString(connectionString)
 
 	if err != nil {
 		return -1, err

@@ -29,7 +29,7 @@ type Checkpoint struct {
 
 // GetStorageCredentials returns azure env and storage credentials
 func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob.SharedKeyCredential, error) {
-	storageAccountName, storageAccountKey, err := ParseAzureStorageConnectionString(storageConnection)
+	_, storageAccountName, storageAccountKey, _, err := ParseAzureStorageConnectionString(storageConnection)
 	if err != nil {
 		return azure.Environment{}, &azblob.SharedKeyCredential{}, fmt.Errorf("unable to parse connection string: %s", storageConnection)
 	}
@@ -59,7 +59,7 @@ func GetEventHubClient(connectionString string) (*eventhub.Hub, error) {
 
 // GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
 func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, eventHubMetadata EventHubMetadata) (Checkpoint, error) {
-	storageAccountName, _, err := ParseAzureStorageConnectionString(eventHubMetadata.storageConnection)
+	endpointProtocol, storageAccountName, _, endpointSuffix, err := ParseAzureStorageConnectionString(eventHubMetadata.storageConnection)
 	if err != nil {
 		return Checkpoint{}, fmt.Errorf("unable to parse storage connection string: %s", err)
 	}
@@ -70,7 +70,7 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 	}
 
 	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
-	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/azure-webjobs-eventhub/%s/%s/%s/%s", storageAccountName, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
+	u, _ := url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
 
 	_, cred, err := GetStorageCredentials(eventHubMetadata.storageConnection)
 	if err != nil {
@@ -99,6 +99,10 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 	return dat, nil
 }
 
+/* ParseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)
+   Connection string should be in following format:
+   Endpoint=sb://eventhub-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;EntityPath=eventhub-name
+*/
 func ParseAzureEventHubConnectionString(connectionString string) (string, string, error) {
 	parts := strings.Split(connectionString, ";")
 
