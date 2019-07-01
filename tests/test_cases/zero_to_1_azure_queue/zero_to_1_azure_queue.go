@@ -44,7 +44,7 @@ func createMessages(connectionString, queueName string) {
 }
 
 func getQueueURL(connectionString, queueName string) (context.Context, azqueue.QueueURL) {
-	accountName, accountKey, err := scalers.ParseAzureStorageConnectionString(connectionString)
+	_, accountName, accountKey, _, err := scalers.ParseAzureStorageConnectionString(connectionString)
 	if err != nil {
 		panic(err)
 	}
