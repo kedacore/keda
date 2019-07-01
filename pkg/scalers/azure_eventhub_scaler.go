@@ -125,9 +125,9 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 			unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
 
 			return unprocessedEventCountInPartition, nil
-		} else {
-			unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
 		}
+
+		unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
 	}
 	if unprocessedEventCountInPartition < 0 {
 		unprocessedEventCountInPartition = 0
@@ -163,6 +163,7 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
+// GetMetricSpecForScaling returns metric spec
 func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{
 		{
@@ -175,6 +176,7 @@ func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpe
 	}
 }
 
+// GetMetrics returns metric using total number of unprocessed events in event hub
 func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
