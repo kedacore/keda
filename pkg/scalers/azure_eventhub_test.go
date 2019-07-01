@@ -25,15 +25,15 @@ var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: "no
 var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{}, true},
 	// properly formed event hub metadata
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing event hub connection setting
 	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"}, true},
 	// missing storage connection setting
-	{map[string]string{"consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	{map[string]string{"consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
 	// missing event hub consumer group - should replace with default
-	{map[string]string{"storageConnection": storageConnectionSetting, "eventHubConnection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{map[string]string{"storageConnection": storageConnectionSetting, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing unprocessed event threshold - should replace with default
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "eventHubConnection": eventHubConnectionSetting}, false},
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting}, false},
 }
 
 var testEventHubScaler = AzureEventHubScaler{
