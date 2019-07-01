@@ -14,13 +14,13 @@ type parseConnectionStringTestData struct {
 }
 
 var parseConnectionStringTestDataset = []parseConnectionStringTestData{
-	{"AccountName=testing;AccountKey=key==;DnsSuffix=example.com", "testing", "key==", false},
-	{"AccountName=testing;AccountKey=key==", "testing", "key==", false},
+	{"DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=key==;EndpointSuffix=core.windows.net", "testing", "key==", false},
+	{"DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=key==;EndpointSuffix=core.windows.net", "testing", "key==", false},
 	{"AccountName=testingAccountKey=key==", "", "", true},
 	{"", "", "", true},
 }
 
-func TestParseConnectionString(t *testing.T) {
+func TestParseStorageConnectionString(t *testing.T) {
 	for _, testData := range parseConnectionStringTestDataset {
 		_, accountName, accountKey, _, err := ParseAzureStorageConnectionString(testData.connectionString)
 
@@ -58,11 +58,11 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error for empty connection string, but got nil")
 	}
 
-	if !strings.Contains(err.Error(), "parse connection string") {
+	if !strings.Contains(err.Error(), "parse storage connection string") {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
-	length, err = GetAzureQueueLength(context.TODO(), "AccountName=name;AccountKey=key==", "queueName")
+	length, err = GetAzureQueueLength(context.TODO(), "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "queueName")
 
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
