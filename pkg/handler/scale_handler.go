@@ -206,10 +206,12 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(scaledObject *keda_v1alp
 	}
 
 	var scaledObjectMetricSpecs []v2beta1.MetricSpec
+
 	scalers, _, err := h.getScalers(scaledObject)
 	if err != nil {
 		return fmt.Errorf("Error getting scalers %s", err)
 	}
+
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
@@ -261,7 +263,7 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(scaledObject *keda_v1alp
 
 	_, err = h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Create(hpa)
 	if apierrors.IsAlreadyExists(err) {
-		log.Infof("HPA with namespace %s and name %s already exists.Updating..", scaledObjectNamespace, hpaName)
+		log.Infof("HPA with namespace %s and name %s already exists. Updating..", scaledObjectNamespace, hpaName)
 		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
 		if err != nil {
 			return fmt.Errorf("error updating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
@@ -315,6 +317,7 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 // It'll check each trigger active status then call scaleDeployment
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
 	scalers, deployment, err := h.getScalers(scaledObject)
+
 	if deployment == nil {
 		return
 	}
@@ -327,8 +330,9 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 
 	for _, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
+
 		if err != nil {
-			log.Errorf("Error getting scale decision: %s", err)
+			log.Debugf("Error getting scale decision: %s", err)
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
@@ -343,6 +347,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 }
 
 func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject, isActive bool) {
+
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
@@ -614,6 +619,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
+	case "azure-eventhub":
+		return scalers.NewAzureEventHubScaler(resolvedEnv, trigger.Metadata)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
 	case "redis":
