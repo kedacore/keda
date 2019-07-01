@@ -22,7 +22,7 @@ var parseConnectionStringTestDataset = []parseConnectionStringTestData{
 
 func TestParseConnectionString(t *testing.T) {
 	for _, testData := range parseConnectionStringTestDataset {
-		accountName, accountKey, err := ParseAzureStorageConnectionString(testData.connectionString)
+		_, accountName, accountKey, _, err := ParseAzureStorageConnectionString(testData.connectionString)
 
 		if !testData.isError && err != nil {
 			t.Error("Expected success but got err", err)
