@@ -33,5 +33,3 @@ spec:
           name: https
         - containerPort: 8080
           name: http
-      imagePullSecrets:
-      - name: {{ template "keda.fullname" . }}-docker-auth
