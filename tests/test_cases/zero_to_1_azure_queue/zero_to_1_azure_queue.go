@@ -23,7 +23,7 @@ func main() {
 	if args[0] == "create" {
 		createMessages(args[1], args[2])
 	} else if args[0] == "get-length" {
-		length, err := scalers.GetAzureQueueLength(context.TODO(), args[1], args[2])
+		length, err := scalers.GetAzureQueueLength(context.TODO(), false, args[1], args[2], "")
 		if err != nil {
 			panic(err)
 		}
