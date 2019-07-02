@@ -615,6 +615,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewAzureServiceBusScaler(resolvedEnv, trigger.Metadata)
 	case "aws-sqs-queue":
 		return scalers.NewAwsSqsQueueScaler(resolvedEnv, trigger.Metadata)
+	case "aws-cloudwatch":
+		return scalers.NewAwsCloudwatchScaler(resolvedEnv, trigger.Metadata)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
 	case "rabbitmq":

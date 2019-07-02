@@ -13,11 +13,17 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	defaultMetricCollectionTime = 300
+	defaultMetricStat = "Average"
+	defaultMetricStatPeriod = 300
+)
 type awsCloudwatchScaler struct {
 	metadata *awsCloudwatchMetadata
 }
@@ -30,6 +36,10 @@ type awsCloudwatchMetadata struct {
 
 	targetMetricValue float64
 	minMetricValue float64
+
+	metricCollectionTime int64
+	metricStat string
+	metricStatPeriod int64
 
 	region             string
 	awsAccessKeyID     string
@@ -51,6 +61,9 @@ func NewAwsCloudwatchScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 
 func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCloudwatchMetadata, error) {
 	meta := awsCloudwatchMetadata{}
+	meta.metricCollectionTime = defaultMetricCollectionTime
+	meta.metricStat = defaultMetricStat
+	meta.metricStatPeriod = defaultMetricStatPeriod
 
 	if val, ok := metadata["namespace"]; ok && val != "" {
 		meta.namespace = val
@@ -96,6 +109,28 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCl
 		}
 	} else {
 		return nil, fmt.Errorf("Min Metric Value not given")
+	}
+
+	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
+		metricCollectionTime, err := strconv.Atoi(val)
+		if err != nil {
+			log.Errorf("Error parsing metricCollectionTime metadata %s: %s", "metricCollectionTime", err)
+		} else {
+			meta.metricCollectionTime = int64(metricCollectionTime)
+		}
+	}
+
+	if val, ok := metadata["metricStat"]; ok && val != "" {
+		meta.metricStat = val
+	}
+
+	if val, ok := metadata["metricStatPeriod"]; ok && val != "" {
+		metricStatPeriod, err := strconv.Atoi(val)
+		if err != nil {
+			log.Errorf("Error parsing metricStatPeriod metadata %s: %s", "metricStatPeriod", err)
+		} else {
+			meta.metricStatPeriod = int64(metricStatPeriod)
+		}
 	}
 
 	if val, ok := metadata["region"]; ok && val != "" {
@@ -151,7 +186,7 @@ func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string,
 
 func (c *awsCloudwatchScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetMetricValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s/%s/%s", c.metadata.namespace,
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s", strings.ReplaceAll(c.metadata.namespace, "/", "-"),
 		c.metadata.dimensionName, c.metadata.dimensionValue),
 		TargetAverageValue: targetMetricValue}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
@@ -183,25 +218,24 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	log.Info(cloudwatch.New(sess))
 
 	input := cloudwatch.GetMetricDataInput{
-		MaxDatapoints: aws.Int64(1),
-		StartTime: aws.Time(time.Now()),
-		EndTime: aws.Time(time.Now().Add(time.Minute * -5)),
+		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
+		EndTime: aws.Time(time.Now()),
 		MetricDataQueries: []*cloudwatch.MetricDataQuery{
 			{
-				Id: aws.String("1"),
+				Id: aws.String("c1"),
 				MetricStat: &cloudwatch.MetricStat{
 					Metric: &cloudwatch.Metric{
 						Namespace: aws.String(c.metadata.namespace),
 						Dimensions: []*cloudwatch.Dimension {
-							&cloudwatch.Dimension{
+							{
 								Name: aws.String(c.metadata.dimensionName),
 								Value: aws.String(c.metadata.dimensionValue),
 							},
 						},
 						MetricName: aws.String(c.metadata.metricsName),
 					},
-					Period: aws.Int64(1),
-					Stat: aws.String("Average"),
+					Period: aws.Int64(c.metadata.metricStatPeriod),
+					Stat: aws.String(c.metadata.metricStat),
 				},
 				ReturnData: aws.Bool(true),
 			},
@@ -215,8 +249,13 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		return -1, err
 	}
 
-	log.Info("Received Value %x", output)
-	metricValue := *output.MetricDataResults[0].Values[0]
+	log.Debug("Received Metric Data: %x", output)
+	var metricValue float64
+	if output.MetricDataResults[0].Values != nil {
+		metricValue = *output.MetricDataResults[0].Values[0]
+	} else {
+		return -1, fmt.Errorf("Metric Data not received");
+	}
 
 	return metricValue, nil
 }
