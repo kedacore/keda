@@ -10,9 +10,6 @@
   revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 
 [[projects]]
-<<<<<<< HEAD
-  digest = "1:9c42fe8a82e80960d096b67f9cf6ad579cadd279fabe39f2b0227de79aa95fa6"
-=======
   digest = "1:030c6c159cc9a811f71fd7d4ac3d4eaab4e978192ea835e709dd14e5f3bfb870"
   name = "cloud.google.com/go"
   packages = [
@@ -24,8 +21,7 @@
   version = "v0.40.0"
 
 [[projects]]
-  digest = "1:6530fc7461f14a825c6903d7611be9e180370a180ca94555c04690ffaf33bdd5"
->>>>>>> Added GCP PubSub scaler
+  digest = "1:9c42fe8a82e80960d096b67f9cf6ad579cadd279fabe39f2b0227de79aa95fa6"
   name = "github.com/Azure/azure-amqp-common-go"
   packages = [
     ".",
@@ -46,13 +42,11 @@
   version = "v1.1.4"
 
 [[projects]]
-  digest = "1:b40bee32d20302c624b565596cea0db70eb652aebcf6131e957549a9651e0878"
+  digest = "1:197157269dba57f4e7e26db8bd092f7f0d599c5fa0b8644cfa8bd885b346521f"
   name = "github.com/Azure/azure-event-hubs-go"
   packages = [
     ".",
     "atom",
-    "eph",
-    "storage",
   ]
   pruneopts = "NUT"
   revision = "d3d1b70a113ea8a9f2d7443ff7d99ab40f9b6eca"
@@ -67,11 +61,10 @@
   version = "v0.1.8"
 
 [[projects]]
-  digest = "1:78be39324fa57fa613089e617b7d284f229229c6f74e31d13aa4d72a6c609196"
+  digest = "1:635e971e5782636f014ed3b46edcf4fd949a5988717539ca7b3921fc2dc709fe"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/eventhub/mgmt/2017-04-01/eventhub",
-    "services/storage/mgmt/2017-10-01/storage",
     "version",
   ]
   pruneopts = "NUT"
@@ -790,11 +783,7 @@
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
 
 [[projects]]
-<<<<<<< HEAD
-  digest = "1:9eba604a9756ed0ddc58fb933b5f710250910c83208155ac783def53690729b6"
-=======
   digest = "1:88e8c40d63da3b9edafa97d7b7d24f1766ab3d95a7ae2092781602452935fe8f"
->>>>>>> Added GCP PubSub scaler
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -1472,12 +1461,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-<<<<<<< HEAD
-    "github.com/Azure/azure-event-hubs-go",
-    "github.com/Azure/azure-event-hubs-go/storage",
-=======
     "cloud.google.com/go/monitoring/apiv3",
->>>>>>> Added GCP PubSub scaler
+    "github.com/Azure/azure-event-hubs-go",
     "github.com/Azure/azure-service-bus-go",
     "github.com/Azure/azure-storage-blob-go/azblob",
     "github.com/Azure/azure-storage-queue-go/azqueue",
