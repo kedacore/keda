@@ -161,8 +161,6 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCl
 		return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", secretAccessKey)
 	}
 
-	log.Info("Parsed Metdata is %s", meta)
-
 	return &meta, nil
 }
 
@@ -245,11 +243,11 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	output, err := cloudwatchClient.GetMetricData(&input)
 
 	if err != nil {
-		log.Error("Failed to get output %x", err)
+		log.Errorf("Failed to get output %s", err)
 		return -1, err
 	}
 
-	log.Debug("Received Metric Data: %x", output)
+	log.Debugf("Received Metric Data: %x", output)
 	var metricValue float64
 	if output.MetricDataResults[0].Values != nil {
 		metricValue = *output.MetricDataResults[0].Values[0]
