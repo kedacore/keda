@@ -23,7 +23,15 @@ test:
 
 .PHONY: e2e-test
 e2e-test:
-	./tests/run_tests.sh
+	TERMINFO=/etc/terminfo
+	TERM=linux
+	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
+	@az aks get-credentials \
+		--name keda-nightly-run \
+		--subscription $(AZURE_SUBSCRIPTION) \
+		--resource-group $(AZURE_RESOURCE_GROUP)
+	npm install --prefix tests
+	npm test --verbose --prefix tests
 
 ##################################################
 # Build                                          #
