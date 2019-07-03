@@ -1,0 +1,33 @@
+{
+  "name": "keda-e2e-test",
+  "version": "1.0.0",
+  "license": "MIT",
+  "ava": {
+    "compileEnhancements": false,
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
+  },
+  "scripts": {
+    "pretest": "ava setup.test.ts",
+    "test": "ava **/**.test.ts",
+    "posttest": "ava cleanup.test.ts"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "^0.10.2",
+    "@types/async": "^3.0.0",
+    "@types/shelljs": "^0.8.5",
+    "@types/tmp": "^0.1.0",
+    "async": "^3.1.0",
+    "ava": "^2.1.0",
+    "azure-storage": "^2.10.3",
+    "chalk": "^2.4.2",
+    "shelljs": "^0.8.3",
+    "tmp": "^0.1.0",
+    "ts-node": "^8.3.0",
+    "typescript": "^3.5.2"
+  }
+}
