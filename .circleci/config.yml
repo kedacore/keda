@@ -29,13 +29,13 @@ workflows:
   commit:
     jobs:
       - build
-  # nightly:
-  #   triggers:
-  #     - schedule:
-  #         cron: "0 0 * * *"
-  #         filters:
-  #           branches:
-  #             only:
-  #               - master
-  #   jobs:
-  #     - e2e
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - e2e
