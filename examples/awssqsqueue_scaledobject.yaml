@@ -36,8 +36,8 @@ spec:
     metadata:
       # Required: queueURL
       queueURL: https://sqs.eu-west-1.amazonaws.com/<acccount_id>/testQueue
-      # Required: region
-      region: "eu-west-1"
+      # Optional: region
+      awsRegion: "eu-west-1"
       # Optional: AWS Access Key ID
       awsAccessKeyID: AWS_ACCESS_KEY_ID_ENV_VAR # default AWS_ACCESS_KEY_ID
       # Optional: AWS Secret Access Key

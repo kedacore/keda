@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -25,26 +26,45 @@ const (
 )
 
 type awsSqsQueueScaler struct {
-	metadata *awsSqsQueueMetadata
+	metadata  *awsSqsQueueMetadata
+	sqsClient *sqs.SQS
 }
 
 type awsSqsQueueMetadata struct {
 	targetQueueLength  int
 	queueURL           string
-	region             string
+	awsRegion          string
 	awsAccessKeyID     string
 	awsSecretAccessKey string
+	awsSessionToken    string
 }
 
-// NewawsSqsQueueScaler creates a new awsSqsQueueScaler
+// NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing SQS queue metadata: %s", err)
 	}
 
+	sess := session.Must(session.NewSession())
+	if sess != nil {
+		s, err := session.NewSession(&aws.Config{
+			Credentials: credentials.NewStaticCredentials(meta.awsAccessKeyID, meta.awsSecretAccessKey, meta.awsSessionToken),
+			Region:      aws.String(meta.awsRegion),
+		})
+
+		if err != nil {
+			return nil, errors.New("unable to get an AWS session with the default provider chain or provided credentials")
+		}
+
+		sess = s
+	}
+
+	sqsClient := sqs.New(sess)
+
 	return &awsSqsQueueScaler{
-		metadata: meta,
+		metadata:  meta,
+		sqsClient: sqsClient,
 	}, nil
 }
 
@@ -67,32 +87,20 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 		return nil, fmt.Errorf("no queueURL given")
 	}
 
-	if val, ok := metadata["region"]; ok && val != "" {
-		meta.region = val
-	} else {
-		return nil, fmt.Errorf("no region given")
-	}
-
-	accessIDKey := awsAccessKeyIDEnvVar
 	if val, ok := metadata["awsAccessKeyID"]; ok && val != "" {
-		accessIDKey = val
-	}
-
-	if val, ok := resolvedEnv[accessIDKey]; ok && val != "" {
 		meta.awsAccessKeyID = val
-	} else {
-		return nil, fmt.Errorf("cannot find awsAccessKeyId named %s in pod environment", accessIDKey)
 	}
 
-	secretAccessKey := awsSecretAccessKeyEnvVar
 	if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
-		secretAccessKey = val
+		meta.awsSecretAccessKey = val
 	}
 
-	if val, ok := resolvedEnv[secretAccessKey]; ok && val != "" {
-		meta.awsSecretAccessKey = val
-	} else {
-		return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", secretAccessKey)
+	if val, ok := metadata["awsSessionToken"]; ok && val != "" {
+		meta.awsSessionToken = val
+	}
+
+	if val, ok := metadata["awsRegion"]; ok && val != "" {
+		meta.awsRegion = val
 	}
 
 	return &meta, nil
@@ -140,20 +148,12 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 
 // Get SQS Queue Length
 func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
-	creds := credentials.NewStaticCredentials(s.metadata.awsAccessKeyID, s.metadata.awsSecretAccessKey, "")
-	sess := session.New(&aws.Config{
-		Region:      aws.String(s.metadata.region),
-		Credentials: creds,
-	})
-
-	sqsClient := sqs.New(sess)
-
 	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: aws.StringSlice([]string{"All"}),
+		AttributeNames: aws.StringSlice([]string{"ApproximateNumberOfMessages"}),
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
-	output, err := sqsClient.GetQueueAttributes(input)
+	output, err := s.sqsClient.GetQueueAttributes(input)
 	if err != nil {
 		return -1, err
 	}
