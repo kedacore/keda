@@ -41,7 +41,7 @@ type awsCloudwatchMetadata struct {
 	metricStat string
 	metricStatPeriod int64
 
-	region             string
+	awsRegion          string
 	awsAccessKeyID     string
 	awsSecretAccessKey string
 }
@@ -133,10 +133,10 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCl
 		}
 	}
 
-	if val, ok := metadata["region"]; ok && val != "" {
-		meta.region = val
+	if val, ok := metadata["awsRegion"]; ok && val != "" {
+		meta.awsRegion = val
 	} else {
-		return nil, fmt.Errorf("no region given")
+		return nil, fmt.Errorf("no awsRegion given")
 	}
 
 	accessIDKey := awsAccessKeyIDEnvVar
@@ -208,7 +208,7 @@ func (c *awsCloudwatchScaler) Close() error {
 func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	creds := credentials.NewStaticCredentials(c.metadata.awsAccessKeyID, c.metadata.awsSecretAccessKey, "")
 	sess := session.New(&aws.Config{
-		Region:      aws.String(c.metadata.region),
+		Region:      aws.String(c.metadata.awsRegion),
 		Credentials: creds,
 	})
 
