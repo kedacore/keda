@@ -1,7 +1,19 @@
 version: 2
 
 jobs:
-  build:
+  validate:
+    docker:
+      - image: kedacore/build-tools:latest
+    working_directory: /go/src/github.com/kedacore/keda
+    steps:
+      - checkout
+      - run: make test
+      - run: make build
+      - store_artifacts:
+          path: /tmp/test-reports
+      - store_test_results:
+          path: /tmp/test-reports
+  validate_and_publish:
     docker:
       - image: kedacore/build-tools:latest
     working_directory: /go/src/github.com/kedacore/keda
@@ -23,12 +35,19 @@ jobs:
       - checkout
       - run: make e2e-test
 
-
+# https://discuss.circleci.com/t/create-separate-steps-jobs-for-pr-forks-versus-branches/13419/4?u=afeld
 workflows:
   version: 2
   commit:
     jobs:
-      - build
+      - validate:
+          filters:
+            branches:
+              only: /^pull\/.*$/
+      - validate_and_publish:
+          filters:
+            branches:
+              only: /^(?!pull\/).*$/
   nightly:
     triggers:
       - schedule:
