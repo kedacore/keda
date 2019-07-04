@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: keda-aws-secrets
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: keda-aws-secrets
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_DEFAULT_REGION
+          value: eu-west-1
+
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: aws-cloudwatch-queue-scaledobject
+  namespace: keda-test
+  labels:
+    deploymentName: nginx-deployment
+    test: nginx-deployment
+spec:
+  scaleTargetRef:
+    deploymentName: nginx-deployment
+  triggers:
+  - type: aws-cloudwatch
+    metadata:
+      # Required: namespace
+      namespace: AWS/SQS
+      # Required: Dimension Name
+      dimensionName: QueueName
+      dimensionValue: keda
+      metricName: ApproximateNumberOfMessagesVisible
+      targetMetricValue: "2"
+      minMetricValue: "0"
+      # Required: region
+      awsRegion: "eu-west-1"
+      # Optional: AWS Access Key ID
+      awsAccessKeyID: AWS_ACCESS_KEY_ID # default AWS_ACCESS_KEY_ID
+      # Optional: AWS Secret Access Key
+      awsSecretAccessKey: AWS_SECRET_ACCESS_KEY # default AWS_SECRET_ACCESS_KEY
