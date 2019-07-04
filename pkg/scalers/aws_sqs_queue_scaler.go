@@ -87,8 +87,23 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 		return nil, fmt.Errorf("no queueURL given")
 	}
 
-	if val, ok := metadata["awsAccessKeyID"]; ok && val != "" {
+	var keyName string
+	if keyName = metadata["awsAccessKeyID"]; keyName == "" {
+		keyName = awsAccessKeyIDEnvVar
+	}
+	if val, ok := resolvedEnv[keyName]; ok && val != "" {
 		meta.awsAccessKeyID = val
+	} else {
+		return nil, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
+	}
+
+	if keyName = metadata["awsSecretAccessKey"]; keyName == "" {
+		keyName = awsSecretAccessKeyEnvVar
+	}
+	if val, ok := resolvedEnv[keyName]; ok && val != "" {
+		meta.awsAccessKeyID = val
+	} else {
+		return nil, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
 	}
 
 	if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
@@ -101,6 +116,8 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 
 	if val, ok := metadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
+	} else {
+		return nil, fmt.Errorf("no awsRegion given")
 	}
 
 	return &meta, nil
