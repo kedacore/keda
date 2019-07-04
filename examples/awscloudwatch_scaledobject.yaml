@@ -31,7 +31,7 @@ spec:
               name: keda-aws-secrets
               key: AWS_SECRET_ACCESS_KEY
         - name: AWS_DEFAULT_REGION
-          value: us-east-1
+          value: eu-west-1
 
 ---
 apiVersion: keda.k8s.io/v1alpha1
@@ -57,7 +57,7 @@ spec:
       targetMetricValue: "2"
       minMetricValue: "0"
       # Required: region
-      region: "us-east-1"
+      awsRegion: "eu-west-1"
       # Optional: AWS Access Key ID
       awsAccessKeyID: AWS_ACCESS_KEY_ID # default AWS_ACCESS_KEY_ID
       # Optional: AWS Secret Access Key
