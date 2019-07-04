@@ -12,16 +12,14 @@ var testAWSSQSResolvedEnv = map[string]string{
 type parseAWSSQSMetadataTestData struct {
 	metadata map[string]string
 	isError  bool
+	reason   string
 }
 
 var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
-	{map[string]string{}, true},
-	// properly formed queue and region
-	{map[string]string{"queueURL": "myqueue", "region": "eu-west-1", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, false},
-	// properly formed queue, empty region
-	{map[string]string{"queueURL": "myqueue", "region": "", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true},
-	// missing access key
-	{map[string]string{"queueURL": "myqueue", "region": "", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true},
+	{map[string]string{}, true, "metadata empty"},
+	{map[string]string{"queueURL": "myqueue", "awsRegion": "eu-west-1", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, false, "properly formed queue and region"},
+	{map[string]string{"queueURL": "myqueue", "awsRegion": "", "awsAccessKeyID": "AWS_ACCESS_KEY", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true, "properly formed queue, empty region"},
+	{map[string]string{"queueURL": "myqueue", "awsRegion": "", "awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"}, true, "missing access key"},
 }
 
 func TestSQSParseMetadata(t *testing.T) {
@@ -31,7 +29,7 @@ func TestSQSParseMetadata(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error because %s but got success, %#v", testData.reason, testData)
 		}
 	}
 }
