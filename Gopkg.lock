@@ -167,7 +167,7 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:2e10dd58d90604631da185f937821947b46dfa2b5ac73627655ce0526baaa3de"
+  digest = "1:5bfffa1962dfa571efb1c6f4c8d63897e41d0e2ecd09618b1895aa9b084ca837"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -198,6 +198,7 @@
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
+    "service/cloudwatch",
     "service/sqs",
     "service/sts",
   ]
@@ -1368,6 +1369,7 @@
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
+    "github.com/aws/aws-sdk-go/service/cloudwatch",
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/go-redis/redis",
     "github.com/golang/glog",
