@@ -43,11 +43,13 @@ workflows:
       - validate:
           filters:
             branches:
-              only: /^pull\/.*$/
+              ignore:
+                - master
       - validate_and_publish:
           filters:
             branches:
-              only: /^(?!pull\/).*$/
+              only:
+                - master
   nightly:
     triggers:
       - schedule:
