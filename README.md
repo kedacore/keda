@@ -119,6 +119,15 @@ Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.the
 Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )  
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
+## Building
+
+```bash
+git clone git@github.com:kedacore/keda.git
+cd keda
+make build
+./dist/keda
+```
+
 # Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

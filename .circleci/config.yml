@@ -19,7 +19,6 @@ jobs:
     working_directory: /go/src/github.com/kedacore/keda
     steps:
       - checkout
-      - setup_remote_docker
       - run: make test
       - run: make build
       - run: make publish-edge-chart
@@ -43,11 +42,13 @@ workflows:
       - validate:
           filters:
             branches:
-              only: /^pull\/.*$/
+              ignore:
+                - master
       - validate_and_publish:
           filters:
             branches:
-              only: /^(?!pull\/).*$/
+              only:
+                - master
   nightly:
     triggers:
       - schedule:
