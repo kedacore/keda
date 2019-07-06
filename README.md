@@ -76,9 +76,10 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * RabbitMQ
 * Azure Storage Queues
 * Azure Service Bus Queues and Topics
+* AWS CloudWatch
 * AWS Simple Queue Service
 * Prometheus
-* Redis
+* Redis Lists
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
@@ -117,6 +118,15 @@ If interested in contributing or participating in the direction of KEDA, you can
 Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC).
 Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )  
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
+
+## Building
+
+```bash
+git clone git@github.com:kedacore/keda.git
+cd keda
+make build
+./dist/keda
+```
 
 # Contributing
 
