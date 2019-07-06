@@ -51,11 +51,11 @@ func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQue
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err)
-			return nil, fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err)
-		} else {
-			meta.targetQueueLength = queueLength
+			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			return nil, fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
+
+		meta.targetQueueLength = queueLength
 	}
 
 	if val, ok := metadata["queueName"]; ok && val != "" {
@@ -84,7 +84,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQue
 		}
 	} else {
 		// If the Use AAD Pod Identity is present then check account name
-		if val, ok := metadata["accountName"]; ok {
+		if val, ok := metadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
 			return nil, fmt.Errorf("no accountName given")
