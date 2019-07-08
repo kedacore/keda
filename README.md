@@ -80,6 +80,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * AWS Simple Queue Service
 * Prometheus
 * Redis Lists
+* Azure Event Hub
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
