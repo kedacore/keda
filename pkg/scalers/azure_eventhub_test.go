@@ -78,70 +78,68 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
 	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
 
-	if (eventHubKey == "" || storageConnectionString == "") {
-		t.Fatal("Missing Event Hub key or storage connection string - both needed for tests")
+	if eventHubKey != "" && storageConnectionString != "" {
+		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
+		storageAccountName := strings.Split(strings.Split(storageConnectionString, ";")[1], "=")[1]
+
+		t.Log("Creating event hub client...")
+		hubOption := eventhub.HubWithPartitionedSender("0")
+		client, err := eventhub.NewHubFromConnectionString(eventHubConnectionString, hubOption)
+		if err != nil {
+			t.Errorf("Expected to create event hub client but got error: %s", err)
+		}
+
+		_, storageCredentials, err := GetStorageCredentials(storageConnectionString)
+		if err != nil {
+			t.Errorf("Expected to generate storage credentials but got error: %s", err)
+		}
+
+		if eventHubConnectionString == "" {
+			t.Fatal("Event hub connection string needed for test")
+		}
+
+		if storageConnectionString == "" {
+			t.Fatal("Storage connection string needed for test")
+		}
+
+		// Can actually test that numbers return
+		testEventHubScaler.metadata.eventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.storageConnection = storageConnectionString
+		testEventHubScaler.client = client
+		testEventHubScaler.storageCredentials = storageCredentials
+		testEventHubScaler.metadata.eventHubConsumerGroup = "$Default"
+
+		// Send 1 message to event hub first
+		t.Log("Sending message to event hub")
+		SendMessageToEventHub(client)
+
+		// Create fake checkpoint with path azure-webjobs-eventhub/<eventhub-namespace-name>.servicebus.windows.net/<eventhub-name>/$Default
+		t.Log("Creating container..")
+		ctx, err := CreateNewCheckpointInStorage(storageAccountName, storageCredentials, client)
+		if err != nil {
+			t.Errorf("err creating container: %s", err)
+		}
+
+		unprocessedEventCountInPartition0, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "0")
+		unprocessedEventCountInPartition1, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "1")
+		if err0 != nil {
+			t.Errorf("Expected success but got error: %s", err0)
+		}
+		if err1 != nil {
+			t.Errorf("Expected success but got error: %s", err1)
+		}
+
+		if unprocessedEventCountInPartition0 != 1 {
+			t.Errorf("Expected 1 message in partition 0, got %d", unprocessedEventCountInPartition0)
+		}
+
+		if unprocessedEventCountInPartition1 != 0 {
+			t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
+		}
+		// Delete container - this will also lose track of how many unprocessed messages in container
+		t.Log("Deleting container...")
+		DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
 	}
-
-	eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-	storageAccountName := strings.Split(strings.Split(storageConnectionString, ";")[1], "=")[1]
-
-	t.Log("Creating event hub client...")
-	hubOption := eventhub.HubWithPartitionedSender("0")
-	client, err := eventhub.NewHubFromConnectionString(eventHubConnectionString, hubOption)
-	if err != nil {
-		t.Errorf("Expected to create event hub client but got error: %s", err)
-	}
-
-	_, storageCredentials, err := GetStorageCredentials(storageConnectionString)
-	if err != nil {
-		t.Errorf("Expected to generate storage credentials but got error: %s", err)
-	}
-
-	if eventHubConnectionString == "" {
-		t.Fatal("Event hub connection string needed for test")
-	}
-
-	if storageConnectionString == "" {
-		t.Fatal("Storage connection string needed for test")
-	}
-
-	// Can actually test that numbers return
-	testEventHubScaler.metadata.eventHubConnection = eventHubConnectionString
-	testEventHubScaler.metadata.storageConnection = storageConnectionString
-	testEventHubScaler.client = client
-	testEventHubScaler.storageCredentials = storageCredentials
-	testEventHubScaler.metadata.eventHubConsumerGroup = "$Default"
-
-	// Send 1 message to event hub first
-	t.Log("Sending message to event hub")
-	SendMessageToEventHub(client)
-
-	// Create fake checkpoint with path azure-webjobs-eventhub/<eventhub-namespace-name>.servicebus.windows.net/<eventhub-name>/$Default
-	t.Log("Creating container..")
-	ctx, err := CreateNewCheckpointInStorage(storageAccountName, storageCredentials, client)
-	if err != nil {
-		t.Errorf("err creating container: %s", err)
-	}
-
-	unprocessedEventCountInPartition0, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "0")
-	unprocessedEventCountInPartition1, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "1")
-	if err0 != nil {
-		t.Errorf("Expected success but got error: %s", err0)
-	}
-	if err1 != nil {
-		t.Errorf("Expected success but got error: %s", err1)
-	}
-
-	if unprocessedEventCountInPartition0 != 1 {
-		t.Errorf("Expected 1 message in partition 0, got %d", unprocessedEventCountInPartition0)
-	}
-
-	if unprocessedEventCountInPartition1 != 0 {
-		t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
-	}
-	// Delete container - this will also lose track of how many unprocessed messages in container
-	t.Log("Deleting container...")
-	DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
 }
 
 func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.SharedKeyCredential, client *eventhub.Hub) (context.Context, error) {
