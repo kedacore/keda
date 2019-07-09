@@ -78,6 +78,10 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
 	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
 
+	if (eventHubKey == "" || storageConnectionString == "") {
+		t.Fatal("Missing Event Hub key or storage connection string - both needed for tests")
+	}
+
 	eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
 	storageAccountName := strings.Split(strings.Split(storageConnectionString, ";")[1], "=")[1]
 
