@@ -46,6 +46,11 @@ helm repo update
 helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda
 ```
 
+#### Install keda-edge chart with ARM image
+```cli
+helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda --set image.tag=arm
+```
+
 ### Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
 ```
 func kubernetes install --namespace keda
@@ -73,6 +78,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Azure Service Bus Queues and Topics
 * AWS Simple Queue Service
 * Prometheus
+* Redis
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
