@@ -139,7 +139,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 			t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
 		}
 
-		// Delete container - this will also lose track of how many unprocessed messages in container
+		// Delete container - this will also delete checkpoint
 		t.Log("Deleting container...")
 		err = DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
 		if err != nil {
