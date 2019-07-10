@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -111,7 +110,10 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")
-		SendMessageToEventHub(client)
+		err = SendMessageToEventHub(client)
+		if err != nil {
+			t.Error(err)
+		}
 
 		// Create fake checkpoint with path azure-webjobs-eventhub/<eventhub-namespace-name>.servicebus.windows.net/<eventhub-name>/$Default
 		t.Log("Creating container..")
@@ -136,9 +138,13 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 		if unprocessedEventCountInPartition1 != 0 {
 			t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
 		}
+
 		// Delete container - this will also lose track of how many unprocessed messages in container
 		t.Log("Deleting container...")
-		DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
+		err = DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }
 
@@ -151,19 +157,19 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
 	_, err := containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
 	if err != nil {
-		log.Fatalf("failed to create container: %s", err)
+		return ctx, fmt.Errorf("failed to create container: %s", err)
 	}
 
 	// Create directory checkpoints will be in
 	err = os.MkdirAll(urlPath, os.ModeDir)
 	if err != nil {
-		log.Fatalf("Unable to create directory: %s", err)
+		return ctx, fmt.Errorf("Unable to create directory: %s", err)
 	}
 	defer os.RemoveAll(urlPath)
 
 	folder, err := os.Open(urlPath)
 	if err != nil {
-		log.Fatalf("Unable to create folder: %s", err)
+		return ctx, fmt.Errorf("Unable to create folder: %s", err)
 	}
 	defer folder.Close()
 
@@ -173,9 +179,8 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	_, err = azblob.UploadFileToBlockBlob(ctx, folder, blobFolderURL, azblob.UploadToBlockBlobOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
-
 	if err != nil {
-		log.Fatalf("Err uploading file to blob: %s", err)
+		return ctx, fmt.Errorf("Err uploading file to blob: %s", err)
 	}
 
 	// Make checkpoint blob files
@@ -185,36 +190,36 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	return ctx, nil
 }
 
-func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partitionID string, containerURL azblob.ContainerURL, client *eventhub.Hub) {
+func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partitionID string, containerURL azblob.ContainerURL, client *eventhub.Hub) error {
 	// Create folder structure
 	filePath := urlPathToPartition + partitionID
 
 	partitionInfo, err := client.GetPartitionInformation(ctx, partitionID)
 	if err != nil {
-		log.Fatalf("unable to get partition info: %s", err)
+		return fmt.Errorf("unable to get partition info: %s", err)
 	}
 
 	f, err := os.Create(partitionID)
 	if err != nil {
-		log.Fatalf("unable to create file: %s", err)
+		return fmt.Errorf("unable to create file: %s", err)
 	}
 
 	if partitionID == "0" {
 		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber-1, partitionID))
 		if err != nil {
-			log.Fatalf("unable to write to file: %s", err)
+			return fmt.Errorf("unable to write to file: %s", err)
 		}
 	} else {
 		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber, partitionID))
 		if err != nil {
-			log.Fatalf("unable to write to file: %s", err)
+			return fmt.Errorf("unable to write to file: %s", err)
 		}
 	}
 
 	// Write checkpoints to file
 	file, err := os.Open(partitionID)
 	if err != nil {
-		log.Fatalf("Unable to create file: %s", err)
+		fmt.Errorf("Unable to create file: %s", err)
 	}
 	defer file.Close()
 
@@ -224,22 +229,23 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 	_, err = azblob.UploadFileToBlockBlob(ctx, file, blobFileURL, azblob.UploadToBlockBlobOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
-
 	if err != nil {
-		log.Fatalf("Err uploading file to blob: %s", err)
+		fmt.Errorf("Err uploading file to blob: %s", err)
 	}
+	return nil
 }
 
-func SendMessageToEventHub(client *eventhub.Hub) {
+func SendMessageToEventHub(client *eventhub.Hub) error {
 	ctx := context.Background()
 
 	err := client.Send(ctx, eventhub.NewEventFromString("1"))
 	if err != nil {
-		log.Fatalf("Error sending msg: %s\n", err)
+		return fmt.Errorf("Error sending msg: %s\n", err)
 	}
+	return nil
 }
 
-func DeleteContainerInStorage(ctx context.Context, storageAccountName string, credential *azblob.SharedKeyCredential) {
+func DeleteContainerInStorage(ctx context.Context, storageAccountName string, credential *azblob.SharedKeyCredential) error {
 	url, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", storageAccountName, testContainerName))
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
 
@@ -247,6 +253,7 @@ func DeleteContainerInStorage(ctx context.Context, storageAccountName string, cr
 		ModifiedAccessConditions: azblob.ModifiedAccessConditions{},
 	})
 	if err != nil {
-		log.Fatalf("failed to delete container in blob storage: %s", err)
+		return fmt.Errorf("failed to delete container in blob storage: %s", err)
 	}
+	return nil
 }
