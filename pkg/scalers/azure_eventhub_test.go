@@ -1,13 +1,25 @@
 package scalers
 
 import (
+	"context"
+	"fmt"
+	"net/url"
+	"os"
+	"strings"
 	"testing"
+
+	eventhub "github.com/Azure/azure-event-hubs-go"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
 const (
 	eventHubConsumerGroup     = "testEventHubConsumerGroup"
 	eventHubConnectionSetting = "testEventHubConnectionSetting"
 	storageConnectionSetting  = "testStorageConnectionSetting"
+	testEventHubNamespace     = "kedatesteventhub"
+	testEventHubName          = "eventhub1"
+	checkpointFormat          = "{\"SequenceNumber\":%d,\"PartitionId\":\"%s\"}"
+	testContainerName         = "azure-webjobs-eventhub"
 )
 
 type parseEventHubMetadataTestData struct {
@@ -62,9 +74,24 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	t.Log("If set, it will connect to the storage account and event hub to determine how many messages are in the event hub.")
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
-	/*
-		eventHubConnectionString := os.Getenv("EVENTHUB_CONNECTION_STRING")
-		storageConnectionString := os.Getenv("STORAGE_CONNECTION_STRING")
+	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
+	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
+
+	if eventHubKey != "" && storageConnectionString != "" {
+		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
+		storageAccountName := strings.Split(strings.Split(storageConnectionString, ";")[1], "=")[1]
+
+		t.Log("Creating event hub client...")
+		hubOption := eventhub.HubWithPartitionedSender("0")
+		client, err := eventhub.NewHubFromConnectionString(eventHubConnectionString, hubOption)
+		if err != nil {
+			t.Errorf("Expected to create event hub client but got error: %s", err)
+		}
+
+		_, storageCredentials, err := GetStorageCredentials(storageConnectionString)
+		if err != nil {
+			t.Errorf("Expected to generate storage credentials but got error: %s", err)
+		}
 
 		if eventHubConnectionString == "" {
 			t.Fatal("Event hub connection string needed for test")
@@ -74,23 +101,29 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 			t.Fatal("Storage connection string needed for test")
 		}
 
-		client, err := GetEventHubClient(eventHubConnectionString)
-		if err != nil {
-			t.Errorf("Expected to create event hub client but got error: %s", err)
-		}
-		_, storageCredentials, err := GetStorageCredentials(storageConnectionString)
-		if err != nil {
-			t.Errorf("Expected to generate storage credentials but got error: %s", err)
-		}
-
 		// Can actually test that numbers return
 		testEventHubScaler.metadata.eventHubConnection = eventHubConnectionString
 		testEventHubScaler.metadata.storageConnection = storageConnectionString
 		testEventHubScaler.client = client
 		testEventHubScaler.storageCredentials = storageCredentials
+		testEventHubScaler.metadata.eventHubConsumerGroup = "$Default"
 
-		unprocessedEventCountInPartition0, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(context.TODO(), "0")
-		unprocessedEventCountInPartition1, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(context.TODO(), "1")
+		// Send 1 message to event hub first
+		t.Log("Sending message to event hub")
+		err = SendMessageToEventHub(client)
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Create fake checkpoint with path azure-webjobs-eventhub/<eventhub-namespace-name>.servicebus.windows.net/<eventhub-name>/$Default
+		t.Log("Creating container..")
+		ctx, err := CreateNewCheckpointInStorage(storageAccountName, storageCredentials, client)
+		if err != nil {
+			t.Errorf("err creating container: %s", err)
+		}
+
+		unprocessedEventCountInPartition0, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "0")
+		unprocessedEventCountInPartition1, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "1")
 		if err0 != nil {
 			t.Errorf("Expected success but got error: %s", err0)
 		}
@@ -102,8 +135,125 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 			t.Errorf("Expected 1 message in partition 0, got %d", unprocessedEventCountInPartition0)
 		}
 
-		if unprocessedEventCountInPartition1 != 1 {
+		if unprocessedEventCountInPartition1 != 0 {
 			t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
 		}
-	*/
+
+		// Delete container - this will also delete checkpoint
+		t.Log("Deleting container...")
+		err = DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.SharedKeyCredential, client *eventhub.Hub) (context.Context, error) {
+	urlPath := fmt.Sprintf("%s.servicebus.windows.net/%s/$Default/", testEventHubNamespace, testEventHubName)
+
+	// Create container
+	ctx := context.Background()
+	url, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", storageAccountName, testContainerName))
+	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
+	_, err := containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to create container: %s", err)
+	}
+
+	// Create directory checkpoints will be in
+	err = os.MkdirAll(urlPath, os.ModeDir)
+	if err != nil {
+		return ctx, fmt.Errorf("Unable to create directory: %s", err)
+	}
+	defer os.RemoveAll(urlPath)
+
+	folder, err := os.Open(urlPath)
+	if err != nil {
+		return ctx, fmt.Errorf("Unable to create folder: %s", err)
+	}
+	defer folder.Close()
+
+	blobFolderURL := containerURL.NewBlockBlobURL(urlPath)
+
+	// Upload folder
+	_, err = azblob.UploadFileToBlockBlob(ctx, folder, blobFolderURL, azblob.UploadToBlockBlobOptions{
+		BlockSize:   4 * 1024 * 1024,
+		Parallelism: 16})
+	if err != nil {
+		return ctx, fmt.Errorf("Err uploading file to blob: %s", err)
+	}
+
+	// Make checkpoint blob files
+	CreatePartitionFile(ctx, urlPath, "0", containerURL, client)
+	CreatePartitionFile(ctx, urlPath, "1", containerURL, client)
+
+	return ctx, nil
+}
+
+func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partitionID string, containerURL azblob.ContainerURL, client *eventhub.Hub) error {
+	// Create folder structure
+	filePath := urlPathToPartition + partitionID
+
+	partitionInfo, err := client.GetPartitionInformation(ctx, partitionID)
+	if err != nil {
+		return fmt.Errorf("unable to get partition info: %s", err)
+	}
+
+	f, err := os.Create(partitionID)
+	if err != nil {
+		return fmt.Errorf("unable to create file: %s", err)
+	}
+
+	if partitionID == "0" {
+		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber-1, partitionID))
+		if err != nil {
+			return fmt.Errorf("unable to write to file: %s", err)
+		}
+	} else {
+		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber, partitionID))
+		if err != nil {
+			return fmt.Errorf("unable to write to file: %s", err)
+		}
+	}
+
+	// Write checkpoints to file
+	file, err := os.Open(partitionID)
+	if err != nil {
+		fmt.Errorf("Unable to create file: %s", err)
+	}
+	defer file.Close()
+
+	blobFileURL := containerURL.NewBlockBlobURL(filePath)
+
+	// Upload folder
+	_, err = azblob.UploadFileToBlockBlob(ctx, file, blobFileURL, azblob.UploadToBlockBlobOptions{
+		BlockSize:   4 * 1024 * 1024,
+		Parallelism: 16})
+	if err != nil {
+		fmt.Errorf("Err uploading file to blob: %s", err)
+	}
+	return nil
+}
+
+func SendMessageToEventHub(client *eventhub.Hub) error {
+	ctx := context.Background()
+
+	err := client.Send(ctx, eventhub.NewEventFromString("1"))
+	if err != nil {
+		return fmt.Errorf("Error sending msg: %s\n", err)
+	}
+	return nil
+}
+
+func DeleteContainerInStorage(ctx context.Context, storageAccountName string, credential *azblob.SharedKeyCredential) error {
+	url, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", storageAccountName, testContainerName))
+	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
+
+	_, err := containerURL.Delete(ctx, azblob.ContainerAccessConditions{
+		ModifiedAccessConditions: azblob.ModifiedAccessConditions{},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete container in blob storage: %s", err)
+	}
+	return nil
 }
