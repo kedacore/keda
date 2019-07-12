@@ -72,15 +72,16 @@ KEDA performs two key roles within Kubernetes.  First, it acts as an agent to ac
 
 KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scaler support for:
 
-* Kafka
-* RabbitMQ
-* Azure Storage Queues
-* Azure Service Bus Queues and Topics
 * AWS CloudWatch
 * AWS Simple Queue Service
-* Prometheus
-* Redis Lists
 * Azure Event Hub
+* Azure Service Bus Queues and Topics
+* Azure Storage Queues
+* GCP PubSub
+* Kafka
+* Prometheus
+* RabbitMQ
+* Redis Lists
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
