@@ -16,6 +16,9 @@ spec:
       labels:
         name: {{ template "keda.fullname" . }}
         instance: {{ template "keda.fullname" . }}-instance
+        {{- if .Values.aadPodIdentity }}
+        aadpodidbinding: {{ .Values.aadPodIdentity }}
+        {{- end }}
     spec:
       serviceAccountName: {{ template "keda.serviceAccountName" . }}
       containers:
