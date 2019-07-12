@@ -161,22 +161,22 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	}
 
 	// Create directory checkpoints will be in
-	err = os.MkdirAll(urlPath, os.ModeDir)
+	err = os.MkdirAll(urlPath, 0777)
 	if err != nil {
 		return ctx, fmt.Errorf("Unable to create directory: %s", err)
 	}
 	defer os.RemoveAll(urlPath)
 
-	folder, err := os.Open(urlPath)
+	file, err := os.Create(fmt.Sprintf("%s/file", urlPath))
 	if err != nil {
 		return ctx, fmt.Errorf("Unable to create folder: %s", err)
 	}
-	defer folder.Close()
+	defer file.Close()
 
 	blobFolderURL := containerURL.NewBlockBlobURL(urlPath)
 
-	// Upload folder
-	_, err = azblob.UploadFileToBlockBlob(ctx, folder, blobFolderURL, azblob.UploadToBlockBlobOptions{
+	// Upload file
+	_, err = azblob.UploadFileToBlockBlob(ctx, file, blobFolderURL, azblob.UploadToBlockBlobOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
 	if err != nil {
