@@ -8,6 +8,7 @@ import (
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,8 +22,9 @@ type externalScaler struct {
 }
 
 type externalScalerMetadata struct {
-	serviceURI string
-	metadata   map[string]string
+	serviceURI  string
+	tlsCertFile string
+	metadata    map[string]string
 }
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
@@ -72,6 +74,10 @@ func parseExternalScalerMetadata(metadata, resolvedEnv map[string]string) (*exte
 		meta.serviceURI = val
 	} else {
 		return nil, fmt.Errorf("Service URI is a required field")
+	}
+
+	if val, ok := metadata["tlsCertFile"]; ok && val != "" {
+		meta.tlsCertFile = val
 	}
 
 	meta.metadata = make(map[string]string)
@@ -201,11 +207,24 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 	return metrics, nil
 }
 
+// getGRPCClient creates a new gRPC client
 func (s *externalScaler) getGRPCClient() (pb.ExternalScalerClient, error) {
 
 	var client pb.ExternalScalerClient
+	var err error
+	var conn *grpc.ClientConn
 
-	conn, err := grpc.Dial(s.metadata.serviceURI, grpc.WithInsecure())
+	if s.metadata.tlsCertFile != "" {
+		certFile := fmt.Sprintf("/grpccerts/%s", s.metadata.tlsCertFile)
+		creds, err := credentials.NewClientTLSFromFile(certFile, "")
+		if err != nil {
+			return client, err
+		}
+		conn, err = grpc.Dial(s.metadata.serviceURI, grpc.WithTransportCredentials(creds))
+	} else {
+		conn, err = grpc.Dial(s.metadata.serviceURI, grpc.WithInsecure())
+	}
+
 	if err != nil {
 		return client, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
