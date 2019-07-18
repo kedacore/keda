@@ -173,7 +173,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return result
 }
 
-// GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
+// GetMetrics connects calls the gRPC interface to get the metrics with a specific name
 func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 
 	var metrics []external_metrics.ExternalMetricValue
@@ -226,7 +226,7 @@ func (s *externalScaler) getGRPCClient() (pb.ExternalScalerClient, error) {
 	}
 
 	if err != nil {
-		return client, fmt.Errorf("error parsing external scaler metadata: %s", err)
+		return client, fmt.Errorf("cannot connect to external scaler over grpc interface: %s", err)
 	}
 
 	client = pb.NewExternalScalerClient(conn)
