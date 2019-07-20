@@ -23,6 +23,8 @@ spec:
   # {list of triggers to activate the deployment}
 ```
 
+You can find all supported triggers [here](./triggers).
+
 ## Details
 ```yaml
   scaleTargetRef:
