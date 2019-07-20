@@ -1,5 +1,6 @@
-# Apache Kafka Topic
-Example: [`examples/kafka_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+# Apache Kafka Topic Trigger
+
+This specification describes the `kafka` trigger for Apache Kafka Topic.
 
 ```yaml
   triggers:
@@ -10,3 +11,7 @@ Example: [`examples/kafka_scaledobject.yaml`](./../../examples/azurequeue_scaled
       topic: test-topic
       lagThreshold: '5' # Optional. How much the stream is lagging on the current consumer group
 ```
+
+## Example
+
+[`examples/kafka_scaledobject.yaml`](./../../examples/kafka_scaledobject.yaml)

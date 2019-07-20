@@ -1,5 +1,6 @@
-# Azure Service Bus Topic
-Example: [`examples/azureservicebus_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+# Azure Service Bus Topic Trigger
+
+This specification describes the `azure-servicebus` trigger for Azure Service Bus Topic.
 
 ```yaml
   triggers:
@@ -12,3 +13,7 @@ Example: [`examples/azureservicebus_scaledobject.yaml`](./../../examples/azurequ
 ```
 
 The `connection` value is the name of the environment variable your deployment uses to get the connection string. This is usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+
+## Example
+
+[`examples/azureservicebus_scaledobject.yaml`](./../../examples/azureservicebus_scaledobject.yaml)

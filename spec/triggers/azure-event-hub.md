@@ -1,5 +1,6 @@
-# Azure Storage Queues
-Example: [`examples/azureeventhub_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+# Azure Event Hub Trigger
+
+This specification describes the `azure-eventhub` trigger for Azure Event Hub.
 
 ```yaml
   triggers:
@@ -14,3 +15,7 @@ Example: [`examples/azureeventhub_scaledobject.yaml`](./../../examples/azurequeu
 The `connection` value is the name of the environment variable your deployment uses to get the Event Hub connection string. `storageConnection` is the name of the environment variable your deployment uses to get the Storage connection string.
 
 Environment variables are usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+
+## Example
+
+[`examples/azureeventhub_scaledobject.yaml`](./../../examples/azureeventhub_scaledobject.yaml)

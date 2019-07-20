@@ -1,5 +1,6 @@
-# Rabbit MQ Queue
-Example: [`examples/rabbitmq_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+# Rabbit MQ Queue Trigger
+
+This specification describes the `rabbitmq` trigger for Rabbit MQ Queue.
 
 ```yaml
   triggers:
@@ -9,3 +10,7 @@ Example: [`examples/rabbitmq_scaledobject.yaml`](./../../examples/azurequeue_sca
       queueLength: '20' # Optional. Queue length target for HPA. Default: 20 messages
       queueName: testqueue
 ```
+
+## Example
+
+[`examples/rabbitmq_scaledobject.yaml`](./../../examples/rabbitmq_scaledobject.yaml)

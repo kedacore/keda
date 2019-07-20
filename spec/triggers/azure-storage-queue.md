@@ -1,5 +1,6 @@
-# Azure Storage Queue
-Example: [`examples/azurequeue_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+# Azure Storage Queue Trigger
+
+This specification describes the `azure-queue` trigger for Azure Storage Queue.
 
 ```yaml
   triggers:
@@ -11,3 +12,7 @@ Example: [`examples/azurequeue_scaledobject.yaml`](./../../examples/azurequeue_s
 ```
 
 The `connection` value is the name of the environment variable your deployment uses to get the connection string. This is usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+
+## Example
+
+[`examples/azurequeue_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)

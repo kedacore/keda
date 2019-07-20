@@ -1,5 +1,7 @@
 # ScaledObject specification
 
+This specification describes the `ScaledObject` custom resource definition which is used to define how KEDA should scale your application and what the triggers are.
+
 [`types.go`](./../pkg/apis/keda/v1alpha1/types.go)
 
 ```yaml
