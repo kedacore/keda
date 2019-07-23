@@ -1,0 +1,20 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kubernetes-events-scaledobject
+  namespace: kubernetes-events-scaler
+spec:
+  scaleTargetRef:
+    deploymentName: kubernetes-events-scaler
+  triggers:
+  - type: kubernetes-events
+    metadata:
+      fieldSelector: "metadata.namespace=events-sample,type=Warning" # Optional
+      
+      # Scale Down Period will check if an event has occured in the 
+      # last n seconds and scale down if not
+      scaleDownPeriodSeconds: "60" # Optional, Default: 60
+
+      # Number of Events are the number of events that would be set as 
+      # the target quantity of the HPA
+      numberOfEvents: "3" # Optional, Defaults to 5.
