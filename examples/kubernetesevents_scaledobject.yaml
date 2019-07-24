@@ -2,10 +2,12 @@ apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
   name: kubernetes-events-scaledobject
-  namespace: kubernetes-events-scaler
+  namespace: keda-kubernetes-events-scaler
+  labels:
+    deploymentName: keda-kubernetes-events-scaler-node
 spec:
   scaleTargetRef:
-    deploymentName: kubernetes-events-scaler
+    deploymentName: keda-kubernetes-events-scaler-node
   triggers:
   - type: kubernetes-events
     metadata:
