@@ -2,12 +2,18 @@
 
 This specification describes the `trigger` section of the `ScaledObject` used to define how what triggers KEDA should use to scale your application.
 
+<details>
+  <summary><b>Table of Contents</b></summary>
+
 - [Metadata](#metadata)
 - [Authentication](#authentication)
-    - [Environment variable(s)](#authentication)
-    - [Secret(s)](#authentication)
+    - [Environment variable(s)](#environment-variables)
+    - [Secret(s)](#secrets)
     - [Azure Pod Identity](#authentication)
-- [Supported Triggers](#supported-triggers)
+- [Supported Triggers](#azure-pod-identity)
+</details>
+
+[`types.go`](./../pkg/apis/keda/v1alpha1/types.go)
 
 ```yaml
 type: {trigger-type} # Required.
