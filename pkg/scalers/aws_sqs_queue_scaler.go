@@ -23,6 +23,7 @@ const (
 	awsSqsQueueMetricName    = "ApproximateNumberOfMessages"
 	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
+	awsRegionEnvVar          = "AWS_REGION"
 )
 
 type awsSqsQueueScaler struct {
@@ -62,10 +63,12 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, erro
 
 	sqsClient := sqs.New(sess)
 
-	return &awsSqsQueueScaler{
+	s := &awsSqsQueueScaler{
 		metadata:  meta,
 		sqsClient: sqsClient,
-	}, nil
+	}
+
+	return s, nil
 }
 
 func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQueueMetadata, error) {
@@ -95,6 +98,8 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 
 	if val, ok := resolvedEnv[keyName]; ok && val != "" {
 		meta.awsAccessKeyID = val
+	} else if len(metadata["awsAccessKeyID"]) > 0 {
+		return nil, fmt.Errorf("awsAccessKeyID was defined, but not found in the deployment")
 	}
 
 	// If no variable name is given, use the default AWS_SECRET_ACCESS_KEY
@@ -104,10 +109,8 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 
 	if val, ok := resolvedEnv[keyName]; ok && val != "" {
 		meta.awsSecretAccessKey = val
-	}
-
-	if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
-		meta.awsSecretAccessKey = val
+	} else if len(metadata["awsSecretAccessKey"]) > 0 {
+		return nil, fmt.Errorf("awsSecretAccessKey was defined, but not found in the deployment")
 	}
 
 	if val, ok := metadata["awsSessionToken"]; ok && val != "" {
@@ -116,6 +119,10 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 
 	if val, ok := metadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
+	}
+
+	if len(meta.awsRegion) == 0 {
+		return nil, fmt.Errorf("awsRegion is invalid, it must not be empty")
 	}
 
 	return &meta, nil

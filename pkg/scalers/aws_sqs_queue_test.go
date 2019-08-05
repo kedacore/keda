@@ -26,10 +26,10 @@ func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
 		_, err := parseAwsSqsQueueMetadata(testData.metadata, testAWSSQSResolvedEnv)
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success because '%s' but got error, %s", testData.reason, err)
 		}
 		if testData.isError && err == nil {
-			t.Errorf("Expected error because %s but got success, %#v", testData.reason, testData)
+			t.Errorf("Expected error because '%s' but got success, %#v", testData.reason, testData)
 		}
 	}
 }
