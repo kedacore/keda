@@ -26,6 +26,7 @@ type liiklusMetadata struct {
 	address      string
 	topic        string
 	group        string
+	groupVersion uint32
 }
 
 const (
@@ -111,8 +112,9 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 	ctx1, cancel1 := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel1()
 	gor, err := s.client.GetOffsets(ctx1, &liiklus_service.GetOffsetsRequest{
-		Topic: s.metadata.topic,
-		Group: s.metadata.group,
+		Topic:        s.metadata.topic,
+		Group:        s.metadata.group,
+		GroupVersion: s.metadata.groupVersion,
 	})
 	if err != nil {
 		return 0, nil, err
@@ -150,6 +152,15 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		lagThreshold = int64(t)
 	}
 
+	groupVersion := uint32(0)
+	if val, ok := metadata["groupVersion"]; ok {
+		t, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
+		}
+		groupVersion = uint32(t)
+	}
+
 	if metadata["topic"] == "" {
 		return nil, errors.New("no topic provided")
 	} else if metadata["address"] == "" {
@@ -162,6 +173,7 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		topic:        metadata["topic"],
 		address:      metadata["address"],
 		group:        metadata["group"],
+		groupVersion: groupVersion,
 		lagThreshold: lagThreshold,
 	}, nil
 }
