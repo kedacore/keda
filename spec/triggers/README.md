@@ -9,7 +9,8 @@ This specification describes the `trigger` section of the `ScaledObject` used to
 - [Authentication](#authentication)
     - [Environment variable(s)](#environment-variables)
     - [Secret(s)](#secrets)
-    - [Azure Pod Identity](#azure-pod-identity)
+    - [Pod Authentication Providers](#pod-authentication-providers)
+        - [Azure Pod Identity](#azure-pod-identity)
 - [Supported Trigger Typess](#supported-trigger-types)
 </details>
 
@@ -84,15 +85,27 @@ You can pull one or more secrets into the trigger by defining the `name` of the 
 ```
 **Assumptions:** `namespace` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
 
-### Azure Pod Identity
+### Pod Authentication Providers
+
+Several service providers allow you to assign an identity to a pod. By using that identity, you can defer authentication to the pod & the service provider, rather than configuring secrets.
+
+Currently we support the following:
+
+```yaml
+    podIdentity:
+        provider: none | azure  # Optional. Default: false
+```
+
+#### Azure Pod Identity
 
 Azure Pod Identity is an implementation of [Azure AD Pod Identity](https://github.com/Azure/aad-pod-identity) which let's you bind an [Azure Managed Identity](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/) to a Pod in a Kubernetes cluster as delegated access.
 
-You can tell KEDA to use Azure AD Pod Identity via `azurePodIdentity`.
+You can tell KEDA to use Azure AD Pod Identity via `podIdentity.provider`.
 
  - https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/
 ```yaml
-    azurePodIdentity: true # Optional. Default: false
+    podIdentity:
+        provider: azure  # Optional. Default: false
 ```
 
 # Supported Trigger Types
