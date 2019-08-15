@@ -20,7 +20,8 @@ type: {trigger-type} # Required.
 metadata:
     # {list of properties to configure a trigger}
 authentication:
-    azurePodIdentity: true # Optional. Default: false
+    podIdentity:
+        provider: none | azure | gcp | spiffe # Optional. Default: none
     secretTargetRef: # Optional.
     - parameter: connectionString # Required.
       name: my-keda-secret-entity # Required.
