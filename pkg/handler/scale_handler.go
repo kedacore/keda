@@ -403,7 +403,7 @@ func (h *ScaleHandler) resolveEnv(container *core_v1.Container, namespace string
 					// env is a configMap selector
 					value, err = h.resolveConfigValue(envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, namespace)
 					if err != nil {
-						return nil, fmt.Errorf("error resolving config %s for env %s in namespace %s/%s",
+						return nil, fmt.Errorf("error resolving config %s for env %s in namespace %s",
 							envVar.ValueFrom.ConfigMapKeyRef,
 							envVar.Name,
 							namespace)
