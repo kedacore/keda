@@ -46,7 +46,7 @@ test.serial('verifyKeda', t => {
         t.fail(`error scaling keda to 0. ${result}`);
     }
 
-    result = sh.exec('kubectl set image deployment.apps/keda-operator --namespace keda keda-operator=sgricci/keda:latest');
+    result = sh.exec('kubectl set image deployment.apps/keda-operator --namespace keda keda-operator=kedacore/keda:latest');
     if (result.code !== 0) {
         t.fail(`error updating keda image. ${result}`);
     }
@@ -70,5 +70,5 @@ test.serial('verifyKeda', t => {
         }
     }
 
-    t.true(success, 'expected keda deployment to start 1 pod successfully with sgricci/keda:latest');
+    t.true(success, 'expected keda deployment to start 1 pod successfully with kedacore/keda:latest');
 });
