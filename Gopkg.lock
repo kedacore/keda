@@ -35,7 +35,7 @@
     "persist",
     "rpc",
     "sas",
-    "uuid"
+    "uuid",
   ]
   pruneopts = "NUT"
   revision = "b5ea4829bce0d96bc7b4d11bfc8ccd2afdf0ec4a"
@@ -46,7 +46,7 @@
   name = "github.com/Azure/azure-event-hubs-go"
   packages = [
     ".",
-    "atom"
+    "atom",
   ]
   pruneopts = "NUT"
   revision = "d3d1b70a113ea8a9f2d7443ff7d99ab40f9b6eca"
@@ -65,7 +65,7 @@
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/eventhub/mgmt/2017-04-01/eventhub",
-    "version"
+    "version",
   ]
   pruneopts = "NUT"
   revision = "32916f57ad7b421f5fdaab86b73a795632fff117"
@@ -76,7 +76,7 @@
   name = "github.com/Azure/azure-service-bus-go"
   packages = [
     ".",
-    "atom"
+    "atom",
   ]
   pruneopts = "NUT"
   revision = "551698499ac9fac20d8c50faad5749967e685926"
@@ -104,7 +104,7 @@
   name = "github.com/Azure/go-ansiterm"
   packages = [
     ".",
-    "winterm"
+    "winterm",
   ]
   pruneopts = "NUT"
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
@@ -120,7 +120,7 @@
     "autorest/to",
     "autorest/validation",
     "logger",
-    "version"
+    "version",
   ]
   pruneopts = "NUT"
   revision = "4b7f49dc5db2e1e6d528524d269b4181981a7ebf"
@@ -208,7 +208,7 @@
     "private/protocol/xml/xmlutil",
     "service/cloudwatch",
     "service/sqs",
-    "service/sts"
+    "service/sts",
   ]
   pruneopts = "NUT"
   revision = "a8ae6f5bdfb1f0d87da6aeb8611463a430dc820f"
@@ -223,7 +223,7 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:9504413d90121c416f1f887410791c02627cad0b5b89aef67f6b8fc7c1c300aa"
+  digest = "1:fdd8434ce43eb5c062007f30ae37f667108c0b33336ded068cbac177d5b2d5a3"
   name = "github.com/coreos/etcd"
   packages = [
     "auth/authpb",
@@ -237,7 +237,7 @@
     "pkg/tlsutil",
     "pkg/transport",
     "pkg/types",
-    "version"
+    "version",
   ]
   pruneopts = "NUT"
   revision = "33245c6b5b49130ca99280408fadfab01aac0e48"
@@ -275,11 +275,11 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:54ebeaf9c3bea790a6bd7e04ecf4c05a5c91b0f494cfd0b9921e823c744c12ed"
+  digest = "1:53e99d883df3e940f5f0223795f300eb32b8c044f226132bfc0e74930f24ea4b"
   name = "github.com/docker/docker"
   packages = [
     "pkg/term",
-    "pkg/term/windows"
+    "pkg/term/windows",
   ]
   pruneopts = "NUT"
   revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
@@ -322,7 +322,7 @@
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
-    "log"
+    "log",
   ]
   pruneopts = "NUT"
   revision = "e64cccdfee8896c036b8a88d560c5e3ae15d904d"
@@ -392,7 +392,7 @@
     "internal/hashtag",
     "internal/pool",
     "internal/proto",
-    "internal/util"
+    "internal/util",
   ]
   pruneopts = "NUT"
   revision = "75795aa4236dc7341eefac3bbe945e68c99ef9df"
@@ -405,7 +405,7 @@
     "gogoproto",
     "proto",
     "protoc-gen-gogo/descriptor",
-    "sortkeys"
+    "sortkeys",
   ]
   pruneopts = "NUT"
   revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
@@ -483,7 +483,7 @@
   packages = [
     "OpenAPIv2",
     "compiler",
-    "extensions"
+    "extensions",
   ]
   pruneopts = "NUT"
   revision = "7c663266750e7d82587642f65e60bc4083f1f84e"
@@ -495,7 +495,7 @@
   name = "github.com/gregjones/httpcache"
   packages = [
     ".",
-    "diskcache"
+    "diskcache",
   ]
   pruneopts = "NUT"
   revision = "3befbb6ad0cc97d4c25d851e9528915809e1a22f"
@@ -513,7 +513,7 @@
   name = "github.com/hashicorp/golang-lru"
   packages = [
     ".",
-    "simplelru"
+    "simplelru",
   ]
   pruneopts = "NUT"
   revision = "7087cb70de9f7a8bc0a10c375cb0d2280a8edf9c"
@@ -551,32 +551,6 @@
   version = "v1.1.6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:638667aaeade4986944043dd5f7d9f6cb17d8f68099b8f927b1ab6d712045810"
-  name = "github.com/kedacore/keda"
-  packages = [
-    "pkg/adapter",
-    "pkg/apis/keda",
-    "pkg/apis/keda/v1alpha1",
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/keda/v1alpha1",
-    "pkg/client/clientset/versioned/typed/keda/v1alpha1/fake",
-    "pkg/client/informers/externalversions/internalinterfaces",
-    "pkg/client/informers/externalversions/keda",
-    "pkg/client/informers/externalversions/keda/v1alpha1",
-    "pkg/client/listers/keda/v1alpha1",
-    "pkg/controller",
-    "pkg/handler",
-    "pkg/kubernetes",
-    "pkg/provider",
-    "pkg/scalers",
-    "pkg/signals",
-  ]
-  pruneopts = "NUT"
-  revision = "0cb6bfda6395433d197c1ac0b3e504314d62b26f"
-
-[[projects]]
   digest = "1:b8870bf2606dca65dc382f4cb8b7a434f17ff36a915451bda12788e9620be368"
   name = "github.com/kelseyhightower/envconfig"
   packages = ["."]
@@ -603,7 +577,7 @@
     "pkg/dynamicmapper",
     "pkg/provider",
     "pkg/registry/custom_metrics",
-    "pkg/registry/external_metrics"
+    "pkg/registry/external_metrics",
   ]
   pruneopts = "NUT"
   revision = "bb8bae16c5550f2aeef3151259a1b36078a0e544"
@@ -615,7 +589,7 @@
   packages = [
     "buffer",
     "jlexer",
-    "jwriter"
+    "jwriter",
   ]
   pruneopts = "NUT"
   revision = "1de009706dbeb9d05f18586f0735fcdb7c524481"
@@ -658,7 +632,7 @@
   packages = [
     ".",
     "ext",
-    "log"
+    "log",
   ]
   pruneopts = "NUT"
   revision = "659c90643e714681897ec2521c60567dd21da733"
@@ -693,7 +667,7 @@
   name = "github.com/pierrec/lz4"
   packages = [
     ".",
-    "internal/xxh32"
+    "internal/xxh32",
   ]
   pruneopts = "NUT"
   revision = "062282ea0dcff40c9fb8525789eef9644b1fbd6e"
@@ -712,7 +686,7 @@
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
-    "prometheus/internal"
+    "prometheus/internal",
   ]
   pruneopts = "NUT"
   revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
@@ -732,7 +706,7 @@
   packages = [
     "expfmt",
     "internal/bitbucket.org/ww/goautoneg",
-    "model"
+    "model",
   ]
   pruneopts = "NUT"
   revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
@@ -747,7 +721,7 @@
     "internal/util",
     "iostats",
     "nfs",
-    "xfs"
+    "xfs",
   ]
   pruneopts = "NUT"
   revision = "55ae3d9d557340b5bc24cd8aa5f6fa2c2ab31352"
@@ -803,7 +777,7 @@
     "trace",
     "trace/internal",
     "trace/propagation",
-    "trace/tracestate"
+    "trace/tracestate",
   ]
   pruneopts = "NUT"
   revision = "75c0cca22312e51bfd4fafdbe9197ae399e18b38"
@@ -816,7 +790,7 @@
   packages = [
     "pkcs12",
     "pkcs12/internal/rc2",
-    "ssh/terminal"
+    "ssh/terminal",
   ]
   pruneopts = "NUT"
   revision = "a5d413f7728c81fb97d96a2b722368945f651e78"
@@ -834,7 +808,7 @@
     "idna",
     "internal/timeseries",
     "trace",
-    "websocket"
+    "websocket",
   ]
   pruneopts = "NUT"
   revision = "e3b2ff56ed879efa686c9d09ed74f9bfe42f1a1d"
@@ -859,7 +833,7 @@
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
   ]
   pruneopts = "NUT"
   revision = "f49334f85ddcf0f08d7fb6dd7363e9e6d6b777eb"
@@ -882,7 +856,7 @@
     "unicode/cldr",
     "unicode/norm",
     "unicode/rangetable",
-    "width"
+    "width",
   ]
   pruneopts = "NUT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
@@ -911,7 +885,7 @@
     "internal/fastwalk",
     "internal/gopathwalk",
     "internal/module",
-    "internal/semver"
+    "internal/semver",
   ]
   pruneopts = "NUT"
   revision = "5a8dccf5b48ae388eebac31f4077f14adda4dbc6"
@@ -1019,7 +993,7 @@
     "resolver/passthrough",
     "stats",
     "status",
-    "tap"
+    "tap",
   ]
   pruneopts = "NUT"
   revision = "501c41df7f472c740d0674ff27122f3f48c80ce7"
@@ -1084,7 +1058,7 @@
     "settings/v1alpha1",
     "storage/v1",
     "storage/v1alpha1",
-    "storage/v1beta1"
+    "storage/v1beta1",
   ]
   pruneopts = "NUT"
   revision = "b503174bad5991eb66f18247f52e41c3258f6348"
@@ -1143,7 +1117,7 @@
     "pkg/version",
     "pkg/watch",
     "third_party/forked/golang/json",
-    "third_party/forked/golang/reflect"
+    "third_party/forked/golang/reflect",
   ]
   pruneopts = "NUT"
   revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
@@ -1244,7 +1218,7 @@
     "plugin/pkg/audit/truncate",
     "plugin/pkg/audit/webhook",
     "plugin/pkg/authenticator/token/webhook",
-    "plugin/pkg/authorizer/webhook"
+    "plugin/pkg/authorizer/webhook",
   ]
   pruneopts = "NUT"
   revision = "9601a7bf41efece7e12a8f9f74d2c3b10cdd998e"
@@ -1386,7 +1360,7 @@
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
-    "util/retry"
+    "util/retry",
   ]
   pruneopts = "NUT"
   revision = "77e032213d34c856222b4d4647c1c175ba8d22b9"
@@ -1405,7 +1379,7 @@
   name = "k8s.io/gengo"
   packages = [
     "parser",
-    "types"
+    "types",
   ]
   pruneopts = ""
   revision = "bc9033e9ec9e0cec1552e9af7c079cb878dfc511"
@@ -1426,7 +1400,7 @@
     "pkg/common",
     "pkg/handler",
     "pkg/util",
-    "pkg/util/proto"
+    "pkg/util/proto",
   ]
   pruneopts = "NUT"
   revision = "d8ea2fe547a448256204cfc68dfee7b26c720acb"
@@ -1442,7 +1416,7 @@
     "pkg/apis/custom_metrics/v1beta2",
     "pkg/apis/external_metrics",
     "pkg/apis/external_metrics/install",
-    "pkg/apis/external_metrics/v1beta1"
+    "pkg/apis/external_metrics/v1beta1",
   ]
   pruneopts = "NUT"
   revision = "3954d62a524dad50e7c4bcf91a26eeef011040e2"
@@ -1452,7 +1426,7 @@
   name = "pack.ag/amqp"
   packages = [
     ".",
-    "internal/testconn"
+    "internal/testconn",
   ]
   pruneopts = "NUT"
   revision = "a69a1d51f8e7b55567f8d190a8fab04503a97735"
@@ -1477,32 +1451,19 @@
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/go-redis/redis",
     "github.com/golang/glog",
+    "github.com/golang/protobuf/proto",
+    "github.com/golang/protobuf/ptypes/empty",
     "github.com/golang/protobuf/ptypes/timestamp",
-    "github.com/kedacore/keda/pkg/adapter",
-    "github.com/kedacore/keda/pkg/apis/keda",
-    "github.com/kedacore/keda/pkg/apis/keda/v1alpha1",
-    "github.com/kedacore/keda/pkg/client/clientset/versioned",
-    "github.com/kedacore/keda/pkg/client/clientset/versioned/scheme",
-    "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1",
-    "github.com/kedacore/keda/pkg/client/clientset/versioned/typed/keda/v1alpha1/fake",
-    "github.com/kedacore/keda/pkg/client/informers/externalversions/internalinterfaces",
-    "github.com/kedacore/keda/pkg/client/informers/externalversions/keda",
-    "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1",
-    "github.com/kedacore/keda/pkg/client/listers/keda/v1alpha1",
-    "github.com/kedacore/keda/pkg/controller",
-    "github.com/kedacore/keda/pkg/handler",
-    "github.com/kedacore/keda/pkg/kubernetes",
-    "github.com/kedacore/keda/pkg/provider",
-    "github.com/kedacore/keda/pkg/scalers",
-    "github.com/kedacore/keda/pkg/signals",
     "github.com/kelseyhightower/envconfig",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider",
+    "github.com/pkg/errors",
     "github.com/streadway/amqp",
     "golang.org/x/tools/imports",
     "google.golang.org/api/iterator",
     "google.golang.org/api/option",
     "google.golang.org/genproto/googleapis/monitoring/v3",
+    "google.golang.org/grpc",
     "k8s.io/api/apps/v1",
     "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/core/v1",
@@ -1531,7 +1492,7 @@
     "k8s.io/code-generator/pkg/util",
     "k8s.io/gengo/parser",
     "k8s.io/metrics/pkg/apis/custom_metrics",
-    "k8s.io/metrics/pkg/apis/external_metrics"
+    "k8s.io/metrics/pkg/apis/external_metrics",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
