@@ -2,12 +2,10 @@ package scalers
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/golang/mock/gomock"
 	"github.com/kedacore/keda/pkg/scalers/liiklus"
+	mock_liiklus "github.com/kedacore/keda/pkg/scalers/liiklus/mocks"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
-	"log"
-	"net"
 	"testing"
 )
 
@@ -65,53 +63,25 @@ func TestLiiklusParseMetadata(t *testing.T) {
 	}
 }
 
-type test_liiklus_server struct {
-	offsets    map[uint32]uint64
-	endOffsets map[uint32]uint64
-	address    string
-}
-
-func (l *test_liiklus_server) GetOffsets(context.Context, *liiklus.GetOffsetsRequest) (*liiklus.GetOffsetsReply, error) {
-	return &liiklus.GetOffsetsReply{
-		Offsets: l.offsets,
-	}, nil
-}
-func (l *test_liiklus_server) Publish(context.Context, *liiklus.PublishRequest) (*liiklus.PublishReply, error) {
-	return nil, nil
-}
-func (l *test_liiklus_server) Subscribe(*liiklus.SubscribeRequest, liiklus.LiiklusService_SubscribeServer) error {
-	return nil
-}
-func (l *test_liiklus_server) Receive(*liiklus.ReceiveRequest, liiklus.LiiklusService_ReceiveServer) error {
-	return nil
-}
-func (l *test_liiklus_server) Ack(context.Context, *liiklus.AckRequest) (*empty.Empty, error) {
-	return nil, nil
-}
-func (l *test_liiklus_server) GetEndOffsets(context.Context, *liiklus.GetEndOffsetsRequest) (*liiklus.GetEndOffsetsReply, error) {
-	return &liiklus.GetEndOffsetsReply{
-		Offsets: l.endOffsets,
-	}, nil
-}
-
 func TestLiiklusScalerActiveBehavior(t *testing.T) {
 
-	srv, liiklus, err := createTestServer()
-	if err != nil {
-		t.Errorf("failed to create server: %v", err)
-		return
-	}
-	defer srv.Stop()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	liiklus.endOffsets = map[uint32]uint64{0: 2}
-	liiklus.offsets = map[uint32]uint64{0: 1}
-
-	scaler, err := NewLiiklusScaler(nil, map[string]string{"topic": "foo", "address": liiklus.address, "group": "mygroup"})
-	if err != nil {
-		t.Errorf("failed to create scaler: %v", err)
-		return
+	lm, _ := parseLiiklusMetadata(map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"})
+	mockClient := mock_liiklus.NewMockLiiklusServiceClient(ctrl)
+	scaler := &liiklusScaler{
+		metadata: lm,
+		client:   mockClient,
 	}
-	defer scaler.Close()
+
+	mockClient.EXPECT().
+		GetOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetOffsetsReply{Offsets: map[uint32]uint64{0: 1}}, nil)
+	mockClient.EXPECT().
+		GetEndOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 2}}, nil)
+
 	active, err := scaler.IsActive(context.Background())
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
@@ -121,8 +91,13 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 		t.Error("expected IsActive to return true")
 	}
 
-	liiklus.endOffsets = map[uint32]uint64{0: 2}
-	liiklus.offsets = map[uint32]uint64{0: 2}
+	mockClient.EXPECT().
+		GetOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetOffsetsReply{Offsets: map[uint32]uint64{0: 2}}, nil)
+	mockClient.EXPECT().
+		GetEndOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 2}}, nil)
+
 	active, err = scaler.IsActive(context.Background())
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
@@ -135,35 +110,40 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 
 func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 
-	srv, liiklus, err := createTestServer()
-	if err != nil {
-		t.Errorf("failed to create server: %v", err)
-		return
-	}
-	defer srv.Stop()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	scaler, err := NewLiiklusScaler(nil, map[string]string{"topic": "foo", "address": liiklus.address, "group": "mygroup"})
-	if err != nil {
-		t.Errorf("failed to create scaler: %v", err)
-		return
+	lm, _ := parseLiiklusMetadata(map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"})
+	mockClient := mock_liiklus.NewMockLiiklusServiceClient(ctrl)
+	scaler := &liiklusScaler{
+		metadata: lm,
+		client:   mockClient,
 	}
-	defer scaler.Close()
 
-	liiklus.endOffsets = map[uint32]uint64{0: 20, 1: 30}
-	liiklus.offsets = map[uint32]uint64{0: 18, 1: 25}
+	mockClient.EXPECT().
+		GetOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetOffsetsReply{Offsets: map[uint32]uint64{0: 18, 1: 25}}, nil)
+	mockClient.EXPECT().
+		GetEndOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
+
 	values, err := scaler.GetMetrics(context.Background(), "m", nil)
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return
 	}
 
-	if values[0].Value.Value() != 2+5 {
+	if values[0].Value.Value() != (20-18)+(30-25) {
 		t.Errorf("got wrong metric values: %v", values)
 	}
 
 	// Test metrics capping
-	liiklus.endOffsets = map[uint32]uint64{0: 20, 1: 30}
-	liiklus.offsets = map[uint32]uint64{0: 1, 1: 15}
+	mockClient.EXPECT().
+		GetOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetOffsetsReply{Offsets: map[uint32]uint64{0: 1, 1: 15}}, nil)
+	mockClient.EXPECT().
+		GetEndOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
 	values, err = scaler.GetMetrics(context.Background(), "m", nil)
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
@@ -174,25 +154,4 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 		t.Errorf("got wrong metric values: %v", values)
 	}
 
-}
-
-func createTestServer() (*grpc.Server, *test_liiklus_server, error) {
-	port := ":6565"
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	server := &test_liiklus_server{
-		endOffsets: make(map[uint32]uint64),
-		offsets:    make(map[uint32]uint64),
-		address:    "localhost" + port,
-	}
-	liiklus.RegisterLiiklusServiceServer(s, server)
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-	}()
-	return s, server, err
 }

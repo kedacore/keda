@@ -46,6 +46,9 @@ build: pkg/scalers/liiklus/LiiklusService.pb.go
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
 
+pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
+	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+
 ##################################################
 # Helm Chart tasks                               #
 ##################################################
