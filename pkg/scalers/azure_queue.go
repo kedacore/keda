@@ -18,8 +18,9 @@ func GetAzureQueueLength(ctx context.Context, usePodIdentity bool, connectionStr
 	if !usePodIdentity {
 
 		var accountKey string
-		_, accountName, accountKey, _, err = ParseAzureStorageConnectionString(connectionString)
 
+		_, accountName, accountKey, _, err := ParseAzureStorageConnectionString(connectionString)
+		
 		if err != nil {
 			return -1, err
 		}
