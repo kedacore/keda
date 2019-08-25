@@ -267,9 +267,8 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(scaledObject *keda_v1alp
 		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
 		if err != nil {
 			return fmt.Errorf("error updating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
-		} else {
-			log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 		}
+		log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	} else if err != nil {
 		return fmt.Errorf("error creating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
 	} else {
