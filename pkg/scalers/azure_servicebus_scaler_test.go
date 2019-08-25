@@ -34,7 +34,7 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None},
 	// queue and subscription specified
 	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},
-	// topic but no subscription specifed
+	// topic but no subscription specified
 	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None},
 	// subscription but no topic specified
 	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},

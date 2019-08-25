@@ -13,7 +13,7 @@ import (
 type Adapter struct {
 	basecmd.AdapterBase
 
-	// Message is printed on succesful startup
+	// Message is printed on successful startup
 	Message string
 }
 

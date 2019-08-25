@@ -356,7 +356,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
 		// there are no active triggers, but the deployment has replicas.
 		// AND
-		// There is no minimum configured or minumum is set to ZERO. HPA will handles other scale down operations
+		// There is no minimum configured or minimum is set to ZERO. HPA will handles other scale down operations
 
 		// Try to scale it down.
 		h.scaleToZero(deployment, scaledObject)
