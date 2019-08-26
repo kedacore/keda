@@ -90,7 +90,7 @@ func (p *KedaProvider) GetMetricBySelector(namespace string, selector labels.Sel
 
 // ListAllMetrics provides a list of all available metrics at
 // the current time.  Note that this is not allowed to return
-// an error, so it is reccomended that implementors cache and
+// an error, so it is recommended that implementors cache and
 // periodically update this list, instead of querying every time.
 func (p *KedaProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	// not implemented yet
