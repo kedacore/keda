@@ -52,9 +52,8 @@ func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata
 		listLength, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("List length parsing error %s", err.Error())
-		} else {
-			meta.targetListLength = listLength
 		}
+		meta.targetListLength = listLength
 	}
 
 	if val, ok := metadata["listName"]; ok {

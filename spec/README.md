@@ -11,3 +11,4 @@ Here is an overview:
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
     - [Azure Storage Queue](./triggers/azure-storage-queue.md)
     - [RabbitMQ Queue](./triggers/rabbit-mq-queue.md)
+    - [Redis](./triggers/redis.md)
