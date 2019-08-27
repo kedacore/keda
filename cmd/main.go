@@ -4,12 +4,12 @@ import (
 	"flag"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+	adapter "github.com/kedacore/keda/pkg/adapter"
 	"github.com/kedacore/keda/pkg/controller"
 	"github.com/kedacore/keda/pkg/handler"
 	"github.com/kedacore/keda/pkg/kubernetes"
 	"github.com/kedacore/keda/pkg/signals"
-	log "github.com/Sirupsen/logrus"
-	adapter "github.com/kedacore/keda/pkg/adapter"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	// workaround go dep management system

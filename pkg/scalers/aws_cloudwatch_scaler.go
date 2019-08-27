@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"strconv"
@@ -21,25 +21,26 @@ import (
 
 const (
 	defaultMetricCollectionTime = 300
-	defaultMetricStat = "Average"
-	defaultMetricStatPeriod = 300
+	defaultMetricStat           = "Average"
+	defaultMetricStatPeriod     = 300
 )
+
 type awsCloudwatchScaler struct {
 	metadata *awsCloudwatchMetadata
 }
 
 type awsCloudwatchMetadata struct {
-	namespace string
-	metricsName string
-	dimensionName string
+	namespace      string
+	metricsName    string
+	dimensionName  string
 	dimensionValue string
 
 	targetMetricValue float64
-	minMetricValue float64
+	minMetricValue    float64
 
 	metricCollectionTime int64
-	metricStat string
-	metricStatPeriod int64
+	metricStat           string
+	metricStatPeriod     int64
 
 	awsRegion          string
 	awsAccessKeyID     string
@@ -57,7 +58,6 @@ func NewAwsCloudwatchScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 		metadata: meta,
 	}, nil
 }
-
 
 func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCloudwatchMetadata, error) {
 	meta := awsCloudwatchMetadata{}
@@ -164,7 +164,6 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCl
 	return &meta, nil
 }
 
-
 func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := c.GetCloudwatchMetrics()
 
@@ -217,23 +216,23 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 
 	input := cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
-		EndTime: aws.Time(time.Now()),
+		EndTime:   aws.Time(time.Now()),
 		MetricDataQueries: []*cloudwatch.MetricDataQuery{
 			{
 				Id: aws.String("c1"),
 				MetricStat: &cloudwatch.MetricStat{
 					Metric: &cloudwatch.Metric{
 						Namespace: aws.String(c.metadata.namespace),
-						Dimensions: []*cloudwatch.Dimension {
+						Dimensions: []*cloudwatch.Dimension{
 							{
-								Name: aws.String(c.metadata.dimensionName),
+								Name:  aws.String(c.metadata.dimensionName),
 								Value: aws.String(c.metadata.dimensionValue),
 							},
 						},
 						MetricName: aws.String(c.metadata.metricsName),
 					},
 					Period: aws.Int64(c.metadata.metricStatPeriod),
-					Stat: aws.String(c.metadata.metricStat),
+					Stat:   aws.String(c.metadata.metricStat),
 				},
 				ReturnData: aws.Bool(true),
 			},
@@ -252,7 +251,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	if output.MetricDataResults[0].Values != nil {
 		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
-		return -1, fmt.Errorf("Metric Data not received");
+		return -1, fmt.Errorf("Metric Data not received")
 	}
 
 	return metricValue, nil
