@@ -2,6 +2,8 @@
 
 This specification describes the `TriggerAuthentication` custom resource definition which is used to define how KEDA should authenticate to a given trigger.
 
+This allows you to define once how to authenticate and use it for multiple triggers across different teams, without them knowing where the secrets are.
+
 ```yaml
 apiVersion: keda.k8s.io/v1alpha1
 kind: TriggerAuthentication
