@@ -12,4 +12,4 @@ Here is an overview:
     - [Azure Storage Queue](./triggers/azure-storage-queue.md)
     - [RabbitMQ Queue](./triggers/rabbit-mq-queue.md)
     - [Redis](./triggers/redis.md)
-    - [GCP PubSub](./triggers/gcp-pub-sub.md)
+    - [GCP Pub/Sub](./triggers/gcp-pub-sub.md)
