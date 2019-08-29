@@ -60,6 +60,10 @@
   branch = "master"
   name = "k8s.io/gengo"
 
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  version = "1.3.1"
+
 [prune]
   non-go = true
   go-tests = true
