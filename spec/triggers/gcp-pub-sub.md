@@ -1,4 +1,4 @@
-#  GCP PubSub Trigger
+#  Google Cloud Platform‎ Pub/Sub
 
 This specification describes the `gcp-pub-sub` trigger.
 
@@ -11,7 +11,11 @@ triggers:
     credentials: GOOGLE_APPLICATION_CREDENTIALS_JSON # Required
 ```
 
-The GCP PubSub trigger allows you to scale based on the number of messages in your GCP PubSub subscription. The **credentials** property maps to the name of environment variable in the scale target (deployment) which contains the service account credentials (JSON) that would allow KEDA to connect to GCP and collect the required stack driver metrics to read the number of messages in the PubSub subscription. The **subscriptionSize** will be set as the target average value for the HPA and the **subscriptionName** is the subscription to be monitored.
+The Google Cloud Platform‎ (GCP) Pub/Sub trigger allows you to scale based on the number of messages in your Pub/Sub subscription.
+
+The `credentials` property maps to the name of an environment variable in the scale target (`scaleTargetRef`) that contains the service account credentials (JSON). KEDA will use those to connect to Google Cloud Platform and collect the required stack driver metrics in order to read the number of messages in the Pub/Sub subscription.
+
+`subscriptionName` defines the subscription that should be monitored. The `subscriptionSize` determines the target average which the deployment will be scaled on. The default `subscriptionSize` is 5.
 
 ## Example
 
