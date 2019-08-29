@@ -20,18 +20,9 @@ This specification describes the `trigger` section of the `ScaledObject` used to
 type: {trigger-type} # Required.
 metadata:
     # {list of properties to configure a trigger}
-authentication:
-    podIdentity:
-        provider: none | azure | gcp | spiffe # Optional. Default: none
-    secretTargetRef: # Optional.
-    - parameter: connectionString # Required.
-      name: my-keda-secret-entity # Required.
-      key: azure-storage-connectionstring # Required.
-      namespace: my-keda-namespace  # Optional. Default: Namespace of KEDA
-    env: # Optional.
-    - parameter: region # Required.
-      name: my-env-var # Required.
-      containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
+authenticationRef:
+    - name: keda-trigger-auth-azure-queue-secret
+      namespace: keda
 ```
 
 ## Metadata
@@ -49,64 +40,17 @@ For more information, read [the supported trigger type](](#supported-trigger-typ
 
 ## Authentication
 
-Every trigger needs to authenticate to the dependency to scale on which is configured via the `authentication` section.
+Every trigger needs to authenticate to the dependency to scale on which is configured via the `authenticationRef` section.
 
-Trigger types can define one or more `parameter` that have to be configured, which you can configure here - We provide a variety of sources.
-
-```yaml
-    authentication: # required
-```
-
-In order to determine what set of parameters you need to define we recommend reading the specification for the trigger type that you need.
-
-### Environment variable(s)
-
-You can pull information via one or more environment variables by providing the `name` of the variable for a given `containerName`.
+Trigger types can define one or more `parameter` that have to be configured, which you can configure here by referring to a `TriggerAuthentication` CRD that is deployed in the cluster.
 
 ```yaml
-    env: # Optional.
-    - parameter: region # Required.
-      name: my-env-var # Required.
-      containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
+    authenticationRef:  # required
+    - name: keda-trigger-auth-azure-queue-secret # required
+      namespace: keda # optional
 ```
 
-**Assumptions:** `containerName` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
-
-### Secret(s)
-
-You can pull one or more secrets into the trigger by defining the `name` of the Kubernetes Secret and the `key` to use.
-
-```yaml
-    secretTargetRef: # Optional.
-    - parameter: connectionString # Required.
-      name: my-keda-secret-entity # Required.
-      key: azure-storage-connectionstring # Required.
-      namespace: my-keda-namespace # Optional. Default: Namespace of KEDA
-```
-**Assumptions:** `namespace` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
-
-### Pod Authentication Providers
-
-Several service providers allow you to assign an identity to a pod. By using that identity, you can defer authentication to the pod & the service provider, rather than configuring secrets.
-
-Currently we support the following:
-
-```yaml
-    podIdentity:
-        provider: none | azure  # Optional. Default: false
-```
-
-#### Azure Pod Identity
-
-Azure Pod Identity is an implementation of [Azure AD Pod Identity](https://github.com/Azure/aad-pod-identity) which let's you bind an [Azure Managed Identity](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/) to a Pod in a Kubernetes cluster as delegated access.
-
-You can tell KEDA to use Azure AD Pod Identity via `podIdentity.provider`.
-
- - https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/
-```yaml
-    podIdentity:
-        provider: azure  # Optional. Default: false
-```
+`name` refers to the name of the `TriggerAuthentication` that is deployed and describes how the trigger should authenticate. Optionally, you can assign a `namespace` if it lives in another namespace than the `ScaledObject`.
 
 # Supported Trigger Types
 
