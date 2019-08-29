@@ -42,7 +42,7 @@ For more information, read [the supported trigger type](](#supported-trigger-typ
 
 Every trigger needs to authenticate to the dependency to scale on which is configured via the `authenticationRef` section.
 
-Trigger types can define one or more `parameter` that have to be configured, which you can configure here by referring to a `TriggerAuthentication` CRD that is deployed in the cluster.
+Trigger types can define one or more `parameter` that have to be configured, which you can configure here by referring to a [`TriggerAuthentication` CRD](./../TriggerAuthentication.md) that is deployed in the cluster.
 
 ```yaml
     authenticationRef:  # required
@@ -50,7 +50,9 @@ Trigger types can define one or more `parameter` that have to be configured, whi
       namespace: keda # optional
 ```
 
-`name` refers to the name of the `TriggerAuthentication` that is deployed and describes how the trigger should authenticate. Optionally, you can assign a `namespace` if it lives in another namespace than the `ScaledObject`.
+`name` refers to the name of the `TriggerAuthentication` that is deployed and describes how the trigger should authenticate.
+
+**Assumptions:** `namespace` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
 
 # Supported Trigger Types
 
