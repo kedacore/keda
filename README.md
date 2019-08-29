@@ -79,6 +79,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Azure Storage Queues
 * GCP PubSub
 * Kafka
+* Liiklus
 * Prometheus
 * RabbitMQ
 * Redis Lists

@@ -4,16 +4,16 @@ import (
 	"flag"
 	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/kedacore/keda/pkg/handler"
 	kedaprov "github.com/kedacore/keda/pkg/provider"
-	log "github.com/Sirupsen/logrus"
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 )
 
 type Adapter struct {
 	basecmd.AdapterBase
 
-	// Message is printed on succesful startup
+	// Message is printed on successful startup
 	Message string
 }
 
