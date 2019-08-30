@@ -6,7 +6,7 @@ This specification describes the `gcp-pub-sub` trigger.
 triggers:
 - type: gcp-pubsub
   metadata:
-    subscriptionSize: "5"
+    subscriptionSize: "5" # Optional - Default is 5
     subscriptionName: "mysubscription" # Required 
     credentials: GOOGLE_APPLICATION_CREDENTIALS_JSON # Required
 ```
