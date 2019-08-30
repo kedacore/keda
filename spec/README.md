@@ -11,5 +11,6 @@ Here is an overview:
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
     - [Azure Storage Queue](./triggers/azure-storage-queue.md)
     - [GCP Pub/Sub](./triggers/gcp-pub-sub.md)
+    - [Liiklus](./triggers/liiklus-topic.md)
     - [RabbitMQ Queue](./triggers/rabbit-mq-queue.md)
     - [Redis](./triggers/redis.md)
