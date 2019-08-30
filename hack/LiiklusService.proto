@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package com.github.bsideup.liiklus;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.github.bsideup.liiklus.protocol";
+option optimize_for = SPEED;
+option java_multiple_files = true;
+
+option go_package = "liiklus";
+
+service LiiklusService {
+    rpc Publish (PublishRequest) returns (PublishReply) {
+
+    }
+
+    rpc Subscribe (SubscribeRequest) returns (stream SubscribeReply) {
+    }
+
+    rpc Receive (ReceiveRequest) returns (stream ReceiveReply) {
+
+    }
+
+    rpc Ack (AckRequest) returns (google.protobuf.Empty) {
+
+    }
+
+    rpc GetOffsets(GetOffsetsRequest) returns (GetOffsetsReply) {
+
+    }
+
+    rpc GetEndOffsets(GetEndOffsetsRequest) returns (GetEndOffsetsReply) {
+
+    }
+}
+
+message PublishRequest {
+    string topic = 1;
+
+    bytes key = 2;
+
+    bytes value = 3;
+}
+
+message PublishReply {
+
+    uint32 partition = 1;
+
+    uint64 offset = 2;
+
+    string topic = 3;
+}
+
+message SubscribeRequest {
+
+    string topic = 1;
+
+    string group = 2;
+
+    uint32 groupVersion = 4;
+
+    AutoOffsetReset autoOffsetReset = 3;
+
+    enum AutoOffsetReset {
+        EARLIEST = 0;
+        LATEST = 1;
+    }
+}
+
+message Assignment {
+    string sessionId = 1;
+
+    uint32 partition = 2;
+}
+
+message SubscribeReply {
+    oneof reply {
+        Assignment assignment = 1;
+    }
+}
+
+message AckRequest {
+    Assignment assignment = 1 [deprecated=true];
+
+    string topic = 3;
+    string group = 4;
+    uint32 groupVersion = 5;
+    uint32 partition = 6;
+
+    uint64 offset = 2;
+}
+
+message ReceiveRequest {
+    Assignment assignment = 1;
+
+    uint64 lastKnownOffset = 2;
+}
+
+message ReceiveReply {
+    oneof reply {
+        Record record = 1;
+    }
+
+    message Record {
+        uint64 offset = 1;
+
+        bytes key = 2;
+
+        bytes value = 3;
+
+        google.protobuf.Timestamp timestamp = 4;
+
+        bool replay = 5;
+    }
+}
+
+message GetOffsetsRequest {
+
+    string topic = 1;
+
+    string group = 2;
+
+    uint32 groupVersion = 3;
+
+}
+
+message GetOffsetsReply {
+    map<uint32, uint64> offsets = 1;
+}
+
+message GetEndOffsetsRequest {
+    string topic = 1;
+}
+
+message GetEndOffsetsReply {
+    map<uint32, uint64> offsets = 1;
+}
