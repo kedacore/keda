@@ -1,0 +1,15 @@
+Get started by deploying Scaled Objects to your cluster:
+    - Information about Scaled Objects : https://github.com/kedacore/keda/blob/master/spec/ScaledObject.md
+    - Samples: https://github.com/kedacore/keda/wiki/Samples-and-Blog-posts
+
+Get information about the deployed ScaledObjects:
+  kubectl get ScaledObjects [--namespace <namespace>]
+
+Get details about a deployed ScaledObject:
+  kubectl describe scaledobject <scaled-object-name> [--namespace <namespace>]
+
+Get an overview of the Horizontal Pod Autoscalers (HPA) that KEDA is using behind the scenes:
+  kubectl get hpa [--all-namespaces] [--namespace <namespace>]
+
+For more information on running KEDA, visit:
+https://github.com/kedacore/keda/
