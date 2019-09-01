@@ -19,12 +19,14 @@ import (
 type externalScaler struct {
 	metadata        *externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
+	grpcClient      pb.ExternalScalerClient
+	grpcConnection  *grpc.ClientConn
 }
 
 type externalScalerMetadata struct {
-	serviceURI  string
-	tlsCertFile string
-	metadata    map[string]string
+	scalerAddress string
+	tlsCertFile   string
+	metadata      map[string]string
 }
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
@@ -48,7 +50,7 @@ func NewExternalScaler(scaledObject *keda_v1alpha1.ScaledObject, resolvedEnv, me
 	ctx := context.Background()
 
 	// Call GRPC Interface to parse metadata
-	grpcClient, err := scaler.getGRPCClient()
+	err = scaler.getGRPCClient()
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +60,7 @@ func NewExternalScaler(scaledObject *keda_v1alpha1.ScaledObject, resolvedEnv, me
 		Metadata:        scaler.metadata.metadata,
 	}
 
-	_, err = grpcClient.New(ctx, request)
+	_, err = scaler.grpcClient.New(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +71,11 @@ func NewExternalScaler(scaledObject *keda_v1alpha1.ScaledObject, resolvedEnv, me
 func parseExternalScalerMetadata(metadata, resolvedEnv map[string]string) (*externalScalerMetadata, error) {
 	meta := externalScalerMetadata{}
 
-	// Check if service uri is present
-	if val, ok := metadata["serviceURI"]; ok && val != "" {
-		meta.serviceURI = val
+	// Check if scalerAddress is present
+	if val, ok := metadata["scalerAddress"]; ok && val != "" {
+		meta.scalerAddress = val
 	} else {
-		return nil, fmt.Errorf("Service URI is a required field")
+		return nil, fmt.Errorf("Scaler Address is a required field")
 	}
 
 	if val, ok := metadata["tlsCertFile"]; ok && val != "" {
@@ -99,12 +101,7 @@ func parseExternalScalerMetadata(metadata, resolvedEnv map[string]string) (*exte
 func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 
 	// Call GRPC Interface to check if active
-	grpcClient, err := s.getGRPCClient()
-	if err != nil {
-		return false, err
-	}
-
-	response, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
+	response, err := s.grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
 		log.Errorf("error %s", err)
 		return false, err
@@ -115,19 +112,16 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *externalScaler) Close() error {
 	// Call GRPC Interface to close connection
-	grpcClient, err := s.getGRPCClient()
-	if err != nil {
-		return err
-	}
 
 	// TODO: Pass Context
 	ctx := context.Background()
 
-	_, err = grpcClient.Close(ctx, &s.scaledObjectRef)
+	_, err := s.grpcClient.Close(ctx, &s.scaledObjectRef)
 	if err != nil {
 		log.Errorf("error %s", err)
 		return err
 	}
+	defer s.grpcConnection.Close()
 
 	return nil
 }
@@ -139,12 +133,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	ctx := context.Background()
 
 	// Call GRPC Interface to get metric specs
-	grpcClient, err := s.getGRPCClient()
-	if err != nil {
-		return nil
-	}
-
-	response, err := grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
+	response, err := s.grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
 	if err != nil {
 		log.Errorf("error %s", err)
 		return nil
@@ -178,17 +167,13 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 	var metrics []external_metrics.ExternalMetricValue
 	// Call GRPC Interface to get metric specs
-	grpcClient, err := s.getGRPCClient()
-	if err != nil {
-		return metrics, err
-	}
 
 	request := &pb.GetMetricsRequest{
 		MetricName:      metricName,
 		ScaledObjectRef: &s.scaledObjectRef,
 	}
 
-	response, err := grpcClient.GetMetrics(ctx, request)
+	response, err := s.grpcClient.GetMetrics(ctx, request)
 	if err != nil {
 		log.Errorf("error %s", err)
 		return []external_metrics.ExternalMetricValue{}, err
@@ -208,28 +193,26 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 // getGRPCClient creates a new gRPC client
-func (s *externalScaler) getGRPCClient() (pb.ExternalScalerClient, error) {
+func (s *externalScaler) getGRPCClient() error {
 
-	var client pb.ExternalScalerClient
 	var err error
-	var conn *grpc.ClientConn
 
 	if s.metadata.tlsCertFile != "" {
 		certFile := fmt.Sprintf("/grpccerts/%s", s.metadata.tlsCertFile)
 		creds, err := credentials.NewClientTLSFromFile(certFile, "")
 		if err != nil {
-			return client, err
+			return err
 		}
-		conn, err = grpc.Dial(s.metadata.serviceURI, grpc.WithTransportCredentials(creds))
+		s.grpcConnection, err = grpc.Dial(s.metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 	} else {
-		conn, err = grpc.Dial(s.metadata.serviceURI, grpc.WithInsecure())
+		s.grpcConnection, err = grpc.Dial(s.metadata.scalerAddress, grpc.WithInsecure())
 	}
 
 	if err != nil {
-		return client, fmt.Errorf("cannot connect to external scaler over grpc interface: %s", err)
+		return fmt.Errorf("cannot connect to external scaler over grpc interface: %s", err)
 	}
 
-	client = pb.NewExternalScalerClient(conn)
+	s.grpcClient = pb.NewExternalScalerClient(s.grpcConnection)
 
-	return client, nil
+	return nil
 }

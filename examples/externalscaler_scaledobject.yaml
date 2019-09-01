@@ -11,7 +11,7 @@ spec:
   triggers:
   - type: external
     metadata:
-      serviceURI: redis-external-scaler-service:8080
+      scalerAddress: redis-external-scaler-service:8080
       address: REDIS_HOST # Required host:port format
       password: REDIS_PASSWORD
       listName: mylist # Required

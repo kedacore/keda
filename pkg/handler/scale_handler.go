@@ -628,13 +628,10 @@ func (h *ScaleHandler) getScaler(scaledObject *keda_v1alpha1.ScaledObject, trigg
 		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
-<<<<<<< HEAD
 	case "external":
 		return scalers.NewExternalScaler(scaledObject, resolvedEnv, trigger.Metadata)
-=======
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, trigger.Metadata)
->>>>>>> master
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}
