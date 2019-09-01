@@ -14,8 +14,8 @@ type parseExternalScalerMetadataTestData struct {
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"serviceURI": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, false},
-	// missing serviceURI
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, false},
+	// missing scalerAddress
 	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true},
 }
 
