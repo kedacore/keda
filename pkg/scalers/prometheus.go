@@ -108,7 +108,7 @@ func (s *prometheusScaler) Close() error {
 
 func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{
-		v2beta1.MetricSpec{
+		{
 			External: &v2beta1.ExternalMetricSource{
 				TargetAverageValue: resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI),
 				MetricName:         s.metadata.metricName,

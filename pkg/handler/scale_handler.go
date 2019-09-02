@@ -267,9 +267,8 @@ func (h *ScaleHandler) createOrUpdateHPAForScaledObject(scaledObject *keda_v1alp
 		_, err := h.kubeClient.AutoscalingV2beta1().HorizontalPodAutoscalers(scaledObjectNamespace).Update(hpa)
 		if err != nil {
 			return fmt.Errorf("error updating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
-		} else {
-			log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 		}
+		log.Infof("Updated HPA with namespace %s and name %s", scaledObjectNamespace, hpaName)
 	} else if err != nil {
 		return fmt.Errorf("error creating HPA with namespace %s and name %s : %s", scaledObjectNamespace, hpaName, err)
 	} else {
@@ -357,7 +356,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
 		// there are no active triggers, but the deployment has replicas.
 		// AND
-		// There is no minimum configured or minumum is set to ZERO. HPA will handles other scale down operations
+		// There is no minimum configured or minimum is set to ZERO. HPA will handles other scale down operations
 
 		// Try to scale it down.
 		h.scaleToZero(deployment, scaledObject)
@@ -631,6 +630,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
 	case "kubernetes-events":
 		return scalers.NewKubernetesEventsScaler(resolvedEnv, trigger.Metadata)
+	case "liiklus":
+		return scalers.NewLiiklusScaler(resolvedEnv, trigger.Metadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
 	}

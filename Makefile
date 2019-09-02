@@ -37,11 +37,17 @@ e2e-test:
 # Build                                          #
 ##################################################
 .PHONY: build
-build:
+build: pkg/scalers/liiklus/LiiklusService.pb.go
 	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build \
 		-ldflags "-X main.GitCommit=$(GIT_COMMIT)" \
 		-o dist/keda \
 		cmd/main.go
+
+pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
+	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
+
+pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
+	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
 
 ##################################################
 # Helm Chart tasks                               #
