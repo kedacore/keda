@@ -90,7 +90,7 @@ You can view other planned scalers [in our wiki and issue backlog](https://githu
 
 In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed.  The `ScaledObject` contains information on the deployment to scale. `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period. The `ScaledObject` will result in corresponding autoscaling resource (HPA definition) to scale the deployment. When `ScaledObjects` get deleted, the corresponding HPA definition is cleaned up.
 
-ScaledObject examples and schemas [can be found in our wiki](https://github.com/kedacore/keda/wiki/ScaledObject-spec).
+ScaledObject examples and schemas [can be found here](https://github.com/kedacore/keda/tree/master/spec).
 
 ### HTTP scaling integration
 
