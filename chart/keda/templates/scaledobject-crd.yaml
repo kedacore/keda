@@ -15,4 +15,14 @@ spec:
     shortNames:
     - sco
   scope: Namespaced
+  additionalPrinterColumns:
+  - name: deployment
+    type: string
+    JSONPath: .spec.scaleTargetRef.deploymentName
+  - name: triggers
+    type: array
+    JSONPath: .spec.triggers[*].type
+  - name: age
+    type: date
+    JSONPath: .metadata.creationTimestamp
 {{- end -}}
