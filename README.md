@@ -130,6 +130,9 @@ cd keda
 make build
 ./dist/keda
 ```
+## FAQ 
+
+You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with most common questions.
 
 # Contributing
 
