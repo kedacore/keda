@@ -68,10 +68,6 @@ KEDA performs two key roles within Kubernetes.  First, it acts as an agent to ac
 
 <p align="center"><img src="images/keda-arch.png" width="550"/></p>
 
-## FAQ 
-
-You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
-
 ### Event sources and scalers
 
 KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scaler support for:
@@ -113,6 +109,10 @@ func kubernetes deploy --name my-function --registry my-container-registry
 <p><img src="images/kedascale.gif" width="650"/></p>
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
+
+## FAQ 
+
+You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
 
 ## Samples
 
