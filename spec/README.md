@@ -6,7 +6,7 @@ Here is an overview:
 
 - [**ScaledObject**](./ScaledObject.md)
 - [**TriggerAuthentication**](./TriggerAuthentication.md)
-- [**Trigger**](./triggers/readme.md)
+- [**Trigger**](./triggers/README.md)
     - [Apache Kafka Topic](./triggers/apache-kafka-topic.md)
     - [Azure Event Hub](./triggers/azure-event-hub.md)
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
