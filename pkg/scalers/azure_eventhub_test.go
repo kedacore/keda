@@ -223,7 +223,7 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 	// Write checkpoints to file
 	file, err := os.Open(partitionID)
 	if err != nil {
-		fmt.Errorf("Unable to create file: %s", err)
+		return fmt.Errorf("Unable to create file: %s", err)
 	}
 	defer file.Close()
 
@@ -234,7 +234,7 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
 	if err != nil {
-		fmt.Errorf("Err uploading file to blob: %s", err)
+		return fmt.Errorf("Err uploading file to blob: %s", err)
 	}
 	return nil
 }
