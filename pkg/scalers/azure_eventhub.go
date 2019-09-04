@@ -87,7 +87,9 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 
 	blobData := &bytes.Buffer{}
 	reader := get.Body(azblob.RetryReaderOptions{})
-	blobData.ReadFrom(reader)
+	if _, err := blobData.ReadFrom(reader); err != nil {
+		return Checkpoint{}, fmt.Errorf("failed to read blob data: %s", err)
+	}
 	defer reader.Close() // The client must close the response body when finished with it
 
 	var dat Checkpoint

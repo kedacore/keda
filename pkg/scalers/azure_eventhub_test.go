@@ -184,8 +184,12 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	}
 
 	// Make checkpoint blob files
-	CreatePartitionFile(ctx, urlPath, "0", containerURL, client)
-	CreatePartitionFile(ctx, urlPath, "1", containerURL, client)
+	if err := CreatePartitionFile(ctx, urlPath, "0", containerURL, client); err != nil {
+		return ctx, fmt.Errorf("failed to create partitionID 0 file: %s", err)
+	}
+	if err := CreatePartitionFile(ctx, urlPath, "1", containerURL, client); err != nil {
+		return ctx, fmt.Errorf("failed to create partitionID 1 file: %s", err)
+	}
 
 	return ctx, nil
 }
