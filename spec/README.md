@@ -5,7 +5,8 @@ This section describes all the specifications that are part of KEDA.
 Here is an overview:
 
 - [**ScaledObject**](./ScaledObject.md)
-- **Supported Triggers**
+- [**TriggerAuthentication**](./TriggerAuthentication.md)
+- [**Trigger**](./triggers/README.md)
     - [Apache Kafka Topic](./triggers/apache-kafka-topic.md)
     - [Azure Event Hub](./triggers/azure-event-hub.md)
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
