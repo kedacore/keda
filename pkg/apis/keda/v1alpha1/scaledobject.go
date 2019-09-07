@@ -33,11 +33,12 @@ type ObjectReference struct {
 	ContainerName  string `json:"containerName"`
 }
 
+// ScaleTriggers reference the scaler that will be used
 type ScaleTriggers struct {
-	Type           string                     `json:"type"`
-	Name           string                     `json:"name"`
-	Metadata       map[string]string          `json:"metadata"`
-	Authentication ScaledObjectAuthentication `json:"authentication"`
+	Type              string              `json:"type"`
+	Name              string              `json:"name"`
+	Metadata          map[string]string   `json:"metadata"`
+	AuthenticationRef ScaledObjectAuthRef `json:"AuthenticationRef"`
 }
 
 // ScaledObjectStatus is the status for a ScaledObject resource
@@ -57,34 +58,11 @@ type ScaledObjectList struct {
 	Items []ScaledObject `json:"items"`
 }
 
-// ScaledObjectAuthentication defines how the trigger can authenticate
-type ScaledObjectAuthentication struct {
-	// +optional
-	AzureMSI bool `json:"azureMsi"`
-
-	// +optional
-	SecretRef []AuthenticationSecretRef `json:"secretRef"`
-
-	// +optional
-	Env []AuthenticationEnvironment `json:"env"`
-}
-
-// AuthenticationSecretRef is used to authenticate using a reference to a secret
-type AuthenticationSecretRef struct {
-	Parameter string `json:"parameter"`
-	Name      string `json:"name"`
-	Key       string `json:"key"`
+// ScaledObjectAuthRef points to the TriggerAuthentication object that
+// is used to authenticate the scaler with the environment
+type ScaledObjectAuthRef struct {
+	Name string `json:"name"`
 
 	// +optional
 	Namespace string `json:"namespace"`
-}
-
-// AuthenticationEnvironment is used to authenticate using environment variables
-// in the destination deployment spec
-type AuthenticationEnvironment struct {
-	Parameter string `json:"parameter"`
-	Name      string `json:"name"`
-
-	// +optional
-	ContainerName string `json:"containerName"`
 }

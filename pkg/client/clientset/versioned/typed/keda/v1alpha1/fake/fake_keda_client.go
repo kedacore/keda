@@ -32,6 +32,10 @@ func (c *FakeKedaV1alpha1) ScaledObjects(namespace string) v1alpha1.ScaledObject
 	return &FakeScaledObjects{c, namespace}
 }
 
+func (c *FakeKedaV1alpha1) TriggerAuthentications(namespace string) v1alpha1.TriggerAuthenticationInterface {
+	return &FakeTriggerAuthentications{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeKedaV1alpha1) RESTClient() rest.Interface {

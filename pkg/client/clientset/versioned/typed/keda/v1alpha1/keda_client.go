@@ -28,6 +28,7 @@ import (
 type KedaV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ScaledObjectsGetter
+	TriggerAuthenticationsGetter
 }
 
 // KedaV1alpha1Client is used to interact with features provided by the keda.k8s.io group.
@@ -37,6 +38,10 @@ type KedaV1alpha1Client struct {
 
 func (c *KedaV1alpha1Client) ScaledObjects(namespace string) ScaledObjectInterface {
 	return newScaledObjects(c, namespace)
+}
+
+func (c *KedaV1alpha1Client) TriggerAuthentications(namespace string) TriggerAuthenticationInterface {
+	return newTriggerAuthentications(c, namespace)
 }
 
 // NewForConfig creates a new KedaV1alpha1Client for the given config.
