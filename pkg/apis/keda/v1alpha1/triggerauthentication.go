@@ -28,7 +28,7 @@ type TriggerAuthenticationList struct {
 // TriggerAuthenticationSpec defines the various ways to authenticate
 type TriggerAuthenticationSpec struct {
 	// +optional
-	PodIdentity bool `json:"podIdentity"`
+	PodIdentity AuthPodIdentity `json:"podIdentity"`
 
 	// +optional
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef"`
@@ -37,10 +37,20 @@ type TriggerAuthenticationSpec struct {
 	Env []AuthEnvironment `json:"env"`
 }
 
+// PodIdentityProvider contains the list of providers
+type PodIdentityProvider string
+
+const (
+	PodIdentityProviderNone   PodIdentityProvider = "none"
+	PodIdentityProviderAzure                      = "azure"
+	PodIdentityProviderGCP                        = "gcp"
+	PodIdentityProviderSpiffe                     = "spiffe"
+)
+
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
 type AuthPodIdentity struct {
-	Provider string `json:"provider"`
+	Provider PodIdentityProvider `json:"provider"`
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
