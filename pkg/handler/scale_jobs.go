@@ -6,7 +6,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
-	apiv1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,14 +26,11 @@ func (h *ScaleHandler) scaleJobs(scaledObject *keda_v1alpha1.ScaledObject, isAct
 }
 
 func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
-	var containers []apiv1.Container
-	for _, c := range scaledObject.Spec.ConsumerSpec.Containers {
-		containers = append(containers, apiv1.Container{
-			Name:  c.Name,
-			Image: c.Image,
-			Env:   c.Env,
-		})
+	scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
+	if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
+		scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
 	}
+	scaledObject.Spec.JobTargetRef.Template.Labels["scaledobject"] = scaledObject.GetName()
 
 	if scaleTo > maxScale {
 		scaleTo = maxScale
@@ -51,21 +47,7 @@ func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scal
 					"scaledobject": scaledObject.GetName(),
 				},
 			},
-			Spec: batchv1.JobSpec{
-				Template: apiv1.PodTemplateSpec{
-					ObjectMeta: meta_v1.ObjectMeta{
-						GenerateName: scaledObject.GetName() + "-",
-						Labels: map[string]string{
-							"scaledobject": scaledObject.GetName(),
-						},
-					},
-					Spec: apiv1.PodSpec{
-						RestartPolicy: apiv1.RestartPolicyOnFailure,
-
-						Containers: containers,
-					},
-				},
-			},
+			Spec: scaledObject.Spec.JobTargetRef,
 		}
 		_, err := h.kubeClient.BatchV1().Jobs(scaledObject.GetNamespace()).Create(job)
 		if err != nil {
@@ -77,11 +59,12 @@ func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scal
 }
 
 func (h *ScaleHandler) resolveJobEnv(scaledObject *keda_v1alpha1.ScaledObject) (map[string]string, error) {
-	if len(scaledObject.Spec.ConsumerSpec.Containers) < 1 {
+
+	if len(scaledObject.Spec.JobTargetRef.Template.Spec.Containers) < 1 {
 		return nil, fmt.Errorf("Scaled Object (%s) doesn't have containers", scaledObject.GetName())
 	}
 
-	container := scaledObject.Spec.ConsumerSpec.Containers[0]
+	container := scaledObject.Spec.JobTargetRef.Template.Spec.Containers[0]
 
 	return h.resolveEnv(&container, scaledObject.GetNamespace())
 }

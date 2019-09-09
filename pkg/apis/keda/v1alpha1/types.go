@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	core_v1 "k8s.io/api/core/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,18 +25,14 @@ type ScaledObject struct {
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
-	ScaleType       string           `json:"scaleType"`
-	ScaleTargetRef  ObjectReference  `json:"scaleTargetRef"`
-	PollingInterval *int32           `json:"pollingInterval"`
-	CooldownPeriod  *int32           `json:"cooldownPeriod"`
-	MinReplicaCount *int32           `json:"minReplicaCount"`
-	MaxReplicaCount *int32           `json:"maxReplicaCount"`
-	Parallelism     *int32           `json:"parallelism,omitempty"`
-	Completions     *int32           `json:"completions,omitempty"`
-	ActiveDeadline  *int32           `json:"activeDeadline,omitempty"`
-	BackOffLimit    *int32           `json:"backOffLimit,omitempty"`
-	Triggers        []ScaleTriggers  `json:"triggers"`
-	ConsumerSpec    *core_v1.PodSpec `json:"consumerSpec,omitempty"`
+	ScaleType       string          `json:"scaleType"`
+	ScaleTargetRef  ObjectReference `json:"scaleTargetRef"`
+	JobTargetRef    batchv1.JobSpec `json:"jobTargetRef,omitempty"`
+	PollingInterval *int32          `json:"pollingInterval"`
+	CooldownPeriod  *int32          `json:"cooldownPeriod"`
+	MinReplicaCount *int32          `json:"minReplicaCount"`
+	MaxReplicaCount *int32          `json:"maxReplicaCount"`
+	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
 // ObjectReference holds the a reference to the deployment this
