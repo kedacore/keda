@@ -32,7 +32,7 @@ type rabbitMQMetadata struct {
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseRabbitMQMetadata(metadata)
+	meta, err := parseRabbitMQMetadata(resolvedEnv, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
@@ -49,13 +49,19 @@ func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) 
 	}, nil
 }
 
-func parseRabbitMQMetadata(metadata map[string]string) (*rabbitMQMetadata, error) {
+func parseRabbitMQMetadata(resolvedEnv, metadata map[string]string) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
 	if val, ok := metadata["host"]; ok {
-		meta.host = val
-	} else {
-		return nil, fmt.Errorf("no host given")
+		hostSetting := val
+
+		if val, ok := resolvedEnv[hostSetting]; ok {
+			meta.host = val
+		}
+	}
+
+	if meta.host == "" {
+		return nil, fmt.Errorf("no host setting given")
 	}
 
 	if val, ok := metadata["queueName"]; ok {
