@@ -12,6 +12,6 @@ spec:
   - type: rabbitmq
     metadata:
       # Required
-      host: amqp://guest:guest@localhost:5672/
+      host: RabbitMqHost # references a value of format amqp://guest:password@localhost:5672/
       queueName: testqueue
       queueLength: "20"
