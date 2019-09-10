@@ -27,6 +27,10 @@ In partnership with
 * [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
 * [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
 
+## FAQ 
+
+You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
+
 ## Setup
 
 ### Deploying with a Helm chart
@@ -109,10 +113,6 @@ func kubernetes deploy --name my-function --registry my-container-registry
 <p><img src="images/kedascale.gif" width="650"/></p>
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
-
-## FAQ 
-
-You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
 
 ## Samples
 
