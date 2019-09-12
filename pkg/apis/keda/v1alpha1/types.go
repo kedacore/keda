@@ -9,9 +9,11 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Scaled Object Type (Deployment based vs. K8s Jobs)
+type ScaledObjectScaleType string
+
 const (
-	ScaleTypeDeployment string = "deployment"
-	ScaleTypeJob        string = "job"
+	ScaleTypeDeployment ScaledObjectScaleType = "deployment"
+	ScaleTypeJob        ScaledObjectScaleType = "job"
 )
 
 // ScaledObject is a specification for a ScaledObject resource
@@ -25,14 +27,14 @@ type ScaledObject struct {
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
-	ScaleType       string          `json:"scaleType"`
-	ScaleTargetRef  ObjectReference `json:"scaleTargetRef"`
-	JobTargetRef    batchv1.JobSpec `json:"jobTargetRef,omitempty"`
-	PollingInterval *int32          `json:"pollingInterval"`
-	CooldownPeriod  *int32          `json:"cooldownPeriod"`
-	MinReplicaCount *int32          `json:"minReplicaCount"`
-	MaxReplicaCount *int32          `json:"maxReplicaCount"`
-	Triggers        []ScaleTriggers `json:"triggers"`
+	ScaleType       ScaledObjectScaleType `json:"scaleType"`
+	ScaleTargetRef  ObjectReference       `json:"scaleTargetRef"`
+	JobTargetRef    batchv1.JobSpec       `json:"jobTargetRef,omitempty"`
+	PollingInterval *int32                `json:"pollingInterval"`
+	CooldownPeriod  *int32                `json:"cooldownPeriod"`
+	MinReplicaCount *int32                `json:"minReplicaCount"`
+	MaxReplicaCount *int32                `json:"maxReplicaCount"`
+	Triggers        []ScaleTriggers       `json:"triggers"`
 }
 
 // ObjectReference holds the a reference to the deployment this
