@@ -14,6 +14,11 @@ GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 ##################################################
+# All                                            #
+##################################################
+
+
+##################################################
 # Tests                                          #
 ##################################################
 .PHONY: test
@@ -36,8 +41,11 @@ e2e-test:
 ##################################################
 # Build                                          #
 ##################################################
+GENERATED  = $(shell find pkg/client -type f)
+PB_CLIENT  = pkg/scalers/liiklus/LiiklusService.pb.go
+
 .PHONY: build
-build: pkg/scalers/liiklus/LiiklusService.pb.go
+build: $(PB_CLIENT) $(GENERATED)
 	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build \
 		-ldflags "-X main.GitCommit=$(GIT_COMMIT)" \
 		-o dist/keda \
@@ -48,6 +56,13 @@ pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+APIS_FILES = $(shell find pkg/apis -type f)
+GEN_SCRIPT = $(shell find hack/ -type f)
+
+.PHONY: codegen
+$(GENERATED) codegen: $(APIS_FILES) $(GEN_SCRIPT)
+	hack/generate-groups.sh
 
 ##################################################
 # Helm Chart tasks                               #
