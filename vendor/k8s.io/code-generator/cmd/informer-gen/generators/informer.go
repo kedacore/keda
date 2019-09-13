@@ -28,7 +28,7 @@ import (
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
 
-	"k8s.io/klog"
+	"github.com/golang/glog"
 )
 
 // informerGenerator produces a file of listers for a given GroupVersion and
@@ -66,7 +66,7 @@ func (g *informerGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "$", "$")
 
-	klog.V(5).Infof("processing type %v", t)
+	glog.V(5).Infof("processing type %v", t)
 
 	listerPackage := fmt.Sprintf("%s/%s/%s", g.listersPackage, g.groupPkgName, strings.ToLower(g.groupVersion.Version.NonEmpty()))
 	clientSetInterface := c.Universe.Type(types.Name{Package: g.clientSetPackage, Name: "Interface"})
