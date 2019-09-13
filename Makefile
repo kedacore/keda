@@ -42,10 +42,9 @@ e2e-test:
 # Build                                          #
 ##################################################
 GENERATED  = $(shell find pkg/client -type f)
-PB_CLIENT  = pkg/scalers/liiklus/LiiklusService.pb.go
 
 .PHONY: build
-build: $(PB_CLIENT) $(GENERATED)
+build: pkg/scalers/liiklus/LiiklusService.pb.go Gopkg.lock $(GENERATED)
 	CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build \
 		-ldflags "-X main.GitCommit=$(GIT_COMMIT)" \
 		-o dist/keda \
@@ -63,6 +62,9 @@ GEN_SCRIPT = $(shell find hack/ -type f)
 .PHONY: codegen
 $(GENERATED) codegen: $(APIS_FILES) $(GEN_SCRIPT)
 	hack/generate-groups.sh
+
+Gopkg.lock: Gopkg.toml
+	dep ensure -v
 
 ##################################################
 # Helm Chart tasks                               #
