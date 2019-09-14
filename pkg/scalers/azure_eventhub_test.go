@@ -184,8 +184,12 @@ func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.
 	}
 
 	// Make checkpoint blob files
-	CreatePartitionFile(ctx, urlPath, "0", containerURL, client)
-	CreatePartitionFile(ctx, urlPath, "1", containerURL, client)
+	if err := CreatePartitionFile(ctx, urlPath, "0", containerURL, client); err != nil {
+		return ctx, fmt.Errorf("failed to create partitionID 0 file: %s", err)
+	}
+	if err := CreatePartitionFile(ctx, urlPath, "1", containerURL, client); err != nil {
+		return ctx, fmt.Errorf("failed to create partitionID 1 file: %s", err)
+	}
 
 	return ctx, nil
 }
@@ -219,7 +223,7 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 	// Write checkpoints to file
 	file, err := os.Open(partitionID)
 	if err != nil {
-		fmt.Errorf("Unable to create file: %s", err)
+		return fmt.Errorf("Unable to create file: %s", err)
 	}
 	defer file.Close()
 
@@ -230,7 +234,7 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
 	if err != nil {
-		fmt.Errorf("Err uploading file to blob: %s", err)
+		return fmt.Errorf("Err uploading file to blob: %s", err)
 	}
 	return nil
 }
