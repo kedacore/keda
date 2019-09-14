@@ -25,7 +25,7 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
-	"k8s.io/klog"
+	"github.com/golang/glog"
 )
 
 // factoryGenerator produces a file of listers for a given GroupVersion and
@@ -65,7 +65,7 @@ func (g *factoryGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	glog.V(5).Infof("processing type %v", t)
 
 	gvInterfaces := make(map[string]*types.Type)
 	gvNewFuncs := make(map[string]*types.Type)

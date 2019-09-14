@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// client-gen makes the individual typed clients using gengo.
+// This package generates openAPI definition file to be used in open API spec generation on API servers. To generate
+// definition for a specific type or package add "+k8s:openapi-gen=true" tag to the type/package comment lines. To
+// exclude a type from a tagged package, add "+k8s:openapi-gen=false" tag to the type comment lines.
 package main
 
 import (
@@ -24,9 +26,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	"k8s.io/gengo/args"
+	"k8s.io/kube-openapi/pkg/generators"
 
-	generatorargs "k8s.io/code-generator/cmd/client-gen/args"
-	"k8s.io/code-generator/cmd/client-gen/generators"
+	generatorargs "k8s.io/code-generator/cmd/openapi-gen/args"
 	"k8s.io/code-generator/pkg/util"
 )
 
@@ -34,27 +36,20 @@ func main() {
 	genericArgs, customArgs := generatorargs.NewDefaults()
 
 	// Override defaults.
-	// TODO: move this out of client-gen
+	// TODO: move this out of openapi-gen
 	genericArgs.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), util.BoilerplatePath())
-	genericArgs.OutputPackagePath = "k8s.io/kubernetes/pkg/client/clientset_generated/"
 
 	genericArgs.AddFlags(pflag.CommandLine)
-	customArgs.AddFlags(pflag.CommandLine, "k8s.io/kubernetes/pkg/apis") // TODO: move this input path out of client-gen
+	customArgs.AddFlags(pflag.CommandLine)
 	flag.Set("logtostderr", "true")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-
-	// add group version package as input dirs for gengo
-	for _, pkg := range customArgs.Groups {
-		for _, v := range pkg.Versions {
-			genericArgs.InputDirs = append(genericArgs.InputDirs, v.Package)
-		}
-	}
 
 	if err := generatorargs.Validate(genericArgs); err != nil {
 		glog.Fatalf("Error: %v", err)
 	}
 
+	// Run it.
 	if err := genericArgs.Execute(
 		generators.NameSystems(),
 		generators.DefaultNameSystem(),
@@ -62,4 +57,5 @@ func main() {
 	); err != nil {
 		glog.Fatalf("Error: %v", err)
 	}
+	glog.V(2).Info("Completed successfully.")
 }
