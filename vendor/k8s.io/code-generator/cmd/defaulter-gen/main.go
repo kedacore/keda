@@ -45,17 +45,16 @@ import (
 	"flag"
 	"path/filepath"
 
+	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	"k8s.io/gengo/args"
 	"k8s.io/gengo/examples/defaulter-gen/generators"
-	"k8s.io/klog"
 
 	generatorargs "k8s.io/code-generator/cmd/defaulter-gen/args"
 	"k8s.io/code-generator/pkg/util"
 )
 
 func main() {
-	klog.InitFlags(nil)
 	genericArgs, customArgs := generatorargs.NewDefaults()
 
 	// Override defaults.
@@ -69,7 +68,7 @@ func main() {
 	pflag.Parse()
 
 	if err := generatorargs.Validate(genericArgs); err != nil {
-		klog.Fatalf("Error: %v", err)
+		glog.Fatalf("Error: %v", err)
 	}
 
 	// Run it.
@@ -78,7 +77,7 @@ func main() {
 		generators.DefaultNameSystem(),
 		generators.Packages,
 	); err != nil {
-		klog.Fatalf("Error: %v", err)
+		glog.Fatalf("Error: %v", err)
 	}
-	klog.V(2).Info("Completed successfully.")
+	glog.V(2).Info("Completed successfully.")
 }
