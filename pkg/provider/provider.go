@@ -1,7 +1,7 @@
 package provider
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/golang/glog"
 	"github.com/kedacore/keda/pkg/handler"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"

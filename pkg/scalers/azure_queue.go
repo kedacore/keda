@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // GetAzureQueueLength returns the length of a queue in int

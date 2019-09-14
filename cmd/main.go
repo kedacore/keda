@@ -4,7 +4,7 @@ import (
 	"flag"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	adapter "github.com/kedacore/keda/pkg/adapter"
 	"github.com/kedacore/keda/pkg/controller"
 	"github.com/kedacore/keda/pkg/handler"
