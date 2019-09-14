@@ -1,18 +1,6 @@
 version: 2
 
 jobs:
-  validate:
-    docker:
-      - image: kedacore/build-tools:latest
-    working_directory: /go/src/github.com/kedacore/keda
-    steps:
-      - checkout
-      - run: make test
-      - run: make build
-      - store_artifacts:
-          path: /tmp/test-reports
-      - store_test_results:
-          path: /tmp/test-reports
   validate_and_publish:
     docker:
       - image: kedacore/build-tools:latest
@@ -39,11 +27,6 @@ workflows:
   version: 2
   commit:
     jobs:
-      - validate:
-          filters:
-            branches:
-              ignore:
-                - master
       - validate_and_publish:
           filters:
             branches:
