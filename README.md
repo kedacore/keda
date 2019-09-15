@@ -31,6 +31,10 @@ In partnership with
 
 You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
 
+## Samples
+
+You can find several samples for various event sources [here](https://github.com/kedacore/samples)
+
 ## Setup
 
 ### Deploying with a Helm chart
@@ -114,9 +118,6 @@ func kubernetes deploy --name my-function --registry my-container-registry
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
 
-## Samples
-
-[Samples and blog posts](https://github.com/kedacore/keda/wiki/Samples-and-Blog-posts)
 
 ## Community Standup
 
