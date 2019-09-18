@@ -78,7 +78,7 @@ func parseRabbitMQMetadata(resolvedEnv, metadata map[string]string) (*rabbitMQMe
 
 		meta.queueLength = queueLength
 	} else {
-		return nil, fmt.Errorf("no queue name given")
+		return nil, fmt.Errorf("no queue length given")
 	}
 
 	return &meta, nil
