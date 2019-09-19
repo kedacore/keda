@@ -595,7 +595,7 @@ func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]s
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(trigger, resolvedEnv)
+		scaler, err := h.getScaler(scaledObject, trigger, resolvedEnv)
 		if err != nil {
 			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
@@ -606,7 +606,7 @@ func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]s
 	return scalers, deployment, nil
 }
 
-func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(scaledObject *keda_v1alpha1.ScaledObject, trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
@@ -628,6 +628,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
+	case "external":
+		return scalers.NewExternalScaler(scaledObject, resolvedEnv, trigger.Metadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, trigger.Metadata)
 	default:
