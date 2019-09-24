@@ -1,5 +1,6 @@
 apiversion: v1alpha
 kind: KubeValidatorConfig
+
 spec:
   manifests:
   - glob: chart/keda/templates/*.yaml
