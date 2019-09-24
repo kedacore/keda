@@ -328,6 +328,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 	isScaledObjectActive := false
 
 	for _, scaler := range scalers {
+		defer scaler.Close()
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		if err != nil {
@@ -337,7 +338,6 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 			isScaledObjectActive = true
 			log.Debugf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
-		scaler.Close()
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
