@@ -33,3 +33,11 @@ type ScaledObjectListerExpansion interface{}
 // ScaledObjectNamespaceListerExpansion allows custom methods to be added to
 // ScaledObjectNamespaceLister.
 type ScaledObjectNamespaceListerExpansion interface{}
+
+// TriggerAuthenticationListerExpansion allows custom methods to be added to
+// TriggerAuthenticationLister.
+type TriggerAuthenticationListerExpansion interface{}
+
+// TriggerAuthenticationNamespaceListerExpansion allows custom methods to be added to
+// TriggerAuthenticationNamespaceLister.
+type TriggerAuthenticationNamespaceListerExpansion interface{}
