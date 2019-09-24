@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -102,14 +103,9 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 func (s *rabbitMQScaler) Close() error {
 	err := s.connection.Close()
 	if err != nil {
+		log.Errorf("Error closing rabbitmq connection: %v", err)
 		return err
 	}
-
-	err = s.channel.Close()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
