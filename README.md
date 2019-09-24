@@ -27,7 +27,7 @@ In partnership with
 * [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
 * [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
 
-## FAQ 
+## FAQ
 
 You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
 
@@ -82,7 +82,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 
 * AWS CloudWatch
 * AWS Simple Queue Service
-* Azure Event Hub
+* Azure Event Hub†
 * Azure Service Bus Queues and Topics
 * Azure Storage Queues
 * GCP PubSub
@@ -93,6 +93,8 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Redis Lists
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
+
+_†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C# or created with Azure Functions._
 
 #### ScaledObject custom resource definition
 
@@ -124,7 +126,7 @@ func kubernetes deploy --name my-function --registry my-container-registry
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
 Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC).
-Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )  
+Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 ## Building
