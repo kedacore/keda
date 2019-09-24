@@ -14,6 +14,8 @@ spec:
     plural: scaledobjects
     shortNames:
     - sco
+    categories:
+    - keda
   scope: Namespaced
   additionalPrinterColumns:
   - name: Deployment
