@@ -502,7 +502,7 @@ func (h *ScaleHandler) getJobScalers(scaledObject *keda_v1alpha1.ScaledObject) (
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(trigger, resolvedEnv)
+		scaler, err := h.getScaler(scaledObject, trigger, resolvedEnv)
 		if err != nil {
 			return scalers, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
