@@ -3,7 +3,7 @@ package handler
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
