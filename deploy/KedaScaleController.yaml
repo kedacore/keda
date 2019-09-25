@@ -9,6 +9,45 @@ spec:
     kind: ScaledObject
     plural: scaledobjects
   scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required: [scaleTargetRef,triggers]
+          type: object
+          properties:
+            pollingInterval:
+              type: integer
+              minimum: 1
+            cooldownPeriod:
+              type: integer
+              minimum: 1
+            minReplicaCount:
+              type: integer
+              minimum: 0
+            maxReplicaCount:
+              type: integer
+              minimum: 0
+            scaleTargetRef:
+              required: [deploymentName]
+              type: object
+              properties:
+                deploymentName:
+                  type: string
+                containerName:
+                  type: string
+            triggers:
+              type: array
+              items:
+                type: object
+                required: [type,metadata]
+                properties:
+                  type:
+                    type: string
+                  metadata:
+                    type: object
+                    additionalProperties:
+                      type: string
 ---
 apiVersion: v1
 kind: Namespace
