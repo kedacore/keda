@@ -26,3 +26,8 @@ glogLevel: 2
 # Set to the value of the Azure Active Directory Pod Identity
 # This will be set as a label on the Keda Pod(s)
 aadPodIdentity: ""
+
+# Set this if you are using an external scaler and want to communicate
+# over TLS (recommended). This variable holds the name of the secret that
+# will be mounted to the /grpccerts path on the Pod
+grpcTLSCertsSecret: ""

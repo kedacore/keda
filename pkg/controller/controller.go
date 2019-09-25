@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	kedainformer_v1alpha1 "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1"
