@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package externalscaler;
+
+import "google/protobuf/empty.proto";
+
+service ExternalScaler {
+    rpc New(NewRequest) returns (google.protobuf.Empty) {}
+    rpc IsActive(ScaledObjectRef) returns (IsActiveResponse) {}
+    rpc GetMetricSpec(ScaledObjectRef) returns (GetMetricSpecResponse) {}
+    rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {}
+    rpc Close(ScaledObjectRef) returns (google.protobuf.Empty) {}
+}
+
+message ScaledObjectRef {
+    string name = 1;
+    string namespace = 2;
+}
+
+message NewRequest {
+    ScaledObjectRef scaledObjectRef = 1;
+    map<string, string> metadata = 2;
+}
+
+message IsActiveResponse {
+    bool result = 1;
+}
+
+message GetMetricSpecResponse {
+    repeated MetricSpec metricSpecs = 1;
+}
+
+message MetricSpec {
+    string metricName = 1;
+    int64 targetSize = 2;
+}
+
+message GetMetricsRequest {
+    ScaledObjectRef scaledObjectRef = 1;
+    string metricName = 2;
+}
+
+message GetMetricsResponse {
+    repeated MetricValue metricValues = 1;
+}
+
+message MetricValue {
+    string metricName = 1;
+    int64 metricValue = 2;
+}

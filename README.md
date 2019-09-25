@@ -27,6 +27,14 @@ In partnership with
 * [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
 * [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
 
+## FAQ
+
+You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
+
+## Samples
+
+You can find several samples for various event sources [here](https://github.com/kedacore/samples)
+
 ## Setup
 
 ### Deploying with a Helm chart
@@ -74,7 +82,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 
 * AWS CloudWatch
 * AWS Simple Queue Service
-* Azure Event Hub
+* Azure Event Hub†
 * Azure Service Bus Queues and Topics
 * Azure Storage Queues
 * GCP PubSub
@@ -86,9 +94,11 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
+_†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C# or created with Azure Functions._
+
 #### ScaledObject custom resource definition
 
-In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed.  The `ScaledObject` contains information on the deployment to scale. `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period. The `ScaledObject` will result in corresponding autoscaling resource (HPA definition) to scale the deployment. When `ScaledObjects` get deleted, the corresponding HPA definition is cleaned up.
+In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed. `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period. The `ScaledObject` will result in corresponding autoscaling resource (HPA definition) to scale the deployment. When `ScaledObjects` get deleted, the corresponding HPA definition is cleaned up.
 
 ScaledObject examples and schemas [can be found here](https://github.com/kedacore/keda/tree/master/spec).
 
@@ -110,20 +120,13 @@ func kubernetes deploy --name my-function --registry my-container-registry
 
 [Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
 
-## FAQ 
-
-You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
-
-## Samples
-
-[Samples and blog posts](https://github.com/kedacore/keda/wiki/Samples-and-Blog-posts)
 
 ## Community Standup
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
 Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC).
-Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )  
+Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 ## Building

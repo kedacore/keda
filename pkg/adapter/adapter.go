@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/kedacore/keda/pkg/handler"
 	kedaprov "github.com/kedacore/keda/pkg/provider"
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
