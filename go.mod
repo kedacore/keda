@@ -79,6 +79,7 @@ require (
 	github.com/sirupsen/logrus v1.4.0
 	github.com/spf13/pflag v1.0.3
 	github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94
+	github.com/stretchr/testify v1.3.0
 	github.com/ugorji/go v1.1.1
 	go.opencensus.io v0.21.0
 	golang.org/x/crypto v0.0.0-20190325154230-a5d413f7728c
