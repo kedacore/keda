@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	"github.com/kedacore/keda/pkg/scalers"
+	log "github.com/sirupsen/logrus"
 	apps_v1 "k8s.io/api/apps/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batch_v1 "k8s.io/api/batch/v1"

@@ -63,6 +63,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=keda.k8s.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("scaledobjects"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Keda().V1alpha1().ScaledObjects().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("triggerauthentications"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Keda().V1alpha1().TriggerAuthentications().Informer()}, nil
 
 	}
 

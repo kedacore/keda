@@ -44,10 +44,12 @@ type ObjectReference struct {
 	ContainerName  string `json:"containerName"`
 }
 
+// ScaleTriggers reference the scaler that will be used
 type ScaleTriggers struct {
-	Type     string            `json:"type"`
-	Name     string            `json:"name"`
-	Metadata map[string]string `json:"metadata"`
+	Type              string              `json:"type"`
+	Name              string              `json:"name"`
+	Metadata          map[string]string   `json:"metadata"`
+	AuthenticationRef ScaledObjectAuthRef `json:"AuthenticationRef"`
 }
 
 // ScaledObjectStatus is the status for a ScaledObject resource
@@ -65,4 +67,13 @@ type ScaledObjectList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []ScaledObject `json:"items"`
+}
+
+// ScaledObjectAuthRef points to the TriggerAuthentication object that
+// is used to authenticate the scaler with the environment
+type ScaledObjectAuthRef struct {
+	Name string `json:"name"`
+
+	// +optional
+	Namespace string `json:"namespace"`
 }

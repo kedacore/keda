@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	log "github.com/sirupsen/logrus"
 )
 
 // This method blocks forever and checks the scaledObject based on its pollingInterval
@@ -126,6 +126,7 @@ func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *
 	isScaledObjectActive := false
 
 	for _, scaler := range scalers {
+		defer scaler.Close()
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		if err != nil {
@@ -133,9 +134,8 @@ func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			log.Debugf("Scaler %T for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
-		scaler.Close()
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)

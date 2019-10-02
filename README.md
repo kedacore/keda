@@ -94,7 +94,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
-_†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C# or created with Azure Functions._
+_†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C#, Python or created with Azure Functions._
 
 #### ScaledObject custom resource definition
 

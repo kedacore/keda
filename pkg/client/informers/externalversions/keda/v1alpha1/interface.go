@@ -34,6 +34,8 @@ import (
 type Interface interface {
 	// ScaledObjects returns a ScaledObjectInformer.
 	ScaledObjects() ScaledObjectInformer
+	// TriggerAuthentications returns a TriggerAuthenticationInformer.
+	TriggerAuthentications() TriggerAuthenticationInformer
 }
 
 type version struct {
@@ -50,4 +52,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // ScaledObjects returns a ScaledObjectInformer.
 func (v *version) ScaledObjects() ScaledObjectInformer {
 	return &scaledObjectInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TriggerAuthentications returns a TriggerAuthenticationInformer.
+func (v *version) TriggerAuthentications() TriggerAuthenticationInformer {
+	return &triggerAuthenticationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
