@@ -36,3 +36,14 @@ spec:
           name: https
         - containerPort: 8080
           name: http
+        {{- if .Values.grpcTLSCertsSecret }}
+        volumeMounts:
+        - name: grpc-certs
+          mountPath: /grpccerts
+        {{- end }}
+      {{- if .Values.grpcTLSCertsSecret }}
+      volumes:
+      - name: grpc-certs
+        secret:
+          secretName: {{ .Values.grpcTLSCertsSecret }}
+      {{- end }}

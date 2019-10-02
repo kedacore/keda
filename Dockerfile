@@ -1,7 +1,7 @@
-FROM golang:1.12-alpine3.9 as build-env
+FROM golang:1.13-alpine3.10 as build-env
 
 RUN apk update && \
-    apk add --no-cache make ca-certificates git && \
+    apk add --no-cache make ca-certificates git mercurial && \
     update-ca-certificates
 
 WORKDIR $GOPATH/src/github.com/kedacore/keda

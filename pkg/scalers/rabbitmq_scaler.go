@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -32,7 +33,7 @@ type rabbitMQMetadata struct {
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseRabbitMQMetadata(metadata)
+	meta, err := parseRabbitMQMetadata(resolvedEnv, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
@@ -49,13 +50,19 @@ func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) 
 	}, nil
 }
 
-func parseRabbitMQMetadata(metadata map[string]string) (*rabbitMQMetadata, error) {
+func parseRabbitMQMetadata(resolvedEnv, metadata map[string]string) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
 	if val, ok := metadata["host"]; ok {
-		meta.host = val
-	} else {
-		return nil, fmt.Errorf("no host given")
+		hostSetting := val
+
+		if val, ok := resolvedEnv[hostSetting]; ok {
+			meta.host = val
+		}
+	}
+
+	if meta.host == "" {
+		return nil, fmt.Errorf("no host setting given")
 	}
 
 	if val, ok := metadata["queueName"]; ok {
@@ -72,7 +79,7 @@ func parseRabbitMQMetadata(metadata map[string]string) (*rabbitMQMetadata, error
 
 		meta.queueLength = queueLength
 	} else {
-		return nil, fmt.Errorf("no queue name given")
+		return nil, fmt.Errorf("no queue length given")
 	}
 
 	return &meta, nil
@@ -96,14 +103,9 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 func (s *rabbitMQScaler) Close() error {
 	err := s.connection.Close()
 	if err != nil {
+		log.Errorf("Error closing rabbitmq connection: %v", err)
 		return err
 	}
-
-	err = s.channel.Close()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

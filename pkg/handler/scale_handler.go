@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	"github.com/kedacore/keda/pkg/scalers"
@@ -328,6 +328,7 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 	isScaledObjectActive := false
 
 	for _, scaler := range scalers {
+		defer scaler.Close()
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		if err != nil {
@@ -335,9 +336,8 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alp
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			log.Debugf("Scaler %T for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
 		}
-		scaler.Close()
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
@@ -595,7 +595,7 @@ func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]s
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(trigger, resolvedEnv)
+		scaler, err := h.getScaler(scaledObject, trigger, resolvedEnv)
 		if err != nil {
 			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
@@ -606,7 +606,7 @@ func (h *ScaleHandler) getScalers(scaledObject *keda_v1alpha1.ScaledObject) ([]s
 	return scalers, deployment, nil
 }
 
-func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(scaledObject *keda_v1alpha1.ScaledObject, trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
 	switch trigger.Type {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
@@ -628,6 +628,8 @@ func (h *ScaleHandler) getScaler(trigger keda_v1alpha1.ScaleTriggers, resolvedEn
 		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
+	case "external":
+		return scalers.NewExternalScaler(scaledObject, resolvedEnv, trigger.Metadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, trigger.Metadata)
 	default:
