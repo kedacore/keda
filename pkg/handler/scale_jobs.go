@@ -3,18 +3,18 @@ package handler
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (h *ScaleHandler) scaleJobs(scaledObject *keda_v1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
 	// TODO: get current job count
-	log.Println("Scaling Jobs")
+	log.Infoln("Scaling Jobs")
 
 	if isActive {
-		log.Println("Scaler is active")
+		log.Infoln("Scaler is active")
 		now := meta_v1.Now()
 		scaledObject.Status.LastActiveTime = &now
 		h.updateScaledObject(scaledObject)
@@ -35,7 +35,7 @@ func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scal
 	if scaleTo > maxScale {
 		scaleTo = maxScale
 	}
-	log.Printf("Creating %d jobs", scaleTo)
+	log.Infof("Creating %d jobs", scaleTo)
 
 	for i := 0; i < int(scaleTo); i++ {
 
@@ -54,7 +54,7 @@ func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scal
 			log.Fatalln(err)
 		}
 	}
-	log.Printf("Created %d jobs", scaleTo)
+	log.Infof("Created %d jobs", scaleTo)
 
 }
 
