@@ -94,6 +94,12 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
+
+The scalers themselves are implementations of a KEDA Go interface called `scaler.go`. The key function in a scaler is `GetMetrics`; it returns a value that represents a current state of an external metric (e.g. length of a queue). Kubernetes HPA will poll `GetMetrics` regularly (as long as there is at least one pod) and compare the returned value to a configured value in the ScaledObject configuration (more about ScaledObjects below). Kubernetes will use the following formula to decide whether to scale the pods up and down:  
+
+`desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]`. For more details check [Kubernetes HPA documentation](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
+
+
 _†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C#, Python or created with Azure Functions._
 
 #### ScaledObject custom resource definition
