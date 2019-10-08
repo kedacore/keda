@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	clientset "github.com/kedacore/keda/pkg/client/clientset/versioned"
 	kedainformer_v1alpha1 "github.com/kedacore/keda/pkg/client/informers/externalversions/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/handler"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -65,6 +65,15 @@ func NewController(kedaClient clientset.Interface, kubeClient kubernetes.Interfa
 
 func (c *controller) syncScaledObject(obj interface{}, isUpdate bool) {
 	scaledObject := obj.(*keda_v1alpha1.ScaledObject)
+
+	log.Printf("Detecting ScaleType from ScaledObject")
+	if scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
+		log.Printf("Detected ScaleType = Job")
+		scaledObject.Spec.ScaleType = keda_v1alpha1.ScaleTypeJob
+	} else {
+		log.Printf("Detected ScaleType = Deployment")
+		scaledObject.Spec.ScaleType = keda_v1alpha1.ScaleTypeDeployment
+	}
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
 		log.Errorf("Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
