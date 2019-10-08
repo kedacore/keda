@@ -1,0 +1,30 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: azure-queue-scaledobject-jobs
+  namespace: default
+spec:
+  scaleType: job
+  pollingInterval: 40
+  maxReplicaCount: 4
+  cooldownPeriod: 10
+  jobTargetRef:
+    parallelism: 1
+    completions: 1
+    activeDeadlineSeconds: 60
+    backoffLimit: 6
+    template:
+      containers:
+      - name: consumer-job
+        image: sgricci/queue-consumer
+        env:
+        - name: AzureWebJobsStorage
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: AzureWebJobsStorage
+  triggers:
+  - type: azure-queue
+    metadata:
+      queueName: queue-name
+      connection: AzureWebJobsStorage

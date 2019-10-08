@@ -1,13 +1,22 @@
 package v1alpha1
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ScaledObject is a spoecification for a ScaledObject resource
+// Scaled Object Type (Deployment based vs. K8s Jobs)
+type ScaledObjectScaleType string
+
+const (
+	ScaleTypeDeployment ScaledObjectScaleType = "deployment"
+	ScaleTypeJob        ScaledObjectScaleType = "job"
+)
+
+// ScaledObject is a specification for a ScaledObject resource
 type ScaledObject struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -18,12 +27,14 @@ type ScaledObject struct {
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
-	ScaleTargetRef  ObjectReference `json:"scaleTargetRef"`
-	PollingInterval *int32          `json:"pollingInterval"`
-	CooldownPeriod  *int32          `json:"cooldownPeriod"`
-	MinReplicaCount *int32          `json:"minReplicaCount"`
-	MaxReplicaCount *int32          `json:"maxReplicaCount"`
-	Triggers        []ScaleTriggers `json:"triggers"`
+	ScaleType       ScaledObjectScaleType `json:"scaleType"`
+	ScaleTargetRef  ObjectReference       `json:"scaleTargetRef"`
+	JobTargetRef    batchv1.JobSpec       `json:"jobTargetRef,omitempty"`
+	PollingInterval *int32                `json:"pollingInterval"`
+	CooldownPeriod  *int32                `json:"cooldownPeriod"`
+	MinReplicaCount *int32                `json:"minReplicaCount"`
+	MaxReplicaCount *int32                `json:"maxReplicaCount"`
+	Triggers        []ScaleTriggers       `json:"triggers"`
 }
 
 // ObjectReference holds the a reference to the deployment this
