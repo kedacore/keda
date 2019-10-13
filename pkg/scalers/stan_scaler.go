@@ -180,7 +180,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 
 	totalLag := s.getMaxMsgLag()
 
-	log.Debugf("Stan scaler: Providing metrics based on totalLag %v, threshold %v", totalLag, s.metadata.lagThreshold)
+	log.Infof("Stan scaler: Providing metrics based on totalLag %v, threshold %v", totalLag, s.metadata.lagThreshold)
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
