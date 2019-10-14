@@ -408,8 +408,7 @@ func (h *ScaleHandler) resolveEnv(container *core_v1.Container, namespace string
 							namespace)
 					}
 				} else {
-					value = envVar.ValueFrom.FieldRef.FieldPath
-					//return nil, fmt.Errorf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
+					return nil, fmt.Errorf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
 				}
 
 			}
