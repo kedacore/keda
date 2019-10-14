@@ -110,8 +110,8 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	resp, err := http.Get(s.getMonitoringEndpoint())
 
 	if err != nil {
-		log.Error("unable to access the broker")
-		panic(err)
+		log.Errorf("Unable to access the nats streaming (%s) broker monitoring endpoint", s.metadata.natsServerMonitoringEndpoint)
+		return false, err
 	}
 
 	defer resp.Body.Close()
@@ -170,8 +170,8 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	resp, err := http.Get(s.getMonitoringEndpoint())
 
 	if err != nil {
-		log.Error("unable to access the broker")
-		panic(err)
+		log.Errorf("Unable to access the nats streaming (%s) broker monitoring endpoint", s.metadata.natsServerMonitoringEndpoint)
+		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	defer resp.Body.Close()
