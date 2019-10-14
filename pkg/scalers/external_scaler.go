@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"

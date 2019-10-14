@@ -101,7 +101,7 @@ func (s *liiklusScaler) IsActive(ctx context.Context) (bool, error) {
 	if lag, _, err := s.getLag(ctx); err != nil {
 		return false, err
 	} else {
-		return lag > 0, nil;
+		return lag > 0, nil
 	}
 }
 
