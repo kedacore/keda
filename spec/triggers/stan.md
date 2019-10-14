@@ -2,7 +2,8 @@
 
 ## First start a nats streaming server with monitoring endpoint.
 
-Download the chart from [here](https://github.com/balchua/gonuts/tree/master/natss-chart)
+
+Get the chart from [here](https://github.com/balchua/gonuts/tree/master/natss-chart)
 
 Execute the command:
 
@@ -25,6 +26,8 @@ statefulset.apps/stan-nats-ss   1/1     37h
 
 Take note of the service name `stan-nats-ss`, you will use this to populate the `ScaledObject`
 
+You should also enable the monitoring endpoint of nats-streaming.
+
 ## Start a Nats Streaming publisher
 
 See the example [publisher](https://github.com/balchua/gonuts/tree/master/pub) code.
@@ -38,7 +41,7 @@ See the example [consumer](https://github.com/balchua/gonuts/tree/master/sub) co
 
 Example:
 
-```
+```yaml
 apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
@@ -72,3 +75,4 @@ Where:
 * `lagThreshold` : This value is used to tell the Horizontal Pod Autoscaler to use as TargetAverageValue.
 
 
+Example [`examples/stan_scaledobject.yaml`](./../../examples/stan_scaledobject.yaml)
