@@ -275,7 +275,7 @@ func SendMessageToEventHub(client *eventhub.Hub) error {
 
 	err := client.Send(ctx, eventhub.NewEventFromString("1"))
 	if err != nil {
-		return fmt.Errorf("Error sending msg: %s\n", err)
+		return fmt.Errorf("Error sending msg: %s", err)
 	}
 	return nil
 }
