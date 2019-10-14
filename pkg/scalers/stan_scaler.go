@@ -106,16 +106,12 @@ func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
-
 	resp, err := http.Get(s.getMonitoringEndpoint())
-
 	if err != nil {
 		log.Errorf("Unable to access the nats streaming (%s) broker monitoring endpoint", s.metadata.natsServerMonitoringEndpoint)
 		return false, err
 	}
-
 	defer resp.Body.Close()
-
 	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 
 	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
@@ -175,13 +171,9 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	}
 
 	defer resp.Body.Close()
-
 	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
-
 	totalLag := s.getMaxMsgLag()
-
-	log.Infof("Stan scaler: Providing metrics based on totalLag %v, threshold %v", totalLag, s.metadata.lagThreshold)
-
+	log.Debugf("Stan scaler: Providing metrics based on totalLag %v, threshold %v", totalLag, s.metadata.lagThreshold)
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
@@ -191,8 +183,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-// Close disposes of RabbitMQ connections
+// Nothing to close here.
 func (s *stanScaler) Close() error {
-
 	return nil
 }
