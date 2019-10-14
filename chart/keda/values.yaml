@@ -2,7 +2,7 @@ nameOverride:
 fullnameOverride:
 
 image:
-  repository: localhost:32000/keda
+  repository: kedacore/keda
   tag: latest
   pullPolicy: Always
 
