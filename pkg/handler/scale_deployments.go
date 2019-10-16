@@ -128,3 +128,13 @@ func (h *ScaleHandler) resolveDeploymentEnv(deployment *apps_v1.Deployment, cont
 
 	return h.resolveEnv(&container, deployment.GetNamespace())
 }
+
+func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject, deployment *apps_v1.Deployment) (map[string]string, string) {
+	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
+		env, err := h.resolveDeploymentEnv(deployment, containerName)
+		if err != nil {
+			return ""
+		}
+		return env[name]
+	})
+}
