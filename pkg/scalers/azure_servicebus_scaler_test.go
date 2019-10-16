@@ -17,6 +17,7 @@ type parseServiceBusMetadataTestData struct {
 	metadata   map[string]string
 	isError    bool
 	entityType EntityType
+	authParams map[string]string
 }
 
 // not testing connections so it doesn't matter what the resolved env value is for this
@@ -25,19 +26,23 @@ var sampleResolvedEnv = map[string]string{
 }
 
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
-	{map[string]string{}, true, None},
+	{map[string]string{}, true, None, map[string]string{}},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, Queue},
+	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, Queue, map[string]string{}},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, Subscription},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, Subscription, map[string]string{}},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None},
+	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None},
+	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}},
+	// connection not set
+	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}},
+	// connection set in auth params
+	{map[string]string{"queueName": queueName}, false, Queue, map[string]string{"connection": connectionSetting}},
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
@@ -55,7 +60,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 func TestParseServiceBusMetadata(t *testing.T) {
 	for _, testData := range parseServiceBusMetadataDataset {
 
-		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadata)
+		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadata, testData.authParams)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
