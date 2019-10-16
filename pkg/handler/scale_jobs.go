@@ -68,3 +68,13 @@ func (h *ScaleHandler) resolveJobEnv(scaledObject *keda_v1alpha1.ScaledObject) (
 
 	return h.resolveEnv(&container, scaledObject.GetNamespace())
 }
+
+func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject) (map[string]string, string) {
+	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
+		env, err := h.resolveJobEnv(scaledObject)
+		if err != nil {
+			return ""
+		}
+		return env[name]
+	})
+}

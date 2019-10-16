@@ -201,6 +201,7 @@ func (in *ScaledObjectList) DeepCopyObject() runtime.Object {
 func (in *ScaledObjectSpec) DeepCopyInto(out *ScaledObjectSpec) {
 	*out = *in
 	out.ScaleTargetRef = in.ScaleTargetRef
+	in.JobTargetRef.DeepCopyInto(&out.JobTargetRef)
 	if in.PollingInterval != nil {
 		in, out := &in.PollingInterval, &out.PollingInterval
 		*out = new(int32)
