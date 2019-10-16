@@ -36,16 +36,12 @@ spec:
           properties:
             pollingInterval:
               type: integer
-              minimum: 1
             cooldownPeriod:
               type: integer
-              minimum: 1
             minReplicaCount:
               type: integer
-              minimum: 0
             maxReplicaCount:
               type: integer
-              minimum: 0
             scaleTargetRef:
               required: [deploymentName]
               type: object
