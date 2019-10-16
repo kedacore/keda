@@ -17,17 +17,17 @@
     "posttest": "ava cleanup.test.ts"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^0.10.2",
-    "@types/async": "^3.0.0",
+    "@kubernetes/client-node": "^0.10.3",
+    "@types/async": "^3.0.3",
     "@types/shelljs": "^0.8.5",
     "@types/tmp": "^0.1.0",
     "async": "^3.1.0",
-    "ava": "^2.1.0",
+    "ava": "^2.4.0",
     "azure-storage": "^2.10.3",
     "chalk": "^2.4.2",
     "shelljs": "^0.8.3",
     "tmp": "^0.1.0",
-    "ts-node": "^8.3.0",
-    "typescript": "^3.5.2"
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.4"
   }
 }

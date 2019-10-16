@@ -12,18 +12,16 @@ metadata:
   name: keda-trigger-auth-azure-queue-secret
   namespace: keda
 spec:
-    authentication:
-        podIdentity:
-            provider: none | azure | gcp | spiffe # Optional. Default: none
-        secretTargetRef: # Optional.
-        - parameter: connectionString # Required.
-        name: my-keda-secret-entity # Required.
-        key: azure-storage-connectionstring # Required.
-        namespace: my-keda-namespace  # Optional. Default: Namespace of KEDA
-        env: # Optional.
-        - parameter: region # Required.
-        name: my-env-var # Required.
-        containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
+  podIdentity:
+      provider: none | azure | gcp | spiffe # Optional. Default: none
+  secretTargetRef: # Optional.
+  - parameter: connectionString # Required.
+    name: my-keda-secret-entity # Required.
+    key: azure-storage-connectionstring # Required.
+  env: # Optional.
+  - parameter: region # Required.
+    name: my-env-var # Required.
+    containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
 ```
 
 In order to determine what set of parameters you need to define we recommend reading the specification for the trigger type that you need.
@@ -35,10 +33,10 @@ Based on the requirements you can mix and match the authentication providers in 
 You can pull information via one or more environment variables by providing the `name` of the variable for a given `containerName`.
 
 ```yaml
-    env: # Optional.
-    - parameter: region # Required.
-      name: my-env-var # Required.
-      containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
+env: # Optional.
+  - parameter: region # Required.
+    name: my-env-var # Required.
+    containerName: my-container # Optional. Default: scaleTargetRef.containerName of ScaledObject
 ```
 
 **Assumptions:** `containerName` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
@@ -48,12 +46,12 @@ You can pull information via one or more environment variables by providing the 
 You can pull one or more secrets into the trigger by defining the `name` of the Kubernetes Secret and the `key` to use.
 
 ```yaml
-    secretTargetRef: # Optional.
-    - parameter: connectionString # Required.
-      name: my-keda-secret-entity # Required.
-      key: azure-storage-connectionstring # Required.
-      namespace: my-keda-namespace # Optional. Default: Namespace of KEDA
+secretTargetRef: # Optional.
+  - parameter: connectionString # Required.
+    name: my-keda-secret-entity # Required.
+    key: azure-storage-connectionstring # Required.
 ```
+
 **Assumptions:** `namespace` is in the same deployment as the configured `scaleTargetRef.deploymentName` in the ScaledObject, unless specified otherwise.
 
 ### Pod Authentication Providers
@@ -63,8 +61,8 @@ Several service providers allow you to assign an identity to a pod. By using tha
 Currently we support the following:
 
 ```yaml
-    podIdentity:
-        provider: none | azure  # Optional. Default: false
+podIdentity:
+  provider: none | azure # Optional. Default: false
 ```
 
 #### Azure Pod Identity
@@ -73,8 +71,9 @@ Azure Pod Identity is an implementation of [Azure AD Pod Identity](https://githu
 
 You can tell KEDA to use Azure AD Pod Identity via `podIdentity.provider`.
 
- - https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/
+- https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/
+
 ```yaml
-    podIdentity:
-        provider: azure  # Optional. Default: false
+podIdentity:
+  provider: azure # Optional. Default: false
 ```

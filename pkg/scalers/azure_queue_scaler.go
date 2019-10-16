@@ -21,30 +21,31 @@ const (
 )
 
 type azureQueueScaler struct {
-	metadata *azureQueueMetadata
+	metadata    *azureQueueMetadata
+	podIdentity string
 }
 
 type azureQueueMetadata struct {
 	targetQueueLength int
 	queueName         string
 	connection        string
-	useAAdPodIdentity bool
 	accountName       string
 }
 
 // NewAzureQueueScaler creates a new azureQueueScaler
-func NewAzureQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseAzureQueueMetadata(metadata, resolvedEnv)
+func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+	meta, podIdentity, err := parseAzureQueueMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
 	}
 
 	return &azureQueueScaler{
-		metadata: meta,
+		metadata:    meta,
+		podIdentity: podIdentity,
 	}, nil
 }
 
-func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQueueMetadata, error) {
+func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string, podAuth string) (*azureQueueMetadata, string, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
@@ -52,7 +53,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQue
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
-			return nil, fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
 
 		meta.targetQueueLength = queueLength
@@ -61,44 +62,56 @@ func parseAzureQueueMetadata(metadata, resolvedEnv map[string]string) (*azureQue
 	if val, ok := metadata["queueName"]; ok && val != "" {
 		meta.queueName = val
 	} else {
-		return nil, fmt.Errorf("no queueName given")
+		return nil, "", fmt.Errorf("no queueName given")
 	}
 
-	if val, ok := metadata["useAAdPodIdentity"]; ok {
+	// before triggerAuthentication CRD, pod identity was configured using this property
+	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" {
 		if val == "true" {
-			meta.useAAdPodIdentity = true
+			podAuth = "azure"
 		}
 	}
 
-	// If the Use AAD Pod Identity is not present then check for connection string
-	if !meta.useAAdPodIdentity {
-		connectionSetting := defaultConnectionSetting
-		if val, ok := metadata["connection"]; ok && val != "" {
-			connectionSetting = val
-		}
-
-		if val, ok := resolvedEnv[connectionSetting]; ok {
-			meta.connection = val
+	// If the Use AAD Pod Identity is not present, or set to "none"
+	// then check for connection string
+	if podAuth == "" || podAuth == "none" {
+		// Azure Queue Scaler expects a "connection" parameter in the metadata
+		// of the scaler or in a TriggerAuthentication object
+		connection := authParams["connection"]
+		if connection != "" {
+			// Found the connection in a parameter from TriggerAuthentication
+			meta.connection = connection
 		} else {
-			return nil, fmt.Errorf("no connection setting given")
+			connectionSetting := defaultConnectionSetting
+			if val, ok := metadata["connection"]; ok && val != "" {
+				connectionSetting = val
+			}
+
+			if val, ok := resolvedEnv[connectionSetting]; ok {
+				meta.connection = val
+			} else {
+				return nil, "", fmt.Errorf("no connection setting given")
+			}
 		}
-	} else {
+	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := metadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
-			return nil, fmt.Errorf("no accountName given")
+			return nil, "", fmt.Errorf("no accountName given")
 		}
+	} else {
+		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", podAuth)
 	}
 
-	return &meta, nil
+	return &meta, "", nil
 }
 
 // GetScaleDecision is a func
 func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := GetAzureQueueLength(
 		ctx,
-		s.metadata.useAAdPodIdentity,
+		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,
@@ -127,7 +140,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := GetAzureQueueLength(
 		ctx,
-		s.metadata.useAAdPodIdentity,
+		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,

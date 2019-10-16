@@ -10,12 +10,12 @@ import (
 )
 
 // GetAzureQueueLength returns the length of a queue in int
-func GetAzureQueueLength(ctx context.Context, usePodIdentity bool, connectionString, queueName string, accountName string) (int32, error) {
+func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
 
 	var credential azqueue.Credential
 	var err error
 
-	if !usePodIdentity {
+	if podIdentity == "" || podIdentity == "none" {
 
 		var accountKey string
 
@@ -29,7 +29,7 @@ func GetAzureQueueLength(ctx context.Context, usePodIdentity bool, connectionStr
 		if err != nil {
 			return -1, err
 		}
-	} else {
+	} else if podIdentity == "azure" {
 		token, err := getAzureADPodIdentityToken()
 		if err != nil {
 			log.Printf("Error fetching token cannot determine queue size %s", err.Error())
@@ -37,6 +37,8 @@ func GetAzureQueueLength(ctx context.Context, usePodIdentity bool, connectionStr
 		}
 
 		credential = azqueue.NewTokenCredential(token.AccessToken, nil)
+	} else {
+		return -1, fmt.Errorf("Azure queues doesn't support %s pod identity type", podIdentity)
 	}
 
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})

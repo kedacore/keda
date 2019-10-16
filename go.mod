@@ -22,9 +22,11 @@ require (
 	github.com/apache/thrift v0.12.0 // indirect
 	github.com/aws/aws-sdk-go v1.19.27
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
+	github.com/coreos/bbolt v1.3.3 // indirect
 	github.com/coreos/etcd v3.3.8+incompatible
 	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
+	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/docker v1.13.1
@@ -50,11 +52,13 @@ require (
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 	github.com/google/uuid v1.1.1
 	github.com/googleapis/gnostic v0.2.0
+	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/imdario/mergo v0.3.7
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
+	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/json-iterator/go v1.1.6
 	github.com/kelseyhightower/envconfig v1.3.0
@@ -77,10 +81,13 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/sirupsen/logrus v1.4.0
+	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spf13/pflag v1.0.3
 	github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94
 	github.com/stretchr/testify v1.3.0
+	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/ugorji/go v1.1.1
+	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.opencensus.io v0.21.0
 	golang.org/x/crypto v0.0.0-20190325154230-a5d413f7728c
 	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
