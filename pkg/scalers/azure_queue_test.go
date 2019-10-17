@@ -82,36 +82,46 @@ var testAzQueueResolvedEnv = map[string]string{
 }
 
 type parseAzQueueMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata    map[string]string
+	isError     bool
+	resolvedEnv map[string]string
+	authParams  map[string]string
+	podIdentity string
 }
 
 var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	// nothing passed
-	{map[string]string{}, true},
+	{map[string]string{}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// properly formed
-	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "5"}, false},
+	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Empty queueName
-	{map[string]string{"connection": "CONNECTION", "queueName": ""}, true},
+	{map[string]string{"connection": "CONNECTION", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// improperly formed queueLength
-	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true},
-	// useAAdPodIdentity with account name
-	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": "sample_queue"}, false},
-	// useAAdPodIdentity without account name
-	{map[string]string{"useAAdPodIdentity": "true", "accountName": "", "queueName": "sample_queue"}, true},
-	// useAAdPodIdentity without queue name
-	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": ""}, true},
+	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// Deprecated: useAAdPodIdentity with account name
+	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// Deprecated: useAAdPodIdentity without account name
+	{map[string]string{"useAAdPodIdentity": "true", "accountName": "", "queueName": "sample_queue"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// Deprecated useAAdPodIdentity without queue name
+	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// podIdentity = azure with account name
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	// podIdentity = azure without account name
+	{map[string]string{"accountName": "", "queueName": "sample_queue"}, true, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	// podIdentity = azure without queue name
+	{map[string]string{"accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	// connection from authParams
+	{map[string]string{"queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{"connection": "value"}, "none"},
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
-		authParams := make(map[string]string)
-		_, _, err := parseAzureQueueMetadata(testData.metadata, testAzQueueResolvedEnv, authParams, "")
+		_, _, err := parseAzureQueueMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success. testData: %v", testData)
 		}
 	}
 }
