@@ -588,6 +588,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewExternalScaler(name, namespace, resolvedEnv, triggerMetadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
+	case "stan":
+		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
