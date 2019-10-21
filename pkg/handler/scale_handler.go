@@ -481,7 +481,8 @@ func (h *ScaleHandler) getDeploymentScalers(scaledObject *keda_v1alpha1.ScaledOb
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(scaledObject, trigger, resolvedEnv)
+		authParams, podIdentity := h.parseDeploymentAuthRef(trigger.AuthenticationRef, scaledObject, deployment)
+		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
 			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
@@ -502,7 +503,8 @@ func (h *ScaleHandler) getJobScalers(scaledObject *keda_v1alpha1.ScaledObject) (
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
-		scaler, err := h.getScaler(scaledObject, trigger, resolvedEnv)
+		authParams, podIdentity := h.parseJobAuthRef(trigger.AuthenticationRef, scaledObject)
+		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
 			return scalers, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
@@ -514,35 +516,81 @@ func (h *ScaleHandler) getJobScalers(scaledObject *keda_v1alpha1.ScaledObject) (
 	return scalers, nil
 }
 
-func (h *ScaleHandler) getScaler(scaledObject *keda_v1alpha1.ScaledObject, trigger keda_v1alpha1.ScaleTriggers, resolvedEnv map[string]string) (scalers.Scaler, error) {
-	switch trigger.Type {
+func (h *ScaleHandler) resolveAuthSecret(name, namespace, key string) string {
+	if name == "" || namespace == "" || key == "" {
+		log.Errorf("name, namespace and key are required. Values: %s, %s, %s", name, namespace, key)
+		return ""
+	}
+
+	secret, err := h.kubeClient.CoreV1().Secrets(namespace).Get(name, meta_v1.GetOptions{})
+	if err != nil {
+		log.Errorf("Error trying to get secret %s from namespace %s. Error: %s", name, namespace, err.Error())
+		return ""
+	}
+	result := secret.Data[key]
+
+	if result == nil {
+		return ""
+	}
+
+	return string(result)
+}
+
+func (h *ScaleHandler) parseAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject, resolveEnv func(string, string) string) (map[string]string, string) {
+	result := make(map[string]string)
+	podIdentity := ""
+
+	if triggerAuthRef.Name != "" {
+		triggerAuth, err := h.kedaClient.KedaV1alpha1().TriggerAuthentications(scaledObject.Namespace).Get(triggerAuthRef.Name, meta_v1.GetOptions{})
+		if err != nil {
+			log.Errorf("Error getting triggerAuth %s in namespace %s. Error: %s", triggerAuthRef.Name, scaledObject.Namespace, err.Error())
+		} else {
+			podIdentity = string(triggerAuth.Spec.PodIdentity.Provider)
+			if triggerAuth.Spec.Env != nil {
+				for _, e := range triggerAuth.Spec.Env {
+					result[e.Parameter] = resolveEnv(e.Name, e.ContainerName)
+				}
+			}
+			if triggerAuth.Spec.SecretTargetRef != nil {
+				for _, e := range triggerAuth.Spec.SecretTargetRef {
+					result[e.Parameter] = h.resolveAuthSecret(e.Name, scaledObject.Namespace, e.Key)
+				}
+			}
+		}
+	}
+
+	return result, podIdentity
+}
+
+func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
+	switch triggerType {
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAzureServiceBusScaler(resolvedEnv, triggerMetadata)
 	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata)
 	case "aws-cloudwatch":
-		return scalers.NewAwsCloudwatchScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata)
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata)
 	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata)
 	case "prometheus":
-		return scalers.NewPrometheusScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
 	case "redis":
-		return scalers.NewRedisScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata)
 	case "gcp-pubsub":
-		return scalers.NewPubSubScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "external":
-		return scalers.NewExternalScaler(scaledObject, resolvedEnv, trigger.Metadata)
+		return scalers.NewExternalScaler(name, namespace, resolvedEnv, triggerMetadata)
 	case "liiklus":
-		return scalers.NewLiiklusScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "stan":
-		return scalers.NewStanScaler(resolvedEnv, trigger.Metadata)
+		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	default:
-		return nil, fmt.Errorf("no scaler found for type: %s", trigger.Type)
+		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
 }

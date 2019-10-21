@@ -31,21 +31,20 @@ spec:
     openAPIV3Schema:
       properties:
         spec:
-          required: [scaleTargetRef,triggers]
+          required: [triggers]
           type: object
           properties:
+            scaleType:
+              type: string
+              enum: [deployment, job]
             pollingInterval:
               type: integer
-              minimum: 1
             cooldownPeriod:
               type: integer
-              minimum: 1
             minReplicaCount:
               type: integer
-              minimum: 0
             maxReplicaCount:
               type: integer
-              minimum: 0
             scaleTargetRef:
               required: [deploymentName]
               type: object
@@ -58,10 +57,15 @@ spec:
               type: array
               items:
                 type: object
-                required: [type,metadata]
+                required: [type, metadata]
                 properties:
                   type:
                     type: string
+                  authenticationRef:
+                    type: object
+                    properties:
+                      name:
+                        type: string
                   metadata:
                     type: object
                     additionalProperties:

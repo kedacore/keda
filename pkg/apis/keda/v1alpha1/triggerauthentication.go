@@ -58,9 +58,6 @@ type AuthSecretTargetRef struct {
 	Parameter string `json:"parameter"`
 	Name      string `json:"name"`
 	Key       string `json:"key"`
-
-	// +optional
-	Namespace string `json:"namespace"`
 }
 
 // AuthEnvironment is used to authenticate using environment variables

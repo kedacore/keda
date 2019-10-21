@@ -7,27 +7,41 @@ spec:
   version: v1alpha1
   names:
     kind: ScaledObject
+    singular: scaledobject
     plural: scaledobjects
+    shortNames:
+      - sco
+    categories:
+      - keda
   scope: Namespaced
+  additionalPrinterColumns:
+    - name: Deployment
+      type: string
+      JSONPath: .spec.scaleTargetRef.deploymentName
+    - name: Triggers
+      type: string
+      JSONPath: .spec.triggers[*].type
+    - name: Age
+      type: date
+      JSONPath: .metadata.creationTimestamp
   validation:
     openAPIV3Schema:
       properties:
         spec:
-          required: [scaleTargetRef,triggers]
+          required: [triggers]
           type: object
           properties:
+            scaleType:
+              type: string
+              enum: [deployment, job]
             pollingInterval:
               type: integer
-              minimum: 1
             cooldownPeriod:
               type: integer
-              minimum: 1
             minReplicaCount:
               type: integer
-              minimum: 0
             maxReplicaCount:
               type: integer
-              minimum: 0
             scaleTargetRef:
               required: [deploymentName]
               type: object
@@ -40,14 +54,37 @@ spec:
               type: array
               items:
                 type: object
-                required: [type,metadata]
+                required: [type, metadata]
                 properties:
                   type:
                     type: string
+                  authenticationRef:
+                    type: object
+                    properties:
+                      name:
+                        type: string
                   metadata:
                     type: object
                     additionalProperties:
                       type: string
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: triggerauthentications.keda.k8s.io
+spec:
+  group: keda.k8s.io
+  version: v1alpha1
+  names:
+    kind: TriggerAuthentication
+    singular: triggerauthentication
+    plural: triggerauthentications
+    shortNames:
+      - ta
+      - triggerauth
+    categories:
+      - keda
+  scope: Namespaced
 ---
 apiVersion: v1
 kind: Namespace
@@ -69,9 +106,9 @@ roleRef:
   kind: ClusterRole
   name: cluster-admin
 subjects:
-- kind: ServiceAccount
-  name: keda-operator
-  namespace: keda
+  - kind: ServiceAccount
+    name: keda-operator
+    namespace: keda
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -82,9 +119,9 @@ roleRef:
   kind: ClusterRole
   name: system:auth-delegator
 subjects:
-- kind: ServiceAccount
-  name: keda-operator
-  namespace: keda
+  - kind: ServiceAccount
+    name: keda-operator
+    namespace: keda
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -96,9 +133,9 @@ roleRef:
   kind: Role
   name: extension-apiserver-authentication-reader
 subjects:
-- kind: ServiceAccount
-  name: keda-operator
-  namespace: keda
+  - kind: ServiceAccount
+    name: keda-operator
+    namespace: keda
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -120,24 +157,24 @@ spec:
     spec:
       serviceAccountName: keda-operator
       containers:
-      - name: keda-operator
-        image: kedacore/keda:latest
-        args:
-        - /adapter
-        - --secure-port=6443
-        - --logtostderr=true
-        - --v=2
-        ports:
-        - containerPort: 6443
-          name: https
-        - containerPort: 8080
-          name: http
-        volumeMounts:
-        - mountPath: /tmp
-          name: temp-vol
+        - name: keda-operator
+          image: kedacore/keda:latest
+          args:
+            - /adapter
+            - --secure-port=6443
+            - --logtostderr=true
+            - --v=2
+          ports:
+            - containerPort: 6443
+              name: https
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - mountPath: /tmp
+              name: temp-vol
       volumes:
-      - name: temp-vol
-        emptyDir: {}
+        - name: temp-vol
+          emptyDir: {}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -148,9 +185,9 @@ roleRef:
   kind: ClusterRole
   name: custom-metrics-resource-reader
 subjects:
-- kind: ServiceAccount
-  name: keda-operator
-  namespace: keda
+  - kind: ServiceAccount
+    name: keda-operator
+    namespace: keda
 ---
 apiVersion: v1
 kind: Service
@@ -159,12 +196,12 @@ metadata:
   namespace: keda
 spec:
   ports:
-  - name: https
-    port: 443
-    targetPort: 6443
-  - name: http
-    port: 80
-    targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 6443
+    - name: http
+      port: 80
+      targetPort: 8080
   selector:
     app: keda-operator
 ---
@@ -185,38 +222,28 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: custom-metrics-server-resources
-rules:
-- apiGroups:
-  - custom.metrics.k8s.io
-  resources: ["*"]
-  verbs: ["*"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
   name: custom-metrics-resource-reader
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  - pods
-  - services
-  - external
-  verbs:
-  - get
-  - list
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - pods
+      - services
+      - external
+    verbs:
+      - get
+      - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: hpa-controller-custom-metrics
+  name: keda-hpa-controller-custom-metrics
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
-- kind: ServiceAccount
-  name: horizontal-pod-autoscaler
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: horizontal-pod-autoscaler
+    namespace: kube-system

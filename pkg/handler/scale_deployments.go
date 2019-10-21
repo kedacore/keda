@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	log "github.com/sirupsen/logrus"
 	apps_v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,4 +127,14 @@ func (h *ScaleHandler) resolveDeploymentEnv(deployment *apps_v1.Deployment, cont
 	}
 
 	return h.resolveEnv(&container, deployment.GetNamespace())
+}
+
+func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject, deployment *apps_v1.Deployment) (map[string]string, string) {
+	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
+		env, err := h.resolveDeploymentEnv(deployment, containerName)
+		if err != nil {
+			return ""
+		}
+		return env[name]
+	})
 }

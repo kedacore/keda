@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -31,7 +30,7 @@ type externalScalerMetadata struct {
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
-func NewExternalScaler(scaledObject *keda_v1alpha1.ScaledObject, resolvedEnv, metadata map[string]string) (Scaler, error) {
+func NewExternalScaler(name, namespace string, resolvedEnv, metadata map[string]string) (Scaler, error) {
 
 	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
 	if err != nil {
@@ -41,8 +40,8 @@ func NewExternalScaler(scaledObject *keda_v1alpha1.ScaledObject, resolvedEnv, me
 	scaler := &externalScaler{
 		metadata: meta,
 		scaledObjectRef: pb.ScaledObjectRef{
-			Name:      scaledObject.Name,
-			Namespace: scaledObject.Namespace,
+			Name:      name,
+			Namespace: namespace,
 		},
 	}
 

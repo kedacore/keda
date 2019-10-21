@@ -44,7 +44,7 @@ e2e-test:
 GENERATED  = $(shell find pkg/client -type f)
 
 .PHONY: build
-build: pkg/scalers/liiklus/LiiklusService.pb.go $(GENERATED)
+build: pkg/scalers/liiklus/LiiklusService.pb.go
 	GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) go build \
 		-ldflags "-X main.GitCommit=$(GIT_COMMIT)" \
 		-o dist/keda \
