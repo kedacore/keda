@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type monitorChannelInfo struct {
@@ -54,6 +54,8 @@ const (
 	stanMetricType             = "External"
 	defaultStanLagThreshold    = 10
 )
+
+var stanLog = logf.Log.WithName("stan_scaler")
 
 // NewStanScaler creates a new stanScaler
 func NewStanScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
@@ -108,7 +110,7 @@ func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	resp, err := http.Get(s.getMonitoringEndpoint())
 	if err != nil {
-		log.Errorf("Unable to access the nats streaming (%s) broker monitoring endpoint", s.metadata.natsServerMonitoringEndpoint)
+		stanLog.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -166,14 +168,14 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	resp, err := http.Get(s.getMonitoringEndpoint())
 
 	if err != nil {
-		log.Errorf("Unable to access the nats streaming (%s) broker monitoring endpoint", s.metadata.natsServerMonitoringEndpoint)
+		stanLog.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	defer resp.Body.Close()
 	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 	totalLag := s.getMaxMsgLag()
-	log.Debugf("Stan scaler: Providing metrics based on totalLag %v, threshold %v", totalLag, s.metadata.lagThreshold)
+	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),

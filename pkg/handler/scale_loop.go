@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	log "github.com/sirupsen/logrus"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 )
 
-// This method blocks forever and checks the scaledObject based on its pollingInterval
-// if isDue is set to true, the method will check the scaledObject right away. Otherwise
-// it'll wait for pollingInterval then check.
-func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject, isDue bool) {
+// HandleScaleLoop blocks forever and checks the scaledObject based on its pollingInterval
+func (h *ScaleHandler) HandleScaleLoop(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
+	h.logger = h.logger.WithValues("ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "ScaledObject.ScaleType", scaledObject.Spec.ScaleType)
+
 	h.handleScale(ctx, scaledObject)
+
 	var pollingInterval time.Duration
 	if scaledObject.Spec.PollingInterval != nil {
 		pollingInterval = time.Second * time.Duration(*scaledObject.Spec.PollingInterval)
@@ -20,28 +20,14 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 		pollingInterval = time.Second * time.Duration(defaultPollingInterval)
 	}
 
-	getPollingInterval := func() time.Duration {
-		if isDue {
-			isDue = false
-			return 0
-		}
-		return pollingInterval
-	}
-
-	log.Debugf("watching scaledObject (%s/%s) with pollingInterval: %d", scaledObject.GetNamespace(), scaledObject.GetName(), pollingInterval)
+	h.logger.V(1).Info("Watching scaledObject with pollingInterval", "ScaledObject.PollingInterval", pollingInterval)
 
 	for {
 		select {
-		case <-time.After(getPollingInterval()):
-			switch scaledObject.Spec.ScaleType {
-			case keda_v1alpha1.ScaleTypeJob:
-				h.createOrUpdateJobInformerForScaledObject(scaledObject)
-			default:
-				h.createHPAWithRetry(scaledObject, false)
-			}
+		case <-time.After(pollingInterval):
 			h.handleScale(ctx, scaledObject)
 		case <-ctx.Done():
-			log.Debugf("context for scaledObject (%s/%s) canceled", scaledObject.GetNamespace(), scaledObject.GetName())
+			h.logger.V(1).Info("Context for scaledObject canceled")
 			return
 		}
 	}
@@ -49,36 +35,38 @@ func (h *ScaleHandler) handleScaleLoop(ctx context.Context, scaledObject *keda_v
 
 // handleScale contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call scaleDeployment
-func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
+
 	switch scaledObject.Spec.ScaleType {
-	case keda_v1alpha1.ScaleTypeJob:
+	case kedav1alpha1.ScaleTypeJob:
 		h.handleScaleJob(ctx, scaledObject)
 		break
 	default:
 		h.handleScaleDeployment(ctx, scaledObject)
-
 	}
 	return
 }
 
-func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
 	//TODO: need to actually handle the scale here
-	log.Println("Handle Scale Job called")
+	h.logger.V(1).Info("Handle Scale Job called")
 	scalers, err := h.getJobScalers(scaledObject)
 
 	if err != nil {
-		log.Errorf("Error getting scalers: %s", err)
+		h.logger.Error(err, "Error getting scalers")
 		return
 	}
 
 	isScaledObjectActive := false
-	log.Printf("Scalers: %d", len(scalers))
+	h.logger.Info("Scalers count", "Count", len(scalers))
 	var queueLength int64
 	var maxValue int64
 
 	for _, scaler := range scalers {
+		scalerLogger := h.logger.WithValues("Scaler", scaler)
+
 		isTriggerActive, err := scaler.IsActive(ctx)
-		log.Printf("IsTriggerActive: %t", isTriggerActive)
+		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
 		var metricValue int64
@@ -86,7 +74,7 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *keda_v1
 			metricValue, _ = metric.External.TargetAverageValue.AsInt64()
 			maxValue += metricValue
 		}
-		log.Printf("Max value: %d", maxValue)
+		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
 
 		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
 
@@ -96,30 +84,31 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *keda_v1
 				queueLength += metricValue
 			}
 		}
-		log.Printf("QueueLength Metric value: %d", queueLength)
+		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
 
 		if err != nil {
-			log.Debugf("Error getting scale decision: %s", err)
+			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Printf("Scaler %s for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			scalerLogger.Info("Scaler is active")
 		}
 		scaler.Close()
 	}
 
 	h.scaleJobs(scaledObject, isScaledObjectActive, queueLength, maxValue)
-
 }
 
-func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *keda_v1alpha1.ScaledObject) {
-	scalers, deployment, err := h.getDeploymentScalers(scaledObject)
+// handleScaleDeployment contains the main logic for the ScaleHandler scaling logic.
+// It'll check each trigger active status then call scaleDeployment
+func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
+	scalers, deployment, err := h.GetDeploymentScalers(scaledObject)
 
 	if deployment == nil {
 		return
 	}
 	if err != nil {
-		log.Errorf("Error getting scalers: %s", err)
+		h.logger.Error(err, "Error getting scalers")
 		return
 	}
 
@@ -130,15 +119,13 @@ func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		if err != nil {
-			log.Debugf("Error getting scale decision: %s", err)
+			h.logger.V(1).Info("Error getting scale decision", "Error", err)
 			continue
 		} else if isTriggerActive {
 			isScaledObjectActive = true
-			log.Debugf("Scaler %T for scaledObject %s/%s is active", scaler, scaledObject.GetNamespace(), scaledObject.GetName())
+			h.logger.V(1).Info("Scaler for scaledObject is active", "Scaler", scaler)
 		}
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
-
-	return
 }
