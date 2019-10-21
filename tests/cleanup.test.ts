@@ -16,9 +16,8 @@ test('Remove Keda', t => {
         'clusterrolebinding.rbac.authorization.k8s.io/custom-metrics-resource-reader',
         'service/keda-operator',
         'apiservice.apiregistration.k8s.io/v1beta1.external.metrics.k8s.io',
-        'clusterrole.rbac.authorization.k8s.io/custom-metrics-server-resources',
         'clusterrole.rbac.authorization.k8s.io/custom-metrics-resource-reader',
-        'clusterrolebinding.rbac.authorization.k8s.io/hpa-controller-custom-metrics'
+        'clusterrolebinding.rbac.authorization.k8s.io/keda-hpa-controller-custom-metrics'
     ];
 
     for (const resource of resources) {
