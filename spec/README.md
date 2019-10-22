@@ -15,3 +15,4 @@ Here is an overview:
     - [Liiklus](./triggers/liiklus-topic.md)
     - [RabbitMQ Queue](./triggers/rabbit-mq-queue.md)
     - [Redis](./triggers/redis.md)
+    - [Prometheus](./triggers/prometheus.md)
