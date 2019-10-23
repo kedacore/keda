@@ -165,6 +165,16 @@ cd keda
 make build
 ```
 
+## Deploying Custom Keda
+
+If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want to deploy it as part of KEDA. Do the following:
+1. Make your change in the code.
+2. Go to the root of the source code, then build a docker image of KEDA by running `docker build . -t [choose a unique tag for your custom image]`
+3. Navigate to the `deploy` folder, open the `KedaScaleController.yaml` and find the `image` attribute and change it from `kedacore/keda:latest` to your tag you used in step 2.
+4. Run the command `kubectl apply -f KedaScaleController.yaml`
+
+Note: If you are running this in a local cluster in Docker or Minikube, don't forget to use the attribute `imagePullPolicy: IfNotPresent` if you haven't pushed your custom docker image to the docker hub.
+
 # Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
