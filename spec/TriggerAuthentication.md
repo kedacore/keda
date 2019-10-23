@@ -8,7 +8,6 @@ This allows you to define once how to authenticate and use it for multiple trigg
 apiVersion: keda.k8s.io/v1alpha1
 kind: TriggerAuthentication
 metadata:
-metadata:
   name: keda-trigger-auth-azure-queue-secret
   namespace: keda
 spec:
