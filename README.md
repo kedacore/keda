@@ -165,7 +165,7 @@ cd keda
 make build
 ```
 
-## Deploying Custom Keda
+## Deploying Custom KEDA
 
 If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want to deploy it as part of KEDA. Do the following:
 1. Make your change in the code.
