@@ -169,11 +169,10 @@ make build
 
 If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want to deploy it as part of KEDA. Do the following:
 1. Make your change in the code.
-2. Go to the root of the source code, then build a docker image of KEDA by running `docker build . -t [choose a unique tag for your custom image]`
-3. Navigate to the `deploy` folder, open the `KedaScaleController.yaml` and find the `image` attribute and change it from `kedacore/keda:latest` to your tag you used in step 2.
-4. Run the command `kubectl apply -f KedaScaleController.yaml`
+2. Open the terminal and go to the root of the source code, then build a docker image of KEDA by running `docker build . -t [choose a unique tag for your custom image]`
+3. In the terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 2],image.pullPolicy=IfNotPresent`.
 
-Note: If you are running this in a local cluster in Docker or Minikube, don't forget to use the attribute `imagePullPolicy: IfNotPresent` if you haven't pushed your custom docker image to the docker hub.
+The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we susbtitute the image with the image we built in step 2. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
 
 # Contributing
 
