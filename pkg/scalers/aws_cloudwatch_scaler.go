@@ -3,8 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"k8s.io/api/autoscaling/v2beta1"
@@ -12,9 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"strconv"
-	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -42,14 +44,19 @@ type awsCloudwatchMetadata struct {
 	metricStat           string
 	metricStatPeriod     int64
 
-	awsRegion          string
+	awsRegion string
+
 	awsAccessKeyID     string
 	awsSecretAccessKey string
+
+	awsRoleArn string
+
+	authParams map[string]string
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv)
+func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing Cloudwatch metadata: %s", err)
 	}
@@ -59,7 +66,7 @@ func NewAwsCloudwatchScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 	}, nil
 }
 
-func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCloudwatchMetadata, error) {
+func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]string, podIdentity string) (*awsCloudwatchMetadata, error) {
 	meta := awsCloudwatchMetadata{}
 	meta.metricCollectionTime = defaultMetricCollectionTime
 	meta.metricStat = defaultMetricStat
@@ -139,26 +146,35 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv map[string]string) (*awsCl
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	accessIDKey := awsAccessKeyIDEnvVar
-	if val, ok := metadata["awsAccessKeyID"]; ok && val != "" {
-		accessIDKey = val
-	}
-
-	if val, ok := resolvedEnv[accessIDKey]; ok && val != "" {
-		meta.awsAccessKeyID = val
+	// Check TriggerAuthentication first
+	if podIdentity == "aws-credentials" {
+		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
+		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
+	} else if podIdentity == "aws-role" {
+		meta.awsRoleArn = authParams["awsRoleArn"]
 	} else {
-		return nil, fmt.Errorf("cannot find awsAccessKeyId named %s in pod environment", accessIDKey)
-	}
+		// then fallback to what is defined on the pod
+		accessIDKey := awsAccessKeyIDEnvVar
+		if val, ok := metadata["awsAccessKeyID"]; ok && val != "" {
+			accessIDKey = val
+		}
 
-	secretAccessKey := awsSecretAccessKeyEnvVar
-	if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
-		secretAccessKey = val
-	}
+		if val, ok := resolvedEnv[accessIDKey]; ok && val != "" {
+			meta.awsAccessKeyID = val
+		} else {
+			return nil, fmt.Errorf("cannot find awsAccessKeyId named %s in pod environment", accessIDKey)
+		}
 
-	if val, ok := resolvedEnv[secretAccessKey]; ok && val != "" {
-		meta.awsSecretAccessKey = val
-	} else {
-		return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", secretAccessKey)
+		secretAccessKey := awsSecretAccessKeyEnvVar
+		if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
+			secretAccessKey = val
+		}
+
+		if val, ok := resolvedEnv[secretAccessKey]; ok && val != "" {
+			meta.awsSecretAccessKey = val
+		} else {
+			return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", secretAccessKey)
+		}
 	}
 
 	return &meta, nil
@@ -205,14 +221,19 @@ func (c *awsCloudwatchScaler) Close() error {
 }
 
 func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(c.metadata.awsRegion),
+	}))
 	creds := credentials.NewStaticCredentials(c.metadata.awsAccessKeyID, c.metadata.awsSecretAccessKey, "")
-	sess := session.New(&aws.Config{
+
+	if c.metadata.awsRoleArn != "" {
+		creds = stscreds.NewCredentials(sess, c.metadata.awsRoleArn)
+	}
+
+	cloudwatchClient := cloudwatch.New(sess, &aws.Config{
 		Region:      aws.String(c.metadata.awsRegion),
 		Credentials: creds,
 	})
-
-	cloudwatchClient := cloudwatch.New(sess)
-	log.Info(cloudwatch.New(sess))
 
 	input := cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
