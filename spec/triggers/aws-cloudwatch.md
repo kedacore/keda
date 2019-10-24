@@ -1,6 +1,6 @@
 # AWS Cloudwatch Trigger
 
-This specification describes the `aws-cloudwatch` trigger for Azure Storage Queue.
+This specification describes the `aws-cloudwatch` trigger for AWS Cloudwatch.
 
 ```yaml
 triggers:
@@ -18,11 +18,19 @@ triggers:
       awsRegion: "eu-west-1"    
 ```
 
-The `connection` value is the name of the environment variable your deployment uses to get the connection string. This is usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+The `namespace` value is the service you want to get metrics for, in this case 'AWS/SQS'. Many other options exist.
+
+The `dimensionName` value is the selector criteria for which resource to monitor. 
+
+The `dimensionValue` value is the value of the `dimensionName` you want to match.
+
+The `metricName` value is the metric you want to measure, these are different between namespaces.
+
+The `targetMetricValue` value is the average value you want to target.
 
 ## Example
 
-[`examples/azurequeue_scaledobject.yaml`](./../../examples/azurequeue_scaledobject.yaml)
+[`examples/awscloudwatch_scaledobject.yaml`](./../../examples/awscloudwatch_scaledobject.yaml)
 
 ## Using TriggerAuthentication
 

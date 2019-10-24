@@ -50,8 +50,6 @@ metadata:
   name: keda-trigger-auth-aws-credential
   namespace: keda-test
 spec:
-  podIdentity:
-      provider: aws-credentials
   secretTargetRef:
   - parameter: awsAccessKeyID     # Required.
     name: keda-aws-secrets        # Required.
@@ -67,8 +65,6 @@ metadata:
   name: keda-trigger-auth-aws-role
   namespace: keda-test
 spec:
-  podIdentity:
-      provider: aws-role
   secretTargetRef:
   - parameter: awsRoleArn            # Required.
     name: keda-aws-secrets           # Required.
@@ -89,6 +85,20 @@ spec:
   - type: aws-cloudwatch
     authenticationRef: 
       name: keda-trigger-auth-aws-role
+    metadata:
+      # Required: namespace
+      namespace: AWS/SQS
+      # Required: Dimension Name
+      dimensionName: QueueName
+      dimensionValue: keda
+      metricName: ApproximateNumberOfMessagesVisible
+      targetMetricValue: "2"
+      minMetricValue: "0"
+      # Required: region
+      awsRegion: "eu-west-1"    
+  - type: aws-cloudwatch
+    authenticationRef: 
+      name: keda-trigger-auth-aws-credential
     metadata:
       # Required: namespace
       namespace: AWS/SQS

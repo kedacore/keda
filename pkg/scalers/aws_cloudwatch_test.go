@@ -14,16 +14,20 @@ var testAWSCloudwatchResolvedEnv = map[string]string{
 	"AWS_SECRET_ACCESS_KEY": "none",
 }
 
+var testAWSAuthentication = map[string]string{
+	"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
+	"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+}
+
 type parseAWSCloudwatchMetadataTestData struct {
-	metadata    map[string]string
-	authParams  map[string]string
-	podIdentity string
-	isError     bool
-	comment     string
+	metadata   map[string]string
+	authParams map[string]string
+	isError    bool
+	comment    string
 }
 
 var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
-	{map[string]string{}, map[string]string{}, "", true, "Empty structures"},
+	{map[string]string{}, testAWSAuthentication, true, "Empty structures"},
 	// properly formed cloudwatch query and awsRegion
 	{map[string]string{
 		"namespace":          "AWS/SQS",
@@ -35,8 +39,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "eu-west-1",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		false,
 		"properly formed cloudwatch query and awsRegion"},
 	// Properly formed cloudwatch query with optional parameters
@@ -53,9 +56,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":            "eu-west-1",
 		"awsAccessKeyID":       "AWS_ACCESS_KEY",
 		"awsSecretAccessKey":   "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
-		false,
+		testAWSAuthentication, false,
 		"Properly formed cloudwatch query with optional parameters"},
 	// properly formed cloudwatch query but Region is empty
 	{map[string]string{
@@ -68,8 +69,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		true,
 		"properly formed cloudwatch query but Region is empty"},
 	// Missing namespace
@@ -81,8 +81,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "eu-west-1",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		true,
 		"Missing namespace"},
 	// Missing dimensionName
@@ -95,8 +94,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "eu-west-1",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		true,
 		"Missing dimensionName"},
 	// Missing dimensionValue
@@ -109,8 +107,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "eu-west-1",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		true,
 		"Missing dimensionValue"},
 	// Missing metricName
@@ -123,8 +120,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":          "eu-west-1",
 		"awsAccessKeyID":     "AWS_ACCESS_KEY",
 		"awsSecretAccessKey": "AWS_SECRET_ACCESS_KEY"},
-		map[string]string{},
-		"",
+		testAWSAuthentication,
 		true,
 		"Missing metricName"},
 	// with "aws_credentials" from TriggerAuthentication
@@ -140,12 +136,11 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"metricStatPeriod":     "300",
 		"awsRegion":            "eu-west-1"},
 		map[string]string{
-			"awsAccessKeyID":     testAWSCloudwatchAccessKeyID,
+			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
 		},
-		"aws-credentials",
 		false,
-		"with 'aws_credentials' from TriggerAuthentication"},
+		"with AWS Credentials from TriggerAuthentication"},
 	// with "aws_role" from TriggerAuthentication
 	{map[string]string{
 		"namespace":            "AWS/SQS",
@@ -159,36 +154,15 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"metricStatPeriod":     "300",
 		"awsRegion":            "eu-west-1"},
 		map[string]string{
-			"awsRoleArn":            testAWSCloudwatchRoleArn,
-			"awsAssumeRoleDuration": "5",
+			"awsRoleArn": testAWSCloudwatchRoleArn,
 		},
-		"aws-role",
 		false,
-		"with 'aws_credentials' from TriggerAuthentication"},
-	// with "aws_role" from TriggerAuthentication with invalid 'awsAssumeRoleDuration'
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
-		map[string]string{
-			"awsRoleArn":            testAWSCloudwatchRoleArn,
-			"awsAssumeRoleDuration": "",
-		},
-		"aws-role",
-		true,
-		"with 'aws_credentials' from TriggerAuthentication with invalid 'awsAssumeRoleDuration'"},
+		"with AWS Role from TriggerAuthentication"},
 }
 
 func TestCloudwatchParseMetadata(t *testing.T) {
 	for _, testData := range testAWSCloudwatchMetadata {
-		_, err := parseAwsCloudwatchMetadata(testData.metadata, testAWSCloudwatchResolvedEnv, testData.authParams, testData.podIdentity)
+		_, err := parseAwsCloudwatchMetadata(testData.metadata, testAWSCloudwatchResolvedEnv, testData.authParams)
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}

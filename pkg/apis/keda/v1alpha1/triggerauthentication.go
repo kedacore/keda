@@ -41,12 +41,10 @@ type TriggerAuthenticationSpec struct {
 type PodIdentityProvider string
 
 const (
-	PodIdentityProviderNone          PodIdentityProvider = "none"
-	PodIdentityProviderAzure                             = "azure"
-	PodIdentityProviderGCP                               = "gcp"
-	PodIdentityProviderSpiffe                            = "spiffe"
-	PodIdentityProviderAWSRole                           = "aws-role"
-	PodIdentityProviderAWSCredential                     = "aws-credential"
+	PodIdentityProviderNone   PodIdentityProvider = "none"
+	PodIdentityProviderAzure                      = "azure"
+	PodIdentityProviderGCP                        = "gcp"
+	PodIdentityProviderSpiffe                     = "spiffe"
 )
 
 // AuthPodIdentity allows users to select the platform native identity

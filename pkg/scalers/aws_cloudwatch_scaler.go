@@ -55,8 +55,8 @@ type awsCloudwatchMetadata struct {
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
-	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams, podIdentity)
+func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing Cloudwatch metadata: %s", err)
 	}
@@ -66,7 +66,7 @@ func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string,
 	}, nil
 }
 
-func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]string, podIdentity string) (*awsCloudwatchMetadata, error) {
+func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]string) (*awsCloudwatchMetadata, error) {
 	meta := awsCloudwatchMetadata{}
 	meta.metricCollectionTime = defaultMetricCollectionTime
 	meta.metricStat = defaultMetricStat
@@ -146,35 +146,13 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	// Check TriggerAuthentication first
-	if podIdentity == "aws-credentials" {
+	if authParams["awsRoleArn"] != "" {
+		meta.awsRoleArn = authParams["awsRoleArn"]
+	} else if authParams["awsAccessKeyId"] != "" && authParams["awsSecretAccessKey"] != "" {
 		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
 		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
-	} else if podIdentity == "aws-role" {
-		meta.awsRoleArn = authParams["awsRoleArn"]
 	} else {
-		// then fallback to what is defined on the pod
-		accessIDKey := awsAccessKeyIDEnvVar
-		if val, ok := metadata["awsAccessKeyID"]; ok && val != "" {
-			accessIDKey = val
-		}
-
-		if val, ok := resolvedEnv[accessIDKey]; ok && val != "" {
-			meta.awsAccessKeyID = val
-		} else {
-			return nil, fmt.Errorf("cannot find awsAccessKeyId named %s in pod environment", accessIDKey)
-		}
-
-		secretAccessKey := awsSecretAccessKeyEnvVar
-		if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
-			secretAccessKey = val
-		}
-
-		if val, ok := resolvedEnv[secretAccessKey]; ok && val != "" {
-			meta.awsSecretAccessKey = val
-		} else {
-			return nil, fmt.Errorf("cannot find awsSecretAccessKey named %s in pod environment", secretAccessKey)
-		}
+		return nil, fmt.Errorf("No authentication was found")
 	}
 
 	return &meta, nil
