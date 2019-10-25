@@ -5,6 +5,8 @@ This specification describes the `aws-cloudwatch` trigger for AWS Cloudwatch.
 ```yaml
 triggers:
   - type: aws-cloudwatch
+    authenticationRef: 
+      name: keda-trigger-auth-aws-role
     metadata:
       # Required: namespace
       namespace: AWS/SQS
@@ -30,7 +32,7 @@ triggers:
 
 ## Using TriggerAuthentication
 
-Authentication can be handled by providing either a role ARN or a set of IAM credentials. The user will need access to read data from AWS Cloudwatch
+Authentication can be handled by providing either a role ARN or a set of IAM credentials. The user will need access to read data from AWS Cloudwatch.
 
 ### Role based authentication
 
