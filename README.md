@@ -94,6 +94,7 @@ KEDA has a number of "scalers" that can both detect if a deployment should be ac
 * Prometheus
 * RabbitMQ
 * Redis Lists
+* Nats Streaming
 
 You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
 
