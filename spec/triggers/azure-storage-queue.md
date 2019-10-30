@@ -47,7 +47,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-secrets
+  name: my-secret-for-azure-storage
   labels:
 data:
   connectionString: Q29ubmVjdGlvbiBzdHJpbmcgdmFsdWUgaW4gYmFzZTY0IGVuY29kaW5nIGdvZXMgaGVyZQ==
@@ -71,7 +71,6 @@ triggers:
 # auth object
 apiVersion: keda.k8s.io/v1alpha1
 kind: TriggerAuthentication
-metadata:
 metadata:
   name: azure-queue-auth
 spec:
