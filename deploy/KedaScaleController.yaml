@@ -222,16 +222,6 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: custom-metrics-server-resources
-rules:
-  - apiGroups:
-      - custom.metrics.k8s.io
-    resources: ["*"]
-    verbs: ["*"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
   name: custom-metrics-resource-reader
 rules:
   - apiGroups:
@@ -248,7 +238,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: hpa-controller-custom-metrics
+  name: keda-hpa-controller-custom-metrics
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

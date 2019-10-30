@@ -408,7 +408,8 @@ func (h *ScaleHandler) resolveEnv(container *core_v1.Container, namespace string
 							namespace)
 					}
 				} else {
-					return nil, fmt.Errorf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
+					log.Warningf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
+					continue
 				}
 
 			}
@@ -588,6 +589,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewExternalScaler(name, namespace, resolvedEnv, triggerMetadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
+	case "stan":
+		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
