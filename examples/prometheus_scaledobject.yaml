@@ -16,4 +16,3 @@ spec:
       metricName: http_requests_total
       threshold: '100'
       query: sum(rate(http_requests_total{deployment="my-deployment"}[2m])) # Note: query must return a vector/scalar single element response
-      disableScaleToZero: 'true' # Optional. when true, will not scale to/from zero. default: false
