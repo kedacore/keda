@@ -116,12 +116,15 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
-		_, _, err := parseAzureQueueMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
+		_, podIdentity, err := parseAzureQueueMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success. testData: %v", testData)
+		}
+		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
+			t.Error("Expected success but got error: podIdentity value is not returned as expected")
 		}
 	}
 }
