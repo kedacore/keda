@@ -8,11 +8,9 @@ COPY build/_output/bin/keda-adapter ${OPERATOR}
 
 COPY build/bin /usr/local/bin
 RUN /usr/local/bin/user_setup && \
-    mkdir /adapter && \
-    chmod 777 /adapter && \
+    mkdir /apiserver.local.config && \
+    chmod 777 /apiserver.local.config && \
     chmod +x ${OPERATOR}
-
-WORKDIR /adapter
 
 ENTRYPOINT ["/usr/local/bin/entrypoint", "--secure-port=6443", "--logtostderr=true", "--v=0"]
 
