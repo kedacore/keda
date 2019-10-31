@@ -1,23 +1,23 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	log "github.com/sirupsen/logrus"
-	apps_v1 "k8s.io/api/apps/v1"
-	core_v1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
-func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject, isActive bool) {
+func (h *ScaleHandler) scaleDeployment(deployment *appsv1.Deployment, scaledObject *kedav1alpha1.ScaledObject, isActive bool) {
 
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
-		h.scaleDeploymentFromZero(deployment, scaledObject)
+		h.scaleFromZero(deployment, scaledObject)
 	} else if !isActive &&
 		*deployment.Spec.Replicas > 0 &&
 		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
@@ -30,25 +30,27 @@ func (h *ScaleHandler) scaleDeployment(deployment *apps_v1.Deployment, scaledObj
 	} else if isActive {
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.
-		now := meta_v1.Now()
+		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
-		h.updateScaledObject(scaledObject)
+		h.updateScaledObjectStatus(scaledObject)
 	} else {
-		log.Debugf("deployment (%s/%s) no change", deployment.GetNamespace(), deployment.GetName())
+		h.logger.V(1).Info("Deployment no change", "Deployment.Namespace", deployment.GetNamespace(), "Deployment.Name", deployment.GetName())
 	}
 }
 
-func (h *ScaleHandler) updateDeployment(deployment *apps_v1.Deployment) error {
-	_, err := h.kubeClient.AppsV1().Deployments(deployment.GetNamespace()).Update(deployment)
+func (h *ScaleHandler) updateDeployment(deployment *appsv1.Deployment) error {
+
+	err := h.client.Update(context.TODO(), deployment)
 	if err != nil {
-		log.Errorf("Error updating deployment (%s/%s)  Error: %s", deployment.GetNamespace(), deployment.GetName(), err)
+		h.logger.Error(err, "Error updating deployment", "Deployment.Namespace", deployment.GetNamespace(), "Deployment.Name", deployment.GetName())
+		return err
 	}
-	return err
+	return nil
 }
 
 // A deployment will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
-func (h *ScaleHandler) scaleDeploymentToZero(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleDeploymentToZero(deployment *appsv1.Deployment, scaledObject *kedav1alpha1.ScaledObject) {
 	var cooldownPeriod time.Duration
 
 	if scaledObject.Spec.CooldownPeriod != nil {
@@ -65,17 +67,18 @@ func (h *ScaleHandler) scaleDeploymentToZero(deployment *apps_v1.Deployment, sca
 		*deployment.Spec.Replicas = 0
 		err := h.updateDeployment(deployment)
 		if err == nil {
-			log.Infof("Successfully scaled deployment (%s/%s) to 0 replicas", deployment.GetNamespace(), deployment.GetName())
+			h.logger.Info("Successfully scaled deployment to 0 replicas", "Deployment.Namespace", deployment.GetNamespace(), "Deployment.Name", deployment.GetName())
 		}
 	} else {
-		log.Debugf("scaledObject (%s/%s) cooling down. Last active time %v, cooldownPeriod %d",
-			scaledObject.GetNamespace(),
-			scaledObject.GetName(),
+		h.logger.V(1).Info("scaledObject cooling down",
+			"LastActiveTime",
 			scaledObject.Status.LastActiveTime,
+			"CoolDownPeriod",
 			cooldownPeriod)
 	}
 }
-func (h *ScaleHandler) scaleDeploymentFromZero(deployment *apps_v1.Deployment, scaledObject *keda_v1alpha1.ScaledObject) {
+
+func (h *ScaleHandler) scaleFromZero(deployment *appsv1.Deployment, scaledObject *kedav1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		deployment.Spec.Replicas = scaledObject.Spec.MinReplicaCount
@@ -86,20 +89,20 @@ func (h *ScaleHandler) scaleDeploymentFromZero(deployment *apps_v1.Deployment, s
 	err := h.updateDeployment(deployment)
 
 	if err == nil {
-		log.Infof("Successfully updated deployment (%s/%s) from %d to %d replicas",
-			deployment.GetNamespace(),
-			deployment.GetName(),
+		h.logger.Info("Successfully updated deployment", "Deployment.Namespace", deployment.GetNamespace(), "Deployment.Name", deployment.GetName(),
+			"Original Replicas Count",
 			currentReplicas,
+			"New Replicas Count",
 			*deployment.Spec.Replicas)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
-		now := meta_v1.Now()
+		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
-		h.updateScaledObject(scaledObject)
+		h.updateScaledObjectStatus(scaledObject)
 	}
 }
 
-func (h *ScaleHandler) resolveDeploymentEnv(deployment *apps_v1.Deployment, containerName string) (map[string]string, error) {
+func (h *ScaleHandler) resolveDeploymentEnv(deployment *appsv1.Deployment, containerName string) (map[string]string, error) {
 	deploymentKey, err := cache.MetaNamespaceKeyFunc(deployment)
 	if err != nil {
 		return nil, err
@@ -109,7 +112,7 @@ func (h *ScaleHandler) resolveDeploymentEnv(deployment *apps_v1.Deployment, cont
 		return nil, fmt.Errorf("Deployment (%s) doesn't have containers", deploymentKey)
 	}
 
-	var container core_v1.Container
+	var container corev1.Container
 
 	if containerName != "" {
 		for _, c := range deployment.Spec.Template.Spec.Containers {
@@ -129,7 +132,7 @@ func (h *ScaleHandler) resolveDeploymentEnv(deployment *apps_v1.Deployment, cont
 	return h.resolveEnv(&container, deployment.GetNamespace())
 }
 
-func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject, deployment *apps_v1.Deployment) (map[string]string, string) {
+func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, deployment *appsv1.Deployment) (map[string]string, string) {
 	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
 		env, err := h.resolveDeploymentEnv(deployment, containerName)
 		if err != nil {
