@@ -105,7 +105,7 @@ func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string)
 							namespace)
 					}
 				} else {
-					log.Warningf("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
+					h.logger.V(1).Info("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
 					continue
 				}
 
