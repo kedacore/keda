@@ -11,17 +11,17 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment":           schema_pkg_apis_keda_v1alpha1_AuthEnvironment(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity":           schema_pkg_apis_keda_v1alpha1_AuthPodIdentity(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef":       schema_pkg_apis_keda_v1alpha1_AuthSecretTargetRef(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ObjectReference":           schema_pkg_apis_keda_v1alpha1_ObjectReference(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaleTriggers":             schema_pkg_apis_keda_v1alpha1_ScaleTriggers(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObject":              schema_pkg_apis_keda_v1alpha1_ScaledObject(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectAuthRef":       schema_pkg_apis_keda_v1alpha1_ScaledObjectAuthRef(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectSpec":          schema_pkg_apis_keda_v1alpha1_ScaledObjectSpec(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectStatus":        schema_pkg_apis_keda_v1alpha1_ScaledObjectStatus(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthentication":     schema_pkg_apis_keda_v1alpha1_TriggerAuthentication(ref),
-		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec": schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref),
+		"./pkg/apis/keda/v1alpha1.AuthEnvironment":           schema_pkg_apis_keda_v1alpha1_AuthEnvironment(ref),
+		"./pkg/apis/keda/v1alpha1.AuthPodIdentity":           schema_pkg_apis_keda_v1alpha1_AuthPodIdentity(ref),
+		"./pkg/apis/keda/v1alpha1.AuthSecretTargetRef":       schema_pkg_apis_keda_v1alpha1_AuthSecretTargetRef(ref),
+		"./pkg/apis/keda/v1alpha1.ObjectReference":           schema_pkg_apis_keda_v1alpha1_ObjectReference(ref),
+		"./pkg/apis/keda/v1alpha1.ScaleTriggers":             schema_pkg_apis_keda_v1alpha1_ScaleTriggers(ref),
+		"./pkg/apis/keda/v1alpha1.ScaledObject":              schema_pkg_apis_keda_v1alpha1_ScaledObject(ref),
+		"./pkg/apis/keda/v1alpha1.ScaledObjectAuthRef":       schema_pkg_apis_keda_v1alpha1_ScaledObjectAuthRef(ref),
+		"./pkg/apis/keda/v1alpha1.ScaledObjectSpec":          schema_pkg_apis_keda_v1alpha1_ScaledObjectSpec(ref),
+		"./pkg/apis/keda/v1alpha1.ScaledObjectStatus":        schema_pkg_apis_keda_v1alpha1_ScaledObjectStatus(ref),
+		"./pkg/apis/keda/v1alpha1.TriggerAuthentication":     schema_pkg_apis_keda_v1alpha1_TriggerAuthentication(ref),
+		"./pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec": schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref),
 	}
 }
 
@@ -170,7 +170,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaleTriggers(ref common.ReferenceCallback) c
 					},
 					"authenticationRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectAuthRef"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.ScaledObjectAuthRef"),
 						},
 					},
 				},
@@ -178,7 +178,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaleTriggers(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectAuthRef"},
+			"./pkg/apis/keda/v1alpha1.ScaledObjectAuthRef"},
 	}
 }
 
@@ -210,12 +210,12 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObject(ref common.ReferenceCallback) co
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectSpec"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.ScaledObjectSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectStatus"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.ScaledObjectStatus"),
 						},
 					},
 				},
@@ -223,7 +223,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObject(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectSpec", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/keda/v1alpha1.ScaledObjectSpec", "./pkg/apis/keda/v1alpha1.ScaledObjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -262,7 +262,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObjectSpec(ref common.ReferenceCallback
 					},
 					"scaleTargetRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ObjectReference"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.ObjectReference"),
 						},
 					},
 					"jobTargetRef": {
@@ -305,7 +305,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObjectSpec(ref common.ReferenceCallback
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaleTriggers"),
+										Ref: ref("./pkg/apis/keda/v1alpha1.ScaleTriggers"),
 									},
 								},
 							},
@@ -316,7 +316,7 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObjectSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ObjectReference", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaleTriggers", "k8s.io/api/batch/v1.JobSpec"},
+			"./pkg/apis/keda/v1alpha1.ObjectReference", "./pkg/apis/keda/v1alpha1.ScaleTriggers", "k8s.io/api/batch/v1.JobSpec"},
 	}
 }
 
@@ -399,7 +399,7 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthentication(ref common.ReferenceCal
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec"),
 						},
 					},
 				},
@@ -407,7 +407,7 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthentication(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -420,7 +420,7 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"podIdentity": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity"),
+							Ref: ref("./pkg/apis/keda/v1alpha1.AuthPodIdentity"),
 						},
 					},
 					"secretTargetRef": {
@@ -434,7 +434,7 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref common.Referenc
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef"),
+										Ref: ref("./pkg/apis/keda/v1alpha1.AuthSecretTargetRef"),
 									},
 								},
 							},
@@ -451,7 +451,7 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref common.Referenc
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment"),
+										Ref: ref("./pkg/apis/keda/v1alpha1.AuthEnvironment"),
 									},
 								},
 							},
@@ -461,6 +461,6 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef"},
+			"./pkg/apis/keda/v1alpha1.AuthEnvironment", "./pkg/apis/keda/v1alpha1.AuthPodIdentity", "./pkg/apis/keda/v1alpha1.AuthSecretTargetRef"},
 	}
 }
