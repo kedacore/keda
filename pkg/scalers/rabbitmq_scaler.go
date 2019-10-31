@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -30,6 +30,8 @@ type rabbitMQMetadata struct {
 	host        string
 	queueLength int
 }
+
+var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
@@ -103,7 +105,7 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 func (s *rabbitMQScaler) Close() error {
 	err := s.connection.Close()
 	if err != nil {
-		log.Errorf("Error closing rabbitmq connection: %v", err)
+		rabbitmqLog.Error(err, "Error closing rabbitmq connection")
 		return err
 	}
 	return nil

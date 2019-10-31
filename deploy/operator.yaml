@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: keda-operator
+  name: keda-operator
+  namespace: keda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-operator
+  template:
+    metadata:
+      labels:
+        app: keda-operator
+      name: keda-operator
+    spec:
+      serviceAccountName: keda-operator
+      containers:
+        - name: keda-operator
+          image: docker.io/kedacore/keda:0.0.4
+          command:
+          - keda
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "keda-operator"
+        - name: keda-metrics-apiserver
+          image: docker.io/kedacore/keda-metrics-adapter:0.0.4
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+          args:
+          - /usr/local/bin/keda-adapter
+          - --secure-port=6443
+          - --logtostderr=true
+          - --v=0
+          ports:
+          - containerPort: 6443
+            name: https
+          - containerPort: 8080
+            name: http
+          volumeMounts:
+          - mountPath: /tmp
+            name: temp-vol
+      volumes:
+      - name: temp-vol
+        emptyDir: {}

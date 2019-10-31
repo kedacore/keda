@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -13,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type externalScaler struct {
@@ -27,6 +27,8 @@ type externalScalerMetadata struct {
 	tlsCertFile   string
 	metadata      map[string]string
 }
+
+var externalLog = logf.Log.WithName("external_scaler")
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
@@ -102,7 +104,7 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 	// Call GRPC Interface to check if active
 	response, err := s.grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
-		log.Errorf("error %s", err)
+		externalLog.Error(err, "error")
 		return false, err
 	}
 
@@ -117,7 +119,7 @@ func (s *externalScaler) Close() error {
 
 	_, err := s.grpcClient.Close(ctx, &s.scaledObjectRef)
 	if err != nil {
-		log.Errorf("error %s", err)
+		externalLog.Error(err, "error")
 		return err
 	}
 	defer s.grpcConnection.Close()
@@ -134,7 +136,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	// Call GRPC Interface to get metric specs
 	response, err := s.grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
 	if err != nil {
-		log.Errorf("error %s", err)
+		externalLog.Error(err, "error")
 		return nil
 	}
 
@@ -174,7 +176,7 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 	response, err := s.grpcClient.GetMetrics(ctx, request)
 	if err != nil {
-		log.Errorf("error %s", err)
+		externalLog.Error(err, "error")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

@@ -1,31 +1,33 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 
-	keda_v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	log "github.com/sirupsen/logrus"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (h *ScaleHandler) scaleJobs(scaledObject *keda_v1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
+func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
 	// TODO: get current job count
-	log.Infoln("Scaling Jobs")
+	h.logger.V(1).Info("Scaling Jobs")
 
 	if isActive {
-		log.Infoln("Scaler is active")
-		now := meta_v1.Now()
+		h.logger.V(1).Info("At least one scaler is active")
+		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
-		h.updateScaledObject(scaledObject)
+		h.updateScaledObjectStatus(scaledObject)
 		h.createJobs(scaledObject, scaleTo, maxScale)
 	} else {
-		log.Debugf("scaledObject (%s) no change", scaledObject.GetName())
+		h.logger.V(1).Info("No change in activity")
 	}
 	return
 }
 
-func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
+func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
 	scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
 	if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
 		scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
@@ -35,30 +37,45 @@ func (h *ScaleHandler) createJobs(scaledObject *keda_v1alpha1.ScaledObject, scal
 	if scaleTo > maxScale {
 		scaleTo = maxScale
 	}
-	log.Infof("Creating %d jobs", scaleTo)
+	h.logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	for i := 0; i < int(scaleTo); i++ {
 
 		job := &batchv1.Job{
-			ObjectMeta: meta_v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: scaledObject.GetName() + "-",
 				Namespace:    scaledObject.GetNamespace(),
 				Labels: map[string]string{
 					"scaledobject": scaledObject.GetName(),
 				},
 			},
-			Spec: scaledObject.Spec.JobTargetRef,
+			Spec: *scaledObject.Spec.JobTargetRef.DeepCopy(),
 		}
-		_, err := h.kubeClient.BatchV1().Jobs(scaledObject.GetNamespace()).Create(job)
+
+		// Job doesn't allow RestartPolicyAlways, it seems like this value is set by the client as a default one,
+		// we should set this property to allowed value in that case
+		if job.Spec.Template.Spec.RestartPolicy == "" {
+			h.logger.V(1).Info("Job RestartPolicy is not set, setting it to 'OnFailure', to avoid setting it to the client's default value 'Always'")
+			job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
+		}
+
+		// Set ScaledObject instance as the owner and controller
+		err := controllerutil.SetControllerReference(scaledObject, job, h.reconcilerScheme)
 		if err != nil {
-			log.Fatalln(err)
+			h.logger.Error(err, "Failed to set ScaledObject as the owner of the new Job")
+		}
+
+		err = h.client.Create(context.TODO(), job)
+		if err != nil {
+			h.logger.Error(err, "Failed to create a new Job")
+
 		}
 	}
-	log.Infof("Created %d jobs", scaleTo)
+	h.logger.Info("Created jobs", "Number of jobs", scaleTo)
 
 }
 
-func (h *ScaleHandler) resolveJobEnv(scaledObject *keda_v1alpha1.ScaledObject) (map[string]string, error) {
+func (h *ScaleHandler) resolveJobEnv(scaledObject *kedav1alpha1.ScaledObject) (map[string]string, error) {
 
 	if len(scaledObject.Spec.JobTargetRef.Template.Spec.Containers) < 1 {
 		return nil, fmt.Errorf("Scaled Object (%s) doesn't have containers", scaledObject.GetName())
@@ -69,7 +86,7 @@ func (h *ScaleHandler) resolveJobEnv(scaledObject *keda_v1alpha1.ScaledObject) (
 	return h.resolveEnv(&container, scaledObject.GetNamespace())
 }
 
-func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef keda_v1alpha1.ScaledObjectAuthRef, scaledObject *keda_v1alpha1.ScaledObject) (map[string]string, string) {
+func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject) (map[string]string, string) {
 	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
 		env, err := h.resolveJobEnv(scaledObject)
 		if err != nil {

@@ -11,12 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -38,6 +38,8 @@ type awsSqsQueueMetadata struct {
 	awsSecretAccessKey string
 	awsSessionToken    string
 }
+
+var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
@@ -75,7 +77,7 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 	if val, ok := metadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing SQS queue metadata %s: %s", "queueLength", err)
+			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength")
 		} else {
 			meta.targetQueueLength = queueLength
 		}
@@ -150,7 +152,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 	queuelen, err := s.GetAwsSqsQueueLength()
 
 	if err != nil {
-		log.Errorf("Error getting queue length %s", err)
+		sqsQueueLog.Error(err, "Error getting queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

@@ -1,0 +1,83 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: triggerauthentications.keda.k8s.io
+spec:
+  group: keda.k8s.io
+  names:
+    kind: TriggerAuthentication
+    listKind: TriggerAuthenticationList
+    plural: triggerauthentications
+    singular: triggerauthentication
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: TriggerAuthentication defines how a trigger can authenticate
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: TriggerAuthenticationSpec defines the various ways to authenticate
+          properties:
+            env:
+              items:
+                description: AuthEnvironment is used to authenticate using environment
+                  variables in the destination deployment spec
+                properties:
+                  containerName:
+                    type: string
+                  name:
+                    type: string
+                  parameter:
+                    type: string
+                required:
+                - name
+                - parameter
+                type: object
+              type: array
+            podIdentity:
+              description: AuthPodIdentity allows users to select the platform native
+                identity mechanism
+              properties:
+                provider:
+                  description: PodIdentityProvider contains the list of providers
+                  type: string
+              required:
+              - provider
+              type: object
+            secretTargetRef:
+              items:
+                description: AuthSecretTargetRef is used to authenticate using a reference
+                  to a secret
+                properties:
+                  key:
+                    type: string
+                  name:
+                    type: string
+                  parameter:
+                    type: string
+                required:
+                - key
+                - name
+                - parameter
+                type: object
+              type: array
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true

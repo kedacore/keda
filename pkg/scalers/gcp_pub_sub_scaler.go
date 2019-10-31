@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -28,6 +28,8 @@ type pubsubMetadata struct {
 	subscriptionName       string
 	credentials            string
 }
+
+var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
 
 // NewPubSubScaler creates a new pubsubScaler
 func NewPubSubScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
@@ -83,7 +85,7 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	size, err := s.GetSubscriptionSize(ctx)
 
 	if err != nil {
-		log.Errorf("error %s", err)
+		gcpPubSubLog.Error(err, "error")
 		return false, err
 	}
 
@@ -119,7 +121,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 	size, err := s.GetSubscriptionSize(ctx)
 
 	if err != nil {
-		log.Errorf("error getting subscription size %s", err)
+		gcpPubSubLog.Error(err, "error getting subscription size")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

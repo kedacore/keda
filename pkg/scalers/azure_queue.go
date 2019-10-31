@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
-	log "github.com/sirupsen/logrus"
 )
 
 // GetAzureQueueLength returns the length of a queue in int
@@ -32,13 +31,14 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 	} else if podIdentity == "azure" {
 		token, err := getAzureADPodIdentityToken()
 		if err != nil {
-			log.Printf("Error fetching token cannot determine queue size %s", err.Error())
+			azureQueueLog.Error(err, "Error fetching token cannot determine queue size")
 			return -1, nil
 		}
 
 		credential = azqueue.NewTokenCredential(token.AccessToken, nil)
 	} else {
 		return -1, fmt.Errorf("Azure queues doesn't support %s pod identity type", podIdentity)
+
 	}
 
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})

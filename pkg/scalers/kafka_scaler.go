@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type kafkaScaler struct {
@@ -35,6 +35,8 @@ const (
 	kafkaMetricType          = "External"
 	defaultKafkaLagThreshold = 10
 )
+
+var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
@@ -101,7 +103,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 
 	for _, partition := range partitions {
 		lag := s.getLagForPartition(partition, offsets)
-		log.Debugf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition)
+		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
 		// Return as soon as a lag was detected for any partition
 		if lag > 0 {
@@ -164,7 +166,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 	consumerOffset := block.Offset
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
-		log.Errorf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition)
+		kafkaLog.Error(err, fmt.Sprintf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition))
 		return 0
 	}
 
@@ -225,7 +227,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		totalLag += lag
 	}
 
-	log.Debugf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.lagThreshold)
+	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.lagThreshold))
 
 	// don't scale out beyond the number of partitions
 	if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
