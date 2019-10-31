@@ -1,0 +1,5 @@
+channels:
+- currentCSV: keda.v0.0.4
+  name: alpha
+defaultChannel: alpha
+packageName: keda

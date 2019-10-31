@@ -63,4 +63,4 @@ rules:
   resources:
   - '*'
   verbs:
-  - list
+  - '*'
