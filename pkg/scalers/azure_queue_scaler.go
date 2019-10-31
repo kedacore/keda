@@ -104,7 +104,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", podAuth)
 	}
 
-	return &meta, "", nil
+	return &meta, podAuth, nil
 }
 
 // GetScaleDecision is a func
