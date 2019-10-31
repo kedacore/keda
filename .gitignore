@@ -341,3 +341,6 @@ config
 
 # VSCode specific files
 .vscode
+
+# GO Vendor
+vendor
