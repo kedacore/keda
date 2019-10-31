@@ -61,6 +61,12 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		meta.targetQueueLength = queueLength
 	}
 
+	if val, ok := metadata["queueName"]; ok && val != "" {
+		meta.queueName = val
+	} else {
+		return nil, "", fmt.Errorf("no queueName given")
+	}
+
 	// before triggerAuthentication CRD, pod identity was configured using this property
 	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" {
 		if val == "true" {
