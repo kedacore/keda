@@ -28,8 +28,11 @@ jobs:
       - name: Build
         run: make build IMAGE_TAG=master
 
+      - name: Login to Docker Hub
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
       - name: Publish
-        run: helm init --client-only && make publish
+        run: make publish
 
       # - name: Publish helm
-      #   run: make publish-edge-chart
+      #   run: helm init --client-only && make publish-edge-chart
