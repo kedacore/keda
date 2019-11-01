@@ -12,11 +12,12 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Go modules cache
-        uses: actions/cache@preview
-        with:
-          path: /go/pkg
-          key: go-cache
+      # Disable cache until https://github.com/actions/cache/issues/12 is fixed
+      # - name: Go modules cache
+      #   uses: actions/cache@preview
+      #   with:
+      #     path: /go/pkg
+      #     key: go-cache
 
       - name: Test
         run: make test
