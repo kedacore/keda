@@ -9,7 +9,7 @@ jobs:
       - checkout
       - run: make test
       - run: make build
-      - run: make publish-edge-chart
+      # - run: make publish-edge-chart
       - store_artifacts:
           path: /tmp/test-reports
       - store_test_results:
