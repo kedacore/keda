@@ -24,19 +24,21 @@ RUN wget https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.t
     rm -rf docker docker-19.03.2.tgz
 
 # Install golang
-RUN wget https://dl.google.com/go/go1.13.linux-amd64.tar.gz && \
-    go_sha256=68a2297eb099d1a76097905a2ce334e3155004ec08cdea85f24527be3c48e856 && \
-    echo "$go_sha256 go1.13.linux-amd64.tar.gz" | sha256sum -c - && \
-    tar -C /usr/local -xvzf go1.13.linux-amd64.tar.gz && \
-    rm -rf go1.13.linux-amd64.tar.gz
+RUN GO_VERSION=1.13.3 && \
+    wget https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
+    go_sha256=0804bf02020dceaa8a7d7275ee79f7a142f1996bfd0c39216ccb405f93f994c0 && \
+    echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
+    tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm -rf go${GO_VERSION}.linux-amd64.tar.gz
 
 # Install helm/tiller
-RUN wget https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz && \
-    helm_sha256=38614a665859c0f01c9c1d84fa9a5027364f936814d1e47839b05327e400bf55 && \
-    echo "$helm_sha256 helm-v2.14.3-linux-amd64.tar.gz" | sha256sum -c - && \
-    tar xzvf helm-v2.14.3-linux-amd64.tar.gz && \
+RUN HELM_VERSION=v2.15.2 && \
+    wget https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
+    helm_sha256=a9d2db920bd4b3d824729bbe1ff3fa57ad27760487581af6e5d3156d1b3c2511 && \
+    echo "$helm_sha256 helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c - && \
+    tar xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin && mv linux-amd64/tiller /usr/local/bin && \
-    rm -rf linux-amd64 helm-v2.14.3-linux-amd64.tar.gz && \
+    rm -rf linux-amd64 helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     helm init --client-only
 
 # Install kubectl
@@ -49,6 +51,16 @@ RUN apt-get update && apt-get install -y apt-transport-https && \
 # Install node
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get install -y nodejs
+
+RUN RELEASE_VERSION=v0.12.0 && \
+    curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
+    curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
+    gpg --keyserver keyserver.ubuntu.com --recv-key 0CF50BEE7E4DF6445E08C0EA9AFDE59E90D2B445 && \
+    gpg --verify operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
+    chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
+    mkdir -p /usr/local/bin/ && \
+    cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && \
+    rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
