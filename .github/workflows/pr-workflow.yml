@@ -12,6 +12,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Go modules cache
+        uses: actions/cache@preview
+        with:
+          path: /go/pkg
+          key: go-cache
+
       - name: Test
         run: make test
 
@@ -19,4 +25,4 @@ jobs:
         run: make build
 
       - name: Build chart
-        run: make build-chart-edge
+        run: helm init --client-only && make build-chart-edge
