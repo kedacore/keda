@@ -1,4 +1,4 @@
-name: Master build
+name: master-build
 on:
   push:
     branches:
@@ -25,9 +25,6 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Build
-        run: make build IMAGE_TAG=master
-
       - name: Login to Docker Hub
         env:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -36,6 +33,5 @@ jobs:
 
       - name: Publish
         run: make publish IMAGE_TAG=master
-
       # - name: Publish helm
       #   run: helm init --client-only && make publish-edge-chart

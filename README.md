@@ -1,6 +1,6 @@
 | Branch | Status |
 |--------|--------|
-| master |[![CircleCI](https://circleci.com/gh/kedacore/keda.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/kedacore/keda)|
+| master |[![Actions Status](https://github.com/kedacore/keda/workflows/build-master/badge.svg)](https://github.com/kedacore/keca/actions)|
 
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>

@@ -1,4 +1,4 @@
-name: Pull request validation
+name: pr-validate
 on: [pull_request]
 jobs:
   validate:
