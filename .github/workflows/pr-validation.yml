@@ -1,8 +1,5 @@
-name: master-build
-on:
-  push:
-    branches:
-      - master
+name: pull request validation
+on: [pull_request]
 jobs:
   validate:
     name: Validate
@@ -25,13 +22,8 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+      - name: Build
+        run: make build
 
-      - name: Publish
-        run: make publish IMAGE_TAG=master
-      # - name: Publish helm
-      #   run: helm init --client-only && make publish-edge-chart
+      - name: Build chart
+        run: helm init --client-only && make build-chart-edge

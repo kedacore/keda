@@ -1,6 +1,5 @@
-| Branch | Status |
-|--------|--------|
-| master |[![Actions Status](https://github.com/kedacore/keda/workflows/build-master/badge.svg)](https://github.com/kedacore/keca/actions)|
+[![](https://github.com/kedacore/keda/workflows/master%20build/badge.svg)](https://github.com/kedacore/keda/actions)
+
 
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
