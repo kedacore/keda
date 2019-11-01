@@ -22,7 +22,7 @@ jobs:
         run: make build IMAGE_TAG=master
 
       - name: Publish
-        run: make publish
+        run: helm init --client-only && make publish
 
-      - name: Publish helm
-        run: make publish-edge-chart
+      # - name: Publish helm
+      #   run: make publish-edge-chart
