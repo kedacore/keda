@@ -1,5 +1,8 @@
-name: pr-validate
-on: [pull_request]
+name: master build
+on:
+  push:
+    branches:
+      - master
 jobs:
   validate:
     name: Validate
@@ -22,8 +25,13 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Build
-        run: make build
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
-      - name: Build chart
-        run: helm init --client-only && make build-chart-edge
+      - name: Publish
+        run: make publish
+      # - name: Publish helm
+      #   run: helm init --client-only && make publish-edge-chart
