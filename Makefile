@@ -63,16 +63,16 @@ build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
 		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT)"
 
-.PHONY: build-adapter 
+.PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) go build \
 		-ldflags "-X=main.GitCommit=$(GIT_COMMIT)" \
 		-o build/_output/bin/keda-adapter \
-		cmd/adapter/main.go 
-	docker build -f build/Dockerfile.adapter -t $(IMAGE_ADAPTER) . 
+		cmd/adapter/main.go
+	docker build -f build/Dockerfile.adapter -t $(IMAGE_ADAPTER) .
 
 .PHONY: generate-api
-generate-api: 
+generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
 	$(GO_BUILD_VARS) operator-sdk generate openapi
 
