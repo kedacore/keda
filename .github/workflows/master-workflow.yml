@@ -1,0 +1,28 @@
+name: Master build
+on:
+  push:
+    branches:
+      - master
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: kedacore/build-tools:latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build IMAGE_TAG=master
+
+      - name: Publish
+        run: make publish
+
+      - name: Publish helm
+        run: make publish-edge-chart

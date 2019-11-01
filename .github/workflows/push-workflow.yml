@@ -1,4 +1,4 @@
-name: Go
+name: Pull request validation
 on: [push]
 jobs:
   validate:
