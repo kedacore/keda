@@ -14,3 +14,9 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Build
+        run: make build
+
+      - name: Build chart
+        run: make build-chart-edge
