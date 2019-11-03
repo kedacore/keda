@@ -343,4 +343,4 @@ config
 .vscode
 
 # GO Vendor
-vendor
+vendor/
