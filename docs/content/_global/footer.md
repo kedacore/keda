@@ -1,11 +1,8 @@
 +++
 fragment = "footer"
-#disabled = true
 date = "2016-09-07"
 weight = 1200
-#background = ""
-
-menu_title = "Link Title"
+menu_title = "Learn More"
 
 [asset]
   title = "KEDA"

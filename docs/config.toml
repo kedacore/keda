@@ -26,10 +26,8 @@ lastmod = ["lastmod", ":git", "date"]
   # Theme customizations
   # Assets relative to 'static/'
   [params.custom]
-    favicon = "favicon.ico"
+    favicon = "images/favicon.ico"
     favicon_ico_sizes = "16x16 32x32"
-    favicon_png = "favicon.png"
-    favicon_svg = "favicon.svg"
 
   # Piwik tracking
   [params.analytics.piwik]
@@ -64,24 +62,44 @@ lastmod = ["lastmod", ":git", "date"]
   weight = 10
 
 [[menu.main]]
-  url = "/architecture"
-  name = "Architecture"
+  url = "/getting-started"
+  name = "Getting Started"
   weight = 20
 
+[[menu.main]]
+  url = "/deploy"
+  name = "Deploying KEDA"
+  weight = 30
+
+[[menu.main]]
+  url = "/architecture"
+  name = "Architecture"
+  weight = 40
+
+[[menu.main]]
+  url = "/faq"
+  name = "FAQ"
+  weight = 50
+
 [[menu.footer]]
-  url = "#"
-  name = "Link"
+  url = "/getting-started"
+  name = "Getting Started"
   weight = 10
 
 [[menu.footer]]
-  url = "#"
-  name = "Long Link"
+  url = "/deploy"
+  name = "Deploying KEDA"
+  weight = 20
+
+[[menu.footer]]
+  url = "/architecture"
+  name = "Architecture"
   weight = 30
 
 [[menu.footer]]
-  url = "#"
-  name = "Tiny Link"
-  weight = 30
+  url = "/faq"
+  name = "FAQ"
+  weight = 40
 
 [[menu.copyright_footer]]
   url = "https://github.com/kedacore/keda"
