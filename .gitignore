@@ -343,4 +343,5 @@ config
 .vscode
 
 # GO Vendor
-vendor/
+vendor
+!docs/themes/syna/assets/styles/bootstrap/vendor
