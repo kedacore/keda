@@ -1,0 +1,216 @@
+.nav-link {
+  color: $navbar-light-color;
+
+  @include hover-focus {
+    color: $navbar-light-hover-color;
+  }
+
+  &.disabled {
+    color: $navbar-light-disabled-color;
+  }
+}
+
+.fragment {
+  &.bg-primary,
+  .bg-primary {
+    a:not(.nav-link):not(.ignore-color-change) {
+      color: $light;
+
+      @include hover {
+        color: darken($light, 15%);
+      }
+    }
+  }
+
+  &.bg-dark,
+  .bg-dark {
+    .nav-link {
+      color: $navbar-dark-color;
+
+      @include hover-focus {
+        color: $navbar-dark-hover-color;
+      }
+
+      &.disabled {
+        color: $navbar-dark-disabled-color;
+      }
+    }
+  }
+}
+
+.fragment {
+  &.bg-dark,
+  .bg-dark {
+    a:not(.ignore-color-change) {
+      @include hover {
+        color: darken($light, 15%);
+      }
+    }
+  }
+}
+
+.jumbotron {
+  border-radius: 0rem !important;
+}
+
+.overlay {
+  position: relative;
+  z-index: 100;
+}
+
+.scroll-to-top {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 999;
+}
+
+.scroll-to-top.has-font-icon {
+  font-size: 24px;
+}
+
+.scroll-to-top.d-none {
+  display: flex !important;
+  visibility: hidden;
+  opacity: 0;
+}
+
+[data-portal] {
+  padding-bottom: 1px;
+  box-sizing: border-box;
+}
+
+article .content {
+  img {
+    max-width: 100%;
+  }
+}
+
+.content-sidebar {
+  word-break: break-word;
+  overflow-y: auto;
+}
+
+.items {
+  .header {
+    flex: 0 1 160px;
+  }
+
+  .image {
+    flex: 1;
+
+    a {
+      display: contents;
+    }
+  }
+}
+
+pre {
+  padding: 0.75rem;
+}
+
+section .bg {
+  @each $bg in dark, secondary {
+    &-#{$bg} {
+      code,
+      pre {
+        background-color: $light;
+        color: $dark;
+      }
+
+      p code {
+        padding: 3px 4px 2px;
+      }
+    }
+  }
+
+  @each $bg in white, primary, success, info, warning, danger, light {
+    &-#{$bg} {
+      code,
+      pre {
+        background-color: $dark;
+        color: $light;
+      }
+
+      p code {
+        padding: 3px 4px 2px;
+      }
+    }
+  }
+}
+
+.faq,
+.list {
+  .collapse {
+    display: block;
+    height: auto;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.6s ease-out;
+
+    &.show {
+      max-height: 1000px;
+      transition: all 0.6s ease-in;
+    }
+  }
+}
+
+.badge-container {
+  top: 8px;
+  left: 8px;
+  display: flex;
+  width: calc(100% - 16px);
+
+  .badge {
+    margin-right: 8px;
+    transition: $transition-base;
+
+    [class*="fa-"] {
+      margin-right: 2px;
+    }
+  }
+}
+
+.btn-group-toggle label.btn {
+  position: relative;
+
+  input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+  }
+}
+
+.currency {
+  &-change {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  &-change,
+  &-menu {
+    min-width: 4.5rem;
+    width: 4.5rem;
+  }
+}
+
+#TableOfContents a.active,
+.active-page {
+  font-weight: bold;
+}

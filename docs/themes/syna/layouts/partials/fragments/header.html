@@ -1,0 +1,8 @@
+{{- $self := .self -}}
+{{- $align := .Params.align | default "center" -}}
+{{- $subtitle_align := .Params.subtitle_align | default $align -}}
+{{- $bg := $self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) -}}
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

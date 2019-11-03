@@ -1,0 +1,83 @@
+# General
+- id: attribution
+  translation: "Site web conçu à partir de"
+- id: fr
+  translation: "Français"
+
+# Content
+- id: content.readmore
+  translation: "Continuer…"
+
+# Contact Form
+- id: contact.defaultNameError
+  translation: "Veuillez saisir votre nom"
+- id: contact.defaultEmailError
+  translation: "Veuillez saisir votre adresse électronique"
+- id: contact.defaultPhoneError
+  translation: "Veuillez saisir votre numéro de téléphone"
+- id: contact.defaultMessageError
+  translation: "Veuillez saisir un message"
+- id: contact.defaultGenericSuccess
+  translation: "Merci de nous avoir contacté !"
+- id: contact.defaultGenericError
+  translation: "Le message n'a pas été envoyé. Veuillez nous écrire à"
+- id: contact.defaultJsError
+  translation: "Le message ne peut pas être envoyé si JavaScript est désactivé. Veuillez nous écrire à"
+- id: contact.defaultCaptchaError
+  translation: "Le message n'a pas été envoyé, car le CAPTCHA n'est pas chargé. Veuillez nous écrire à"
+- id: contact.defaultButton
+  translation: "Envoyer le message"
+
+# Footer
+- id: footerLegal.copyright
+  translation: "© Tous droits réservés"
+- id: footerLegal.by
+  translation: "par "
+
+# 404
+- id: 404.title
+  translation: "Page introuvable"
+- id: 404.subtitle
+  translation: "La page demandée est introuvable"
+- id: 404.direction
+  translation: "Vous pouvez retourner vers notre page d’accueil"
+- id: 404.button
+  translation: "Accueil"
+  
+# Member
+- id: member.livesIn
+  translation: "Vie à"
+- id: member.reportsTo
+  translation: "Subordonné⋅e de"
+
+# Navbar
+- id: navbar.search
+  translation: "Rechercher…"
+- id: navbar.github
+  translation: "Github"
+- id: navbar.back_to_top
+  translation: "Revenir au début"
+
+# Search
+- id: search.search
+  translation: "Rechercher"
+
+# Stripe
+- id: stripe.pay
+  translation: "Payer"
+- id: stripe.return
+  translation: "Return"
+- id: stripe.email
+  translation: "Votre adresse électronique"
+- id: stripe.pricePlaceholder
+  translation: "Saisissez la somme"
+- id: stripe.customPriceError
+  translation: "Le prix doit être aux formats suivant : 20, 20.00 ou 20,00"
+- id: stripe.defaultGenericSuccess
+  translation: "Le paiement a été effectué avec succès. Merci."
+- id: stripe.defaultGenericError
+  translation: "Une erreur s’est produite. Veuillez recommencer dans quelques minutes."
+- id: stripe.change_price
+  translation: "Modifier la somme"
+- id: stripe.change_currency
+  translation: "Modifier la monnaie"

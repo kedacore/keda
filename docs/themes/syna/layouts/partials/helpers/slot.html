@@ -1,0 +1,26 @@
+{{- $slot := .slot -}}
+{{- $slot_name := printf "%s/%s" .root.self.File.BaseFileName $slot -}}
+{{- $nested_level := .root.nested_level | default 0 -}}
+{{- $page_scratch := .root.page_scratch -}}
+{{- $root := .root -}}
+
+{{- $page_scratch.Set $slot_name (slice) -}}
+{{- range ($page_scratch.Get "page_fragments") -}}
+  {{- if and (not .Params.disabled) (isset .Params "fragment") (eq .Params.slot $slot_name) -}}
+    {{- $page_scratch.Add $slot_name . -}}
+  {{- end -}}
+{{- end -}}
+
+{{ $page_scratch.Add "page_slots" (dict "slot" $slot_name "fragments" ($page_scratch.Get $slot_name)) }}
+{{- if lt $nested_level 2 -}}
+  {{- range sort ($page_scratch.Get $slot_name) "Params.weight" -}}
+    {{/* Cleanup .Name to be more useful within fragments */}}
+    {{- $name := cond (eq $.root.page .) .File.BaseFileName (strings.TrimSuffix ".md" (replace .Name "/index.md" "")) -}}
+    {{- $bg := .Params.background | default "light" -}}
+    {{- .Scratch.Set "bg" $bg -}}
+
+    {{- $file_path := strings.TrimSuffix ".md" (replace .File.Path "/index.md" "") -}}
+    {{- $context := dict "page_scratch" $page_scratch "root" $root.root "Site" $root.Site "page" $root.page "resources" $root.resources "self" . "Params" .Params "Name" $name "file_path" $file_path "nested_level" (add $nested_level 1) "in_slot" true "data" ($.data | default (dict)) -}}
+    {{- partial (print "fragments/" (strings.TrimPrefix (printf "%s/%s:" $.root.self.File.BaseFileName $slot) .Params.fragment) ".html") $context -}}
+  {{- end -}}
+{{- end -}}

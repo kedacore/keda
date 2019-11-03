@@ -1,0 +1,36 @@
+<html lang="{{ .Site.LanguageCode | default (printf "en-us") }}">
+  {{ block "main" . -}}
+    <!-- The part of the page that begins to differ between templates -->
+  {{ end }}
+  {{- partial "head.html" . }}
+  {{- $bg := .Site.Params.style.background | default "secondary" -}}
+
+  <body class="{{ printf "bg-%s" $bg }}">
+    {{ partial "helpers/fragments-renderer.html" (dict "page_scratch" .Scratch) -}}
+
+    <div id="react"></div>
+    <div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header row mx-0">
+              <div class="modal-title col px-0">
+                <h5 class="title text-dark"></h5>
+                <h6 class="subtitle text-secondary"></h6>
+              </div>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <img src="" alt="" class="img-fluid">
+            <div class="modal-body p-3">
+              <div class="badge-container"></div>
+              <div class="content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{ partial "js.html" . }}
+  </body>
+</html>

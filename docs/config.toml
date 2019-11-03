@@ -1,0 +1,89 @@
+# Site settings
+baseurl = "/"
+languageCode = "en-us"
+title = "Kubernetes event-driven Autoscaling (KEDA)"
+theme = "syna"
+enableGitInfo = true
+version = "0.15.2"
+
+# Google Analytics tracking
+googleAnalytics = ""
+
+[outputs]
+  home = ["HTML", "JSON"]
+
+[frontmatter]
+date = ["date", "lastmod"]
+lastmod = ["lastmod", ":git", "date"]
+
+[params]
+  name = "KEDA"
+  description = "Kubernetes Event-driven Autoscaling"
+
+  [params.style]
+    #background = "secondary"
+
+  # Theme customizations
+  # Assets relative to 'static/'
+  [params.custom]
+    favicon = "favicon.ico"
+    favicon_ico_sizes = "16x16 32x32"
+    favicon_png = "favicon.png"
+    favicon_svg = "favicon.svg"
+
+  # Piwik tracking
+  [params.analytics.piwik]
+    #url = ""
+    #id = ""
+    #domain = "" # Track subdomains via "*.example.com"
+    # Optional hash for integrity check
+    #hash = "sha512-RfeD0pacGTqy9m7U6PgehQfS4cc7SIt+e+P+H5e848kEvB/RW84CUGO3O4O3LNbxjevym6KPUZ8muPsMrI8WIw=="
+
+  # Optional, global disable switch for fontawesome related files
+  # For custom fontawesome js files use the custom.js method
+  [params.fontawesome]
+    disabled = false
+    pro = false
+
+  [params.colors]
+    primary = "#00838F"
+    secondary = "#868e96"
+    success = "#008f54"
+    info = "#00c9dc"
+    warning = "#fdf314"
+    danger = "#dc1200"
+    light = "#f8f9fa"
+    dark = "#343a40"
+
+# main/prepend/postpend menus are displayed in nav fragment.
+# Keep an eye out for updates. These will be moved out to make navbar more
+# configurable.
+[[menu.main]]
+  url = "/"
+  name = "Home"
+  weight = 10
+
+[[menu.main]]
+  url = "/architecture"
+  name = "Architecture"
+  weight = 20
+
+[[menu.footer]]
+  url = "#"
+  name = "Link"
+  weight = 10
+
+[[menu.footer]]
+  url = "#"
+  name = "Long Link"
+  weight = 30
+
+[[menu.footer]]
+  url = "#"
+  name = "Tiny Link"
+  weight = 30
+
+[[menu.copyright_footer]]
+  url = "https://github.com/kedacore/keda"
+  name = "GitHub"
+  weight = 10

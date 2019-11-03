@@ -1,0 +1,51 @@
+body.modal-open {
+  padding-right: 15px;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  background-color: rgba(darken($primary, 25%), 0.8);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: $transition-base;
+
+  &-header {
+    button:focus {
+      outline: none;
+    }
+  }
+
+  &-dialog {
+    box-shadow: 2px 2px 6px rgba($dark, 0.4);
+    width: 400px;
+    transition: $transition-base;
+
+    &.md {
+      width: 600px;
+    }
+
+    &.lg {
+      width: 800px;
+    }
+  }
+
+  .badge-container {
+    color: $light;
+    margin-bottom: 1rem;
+  }
+
+  &:not(.show) {
+    opacity: 0;
+    visibility: hidden;
+
+    &.modal-dialog {
+      transform: translateY(-64px);
+    }
+  }
+}

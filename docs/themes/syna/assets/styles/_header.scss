@@ -1,0 +1,53 @@
+.header-image {
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  background-position: bottom center;
+  background-size: cover;
+  border-radius: 0rem;
+}
+
+nav[role="navigation"] {
+  z-index: 1000 !important;
+}
+
+.hero {
+  position: relative;
+
+  .jumbotron {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .particles-js {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .search-results-container {
+    &.show {
+      display: none;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .navbar-collapse {
+    max-height: 0px;
+    transition: max-height 0.5s cubic-bezier(0, 1, 0, 1);
+    overflow: hidden;
+    display: block;
+  }
+
+  .navbar-collapse.in {
+    max-height: 65em;
+    transition: max-height 1s ease-in-out;
+  }
+}

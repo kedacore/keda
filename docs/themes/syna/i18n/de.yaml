@@ -1,0 +1,47 @@
+# General
+- id: attribution
+  translation: "Webseite basiert auf"
+- id: de
+  translation: "deutsch"
+
+# Contact Form
+- id: contact.defaultNameError
+  translation: "Bitte geben Sie Ihre Namen ein"
+- id: contact.defaultEmailError
+  translation: "Bitte geben Sie Ihre eMail ein"
+- id: contact.defaultPhoneError
+  translation: "Bitte geben Sie Ihre Telefonnummer ein"
+- id: contact.defaultMessageError
+  translation: "Bitte geben Sie Ihre Nachricht ein"
+- id: contact.defaultGenericSuccess
+  translation: "Vielen Dank für Ihre Nachricht."
+- id: contact.defaultGenericError
+  translation: "Nachricht konnte nicht gesendet werden. Bitte kontaktieren Sie uns unter"
+- id: contact.defaultJsError
+  translation: "Nachricht konnte nicht gesendet werden, da Javascript ausgeschaltet ist. Bitte kontaktieren Sie uns unter"
+- id: contact.defaultCaptchaError
+  translation: "Nachricht konnte nicht gesendet werden, da das Captcha nicht geladen werden konnte. Bitte kontaktieren Sie uns unter"
+- id: contact.defaultButton
+  translation: "Nachricht senden"
+
+# Footer
+- id: footerLegal.copyright
+  translation: "© Copyright"
+- id: footerLegal.by
+  translation: "von "
+
+# 404
+- id: 404.title
+  translation: "Seite nicht gefunden"
+- id: 404.subtitle
+  translation: "Die angeforderte Seite konnte nicht gefunden werden"
+- id: 404.direction
+  translation: "Sie können jederzeit zu unserer Hauptseite zurückkehren"
+- id: 404.button
+  translation: "Hauptseite"
+
+# Member
+- id: member.livesIn
+  translation: "Lebt in"
+- id: member.reportsTo
+  translation: "Berichtet an"

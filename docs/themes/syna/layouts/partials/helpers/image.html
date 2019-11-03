@@ -1,0 +1,53 @@
+{{- $page := .root.page -}}
+{{- $fragment_path := .root.file_path -}}
+
+{{- if ne .this nil -}}
+  {{- $page = .root.Site.GetPage "page" (printf "/%s" (path.Dir (path.Dir .this.File.Dir))) -}}
+  {{- $fragment_path = strings.TrimSuffix ".md" (replace (path.Dir .this.File.Path) "/index.md" "") -}}
+{{- end -}}
+{{/* Global resource fallback */}}
+{{- $image := .asset.image -}}
+
+{{/* A resource is an asset file that is located in the fragment or page
+  directory while other assets are located in the static/ directory. We can only
+  manipulate resources and we can't run any functions on the static assets.
+  The following variable will be set to true if we can find the asset outside
+  static/ directory and will later be used to resize the image. */}}
+{{- .root.page_scratch.Set "resource" nil -}}
+
+{{/* static/images directory */}}
+{{- .root.page_scratch.Set "image" (printf "images/%s" $image) -}}
+
+{{/* Page specific resource */}}
+{{- if $page -}}
+  {{- $location := (printf "%s/%s" $page.File.Dir $image) -}}
+  {{- if (fileExists (printf "content/%s" $location)) -}}
+    {{- .root.page_scratch.Set "resource" ($page.Resources.GetMatch $image) -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Fragment specific resource */}}
+{{- $location := (printf "%s/%s" $fragment_path $image) -}}
+{{- if (fileExists (printf "content/%s" $location)) -}}
+  {{- .root.page_scratch.Set "resource" ($page.Resources.GetMatch (strings.TrimPrefix $page.File.Dir $location)) -}}
+{{- end -}}
+
+{{- if eq (.root.page_scratch.Get "resource") nil -}}
+  {{- if eq .absolute true -}}
+    {{- .root.page_scratch.Get "image" | absURL -}}
+  {{- else -}}
+    {{- .root.page_scratch.Get "image" | relLangURL -}}
+  {{- end -}}
+{{- else -}}
+  {{- if isset . "resize" -}}
+    {{- if ne (.root.page_scratch.Get "resource").MediaType.SubType "svg" -}}
+      {{- .root.page_scratch.Set "resource" ((.root.page_scratch.Get "resource").Fill .resize) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if eq .absolute true -}}
+    {{- (.root.page_scratch.Get "resource").Permalink -}}
+  {{- else -}}
+    {{- (.root.page_scratch.Get "resource").RelPermalink -}}
+  {{- end -}}
+{{- end -}}

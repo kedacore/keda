@@ -1,0 +1,16 @@
+{{- $self := .self -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+  <div class="row text-center justify-content-center">
+    {{- range .Params.buttons }}
+      <a class="btn btn-lg m-2{{ if hasPrefix .url "#" }} anchor{{ end }}
+        {{- $color := .color | default "primary" -}}
+        {{- printf " btn-%s" $color -}}
+      " href="{{ .url | relLangURL }}">
+        {{- .text -}}
+      </a>
+    {{- end }}
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

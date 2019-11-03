@@ -1,0 +1,186 @@
+{{- $self := . -}}
+{{- .page_scratch.Add "js" (dict "file" "syna-collapse.js") -}}
+
+{{/* Sets page to either the given frontmatter section variable, current
+  parent section or if the current page is a section, the current page */}}
+{{- .page_scratch.Set "page" (.Site.GetPage "Section" (.Params.section | default .root.Section)) -}}
+{{- if .root.CurrentSection -}}
+  {{- if and (not .Params.section) (eq .root.CurrentSection.Kind "section") -}}
+    {{- .page_scratch.Set "page" .root.CurrentSection -}}
+  {{- end -}}
+{{- end -}}
+
+{{- .page_scratch.Set "pages" (.page_scratch.Get "page").Pages -}}
+{{- if .Params.subsections -}}
+  {{- .page_scratch.Add "pages" (.page_scratch.Get "page").Sections -}}
+{{- end -}}
+{{- if .Params.subsection_leaves -}}
+  {{- range (.page_scratch.Get "page").Sections -}}
+    {{- $self.page_scratch.Add "pages" .Pages -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Pagination is used if paginate (default value is 10) is more than
+  frontmatter count variable */}}
+{{- $renderPagination := and (in (slice "section" "home") .root.Kind) (or (not (isset .Params "count")) (le .Params.count 0)) -}}
+{{- if $renderPagination -}}
+  {{- $paginator := .root.Paginate ($self.page_scratch.Get "pages") -}}
+  {{- .page_scratch.Set "pages" $paginator.Pages -}}
+  {{- .page_scratch.Set "paginator" $paginator -}}
+{{- end -}}
+
+{{- $filtered_pages := (partial "helpers/filter-special-pages.html" (dict "pages" (.page_scratch.Get "pages") "page_scratch" .page_scratch)) -}}
+{{- $sorted_pages := (sort $filtered_pages (.Params.sort | default "PublishDate") (.Params.sort_order | default "asc")) -}}
+
+{{- $bg := .self.Scratch.Get "bg" }}
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self.self "bg" $bg "params" .Params) }}
+  <div class="row mx-0
+    {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+  ">
+    {{- range first (.Params.count | default 10) $sorted_pages -}}
+      {{- $page := . -}}
+      {{- $self.page_scratch.Set "article_page_fragments" (slice .) -}}
+      {{- range .Resources.ByType "page" -}}
+        {{- $self.page_scratch.Add "article_page_fragments" . -}}
+      {{- end -}}
+      {{- $content_page := first 1 (where ($self.page_scratch.Get "article_page_fragments") "Params.fragment" "in" "content") -}}
+      {{- $page_id := index (last 1 (findRE "[^\\/]+" .File.Dir)) 0 -}}
+      {{- $display_summary := or (not (isset $self.Params "summary")) (eq $self.Params.summary true) -}}
+      {{- $slot_context := dict "page" $page "content_fragment" (index $content_page 0) -}}
+      {{- partial "helpers/slot.html" (dict "root" $ "slot" "before-item" "data" $slot_context) -}}
+      {{- if $self.Params.tiled -}}
+        <div class="col-lg-6 col-12 mb-2 d-flex">
+      {{- end -}}
+        <article
+          {{- if $self.Params.collapsible -}}
+            {{- safeHTMLAttr (printf " id=\"list-page-%s\"" (anchorize $page_id)) -}}
+          {{- end }}
+          class="
+            {{- if $self.Params.tiled -}}
+              {{- print "card w-100" -}}
+            {{- else -}}
+              {{- printf "col-12 px-0 mb-%s" (cond $display_summary "4" "2") -}}
+            {{- end -}}
+          ">
+          {{- if $self.Params.tiled }}
+            <div class="card-body">
+          {{- end -}}
+            {{- if .Params.title -}}
+              {{- if $self.Params.tiled }}
+                <div class="card-title">
+              {{- end }}
+                <div class="col-12 pl-0
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+                ">
+                  <div
+                    {{- if $self.Params.collapsible -}}
+                      {{- safeHTMLAttr (print " data-toggle=\"collapse\"") -}}
+                      {{- safeHTMLAttr (printf " data-target=\"#list-page-%s .collapse\"" (anchorize $page_id)) -}}
+                      {{- safeHTMLAttr (printf " data-add-collapse=\"#list-page-%s .article-title\"" (anchorize $page_id)) -}}
+                    {{- end }}
+                    class="row align-items-center justify-content-between mx-0 article-title">
+                    {{- if $display_summary }}
+                      <h4 class="col px-0 m-0
+                        {{- if eq $.page.Permalink .Permalink }} active-page {{- end -}}
+                      ">
+                        <a href="{{ .Permalink }}">
+                          {{- .Params.title | markdownify -}}
+                        </a>
+                      </h4>
+                    {{- else }}
+                      <h5 class="col px-0 m-0
+                        {{- if eq $.page.Permalink .Permalink }} active-page {{- end -}}
+                      ">
+                        <a href="{{ .Permalink }}">
+                          {{- .Params.title | markdownify -}}
+                        </a>
+                      </h5>
+                    {{- end -}}
+                    {{- if and (not $self.Params.tiled) $self.Params.display_date }}
+                      {{- range $content_page -}}
+                        {{- partial "helpers/publish-date.html" (dict "root" . "background" $bg "badge" false) -}}
+                      {{- end -}}
+                    {{- end }}
+                  </div>
+                </div>
+                {{- if or (and $self.Params.tiled $self.Params.display_date) (and (ne $self.Params.display_categories false) .Params.categories) -}}
+                  <div class="col-12 pb-1 px-0">
+                    {{- if and $self.Params.tiled $self.Params.display_date -}}
+                      {{- range $content_page -}}
+                        {{- partial "helpers/publish-date.html" (dict "root" . "background" $bg) -}}
+                      {{- end -}}
+                    {{- end }}
+                    {{- if ne $self.Params.display_categories false -}}
+                      {{- with .Params.categories }}
+                        {{- partial "helpers/categories.html" (dict "categories" . "background" $bg) -}}
+                      {{- end -}}
+                    {{- end }}
+                  </div>
+                {{- end }}
+              {{- if $self.Params.tiled }}
+                </div>
+              {{- end -}}
+            {{- end -}}
+            {{- if $self.Params.collapsible -}}
+              <div class="collapse {{- if eq $.page.Permalink .Permalink }} show {{- end }}">
+            {{- end -}}
+              {{- range $content_page }}
+                {{- if and (ne $self.Params.images false) .Params.asset -}}
+                  {{- $file_path := strings.TrimSuffix ".md" (replace .File.Path "/index.md" "") -}}
+                  {{- $page_scratch := $.page_scratch -}}
+                  {{- $root := (dict "page" (dict "file_path" $file_path) "page_scratch" $page_scratch "page" $page) }}
+                  <div class="col-12
+                    {{- printf " p%s-0" (cond (eq $self.Params.tiled true) "x" "l") -}}
+                  ">
+                    <img
+                      src="{{ partial "helpers/image.html" (dict "root" $root "asset" .Params.asset) }}"
+                      alt="{{ .Params.subtitle | default .Params.title }}"
+                      class="img-fluid mb-4">
+                  </div>
+                {{- end -}}
+              {{- end -}}
+              {{- if $display_summary }}
+                <div class="col-12 pl-0
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+                ">
+                  {{- range $content_page }}
+                    {{ cond (isset .Params "summary") (.Params.summary | markdownify) .Summary }}
+                    {{- if and (not $self.Params.tiled) (ne $self.Params.read_more false) -}}
+                      {{- if or $self.Params.read_more .Truncated }}
+                        <a class="badge 
+                          {{- if or (eq $bg "secondary") (eq $bg "primary") -}}
+                            {{- printf " badge-%s" "dark" -}}
+                          {{- else -}}
+                            {{- printf " badge-%s" "secondary" -}}
+                          {{- end -}}
+                        " href="{{ .Permalink }}">{{ i18n "content.readmore" | default "Read more..." }}</a>
+                      {{- end -}}
+                    {{- end -}}
+                  {{- end -}}
+                </div>
+              {{- end -}}
+              {{- partial "helpers/slot.html" (dict "root" $ "slot" "after-item" "data" $slot_context) -}}
+            {{- if $self.Params.collapsible -}}
+              </div>
+            {{- end -}}
+          {{- if $self.Params.tiled }}
+            </div>
+            {{- range $content_page }}
+              {{- if and (ne $self.Params.read_more false) (or $self.Params.read_more .Truncated) }}
+                <div class="card-footer">
+                  <a href="{{ .Permalink }}">{{ i18n "content.readmore" | default "Read more..." }}</a>
+                </div>
+              {{- end -}}
+            {{- end -}}
+          {{- end }}
+        </article>
+      {{- if $self.Params.tiled }}
+        </div>
+      {{- end -}}
+    {{- end }}
+  </div>
+  {{- if $renderPagination -}}
+    {{- partial "helpers/pagination.html" (dict "paginator" .root.Paginator "page_scratch" .page_scratch) -}}
+  {{- end }}
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

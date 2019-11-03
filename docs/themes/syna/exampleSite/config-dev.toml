@@ -1,0 +1,107 @@
+# Site settings
+baseurl = "/"
+languageCode = "en-us"
+languageLang = "en"
+title = "Okkur - Syna"
+theme = "syna"
+themesDir = "../.."
+enableGitInfo = true
+version = "0.15.2"
+disableKinds = ["RSS", "taxonomy", "taxonomyTerm"]
+
+# Google Analytics tracking
+googleAnalytics = ""
+
+[outputs]
+  home = ["HTML", "JSON"]
+
+[frontmatter]
+date = ["date", "lastmod"]
+lastmod = ["lastmod", ":git", "date"]
+
+[params]
+  name = "Okkur Labs"
+  description = "Open Source Theme for your next project"
+  debug = true
+  unsafeEvents = true # Default is false. Enables ?event=type format of url events.
+
+  [params.style]
+    #background = "secondary"
+
+  # Theme customizations
+  # Assets relative to 'static/'
+  [params.custom]
+    favicon = "favicon.ico"
+    favicon_ico_sizes = "16x16 32x32"
+    favicon_png = "favicon.png"
+    favicon_svg = "favicon.svg"
+
+  # Piwik tracking
+  [params.analytics.piwik]
+    #url = "https://use.example.net"
+    #id = ""
+    #domain = "*" # Track subdomains via "*.example.com"
+    # Optional hash for integrity check
+    #hash = "sha512-RfeD0pacGTqy9m7U6PgehQfS4cc7SIt+e+P+H5e848kEvB/RW84CUGO3O4O3LNbxjevym6KPUZ8muPsMrI8WIw=="
+
+  # Optional, global disable switch for fontawesome related files
+  # For custom fontawesome js files use the custom.js method
+  [params.fontawesome]
+    disabled = false
+    pro = false
+
+  [params.colors]
+    primary = "#00838F"
+    secondary = "#868e96"
+    success = "#008f54"
+    info = "#00c9dc"
+    warning = "#fdf314"
+    danger = "#dc1200"
+    light = "#f8f9fa"
+    dark = "#343a40"
+
+# main/prepend/postpend menus are displayed in nav fragment.
+# footer/footer_social menus are displayed in footer fragment.
+# copyright_footer menus are displayed in copyright fragment
+# Keep an eye out for updates. These will be moved out to make navbar more
+# configurable.
+[[menu.main]]
+  url = "/"
+  name = "Home"
+  weight = 10
+
+[[menu.main]]
+  url = "/fragments"
+  name = "Fragments"
+  weight = 20
+
+[[menu.main]]
+  url = "/docs"
+  name = "Docs"
+  weight = 30
+
+[[menu.main]]
+  url = "/about"
+  name = "About"
+  weight = 40
+
+[[menu.footer]]
+  url = "https://syna.okkur.org/demo"
+  name = "Getting Started"
+  weight = 10
+
+[[menu.footer]]
+  url = "https://about.okkur.org/"
+  name = "About Okkur Labs"
+  weight = 20
+
+[[menu.footer_social]]
+  weight = 30
+  name = "github"
+  url = "https://git.okkur.org/syna"
+  pre = "fab fa-github fa-stack-2x"
+
+[[menu.copyright_footer]]
+  url = "/about"
+  name = "About Us"
+  weight = 10

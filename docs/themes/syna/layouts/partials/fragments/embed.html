@@ -1,0 +1,26 @@
+{{- $self := .self -}}
+{{- $ratio := .Params.ratio | default "4by3" -}}
+{{- $size := .Params.size | default "75" -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+  <div class="row justify-content-center">
+    {{- if eq .Params.responsive false }}
+      <div class="{{- printf "w-%s" $size -}}">
+        {{- .Params.media | safeHTML -}}
+      </div>
+    {{- else }}
+      <div class="embed-responsive
+        {{- printf " embed-responsive-%s" $ratio -}}
+        {{- printf " h-%s w-%s" $size $size -}}
+      ">
+        {{- if .Params.media }}
+          {{- .Params.media | safeHTML -}}
+        {{- else }}
+          <iframe class="embed-responsive-item" src="{{ .Params.media_source }}" allowfullscreen></iframe>
+        {{- end }}
+      </div>
+    {{- end }}
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

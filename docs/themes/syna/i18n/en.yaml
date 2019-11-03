@@ -1,0 +1,83 @@
+# General
+- id: attribution
+  translation: "Website based on"
+- id: en
+  translation: "English"
+
+# Content
+- id: content.readmore
+  translation: "Read more..."
+
+# Contact Form
+- id: contact.defaultNameError
+  translation: "Please enter your name"
+- id: contact.defaultEmailError
+  translation: "Please enter your email address"
+- id: contact.defaultPhoneError
+  translation: "Please enter your phone number"
+- id: contact.defaultMessageError
+  translation: "Please enter a message"
+- id: contact.defaultGenericSuccess
+  translation: "Thank you for contacting us"
+- id: contact.defaultGenericError
+  translation: "Message could not be send. Please contact us at"
+- id: contact.defaultJsError
+  translation: "Message can not be send with javascript disabled. Please contact us at"
+- id: contact.defaultCaptchaError
+  translation: "Message could not be send due to captcha not loadable. Please contact us at"
+- id: contact.defaultButton
+  translation: "Send Message"
+
+# Footer
+- id: footerLegal.copyright
+  translation: "© Copyright"
+- id: footerLegal.by
+  translation: "by "
+
+# 404
+- id: 404.title
+  translation: "Page not found"
+- id: 404.subtitle
+  translation: "Requested page could not be found"
+- id: 404.direction
+  translation: "You can always go back to our main page"
+- id: 404.button
+  translation: "Main page"
+  
+# Member
+- id: member.livesIn
+  translation: "Lives in"
+- id: member.reportsTo
+  translation: "Reports to"
+
+# Navbar
+- id: navbar.search
+  translation: "Search..."
+- id: navbar.github
+  translation: "Github"
+- id: navbar.back_to_top
+  translation: "Back to top"
+
+# Search
+- id: search.search
+  translation: "Search"
+
+# Stripe
+- id: stripe.pay
+  translation: "Pay"
+- id: stripe.return
+  translation: "Return"
+- id: stripe.email
+  translation: "Your email address"
+- id: stripe.pricePlaceholder
+  translation: "Enter your custom price"
+- id: stripe.customPriceError
+  translation: "Price should be in the following formats: 20, 20.00, 20,00"
+- id: stripe.defaultGenericSuccess
+  translation: "Payment was successful. Thank you."
+- id: stripe.defaultGenericError
+  translation: "Something happened. Please try again in a few minutes."
+- id: stripe.change_price
+  translation: "Change Price"
+- id: stripe.change_currency
+  translation: "Change Currency"

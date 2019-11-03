@@ -1,0 +1,63 @@
+{{- $root := .root -}}
+{{- $self := .self -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{ "<!-- Copyright -->" | safeHTML }}
+<footer class="overlay fragment container-fluid
+  {{- printf " bg-%s" $bg -}}
+" id="{{ .Name }}">
+  <div class="container">
+    <div class="row py-3">
+      <div class="col-md">
+        <div class="row mx-0 my-2 justify-content-center text-center text-lg-none
+          {{- partial "helpers/text-color.html" (dict "self" $self "light" "white" "dark" "black-50") -}}
+        ">
+          <div class="row mx-0 mr-lg-auto justify-content-center">
+            {{- with .Params.copyright }}
+              <div class="col-auto">
+                {{- . | markdownify -}}
+              </div>
+            {{- else }}
+              <div class="col-auto px-1">
+                {{- i18n "footerLegal.copyright" -}} &nbsp;{{ now.Format "2006" -}}
+              </div>
+              <div class="col-auto px-0">
+                {{- printf " %s %s" (i18n "footerLegal.by") $root.Site.Params.name -}}
+              </div>
+            {{- end }}
+          </div>
+        </div>
+      </div>
+      {{- if eq .Params.attribution true }}
+        <div class="col-auto mx-auto">
+          <div class="row mx-0 navbar-text text-center
+            {{- partial "helpers/text-color.html" (dict "self" $self "light" "white" "dark" "black-50") -}}
+          ">
+            {{- i18n "attribution" -}}
+            <a href="https://syna.okkur.org" class="ml-1">
+              {{- printf "Syna" -}}
+            </a>
+          </div>
+        </div>
+      {{- end -}}
+      {{- if .Site.Menus.copyright_footer }}
+        <div class="col-md">
+          <div class="row mx-0 my-2 justify-content-center">
+            <ul class="nav ml-lg-auto">
+              {{- range sort .Site.Menus.copyright_footer }}
+                <li class="nav-item">
+                  <a class="nav-link py-0" href="{{ .URL | relLangURL }}"
+                  {{ if hasPrefix .URL "#" }}
+                    class="anchor"
+                  {{ end }}>
+                    {{- .Name -}}
+                  </a>
+                </li>
+              {{- end }}
+            </ul>
+          </div>
+        </div>
+      {{- end }}
+    </div>
+  </div>
+</footer>

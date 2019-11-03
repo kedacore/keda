@@ -1,0 +1,25 @@
++++
+fragment = "content"
+weight = 120
++++
+
+<details><summary>Code</summary>
+```
++++
+date = "2018-07-22"
+fragment = "404"
+weight = 150
+
+#title = "" # default i18n "404.title"
+#subtitle = "" # default i18n "404.subtitle"
+#redirect_text = "" # default i18n "404.direction"
+#button_text = "" # default i18n "404.button"
+#redirect_url = "" # default /
+
+[asset]
+  image = "logo.svg"
+  width = "500px" # optional - will default to image width
+  #height = "150px" # optional - will default to image height
++++
+```
+</details>

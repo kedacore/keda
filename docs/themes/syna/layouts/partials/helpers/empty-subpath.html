@@ -1,0 +1,2 @@
+{{- $message := printf "Currently there is no configured %s content files present. To add new members add a content file within %s" .context .root.file_path -}}
+{{- partial "helpers/warning.html" (dict "Site" .root.Site "message" $message) -}}

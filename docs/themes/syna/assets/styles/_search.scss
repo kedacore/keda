@@ -1,0 +1,40 @@
+.search-results-container {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 11px);
+  width: 400px;
+  background-color: white;
+  box-shadow: 1px 1px 10px rgba(#000000, 0.2);
+  border-radius: 0 0 5px 5px;
+  z-index: 5000;
+  display: none;
+
+  &.show {
+    display: block;
+  }
+}
+
+.search-results-container, .search-results-full-container {
+  .result {
+    cursor: pointer;
+    text-decoration: inherit;
+
+    h5:not(:hover):not(:active) {
+      @extend a;
+    }
+
+    p {
+      text-decoration: none !important;
+    }
+
+    div {
+      &:hover {
+        background-color: rgba($primary, 0.2);
+
+        h5 {
+          text-decoration: underline !important;
+        }
+      }
+    }
+  }
+}

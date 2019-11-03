@@ -1,0 +1,71 @@
+{{- $self := .self -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{ "<!-- Content -->" | safeHTML }}
+<section id="{{ .Name }}" class="content-fragment fragment">
+  <div class="overlay container-fluid
+    {{- printf " bg-%s" $bg -}}
+  ">
+    <div class="container py-5">
+      <div class="row">
+        {{- with .Params.sidebar -}}
+          <div class="content-sidebar col-md-3 pb-4 px-md-0 {{- if (eq .align "right") }} order-1 {{- else }} order-0 {{- end -}}">
+            {{- if .sticky }}
+              <div class="sticky-top pt-3">
+            {{- end -}}
+            {{- if .title }}
+              <div class="col-12 px-0
+                {{- partial "helpers/text-color.html" (dict "self" $self) -}}
+              ">
+                {{- $title_align := .title_align | default "left" -}}
+                <h3 class="sidebar-title {{- printf " text-%s" $title_align -}}">
+                  {{- .title | markdownify -}}
+                </h3>
+              </div>
+            {{- end }}
+            {{- $content_align := .content_align | default "left" -}}
+            <div class="col-12 px-0
+              {{- printf " text-%s" $content_align -}}
+              {{- partial "helpers/text-color.html" (dict "self" $self "light" "secondary") -}}
+            ">
+              {{- .content | markdownify -}}
+              {{ partial "helpers/slot.html" (dict "root" $ "slot" "sidebar" "data" (dict "page" $.page "content_fragment" $self)) }}
+            </div>
+            {{- if .sticky }}
+              </div> {{/* .sticky-top */}}
+            {{- end -}}
+          </div>
+          <article class="col-md-9">
+        {{- else }}
+          <article class="col-md-12">
+        {{- end }}
+          {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+          {{- if or .Params.display_date .Params.categories -}}
+            <div class="col-12 pb-4 mt-2">
+              {{- if .Params.display_date -}}
+                {{- partial "helpers/publish-date.html" (dict "root" $self "background" $bg) -}}
+              {{- end -}}
+              {{- with .Params.categories }}
+                {{- partial "helpers/categories.html" (dict "categories" . "background" $bg) -}}
+              {{- end }}
+            </div>
+          {{- end }}
+          {{- if .Params.asset -}}
+            <div class="col-12">
+              <img src="{{ partial "helpers/image.html" (dict "root" . "asset" .Params.asset) }}" alt="{{ .Params.subtitle | default .Params.title }}" class="img-fluid mb-4">
+            </div>
+          {{- end -}}
+          <div class="col-12 content px-0
+            {{- partial "helpers/text-color.html" (dict "self" $self) -}}
+          ">
+            {{- partial "helpers/slot.html" (dict "root" $ "slot" "before-content" "data" (dict "page" $.page "content_fragment" .self)) -}}
+            {{- $content := $self.Content | markdownify -}}
+            {{- $content := replace $content "<blockquote>" "<blockquote class=\"blockquote\">" -}}
+            {{- $content | safeHTML -}}
+            {{- partial "helpers/slot.html" (dict "root" $ "slot" "after-content" "data" (dict "page" $.page "content_fragment" .self)) -}}
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>

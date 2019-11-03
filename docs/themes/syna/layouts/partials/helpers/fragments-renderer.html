@@ -1,0 +1,20 @@
+{{- $page_scratch := .page_scratch -}}
+{{- $layout_info := $page_scratch.Get "layout_info" -}}
+{{- $page := $layout_info.page -}}
+{{- $real_page := $layout_info.real_page -}}
+{{- $root := $layout_info.root -}}
+
+{{- range sort ($page_scratch.Get "page_fragments" | default slice) "Params.weight" -}}
+  {{/* If a fragment contains a slot variable in it's frontmatter it should not
+    be rendered on the page. It would be later handled by the slot helper. */}}
+  {{- if (not (isset .Params "slot")) (ne .Params.slot "") -}}
+    {{/* Cleanup .Name to be more useful within fragments */}}
+    {{- $name := cond (eq $page .) .File.BaseFileName (strings.TrimSuffix ".md" (replace .Name "/index.md" "")) -}}
+    {{- $bg := .Params.background | default "light" }}
+    {{- .Scratch.Set "bg" $bg -}}
+
+    {{- $file_path := strings.TrimSuffix ".md" (replace .File.Path "/index.md" "") -}}
+    {{- $context := dict "page_scratch" $page_scratch "root" $real_page "Site" $real_page.Site "page" $page "resources" $real_page.Resources "self" . "Params" .Params "Name" $name "file_path" $file_path }}
+    {{- partial (print "fragments/" .Params.fragment ".html") $context -}}
+  {{- end -}}
+{{- end -}}

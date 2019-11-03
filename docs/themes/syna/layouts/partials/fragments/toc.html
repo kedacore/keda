@@ -1,0 +1,67 @@
+{{- .page_scratch.Set "content_fragment_path" "" -}}
+{{- .page_scratch.Set "content_page" "" -}}
+{{- .page_scratch.Set "url" "" -}}
+
+{{- if (isset . "data") -}}
+  {{- .page_scratch.Set "content_fragment_path" .data.content_fragment -}}
+  {{- .page_scratch.Set "content_page" .data.content_fragment -}}
+  {{- .page_scratch.Set "url" .data.page.Permalink -}}
+{{- else -}}
+  {{- .page_scratch.Set "content_fragment_path" .Params.content -}}
+
+  {{/* The following code tries to find the page from the path provided. When
+    the page is found, the rest of the path would be extracted to later be
+    used to match the resources of the page. */}}
+  {{- $directories := findRE "[^\\/]+" .Params.content -}}
+  {{- .page_scratch.Set "page" $.page -}}
+  {{- .page_scratch.Set "fragment_path" "index.md" -}}
+  {{- if ne (.page_scratch.Get "content_fragment_path") "index.md" -}}
+    {{- .page_scratch.Set "path" "" -}}
+    {{- range $index, $directory := $directories -}}
+      {{- $.page_scratch.Set "path" (printf "%s/%s" ($.page_scratch.Get "path") $directory) -}}
+      {{- $page := $.Site.GetPage ($.page_scratch.Get "path") -}}
+      {{- if $page -}}
+        {{- $.page_scratch.Set "page" $page -}}
+      {{- else -}}
+        {{- if (eq ($.page_scratch.Get "fragment_path") "index.md") -}}
+          {{- $.page_scratch.Set "fragment_path" "" -}}
+        {{- end -}}
+        {{- $.page_scratch.Set "fragment_path" (printf "%s/%s" ($.page_scratch.Get "fragment_path") $directory) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $page := cond (eq (.page_scratch.Get "page") "") $.page (.page_scratch.Get "page") -}}
+  {{- .page_scratch.Set "url" $page.Permalink -}}
+  {{- if (eq ($.page_scratch.Get "fragment_path") "index.md") -}}
+    {{- .page_scratch.Set "content_page" $page -}}
+  {{- else -}}
+    {{- .page_scratch.Set "toc_content_fragment" ($page.Resources.Match (strings.TrimPrefix "/" (.page_scratch.Get "fragment_path"))) -}}
+    {{- if gt (len (.page_scratch.Get "toc_content_fragment")) 0 -}}
+      {{- $fragment := index (.page_scratch.Get "toc_content_fragment") 0 -}}
+      {{- if (eq $fragment.Params.fragment "content") -}}
+        {{- .page_scratch.Set "content_page" $fragment -}}
+      {{- else -}}
+        {{- partial "helpers/warning.html" (dict "Site" $.Site "message" (printf "The fragment (path: %s) is not a content fragment." (.page_scratch.Get "content_fragment_path"))) -}}
+      {{- end -}}
+    {{- else -}}
+      {{- partial "helpers/warning.html" (dict "Site" $.Site "message" (printf "The content fragment (path: %s) could not be found." (.page_scratch.Get "content_fragment_path"))) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- if ne (.page_scratch.Get "content_page") "" -}}
+  {{- $bg := .self.Scratch.Get "bg" }}
+  {{- $toc := (.page_scratch.Get "content_page").TableOfContents -}}
+  {{/* Change urls and make them absolute */}}
+  {{- $toc := (replace $toc "<li><a href=\"" (printf "<li><a href=\"%s" (.page_scratch.Get "url"))) -}}
+  {{/* count the number of remaining li tags and only display ToC if more than
+    1, otherwise why bother */}}
+  {{- if gt (len (split $toc "<li>")) 2 -}}
+    {{- partial "helpers/container.html" (dict "start" true "fragment" "TOC" "in_slot" .in_slot "bg" $bg "Name" .Name "padding" .Params.padding) -}}
+      <div class="toc">
+        {{- safeHTML $toc -}}
+      </div>
+    {{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}
+  {{- end -}}
+{{- end -}}

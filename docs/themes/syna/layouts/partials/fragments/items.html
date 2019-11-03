@@ -1,0 +1,72 @@
+{{- $items := partial "helpers/subitems.html" . -}}
+
+{{- $self := . -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self.self "bg" $bg "params" .Params) }}
+  <div class="row justify-content-center align-items-stretch items">
+    {{- if eq (len $items) 0 -}}
+      {{- partial "helpers/empty-subpath.html" (dict "context" "items" "root" $) -}}
+    {{- else -}}
+      {{- range $items -}}
+        {{/* Handle special case of index.md being considered an item */}}
+        {{- if not (in .Name "/index.md") -}}
+          {{- $item := .Params -}}
+          {{- $this := . }}
+          <div class="col-md-4 d-flex flex-column">
+            {{- if and $item.asset $item.asset.url }}
+              <a href="{{ $item.asset.url | relLangURL }}" class="col justify-content-between d-flex flex-column header
+                {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "") -}}
+              ">
+            {{- else }}
+              <div class="col justify-content-between d-flex flex-column header">
+            {{- end }}
+              <div class="row image justify-content-center align-items-center">
+                {{- with $item.asset -}}
+                  {{- if .image }}
+                    <img src="{{ partial "helpers/image.html" (dict "root" $self "this" $this "asset" . "resize" "300x110") }}" class="p-2 w-75 mb-2" alt="{{ .text | default $item.title }}">
+                  {{- else if .icon }}
+                    <span class="fa-stack fa-3x m-2" title="{{ .text | default $item.title }}">
+                      <i class="fas fa-circle fa-stack-2x
+                        {{- if eq $bg "primary" -}}
+                          {{- print " text-dark" -}}
+                        {{- else -}}
+                          {{- print " text-primary" -}}
+                        {{- end -}}
+                      "></i>
+                      <i class="{{ .icon }} fa-stack-1x fa-inverse"></i>
+                      <span class="sr-only">{{ .text | default $item.title }}</span>
+                    </span>
+                  {{- end -}}
+                {{- end }}
+              </div>
+              <div class="row justify-content-center text-center">
+                {{- if $item.title }}
+                  <h4 class="mb-3
+                    {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+                  ">
+                    {{- $item.title | markdownify -}}
+                  </h4>
+                {{- end -}}
+              </div>
+            {{- if and $item.asset $item.asset.url }}
+              </a>
+            {{- else }}
+              </div>
+            {{- end }}
+            <div class="row justify-content-center text-center p-2">
+              {{- if .Content }}
+                <div class="
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+                ">
+                  {{ .Content }}
+                </div>
+              {{- end }}
+            </div>
+          </div>
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

@@ -1,0 +1,17 @@
+{{- $.Scratch.Add "index" slice -}}
+{{- range .Site.Pages -}}
+  {{ $.Scratch.Set "pages" (slice .) }}
+  {{- range .Resources.ByType "page" -}}
+    {{- $.Scratch.Add "pages" . -}}
+  {{- end -}}
+  {{- $.Scratch.Set "plain" nil -}}
+  {{- $.Scratch.Set "tags" nil -}}
+  {{- $.Scratch.Set "categories" nil -}}
+  {{- range first 1 (where ($.Scratch.Get "pages") "Params.fragment" "eq" "content") -}}
+    {{- $.Scratch.Set "plain" .Plain -}}
+    {{- $.Scratch.Set "tags" .Params.tags -}}
+    {{- $.Scratch.Set "categories" .Params.categories -}}
+  {{- end -}}
+  {{- $.Scratch.Add "index" (dict "title" .Title "tags" ($.Scratch.Get "tags") "categories" ($.Scratch.Get "categories") "contents" ($.Scratch.Get "plain") "permalink" .Permalink) -}}
+{{- end -}}
+{{- $.Scratch.Get "index" | jsonify -}}

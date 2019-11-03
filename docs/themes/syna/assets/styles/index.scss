@@ -1,0 +1,38 @@
+$fa-font-path:        'fonts';
+
+$primary:             {{ .Site.Params.colors.primary | default "#00838F" }};
+$secondary:           {{ .Site.Params.colors.secondary | default "#868e96" }};
+$success:             {{ .Site.Params.colors.success | default "#008f54" }};
+$info:                {{ .Site.Params.colors.info | default "#00c9dc" }};
+$warning:             {{ .Site.Params.colors.warning | default "#fdf314" }};
+$danger:              {{ .Site.Params.colors.danger | default "#dc1200" }};
+$light:               {{ .Site.Params.colors.light | default "#f8f9fa" }};
+$dark:                {{ .Site.Params.colors.dark | default "#343a40" }};
+
+$link-color:          $primary;
+
+$gray-200:            #e9ecef !default;
+$border-color:        $gray-200;
+$list-inline-padding: 5px;
+$dropdown-item-padding-x: 1rem;
+{{- if not .Site.Params.fontawesome.disabled -}}
+  @import './fontawesome/fontawesome.scss';
+  @import './fontawesome/regular.scss';
+  @import './fontawesome/solid.scss';
+  {{- if .Site.Params.fontawesome.pro }}
+    @import './fontawesome/light.scss';
+  {{- end }}
+  @import './fontawesome/brands.scss';
+{{- end }}
+@import './bootstrap/bootstrap.scss';
+@import './helpers';
+@import './header';
+@import './faq';
+@import './form';
+@import './portfolio';
+@import './pricing';
+@import './stripe';
+@import './modal';
+@import './search';
+@import './toc';
+@import './syna';

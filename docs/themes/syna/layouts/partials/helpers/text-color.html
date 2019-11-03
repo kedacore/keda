@@ -1,0 +1,8 @@
+{{- $bg := .self.Scratch.Get "bg" }}
+{{- $text_black := cond (isset . "dark") (cond (eq .dark "") "" (printf "text-%s" .dark)) "text-body" -}}
+{{- $text_white := cond (isset . "light") (cond (eq .light "") "" (printf "text-%s" .light)) "text-white" -}}
+{{- if in (slice "white" "light" "secondary" "primary") $bg -}}
+  {{- printf " %s" $text_black -}}
+{{- else -}}
+  {{- printf " %s" $text_white -}}
+{{- end -}}

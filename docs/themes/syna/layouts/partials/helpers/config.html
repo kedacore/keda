@@ -1,0 +1,26 @@
+{{- if in (slice "meta" "icon" "css" "js") .type -}}
+  {{- if .data.html -}}
+    {{- if and (eq .type "meta") (eq .head true) }}
+      {{ print .data.html | safeHTML }}
+    {{- else if or (and (eq .head false) (ne .data.block true)) (and (eq .head true) (eq .data.block true)) }}
+      {{ print .data.html | safeHTML }}
+    {{- end -}}
+  {{- else if and (ne .data.resource "") (in (slice "css" "icon" "js") .type) -}}
+    {{- $.root.Scratch.Set "config_resource" .data.resource -}}
+    {{- if not (or (hasPrefix .data.resource "http://") (hasPrefix .data.resource "https://")) -}}
+      {{- $page_level_resource := printf "%s%s" $.root.File.Dir .data.resource -}}
+      {{- if fileExists (printf "content/%s" $page_level_resource) -}}
+        {{- $.root.Scratch.Set "config_resource" $page_level_resource -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- $location := ($.root.Scratch.Get "config_resource") | relLangURL -}}
+    {{- if and (eq .type "icon") (eq .head true) }}
+      {{ printf "<link rel='icon' href='%s'>" $location | safeHTML }}
+    {{- else if eq .type "css" }}
+      {{ printf "<link rel='stylesheet' href='%s'>" $location | safeHTML }}
+    {{- else if eq .type "js" }}
+      {{ printf "<script src='%s'></script>" $location | safeHTML }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}

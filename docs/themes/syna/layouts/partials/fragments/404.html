@@ -1,0 +1,28 @@
+{{- $self := . -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{ "<!-- 404 -->" | safeHTML }}
+<section id="404" class="fragment">
+  <div class="jumbotron text-center mb-0
+    {{- printf " bg-%s" $bg -}}
+  ">
+    {{- with (.Params.asset | default (dict "image" "logo.svg")) -}}
+      <img class="img-fluid" src="{{ partial "helpers/image.html" (dict "root" $self "asset" .) }}" alt="{{ $self.Site.Title }}"
+        {{- if .height -}} height="{{ .height }}"{{- end -}}
+        {{- if .width -}} width="{{ .width }}"{{- end -}}
+      ></img>
+    {{- end -}}
+    <h1 class="jumbotron-heading my-5">
+      {{ .Params.title | default (i18n "404.title") }}
+    </h1>
+    <h3 class="my-4">
+      {{ .Params.subtitle | default (i18n "404.subtitle") }}
+    </h3>
+    <h5 class="my-4">
+      {{ .Params.redirect_text | default (i18n "404.direction") }}
+    </h5>
+    <a class="btn btn-primary btn-lg my-4" href="{{ .Params.redirect_url | default "/" }}">
+      {{ .Params.button_text | default (i18n "404.button") }}
+    </a>
+  </div>
+</section>

@@ -1,0 +1,14 @@
+name = "Syna"
+license = "Apache License 2.0"
+licenselink = "https://syna.okkur.org/license"
+description = "A customizable one to multi page theme for open source projects, companies and freelancers."
+homepage = "https://syna.okkur.org"
+tags = [ "customizable", "blog", "responsive", "clean", "personal", "bootstrap", "portfolio", "company", "projects", "mobile", "search", "documentation" ]
+features = [ "FAQ", "portfolio", "chart.js", "team showcase", "pricing", "events", "stripe", "contact form", "react portal" ]
+min_version = 0.58
+
+[author]
+  name = "Okkur Labs"
+  homepage = "https://about.okkur.org"
+
+# Based on work from David Miller with his startbootstrap-agency theme and the hugo port from digitalcraftsman.

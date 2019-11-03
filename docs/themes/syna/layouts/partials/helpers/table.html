@@ -1,0 +1,78 @@
+<table class="table table-bordered
+  {{- partial "helpers/text-color.html" (dict "self" .self) -}}
+">
+  <thead>
+    <tr>
+      {{- .page_scratch.Set "col" 0 -}}
+      {{- range .header.values }}
+        <th class="
+          {{- if (in (slice "left" "center" "right") .align) -}}
+            {{- printf " text-%s" .align -}}
+          {{- end -}}
+          {{- if .hide_on_mobile -}}
+            {{- print " hide-on-mobile" }}
+          {{- end -}}
+        ">
+          {{- .text | markdownify -}}
+        </th>
+        {{- .page_scratch.Add "col" 1 -}}
+      {{- end }}
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .rows -}}
+      {{- .page_scratch.Set "col" 0 }}
+      <tr>
+        {{- range $i, $s := .values -}}
+          {{- if .header }}
+            <th class="align-middle
+              {{- if (index $.header.values $i).hide_on_mobile -}}
+                {{- print " hide-on-mobile" }}
+              {{- end -}}
+            ">{{ .header | markdownify }}</th>
+            {{- else if .button }}
+              <td class="align-middle
+                {{- if (in (slice "left" "center" "right") .align) -}}
+                  {{- printf " text-%s" .align -}}
+                {{- end -}}
+                {{- if (index $.header.values $i).hide_on_mobile -}}
+                  {{- print " hide-on-mobile" }}
+                {{- end -}}
+              ">
+                <a class="btn
+                {{- if hasPrefix .url "#" }} anchor{{- end -}}
+                {{- $color := .color | default "primary" -}}
+                {{- printf " btn-%s" $color -}}
+              " href="{{ .url | relLangURL }}">
+                {{- .button -}}
+              </a>
+            </td>
+          {{- else if .icon }}
+            <td class="align-middle
+              {{- if (in (slice "left" "center" "right") .align) -}}
+                {{- printf " text-%s" .align -}}
+              {{- end -}}
+              {{- if (index $.header.values $i).hide_on_mobile -}}
+                {{- print " hide-on-mobile" }}
+              {{- end -}}
+            ">
+              <a href="{{ .url }}">
+                <i class="{{ .icon }} fa-2x"></i>
+              </a>
+            </td>
+          {{- else }}
+            <td class="align-middle
+              {{- if (in (slice "left" "center" "right") .align) -}}
+                {{- printf " text-%s" .align -}}
+              {{- end -}}
+              {{- if (index $.header.values $i).hide_on_mobile -}}
+                {{- print " hide-on-mobile" }}
+              {{- end -}}
+            ">{{ .text | markdownify }}</td>
+          {{- end -}}
+          {{- .page_scratch.Add "col" 1 -}}
+        {{- end }}
+      </tr>
+    {{- end }}
+  </tbody>
+</table>

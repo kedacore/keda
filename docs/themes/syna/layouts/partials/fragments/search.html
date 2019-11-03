@@ -1,0 +1,35 @@
+{{- $self := . -}}
+{{- .page_scratch.Add "js" (dict "file" "syna-search.js") -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self.self "bg" $bg "params" .Params) }}
+  <div class="row w-100 justify-content-center mx-0">
+    <form action="{{ "search" | absURL }}" class="mt-0">
+      <div class="input-group my-0">
+        <input type="text" class="form-control py-1" id="search-query-{{ .Name }}" name="s" placeholder="{{- i18n "navbar.search" | default "Search..." -}}">
+        <div class="input-group-append">
+          <button class="btn btn-primary" title="{{- i18n "search.search" | default "Search" -}}"><i class="fa fa-search"></i></button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="search-results-full-container row">
+    <div class="col px-0">
+      <div id="search-results-{{ .Name }}" class="col px-0
+        {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+      "></div>
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}
+{{ partial "helpers/search-result-template.html" (dict "self" $self "name" .Name "message_class" "text-center mt-4" "background" $bg) }}
+<script>
+  var fragmentName = "{{ .Name }}";
+  window.syna.api.register('search', 'search-' + fragmentName, {
+    searchInput: '#search-query-{{ .Name }}',
+    resultsContainer: '#search-results-{{ .Name }}',
+    template: '#search-result-template-{{ .Name }}',
+    noResults: '#search-no-results-template-{{ .Name }}',
+    empty: '#search-empty-template-{{ .Name }}',
+  });
+</script>

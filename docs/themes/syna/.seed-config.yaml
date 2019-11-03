@@ -1,0 +1,63 @@
+project:
+  name: "Syna Theme"
+  state: "stable"
+  image: "https://raw.githubusercontent.com/okkur/syna/master/exampleSite/static/images/logo.svg?sanitize=true"
+  website: "https://syna.okkur.org"
+  oneLiner: "Highly customizable open source theme for Hugo based static websites"
+  description: |
+    Create your next website with Syna.  
+  version: "v0.15.2"
+
+vision:
+  type: "community"
+  overview: |
+    This project thrives to be the goto theme for websites using Hugo.
+  concept: "Built a modular theme to be easily extendible with a default library of fragments available."
+  aim: "Syna provides a generic solution to easily get up and running, but doesn't consider hugely specialized solutions to be integrated."
+
+supportLinks:
+  documentation: "https://syna.okkur.org/docs"
+  examples: "https://syna.okkur.org/demo"
+
+contributionLinks:
+  issueTemplate: "/.github/ISSUE_TEMPLATE.md"
+  starterIssues: "https://github.com/okkur/syna/labels/starter%20issue"
+
+emails:
+  commercialSupport: "support@okkur.org"
+  security: "security@okkur.org"
+  coc: "coc@okkur.org"
+
+copyright:
+  year: "2017"
+
+cla:
+  copyrightHolder: "nzt.ventures GmbH"
+  mail: "legal@nzt.ventures"
+
+maintainers:
+  - name: "Michael Grosser"
+    nick: "stp-ip"
+  - name: "Mahdi Pourismaiel"
+    nick: "mpourismaiel"
+
+repo:
+  link: "https://syna.okkur.org/code"
+  type: "Github"
+
+issueTemplate:
+  questions:
+  - "Hugo version"
+
+badges:
+  - image: "https://img.shields.io/badge/state-stable-green.svg"
+    alt: "state"
+  - image: "https://img.shields.io/github/release/okkur/syna.svg"
+    link: "https://syna.okkur.org/releases"
+    alt: "release"
+  - image: "https://img.shields.io/github/license/okkur/syna.svg"
+    link: "LICENSE"
+    alt: "license"
+
+reposeed:
+  configVersion: "v1"

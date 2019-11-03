@@ -1,0 +1,17 @@
+{{- $self := .self -}}
+{{- $bg := $self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+  <div class="row align-items-center text-center justify-content-end">
+    <div class="col-12 order-lg-1 text-center">
+      {{- if .Params.rows }}
+        <div class="row justify-content-center">
+          <div class="col table-responsive">
+            {{ partial "helpers/table.html" (dict "header" .Params.header "rows" .Params.rows "page_scratch" .page_scratch "self" $self) }}
+          </div>
+        </div>
+      {{- end }}
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

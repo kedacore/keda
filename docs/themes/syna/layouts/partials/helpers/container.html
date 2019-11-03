@@ -1,0 +1,19 @@
+{{- if .start }}
+{{ (printf "<!-- %s -->" (humanize .Params.fragment)) | safeHTML }}
+{{- end }}
+{{- if .start }}
+<section id="{{ .Name }}" class="fragment">
+  {{- if ne .in_slot true }}
+    <div class="container-fluid
+      {{- printf " bg-%s" .bg -}}
+    ">
+  {{- end }}
+    <div class="container {{ print (.Params.padding | default (cond (eq .in_slot true) "p-0" "py-5")) -}}">
+{{- end -}}
+{{- if .end }}
+    </div>{{/* .container */}}
+  {{- if ne .in_slot true }}
+    </div>{{/* .container-fluid */}}
+  {{- end }}
+</section>
+{{- end }}

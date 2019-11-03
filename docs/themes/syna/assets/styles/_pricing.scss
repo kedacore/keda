@@ -1,0 +1,51 @@
+.pricing-plan {
+  display: flex;
+
+  .card {
+    flex: 1 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .card-header {
+    height: 125px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  &-highlight {
+    @include media-breakpoint-up(md) {
+      margin: -20px -10px 0;
+      
+      .card-header {
+        height: 145px;
+      }
+    }
+
+    @include media-breakpoint-down(md) {
+      order: -1;
+    }
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      flex: 1 0 auto;
+    }
+
+    p {
+      margin-bottom: 0;
+
+      i {
+        color: $green;
+        margin-right: 10px;
+      }
+    }
+  }
+}

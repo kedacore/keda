@@ -1,0 +1,8 @@
+{{- .page_scratch.Add "js" (dict "file" "syna-react.js") -}}
+{{- .page_scratch.Set "react" true -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  <div data-portal></div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}
+

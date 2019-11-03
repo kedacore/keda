@@ -1,0 +1,7 @@
+{{ .page_scratch.Set "tmp_pages" slice }}
+{{ range .pages }}
+  {{ if not (or (strings.HasSuffix .File.Dir "/_index/") (strings.HasSuffix .File.Dir "/_global/")) }}
+    {{ $.page_scratch.Add "tmp_pages" . }}
+  {{ end }}
+{{ end }}
+{{ return .page_scratch.Get "tmp_pages" }}

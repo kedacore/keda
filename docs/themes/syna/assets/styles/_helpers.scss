@@ -1,0 +1,17 @@
+.hidden {
+  display: none;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+@media screen and (max-width: 767px) {
+  .hide-on-mobile {
+    display: none;
+  }
+}

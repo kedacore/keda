@@ -1,0 +1,76 @@
+{{- $self := . -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) }}
+  <div class="row">
+    <div class="col-md m-2
+      {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+    ">
+      {{- with .Params.asset }}
+        <h4>
+          {{- $self.Params.title -}}
+        </h4>
+        {{- if .image }}
+        <a href="{{ .url }}">
+          <img src="{{ partial "helpers/image.html" (dict "root" $self "asset" . "resize" "220x100") }}" class="img-fluid w-50" alt="{{ .text }}">
+        </a>
+        {{- else }}
+        <div>
+          <a href="{{ .url }}">
+            {{- .text -}}
+          </a>
+        </div>
+        {{- end -}}
+      {{- end -}}
+
+      {{- if .Site.Menus.footer_social }}
+        <div class="row justify-content-left ml-0">
+          {{- range sort .Site.Menus.footer_social }}
+            <span class="fa-stack fa-2x mt-3 mr-1" title="{{ .Name }}">
+              <a href="{{ .URL | relLangURL }}" class="ignore-color-change
+                {{- if eq $bg "primary" -}}
+                  {{- print " text-dark" -}}
+                {{- end -}}">
+                <i class="fas fa-circle fa-stack-2x"></i>
+                <i class="{{ .Pre }} fa-stack-1x fa-fw text-light"></i>
+                <span class="sr-only">{{ .Name }}</span>
+              </a>
+            </span>
+          {{- end }}
+        </div>
+      {{- end }}
+    </div>
+    <div class="col-md m-2
+      {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+    ">
+      {{- with .Params.menu_title }}
+        <h4>
+          {{- . -}}
+        </h4>
+      {{- end -}}
+      {{- if .Site.Menus.footer }}
+        <ul class="nav flex-column">
+            {{- range sort .Site.Menus.footer }}
+              <li class="nav-item">
+                <a class="nav-link p-0 display-5" href="{{ .URL | relLangURL }}"
+                  {{- if hasPrefix .URL "#" }}
+                    class="anchor"
+                  {{- end -}}>
+                  {{- .Name -}}
+                </a>
+              </li>
+            {{- end }}
+        </ul>
+      {{- end }}
+    </div>
+    <div class="col-md m-2
+      {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+    ">
+      {{- with .self.Content }}
+        <div>
+          {{- . | markdownify -}}
+        </div>
+      {{- end }}
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

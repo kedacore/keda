@@ -1,0 +1,65 @@
+{{- $items := partial "helpers/subitems.html" . -}}
+
+{{- .page_scratch.Add "js" (dict "file" "syna-pricing.js") -}}
+{{- $self := . -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self.self "bg" $bg "params" .Params) }}
+  {{- with .Content -}}
+    <div class="row">
+      <div class="col text-center pt-4 pb-5
+        {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+      ">
+        {{- . -}}
+      </div>
+    </div>
+  {{- end }}
+  <div class="row {{- if not .Content -}}{{ print " pt-4" }}{{ end }} justify-content-center">
+    {{- if eq (len $items) 0 -}}
+      {{- partial "helpers/empty-subpath.html" (dict "context" "pricing" "root" $) -}}
+    {{- end -}}
+    {{- range (sort $items ".Params.weight") }}
+      <div
+        data-pricing-plan="{{ print .File }}"
+        class="col-lg-4 col-md-9 col-12 py-2 pricing-plan
+          {{- if .Params.highlight }} pricing-plan-highlight {{- end -}}
+        ">
+        <div class="card">
+          <div class="card-header
+            {{- printf " bg-%s" (.Params.header_bg | default "primary") -}}
+            {{- printf " text-%s" (.Params.header_text_color | default "light") -}}">
+            <h4 class="mt-0 font-weight-normal text-center">{{ .Title }}</h4>
+            <div class="mt-0 h6 font-weight-normal text-center">{{ (.Params.subtitle | default "") | markdownify }}</div>
+            <h2 class="card-title mb-0 pricing-card-title text-center">{{ .Params.price_text | default .Params.price }}</h2>
+          </div>
+          <div class="card-body {{ printf "bg-%s" (.Params.bg | default "light") }}">
+            <div class="mb-4 features">
+              {{- range .Params.features }}
+                <p><i class="{{ .icon }}"></i>{{ .text | markdownify }}</p>
+              {{- end }}
+            </div>
+            <a
+              href="{{ .Params.button_url | relLangURL }}"
+              class="btn btn-lg btn-block btn-primary"
+              data-primary-action="click"
+              {{- if (not (isset .Params "button_url")) | or (eq .Params.button_url "") -}}
+                {{ safeHTMLAttr (printf "data-event-args=\"title:%s,price:%s,currency:%s,product:%s,description:%s\"" .Title .Params.price (.Params.currency | default "") .Title .Params.subtitle) }}
+              {{- end -}}>
+              {{ .Params.button_text }}
+            </a>
+          </div>
+        </div>
+      </div>
+    {{- end }}
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}
+
+<script>
+document.querySelectorAll('#{{ .Name }} .btn[data-event-args]').forEach(function(node) {
+  node.addEventListener('click', function(e) {
+    e.preventDefault();
+    window.syna.stream.publish('pricing:change', e.target.dataset.eventArgs);
+  });
+});
+</script>

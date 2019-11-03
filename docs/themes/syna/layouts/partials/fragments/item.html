@@ -1,0 +1,219 @@
+{{- $self := . -}}
+{{- $align := .Params.align | default "center" -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) }}
+  <div class="row align-items-center text-center
+    {{- if eq $align "left" -}}
+      {{- printf " justify-content-start text-lg-left" -}}
+    {{- else if eq $align "right" -}}
+      {{- printf " justify-content-start text-lg-left" -}}
+    {{- else -}}
+      {{- printf " justify-content-end" -}}
+    {{- end -}}
+  ">
+    <div class="col-12
+      {{- if eq $align "left" -}}
+        {{- printf " order-lg-1 pr-lg-5 col-lg-8" -}}
+      {{- else if eq $align "right" -}}
+        {{- printf " order-lg-12 pl-lg-5 col-lg-8" -}}
+      {{- else -}}
+        {{- printf " order-lg-1 text-center" -}}
+      {{- end -}}
+    ">
+      {{- if .Params.title }}
+        <div class="row pb-3">
+          <div class="col-12
+            {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+          ">
+            <h2>
+              {{- .Params.title | markdownify -}}
+            </h2>
+          </div>
+        </div>
+      {{- end -}}
+      {{- if .Params.subtitle }}
+        <div class="row pb-2">
+          <div class="col-12
+            {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+          ">
+            <h5>
+              {{- .Params.subtitle | markdownify -}}
+            </h5>
+          </div>
+        </div>
+      {{- end }}
+      <div class="col-12 text-center d-lg-none pb-4
+        {{- if eq $align "left" -}}
+          {{- printf " order-lg-12 mt-lg-5 ml-lg-auto col-lg-4" -}}
+        {{- else if eq $align "right" -}}
+          {{- printf " order-lg-1 mt-lg-5 mr-lg-auto col-lg-4" -}}
+        {{- else -}}
+          {{- printf " order-lg-12" -}}
+        {{- end -}}
+      ">
+        <div class="row">
+          <div class="col-12">
+            {{- if .Params.pre }}
+              <div class="row">
+                <div class="col-12
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+                ">
+                  <p class="mb-0">
+                    {{- .Params.pre | markdownify -}}
+                  </p>
+                </div>
+              </div>
+            {{- end -}}
+            {{- with .Params.asset -}}
+              {{- if isset . "image" }}
+                <img src="{{ partial "helpers/image.html" (dict "root" $self "asset" .) }}" class="img-fluid p-2" alt="{{ .text | default $.Params.title }}">
+              {{- else if isset . "icon" }}
+                <span class="fa-stack fa-4x" title="{{ .text | default $.Params.title }}">
+                  <i class="fas fa-circle fa-stack-2x
+                    {{- if eq $bg "primary" -}}
+                      {{- print " text-dark" -}}
+                    {{- else -}}
+                      {{- print " text-primary" -}}
+                    {{- end -}}
+                  "></i>
+                  <i class="{{ .icon }} fa-stack-1x fa-inverse"></i>
+                  <span class="sr-only">{{ .text | default $.Params.title }}</span>
+                </span>
+              {{- end -}}
+            {{- else -}}
+              {{- range .Params.buttons }}
+                <a class="btn btn-lg m-2 d-none d-lg-inline
+                  {{ if hasPrefix .url "#" }} anchor{{ end }}
+                  {{- $color := .color | default "primary" -}}
+                  {{- printf " btn-%s" $color -}}
+                " href="{{ .url | relLangURL }}">
+                  {{- .text -}}
+                </a>
+              {{- end -}}
+            {{- end -}}
+            {{- if .Params.post }}
+              <div class="row">
+                <div class="col-12 mb-0
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+                ">
+                  <p class="mb-0">
+                    {{- .Params.post | markdownify -}}
+                  </p>
+                </div>
+              </div>
+            {{- end }}
+          </div>
+        </div>
+      </div>
+      {{- if .self.Content -}}
+      <div class="row
+        {{- if eq $align "left" -}}
+          {{- printf " text-left" -}}
+        {{- else if eq $align "right" -}}
+          {{- printf " text-left" -}}
+        {{- else -}}
+          {{- printf " text-lg-center text-left" -}}
+        {{- end -}}
+      ">
+        <div class="col-12">
+          <div class="mb-0
+            {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+          ">
+            {{- .self.Content | markdownify -}}
+          </div>
+        </div>
+      </div>
+      {{- end -}}
+      {{- if and .Params.asset .Params.buttons }}
+        <div class="col-12 text-center mb-2 {{ printf "text-lg-%s" $align }}">
+          {{- range .Params.buttons }}
+            <a class="btn btn-lg m-2
+              {{ if hasPrefix .url "#" }} anchor{{ end }}
+              {{- $color := .color | default "primary" -}}
+              {{- printf " btn-%s" $color -}}
+            " href="{{ .url | relLangURL }}">
+              {{- .text -}}
+            </a>
+          {{- end }}
+        </div>
+      {{- end -}}
+      {{- if .Params.rows }}
+        <div class="row justify-content-center">
+          <div class="col col-lg-12 mr-lg-auto table-responsive">
+            {{ partial "helpers/table.html" (dict "header" .Params.header "rows" .Params.rows "page_scratch" .page_scratch "self" $self.self)}}
+          </div>
+        </div>
+      {{- end -}}
+    </div>
+    <div class="col-12
+      {{- if eq $align "left" -}}
+        {{- printf " order-lg-12 ml-lg-auto col-lg-4" -}}
+      {{- else if eq $align "right" -}}
+        {{- printf " order-lg-1 mr-lg-auto col-lg-4" -}}
+      {{- else -}}
+        {{- printf " order-lg-12" -}}
+      {{- end -}}
+    ">
+      <div class="row justify-content-center">
+        {{- if .Params.pre }}
+          <div class="row">
+            <div class="col-12 mb-0 d-none d-lg-inline
+              {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+            ">
+              <p class="mb-0">
+                {{- .Params.pre | markdownify -}}
+              </p>
+            </div>
+          </div>
+        {{- end -}}
+        {{- with .Params.asset -}}
+          {{- if isset . "image" }}
+            <div class="col-12 text-center d-none d-lg-inline">
+              <img src="{{ partial "helpers/image.html" (dict "root" $self "asset" .) }}" class="img-fluid p-2" alt="{{ .text | default $.Params.title }}">
+            </div>
+          {{- else if isset . "icon" }}
+            <div class="col-12 text-center d-none d-lg-inline">
+              <span class="fa-stack fa-4x" title="{{ .text | default $.Params.title }}">
+                <i class="fas fa-circle fa-stack-2x
+                  {{- if eq $bg "primary" -}}
+                    {{- print " text-dark" -}}
+                  {{- else -}}
+                    {{- print " text-primary" -}}
+                  {{- end -}}
+                "></i>
+                <i class="{{ .icon }} fa-stack-1x fa-inverse"></i>
+                <span class="sr-only">{{ .text | default $.Params.title }}</span>
+              </span>
+            </div>
+          {{- end -}}
+        {{- else -}}
+          {{- if .Params.buttons }}
+            <div class="col-12 text-center">
+              {{- range .Params.buttons }}
+                <a class="btn btn-lg m-2
+                  {{ if hasPrefix .url "#" }} anchor{{ end }}
+                  {{- $color := .color | default "primary" -}}
+                  {{- printf " btn-%s" $color -}}
+                " href="{{ .url | relLangURL }}">
+                  {{- .text -}}
+                </a>
+                {{- end }}
+            </div>
+          {{- end -}}
+        {{- end -}}
+        {{- if .Params.post }}
+          <div class="row">
+            <div class="col-12 mb-0 d-none d-lg-inline
+              {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+            ">
+              <p class="mb-0">
+                {{- .Params.post | markdownify -}}
+              </p>
+            </div>
+          </div>
+        {{- end }}
+      </div>
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

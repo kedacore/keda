@@ -1,0 +1,21 @@
+{{- $self := .self.self -}}
+{{- $bg := .background | default "dark" -}}
+<!-- this template is sucked in by search.js and appended to the search-results div above. So editing here will adjust style -->
+<script id="search-empty-template-{{ .name }}" type="text/x-js-template">
+  <p class="{{ .message_class }}">{{- i18n "search.empty" | default "Please enter a word or phrase above" -}}</p>
+</script>
+<script id="search-no-results-template-{{ .name }}" type="text/x-js-template">
+  <p class="{{ .message_class }}">{{- i18n "search.no_results" | default "No matches found" }}</p>
+</script>
+<script id="search-result-template-{{ .name }}" type="text/x-js-template">
+  <a href="${link}" id="summary-${key}" class="result ignore-color-change">
+    <div class="p-2">
+      <h5>${title}</h5>
+      <p class="m-0 
+        {{- partial "helpers/text-color.html" (dict "self" $self "light" "secondary") -}}
+      ">${snippet}</p>
+      ${ isset tags }<p>Tags: ${tags}</p>${ end }
+      ${ isset categories }<p>Categories: ${categories}</p>${ end }
+    </div>
+  </a>
+</script>

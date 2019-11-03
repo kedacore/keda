@@ -1,0 +1,183 @@
+{{/*
+  The following code is used to fetch the fragments for each page and calling
+  them. The code is complicated and written in Go Template so it's even more
+  complicated. Hopefully the comments would help.
+
+  We want the fragment to be as natural as possible. In that case, a single page
+  and a blog and an even more complex structure wouldn't be hard to implement.
+  The following structure is how we work right now.
+
+  There are several kinds of pages in Hugo; Page, Section, Homepage for example.
+  We expect that a homepage and section are defined as follows:
+
+  _index.md
+  _index
+    index.md
+    fragment-1.md
+    fragment-2.md
+
+  Hugo only requires _index.md file to define homepage or section, but Syna
+  requires the special _index directory for the fragments to be defined in
+  there. When rendering a section or a homepage, _index directory is expected so
+  the fragments can be found.
+  
+  And any page would be configured either as single index.md file or a directory
+  containing the index.md file and it's fragments.
+
+  page
+    index.md
+    fragment-1.md
+    fragment-2.md
+
+  Or:
+
+  page.md
+
+  This way, any page would have a main .md file and it's .md resources which
+  would define the fragments.
+
+  In every section, there can be another special directory called _global. This
+  directory is optional to have in the sections, but it's nice to have at the
+  root section, where you can place nav and footer fragments and not duplicate
+  them in every page. Each page will lookup each section's _global directory and
+  render them from child to root parent. So in the following structure only
+  marked files would be rendered in case of the page /blog/author-1/article-1:
+
+  _index.md
+  _index
+    index.md
+  _global
+    index.md
+    nav.md
+    contact.md
+    content.md
+    footer.md # Rendered
+  blog
+    _global
+      index.md
+      nav.md # Rendered
+      contact.md # Rendered
+    author-1
+      _global
+        index.md
+        item.md # Rendered
+      article-1
+        index.md
+        content.md # Rendered
+
+  The following code looks for each _global directory in upper sections, removes
+  duplicates (with priority given to closest fragments to the actual page) and
+  call the partials.
+  */}}
+{{- $page_scratch := .page_scratch -}}
+{{- $layout_info := $page_scratch.Get "layout_info" -}}
+{{- $page := $layout_info.page -}}
+{{- $real_page := $layout_info.real_page -}}
+{{- $root := $layout_info.root -}}
+{{- $is_404 := $layout_info.is_404 -}}
+
+{{- $page_scratch.Set "fragment_directories" (slice) -}}
+{{- if eq $is_404 true -}}
+  {{- $page_scratch.Add "fragment_directories" ($real_page.Site.GetPage "page" "/_global") -}}
+{{- else -}}
+  {{/* Lookup the directory of the file, split the path by slashes and find each
+    parent directory. Regex is used to split the path. First slash is an edge
+    case to find the root directory. $real_page is added to find the page
+    directory as well. */}}
+  {{- $page_scratch.Set "sections" (slice "/") -}}
+  {{- $sections := findRE "[^\\/]+" $real_page.CurrentSection.File.Dir -}}
+  {{- range ($sections | default (slice)) -}}
+    {{- $page_scratch.Add "sections" . -}}
+  {{- end -}}
+  {{- $page_scratch.Add "sections" $real_page -}}
+
+  {{/* Loop through all the parent directories and look for _global directories,
+    and in case we are in the $real_page item and if the page is a homepage or a
+    section, look for _index directory. */}}
+  {{- $page_scratch.Set "fragment_directories_tmp" (slice) -}}
+  {{- range $index, $section := $page_scratch.Get "sections" -}}
+    {{- $directory := $section -}}
+    {{- if (eq (add $index 1) (len ($page_scratch.Get "sections"))) -}}
+      {{- if ne $real_page.Kind "page" -}}
+        {{/* Last item is the page being rendered. If it's a section or homepage,
+          fragments must be at _index directory */}}
+        {{- $page_scratch.Set "active_page" ($real_page.Site.GetPage "page" (printf "%s%s" $real_page.File.Dir "_index")) -}}
+      {{- else if $page -}}
+        {{- $page_scratch.Set "active_page" $page -}}
+      {{- end -}}
+    {{- else if ge $index 1 -}}
+      {{/* Sections between the first and last are found and their _global directories
+        are taken into account */}}
+      {{- $directory := (delimit (first (add $index 1) ($page_scratch.Get "sections")) "/") -}}
+      {{- $page_scratch.Set "active_page" ($real_page.Site.GetPage "page" (printf "%s/%s" $directory "_global")) -}}
+    {{- else -}}
+      {{/* First section is always the root directory and we look for it's _global
+        directory */}}
+      {{- $page_scratch.Set "active_page" ($real_page.Site.GetPage "page" (printf "%s/%s" $directory "_global")) -}}
+    {{- end -}}
+    {{- $page_scratch.Add "fragment_directories_tmp" (dict "directory" ($page_scratch.Get "active_page") "index" $index) -}}
+  {{- end -}}
+
+  {{- range sort ($page_scratch.Get "fragment_directories_tmp") "index" "desc" -}}
+    {{ if .directory }}
+      {{- $page_scratch.Add "fragment_directories" .directory -}}
+    {{ end }}
+  {{- end -}}
+{{- end -}}
+
+{{/* We found all the _global (and in case of section or homepage, the
+  additional _index directory) in the previous loop. Here we will extract all
+  the fragments in those directories. We will remove the duplicates later. */}}
+{{- $page_scratch.Set "fragments" (slice) -}}
+{{- range $directory := ($page_scratch.Get "fragment_directories") -}}
+  {{/* Every index.md or [page].md file can be a fragment as well. Even in
+    _index directories. */}}
+  {{- $page_scratch.Add "fragments" . -}}
+  {{/* Fragments are just page resources with type page (generally any .md
+    file) */}}
+  {{- range ($directory.Resources.ByType "page") -}}
+    {{- $page_scratch.Add "fragments" . -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Here we find fragments that are relevant to this page. We do this by
+  checking file or directory name of each fragment and see if another fragment
+  is already registered with the same name. The loop is from the page upwards,
+  looking from the page directory or file to it's parents and so on. */}}
+{{- $page_scratch.Set "page_fragments" (slice) -}}
+{{- $page_scratch.Set "page_config" (slice) -}}
+{{- $page_scratch.Set "experimentals_used_messages" (slice) -}}
+{{- $page_scratch.Set "fragments_directory_name" (slice) -}}
+{{- if $page_scratch.Get "fragments" -}}
+  {{- range ($page_scratch.Get "fragments") -}}
+    {{- $name := replace .Name "/index" "" -}}
+    {{- if ne $root.File nil -}}
+      {{- $directory_same_name := in ($page_scratch.Get "fragments_directory_name") (printf "%s%s/" $root.File.Dir (replace $name ".md" "")) -}}
+      {{- if and (not .Params.disabled) (isset .Params "fragment") (not (where ($page_scratch.Get "page_fragments") ".Name" $name)) (not $directory_same_name) -}}
+        {{- if or $is_404 (ne .Params.fragment "404") -}}
+          {{- if eq .Params.fragment "config" -}}
+            {{- $page_scratch.Add "page_config" . -}}
+          {{- else -}}
+            {{- $page_scratch.Add "page_fragments" . -}}
+            {{- $page_scratch.Add "fragments_directory_name" (printf "%s%s/" $root.File.Dir (replace $name ".md" "")) -}}
+            {{- if isset .Params "padding" -}}
+              {{- $page_scratch.Add "experimentals_used_messages" "FrontMatter variable 'padding' is experimental and may get removed without notice" -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{/* This is the js script repository. Each fragment can register it's scripts
+  and they are rendered at the end of the page. */}}
+{{- $page_scratch.Set "js" (slice (dict "file" "syna-main.js")) -}}
+{{/* Disable React by default, we load the framework only if a fragment requires
+  it. */}}
+{{- $page_scratch.Set "react" false -}}
+{{/* Empty page slots. This variable stores all the available slots on the
+  page. It can be used for debugging purposes. */}}
+{{- $page_scratch.Set "page_slots" (slice) -}}
+
+{{/* Notify the user that an experimental or deprecating feature is used */}}
+{{- partial "helpers/deprecation-warning.html" (dict "Site" $real_page.Site "page_scratch" $page_scratch) -}}

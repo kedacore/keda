@@ -1,0 +1,39 @@
+{{- $items := partial "helpers/subitems.html" . -}}
+
+{{- $self := .self -}}
+{{- $bg := .Params.background | default "white" -}}
+{{- .page_scratch.Add "js" (dict "file" "syna-collapse.js") -}}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+  <div class="row text-center justify-content-center">
+    <div class="faq">
+      {{- if eq (len $items) 0 -}}
+        {{- partial "helpers/empty-subpath.html" (dict "context" "faq" "root" $) -}}
+      {{- else -}}
+        {{- range $items -}}
+          {{/* Handle special case of index.md being considered an item */}}
+          {{- if not (in .Name "/index.md") -}}
+            {{- $item := .Params }}
+            {{- $card_header_id := printf "%s" (strings.TrimSuffix ".md" (replace .Name (printf "%s/" $.Name) "")) }}
+            {{- $collapse_id := printf "%s%s" $.Name (printf "%s-collapse" (strings.TrimSuffix ".md" (replace .Name (printf "%s/" $.Name) ""))) }}
+              <div class="card">
+                <div id="{{ $card_header_id }}" class="card-header" data-toggle="collapse" data-target="#{{ $collapse_id }}"
+                            aria-expanded="false" aria-controls="{{ $collapse_id }}">
+                  <h5 class="mb-0">
+                      {{ $item.title }}
+                  </h5>
+                </div>
+
+                <div id="{{ $collapse_id }}" class="collapse" aria-labelledby="{{ $card_header_id }}" data-parent="faq">
+                  <div class="card-body">
+                    {{ .Content }}
+                  </div>
+                </div>
+              </div>
+            {{- end -}}
+        {{- end }}
+      {{- end }}
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

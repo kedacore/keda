@@ -1,0 +1,16 @@
+{{- $page := .page -}}
+{{- $self := .self -}}
+{{- $name := .Name -}}
+{{- $site := .Site -}}
+{{- $page_scratch := .page_scratch -}}
+{{- $items := where ($page.Resources.Match (printf "%s/*.md" $name)) ".Name" "ne" $self.Name -}}
+
+{{- if eq (len $items) 0 -}}
+  {{- range $directory := ($page_scratch.Get "fragment_directories") -}}
+    {{- if eq (len $items) 0 -}}
+      {{- $items = where ($directory.Resources.Match (printf "%s/*.md" $name)) ".Name" "ne" $self.Name -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- return $items -}}

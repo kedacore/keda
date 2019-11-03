@@ -1,0 +1,10 @@
+{{- if eq .Site.Params.debug true -}}
+  {{- if gt (len (.page_scratch.Get "experimentals_used_messages")) 0 }}
+    <script>
+      var messages = {{ ((.page_scratch.Get "experimentals_used_messages") | jsonify) | safeJS }};
+      messages.forEach(function(message) {
+        console.warn('Syna deprecation warning:', message);
+      });
+    </script>
+  {{- end -}}
+{{- end -}}

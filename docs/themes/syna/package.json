@@ -1,0 +1,48 @@
+{
+  "name": "syna",
+  "version": "0.15.2",
+  "description": "Highly customizable open source theme for Hugo based static websites",
+  "main": "static-main",
+  "repository": "https://git.okkur.org/syna",
+  "author": "Michael Grosser (stp-ip)",
+  "license": "Apache",
+  "scripts": {
+    "postinstall": "node post-install.js",
+    "build-js": "webpack --progress",
+    "build-hugo": "cd exampleSite && DEMO_MODE=true hugo -c content --config config-dev.toml --minify",
+    "watch-js": "webpack --watch --progress",
+    "watch-hugo": "cd exampleSite && DEMO_MODE=true hugo -c content --config config-dev.toml server -D",
+    "dev": "nf start",
+    "start": "npm run watch-js",
+    "build": "npm run build-js && npm run build-hugo",
+    "test:colors": "node _tests/colors-generator/index.js",
+    "test:alignments": "node _tests/align-generator/index.js"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.5",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-react": "^6.24.1",
+    "concurrently": "^3.5.1",
+    "extract-text-webpack-plugin": "^4.0.0-beta.0",
+    "node-sass": "^4.8.3",
+    "style-loader": "^0.20.3",
+    "webpack": "^4.15.1",
+    "webpack-cli": "^3.0.8"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.6.3",
+    "bootstrap": "^4.1.1",
+    "chart.js": "^2.7.2",
+    "foreman": "^3.0.0",
+    "form-validator-simple": "^0.1.1",
+    "fuse.js": "^3.2.1",
+    "i": "^0.3.6",
+    "parse-price": "^1.1.8",
+    "particles.js": "^2.0.0",
+    "popper.js": "^1.14.3",
+    "react": "^16.4.1",
+    "react-dom": "^16.4.1",
+    "react-jsonschema-form": "^1.0.3"
+  }
+}

@@ -1,0 +1,163 @@
+{{- $self := .self -}}
+{{- $currencies := dict "USD" "$" "CAD" "CA$" "EUR" "€" "AED" "AED" "AFN" "Af" "ALL" "ALL" "AMD" "AMD" "ARS" "AR$" "AUD" "AU$" "AZN" "man." "BAM" "KM" "BDT" "Tk" "BGN" "BGN" "BHD" "BD" "BIF" "FBu" "BND" "BN$" "BOB" "Bs" "BRL" "R$" "BWP" "BWP" "BYR" "BYR" "BZD" "BZ$" "CDF" "CDF" "CHF" "CHF" "CLP" "CL$" "CNY" "CN¥" "COP" "CO$" "CRC" "₡" "CVE" "CV$" "CZK" "Kč" "DJF" "Fdj" "DKK" "Dkr" "DOP" "RD$" "DZD" "DA" "EEK" "Ekr" "EGP" "EGP" "ERN" "Nfk" "ETB" "Br" "GBP" "£" "GEL" "GEL" "GHS" "GH₵" "GNF" "FG" "GTQ" "GTQ" "HKD" "HK$" "HNL" "HNL" "HRK" "kn" "HUF" "Ft" "IDR" "Rp" "ILS" "₪" "INR" "Rs" "IQD" "IQD" "IRR" "IRR" "ISK" "Ikr" "JMD" "J$" "JOD" "JD" "JPY" "¥" "KES" "Ksh" "KHR" "KHR" "KMF" "CF" "KRW" "₩" "KWD" "KD" "KZT" "KZT" "LBP" "LB£" "LKR" "SLRs" "LTL" "Lt" "LVL" "Ls" "LYD" "LD" "MAD" "MAD" "MDL" "MDL" "MGA" "MGA" "MKD" "MKD" "MMK" "MMK" "MOP" "MOP$" "MUR" "MURs" "MXN" "MX$" "MYR" "RM" "MZN" "MTn" "NAD" "N$" "NGN" "₦" "NIO" "C$" "NOK" "Nkr" "NPR" "NPRs" "NZD" "NZ$" "OMR" "OMR" "PAB" "B/." "PEN" "S/." "PHP" "₱" "PKR" "PKRs" "PLN" "zł" "PYG" "₲" "QAR" "QR" "RON" "RON" "RSD" "din." "RUB" "RUB" "RWF" "RWF" "SAR" "SR" "SDG" "SDG" "SEK" "Skr" "SGD" "S$" "SOS" "Ssh" "SYP" "SY£" "THB" "฿" "TND" "DT" "TOP" "T$" "TRY" "TL" "TTD" "TT$" "TWD" "NT$" "TZS" "TSh" "UAH" "₴" "UGX" "USh" "UYU" "$U" "UZS" "UZS" "VEF" "Bs.F." "VND" "₫" "XAF" "FCFA" "XOF" "CFA" "YER" "YR" "ZAR" "R" "ZMK" "ZK" -}}
+{{- .page_scratch.Add "js" (dict "url" "https://js.stripe.com/v3/" "defer" false "async" false) -}}
+{{- .page_scratch.Add "js" (dict "file" "syna-stripe.js") -}}
+{{- $bg := $self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) -}}
+  {{- if and .Params.user_input (eq (len (.Params.prices | default slice)) 1) -}}
+    {{- partial "helpers/warning.html" (dict "Site" $.Site "message" "You have configured both `[user_input]` and a single `[[prices]]` which is not allowed.") -}}
+  {{- else -}}
+    {{- with $self.Content -}}
+      <div class="row">
+        <div class="col text-center mt-3
+          {{- partial "helpers/text-color.html" (dict "self" $self "light" "secondary") -}}
+        ">
+          {{ . }}
+        </div>
+      </div>
+    {{- end }}
+    <div class="row mt-3 justify-content-center">
+      <form class="col-sm-12 col-md-8 col-xl-6 stripe-form position-relative" method="post" action="
+        {{- print .Params.post_url -}}
+      " id="
+        {{- printf "payment-form-%s" .Name -}}
+      ">
+        <div class="row should-fade">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <input id="email" name="email" class="form-control" type="text" data-validation="email" required
+                {{- if not .Params.fields.email -}}
+                  {{- safeHTMLAttr (printf " placeholder=\"%s\"" (i18n "stripe.email")) -}}
+                {{- else -}}
+                  {{- safeHTMLAttr (printf " placeholder=\"%s\"" .Params.fields.email.text) -}}
+                {{- end -}}>
+              <div data-error id="email-error"></div>
+            </div>
+            <div class="form-group">
+              <div id="card-element"></div>
+              <div class="invalid-feedback d-block"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row should-fade justify-content-center justify-content-md-start mx-0" data-render="product">
+          {{- with .Params.product }}
+            <div class="row product mx-0 align-items-center mb-3">
+              <i class="ml-1 fas fa-file-alt"></i>
+              <h5 class="ml-2 mb-0">{{ . }}</h5>
+            </div>
+          {{- end }}
+        </div>
+        <div class="row should-fade justify-content-between pr-3
+          {{- if and (eq (len ($.Params.prices | default slice)) 1) (not (isset .Params "user_input")) -}}
+            {{- print " hidden" -}}
+          {{- end -}}">
+          <div class="col-12 col-sm-auto d-flex flex-column justify-content-center mb-2 pr-0">
+            <div class="row mx-0 align-items-center">
+              <div class="col-12 col-sm-auto px-0 mr-2 mb-2">
+                {{- if or (and (isset .Params "user_input") (gt (len (.Params.prices | default slice)) 1)) (not (isset .Params "user_input")) }}
+                  <div class="price-display row mx-0" data-render="price">
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                      {{- range $index, $price := (.Params.prices | default slice) }}
+                        {{- with $price }}
+                          {{- $input_name := printf "%s-%s" $.Name (.text | default (string .amount)) }}
+                          <label data-price="{{ .text | default .amount }}"
+                            class="btn
+                              {{- if eq $bg "secondary" -}}
+                                {{- print " btn-primary" -}}
+                              {{- else -}}
+                                {{- print " btn-secondary" -}}
+                              {{- end -}}">
+                            <input id="{{ $input_name }}" name="price_text" type="radio" data-currency="{{ .currency }}" value="{{ .text }}" /> {{ .text }}
+                          </label>
+                        {{- end -}}
+                      {{- end -}}
+                    </div>
+                  </div>
+                {{- end }}
+                {{- with .Params.user_input }}
+                  <div class="input-group mb-0 price-input
+                    {{- if gt (len ($.Params.prices | default slice)) 1 }} hidden {{- end -}}
+                  ">
+                    <div class="input-group-prepend" title="{{ i18n "stripe.change_currency" }}">
+                      <div class="btn btn-dark currency-change dropdown-toggle" data-input="currency" data-value="{{ index .currencies 0 }}">{{ index $currencies (upper (index .currencies 0)) }}</div>
+                      <div class="dropdown-menu currency-menu">
+                        {{- range .currencies }}
+                          <div class="dropdown-item" data-value="{{ . }}">{{ index $currencies (upper .) }}</div>
+                        {{- end }}
+                      </div>
+                    </div>
+                    <input class="form-control" type="text" name="custom_price_text" data-value="price" placeholder="{{ i18n "stripe.pricePlaceholder" }}" value="{{ .default }}" />
+                  </div>
+                {{- end }}
+              </div>
+              {{- if and .Params.user_input (gt (len (.Params.prices | default slice)) 1) }}
+                <div class="col-12 col-sm-auto px-0 mb-2">
+                  <i class="fas fa-edit ml-2" data-action="toggle-price-change" title="{{ i18n "stripe.change_price" }}"></i>
+                </div>
+              {{- end }}
+            </div>
+          </div>
+          <input type="hidden" name="custom_value" value="{{- print (cond (gt (len ($.Params.prices | default slice)) 0) "false" "true") }}" />
+        </div>
+        <div class="row should-fade justify-content-between mx-0">
+          <div class="alert alert-danger generic-error d-none mb-3" role="alert" id="generic-error">
+            {{- with .Params.message.error -}}
+              {{- . | markdownify -}}
+            {{- else -}}
+              {{- i18n "stripe.defaultGenericError" }}
+            {{- end }}
+          </div>
+        </div>
+        <div class="row should-fade mx-0">
+          <button type="submit" class="btn btn-primary col-12 submit-btn">
+            {{- i18n "stripe.pay" | default "Pay" -}}
+            <span class="submit-price-display" data-render="price-value"></span>
+          </button>
+        </div>
+        <div class="generic-success mb-0 mb-3 hidden" id="generic-success">
+          <div class="alert alert-success">
+            {{- with .Params.message.success -}}
+              {{- . | markdownify -}}
+            {{- else -}}
+              {{- i18n "stripe.defaultGenericSuccess" -}}
+            {{- end }}
+          </div>
+          <span class="btn btn-primary" data-action="return-form">{{- i18n "stripe.return" | default "Return" -}}</span>
+        </div>
+      </form>
+    </div>
+  {{- end -}}
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}
+<script>
+  var fragmentName = "{{ .Name }}";
+  window.syna.api.register('stripe', 'stripe-' + fragmentName, {
+    form: "{{ (print .Name) | safeJS }}",
+    token: "{{ .Params.stripe_token | safeJS }}",
+    product: "{{ .Params.product | safeJS }}",
+    options: {
+      classes: {
+        base: 'text-body form-control row mx-0 px-2',
+        invalid: 'text-warning',
+        empty: 'text-body',
+        complete: 'text-success'
+      }
+    }
+  });
+</script>
+{{- .page_scratch.Add "js" (dict "name" (printf "stripe-templates-%s" .self.File) "script" (printf `
+<script id="stripe-price-template-%s" type="text/x-js-template">
+  <div class="btn-group btn-group-toggle" data-toggle="buttons">
+    <label data-price="${price}" class="btn %s">
+      <input id="stripe-${price}" name="price_text" type="radio" data-currency="${currency}" value="${price}" checked="true"> ${price}
+    </label>
+  </div>
+</script>
+<script id="stripe-product-template-%s" type="text/x-js-template">
+  <div class="row product mx-0 align-items-center mb-3">
+    <i class="ml-1 fas fa-file-alt"></i>
+    <h5 class="ml-2 mb-0">${product}</h5>
+  </div>
+</script>
+` .Name (cond (eq $bg "secondary") "btn-primary" "btn-secondary") .Name)) -}}

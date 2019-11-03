@@ -1,0 +1,98 @@
+{{- $title := printf "%s%s" .Title (cond (not .IsHome) (printf " &middot; %s" .Site.Title) (print "")) -}}
+{{- $content_fragment := first 1 ((where ((.Scratch.Get "page_fragments") | default (slice)) "Params.fragment" "in" "content") | default (slice)) -}}
+{{- .Scratch.Set "page_description" .Site.Params.Description -}}
+{{- range $content_fragment -}}
+  {{- $.Scratch.Set "page_description" (.Params.summary | default .Summary) -}}
+{{- end -}}
+<head>
+  <meta name="theme" content="Syna">
+  <meta name="theme-version" content="v0.15">
+  <meta name="theme-url" content="https://syna.okkur.org">
+  <meta name="theme-description" content="Highly customizable open source theme for Hugo based static websites">
+  <meta name="theme-author" content="Okkur Labs">
+  <meta name="theme-author-url" content="https://about.okkur.org">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Language" content="{{ .Site.LanguageCode | default "en-us" }}">
+  <meta name="google" value="notranslate">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="description" content="{{- .Scratch.Get "page_description" -}}">
+  <meta property="og:title" content="{{ $title }}">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:description" content="{{- .Scratch.Get "page_description" -}}">
+  <meta property="og:site_name" content="{{ .Site.Title }}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ $title }}" />
+  <meta name="twitter:description" content="{{- .Scratch.Get "page_description" -}}">
+  <meta name="twitter:url" content="{{ .Permalink }}" />
+  {{- if $content_fragment -}}
+    {{- range $content_fragment -}}
+      {{- if and .Params.asset -}}
+        {{- $file_path := strings.TrimSuffix ".md" (replace .File.Path "/index.md" "") -}}
+        {{- $root := (dict "page" (dict "file_path" $file_path) "page_scratch" $.Scratch "page" .) }}
+        <meta property="og:image" content="{{ partial "helpers/image.html" (dict "root" $root "asset" .Params.asset "absolute" true) }}">
+        <meta name="twitter:image" content="{{ partial "helpers/image.html" (dict "root" $root "asset" .Params.asset "absolute" true) }}">
+      {{- else }}
+        <meta property="og:image" content="{{ $.Site.Params.image }}">
+        <meta name="twitter:image" content="{{ $.Site.Params.image }}">
+      {{- end -}}
+    {{- end -}}
+  {{- else }}
+    <meta property="og:image" content="{{ $.Site.Params.image }}">
+    <meta name="twitter:image" content="{{ $.Site.Params.image }}">
+  {{- end }}
+  {{ with .Site.Params.name -}}<meta name="author" content="{{ . }}">{{- end }}
+
+  {{ hugo.Generator }}
+
+  <title>
+    {{- $title | safeHTML -}}
+  </title>
+
+  {{ "<!-- Theme Styles -->" | safeHTML }}
+  {{ partial "extra/grid-css.html" -}}
+  {{- $sassTemplate := resources.Get "styles/index.scss" -}}
+  {{- $options := (dict "targetPath" "style.css" "outputStyle" "compressed" "enableSourceMap" true "includePaths" (slice "node_modules" "styles")) -}}
+  {{- $styleTemplated := $sassTemplate | resources.ExecuteAsTemplate "main.scss" . -}}
+  {{- $style := $styleTemplated | resources.ToCSS $options | resources.Minify | resources.Fingerprint }}
+  <link href="{{ $style.RelPermalink }}" rel="stylesheet">
+
+  {{- with .Site.Params.custom -}}
+    {{- with .favicon }}
+      <link rel="shortcut icon" type="image/x-icon" href="{{ . | relLangURL }}">
+      <link rel="icon" {{ with $.Site.Params.custom.favicon_ico_sizes }}sizes="{{ . }}"{{ end }} type="image/x-icon" href="{{ . | relLangURL }}">
+    {{- end }}
+
+    {{- with .favicon_png }}
+      <link rel="icon" href="{{ . | relLangURL }}">
+      <link rel="apple-touch-icon-precomposed" href="{{ . | relLangURL }}">
+    {{- end }}
+
+    {{- with .favicon_svg }}
+      <link rel="icon" type="image/svg+xml" href="{{ . | relLangURL }}">
+    {{- end -}}
+
+    {{ if and (not .favicon) (not .favicon_png) (not .favicon_svg) }}
+      <link rel="icon" href="/favicon.png">
+      <link rel="apple-touch-icon-precomposed" href="/favicon.png">
+      <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    {{ end }}
+  {{- end }}
+
+  <script>
+    window.syna = {
+      {{ if .Site.Params.unsafeEvents }}{{ print "enabledUnsafeEvents: true," | safeJS }}{{ end }}
+    };
+  </script>
+  {{- $script_template := resources.Get "scripts/syna-head.js" -}}
+  {{- $script := $script_template | resources.Minify | resources.Fingerprint }}
+  <script {{- safeHTMLAttr (printf " src=\"%s\"" ($script.RelPermalink | relLangURL)) -}}></script>
+
+  {{- range (.Scratch.Get "page_config") -}}
+    {{- range .Params.config -}}
+      {{- partial "helpers/config.html" (dict "root" $ "head" true "type" .type "data" .) -}}
+    {{- end -}}
+  {{- end -}}
+</head>

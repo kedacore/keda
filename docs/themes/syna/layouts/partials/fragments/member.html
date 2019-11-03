@@ -1,0 +1,189 @@
+{{- $items := partial "helpers/subitems.html" . -}}
+
+{{- $self := . -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self.self "bg" $bg "params" .Params) }}
+  {{- if eq (len $items) 0 -}}
+    {{- partial "helpers/empty-subpath.html" (dict "context" "member" "root" $) -}}
+  {{- else if gt $items 1 -}}
+    <div class="row justify-content-center align-items-start">
+      {{- range $items -}}
+        {{/* Handle special case of index.md being considered a member */}}
+        {{- if not (in .Name "/index.md") -}}
+          {{- $member := .Params -}}
+          <div class="col-lg-4 col-md-6 col-sm-12 pt-3 pb-5 text-left text-sm-center">
+            {{- if .Params.asset -}}
+              <div class="text-center m-2">
+                <img src="{{ partial "helpers/image.html" (dict "root" $self "this" . "asset" .Params.asset "resize" "250x250") }}" class="img-fluid rounded-circle w-75 border
+                  {{- if or (eq $bg "white") (eq $bg "light") (eq $bg "secondary") (eq $bg "primary") -}}
+                    {{- print " border-dark" -}}
+                  {{- else -}}
+                    {{- print " border-white" -}}
+                  {{- end -}}
+                " alt="{{ $member.title }}"></img>
+              </div>
+            {{- end -}}
+            <div class="mt-5 mb-0
+              {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+            ">
+              <h2>
+                {{- $member.title -}}
+              </h2>
+            </div>
+            <div class="member
+              {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+            ">
+              {{- with $member.position -}}
+                <h5 class="mb-3">
+                  {{- . | markdownify -}}
+                </h5>
+              {{- end -}}
+              {{- with $member.reports_to -}}
+                <h6 class="font-italic mb-1">
+                  {{- i18n "member.reportsTo" }} {{ printf " %s" . | markdownify -}}
+                </h6>
+              {{- end -}}
+              {{- with $member.lives_in -}}
+                <h6 class="font-italic mb-1">
+                  {{- i18n "member.livesIn" }} {{ printf " %s" . | markdownify -}}
+                </h6>
+              {{- end -}}
+              {{- if $member.scope -}}
+                <div class="pt-3">
+                  {{- range $member.scope -}}
+                    <div>
+                      {{- . | markdownify -}}
+                    </div>
+                  {{- end -}}
+                </div>
+              {{- end -}}
+              {{- with $member.icons -}}
+                <div class="row justify-content-center pt-4">
+                  {{- range . -}}
+                    <span class="fa-stack fa-2x m-2" title="{{ .text }}">
+                      <a href="{{ .url }}">
+                        <i class="fas fa-circle fa-stack-2x
+                          {{- if eq $bg "primary" -}}
+                            {{- print " text-dark" -}}
+                          {{- end -}}
+                        "></i>
+                        <i class="{{ .icon }} fa-stack-1x fa-inverse"></i>
+                        <span class="sr-only">{{ .text }}</span>
+                      </a>
+                    </span>
+                  {{- end }}
+                </div>
+              {{- end -}}
+              {{- with .Content -}}
+                  <div class="pt-3">
+                    <div class="description">
+                      {{- . | markdownify -}}
+                    </div>
+                  </div>
+              {{- end -}}
+            </div>
+          </div>
+        {{- end -}}
+      {{- end }}
+    </div>
+  {{- else if le $items 1 -}}
+    <div class="card p-2">
+      {{- range $items -}}
+        <div class="row m-0 justify-content-center 
+          {{- if .Params.asset -}}
+            {{- printf " align-items-center" -}}
+          {{- end -}}">
+          {{/* Handle special case of index.md being considered a member */}}
+          {{- if not (in .Name "/index.md") -}}
+            {{- $member := .Params -}}
+            {{- if .Params.asset -}}
+              <div class="col-12 col-lg-5 p-5 text-center">
+                <img src="{{ partial "helpers/image.html" (dict "root" $self "this" . "asset" .Params.asset "resize" "250x250") }}" class="img-fluid rounded-circle border
+                  {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "white") -}}
+                " alt="{{ $member.title }}"></img>
+              </div>
+            {{- end -}}
+            <div class="col-12 text-lg-left
+              {{- if .Params.asset -}}
+                {{- printf " col-lg-7 pb-4 pt-0 pl-lg-2 pt-lg-4 text-center" -}}
+              {{- else -}}
+                {{- printf " col-lg-4" -}}
+              {{- end -}}">
+              <div class="member text-center text-lg-left
+                {{- partial "helpers/text-color.html" (dict "self" $self.self "light" "secondary") -}}
+              ">
+                <div class="mb-3 text-dark">
+                  <h1>
+                    {{- $member.title -}}
+                  </h1>
+                  {{- with $member.position -}}
+                    <h5 class="mb-1">
+                      {{- . | markdownify -}}
+                    </h5>
+                  {{- end -}}
+                  {{- with $member.company -}}
+                    <h6 class="mb-1">
+                      {{- . | markdownify -}}
+                    </h6>
+                  {{- end -}}
+                  {{- with $member.reports_to -}}
+                    <h6 class="font-italic mb-1">
+                      {{- i18n "member.reportsTo" }} {{ printf " %s" . | markdownify -}}
+                    </h6>
+                  {{- end -}}
+                  {{- with $member.lives_in -}}
+                    <h6 class="font-italic mb-0">
+                      {{- i18n "member.livesIn" }} {{ printf " %s" . | markdownify -}}
+                    </h6>
+                  {{- end -}}
+                </div>
+                {{- if $member.scope -}}
+                  <div class="mt-3">
+                    {{- range $member.scope -}}
+                      <div>
+                        {{- . | markdownify -}}
+                      </div>
+                    {{- end -}}
+                  </div>
+                {{- end -}}
+                {{- with $member.icons -}}
+                  <div class="col-12 text-center">
+                    <div class="row justify-content-lg-start justify-content-center py-2">
+                      {{- range . -}}
+                        <span class="fa-stack fa-2x m-2" title="{{ .text }}">
+                          <a href="{{ .url }}">
+                            <i class="fas fa-circle fa-stack-2x
+                              {{- if eq $bg "primary" -}}
+                                {{- print " text-dark" -}}
+                              {{- end -}}
+                            "></i>
+                            <i class="{{ .icon }} fa-stack-1x fa-inverse"></i>
+                            <span class="sr-only">{{ .text }}</span>
+                          </a>
+                        </span>
+                      {{- end -}}
+                    </div>
+                  </div>
+                {{- end -}}
+              </div>
+            </div>
+            {{- if .Content -}}
+              <div class="col-12 text-center text-lg-left
+                {{- if .Params.asset -}}
+                  {{- printf " p-4" -}}
+                {{- else -}}
+                  {{- printf " col-lg-8 pt-0 pl-lg-5 text-center" -}}
+                {{- end -}}">
+                <div class="description">
+                  {{- .Content | markdownify -}}
+                </div>
+              </div>
+            {{- end -}}
+          {{- end -}}
+        </div>
+      {{- end }}
+    </div>
+  {{- end -}}
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

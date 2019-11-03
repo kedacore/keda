@@ -1,0 +1,157 @@
+{{- $self := .self -}}
+{{- if .Params.recaptcha -}}
+  {{- .page_scratch.Add "js" (dict "url" "https://www.google.com/recaptcha/api.js") -}}
+{{- end }}
+{{- .page_scratch.Add "js" (dict "file" "syna-contact.js") -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{ "<!-- Contact -->" | safeHTML }}
+
+{{- partial "helpers/container.html" (dict "start" true "in_slot" .in_slot "bg" $bg "Name" .Name "Params" .Params) -}}
+  {{- partial "helpers/section-header.html" (dict "self" $self "bg" $bg "params" .Params) }}
+  <div class="row">
+    <div class="col-12">
+      <form
+        class="contact position-relative"
+        method="POST"
+        name="{{- .Params.form_name | default (printf "contact-form-%s" .Name) }}"
+        id="{{- .Params.form_name | default (printf "contact-form-%s" .Name) }}"
+        {{- if .Params.netlify -}}
+          {{- safeHTMLAttr (print " data-has-netlify=\"true\" netlify") -}}
+        {{- else -}}
+          {{- safeHTMLAttr (printf " action=\"%s\"" (.Params.post_url | default (printf "https://formspree.io/%s" .Params.email))) -}}
+        {{- end }}>
+          <div class="row py-3 should-fade">
+            <div class="col-md-6">
+              {{- with .Params.fields.name }}
+                <div class="form-group">
+                  <input
+                    id="name"
+                    name="name"
+                    class="form-control"
+                    type="text"
+                    data-validation
+                    data-validation-error-msg="{{ .error | default (i18n "contact.defaultNameError") }}"
+                    placeholder="{{ with .text }}{{ . | markdownify }}{{ end }}"
+                    required>
+                  <div class="px-2" data-error id="name-error"></div>
+                </div>
+              {{- end -}}
+              {{- with .Params.fields.email }}
+                <div class="form-group">
+                  <input
+                    id="email"
+                    name="email"
+                    class="form-control"
+                    type="text"
+                    data-validation="email"
+                    data-validation-error-msg="{{ .error | default (i18n "contact.defaultEmailError") }}"
+                    placeholder="{{ with .text }}{{ . | markdownify }}{{ end }}"
+                    required>
+                  <div class="px-2" data-error id="email-error"></div>
+                </div>
+              {{- end -}}
+              {{- with .Params.fields.phone }}
+                <div class="form-group">
+                  <input
+                    id="phone"
+                    name="phone"
+                    class="form-control"
+                    type="text"
+                    data-validation="regex"
+                    data-validation-regex="^([0-9,\+]+)$"
+                    data-validation-error-msg="{{ .error | default (i18n "contact.defaultPhoneError") }}"
+                    placeholder="{{ with .text }}{{ . | markdownify }}{{ end }}">
+                  <div class="px-2" data-error id="phone-error"></div>
+                </div>
+              {{- end }}
+            </div>
+            <div class="col-md-6">
+              {{- with .Params.fields.message }}
+                <div class="form-group">
+                  <textarea
+                    id="message"
+                    name="message"
+                    class="form-control text-dark"
+                    type="text"
+                    data-validation
+                    data-validation-error-msg="{{ .error | default (i18n "contact.defaultButton") }}"
+                    placeholder="{{ with .text }}{{ . | markdownify }}{{ end }}"
+                    rows="4"
+                    required></textarea>
+                  <div class="px-2" data-error id="message-error"></div>
+                </div>
+              {{- end }}
+            </div>
+            <div class="col-lg-12 text-center">
+              <div class="captcha-error alert alert-danger d-none" id="captcha-error">
+                  {{- i18n "contact.defaultCaptchaError" }} {{ .Params.email }}.
+              </div>
+              <div class="generic-error alert alert-danger d-none" id="generic-error">
+                {{- with .Params.message.error -}}
+                  {{- . | markdownify -}}
+                {{- else -}}
+                  {{- i18n "contact.defaultGenericError" }} {{ .Params.email -}}.
+                {{- end }}
+              </div>
+              <noscript>
+                <div class="alert alert-danger py-2" id="js-error">
+                  {{- i18n "contact.defaultJsError" }} {{ .Params.email }}.
+                </div>
+              </noscript>
+              {{- if and .Params.recaptcha (not .Params.netlify) }}
+                <div class="g-recaptcha-container">
+                  <span class="g-recaptcha-filler"></span>
+                  <button
+                    class="g-recaptcha btn btn-primary submit-btn"
+                    type="submit"
+                    data-sitekey="{{ .Params.recaptcha.sitekey }}"
+                    data-size="invisible"
+                    data-badge="inline"
+                    data-callback="onContactCaptcha"
+                    disabled>
+                    {{- .Params.button_text | default (i18n "contact.defaultButton") }}
+                  </button>
+                  <span class="filler"></span>
+                </div>
+              {{- else }}
+                {{- if .Params.netlify }}
+                  <div netlify-recaptcha></div>
+                {{- end }}
+                <button
+                  class="btn submit-btn
+                    {{- if eq $bg "primary" -}}
+                      {{- printf " btn-%s" "dark" -}}
+                    {{- else -}}
+                      {{- printf " btn-%s" "primary" -}}
+                    {{- end -}}
+                  "
+                  type="submit">
+                  {{- .Params.button_text | default (i18n "contact.defaultButton") }}
+                </button>
+              {{- end }}
+            </div>
+          </div>
+          {{- range .Params.fields.hidden -}}
+            {{- if eq .name "site" }}
+              <input type="hidden" name="{{ .name }}" value="{{ $.root.Page.Permalink }}"/>
+            {{- else if eq .name "page" }}
+              <input type="hidden" name="{{ .name }}" value="{{ $.root.Page.RelPermalink }}"/>
+            {{- else }}
+              <input type="hidden" name="{{ .name }}" value="{{ .value }}"/>
+            {{- end -}}
+          {{- end -}}
+          <div class="generic-success mb-0 mb-3 hidden" id="generic-success">
+            <div class="alert alert-success">
+              {{- with .Params.message.success -}}
+                {{- . | markdownify -}}
+              {{- else -}}
+                {{- i18n "contact.defaultGenericSuccess" -}}
+              {{- end }}
+            </div>
+            <span class="btn btn-primary" data-action="return-form">Return</span>
+          </div>
+      </form>
+    </div>
+  </div>
+{{- partial "helpers/container.html" (dict "end" true "in_slot" .in_slot) -}}

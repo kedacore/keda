@@ -1,0 +1,86 @@
+{{- $paginator := .paginator -}}
+  {{- if gt $paginator.TotalPages 1 }}
+    <ul class="pagination justify-content-center w-100 mt-4">
+      {{- if ne $paginator.PageNumber 1 }}
+        <li class="page-item">
+          <a class="page-link" href="{{ $paginator.First.URL }}">
+            {{- i18n "list.first" | default "First" }}
+          </a>
+        </li>
+      {{- end -}}
+      {{- if $paginator.HasPrev }}
+        <li class="page-item">
+          <a href="{{ $paginator.Prev.URL }}" class="page-link">
+            {{- i18n "list.previous" | default "Previous" }}
+          </a>
+        </li>
+      {{- else }}
+        <li class="page-item disabled">
+          <a class="page-link" href="#" tabindex="-1">
+            {{- i18n "list.previous" | default "Previous" }}
+          </a>
+        </li>
+      {{- end -}}
+      {{- range $paginator.Pagers -}}
+        {{- $adjacent_links := 2 -}}
+        {{- $max_links := (add (mul $adjacent_links 2) 1) -}}
+        {{- $lower_limit := (add $adjacent_links 1) -}}
+        {{- $.page_scratch.Set "page_number_flag" false -}}
+        {{- if gt $paginator.TotalPages $adjacent_links -}}
+          {{- $upper_limit := sub $paginator.TotalPages $adjacent_links -}}
+          {{- $.page_scratch.Set "page_number_flag" false -}}
+          {{- if gt $paginator.TotalPages $max_links -}}
+            {{- if le $paginator.PageNumber $lower_limit -}}
+              {{- if le .PageNumber $max_links -}}
+                {{- $.page_scratch.Set "page_number_flag" true -}}
+              {{- end -}}
+            {{- else if ge $paginator.PageNumber $upper_limit -}}
+              {{- if gt .PageNumber (sub $paginator.TotalPages $max_links) -}}
+                {{- $.page_scratch.Set "page_number_flag" true -}}
+              {{- end -}}
+            {{- else -}}
+              {{- if and ( ge .PageNumber (sub $paginator.PageNumber $adjacent_links) ) ( le .PageNumber (add $paginator.PageNumber $adjacent_links) ) -}}
+                {{- $.page_scratch.Set "page_number_flag" true -}}
+              {{- end -}}
+            {{- end -}}
+          {{- else -}}
+            {{- $.page_scratch.Set "page_number_flag" true -}}
+          {{- end -}}
+          {{- if eq ($.page_scratch.Get "page_number_flag") true }}
+            <li class="page-item {{ if eq . $paginator }} active{{ end }}">
+              <a href="{{ .URL }}" class="page-link">
+                {{- .PageNumber -}}
+                {{- if eq . $paginator }}
+                  <span class="sr-only">({{- i18n "list.current" | default "current" }})</span>
+                {{- end }}
+              </a>
+            </li>
+          {{- end -}}
+        {{- else -}}
+          <li class="page-item {{ if eq . $paginator }}{{ printf " active" }}{{ end }}">
+            <a href="{{ .URL }}" class="page-link">
+              {{- .PageNumber -}}
+            </a>
+          </li>
+        {{- end -}}
+      {{- end -}}
+      {{- if $paginator.HasNext }}
+        <li class="page-item">
+          <a href="{{ $paginator.Next.URL }}" class="page-link">
+            {{- i18n "list.next" | default "Next" -}}
+          </a>
+        </li>
+      {{- else }}
+        <li class="page-item disabled">
+          <a class="page-link" href="#" tabindex="-1">{{- i18n "list.next" | default "Next" -}}</a>
+        </li>
+      {{- end -}}
+      {{- if ne $paginator.PageNumber $paginator.TotalPages }}
+        <li class="page-item">
+          <a class="page-link" href="{{ $paginator.Last.URL }}">
+            {{- i18n "list.last" | default "Last" -}}
+          </a>
+        </li>
+      {{- end }}
+    </ul>
+  {{- end -}}

@@ -1,0 +1,20 @@
+[build]
+  base = "exampleSite"
+  publish = "public"
+  command = "HUGO_THEME=repo DEMO_MODE=true hugo --config config-dev.toml -d ../public --minify"
+
+[context.production.environment]
+  HUGO_VERSION = "0.58.3"
+  HUGO_ENV = "production"
+
+[context.deploy-preview]
+  command = "HUGO_THEME=repo DEMO_MODE=true hugo --config config-dev.toml -d ../public --minify"
+
+[context.deploy-preview.environment]
+  HUGO_VERSION = "0.58.3"
+
+[context.branch-deploy]
+  command = "HUGO_THEME=repo DEMO_MODE=true hugo --config config-dev.toml -d ../public --minify"
+
+[context.branch-deploy.environment]
+  HUGO_VERSION = "0.58.3"

@@ -1,0 +1,30 @@
+<!-- Piwik -->
+<script type="text/javascript" >
+  var _paq = _paq || [];
+  _paq.push(["setDocumentTitle", document.domain + "/" + document.title]);
+  _paq.push(["setCookieDomain", "{{ .Site.Params.analytics.piwik.domain }}"]);
+  _paq.push(["setDomains", ["{{ .Site.Params.analytics.piwik.domain }}"]]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="{{ .Site.Params.analytics.piwik.url }}/";
+    _paq.push(['setTrackerUrl', u+'piwik.php']);
+    _paq.push(['setSiteId', {{ .Site.Params.analytics.piwik.id }}]);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript';
+    g.async=true;
+    g.defer=true;
+    g.src=u+'piwik.js';
+    {{ if .Site.Params.analytics.piwik.hash }}
+      g.integrity="{{ .Site.Params.analytics.piwik.hash }}";
+      g.crossorigin="anonymous";
+    {{ end }}
+    s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<noscript>
+  <div>
+    <img src="{{ .Site.Params.analytics.piwik.url }}/piwik.php?idsite={{ .Site.Params.analytics.piwik.id }}" style="border:0;" alt="" />
+  </div>
+</noscript>
+<!-- End Piwik Code -->

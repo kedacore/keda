@@ -1,0 +1,10 @@
+{{- if ne (getenv "DEMO_MODE") "true" -}}
+  {{- errorf .message -}}
+{{- end -}}
+{{- if eq .Site.Params.debug true }}
+  <div class="row w-100 justify-content-center mx-0 mt-3">
+    <div class="alert alert-danger text-center">
+      {{ .message | markdownify }}
+    </div>
+  </div>
+{{- end -}}

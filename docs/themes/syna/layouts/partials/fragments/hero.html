@@ -1,0 +1,112 @@
+{{- $self := . -}}
+{{- if .Params.particles -}}
+  {{- .page_scratch.Add "js" (dict "file" "syna-hero.js") -}}
+{{- end -}}
+{{- $bg := .self.Scratch.Get "bg" }}
+
+{{ "<!-- Hero -->" | safeHTML }}
+<header id="{{ .Name }}" class="fragment hero">
+  {{- if .Params.header }}
+    <div
+      style="
+        {{- with .Params.minHeight -}}
+          {{- (printf "min-height: %s;" .) | safeCSS -}}
+        {{- end -}}
+        background-image:url({{ partial "helpers/image.html" (dict "root" $self "asset" .Params.header) }})"
+      class="jumbotron text-center header-image mb-0
+        {{- printf " bg-%s" $bg -}}
+      ">
+  {{- else }}
+    <div style="
+        {{- with .Params.minHeight -}}
+          {{- (printf "min-height: %s;" .) | safeCSS -}}
+        {{- end -}}
+      "class="jumbotron text-center mb-0
+      {{- printf " bg-%s" $bg -}}
+    ">
+  {{- end }}
+  {{- if .Params.particles }}
+    <div id="{{ printf "%s-particles-js" .Name }}" class="particles-js"></div>
+  {{- end -}}
+  {{- if .Params.asset -}}
+    {{- with .Params.asset }}
+      <div class="row justify-content-center align-items-start">
+        <img
+          class="overlay img-fluid"
+          src="{{ partial "helpers/image.html" (dict "root" $self "asset" .) }}"
+          alt="
+            {{- if .text -}}
+              {{- print .text -}}
+            {{- else if $.Params.title_page -}}
+              {{- print $.root.Title -}}
+            {{- else -}}
+              {{- print $.Params.title -}}
+            {{- end -}}
+          "
+          {{- if .height -}} height="{{ .height }}"{{- end -}}
+          {{- if .width -}} width="{{ .width }}"{{- end -}}
+        ></img>
+      </div>
+    {{- end }}
+    {{- with .Params.subtitle }}
+      <div class="row justify-content-center align-items-start">
+        <h1 class="overlay jumbotron-heading my-4
+          {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+        ">
+          {{- . | markdownify -}}
+        </h1>
+      </div>
+    {{- end -}}
+  {{- else }}
+    {{- if .Params.title_page }}
+      <div class="row justify-content-center align-items-start">
+        <h1 class="overlay jumbotron-heading
+          {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+        ">
+          {{ $.root.Title }}
+        </h1>
+      </div>
+    {{- else -}}
+      {{- with .Params.title }}
+        <div class="row justify-content-center align-items-start">
+          <h1 class="overlay jumbotron-heading
+            {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+          ">
+            {{- . -}}
+          </h1>
+        </div>
+      {{- end -}}
+    {{- end -}}
+    {{- with .Params.subtitle }}
+      <div class="row justify-content-center align-items-start">
+        <div class="overlay lead
+          {{- partial "helpers/text-color.html" (dict "self" $self.self) -}}
+        ">
+          {{- . | markdownify -}}
+        </div>
+      </div>
+    {{- end -}}
+  {{- end -}}
+  <div>
+    {{- range .Params.buttons }}
+      <a class="overlay btn btn-lg m-2
+        {{- if hasPrefix .url " # " }} anchor{{ end -}}
+        {{- $color := .color | default "primary" -}}
+        {{- printf " btn-%s " $color -}}
+      " href="{{ .url | relLangURL }}">
+        <div class="column justify-content-center align-content-center">
+          {{- .text -}}
+        </div>
+      </a>
+    {{- end }}
+  </div>
+  </div>
+</header>
+<script>
+  var fragmentName = "{{ .Name }}";
+  {{- $file_path := printf "%s%s/config.json" .page.File.Dir .Name -}}
+  window.syna.api.register("hero", "hero-" + fragmentName, {
+    selector: "{{ printf "%s-particles-js" .Name }}",
+    config: {{ if fileExists $file_path -}} JSON.parse({{ readFile $file_path | safeHTML }}) {{- else -}} null {{- end -}},
+  });
+</script>
