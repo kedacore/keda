@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.operatorName }}
+  name: {{ .Values.operatorName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.operatorName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.operatorName }}
+        {{- if .Values.aadPodIdentity }}
+        aadpodidbinding: {{ .Values.aadPodIdentity }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ .Values.operatorName }}
+      containers:
+        - name: {{ .Values.operatorName }}
+          image: "{{ .Values.image.keda }}"
+          command:
+          - keda
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WATCH_NAMESPACE
+              value: {{ .Values.watchNamespace }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: {{ .Values.operatorName }}
+          {{- if .Values.grpcTLSCertsSecret }}
+          volumeMounts:
+          - name: grpc-certs
+            mountPath: /grpccerts
+          {{- end }}
+        - name: {{ .Values.operatorName }}-metrics-apiserver
+          image: {{ .Values.image.metricsAdapter }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+          args:
+          - /usr/local/bin/keda-adapter
+          - --secure-port=6443
+          - --logtostderr=true
+          - --v=0
+          ports:
+          - containerPort: 6443
+            name: https
+          - containerPort: 8080
+            name: http
+          {{- if .Values.grpcTLSCertsSecret }}
+          volumeMounts:
+          - name: grpc-certs
+            mountPath: /grpccerts
+          {{- end }}
+        {{- if .Values.grpcTLSCertsSecret }}
+        volumes:
+        - name: grpc-certs
+          secret:
+            secretName: {{ .Values.grpcTLSCertsSecret }}
+        {{- end }}
