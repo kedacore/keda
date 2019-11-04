@@ -66,6 +66,7 @@ func kubernetes install --namespace keda
 ### Deploying using the deploy yaml
 If you want to try KEDA on minikube or a different Kubernetes deployment without using Helm, you can deploy CRD and yamls under the `/deploy` directory.
 ```
+kubectl create namespace keda
 kubectl apply -f deploy/crds/keda.k8s.io_scaledobjects_crd.yaml
 kubectl apply -f deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml
 kubectl apply -f deploy/
