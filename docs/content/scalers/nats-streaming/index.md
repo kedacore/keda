@@ -5,4 +5,36 @@ title = "Nats Streaming"
 background = "light"
 +++
 
-Flexible call to action buttons making external or on site links actionable.
+Scale applications based on Nats Streaming.
+
+<!--more-->
+
+* **Availability:** v1.0 and above
+* **Maintainer:** Community
+
+### Example
+
+```yaml
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: stan-scaledobject
+  namespace: gonuts
+  labels:
+    deploymentName: gonuts-sub
+spec:
+  pollingInterval: 10   # Optional. Default: 30 seconds
+  cooldownPeriod: 30   # Optional. Default: 300 seconds
+  minReplicaCount: 0   # Optional. Default: 0
+  maxReplicaCount: 30  # Optional. Default: 100  
+  scaleTargetRef:
+    deploymentName: gonuts-sub
+  triggers:
+  - type: stan
+    metadata:
+      natsServerMonitoringEndpoint: "stan-nats-ss.stan.svc.cluster.local:8222"
+      queueGroup: "grp1"
+      durableName: "ImDurable"
+      subject: "Test"
+      lagThreshold: "10"
+```
