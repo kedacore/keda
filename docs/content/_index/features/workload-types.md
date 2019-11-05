@@ -1,6 +1,6 @@
 +++
 title = "Multiple Workload Types"
-weight = 10
+weight = 30
 
 [asset]
   icon = "fas fa-shapes"

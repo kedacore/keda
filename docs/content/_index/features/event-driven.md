@@ -1,6 +1,6 @@
 +++
 title = "Event-driven"
-weight = 10
+weight = 40
 
 [asset]
   icon = "fas fa-bolt"
