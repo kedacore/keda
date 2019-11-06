@@ -1,9 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    {{- include "keda.labels" . | nindent 4 }}
-  name: {{ template "keda.fullname" . }}
+  name: {{ .Values.operatorName }}
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
@@ -14,5 +12,4 @@ spec:
     port: 80
     targetPort: 8080
   selector:
-    name: {{ template "keda.fullname" . }}
-    instance: {{ template "keda.fullname" . }}-instance
+    app: {{ .Values.operatorName }}
