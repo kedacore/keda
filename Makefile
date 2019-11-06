@@ -90,7 +90,7 @@ build-chart-edge:
 	rm -rf /tmp/keda-edge
 	cp -r -L chart/keda /tmp/keda-edge
 	sed -i "s/^name:.*/name: keda-edge/g" /tmp/keda-edge/Chart.yaml
-	sed -i "s/^version:.*/version: 0.0.1-$(DATE)-$(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
+	sed -i "s/^version:.*/version: $(IMAGE_TAG)-$(DATE)-$(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
 	sed -i "s/^appVersion:.*/appVersion: $(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
 
 	helm lint /tmp/keda-edge/
@@ -98,7 +98,7 @@ build-chart-edge:
 
 .PHONY: publish-edge-chart
 publish-edge-chart: build-chart-edge
-	$(eval CHART := $(shell find . -maxdepth 1 -type f -iname 'keda-edge-0.0.1-*' -print -quit))
+	$(eval CHART := $(shell find . -maxdepth 1 -type f -iname 'keda-edge-$(IMAGE_TAG)-*' -print -quit))
 	@az storage blob upload \
 		--container-name helm \
 		--name $(CHART) \

@@ -1,10 +1,11 @@
-nameOverride:
-fullnameOverride:
+operatorName: keda-operator
 
 image:
-  repository: kedacore/keda
-  tag: latest
+  keda: docker.io/kedacore/keda:0.0.4
+  metricsAdapter: docker.io/kedacore/keda-metrics-adapter:0.0.4
   pullPolicy: Always
+
+watchNamespace: ""
 
 replicaCount: 1
 
@@ -16,12 +17,7 @@ rbac:
 
 serviceAccount:
   create: true
-  name:
-
-logLevel: info
-
-#set to a higher verbosity for detailed apiservice logs
-glogLevel: 2
+  name: keda-operator
 
 # Set to the value of the Azure Active Directory Pod Identity
 # This will be set as a label on the Keda Pod(s)

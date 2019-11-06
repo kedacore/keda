@@ -33,5 +33,6 @@ jobs:
 
       - name: Publish
         run: make publish
-      # - name: Publish helm
-      #   run: helm init --client-only && make publish-edge-chart
+
+      - name: Publish helm
+        run: helm init --client-only && make publish-edge-chart
