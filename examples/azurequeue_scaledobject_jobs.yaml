@@ -11,20 +11,23 @@ spec:
   jobTargetRef:
     parallelism: 1
     completions: 1
-    activeDeadlineSeconds: 60
+    activeDeadlineSeconds: 600
     backoffLimit: 6
     template:
-      containers:
-      - name: consumer-job
-        image: sgricci/queue-consumer
-        env:
-        - name: AzureWebJobsStorage
-          valueFrom:
-            secretKeyRef:
-              name: secrets
-              key: AzureWebJobsStorage
+      spec:
+        containers:
+        - name: consumer-job
+          image: tomconte/queue-consumer
+          env:
+          - name: AzureWebJobsStorage
+            valueFrom:
+              secretKeyRef:
+                name: secrets
+                key: AzureWebJobsStorage
+          - name: QUEUE_NAME
+            value: keda-queue
   triggers:
   - type: azure-queue
     metadata:
-      queueName: queue-name
+      queueName: keda-queue
       connection: AzureWebJobsStorage
