@@ -43,7 +43,7 @@ test.serial('Deploy Keda', t => {
     if (sh.exec('kubectl apply -f ../deploy/').code !== 0) {
         t.fail('error deploying keda. ' + result);
     }
-    t.pass('Keda deployed successfully using KedaScaleController.yaml');
+    t.pass('Keda deployed successfully using crds and yaml');
 });
 
 test.serial('verifyKeda', t => {
