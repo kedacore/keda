@@ -1,11 +1,11 @@
 +++
 fragment = "content"
 weight = 100
-title = "Nats Streaming"
+title = "NATS Streaming"
 background = "light"
 +++
 
-Scale applications based on Nats Streaming.
+Scale applications based on NATS Streaming.
 
 <!--more-->
 
