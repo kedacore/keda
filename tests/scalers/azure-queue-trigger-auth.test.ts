@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as sh from "shelljs";
 import * as tmp from "tmp";
 import test from "ava";
+import { exec } from "child_process";
 
 const defaultNamespace = "azure-queue-auth-test";
 const queueName = "auth-queue-name";
@@ -44,47 +45,58 @@ test.serial.cb(
   t => {
     const queueSvc = azure.createQueueService(connectionString);
     queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder();
+    /*
     queueSvc.createQueueIfNotExists(queueName, err => {
       t.falsy(err, "unable to create queue");
-      async.mapLimit(
-        Array(1000).keys(),
-        20,
-        (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb),
-        () => {
-          let replicaCount = "0";
-          for (let i = 0; i < 10 && replicaCount !== "1"; i++) {
-            replicaCount = sh.exec(
-              `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-            ).stdout;
-            if (replicaCount !== "1") {
-              sh.exec("sleep 1s");
-            }
+      for (let n = 0; n < 20; n++) {
+        queueSvc.createMessage(queueName, `test ${n}`, function(error) {
+          if(!error) {
+            // Message inserted
           }
-
-          t.is("1", replicaCount, "Replica count should be 1 after 10 seconds");
-          queueSvc.deleteQueueIfExists(queueName, err => {
-            t.falsy(err, `unable to delete queue ${queueName}`);
-            for (let i = 0; i < 50 && replicaCount !== "0"; i++) {
-              replicaCount = sh.exec(
-                `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-              ).stdout;
-              if (replicaCount !== "0") {
-                sh.exec("sleep 5s");
-              }
-            }
-
-            t.is(
-              "0",
-              replicaCount,
-              "Replica count should be 0 after 3 minutes"
-            );
-            t.end();
-          });
-        }
-      );
+        });
+      }
     });
-  }
-);
+    */
+    queueSvc.createQueueIfNotExists(queueName, err => {
+      t.falsy(err, "unable to create queue");
+      for (let n = 0; n < 20; n++) {
+        queueSvc.createMessage(queueName, `test ${n}`, function(error) {
+          if(!error) {
+            // Message inserted
+          }
+        });
+      }
+
+      let replicaCount = "0";
+      for (let i = 0; i < 10 && replicaCount !== "1"; i++) {
+        replicaCount = sh.exec(
+          `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+        ).stdout;
+        if (replicaCount !== "1") {
+          sh.exec("sleep 1s");
+        }
+      }
+      t.is("1", replicaCount, "Replica count should be 1 after 10 seconds");
+      queueSvc.deleteQueueIfExists(queueName, err => {
+        t.falsy(err, `unable to delete queue ${queueName}`);
+        for (let i = 0; i < 50 && replicaCount !== "0"; i++) {
+          replicaCount = sh.exec(
+            `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+          ).stdout;
+          if (replicaCount !== "0") {
+            sh.exec("sleep 5s");
+          }
+        }
+
+        t.is(
+          "0",
+          replicaCount,
+          "Replica count should be 0 after 3 minutes"
+        );
+      });
+    });
+    t.end();
+  });
 
 test.after.always.cb("clean up azure-queue deployment", t => {
   const resources = [
@@ -97,7 +109,7 @@ test.after.always.cb("clean up azure-queue deployment", t => {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`);
   }
   sh.exec(`kubectl delete namespace ${defaultNamespace}`);
-
+  t.end()
   // delete test queue
   const queueSvc = azure.createQueueService(connectionString);
   queueSvc.deleteQueueIfExists(queueName, err => {
@@ -105,6 +117,7 @@ test.after.always.cb("clean up azure-queue deployment", t => {
     t.end();
   });
 });
+
 
 const deployYaml = `apiVersion: v1
 kind: Secret
