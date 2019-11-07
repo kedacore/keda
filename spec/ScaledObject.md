@@ -2,7 +2,7 @@
 
 This specification describes the `ScaledObject` custom resource definition which is used to define how KEDA should scale your application and what the triggers are.
 
-[`scaledobject_types.go`](./../pkg/apis/keda/v1alpha1/scaledobject_types.go)
+[`types.go`](./../pkg/apis/keda/v1alpha1/types.go)
 
 ```yaml
 apiVersion: keda.k8s.io/v1alpha1
@@ -10,11 +10,20 @@ kind: ScaledObject
 metadata:
   name: {scaled-object-name}
   labels:
-    deploymentName: {deployment-name} # must be in the same namespace as the ScaledObject
+    deploymentName: {deployment-name} # For deployment scaling, must be in the same namespace as the ScaledObject
 spec:
-  scaleTargetRef:
+  scaleTargetRef: # For deployment scaling
     deploymentName: {deployment-name} # must be in the same namespace as the ScaledObject
     containerName: azure-functions-container  #Optional. Default: deployment.spec.template.spec.containers[0]
+  jobTargetRef: # Optional. For job scaling
+    parallelism: 1 # Optional. Default: 1
+    completions: 1 # Optional. Default: 1
+    backoffLimit: 0 # Optional. Default: 0
+    activeDeadlineSeconds: 0 # Optional. Default 0
+    template: # Required for Jobs. JobSpec template
+      containers:
+      - name: {container-name}
+        image: {container-image}
   pollingInterval: 30  # Optional. Default: 30 seconds
   cooldownPeriod:  300 # Optional. Default: 300 seconds
   minReplicaCount: 0   # Optional. Default: 0
@@ -35,6 +44,25 @@ You can find all supported triggers [here](./triggers).
 The name of the deployment this scaledObject is for. This is the deployment keda will scale up and setup an HPA for based on the triggers defined in `triggers:`. Make sure to include the deployment name in the label as well, otherwise the metrics provider will not be able to query the metrics for the scaled object and 1-n scale will be broken.
 
 **Assumptions:** `deploymentName` is in the same namespace as the scaledObject
+
+---
+```yaml
+  jobTargetRef: # For job scaling
+    parallelism: 1 # Optional. Default: 1
+    completions: 1 # Optional. Default: 1
+    backoffLimit: 1 # Optional.
+    activeDeadlineSeconds: 0 # Optional
+    template: # Required for Jobs. JobSpec template
+      containers:
+      - name: {container-name}
+        image: {container-image}
+```
+
+The options for jobs to be scaled as a result of the scale trigger. This is the JobSpec template that will be created as jobs to scale up based on the triggers defined in `triggers:`. 
+
+This will only be used if `scaleTargetRef` is omitted, as deployment scaling takes precedence.
+
+You can read more about jobs [here](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion).
 
 ---
 
