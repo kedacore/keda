@@ -4,7 +4,6 @@ import * as fs from "fs";
 import * as sh from "shelljs";
 import * as tmp from "tmp";
 import test from "ava";
-import { exec } from "child_process";
 
 const defaultNamespace = "azure-queue-auth-test";
 const queueName = "auth-queue-name";
@@ -45,18 +44,6 @@ test.serial.cb(
   t => {
     const queueSvc = azure.createQueueService(connectionString);
     queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder();
-    /*
-    queueSvc.createQueueIfNotExists(queueName, err => {
-      t.falsy(err, "unable to create queue");
-      for (let n = 0; n < 20; n++) {
-        queueSvc.createMessage(queueName, `test ${n}`, function(error) {
-          if(!error) {
-            // Message inserted
-          }
-        });
-      }
-    });
-    */
     queueSvc.createQueueIfNotExists(queueName, err => {
       t.falsy(err, "unable to create queue");
       for (let n = 0; n < 20; n++) {
