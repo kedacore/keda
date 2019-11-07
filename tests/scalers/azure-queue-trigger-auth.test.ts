@@ -96,7 +96,7 @@ test.after.always.cb("clean up azure-queue deployment", t => {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`);
   }
   sh.exec(`kubectl delete namespace ${defaultNamespace}`);
-  t.end()
+
   // delete test queue
   const queueSvc = azure.createQueueService(connectionString);
   queueSvc.deleteQueueIfExists(queueName, err => {
