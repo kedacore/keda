@@ -37,7 +37,10 @@ helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --
 
 You can use our ARM image instead by adding `--set image.tag=arm` to your helm install command.
 
-## Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
+## Deploying with the Azure Functions Core Tools
+KEDA supports autoscaling a variety of workloads which include Azure Functions and is included in their [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools).
+
+Here is how you can easily install KEDA with their CLI:
 ```
 func kubernetes install --namespace keda
 ```
