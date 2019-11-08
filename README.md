@@ -132,6 +132,30 @@ Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.the
 Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
+## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
+
+This helps you pull and build quickly - dev containers launch the project inside a container with all the tooling required for a consistent and seamless developer experience. 
+
+This means you don't have to install and configure your dev environment as the container handles this for you.
+
+To get started install [VSCode](https://code.visualstudio.com/) and the [Remote Containers extensions](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+Clone the repo and launch code:
+
+```bash
+git clone git@github.com:kedacore/keda.git
+cd keda
+code .
+```
+
+Once VSCode launches run `CTRL+SHIFT+P -> Remote-Containers: Reopen in container` and then use the integrated terminal to run:
+
+```bash 
+make build
+```
+
+> Note: The first time you run the container it will take some time to build and install the tooling. The image will be cached so this is only required the first time.
+
 ## Building
 This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk) v0.11.0.
 
