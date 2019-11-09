@@ -34,8 +34,8 @@ type rabbitMQMetadata struct {
 var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
-func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseRabbitMQMetadata(resolvedEnv, metadata)
+func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parseRabbitMQMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
@@ -52,10 +52,12 @@ func NewRabbitMQScaler(resolvedEnv, metadata map[string]string) (Scaler, error) 
 	}, nil
 }
 
-func parseRabbitMQMetadata(resolvedEnv, metadata map[string]string) (*rabbitMQMetadata, error) {
+func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
-	if val, ok := metadata["host"]; ok {
+	if val, ok := authParams["host"]; ok {
+		meta.host = val
+	} else if val, ok := metadata["host"]; ok {
 		hostSetting := val
 
 		if val, ok := resolvedEnv[hostSetting]; ok {
