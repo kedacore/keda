@@ -39,8 +39,8 @@ type azureServiceBusMetadata struct {
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseAzureServiceBusMetadata(resolvedEnv, metadata)
+func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
 	}
@@ -51,7 +51,7 @@ func NewAzureServiceBusScaler(resolvedEnv, metadata map[string]string) (Scaler, 
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = None
 	meta.targetLength = defaultTargetQueueLength
@@ -95,7 +95,9 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 	}
 
 	// get servicebus connection string
-	if val, ok := metadata["connection"]; ok {
+	if val, ok := authParams["connection"]; ok {
+		meta.connection = val
+	} else if val, ok := metadata["connection"]; ok {
 		connectionSetting := val
 
 		if val, ok := resolvedEnv[connectionSetting]; ok {
