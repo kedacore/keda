@@ -7,10 +7,10 @@ background = "light"
 
 Scale applications based on Redis Lists.
 
-<!--more-->
-
 * **Availability:** v1.0 and above
 * **Maintainer:** Community
+
+<!--more-->
 
 ### Trigger Specification
 

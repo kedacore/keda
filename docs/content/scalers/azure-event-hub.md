@@ -7,10 +7,10 @@ background = "light"
 
 Scale applications based on Azure Event Hubs.
 
-<!--more-->
-
 * **Availability:** v1.0 and above
 * **Maintainer:** Microsoft
+
+<!--more-->
 
 ### Trigger Specification
 
