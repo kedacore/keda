@@ -1,6 +1,6 @@
 +++
 title = "Built-in Scalers"
-weight = 10
+weight = 30
 
 [asset]
   icon = "fas fa-cubes"

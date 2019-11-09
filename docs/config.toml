@@ -97,9 +97,14 @@ lastmod = ["lastmod", ":git", "date"]
   weight = 30
 
 [[menu.footer]]
+  url = "https://github.com/kedacore/keda"
+  name = "GitHub"
+  weight = 40
+
+[[menu.footer]]
   url = "/faq"
   name = "FAQ"
-  weight = 40
+  weight = 50
 
 [[menu.copyright_footer]]
   url = "https://github.com/kedacore/keda"

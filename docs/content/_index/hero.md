@@ -30,4 +30,9 @@ subtitle = "Kubernetes Event-driven Autoscaling (KEDA)"
   text = "Architecture"
   url = "/Architecture"
   color = "info" # primary, secondary, success, danger, warning, info, light, dark, link - default: primary
+
+[[buttons]]
+  text = "GitHub"
+  url = "https://github.com/kedacore/keda"
+  color = "dark" # primary, secondary, success, danger, warning, info, light, dark, link - default: primary
 +++
