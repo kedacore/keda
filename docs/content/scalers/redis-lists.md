@@ -17,13 +17,13 @@ Scale applications based on Redis Lists.
 This specification describes the `redis` trigger that scales based on the length of a list in Redis.
 
 ```yaml
-  triggers:
-  - type: redis
-    metadata:
-      address: REDIS_HOST # Required host:port format
-      password: REDIS_PASSWORD
-      listName: mylist # Required
-      listLength: "5" # Required
+triggers:
+- type: redis
+  metadata:
+    address: REDIS_HOST # Required host:port format
+    password: REDIS_PASSWORD
+    listName: mylist # Required
+    listLength: "5" # Required
 ```
 
 The `address` field in the spec holds the host and port of the redis server. This could be an external redis server or one running in the kubernetes cluster.
