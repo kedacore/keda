@@ -78,7 +78,6 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 	meta.password = defaultRedisPassword
 	if val, ok := authParams["password"]; ok {
 		meta.password = val
-		redisLog.Info("password: ", meta.password)
 	} else if val, ok := metadata["password"]; ok && val != "" {
 		if passd, ok := resolvedEnv[val]; ok {
 			meta.password = passd
