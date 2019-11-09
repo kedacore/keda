@@ -281,7 +281,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "prometheus":
 		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
 	case "redis":
-		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "external":
