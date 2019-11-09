@@ -12,6 +12,24 @@ Scale applications based on Apache Kafka Topic.
 * **Availability:** v1.0 and above
 * **Maintainer:** Community
 
+### Trigger Specification
+
+This specification describes the `kafka` trigger for Apache Kafka Topic.
+
+```yaml
+  triggers:
+  - type: kafka
+    metadata:
+      brokerList: kafka.svc:9092
+      consumerGroup: my-group
+      topic: test-topic
+      lagThreshold: '5' # Optional. How much the stream is lagging on the current consumer group
+```
+
+### Authentication Parameters
+
+Not supported yet.
+
 ### Example
 
 ```yaml

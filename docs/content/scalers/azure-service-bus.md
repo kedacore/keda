@@ -31,9 +31,11 @@ This specification describes the `azure-servicebus` trigger for Azure Service Bu
       queueLength: "5" # Optional. Subscription length target for HPA. Default: 5 messages
 ```
 
+The `connection` value is the name of the environment variable your deployment uses to get the connection string. This is usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+
 ### Authentication Parameters
 
-The `connection` value is the name of the environment variable your deployment uses to get the connection string. This is usually resolved from a `Secret V1` or a `ConfigMap V1` collections. `env` and `envFrom` are both supported.
+To be documented.
 
 ### Example
 
