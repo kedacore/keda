@@ -1,0 +1,36 @@
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-redis-secret
+  namespace: my-project
+spec:
+  secretTargetRef: # Optional.
+  - parameter: password # Required.
+    name: votes-db-secret # Required.
+    key: redis_password # Required.
+
+---      
+
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: redis-scaledobject
+  namespace: my-project
+  labels:
+    deploymentName: votes
+spec:
+  pollingInterval: 5   # Optional. Default: 30 seconds
+  cooldownPeriod: 5  # Optional. Default: 300 seconds
+  minReplicaCount: 0   # Optional. Default: 0
+  maxReplicaCount: 30  # Optional. Default: 100  
+  scaleTargetRef:
+    deploymentName: votes
+  triggers:
+  - type: redis
+    metadata:
+      address: REDIS_ADDRESS # the environment variable defined in the Pod, the value is in the format host:port
+      listName: mylist # Required
+      listLength: "10" # Required
+    authenticationRef: 
+      name: keda-trigger-auth-redis-secret         

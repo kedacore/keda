@@ -35,8 +35,8 @@ type redisMetadata struct {
 var redisLog = logf.Log.WithName("redis_scaler")
 
 // NewRedisScaler creates a new redisScaler
-func NewRedisScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseRedisMetadata(metadata, resolvedEnv)
+func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parseRedisMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
@@ -46,7 +46,7 @@ func NewRedisScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	}, nil
 }
 
-func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata, error) {
+func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*redisMetadata, error) {
 	meta := redisMetadata{}
 	meta.targetListLength = defaultTargetListLength
 
@@ -76,7 +76,9 @@ func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata
 	}
 
 	meta.password = defaultRedisPassword
-	if val, ok := metadata["password"]; ok && val != "" {
+	if val, ok := authParams["password"]; ok {
+		meta.password = val
+	} else if val, ok := metadata["password"]; ok && val != "" {
 		if passd, ok := resolvedEnv[val]; ok {
 			meta.password = passd
 		}
