@@ -275,7 +275,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata)
 	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata)
 	case "prometheus":
