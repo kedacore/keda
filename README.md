@@ -156,14 +156,25 @@ make build
 
 > Note: The first time you run the container it will take some time to build and install the tooling. The image will be cached so this is only required the first time.
 
-## Building
-This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk) v0.11.0.
+## Building: Locally directly
+This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you have installed the right version. To check the current version used for KEDA check the `RELEASE_VERSION` in file [tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/master/tools/build-tools.Dockerfile).
 
 ```bash
 git clone git@github.com:kedacore/keda.git
 cd keda
 make build
 ```
+
+## Deploying Custom KEDA
+
+If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want to deploy it as part of KEDA. Do the following:
+1. Make your change in the code.
+2. In terminal, create an environment variable `IMAGE_TAG` and assign it a value for your preference, this tag will be used when creating the operator image that will run KEDA.
+***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
+3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for the KEDA operator that you can deploy to your local cluster. It will use the tag you used in step 2.
+4. Still in terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 2],image.pullPolicy=IfNotPresent`.
+
+In the last step we are using the image we just create by running step 3. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster, this is important to do, otherwise, Kubernetes will try to pull the image from Docker Hub from the internet and will complain about not finidng it.
 
 # Contributing
 
