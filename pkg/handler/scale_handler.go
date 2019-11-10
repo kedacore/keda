@@ -235,11 +235,11 @@ func (h *ScaleHandler) resolveAuthSecret(name, namespace, key string) string {
 	return string(result)
 }
 
-func (h *ScaleHandler) parseAuthRef(triggerAuthRef kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, resolveEnv func(string, string) string) (map[string]string, string) {
+func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, resolveEnv func(string, string) string) (map[string]string, string) {
 	result := make(map[string]string)
 	podIdentity := ""
 
-	if triggerAuthRef.Name != "" {
+	if triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := h.client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name, Namespace: scaledObject.Namespace}, triggerAuth)
 		if err != nil {

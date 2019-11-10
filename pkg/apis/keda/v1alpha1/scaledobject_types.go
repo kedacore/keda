@@ -39,7 +39,7 @@ type ScaledObjectSpec struct {
 	// +optional
 	ScaleType ScaledObjectScaleType `json:"scaleType,omitempty"`
 	// +optional
-	ScaleTargetRef ObjectReference `json:"scaleTargetRef,omitempty"`
+	ScaleTargetRef *ObjectReference `json:"scaleTargetRef,omitempty"`
 	// +optional
 	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef,omitempty"`
 	// +optional
@@ -71,7 +71,7 @@ type ScaleTriggers struct {
 	Name     string            `json:"name,omitempty"`
 	Metadata map[string]string `json:"metadata"`
 	// +optional
-	AuthenticationRef ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
+	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
 }
 
 // ScaledObjectStatus is the status for a ScaledObject resource

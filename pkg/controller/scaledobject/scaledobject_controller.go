@@ -135,11 +135,10 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 		if err := r.addFinalizer(reqLogger, scaledObject); err != nil {
 			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, nil
 	}
 
 	reqLogger.Info("Detecting ScaleType from ScaledObject")
-	if scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
+	if  scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
 		reqLogger.Info("Detected ScaleType = Job")
 		return r.reconcileJobType(reqLogger, scaledObject)
 	} else {

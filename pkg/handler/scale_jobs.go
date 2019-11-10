@@ -86,7 +86,7 @@ func (h *ScaleHandler) resolveJobEnv(scaledObject *kedav1alpha1.ScaledObject) (m
 	return h.resolveEnv(&container, scaledObject.GetNamespace())
 }
 
-func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject) (map[string]string, string) {
+func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject) (map[string]string, string) {
 	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
 		env, err := h.resolveJobEnv(scaledObject)
 		if err != nil {
