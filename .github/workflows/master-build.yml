@@ -38,3 +38,13 @@ jobs:
         env:
           STORAGE_HELM_SAS_TOKEN: ${{ secrets.STORAGE_HELM_SAS_TOKEN }}
         run: helm init --client-only && make publish-edge-chart
+
+      - name: Run end to end tests
+        env:
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
+        run: make e2e-test
