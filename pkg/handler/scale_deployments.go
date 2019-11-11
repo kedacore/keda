@@ -132,7 +132,7 @@ func (h *ScaleHandler) resolveDeploymentEnv(deployment *appsv1.Deployment, conta
 	return h.resolveEnv(&container, deployment.GetNamespace())
 }
 
-func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, deployment *appsv1.Deployment) (map[string]string, string) {
+func (h *ScaleHandler) parseDeploymentAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, deployment *appsv1.Deployment) (map[string]string, string) {
 	return h.parseAuthRef(triggerAuthRef, scaledObject, func(name, containerName string) string {
 		env, err := h.resolveDeploymentEnv(deployment, containerName)
 		if err != nil {
