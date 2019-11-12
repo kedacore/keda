@@ -33,7 +33,7 @@ The return type of this function is `MetricSpec`, but in KEDA's case we will mos
 
 For some reason, the scaler might need to declare itself as in-active, and the way it can do this is through implementing the function `IsActive`. 
 
-KEDA polls ScaledObject object according to the `pollingInterval` confiugred in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
+KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
 
 ### `Close`
 After each poll on the scaler to retrieve the metrics, KEDA calls this function for each scaler to give the scaler the opportunity to close any resources, like http clients for example.
