@@ -25,6 +25,3 @@ jobs:
 
       - name: Build
         run: make build
-
-      - name: Build chart
-        run: helm init --client-only && make build-chart-edge
