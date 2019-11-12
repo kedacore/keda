@@ -33,7 +33,7 @@ The return type of this function is `MetricSpec`, but in KEDA's case we will mos
 
 For some reason, the scaler might need to declare itself as in-active, and the way it can do this is through implementing the function `IsActive`. 
 
-KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
+KEDA polls ScaledObject object according to the `pollingInterval` confiugred in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
 
 ### `Close`
 After each poll on the scaler to retrieve the metrics, KEDA calls this function for each scaler to give the scaler the opportunity to close any resources, like http clients for example.
@@ -55,7 +55,7 @@ The scaler is created and closed everytime KEDA or HPA wants to call `GetMetrics
 
 ## Developing a scaler
 
-***Note**: There is work going to create a scaler model where scalers don't live in the same code base of KEDA. Instead, in the [new model](***), KEDA can be conifugured so that it talks to scalers as Deployments and communicate through gRPC. Which is awesome, but not ready, in the meantime the KEDA team is still accepting proposals for more scalers according to the below as Pull Requests.*
+***Note**: There is work going to create a scaler model where scalers don't live in the same code base of KEDA. Instead, in the [new model](***), KEDA can be configured so that it talks to scalers as Deployments and communicate through gRPC. Which is awesome, but not ready, in the meantime the KEDA team is still accepting proposals for more scalers according to the below as Pull Requests.*
 
 In order to developer a scaler, a developer should do the following:
 1. Download KEDA's code
