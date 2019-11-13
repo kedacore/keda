@@ -20,17 +20,7 @@ spec:
         ports:
         - containerPort: 80
         env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: keda-aws-secrets
-              key: AWS_ACCESS_KEY_ID
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: keda-aws-secrets
-              key: AWS_SECRET_ACCESS_KEY
-        - name: AWS_DEFAULT_REGION
+        - name: AWS_REGION
           value: eu-west-1
 ---
 apiVersion: v1
