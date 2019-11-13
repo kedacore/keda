@@ -3,19 +3,21 @@ package scalers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 const (
-	MSI_URL = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F"
+	msiURL = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
 )
 
-func getAzureADPodIdentityToken() (AADToken, error) {
+func getAzureADPodIdentityToken(uri string) (AADToken, error) {
 
 	var token AADToken
 
-	resp, err := http.Get(MSI_URL)
+	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(uri)))
 	if err != nil {
 		return token, err
 	}
