@@ -6,10 +6,10 @@ This specification describes the `prometheus` trigger.
   triggers:
   - type: prometheus
     metadata:
-      serverAddress: <Prometheus server URL> #Required
-      metricName: <name of metric> #Required
-      threshold: '<threshold at which auto-scale is triggered>' #Required
-      query: <PromQL query> # Note: query must return a vector/scalar single element response
+      serverAddress: <Prometheus server URL e.g. http://<prometheus-host>:9090> #Required
+      metricName: <name of metric e.g. http_requests_total> #Required
+      threshold: '<threshold at which auto-scale is triggered e.g. 100>' #Required
+      query: <PromQL query e.g. sum(rate(http_requests_total{deployment="my-deployment"}[2m]))> #Required
 ```
 
 ## Example
