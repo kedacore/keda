@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -23,11 +24,11 @@ const (
 	awsSqsQueueMetricName    = "ApproximateNumberOfMessages"
 	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
+	targetQueueLengthDefault = 5
 )
 
 type awsSqsQueueScaler struct {
-	metadata  *awsSqsQueueMetadata
-	sqsClient *sqs.SQS
+	metadata *awsSqsQueueMetadata
 }
 
 type awsSqsQueueMetadata struct {
@@ -37,13 +38,14 @@ type awsSqsQueueMetadata struct {
 	awsAccessKeyID     string
 	awsSecretAccessKey string
 	awsSessionToken    string
+	awsRoleArn         string
 }
 
 var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv)
+func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams map[string]string) (Scaler, error) {
+	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing SQS queue metadata: %s", err)
 	}
@@ -62,22 +64,20 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string) (Scaler, erro
 		sess = s
 	}
 
-	sqsClient := sqs.New(sess)
-
 	return &awsSqsQueueScaler{
-		metadata:  meta,
-		sqsClient: sqsClient,
+		metadata: meta,
 	}, nil
 }
 
-func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQueueMetadata, error) {
+func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]string) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := metadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength")
+			meta.targetQueueLength = targetQueueLengthDefault
+			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
 		} else {
 			meta.targetQueueLength = queueLength
 		}
@@ -89,37 +89,19 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv map[string]string) (*awsSqsQ
 		return nil, fmt.Errorf("no queueURL given")
 	}
 
-	var keyName string
-	if keyName = metadata["awsAccessKeyID"]; keyName == "" {
-		keyName = awsAccessKeyIDEnvVar
-	}
-	if val, ok := resolvedEnv[keyName]; ok && val != "" {
-		meta.awsAccessKeyID = val
-	} else {
-		return nil, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
-	}
-
-	if keyName = metadata["awsSecretAccessKey"]; keyName == "" {
-		keyName = awsSecretAccessKeyEnvVar
-	}
-	if val, ok := resolvedEnv[keyName]; ok && val != "" {
-		meta.awsAccessKeyID = val
-	} else {
-		return nil, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
-	}
-
-	if val, ok := metadata["awsSecretAccessKey"]; ok && val != "" {
-		meta.awsSecretAccessKey = val
-	}
-
-	if val, ok := metadata["awsSessionToken"]; ok && val != "" {
-		meta.awsSessionToken = val
-	}
-
 	if val, ok := metadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
+	}
+
+	if authParams["awsRoleArn"] != "" {
+		meta.awsRoleArn = authParams["awsRoleArn"]
+	} else if authParams["awsAccessKeyId"] != "" && authParams["awsSecretAccessKey"] != "" {
+		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
+		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
+	} else {
+		return nil, fmt.Errorf("No authentication was found")
 	}
 
 	return &meta, nil
@@ -172,7 +154,21 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
-	output, err := s.sqsClient.GetQueueAttributes(input)
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(s.metadata.awsRegion),
+	}))
+	creds := credentials.NewStaticCredentials(s.metadata.awsAccessKeyID, s.metadata.awsSecretAccessKey, "")
+
+	if s.metadata.awsRoleArn != "" {
+		creds = stscreds.NewCredentials(sess, s.metadata.awsRoleArn)
+	}
+
+	sqsClient := sqs.New(sess, &aws.Config{
+		Region:      aws.String(s.metadata.awsRegion),
+		Credentials: creds,
+	})
+
+	output, err := sqsClient.GetQueueAttributes(input)
 	if err != nil {
 		return -1, err
 	}
