@@ -36,6 +36,8 @@ replace github.com/operator-framework/operator-sdk => github.com/operator-framew
 
 require (
 	cloud.google.com/go v0.46.3
+	github.com/Azure/azure-amqp-common-go v1.1.4
+	github.com/Azure/azure-amqp-common-go/v2 v2.1.0
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/azure-service-bus-go v0.9.1
 	github.com/Azure/azure-storage-blob-go v0.8.0
