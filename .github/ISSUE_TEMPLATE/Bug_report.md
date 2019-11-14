@@ -20,6 +20,6 @@ A clear and concise description of what the bug is.
 
 ## Specifications
 
-  - Version:
-  - Platform:
-  - Scaler(s):
+  - **Version:** *Please elaborate*
+  - **Platform:** *Please elaborate*
+  - **Scaler(s):** *Please elaborate*
