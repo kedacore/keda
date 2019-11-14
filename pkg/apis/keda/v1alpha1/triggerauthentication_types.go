@@ -48,6 +48,13 @@ const (
 	PodIdentityProviderAzure                      = "azure"
 	PodIdentityProviderGCP                        = "gcp"
 	PodIdentityProviderSpiffe                     = "spiffe"
+	PodIdentityProviderEKS                        = "eks"
+	PodIdentityProviderKIAM                       = "kiam"
+)
+
+const (
+	PodIdentityAnnotationEKS  = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationKiam = "iam.amazonaws.com/role"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
