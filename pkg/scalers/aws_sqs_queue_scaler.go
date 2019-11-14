@@ -22,8 +22,6 @@ import (
 
 const (
 	awsSqsQueueMetricName    = "ApproximateNumberOfMessages"
-	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
 	targetQueueLengthDefault = 5
 )
 
@@ -32,13 +30,10 @@ type awsSqsQueueScaler struct {
 }
 
 type awsSqsQueueMetadata struct {
-	targetQueueLength  int
-	queueURL           string
-	awsRegion          string
-	awsAccessKeyID     string
-	awsSecretAccessKey string
-	awsSessionToken    string
-	awsRoleArn         string
+	targetQueueLength int
+	queueURL          string
+	awsRegion         string
+	awsAuthorization  awsAuthorizationMetadata
 }
 
 var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
@@ -53,7 +48,7 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams ma
 	sess := session.Must(session.NewSession())
 	if sess != nil {
 		s, err := session.NewSession(&aws.Config{
-			Credentials: credentials.NewStaticCredentials(meta.awsAccessKeyID, meta.awsSecretAccessKey, meta.awsSessionToken),
+			Credentials: credentials.NewStaticCredentials(meta.awsAuthorization.awsAccessKeyID, meta.awsAuthorization.awsSecretAccessKey, meta.awsAuthorization.awsSessionToken),
 			Region:      aws.String(meta.awsRegion),
 		})
 
@@ -95,14 +90,12 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]strin
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	if authParams["awsRoleArn"] != "" {
-		meta.awsRoleArn = authParams["awsRoleArn"]
-	} else if authParams["awsAccessKeyId"] != "" && authParams["awsSecretAccessKey"] != "" {
-		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
-		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
-	} else {
-		return nil, fmt.Errorf("No authentication was found")
+	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
+	if err != nil {
+		return nil, err
 	}
+
+	meta.awsAuthorization = auth
 
 	return &meta, nil
 }
@@ -150,17 +143,17 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 // Get SQS Queue Length
 func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: aws.StringSlice([]string{"ApproximateNumberOfMessages"}),
+		AttributeNames: aws.StringSlice([]string{awsSqsQueueMetricName}),
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(s.metadata.awsRegion),
 	}))
-	creds := credentials.NewStaticCredentials(s.metadata.awsAccessKeyID, s.metadata.awsSecretAccessKey, "")
+	creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
 
-	if s.metadata.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, s.metadata.awsRoleArn)
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
 	}
 
 	sqsClient := sqs.New(sess, &aws.Config{
@@ -173,7 +166,7 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		return -1, err
 	}
 
-	approximateNumberOfMessages, err := strconv.Atoi(*output.Attributes["ApproximateNumberOfMessages"])
+	approximateNumberOfMessages, err := strconv.Atoi(*output.Attributes[awsSqsQueueMetricName])
 	if err != nil {
 		return -1, err
 	}
