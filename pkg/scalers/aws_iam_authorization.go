@@ -43,15 +43,6 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 		} else {
 			return meta, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
 		}
-
-		if keyName = metadata["awsSessionToken"]; keyName == "" {
-			keyName = awsSessionTokenEnvVar
-		}
-		if val, ok := resolvedEnv[keyName]; ok && val != "" {
-			meta.awsSessionToken = val
-		} else {
-			return meta, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
-		}
 	}
 
 	return meta, nil
