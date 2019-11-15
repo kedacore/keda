@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -43,20 +42,6 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams ma
 	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing SQS queue metadata: %s", err)
-	}
-
-	sess := session.Must(session.NewSession())
-	if sess != nil {
-		s, err := session.NewSession(&aws.Config{
-			Credentials: credentials.NewStaticCredentials(meta.awsAuthorization.awsAccessKeyID, meta.awsAuthorization.awsSecretAccessKey, meta.awsAuthorization.awsSessionToken),
-			Region:      aws.String(meta.awsRegion),
-		})
-
-		if err != nil {
-			return nil, errors.New("unable to get an AWS session with the default provider chain or provided credentials")
-		}
-
-		sess = s
 	}
 
 	return &awsSqsQueueScaler{
