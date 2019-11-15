@@ -4,6 +4,8 @@
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 
+<img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a>
+
 KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
@@ -36,9 +38,9 @@ You can find several samples for various event sources [here](https://github.com
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC).
-Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
-Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
+* **Meeting time:** Weekly Thurs 17:00 UTC. ([Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC))*
+* **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
+* **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 ## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
 
