@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.7.9
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keda-aws-secrets
+type: Opaque
+data:
+  AWS_ACCESS_KEY_ID: bm9uZQ== # "none"
+  AWS_SECRET_ACCESS_KEY: bm9uZQ== # "none"
+  AWS_ROLE_ARN: bm9uZQ== # "none"
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-aws-credential
+  namespace: keda-test
+spec:
+  secretTargetRef:
+    - parameter: awsAccessKeyID # Required.
+      name: keda-aws-secrets # Required.
+      key: AWS_ACCESS_KEY_ID # Required.
+    - parameter: awsSecretAccessKey # Required.
+      name: keda-aws-secrets # Required.
+      key: AWS_SECRET_ACCESS_KEY # Required.
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-aws-role
+  namespace: keda-test
+spec:
+  secretTargetRef:
+    - parameter: awsRoleArn # Required.
+      name: keda-aws-secrets # Required.
+      key: AWS_ROLE_ARN # Required.
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: aws-sqs-queue-scaledobject
+  namespace: keda-test
+  labels:
+    deploymentName: nginx-deployment
+    test: nginx-deployment
+spec:
+  scaleTargetRef:
+    deploymentName: nginx-deployment
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-trigger-auth-aws-role
+      metadata:
+        # Required: queueURL
+        queueURL: myQueue
+        queueLength: "5" # Default: "5"
+        # Required: awsRegion
+        awsRegion: "eu-west-1"
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-trigger-auth-aws-credential
+      metadata:
+        # Required: queueURL
+        queueURL: myQueue
+        queueLength: "5" # Default: "5"
+        # Required: awsRegion
+        awsRegion: "eu-west-1"
