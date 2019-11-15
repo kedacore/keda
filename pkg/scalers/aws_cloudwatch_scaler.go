@@ -46,10 +46,7 @@ type awsCloudwatchMetadata struct {
 
 	awsRegion string
 
-	awsAccessKeyID     string
-	awsSecretAccessKey string
-
-	awsRoleArn string
+	awsAuthorization awsAuthorizationMetadata
 
 	authParams map[string]string
 }
@@ -146,14 +143,12 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	if authParams["awsRoleArn"] != "" {
-		meta.awsRoleArn = authParams["awsRoleArn"]
-	} else if authParams["awsAccessKeyId"] != "" && authParams["awsSecretAccessKey"] != "" {
-		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
-		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
-	} else {
-		return nil, fmt.Errorf("No authentication was found")
+	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
+	if err != nil {
+		return nil, err
 	}
+
+	meta.awsAuthorization = auth
 
 	return &meta, nil
 }
@@ -202,10 +197,10 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(c.metadata.awsRegion),
 	}))
-	creds := credentials.NewStaticCredentials(c.metadata.awsAccessKeyID, c.metadata.awsSecretAccessKey, "")
+	creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
 
-	if c.metadata.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, c.metadata.awsRoleArn)
+	if c.metadata.awsAuthorization.awsRoleArn != "" {
+		creds = stscreds.NewCredentials(sess, c.metadata.awsAuthorization.awsRoleArn)
 	}
 
 	cloudwatchClient := cloudwatch.New(sess, &aws.Config{

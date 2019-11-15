@@ -20,9 +20,7 @@ import (
 )
 
 const (
-	awsSqsQueueMetricName    = "ApproximateNumberOfMessages"
-	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
+	awsSqsQueueMetricName = "ApproximateNumberOfMessages"
 )
 
 type awsSqsQueueScaler struct {
