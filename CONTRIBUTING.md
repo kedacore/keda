@@ -16,7 +16,7 @@ One of the easiest ways to contribute is adding scalers.  Scalers are the logic 
 1. Include tests
 1. Include documentation and examples for [keda.sh](https://keda.sh) via [https://github.com/kedacore/keda-docs](https://github.com/kedacore/keda-docs)
 
-Information on how scalers work can be found [here](https://keda.sh/concepts/scalers).
+Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW-SCALER.md).
 
 ## Including Documentation Changes
 
