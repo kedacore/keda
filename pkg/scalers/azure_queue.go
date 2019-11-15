@@ -29,7 +29,7 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 			return -1, err
 		}
 	} else if podIdentity == "azure" {
-		token, err := getAzureADPodIdentityToken()
+		token, err := getAzureADPodIdentityToken("https://storage.azure.com/")
 		if err != nil {
 			azureQueueLog.Error(err, "Error fetching token cannot determine queue size")
 			return -1, nil

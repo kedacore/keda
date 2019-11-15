@@ -91,7 +91,6 @@ build-chart-edge:
 	cp -r -L chart/keda /tmp/keda-edge
 	sed -i "s/^name:.*/name: keda-edge/g" /tmp/keda-edge/Chart.yaml
 	sed -i "s/^version:.*/version: $(IMAGE_TAG)-$(DATE)-$(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
-	sed -i "s/^appVersion:.*/appVersion: $(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
 
 	helm lint /tmp/keda-edge/
 	helm package /tmp/keda-edge/
