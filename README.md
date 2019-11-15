@@ -3,8 +3,7 @@
 
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
-
-<img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a>
+<p style="font-size: 25px" align="center"><a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 
 KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
