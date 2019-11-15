@@ -1,7 +1,7 @@
 ##################################################
 # Variables                                      #
 ##################################################
-IMAGE_TAG      ?= 0.0.4
+IMAGE_TAG      ?= 1.0.0
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
@@ -81,43 +81,3 @@ pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
-
-##################################################
-# Helm Chart tasks                               #
-##################################################
-.PHONY: build-chart-edge
-build-chart-edge:
-	rm -rf /tmp/keda-edge
-	cp -r -L chart/keda /tmp/keda-edge
-	sed -i "s/^name:.*/name: keda-edge/g" /tmp/keda-edge/Chart.yaml
-	sed -i "s/^version:.*/version: $(IMAGE_TAG)-$(DATE)-$(GIT_VERSION)/g" /tmp/keda-edge/Chart.yaml
-
-	helm lint /tmp/keda-edge/
-	helm package /tmp/keda-edge/
-
-.PHONY: publish-edge-chart
-publish-edge-chart: build-chart-edge
-	$(eval CHART := $(shell find . -maxdepth 1 -type f -iname 'keda-edge-$(IMAGE_TAG)-*' -print -quit))
-	@az storage blob upload \
-		--container-name helm \
-		--name $(CHART) \
-		--file $(CHART) \
-		--account-name kedacore \
-		--sas-token "$(STORAGE_HELM_SAS_TOKEN)"
-
-	@az storage blob download \
-		--container-name helm \
-		--name index.yaml \
-		--file old_index.yaml \
-		--account-name kedacore \
-		--sas-token "$(STORAGE_HELM_SAS_TOKEN)" 2>/dev/null | true
-
-	[ -s ./old_index.yaml ] && helm repo index . --url https://kedacore.azureedge.net/helm --merge old_index.yaml || true
-	[ ! -s ./old_index.yaml ] && helm repo index . --url https://kedacore.azureedge.net/helm || true
-
-	@az storage blob upload \
-		--container-name helm \
-		--name index.yaml \
-		--file index.yaml \
-		--account-name kedacore \
-		--sas-token "$(STORAGE_HELM_SAS_TOKEN)"
