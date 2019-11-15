@@ -32,9 +32,9 @@ RUN GO_VERSION=1.13.3 && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
 
 # Install helm/tiller
-RUN HELM_VERSION=v2.15.2 && \
+RUN HELM_VERSION=v2.16.1 && \
     wget https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    helm_sha256=a9d2db920bd4b3d824729bbe1ff3fa57ad27760487581af6e5d3156d1b3c2511 && \
+    helm_sha256=7eebaaa2da4734242bbcdced62cc32ba8c7164a18792c8acdf16c77abffce202 && \
     echo "$helm_sha256 helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c - && \
     tar xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin && mv linux-amd64/tiller /usr/local/bin && \
@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y apt-transport-https && \
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get install -y nodejs
 
+# Install operator-sdk
 RUN RELEASE_VERSION=v0.12.0 && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
