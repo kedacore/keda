@@ -8,6 +8,7 @@ Here is an overview:
 - [**TriggerAuthentication**](./TriggerAuthentication.md)
 - [**Trigger**](./triggers/README.md)
     - [Apache Kafka Topic](./triggers/apache-kafka-topic.md)
+    - [AWS Cloudwatch](./triggers/aws-cloudwatch.md)
     - [Azure Event Hub](./triggers/azure-event-hub.md)
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
     - [Azure Storage Queue](./triggers/azure-storage-queue.md)
@@ -15,3 +16,4 @@ Here is an overview:
     - [Liiklus](./triggers/liiklus-topic.md)
     - [RabbitMQ Queue](./triggers/rabbit-mq-queue.md)
     - [Redis](./triggers/redis.md)
+
