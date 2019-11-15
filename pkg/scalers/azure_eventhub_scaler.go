@@ -8,12 +8,12 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -24,6 +24,8 @@ const (
 	defaultEventHubConnectionSetting = "EventHub"
 	defaultStorageConnectionSetting  = "AzureWebJobsStorage"
 )
+
+var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type AzureEventHubScaler struct {
 	metadata           *EventHubMetadata
@@ -140,7 +142,7 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
-		log.Errorf("unable to get runtimeInfo for isActive: %s", err)
+		eventhubLog.Error(err, "unable to get runtimeInfo for isActive")
 		return false, fmt.Errorf("unable to get runtimeInfo for isActive: %s", err)
 	}
 
@@ -207,11 +209,11 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 
 		totalUnprocessedEventCount += unprocessedEventCount
 
-		log.Debugf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
-			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount)
+		eventhubLog.V(1).Info(fmt.Sprintf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
+			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount))
 	}
 
-	log.Debugf("Scaling for %d total unprocessed events in event hub", totalUnprocessedEventCount)
+	eventhubLog.V(1).Info(fmt.Sprintf("Scaling for %d total unprocessed events in event hub", totalUnprocessedEventCount))
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,

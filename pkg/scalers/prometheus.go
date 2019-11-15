@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -46,6 +46,8 @@ type promQueryResult struct {
 		} `json:"result"`
 	} `json:"data"`
 }
+
+var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
@@ -95,7 +97,7 @@ func parsePrometheusMetadata(metadata, resolvedEnv map[string]string) (*promethe
 func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := s.ExecutePromQuery()
 	if err != nil {
-		log.Errorf("error executing prometheus query: %s", err)
+		prometheusLog.Error(err, "error executing prometheus query")
 		return false, err
 	}
 
@@ -152,7 +154,7 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 		s := val.(string)
 		v, err = strconv.ParseFloat(s, 64)
 		if err != nil {
-			log.Errorf("Error converting prometheus value %s: %s", s, err)
+			prometheusLog.Error(err, "Error converting prometheus value", "prometheus_value", s)
 			return -1, err
 		}
 	}
@@ -163,7 +165,7 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecutePromQuery()
 	if err != nil {
-		log.Errorf("error executing prometheus query: %s", err)
+		prometheusLog.Error(err, "error executing prometheus query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

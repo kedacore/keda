@@ -1,6 +1,5 @@
-| Branch | Status |
-|--------|--------|
-| master |[![CircleCI](https://circleci.com/gh/kedacore/keda.svg?style=svg&circle-token=1c70b5074bceb569aa5e4ac9a1b43836ffe25f54)](https://circleci.com/gh/kedacore/keda)|
+[![](https://github.com/kedacore/keda/workflows/master%20build/badge.svg)](https://github.com/kedacore/keda/actions)
+
 
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
@@ -21,105 +20,17 @@ In partnership with
 
 ---
 
-## Getting started
+## Documentation
 
-* [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
-* [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
-* [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
+Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ## FAQ
 
-You can find a [FAQ here](https://github.com/kedacore/keda/wiki/FAQ) with some common questions.
+You can find a [FAQ here](https://keda.sh/faq/) with some common questions.
 
 ## Samples
 
 You can find several samples for various event sources [here](https://github.com/kedacore/samples)
-
-## Setup
-
-### Deploying with a Helm chart
-
-#### Add Helm repo
-```cli
-helm repo add kedacore https://kedacore.azureedge.net/helm
-```
-
-#### Update Helm repo
-```cli
-helm repo update
-```
-
-#### Install keda-edge chart
-```cli
-helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda
-```
-
-#### Install keda-edge chart with ARM image
-```cli
-helm install kedacore/keda-edge --devel --set logLevel=debug --namespace keda --name keda --set image.tag=arm
-```
-
-### Deploying with the [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
-```
-func kubernetes install --namespace keda
-```
-
-### Deploying using the deploy yaml
-If you want to try KEDA on minikube or a different Kubernetes deployment without using Helm, you can deploy the yaml under the `/deploy` directory.
-```
-kubectl apply -f KedaScaleController.yaml
-```
-
-## How KEDA works
-
-KEDA performs two key roles within Kubernetes.  First, it acts as an agent to activate and deactivate a deployment to scale to and from zero on no events.  Second, it acts as a [Kubernetes metrics server](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics) to expose rich event data like queue length or stream lag to the horizontal pod autoscaler to drive scale out.  It is up to the deployment to then consume the events directly from the source.  This preserves rich event integration and enables gestures like completing or abandoning queue messages to work out of the box.
-
-<p align="center"><img src="images/keda-arch.png" width="550"/></p>
-
-### Event sources and scalers
-
-KEDA has a number of "scalers" that can both detect if a deployment should be activated or deactivated, and feed custom metrics for a specific event source.  Today there is scaler support for:
-
-* AWS CloudWatch
-* AWS Simple Queue Service
-* Azure Event Hub†
-* Azure Service Bus Queues and Topics
-* Azure Storage Queues
-* GCP PubSub
-* Kafka
-* Liiklus
-* Prometheus
-* RabbitMQ
-* Redis Lists
-
-You can view other planned scalers [in our wiki and issue backlog](https://github.com/kedacore/keda/wiki/Scaler-prioritization).
-
-_†: As of now, the Event Hub scaler only supports reading from Blob Storage, as well as scaling only Event Hub applications written in C#, Python or created with Azure Functions._
-
-#### ScaledObject custom resource definition
-
-In order to sync a deployment with an event source, a `ScaledObject` custom resource needs to be deployed. `ScaledObjects` contain information on the deployment to scale, metadata on the event source (e.g. connection string secret, queue name), polling interval, and cooldown period. The `ScaledObject` will result in corresponding autoscaling resource (HPA definition) to scale the deployment. When `ScaledObjects` get deleted, the corresponding HPA definition is cleaned up.
-
-ScaledObject examples and schemas [can be found here](https://github.com/kedacore/keda/tree/master/spec).
-
-### HTTP scaling integration
-
-KEDA enables scaling based on event sources where the event resides somewhere to be pulled.  For events like HTTP where the event is pushed to the container, KEDA works side by side with HTTP scale-to-zero components like [Osiris](https://github.com/deislabs/osiris) or [Knative serving](https://github.com/knative/serving).  By pairing KEDA with an HTTP scale-to-zero component you can provide rich event scaling for both HTTP and non-HTTP.
-
-### Azure Functions Integration
-
-While KEDA can be used with any container or deployment, the Azure Functions tooling natively integrates with KEDA for a seamless developer experience and event-driven programming model.  With functions, developers only need to write the code that should run on an event, and not have to worry about the event consuming scaffolding.  [Azure Functions is open source](https://github.com/azure/azure-functions-host), and all of the existing tooling and developer experience works regardless of the hosting option.
-
-You can containerize and deploy an existing or new Azure Function using the [Azure Functions core tools](https://github.com/azure/azure-functions-core-tools)
-
-```cli
-func kubernetes deploy --name my-function --registry my-container-registry
-```
-
-<p><img src="images/kedascale.gif" width="650"/></p>
-
-[Using Azure Functions with KEDA and Osiris](https://github.com/kedacore/keda/wiki/Using-Azure-Functions-with-Keda-and-Osiris)
-
 
 ## Community Standup
 
@@ -129,14 +40,49 @@ Meeting time: Weekly Thurs 17:00 UTC. [Convert to your timezone](https://www.the
 Zoom link: [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 Meeting agenda: [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
-## Building
+## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
+
+This helps you pull and build quickly - dev containers launch the project inside a container with all the tooling required for a consistent and seamless developer experience. 
+
+This means you don't have to install and configure your dev environment as the container handles this for you.
+
+To get started install [VSCode](https://code.visualstudio.com/) and the [Remote Containers extensions](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+Clone the repo and launch code:
+
+```bash
+git clone git@github.com:kedacore/keda.git
+cd keda
+code .
+```
+
+Once VSCode launches run `CTRL+SHIFT+P -> Remote-Containers: Reopen in container` and then use the integrated terminal to run:
+
+```bash 
+make build
+```
+
+> Note: The first time you run the container it will take some time to build and install the tooling. The image will be cached so this is only required the first time.
+
+## Building: Locally directly
+This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you have installed the right version. To check the current version used for KEDA check the `RELEASE_VERSION` in file [tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/master/tools/build-tools.Dockerfile).
 
 ```bash
 git clone git@github.com:kedacore/keda.git
 cd keda
 make build
-./dist/keda
 ```
+
+## Deploying Custom KEDA
+
+If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want to deploy it as part of KEDA. Do the following:
+1. Make your change in the code.
+2. In terminal, create an environment variable `IMAGE_TAG` and assign it a value for your preference, this tag will be used when creating the operator image that will run KEDA.
+***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
+3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for the KEDA operator that you can deploy to your local cluster. It will use the tag you used in step 2.
+4. Still in terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 2],image.pullPolicy=IfNotPresent`.
+
+In the last step we are using the image we just create by running step 3. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster, this is important to do, otherwise, Kubernetes will try to pull the image from Docker Hub from the internet and will complain about not finidng it.
 
 # Contributing
 

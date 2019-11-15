@@ -1,0 +1,17 @@
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+ENV OPERATOR=/usr/local/bin/keda-adapter \
+    USER_UID=1001 \
+    USER_NAME=keda
+
+COPY build/_output/bin/keda-adapter ${OPERATOR} 
+
+COPY build/bin /usr/local/bin
+RUN /usr/local/bin/user_setup && \
+    mkdir /apiserver.local.config && \
+    chmod 777 /apiserver.local.config && \
+    chmod +x ${OPERATOR}
+
+ENTRYPOINT ["/usr/local/bin/entrypoint", "--secure-port=6443", "--logtostderr=true", "--v=0"]
+
+USER ${USER_UID}

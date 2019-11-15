@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis"
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -32,9 +32,11 @@ type redisMetadata struct {
 	password         string
 }
 
+var redisLog = logf.Log.WithName("redis_scaler")
+
 // NewRedisScaler creates a new redisScaler
-func NewRedisScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseRedisMetadata(metadata, resolvedEnv)
+func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parseRedisMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
@@ -44,7 +46,7 @@ func NewRedisScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	}, nil
 }
 
-func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata, error) {
+func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*redisMetadata, error) {
 	meta := redisMetadata{}
 	meta.targetListLength = defaultTargetListLength
 
@@ -74,7 +76,9 @@ func parseRedisMetadata(metadata, resolvedEnv map[string]string) (*redisMetadata
 	}
 
 	meta.password = defaultRedisPassword
-	if val, ok := metadata["password"]; ok && val != "" {
+	if val, ok := authParams["password"]; ok {
+		meta.password = val
+	} else if val, ok := metadata["password"]; ok && val != "" {
 		if passd, ok := resolvedEnv[val]; ok {
 			meta.password = passd
 		}
@@ -89,7 +93,7 @@ func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 		ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
 
 	if err != nil {
-		log.Errorf("error %s", err)
+		redisLog.Error(err, "error")
 		return false, err
 	}
 
@@ -113,7 +117,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	listLen, err := getRedisListLength(ctx, s.metadata.address, s.metadata.password, s.metadata.listName)
 
 	if err != nil {
-		log.Errorf("error getting list length %s", err)
+		redisLog.Error(err, "error getting list length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

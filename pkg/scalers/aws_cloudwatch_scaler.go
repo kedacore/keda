@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	log "github.com/sirupsen/logrus"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -50,6 +50,8 @@ type awsCloudwatchMetadata struct {
 
 	authParams map[string]string
 }
+
+var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
 func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
@@ -96,7 +98,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata["targetMetricValue"]; ok && val != "" {
 		targetMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			log.Errorf("Error parsing targetMetricValue metadata %s: %s", "targetMetricValue", err)
+			cloudwatchLog.Error(err, "Error parsing targetMetricValue metadata")
 		} else {
 			meta.targetMetricValue = targetMetricValue
 		}
@@ -107,7 +109,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			log.Errorf("Error parsing minMetricValue metadata %s: %s", "minMetricValue", err)
+			cloudwatchLog.Error(err, "Error parsing minMetricValue metadata")
 		} else {
 			meta.minMetricValue = minMetricValue
 		}
@@ -118,7 +120,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
 		metricCollectionTime, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing metricCollectionTime metadata %s: %s", "metricCollectionTime", err)
+			cloudwatchLog.Error(err, "Error parsing metricCollectionTime metadata")
 		} else {
 			meta.metricCollectionTime = int64(metricCollectionTime)
 		}
@@ -131,7 +133,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata["metricStatPeriod"]; ok && val != "" {
 		metricStatPeriod, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing metricStatPeriod metadata %s: %s", "metricStatPeriod", err)
+			cloudwatchLog.Error(err, "Error parsing metricStatPeriod metadata")
 		} else {
 			meta.metricStatPeriod = int64(metricStatPeriod)
 		}
@@ -157,7 +159,7 @@ func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string,
 	metricValue, err := c.GetCloudwatchMetrics()
 
 	if err != nil {
-		log.Errorf("Error getting metric value %s", err)
+		cloudwatchLog.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -236,11 +238,11 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	output, err := cloudwatchClient.GetMetricData(&input)
 
 	if err != nil {
-		log.Errorf("Failed to get output %s", err)
+		cloudwatchLog.Error(err, "Failed to get output")
 		return -1, err
 	}
 
-	log.Debugf("Received Metric Data: %x", output)
+	cloudwatchLog.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
 	if output.MetricDataResults[0].Values != nil {
 		metricValue = *output.MetricDataResults[0].Values[0]

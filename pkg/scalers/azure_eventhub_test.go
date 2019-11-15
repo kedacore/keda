@@ -3,11 +3,12 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
