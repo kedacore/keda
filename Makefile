@@ -60,8 +60,8 @@ build: build-adapter build-controller
 
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
-	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT)"
+	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) --verbose \
+		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -o build/_output/bin/keda2"
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
