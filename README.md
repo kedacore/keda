@@ -1,14 +1,13 @@
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
-<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/master%20build/badge.svg" alt="Twitter"></a>
+<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/master%20build/badge.svg" alt="master build"></a>
+<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/nightly%20e2e%20test/badge.svg" alt="nightly e2e"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 
 KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads.  KEDA serves as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom resource definition.
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal Pod Autoscaler, and has no external dependencies.
-
-:loudspeaker: **Experimental Phase** - *Please note this software is experimental and should not be used for anything resembling a production workload.  We want to create KEDA in the open with the community to bring event driven scale to Kubernetes.*
 
 ---
 <p align="center">
@@ -19,6 +18,16 @@ In partnership with
   </p>
 
 ---
+
+## Getting started
+
+* [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
+* [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
+* [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
+
+## Deploying KEDA
+
+There are many ways to [deploy KEDA including Helm, YAML files, and the Azure Functions Core Tools](https://keda.sh/deploy/).
 
 ## Documentation
 
