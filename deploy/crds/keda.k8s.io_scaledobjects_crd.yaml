@@ -4511,12 +4511,6 @@ spec:
         status:
           description: ScaledObjectStatus is the status for a ScaledObject resource
           properties:
-            currentReplicas:
-              format: int32
-              type: integer
-            desiredReplicas:
-              format: int32
-              type: integer
             externalMetricNames:
               items:
                 type: string
@@ -4524,9 +4518,6 @@ spec:
             lastActiveTime:
               format: date-time
               type: string
-          required:
-          - currentReplicas
-          - desiredReplicas
           type: object
       required:
       - spec

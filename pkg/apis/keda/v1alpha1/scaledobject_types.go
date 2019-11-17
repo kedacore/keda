@@ -80,8 +80,6 @@ type ScaleTriggers struct {
 type ScaledObjectStatus struct {
 	// +optional
 	LastActiveTime  *metav1.Time `json:"lastActiveTime,omitempty"`
-	CurrentReplicas int32        `json:"currentReplicas"`
-	DesiredReplicas int32        `json:"desiredReplicas"`
 	// +optional
 	// +listType
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
