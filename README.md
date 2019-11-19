@@ -45,7 +45,7 @@ You can find several samples for various event sources [here](https://github.com
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-* **Meeting time:** Weekly Thurs 17:00 UTC. ([Convert to your timezone](https://www.thetimezoneconverter.com/?t=17:00&tz=UTC))*
+* **Meeting time:** Weekly Thurs 18:00 UTC. ([Convert to your timezone](https://www.thetimezoneconverter.com/?t=18:00&tz=UTC))*
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
