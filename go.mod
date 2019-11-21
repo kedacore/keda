@@ -43,6 +43,7 @@ require (
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20190416192124-a17745f1cdbf
 	github.com/Azure/go-autorest v12.0.0+incompatible
+	github.com/Huawei/gophercloud v0.0.0-20190806033045-3f2c8f6aa160
 	github.com/Shopify/sarama v1.23.1
 	github.com/aws/aws-sdk-go v1.25.6
 	github.com/go-logr/logr v0.1.0

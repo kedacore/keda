@@ -290,6 +290,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "stan":
 		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
+	case "huawei-cloudeye":
+		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
