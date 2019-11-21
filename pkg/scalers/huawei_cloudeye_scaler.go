@@ -323,7 +323,12 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 	var metricValue float64
 
 	if metricdatas[0].Datapoints != nil {
-		metricValue = float64(metricdatas[0].Datapoints[0][h.metadata.metricFilter].(int))
+		v, ok := metricdatas[0].Datapoints[0][h.metadata.metricFilter].(float64)
+		if ok {
+			metricValue = v
+		} else {
+			return -1, fmt.Errorf("Metric Data not float64")
+		}
 	} else {
 		return -1, fmt.Errorf("Metric Data not received")
 	}
