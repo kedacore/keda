@@ -332,18 +332,6 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObjectStatus(ref common.ReferenceCallba
 							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
-					"currentReplicas": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"desiredReplicas": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
 					"externalMetricNames": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -363,7 +351,6 @@ func schema_pkg_apis_keda_v1alpha1_ScaledObjectStatus(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"currentReplicas", "desiredReplicas"},
 			},
 		},
 		Dependencies: []string{
