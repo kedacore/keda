@@ -240,7 +240,8 @@ func (h *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string
 
 func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s", strings.ReplaceAll(h.metadata.namespace, ".", "-"),
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s-%s", strings.ReplaceAll(h.metadata.namespace, ".", "-"),
+		h.metadata.metricsName,
 		h.metadata.dimensionName, h.metadata.dimensionValue),
 		TargetAverageValue: targetMetricValue}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
