@@ -3,6 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	liiklus_service "github.com/kedacore/keda/pkg/scalers/liiklus"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -11,8 +14,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"strconv"
-	"time"
 )
 
 type liiklusScaler struct {

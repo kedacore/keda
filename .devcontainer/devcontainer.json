@@ -1,0 +1,34 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or the definition README at
+// https://github.com/microsoft/vscode-dev-containers/tree/master/containers/go
+{
+	"name": "Go",
+	"dockerFile": "Dockerfile",
+	"runArgs": [
+		// Uncomment the next line to use a non-root user. On Linux, this will prevent
+		// new files getting created as root, but you may need to update the USER_UID
+		// and USER_GID in .devcontainer/Dockerfile to match your user if not 1000.
+		// "-u", "vscode",
+
+		// Mount go mod cache
+		"-v", "keda-gomodcache:/go/pkg",
+		// Cache vscode exentsions installs and homedir
+		"-v", "keda-vscodecache:/root/.vscode-server",
+		
+		// Mount docker socket for docker builds
+		"-v", "/var/run/docker.sock:/var/run/docker.sock",
+
+		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"
+	],
+
+	// Use 'settings' to set *default* container specific settings.json values on container create. 
+	// You can edit these settings after create using File > Preferences > Settings > Remote.
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"go.gopath": "/go"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created in the array below.
+	"extensions": [
+		"ms-vscode.go"
+	]
+}

@@ -1,25 +1,29 @@
 package provider
 
 import (
-	log "github.com/sirupsen/logrus"
-	"github.com/golang/glog"
+	"context"
+	"fmt"
+
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/handler"
+
+	"github.com/go-logr/logr"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// KedaProvider implements External Metrics Provider
 type KedaProvider struct {
-	client          dynamic.Interface
-	mapper          apimeta.RESTMapper
-	values          map[provider.CustomMetricInfo]int64
-	externalMetrics []externalMetric
-	scaleHandler    *handler.ScaleHandler
+	client           client.Client
+	values           map[provider.CustomMetricInfo]int64
+	externalMetrics  []externalMetric
+	scaleHandler     *handler.ScaleHandler
+	watchedNamespace string
 }
 type externalMetric struct {
 	info   provider.ExternalMetricInfo
@@ -27,15 +31,19 @@ type externalMetric struct {
 	value  external_metrics.ExternalMetricValue
 }
 
+var logger logr.Logger
+
 // NewProvider returns an instance of KedaProvider
-func NewProvider(client dynamic.Interface, mapper apimeta.RESTMapper, handler *handler.ScaleHandler) provider.MetricsProvider {
+func NewProvider(adapterLogger logr.Logger, scaleHandler *handler.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
-		client:          client,
-		mapper:          mapper,
-		values:          make(map[provider.CustomMetricInfo]int64),
-		externalMetrics: make([]externalMetric, 2, 10),
-		scaleHandler:    handler,
+		values:           make(map[provider.CustomMetricInfo]int64),
+		externalMetrics:  make([]externalMetric, 2, 10),
+		client:           client,
+		scaleHandler:     scaleHandler,
+		watchedNamespace: watchedNamespace,
 	}
+	logger = adapterLogger.WithName("provider")
+	logger.Info("starting")
 	return provider
 }
 
@@ -47,15 +55,43 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	// Note:
 	//		metric name and namespace is used to lookup for the CRD which contains configuration to call azure
 	// 		if not found then ignored and label selector is parsed for all the metrics
-	log.Debugf("Received request for namespace: %s, metric name: %s, metric selectors: %s", namespace, info.Metric, metricSelector.String())
-	externalmetrics, err := p.scaleHandler.GetScaledObjectMetrics(namespace, metricSelector, info.Metric)
+	logger.V(1).Info("Keda provider received request for external metrics", "namespace", namespace, "metric name", info.Metric, "metricSelector", metricSelector.String())
+	selector, err := labels.ConvertSelectorToLabelsMap(metricSelector.String())
 	if err != nil {
-		log.Errorf("Cannot get metrics for Namespace %s MetricSelector %s and Metrics %s. Error: %s", namespace, metricSelector, info.Metric, err)
+		logger.Error(err, "Error converting Selector to Labels Map")
 		return nil, err
 	}
 
+	//get the scaled objects matching namespace and labels
+	scaledObjects := &kedav1alpha1.ScaledObjectList{}
+	opts := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingLabels(selector),
+	}
+	err = p.client.List(context.TODO(), scaledObjects, opts...)
+	if err != nil {
+		return nil, err
+	} else if len(scaledObjects.Items) != 1 {
+		return nil, fmt.Errorf("Exactly one scaled object should match label %s", metricSelector.String())
+	}
+
+	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	matchingMetrics = append(matchingMetrics, externalmetrics...)
+	scalers, _, err := p.scaleHandler.GetDeploymentScalers(scaledObject)
+	if err != nil {
+		return nil, fmt.Errorf("Error when getting scalers %s", err)
+	}
+
+	for _, scaler := range scalers {
+		metrics, err := scaler.GetMetrics(context.TODO(), info.Metric, metricSelector)
+		if err != nil {
+			logger.Error(err, "error getting metric for scaler", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "Scaler", scaler)
+		} else {
+			matchingMetrics = append(matchingMetrics, metrics...)
+		}
+
+		scaler.Close()
+	}
 
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
@@ -65,26 +101,40 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 
 // ListAllExternalMetrics returns the supported external metrics for this provider
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
+
 	externalMetricsInfo := []provider.ExternalMetricInfo{}
-	metrics := p.scaleHandler.GetExternalMetricNames()
-	for _, metric := range metrics {
-		externalMetricsInfo = append(externalMetricsInfo, provider.ExternalMetricInfo{Metric: metric})
+
+	//get all ScaledObjects in namespace(s) watched by the operator
+	scaledObjects := &kedav1alpha1.ScaledObjectList{}
+	opts := []client.ListOption{
+		client.InNamespace(p.watchedNamespace),
+	}
+	err := p.client.List(context.TODO(), scaledObjects, opts...)
+	if err != nil {
+		logger.Error(err, "Cannot get list of ScaledObjects", "WatchedNamespace", p.watchedNamespace)
+		return nil
 	}
 
+	// get metrics from all watched ScaledObjects
+	for _, scaledObject := range scaledObjects.Items {
+		for _, metric := range scaledObject.Status.ExternalMetricNames {
+			externalMetricsInfo = append(externalMetricsInfo, provider.ExternalMetricInfo{Metric: metric})
+		}
+	}
 	return externalMetricsInfo
 }
 
 // GetMetricByName fetches a particular metric for a particular object.
 // The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *KedaProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	// not implemented yet
 	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
 }
 
 // GetMetricBySelector fetches a particular metric for a set of objects matching
 // the given label selector.  The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
-	glog.V(0).Infof("Received request for custom metric: groupresource: %s, namespace: %s, metric name: %s, selectors: %s", info.GroupResource.String(), namespace, info.Metric, selector.String())
+func (p *KedaProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+	logger.V(0).Info("Received request for custom metric", "groupresource", info.GroupResource.String(), "namespace", namespace, "metric name", info.Metric, "selector", selector.String())
 	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
 }
 

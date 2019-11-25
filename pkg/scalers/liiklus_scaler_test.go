@@ -2,11 +2,12 @@ package scalers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/kedacore/keda/pkg/scalers/liiklus"
 	mock_liiklus "github.com/kedacore/keda/pkg/scalers/liiklus/mocks"
 	"github.com/pkg/errors"
-	"testing"
 )
 
 type parseLiiklusMetadataTestData struct {

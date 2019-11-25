@@ -8,6 +8,7 @@ Here is an overview:
 - [**TriggerAuthentication**](./TriggerAuthentication.md)
 - [**Trigger**](./triggers/README.md)
     - [Apache Kafka Topic](./triggers/apache-kafka-topic.md)
+    - [AWS Cloudwatch](./triggers/aws-cloudwatch.md)
     - [Azure Event Hub](./triggers/azure-event-hub.md)
     - [Azure Service Bus Queue/Topic](./triggers/azure-service-bus.md)
     - [Azure Storage Queue](./triggers/azure-storage-queue.md)

@@ -1,0 +1,46 @@
+name: master build
+on:
+  push:
+    branches:
+      - master
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: kedacore/build-tools:latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Test
+        run: make test
+
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - name: Publish
+        run: make publish
+
+      - name: Run end to end tests
+        env:
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
+        run: make e2e-test

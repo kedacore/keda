@@ -7,12 +7,13 @@ import (
 
 	servicebus "github.com/Azure/azure-service-bus-go"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/Azure/azure-amqp-common-go/v2/auth"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type EntityType int
@@ -23,8 +24,11 @@ const (
 	Subscription EntityType = 2
 )
 
+var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
+
 type azureServiceBusScaler struct {
-	metadata *azureServiceBusMetadata
+	metadata    *azureServiceBusMetadata
+	podIdentity string
 }
 
 type azureServiceBusMetadata struct {
@@ -34,22 +38,24 @@ type azureServiceBusMetadata struct {
 	subscriptionName string
 	connection       string
 	entityType       EntityType
+	namespace        string
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseAzureServiceBusMetadata(resolvedEnv, metadata)
+func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+	meta, err := parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams, podIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
 	}
 
 	return &azureServiceBusScaler{
-		metadata: meta,
+		metadata:    meta,
+		podIdentity: podIdentity,
 	}, nil
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = None
 	meta.targetLength = defaultTargetQueueLength
@@ -58,7 +64,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err)
+			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 		} else {
 			meta.targetLength = queueLength
 		}
@@ -92,17 +98,29 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 		return nil, fmt.Errorf("No service bus entity type set")
 	}
 
-	// get servicebus connection string
-	if val, ok := metadata["connection"]; ok {
-		connectionSetting := val
-
-		if val, ok := resolvedEnv[connectionSetting]; ok {
+	if podIdentity == "" || podIdentity == "none" {
+		// get servicebus connection string
+		if val, ok := authParams["connection"]; ok {
 			meta.connection = val
-		}
-	}
+		} else if val, ok := metadata["connection"]; ok {
+			connectionSetting := val
 
-	if meta.connection == "" {
-		return nil, fmt.Errorf("no connection setting given")
+			if val, ok := resolvedEnv[connectionSetting]; ok {
+				meta.connection = val
+			}
+		}
+
+		if meta.connection == "" {
+			return nil, fmt.Errorf("no connection setting given")
+		}
+	} else if podIdentity == "azure" {
+		if val, ok := metadata["namespace"]; ok {
+			meta.namespace = val
+		} else {
+			return nil, fmt.Errorf("namespace is required when using pod identity")
+		}
+	} else {
+		return nil, fmt.Errorf("Azure service bus doesn't support pod identity %s", podIdentity)
 	}
 
 	return &meta, nil
@@ -112,7 +130,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata map[string]string) (*azu
 func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := s.GetAzureServiceBusLength(ctx)
 	if err != nil {
-		log.Errorf("error %s", err)
+		azureServiceBusLog.Error(err, "error")
 		return false, err
 	}
 
@@ -137,7 +155,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 	queuelen, err := s.GetAzureServiceBusLength(ctx)
 
 	if err != nil {
-		log.Errorf("error getting service bus entity length %s", err)
+		azureServiceBusLog.Error(err, "error getting service bus entity length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -150,12 +168,40 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
+type azureTokenProvider struct {
+}
+
+// GetToken implements TokenProvider interface for azureTokenProvider
+func (azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
+	token, err := getAzureADPodIdentityToken("https://servicebus.azure.net")
+	if err != nil {
+		return nil, err
+	}
+
+	return &auth.Token{
+		TokenType: auth.CBSTokenTypeJWT,
+		Token:     token.AccessToken,
+		Expiry:    token.ExpiresOn,
+	}, nil
+}
+
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (int32, error) {
 	// get namespace
-	namespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
-	if err != nil {
-		return -1, err
+	var namespace *servicebus.Namespace
+	var err error
+	if s.podIdentity == "" || s.podIdentity == "none" {
+		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
+		if err != nil {
+			return -1, err
+		}
+	} else if s.podIdentity == "azure" {
+		namespace, err := servicebus.NewNamespace()
+		if err != nil {
+			return -1, err
+		}
+		namespace.TokenProvider = azureTokenProvider{}
+		namespace.Name = s.metadata.namespace
 	}
 
 	// switch case for queue vs topic here

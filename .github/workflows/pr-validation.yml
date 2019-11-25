@@ -1,0 +1,27 @@
+name: pull request validation
+on: [pull_request]
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: kedacore/build-tools:latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build

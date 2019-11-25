@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -29,10 +29,12 @@ type azureQueueMetadata struct {
 	targetQueueLength int
 	queueName         string
 	connection        string
+	useAAdPodIdentity bool
 	accountName       string
 }
 
-// NewAzureQueueScaler creates a new azureQueueScaler
+var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
+
 func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
 	meta, podIdentity, err := parseAzureQueueMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {
@@ -52,7 +54,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 	if val, ok := metadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			log.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
 
@@ -104,7 +106,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", podAuth)
 	}
 
-	return &meta, "", nil
+	return &meta, podAuth, nil
 }
 
 // GetScaleDecision is a func
@@ -118,7 +120,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	)
 
 	if err != nil {
-		log.Errorf("error %s", err)
+		azureQueueLog.Error(err, "error)")
 		return false, err
 	}
 
@@ -147,7 +149,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 	)
 
 	if err != nil {
-		log.Errorf("error getting queue length %s", err)
+		azureQueueLog.Error(err, "error getting queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
