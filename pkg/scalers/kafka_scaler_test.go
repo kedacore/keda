@@ -21,12 +21,31 @@ var validMetadata = map[string]string{
 	"topic":         "my-topic",
 }
 
+// A complete valid metadata example for sasl, with username and passwd
+var validMetadataWithSasl = map[string]string{
+	"brokerList":    "broker1:9092,broker2:9092",
+	"consumerGroup": "my-group",
+	"topic":         "my-topic",
+	"authMode":      "sasl_plaintext",
+	"username":      "admin",
+	"passwd":        "admin",
+}
+
+// A complete valid metadata example for sasl, without username and passwd
+var validMetadataWithoutSasl = map[string]string{
+	"brokerList":    "broker1:9092,broker2:9092",
+	"consumerGroup": "my-group",
+	"topic":         "my-topic",
+	"authMode":      "sasl_plaintext",
+}
+
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{}, true, 0, nil, "", ""},
 	{map[string]string{"brokerList": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
 	{map[string]string{"brokerList": "foo:9092,bar:9092"}, true, 2, []string{"foo:9092", "bar:9092"}, "", ""},
 	{map[string]string{"brokerList": "a", "consumerGroup": "my-group"}, true, 1, []string{"a"}, "my-group", ""},
-	{validMetadata, false, 2, []string{"broker1:9092", "broker2:9092"}, "my-group", "my-topic"},
+	{validMetadataWithSasl, false, 2, []string{"broker1:9092", "broker2:9092"}, "my-group", "my-topic"},
+	{validMetadataWithoutSasl, true, 2, []string{"broker1:9092", "broker2:9092"}, "my-group", "my-topic"},
 }
 
 func TestGetBrokers(t *testing.T) {

@@ -28,7 +28,22 @@ type kafkaMetadata struct {
 	group        string
 	topic        string
 	lagThreshold int64
+
+	// auth
+	authMode kafkaAuthMode
+	username string
+	passwd   string
 }
+
+type kafkaAuthMode string
+
+const (
+	kafkaAuthModeForNone            kafkaAuthMode = "none"
+	kafkaAuthModeForSaslPlaintext   kafkaAuthMode = "sasl_plaintext"
+	kafkaAuthModeForSaslScramSha256 kafkaAuthMode = "sasl_scram_sha256"
+	kafkaAuthModeForSaslScramSha512 kafkaAuthMode = "sasl_scram_sha512"
+	kafkaAuthModeForSaslSSL         kafkaAuthMode = "sasl_ssl" // sarama package not support sasl_ssl
+)
 
 const (
 	lagThresholdMetricName   = "lagThreshold"
@@ -86,6 +101,28 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 		meta.lagThreshold = t
 	}
 
+	meta.authMode = kafkaAuthModeForNone
+	if val, ok := metadata["authMode"]; ok {
+		mode := kafkaAuthMode(val)
+		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
+			return meta, fmt.Errorf("err auth mode %s given", mode)
+		}
+
+		meta.authMode = mode
+	}
+
+	if meta.authMode != kafkaAuthModeForNone {
+		if metadata["username"] == "" {
+			return meta, errors.New("no username given")
+		}
+		meta.username = metadata["username"]
+
+		if metadata["passwd"] == "" {
+			return meta, errors.New("no passwd given")
+		}
+		meta.passwd = metadata["passwd"]
+	}
+
 	return meta, nil
 }
 
@@ -117,6 +154,22 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
+
+	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = metadata.username
+		config.Net.SASL.Password = metadata.passwd
+	}
+
+	if metadata.authMode == kafkaAuthModeForSaslScramSha256 {
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
+		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA256)
+	}
+
+	if metadata.authMode == kafkaAuthModeForSaslScramSha512 {
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA512)
+	}
 
 	client, err := sarama.NewClient(metadata.brokers, config)
 	if err != nil {
