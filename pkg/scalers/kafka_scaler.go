@@ -17,10 +17,9 @@ import (
 )
 
 type kafkaScaler struct {
-	resolvedSecrets map[string]string
-	metadata        kafkaMetadata
-	client          sarama.Client
-	admin           sarama.ClusterAdmin
+	metadata kafkaMetadata
+	client   sarama.Client
+	admin    sarama.ClusterAdmin
 }
 
 type kafkaMetadata struct {
@@ -32,7 +31,7 @@ type kafkaMetadata struct {
 	// auth
 	authMode kafkaAuthMode
 	username string
-	passwd   string
+	password string
 }
 
 type kafkaAuthMode string
@@ -54,8 +53,8 @@ const (
 var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
-func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
-	kafkaMetadata, err := parseKafkaMetadata(metadata)
+func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	kafkaMetadata, err := parseKafkaMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -66,14 +65,13 @@ func NewKafkaScaler(resolvedSecrets, metadata map[string]string) (Scaler, error)
 	}
 
 	return &kafkaScaler{
-		client:          client,
-		admin:           admin,
-		metadata:        kafkaMetadata,
-		resolvedSecrets: resolvedSecrets,
+		client:   client,
+		admin:    admin,
+		metadata: kafkaMetadata,
 	}, nil
 }
 
-func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
+func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
 	if metadata["brokerList"] == "" {
@@ -102,7 +100,7 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 
 	meta.authMode = kafkaAuthModeForNone
-	if val, ok := metadata["authMode"]; ok {
+	if val, ok := authParams["authMode"]; ok {
 		mode := kafkaAuthMode(val)
 		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
 			return meta, fmt.Errorf("err auth mode %s given", mode)
@@ -112,15 +110,15 @@ func parseKafkaMetadata(metadata map[string]string) (kafkaMetadata, error) {
 	}
 
 	if meta.authMode != kafkaAuthModeForNone {
-		if metadata["username"] == "" {
+		if authParams["username"] == "" {
 			return meta, errors.New("no username given")
 		}
-		meta.username = metadata["username"]
+		meta.username = authParams["username"]
 
-		if metadata["passwd"] == "" {
-			return meta, errors.New("no passwd given")
+		if authParams["password"] == "" {
+			return meta, errors.New("no password given")
 		}
-		meta.passwd = metadata["passwd"]
+		meta.password = authParams["password"]
 	}
 
 	return meta, nil
@@ -158,7 +156,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
-		config.Net.SASL.Password = metadata.passwd
+		config.Net.SASL.Password = metadata.password
 	}
 
 	if metadata.authMode == kafkaAuthModeForSaslScramSha256 {
