@@ -59,6 +59,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.4.0
+	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	google.golang.org/api v0.10.0
 	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143
 	google.golang.org/grpc v1.24.0

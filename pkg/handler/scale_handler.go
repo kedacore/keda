@@ -273,7 +273,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-eventhub":
