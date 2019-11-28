@@ -33,7 +33,7 @@ jobs:
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - name: Publish
-        run: make publish
+        run: make publish IMAGE_TAG=experimental
 
       - name: Run end to end tests
         env:
@@ -43,4 +43,4 @@ jobs:
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
-        run: make e2e-test
+        run: make e2e-test IMAGE_TAG=experimental
