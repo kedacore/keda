@@ -22,11 +22,14 @@ var validMetadata = map[string]string{
 }
 
 // A complete valid authParams example for sasl, with username and passwd
-var validAuthParams = map[string]string{
+var validWithAuthParams = map[string]string{
 	"authMode": "sasl_plaintext",
 	"username": "admin",
 	"passwd":   "admin",
 }
+
+// A complete valid authParams example for sasl, without username and passwd
+var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{}, true, 0, nil, "", ""},
@@ -37,7 +40,28 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(nil, testData.metadata, validAuthParams)
+		meta, err := parseKafkaMetadata(nil, testData.metadata, validWithAuthParams)
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if len(meta.brokers) != testData.numBrokers {
+			t.Errorf("Expected %d brokers but got %d\n", testData.numBrokers, len(meta.brokers))
+		}
+		if !reflect.DeepEqual(testData.brokers, meta.brokers) {
+			t.Errorf("Expected %v but got %v\n", testData.brokers, meta.brokers)
+		}
+		if meta.group != testData.group {
+			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+		}
+		if meta.topic != testData.topic {
+			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
+		}
+
+		meta, err = parseKafkaMetadata(nil, testData.metadata, validWithoutAuthParams)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
