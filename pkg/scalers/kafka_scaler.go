@@ -109,7 +109,7 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 	meta.authMode = kafkaAuthModeForNone
 	if val, ok := authParams["authMode"]; ok {
 		mode := kafkaAuthMode(val)
-		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
+		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
 			return meta, fmt.Errorf("err auth mode %s given", mode)
 		}
 
