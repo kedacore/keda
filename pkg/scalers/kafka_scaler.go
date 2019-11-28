@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"strconv"
@@ -32,6 +34,11 @@ type kafkaMetadata struct {
 	authMode kafkaAuthMode
 	username string
 	password string
+
+	// ssl
+	cert string
+	key  string
+	ca   string
 }
 
 type kafkaAuthMode string
@@ -41,7 +48,7 @@ const (
 	kafkaAuthModeForSaslPlaintext   kafkaAuthMode = "sasl_plaintext"
 	kafkaAuthModeForSaslScramSha256 kafkaAuthMode = "sasl_scram_sha256"
 	kafkaAuthModeForSaslScramSha512 kafkaAuthMode = "sasl_scram_sha512"
-	kafkaAuthModeForSaslSSL         kafkaAuthMode = "sasl_ssl" // sarama package not support sasl_ssl
+	kafkaAuthModeForSaslSSL         kafkaAuthMode = "sasl_ssl"
 )
 
 const (
@@ -121,6 +128,23 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		meta.password = authParams["password"]
 	}
 
+	if meta.authMode == kafkaAuthModeForSaslSSL {
+		if authParams["ca"] == "" {
+			return meta, errors.New("no ca given")
+		}
+		meta.ca = authParams["ca"]
+
+		if authParams["cert"] == "" {
+			return meta, errors.New("no cert given")
+		}
+		meta.cert = authParams["cert"]
+
+		if authParams["key"] == "" {
+			return meta, errors.New("no key given")
+		}
+		meta.key = authParams["key"]
+	}
+
 	return meta, nil
 }
 
@@ -153,10 +177,28 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 
-	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
+	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslSSL || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
 		config.Net.SASL.Password = metadata.password
+	}
+
+	if metadata.authMode == kafkaAuthModeForSaslSSL {
+		cert, err := tls.X509KeyPair([]byte(metadata.cert), []byte(metadata.key))
+		if err != nil {
+			return nil, nil, fmt.Errorf("error parse X509KeyPair: %s", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(metadata.ca))
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		}
+
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config = tlsConfig
 	}
 
 	if metadata.authMode == kafkaAuthModeForSaslScramSha256 {
