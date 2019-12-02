@@ -49,7 +49,7 @@ If interested in contributing or participating in the direction of KEDA, you can
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
-Just want to learn or chat about KEDA? Feel free to join the conversation in **#KEDA** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
+Just want to learn or chat about KEDA? Feel free to join the conversation in **[#KEDA](kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
 ## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
 
