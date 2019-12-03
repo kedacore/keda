@@ -1,7 +1,7 @@
 ##################################################
 # Variables                                      #
 ##################################################
-IMAGE_TAG      ?= 1.0.0
+IMAGE_TAG      ?= master
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
@@ -40,7 +40,7 @@ e2e-test:
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
 	npm install --prefix tests
-	npm test --verbose --prefix tests
+	IMAGE_CONTROLLER=$(IMAGE_CONTROLLER) IMAGE_ADAPTER=$(IMAGE_ADAPTER) npm test --verbose --prefix tests
 
 ##################################################
 # PUBLISH                                        #

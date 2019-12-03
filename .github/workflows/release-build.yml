@@ -1,0 +1,37 @@
+name: release build
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  build:
+    name: Push Release
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: kedacore/build-tools:latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - name: Get the image tag
+        id: get_image_tag
+        run: echo ::set-output name=IMAGE_TAG::${GITHUB_REF#refs/tags/v}
+
+      - name: Publish
+        run: make publish IMAGE_TAG=$VERSION
