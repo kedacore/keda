@@ -49,6 +49,32 @@ test.serial('Deploy Keda', t => {
 })
 
 test.serial('verifyKeda', t => {
+  const controllerImage = process.env.IMAGE_CONTROLLER || 'docker.io/kedacore/keda:master'
+  const adapterImage = process.env.IMAGE_ADAPTER || 'docker.io/kedacore/keda-metrics-adapter:master'
+  let result = sh.exec('kubectl scale deployment.apps/keda-operator --namespace keda --replicas=0')
+  if (result.code !== 0) {
+    t.fail(`error scaling keda to 0. ${result}`)
+  }
+
+  result = sh.exec(
+    `kubectl set image deployment.apps/keda-operator --namespace keda keda-operator=${controllerImage}`
+  )
+  if (result.code !== 0) {
+    t.fail(`error updating keda image. ${result}`)
+  }
+
+  result = sh.exec(
+    `kubectl set image deployment.apps/keda-operator --namespace keda keda-metrics-apiserver=${adapterImage}`
+  )
+  if (result.code !== 0) {
+    t.fail(`error updating keda image. ${result}`)
+  }
+
+  result = sh.exec('kubectl scale deployment.apps/keda-operator --namespace keda --replicas=1')
+  if (result.code !== 0) {
+    t.fail(`error scaling keda to 1. ${result}`)
+  }
+
   let success = false
   for (let i = 0; i < 20; i++) {
     let result = sh.exec(
