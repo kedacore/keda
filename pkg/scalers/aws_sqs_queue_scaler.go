@@ -3,7 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
@@ -31,6 +33,7 @@ type awsSqsQueueScaler struct {
 type awsSqsQueueMetadata struct {
 	targetQueueLength int
 	queueURL          string
+	queueName         string
 	awsRegion         string
 	awsAuthorization  awsAuthorizationMetadata
 }
@@ -69,6 +72,19 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]strin
 		return nil, fmt.Errorf("no queueURL given")
 	}
 
+	queueURL, err := url.ParseRequestURI(meta.queueURL)
+	if err != nil {
+		return nil, fmt.Errorf("queueURL is not a valid URL")
+	}
+
+	queueURLPath := queueURL.Path
+	queueURLPathParts := strings.Split(queueURLPath, "/")
+	if len(queueURLPathParts) != 3 || len(queueURLPathParts[2]) <= 0 {
+		return nil, fmt.Errorf("cannot get queueName from queueURL")
+	}
+
+	meta.queueName = queueURLPathParts[2]
+
 	if val, ok := metadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
@@ -102,7 +118,8 @@ func (s *awsSqsQueueScaler) Close() error {
 
 func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: awsSqsQueueMetricName, TargetAverageValue: targetQueueLengthQty}
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s", "AWS-SQS-Queue", awsSqsQueueMetricName, s.metadata.queueName),
+		TargetAverageValue: targetQueueLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
 }
