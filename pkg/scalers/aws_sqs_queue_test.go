@@ -4,10 +4,15 @@ import (
 	"testing"
 )
 
-var testAWSSQSRoleArn = "none"
+const (
+	testAWSSQSRoleArn         = "none"
+	testAWSSQSAccessKeyID     = "none"
+	testAWSSQSSecretAccessKey = "none"
 
-var testAWSSQSAccessKeyID = "none"
-var testAWSSQSSecretAccessKey = "none"
+	testAWSSQSProperQueueURL    = "https://sqs.eu-west-1.amazonaws.com/account_id/DeleteArtifactQ"
+	testAWSSQSImproperQueueURL1 = "https://sqs.eu-west-1.amazonaws.com/account_id"
+	testAWSSQSImproperQueueURL2 = "https://sqs.eu-west-1.amazonaws.com"
+)
 
 var testAWSSQSResolvedEnv = map[string]string{
 	"AWS_ACCESS_KEY":        "none",
@@ -32,35 +37,49 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		true,
 		"metadata empty"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSImproperQueueURL1,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		testAWSSQSAuthentication,
+		true,
+		"improperly formed queue, missing queueName"},
+	{map[string]string{
+		"queueURL":    testAWSSQSImproperQueueURL2,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		testAWSSQSAuthentication,
+		true,
+		"improperly formed queue, missing path"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   ""},
 		testAWSSQSAuthentication,
 		true,
 		"properly formed queue, empty region"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue, integer queueLength"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "a",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue, invalid queueLength"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		map[string]string{
@@ -70,7 +89,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"with AWS Credentials from TriggerAuthentication"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		map[string]string{
@@ -80,7 +99,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		true,
 		"with AWS Credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		map[string]string{
@@ -90,7 +109,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		true,
 		"with AWS Credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
-		"queueURL":    "myqueue",
+		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		map[string]string{
