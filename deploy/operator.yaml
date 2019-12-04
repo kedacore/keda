@@ -22,6 +22,8 @@ spec:
           image: docker.io/kedacore/keda:1.0.0
           command:
           - keda
+          args:
+          - '--zap-level=info'
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
