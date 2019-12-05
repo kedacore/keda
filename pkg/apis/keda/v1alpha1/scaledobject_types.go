@@ -13,6 +13,8 @@ const (
 	ScaleTypeDeployment ScaledObjectScaleType = "deployment"
 	// ScaleTypeJob specifies K8s Jobs based ScaleObject
 	ScaleTypeJob ScaledObjectScaleType = "job"
+	// ScaleTypeStatefulSet specifies K8s StatefulSet based ScaleObject
+	ScaleTypeStatefulSet ScaledObjectScaleType = "statefulSet"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -58,7 +60,10 @@ type ScaledObjectSpec struct {
 // ScaledObject applies
 // +k8s:openapi-gen=true
 type ObjectReference struct {
-	DeploymentName string `json:"deploymentName"`
+	// +optional
+	DeploymentName string `json:"deploymentName,omitempty"`
+	// +optional
+	StatefulSetName string `json:"statefulSetName,omitempty"`
 	// +optional
 	ContainerName string `json:"containerName,omitempty"`
 }
@@ -79,7 +84,7 @@ type ScaleTriggers struct {
 // +optional
 type ScaledObjectStatus struct {
 	// +optional
-	LastActiveTime  *metav1.Time `json:"lastActiveTime,omitempty"`
+	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	// +listType
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`

@@ -17,7 +17,7 @@ func (h *ScaleHandler) scaleDeployment(deployment *appsv1.Deployment, scaledObje
 	if *deployment.Spec.Replicas == 0 && isActive {
 		// current replica count is 0, but there is an active trigger.
 		// scale the deployment up
-		h.scaleFromZero(deployment, scaledObject)
+		h.scaleDeploymentFromZero(deployment, scaledObject)
 	} else if !isActive &&
 		*deployment.Spec.Replicas > 0 &&
 		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
@@ -78,7 +78,7 @@ func (h *ScaleHandler) scaleDeploymentToZero(deployment *appsv1.Deployment, scal
 	}
 }
 
-func (h *ScaleHandler) scaleFromZero(deployment *appsv1.Deployment, scaledObject *kedav1alpha1.ScaledObject) {
+func (h *ScaleHandler) scaleDeploymentFromZero(deployment *appsv1.Deployment, scaledObject *kedav1alpha1.ScaledObject) {
 	currentReplicas := *deployment.Spec.Replicas
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		deployment.Spec.Replicas = scaledObject.Spec.MinReplicaCount

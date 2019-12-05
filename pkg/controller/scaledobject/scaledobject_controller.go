@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	scalehandler "github.com/kedacore/keda/pkg/handler"
+	"github.com/kedacore/keda/pkg/scalers"
 
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -32,6 +33,11 @@ import (
 const (
 	defaultHPAMinReplicas int32 = 1
 	defaultHPAMaxReplicas int32 = 100
+)
+
+const (
+	deploymentKind  string = "Deployment"
+	statefulSetKind string = "StatefulSet"
 )
 
 var log = logf.Log.WithName("controller_scaledobject")
@@ -138,18 +144,21 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	reqLogger.Info("Detecting ScaleType from ScaledObject")
-	if  scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
+	if scaledObject.Spec.ScaleTargetRef == nil || (scaledObject.Spec.ScaleTargetRef.DeploymentName == "" && scaledObject.Spec.ScaleTargetRef.StatefulSetName == "") {
 		reqLogger.Info("Detected ScaleType = Job")
-		return r.reconcileJobType(reqLogger, scaledObject)
+		return r.reconcileJobType(reqLogger, kedav1alpha1.ScaleTypeJob, scaledObject)
+	} else if scaledObject.Spec.ScaleTargetRef.StatefulSetName != "" {
+		reqLogger.Info("Detected ScaleType = StatefulSet")
+		return r.reconcileDeploymentOrStatefulSetType(reqLogger, kedav1alpha1.ScaleTypeStatefulSet, scaledObject)
 	} else {
 		reqLogger.Info("Detected ScaleType = Deployment")
-		return r.reconcileDeploymentType(reqLogger, scaledObject)
+		return r.reconcileDeploymentOrStatefulSetType(reqLogger, kedav1alpha1.ScaleTypeDeployment, scaledObject)
 	}
 }
 
 // reconcileJobType implemets reconciler logic for K8s Jobs based ScaleObject
-func (r *ReconcileScaledObject) reconcileJobType(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (reconcile.Result, error) {
-	scaledObject.Spec.ScaleType = kedav1alpha1.ScaleTypeJob
+func (r *ReconcileScaledObject) reconcileJobType(logger logr.Logger, scaleType kedav1alpha1.ScaledObjectScaleType, scaledObject *kedav1alpha1.ScaledObject) (reconcile.Result, error) {
+	scaledObject.Spec.ScaleType = scaleType
 
 	// Delete Jobs owned by the previous version of the ScaledObject
 	opts := []client.ListOption{
@@ -180,18 +189,22 @@ func (r *ReconcileScaledObject) reconcileJobType(logger logr.Logger, scaledObjec
 	return reconcile.Result{}, nil
 }
 
-// reconcileDeploymentType implements reconciler logic for Deployment based ScaleObject
-func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (reconcile.Result, error) {
-	scaledObject.Spec.ScaleType = kedav1alpha1.ScaleTypeDeployment
+// reconcileDeploymentOrStatefulSetType implements reconciler logic for Deployment or StatefulSet based ScaleObject
+func (r *ReconcileScaledObject) reconcileDeploymentOrStatefulSetType(logger logr.Logger, scaleType kedav1alpha1.ScaledObjectScaleType, scaledObject *kedav1alpha1.ScaledObject) (reconcile.Result, error) {
+	scaledObject.Spec.ScaleType = scaleType
 
-	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	if deploymentName == "" {
-		err := fmt.Errorf("Notified about ScaledObject with missing deployment name")
-		logger.Error(err, "Notified about ScaledObject with missing deployment")
+	appName := scaledObject.Spec.ScaleTargetRef.DeploymentName
+	if scaleType == kedav1alpha1.ScaleTypeStatefulSet {
+		appName = scaledObject.Spec.ScaleTargetRef.StatefulSetName
+	}
+
+	if appName == "" {
+		err := fmt.Errorf("Notified about ScaledObject with missing deployment or statefulSet name")
+		logger.Error(err, "Notified about ScaledObject with missing deployment or statefulSet")
 		return reconcile.Result{}, err
 	}
 
-	hpaName := getHpaName(deploymentName)
+	hpaName := getHpaName(string(scaleType), appName)
 	hpaNamespace := scaledObject.Namespace
 
 	// Check if this HPA already exists
@@ -199,7 +212,7 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: hpaNamespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new HPA", "HPA.Namespace", hpaNamespace, "HPA.Name", hpaName)
-		hpa, err := r.newHPAForScaledObject(logger, scaledObject)
+		hpa, err := r.newHPAForScaledObject(logger, scaleType, appName, scaledObject)
 		if err != nil {
 			logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", hpaNamespace, "HPA.Name", hpaName)
 			return reconcile.Result{}, err
@@ -240,7 +253,7 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 		foundHpa.Spec.MaxReplicas = scaledObjectMaxReplicaCount
 	}
 
-	newMetricSpec, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
+	newMetricSpec, err := r.getScaledObjectMetricSpecs(logger, scaleType, appName, scaledObject)
 	if err != nil {
 		logger.Error(err, "Failed to create MetricSpec")
 		return reconcile.Result{}, err
@@ -291,12 +304,16 @@ func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject 
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
-	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
+func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaleType kedav1alpha1.ScaledObjectScaleType, appName string, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
+	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaleType, appName, scaledObject)
 
 	if err != nil {
 		return nil, err
+	}
+
+	appKind := deploymentKind
+	if scaleType == kedav1alpha1.ScaleTypeStatefulSet {
+		appKind = statefulSetKind
 	}
 
 	return &autoscalingv2beta1.HorizontalPodAutoscaler{
@@ -305,12 +322,12 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 			MaxReplicas: getHpaMaxReplicas(scaledObject),
 			Metrics:     scaledObjectMetricSpecs,
 			ScaleTargetRef: autoscalingv2beta1.CrossVersionObjectReference{
-				Name:       deploymentName,
-				Kind:       "Deployment",
+				Name:       appName,
+				Kind:       appKind,
 				APIVersion: "apps/v1",
 			}},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getHpaName(deploymentName),
+			Name:      getHpaName(string(scaleType), appName),
 			Namespace: scaledObject.Namespace,
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -320,11 +337,19 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
-func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, deploymentName string) ([]autoscalingv2beta1.MetricSpec, error) {
+func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, scaleType kedav1alpha1.ScaledObjectScaleType, appName string, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta1.MetricSpec, error) {
 	var scaledObjectMetricSpecs []autoscalingv2beta1.MetricSpec
 	var externalMetricNames []string
 
-	scalers, _, err := scalehandler.NewScaleHandler(r.client, r.scheme).GetDeploymentScalers(scaledObject)
+	var scalers []scalers.Scaler
+	var err error
+
+	if scaleType == kedav1alpha1.ScaleTypeStatefulSet {
+		scalers, _, err = scalehandler.NewScaleHandler(r.client, r.scheme).GetStatefulSetScalers(scaledObject)
+	} else {
+		scalers, _, err = scalehandler.NewScaleHandler(r.client, r.scheme).GetDeploymentScalers(scaledObject)
+	}
+
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err
@@ -336,7 +361,12 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 		// add the deploymentName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 		for _, metricSpec := range metricSpecs {
 			metricSpec.External.MetricSelector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.MetricSelector.MatchLabels["deploymentName"] = deploymentName
+			if scaleType == kedav1alpha1.ScaleTypeStatefulSet {
+				metricSpec.External.MetricSelector.MatchLabels["statefulSetName"] = appName
+			} else {
+				metricSpec.External.MetricSelector.MatchLabels["deploymentName"] = appName
+			}
+
 			externalMetricNames = append(externalMetricNames, metricSpec.External.MetricName)
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
@@ -354,9 +384,9 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	return scaledObjectMetricSpecs, nil
 }
 
-// getHpaName returns generated HPA name for DeploymentName specified in the parameter
-func getHpaName(deploymentName string) string {
-	return fmt.Sprintf("keda-hpa-%s", deploymentName)
+// getHpaName returns generated HPA name for DeploymentName or StatefulSetName specified in the parameter
+func getHpaName(scaleType, appName string) string {
+	return fmt.Sprintf("keda-hpa-%s-%s", scaleType, appName)
 }
 
 // getHpaMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined

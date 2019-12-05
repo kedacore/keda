@@ -193,6 +193,39 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 	return scalers, deployment, nil
 }
 
+// GetStatefulSetScalers returns list of Scalers and StatefulSet for the specified ScaledObject
+func (h *ScaleHandler) GetStatefulSetScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, *appsv1.StatefulSet, error) {
+	scalers := []scalers.Scaler{}
+
+	statefulSetName := scaledObject.Spec.ScaleTargetRef.StatefulSetName
+	if statefulSetName == "" {
+		return scalers, nil, fmt.Errorf("notified about ScaledObject with missing StatefulSet name: %s", scaledObject.GetName())
+	}
+
+	statefulSet := &appsv1.StatefulSet{}
+	err := h.client.Get(context.TODO(), types.NamespacedName{Name: statefulSetName, Namespace: scaledObject.GetNamespace()}, statefulSet)
+	if err != nil {
+		return scalers, nil, fmt.Errorf("error getting statefulSet: %s", err)
+	}
+
+	resolvedEnv, err := h.resolveStatefulSetEnv(statefulSet, scaledObject.Spec.ScaleTargetRef.ContainerName)
+	if err != nil {
+		return scalers, nil, fmt.Errorf("error resolving secrets for statefulSet: %s", err)
+	}
+
+	for i, trigger := range scaledObject.Spec.Triggers {
+		authParams, podIdentity := h.parseStatefulSetAuthRef(trigger.AuthenticationRef, scaledObject, statefulSet)
+		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
+		if err != nil {
+			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
+		}
+
+		scalers = append(scalers, scaler)
+	}
+
+	return scalers, statefulSet, nil
+}
+
 func (h *ScaleHandler) getJobScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, error) {
 	scalers := []scalers.Scaler{}
 

@@ -41,6 +41,9 @@ func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kedav1alph
 	case kedav1alpha1.ScaleTypeJob:
 		h.handleScaleJob(ctx, scaledObject)
 		break
+	case kedav1alpha1.ScaleTypeStatefulSet:
+		h.handleScaleStatefulSet(ctx, scaledObject)
+		break
 	default:
 		h.handleScaleDeployment(ctx, scaledObject)
 	}
@@ -128,4 +131,35 @@ func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *
 	}
 
 	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
+}
+
+// handleScaleStatefulSet contains the main logic for the ScaleHandler scaling logic.
+// It'll check each trigger active status then call scaleStatefulSet
+func (h *ScaleHandler) handleScaleStatefulSet(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
+	scalers, statefulSet, err := h.GetStatefulSetScalers(scaledObject)
+
+	if statefulSet == nil {
+		return
+	}
+	if err != nil {
+		h.logger.Error(err, "Error getting scalers")
+		return
+	}
+
+	isScaledObjectActive := false
+
+	for _, scaler := range scalers {
+		defer scaler.Close()
+		isTriggerActive, err := scaler.IsActive(ctx)
+
+		if err != nil {
+			h.logger.V(1).Info("Error getting scale decision", "Error", err)
+			continue
+		} else if isTriggerActive {
+			isScaledObjectActive = true
+			h.logger.V(1).Info("Scaler for scaledObject is active", "Scaler", scaler)
+		}
+	}
+
+	h.scaleStatefulSet(statefulSet, scaledObject, isScaledObjectActive)
 }

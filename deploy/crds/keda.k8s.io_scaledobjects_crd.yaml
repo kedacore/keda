@@ -4472,8 +4472,8 @@ spec:
                   type: string
                 deploymentName:
                   type: string
-              required:
-              - deploymentName
+                statefulSetName:
+                  type: string
               type: object
             scaleType:
               description: ScaledObjectScaleType distinguish between Deployment based
