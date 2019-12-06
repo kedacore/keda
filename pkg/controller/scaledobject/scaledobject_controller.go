@@ -204,7 +204,7 @@ func (r *ReconcileScaledObject) reconcileDeploymentOrStatefulSetType(logger logr
 		return reconcile.Result{}, err
 	}
 
-	hpaName := getHpaName(string(scaleType), appName)
+	hpaName := getHpaName(scaleType, appName)
 	hpaNamespace := scaledObject.Namespace
 
 	// Check if this HPA already exists
@@ -327,7 +327,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaleT
 				APIVersion: "apps/v1",
 			}},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getHpaName(string(scaleType), appName),
+			Name:      getHpaName(scaleType, appName),
 			Namespace: scaledObject.Namespace,
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -385,8 +385,11 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 }
 
 // getHpaName returns generated HPA name for DeploymentName or StatefulSetName specified in the parameter
-func getHpaName(scaleType, appName string) string {
-	return fmt.Sprintf("keda-hpa-%s-%s", scaleType, appName)
+func getHpaName(scaleType kedav1alpha1.ScaledObjectScaleType, appName string) string {
+	if scaleType == kedav1alpha1.ScaleTypeStatefulSet {
+		return fmt.Sprintf("keda-hpa-%s-%s", scaleType, appName)
+	}
+	return fmt.Sprintf("keda-hpa-%s", appName)
 }
 
 // getHpaMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
