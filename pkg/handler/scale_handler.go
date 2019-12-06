@@ -279,7 +279,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata)
 	case "prometheus":
-		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata, authParams)
 	case "redis":
 		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
 	case "gcp-pubsub":

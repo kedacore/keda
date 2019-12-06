@@ -50,8 +50,8 @@ type promQueryResult struct {
 var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
-func NewPrometheusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parsePrometheusMetadata(metadata, resolvedEnv)
+func NewPrometheusScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := parsePrometheusMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
@@ -61,12 +61,20 @@ func NewPrometheusScaler(resolvedEnv, metadata map[string]string) (Scaler, error
 	}, nil
 }
 
-func parsePrometheusMetadata(metadata, resolvedEnv map[string]string) (*prometheusMetadata, error) {
+func parsePrometheusMetadata(resolvedEnv, metadata, authParams map[string]string) (*prometheusMetadata, error) {
 	meta := prometheusMetadata{}
 
-	if val, ok := metadata[promServerAddress]; ok && val != "" {
+	if val, ok := authParams[promServerAddress]; ok {
 		meta.serverAddress = val
-	} else {
+	} else if val, ok := metadata[promServerAddress]; ok {
+		address := val
+
+		if val, ok := resolvedEnv[address]; ok {
+			meta.serverAddress = val
+		}
+	}
+
+	if meta.serverAddress == "" {
 		return nil, fmt.Errorf("no %s given", promServerAddress)
 	}
 
