@@ -44,12 +44,12 @@ type TriggerAuthenticationList struct {
 type PodIdentityProvider string
 
 const (
-	PodIdentityProviderNone   PodIdentityProvider = "none"
-	PodIdentityProviderAzure                      = "azure"
-	PodIdentityProviderGCP                        = "gcp"
-	PodIdentityProviderSpiffe                     = "spiffe"
-	PodIdentityProviderEKS                        = "eks"
-	PodIdentityProviderKIAM                       = "kiam"
+	PodIdentityProviderNone    PodIdentityProvider = "none"
+	PodIdentityProviderAzure                       = "azure"
+	PodIdentityProviderGCP                         = "gcp"
+	PodIdentityProviderSpiffe                      = "spiffe"
+	PodIdentityProviderAwsEKS                      = "aws-eks"
+	PodIdentityProviderAwsKiam                     = "aws-kiam"
 )
 
 const (
