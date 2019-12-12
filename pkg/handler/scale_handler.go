@@ -292,6 +292,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+	case "azure-blob":
+		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
