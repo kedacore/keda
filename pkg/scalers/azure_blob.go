@@ -8,8 +8,8 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
-// GetAzureBlobListLength returns the length of the blobs in container in int
-func GetAzureBlobListLength(ctx context.Context, podIdentity string, connectionString, containerName string, accountName string, blobDelimiter string, blobPrefix string) (int, error) {
+// GetAzureBlobListLength returns the count of the blobs in blob container in int
+func GetAzureBlobListLength(ctx context.Context, podIdentity string, connectionString, blobContainerName string, accountName string, blobDelimiter string, blobPrefix string) (int, error) {
 
 	var credential azblob.Credential
 	var listBlobsSegmentOptions azblob.ListBlobsSegmentOptions
@@ -49,7 +49,7 @@ func GetAzureBlobListLength(ctx context.Context, podIdentity string, connectionS
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", accountName))
 	serviceURL := azblob.NewServiceURL(*u, p)
-	containerURL := serviceURL.NewContainerURL(containerName)
+	containerURL := serviceURL.NewContainerURL(blobContainerName)
 
 	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{} , blobDelimiter, listBlobsSegmentOptions)
 	if err != nil {

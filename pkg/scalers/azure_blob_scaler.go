@@ -28,7 +28,7 @@ type azureBlobScaler struct {
 
 type azureBlobMetadata struct {
 	targetBlobCount   int
-	containerName     string
+	blobContainerName string
 	blobDelimiter     string
 	blobPrefix 		  string
 	connection        string
@@ -67,10 +67,10 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		meta.targetBlobCount = blobCount
 	}
 
-	if val, ok := metadata["containerName"]; ok && val != "" {
-		meta.containerName = val
+	if val, ok := metadata["blobContainerName"]; ok && val != "" {
+		meta.blobContainerName = val
 	} else {
-		return nil, "", fmt.Errorf("no containerName given")
+		return nil, "", fmt.Errorf("no blobContainerName given")
 	}
 
 	if val, ok := metadata["blobDelimiter"]; ok {
@@ -132,7 +132,7 @@ func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
-		s.metadata.containerName,
+		s.metadata.blobContainerName,
 		s.metadata.accountName,
 		s.metadata.blobDelimiter,
 		s.metadata.blobPrefix,
@@ -163,7 +163,7 @@ func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, met
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
-		s.metadata.containerName,
+		s.metadata.blobContainerName,
 		s.metadata.accountName,
 		s.metadata.blobDelimiter,
 		s.metadata.blobPrefix,

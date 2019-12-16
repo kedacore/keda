@@ -31,7 +31,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial.cb('Deployment should scale to 4 with 2000 blobs on the container then back to 0', t => {
+test.serial.cb('Deployment should scale to 4 with 2000 blobs on the blob container then back to 0', t => {
     // add 2000 files
     const blobSvc = azure.createBlobService(connectionString)
     blobSvc.createContainerIfNotExists('container-name', err => {
@@ -75,7 +75,7 @@ test.after.always.cb('clean up azure-blob deployment', t => {
     // delete test blob
     const blobSvc = azure.createBlobService(connectionString)
     blobSvc.deleteContainerIfExists('container-name', err => {
-        t.falsy(err, 'should delete test container successfully')
+        t.falsy(err, 'should delete test blob container successfully')
         t.end()
     })
 })
@@ -141,11 +141,11 @@ spec:
   scaleTargetRef:
     deploymentName: test-deployment
   pollingInterval: 5
-  maxReplicaCount: 5
+  maxReplicaCount: 4
   cooldownPeriod: 10
   triggers:
   - type: azure-blob
     metadata:
-      containerName: container-name
+      blobContainerName: container-name
       blobPrefix: blobsubpath
       connection: AzureWebJobsStorage`
