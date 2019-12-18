@@ -131,7 +131,7 @@ func (s *stanScaler) getTotalMessages() int64 {
 	return s.channelInfo.MsgCount
 }
 
-func (s *stanScaler) getMaxMsgLag() int64 {	
+func (s *stanScaler) getMaxMsgLag() int64 {
 	maxValue := int64(0)
 	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
 
@@ -144,7 +144,7 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 	return s.channelInfo.MsgCount - maxValue
 }
 
-func (s *stanScaler) hasPendingMessage() bool {	
+func (s *stanScaler) hasPendingMessage() bool {
 	hasPending := false
 	subscriberFound := false
 	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
@@ -162,8 +162,10 @@ func (s *stanScaler) hasPendingMessage() bool {
 	}
 
 	if !subscriberFound {
-		// If the queue is not found, we want to kick off at least one instance to create a subscription.
-		return true
+		// If the queue is not found and there are messages pending, we want to kick off at least one instance to create a subscription.
+		if s.channelInfo.MsgCount > 0 {
+			return true
+		}
 	}
 
 	return hasPending
