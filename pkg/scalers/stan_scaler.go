@@ -116,6 +116,10 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	defer resp.Body.Close()
 	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 
+	if resp.StatusCode == 404 {
+		stanLog.Info("Streaming broker endpoint returned 404 for " + s.metadata.natsServerMonitoringEndpoint)
+	}
+
 	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
 }
 
@@ -127,11 +131,12 @@ func (s *stanScaler) getTotalMessages() int64 {
 	return s.channelInfo.MsgCount
 }
 
-func (s *stanScaler) getMaxMsgLag() int64 {
-	var maxValue int64
-	maxValue = 0
+func (s *stanScaler) getMaxMsgLag() int64 {	
+	maxValue := int64(0)
+	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
+
 	for _, subs := range s.channelInfo.Subscriber {
-		if subs.LastSent > maxValue && subs.QueueName == (s.metadata.durableName+":"+s.metadata.queueGroup) {
+		if subs.LastSent > maxValue && subs.QueueName == builtQueueName {
 			maxValue = subs.LastSent
 		}
 	}
@@ -139,13 +144,26 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 	return s.channelInfo.MsgCount - maxValue
 }
 
-func (s *stanScaler) hasPendingMessage() bool {
-	var hasPending bool
-	hasPending = false
+func (s *stanScaler) hasPendingMessage() bool {	
+	hasPending := false
+	subscriberFound := false
+	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
+
 	for _, subs := range s.channelInfo.Subscriber {
-		if subs.PendingCount > 0 && subs.QueueName == (s.metadata.durableName+":"+s.metadata.queueGroup) {
-			hasPending = true
+		if subs.QueueName == builtQueueName {
+			subscriberFound = true
+
+			if subs.PendingCount > 0 {
+				hasPending = true
+			}
+
+			break
 		}
+	}
+
+	if !subscriberFound {
+		// If the queue is not found, we want to kick off at least one instance to create a subscription.
+		return true
 	}
 
 	return hasPending
