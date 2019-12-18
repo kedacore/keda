@@ -162,7 +162,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 	}
 
 	if !subscriberFound {
-		// If the queue is not found and there are messages pending, we want to kick off at least one instance to create a subscription.
+		// If the subscription is not found and there are messages pending, we want to kick off at least one instance to create a subscription.
 		if s.channelInfo.MsgCount > 0 {
 			return true
 		}
