@@ -117,14 +117,24 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 
 	if resp.StatusCode == 404 {
-		stanLog.Info("Streaming broker endpoint returned 404 for " + s.metadata.natsServerMonitoringEndpoint)
+		baseResp, _ := http.Get(s.getSTANChannelsEndpoint())
+
+		if baseResp.StatusCode == 404 {			
+			stanLog.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
+		} else {
+			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", s.getMonitoringEndpoint(), "channelName", s.metadata.subject)
+		}
 	}
 
 	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
 }
 
+func (s *stanScaler) getSTANChannelsEndpoint() string {
+	return "http://" + s.metadata.natsServerMonitoringEndpoint + "/streaming/channelsz"
+}
+
 func (s *stanScaler) getMonitoringEndpoint() string {
-	return "http://" + s.metadata.natsServerMonitoringEndpoint + "/streaming/channelsz?" + "channel=" + s.metadata.subject + "&subs=1"
+	return s.getSTANChannelsEndpoint() + "?channel=" + s.metadata.subject + "&subs=1"
 }
 
 func (s *stanScaler) getTotalMessages() int64 {
