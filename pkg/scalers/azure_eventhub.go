@@ -86,14 +86,15 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 	}
 
 	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
+	var u *url.URL
 	// Checking blob store for C# and Java applications
 	if eventHubMetadata.blobContainer != "" {
 		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/<blobContainer>/<eventHubConsumerGroup>/<partitionID>
-		u, _ := url.Parse(fmt.Sprintf("%s://%s.blob.%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubMetadata.blobContainer, eventHubMetadata.eventHubConsumerGroup, partitionID))
+		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubMetadata.blobContainer, eventHubMetadata.eventHubConsumerGroup, partitionID))
 	} else {
 		// Checking blob store for Azure functions
 		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/azure-webjobs-eventhub/<eventHubNamespace>/<eventHubName>/<eventHubConsumerGroup>/<partitionID>
-		u, _ := url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
+		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
 	}
 
 	_, cred, err := GetStorageCredentials(eventHubMetadata.storageConnection)
