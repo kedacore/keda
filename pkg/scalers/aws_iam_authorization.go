@@ -21,8 +21,11 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 
 	if authParams["awsRoleArn"] != "" {
 		meta.awsRoleArn = authParams["awsRoleArn"]
-	} else if authParams["awsAccessKeyId"] != "" && authParams["awsSecretAccessKey"] != "" {
-		meta.awsAccessKeyID = authParams["awsAccessKeyId"]
+	} else if (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "" {
+		meta.awsAccessKeyID = authParams["awsAccessKeyID"]
+		if meta.awsAccessKeyID == "" {
+			meta.awsAccessKeyID = authParams["awsAccessKeyId"]
+		}
 		meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
 	} else {
 		var keyName string
