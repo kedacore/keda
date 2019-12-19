@@ -48,6 +48,8 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{"storageConnection": storageConnectionSetting, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing unprocessed event threshold - should replace with default
 	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting}, false},
+	// added blob container details
+	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "blobContainer": testContainerName}, false},
 }
 
 var testEventHubScaler = AzureEventHubScaler{
