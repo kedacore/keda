@@ -123,7 +123,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
-	query_escaped = url_pkg.QueryEscape(s.metadata.query)
+	query_escaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, query_escaped, t)
 	r, err := http.Get(url)
 	if err != nil {
