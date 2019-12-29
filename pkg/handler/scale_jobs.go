@@ -132,9 +132,5 @@ func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObjec
 		}
 	}
 
-	if runningJobs > maxScale {
-		runningJobs = maxScale
-	}
-
 	return runningJobs
 }
