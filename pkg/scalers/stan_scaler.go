@@ -178,7 +178,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 	}
 
 	if !subscriberFound {
-		stanLog.Info("The STAN subscription was not found.")
+		stanLog.Info("The STAN subscription was not found.", "combinedQueueName", combinedQueueName)
 	}
 
 	return hasPending
