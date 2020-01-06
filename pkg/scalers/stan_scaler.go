@@ -138,7 +138,7 @@ func (s *stanScaler) getMonitoringEndpoint() string {
 }
 
 func (s *stanScaler) getTotalMessages() int64 {
-	return s.channelInfo.MsgCount
+	return s.channelInfo.LastSequence
 }
 
 func (s *stanScaler) getMaxMsgLag() int64 {
@@ -172,10 +172,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 	}
 
 	if !subscriberFound {
-		// If the subscription is not found and there are messages pending, we want to kick off at least one instance to create a subscription.
-		if s.channelInfo.MsgCount > s.channelInfo.LastSequence {
-			return true
-		}
+		stanLog.Info("The STAN subscription was not found.")
 	}
 
 	return hasPending
