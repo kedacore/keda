@@ -108,23 +108,29 @@ func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
-	resp, err := http.Get(s.getMonitoringEndpoint())
+	monitoringEndpoint := s.getMonitoringEndpoint()
+
+	resp, err := http.Get(monitoringEndpoint)
 	if err != nil {
 		stanLog.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		return false, err
 	}
-	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 
 	if resp.StatusCode == 404 {
 		baseResp, _ := http.Get(s.getSTANChannelsEndpoint())
 
-		if baseResp.StatusCode == 404 {			
-			stanLog.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
+		if baseResp.StatusCode == 404 {
+			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
+
 		} else {
-			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", s.getMonitoringEndpoint(), "channelName", s.metadata.subject)
+			stanLog.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		}
+
+		return false, err
 	}
+
+	defer resp.Body.Close()
+	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
 
 	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
 }
