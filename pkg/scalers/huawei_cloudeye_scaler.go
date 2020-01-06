@@ -303,8 +303,8 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 				MetricName: h.metadata.metricsName,
 			},
 		},
-		From:   time.Now().Add(time.Second*-1*time.Duration(h.metadata.metricCollectionTime)).UnixNano() / 1e6,
-		To:     time.Now().UnixNano() / 1e6,
+		From:   time.Now().Truncate(time.Minute).Add(time.Second*-1*time.Duration(h.metadata.metricCollectionTime)).UnixNano() / 1e6,
+		To:     time.Now().Truncate(time.Minute).UnixNano() / 1e6,
 		Period: h.metadata.metricPeriod,
 		Filter: h.metadata.metricFilter,
 	}
@@ -323,7 +323,7 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 
 	var metricValue float64
 
-	if metricdatas[0].Datapoints != nil {
+	if metricdatas[0].Datapoints != nil && len(metricdatas[0].Datapoints) > 0 {
 		v, ok := metricdatas[0].Datapoints[0][h.metadata.metricFilter].(float64)
 		if ok {
 			metricValue = v
