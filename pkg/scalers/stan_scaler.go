@@ -149,10 +149,10 @@ func (s *stanScaler) getTotalMessages() int64 {
 
 func (s *stanScaler) getMaxMsgLag() int64 {
 	maxValue := int64(0)
-	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
+	combinedQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
 
 	for _, subs := range s.channelInfo.Subscriber {
-		if subs.LastSent > maxValue && subs.QueueName == builtQueueName {
+		if subs.LastSent > maxValue && subs.QueueName == combinedQueueName {
 			maxValue = subs.LastSent
 		}
 	}
@@ -163,10 +163,10 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 func (s *stanScaler) hasPendingMessage() bool {
 	hasPending := false
 	subscriberFound := false
-	builtQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
+	combinedQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
 
 	for _, subs := range s.channelInfo.Subscriber {
-		if subs.QueueName == builtQueueName {
+		if subs.QueueName == combinedQueueName {
 			subscriberFound = true
 
 			if subs.PendingCount > 0 {
