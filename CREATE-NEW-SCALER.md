@@ -4,7 +4,7 @@
 
 In order to developer a scaler, a developer should do the following:
 1. Download KEDA's code
-2. Define the main pieces of data that you expect the user to supply so the scaler runs properly. For example, if your scaler needs to connect to an external source based on a connection string, you expect the user to supply this connection string in the conifugration within the ScaledObject under `trigger`. This data will be passed to your constructing function as map[string]string.
+2. Define the main pieces of data that you expect the user to supply so the scaler runs properly. For example, if your scaler needs to connect to an external source based on a connection string, you expect the user to supply this connection string in the confguration within the ScaledObject under `trigger`. This data will be passed to your constructing function as map[string]string.
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods above
 4. Create a constructor according to the above.
@@ -13,9 +13,9 @@ In order to developer a scaler, a developer should do the following:
 
 If you want to deploy locally 
 1. Open the terminal and go to the root of the source code, then build a docker image of KEDA by running `docker build . -t [choose a unique tag for your custom image]`
-2. In the terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 2],image.pullPolicy=IfNotPresent`.
+2. In the terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 1],image.pullPolicy=IfNotPresent`.
 
-The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we substitute the image with the image we built in step 2. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
+The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we substitute the image with the image we built in step 1. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
 
 ## Main Functions
 
