@@ -156,8 +156,7 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 	return s.channelInfo.LastSequence - maxValue
 }
 
-func (s *stanScaler) hasPendingMessage() bool {
-	hasPending := false
+func (s *stanScaler) hasPendingMessage() bool {	
 	subscriberFound := false
 	combinedQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
 
@@ -166,7 +165,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 			subscriberFound = true
 
 			if subs.PendingCount > 0 {
-				hasPending = true
+				return true
 			}
 
 			break
@@ -177,7 +176,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 		stanLog.Info("The STAN subscription was not found.", "combinedQueueName", combinedQueueName)
 	}
 
-	return hasPending
+	return false
 }
 
 func (s *stanScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
