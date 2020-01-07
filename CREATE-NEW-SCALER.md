@@ -4,7 +4,7 @@
 
 In order to developer a scaler, a developer should do the following:
 1. Download KEDA's code
-2. Define the main pieces of data that you expect the user to supply so the scaler runs properly. For example, if your scaler needs to connect to an external source based on a connection string, you expect the user to supply this connection string in the confguration within the ScaledObject under `trigger`. This data will be passed to your constructing function as map[string]string.
+2. Define the main pieces of data that you expect the user to supply so the scaler runs properly. For example, if your scaler needs to connect to an external source based on a connection string, you expect the user to supply this connection string in the configuration within the ScaledObject under `trigger`. This data will be passed to your constructing function as map[string]string.
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods above
 4. Create a constructor according to the above.
