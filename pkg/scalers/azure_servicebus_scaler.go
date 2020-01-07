@@ -196,7 +196,7 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 			return -1, err
 		}
 	} else if s.podIdentity == "azure" {
-		namespace, err := servicebus.NewNamespace()
+		namespace, err = servicebus.NewNamespace()
 		if err != nil {
 			return -1, err
 		}
