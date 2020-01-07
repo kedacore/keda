@@ -143,10 +143,6 @@ func (s *stanScaler) getMonitoringEndpoint() string {
 	return s.getSTANChannelsEndpoint() + "?channel=" + s.metadata.subject + "&subs=1"
 }
 
-func (s *stanScaler) getTotalMessages() int64 {
-	return s.channelInfo.LastSequence
-}
-
 func (s *stanScaler) getMaxMsgLag() int64 {
 	maxValue := int64(0)
 	combinedQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
@@ -157,7 +153,7 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 		}
 	}
 
-	return s.channelInfo.MsgCount - maxValue
+	return s.channelInfo.LastSequence - maxValue
 }
 
 func (s *stanScaler) hasPendingMessage() bool {
