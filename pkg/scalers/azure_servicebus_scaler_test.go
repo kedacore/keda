@@ -61,6 +61,12 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	}},
+	{metadata: &azureServiceBusMetadata{
+		entityType:       Subscription,
+		topicName:        topicName,
+		subscriptionName: subscriptionName,
+	},
+		podIdentity: "azure"},
 }
 
 func TestParseServiceBusMetadata(t *testing.T) {
