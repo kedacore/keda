@@ -30,6 +30,7 @@ type redisMetadata struct {
 	listName         string
 	address          string
 	password         string
+	enableTLS        bool
 }
 
 var redisLog = logf.Log.WithName("redis_scaler")
@@ -37,6 +38,7 @@ var redisLog = logf.Log.WithName("redis_scaler")
 // NewRedisScaler creates a new redisScaler
 func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
 	meta, err := parseRedisMetadata(metadata, resolvedEnv, authParams)
+	redisLog.Info("TEST")
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
@@ -82,6 +84,16 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		if passd, ok := resolvedEnv[val]; ok {
 			meta.password = passd
 		}
+	}
+
+	meta.enableTLS = false
+	if val, ok := metadata["enableTLS"]; ok {
+		fmt.Printf("==========\n%T\n===================", metadata["enableTLS"])
+		fmt.Printf("==========\n%T\n===================", val)
+		fmt.Errorf("==========\n%T\n===================", metadata["enableTLS"])
+		fmt.Errorf("==========\n%T\n===================", val)
+		valType := fmt.Sprintf("==========\n%T\n===================", val)
+		redisLog.Info(valType, "error getting list length")
 	}
 
 	return &meta, nil
