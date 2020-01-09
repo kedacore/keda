@@ -27,6 +27,19 @@ func (h *ScaleHandler) scaleDeployment(deployment *appsv1.Deployment, scaledObje
 
 		// Try to scale it down.
 		h.scaleDeploymentToZero(deployment, scaledObject)
+	} else if !isActive &&
+		scaledObject.Spec.MinReplicaCount != nil &&
+		*deployment.Spec.Replicas < *scaledObject.Spec.MinReplicaCount {
+		// there are no active triggers
+		// AND
+		// deployment replicas count is less than minimum replica count specified in ScaledObject
+		// Let's set deployment replicas count to correct value
+		*deployment.Spec.Replicas = *scaledObject.Spec.MinReplicaCount
+
+		err := h.updateDeployment(deployment)
+		if err == nil {
+			h.logger.Info("Successfully set Deployment replicas count to ScaledObject minReplicaCount", "Deployment.Namespace", deployment.GetNamespace(), "Deployment.Name", deployment.GetName(), "Deployment.Replicas", *deployment.Spec.Replicas)
+		}
 	} else if isActive {
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.

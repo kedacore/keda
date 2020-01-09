@@ -272,6 +272,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
+	case "aws-kinesis-stream":
+		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "rabbitmq":
