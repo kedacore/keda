@@ -16,6 +16,13 @@ import (
 func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
 	runningJobCount := h.getRunningJobCount(scaledObject, maxScale)
 	h.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
+
+	var effectiveMaxScale int64
+	effectiveMaxScale = maxScale - runningJobCount
+	if effectiveMaxScale < 0 {
+		effectiveMaxScale = 0
+	}
+
 	h.logger.Info("Scaling Jobs")
 
 	if isActive {
@@ -23,7 +30,7 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
 		h.updateScaledObjectStatus(scaledObject)
-		h.createJobs(scaledObject, scaleTo, maxScale-runningJobCount)
+		h.createJobs(scaledObject, scaleTo, effectiveMaxScale)
 
 	} else {
 		h.logger.V(1).Info("No change in activity")
