@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/part-of: keda-operator
     app: keda-operator
   name: keda-operator
   namespace: keda

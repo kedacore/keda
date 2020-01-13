@@ -294,6 +294,12 @@ func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject 
 func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
+	labels := map[string]string{
+		"app.kubernetes.io/name": getHpaName(deploymentName),
+		"app.kubernetes.io/version": "1.0.0",
+		"app.kubernetes.io/part-of": deploymentName,
+		"app.kubernetes.io/managed-by": "keda-operator",
+	  }
 
 	if err != nil {
 		return nil, err
@@ -312,6 +318,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getHpaName(deploymentName),
 			Namespace: scaledObject.Namespace,
+			Labels:    labels,
 		},
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v2beta1",
