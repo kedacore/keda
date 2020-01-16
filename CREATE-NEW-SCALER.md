@@ -12,10 +12,11 @@ In order to develop a scaler, a developer should do the following:
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally 
-1. run: `export IMAGE_TAG=yourchosenname`
-2. Open the terminal and go to the root of the source code, then run `make build`
-3. If you haven't done it yet clone the charts repository: `git  clone git@github.com:kedacore/charts.git` 
-4. In the terminal, navigate to the `chart/keda` folder (the charts downloaded in step 3), and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:[tag used in step 1],image.pullPolicy=IfNotPresent`.
+1. Run `export IMAGE_TAG=local`
+2. Open the terminal and go to the root of the source code
+3. Run `make build`
+5. If you haven't done it yet clone the charts repository: `git  clone git@github.com:kedacore/charts.git` 
+6. In the terminal, navigate to the `chart/keda` folder (the charts downloaded in step 3), and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:[tag used in step 1],image.pullPolicy=IfNotPresent`.
 
 The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we substitute the image with the image we built in step 1. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
 
