@@ -91,7 +91,8 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 2. In terminal, create an environment variable `IMAGE_TAG` and assign it a value for your preference, this tag will be used when creating the operator image that will run KEDA.
 ***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
 3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for the KEDA operator that you can deploy to your local cluster. It will use the tag you used in step 2.
-4. Still in terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.pullPolicy=IfNotPresent`.
+4. If you haven't downloaded them before, clone the charts repository: `git clone git@github.com:kedacore/charts.git` 
+5. Still in terminal, navigate to the `chart/keda` folder (downlodaed in step 4), and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.pullPolicy=IfNotPresent`.
 
 In the last step we are using the image we just create by running step 3. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster, this is important to do, otherwise, Kubernetes will try to pull the image from Docker Hub from the internet and will complain about not finidng it.
 
