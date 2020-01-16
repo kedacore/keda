@@ -36,7 +36,7 @@ test.serial.cb('Deployment should scale to 4 with 2000 blobs on the blob contain
     const blobSvc = azure.createBlobService(connectionString)
     blobSvc.createContainerIfNotExists('container-name', err => {
         t.falsy(err, 'unable to create blob')
-        async.mapLimit(Array(2000).keys(), 200, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
+        async.mapLimit(Array(2000).keys(), 500, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
             let replicaCount = '0'
             for (let i = 0; i < 10 && replicaCount !== '4'; i++) {
                 replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
