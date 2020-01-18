@@ -14,14 +14,6 @@ import (
 )
 
 func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
-	runningJobCount := h.getRunningJobCount(scaledObject, maxScale)
-	h.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
-
-	var effectiveMaxScale int64
-	effectiveMaxScale = maxScale - runningJobCount
-	if effectiveMaxScale < 0 {
-		effectiveMaxScale = 0
-	}
 
 	h.logger.Info("Scaling Jobs")
 
@@ -30,7 +22,7 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
 		h.updateScaledObjectStatus(scaledObject)
-		h.createJobs(scaledObject, scaleTo, effectiveMaxScale)
+		h.createJobs(scaledObject, scaleTo, maxScale)
 
 	} else {
 		h.logger.V(1).Info("No change in activity")
@@ -39,6 +31,9 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 }
 
 func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
+	runningJobCount := h.getRunningJobCount(scaledObject)
+	h.logger.Info("Creating Jobs", "Number of running Jobs ", runningJobCount)
+
 	scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
 	if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
 		scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
@@ -52,7 +47,7 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 	}
 	h.logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
-	for i := 0; i < int(scaleTo); i++ {
+	for i := runningJobCount; i < int(scaleTo); i++ {
 
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
@@ -118,8 +113,8 @@ func (h *ScaleHandler) isJobFinished(j *batchv1.Job) bool {
 	return false
 }
 
-func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObject, maxScale int64) int64 {
-	var runningJobs int64
+func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObject) int {
+	var runningJobs int
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledObject.GetNamespace()),
