@@ -167,7 +167,7 @@ func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, 
 
 // GetAzureMetric does things
 func (s *azureMonitorScaler) GetAzureMetric() (int, error) {
-	return defaultTargetMetricValue, nil
+	return 16, nil
 }
 
 /*
