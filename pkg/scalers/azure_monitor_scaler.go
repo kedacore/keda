@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	defaultTargetMetricValue = 5
-	azureMonitorMetricName   = "metricName"
+	azureMonitorMetricName = "metricName"
+	metricThresholdName    = "metricThreshold"
 )
 
 type azureMonitorScaler struct {
@@ -32,7 +33,7 @@ type azureMonitorMetadata struct {
 	aggregationType      string
 	servicePrincipalID   string
 	servicePrincipalPass string
-	targetMetricValue    int
+	metricThreshold      int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -51,17 +52,16 @@ func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string) 
 
 func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{}
-	meta.targetMetricValue = defaultTargetMetricValue
 
-	/*if val, ok := metadata[metricResourceURI]; ok {
-		Length, err := strconv.Atoi(val)
+	if val, ok := metadata[metricThresholdName]; ok && val != "" {
+		metricThreshold, err := strconv.Atoi(val)
 		if err != nil {
-			azureMonitorLog.Error(err, "Error parsing azure queue metadata", "queueLengthMet ricName", LengthMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", LengthMetricName, err.Error())
+			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "metricThreshold", metricThresholdName)
+			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", metricThresholdName, err.Error())
 		}
 
-		meta.targetLength = Length
-	}*/
+		meta.metricThreshold = metricThreshold
+	}
 
 	if val, ok := metadata["resourceURI"]; ok && val != "" {
 		meta.resourceURI = val
@@ -142,7 +142,7 @@ func (s *azureMonitorScaler) Close() error {
 }
 
 func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetMetricValue), resource.DecimalSI)
+	targetMetricVal := resource.NewQuantity(int64(s.metadata.metricThreshold), resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{MetricName: azureMonitorMetricName, TargetAverageValue: targetMetricVal}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
