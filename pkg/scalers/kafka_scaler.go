@@ -211,6 +211,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA512)
 	}
 
+	if metadata.authMode == kafkaAuthModeForSaslPlaintext {
+		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+		config.Net.TLS.Enable = true
+	}
+
 	client, err := sarama.NewClient(metadata.brokers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)

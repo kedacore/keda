@@ -272,6 +272,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
+	case "aws-kinesis-stream":
+		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "rabbitmq":
@@ -292,6 +294,10 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+	case "azure-blob":
+		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "postgres":
+		return scalers.NewPostgresScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}

@@ -90,10 +90,11 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 1. Make your change in the code.
 2. In terminal, create an environment variable `IMAGE_TAG` and assign it a value for your preference, this tag will be used when creating the operator image that will run KEDA.
 ***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
-3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for the KEDA operator that you can deploy to your local cluster. It will use the tag you used in step 2.
-4. Still in terminal, navigate to the `chart/keda` folder, and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.repository=[tag used in step 2],image.pullPolicy=IfNotPresent`.
+3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for the KEDA operator that you can deploy to your local cluster.  This should build 2 docker images: `kedacore/keda` and `kedacore/keda-metrics-adapter` tagged with the tag you set in step 2
+4. If you haven't downloaded them before, clone the charts repository: `git clone git@github.com:kedacore/charts.git` 
+5. Still in terminal, navigate to the `chart/keda` folder (downlodaed in step 4), and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.metricsAdapter=kedacore/keda-metrics-adapter:$IMAGE_TAG,image.pullPolicy=IfNotPresent`. This will use the images built at step 3. Notice the need to override the image pullPolicy to `IfNotPresent` in order to use the locally built images and not try to pull the images from remote repo on Docker Hub (and complain about not finding them).
+6. Once the keda operator pod is up, check the logs of both containers to verify everything running ok, eg: `kubectl logs <keda operator pod name> -c keda-operator-metrics-apiserver` and `kubectl logs <keda operator pod name> -c keda-operator`
 
-In the last step we are using the image we just create by running step 3. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster, this is important to do, otherwise, Kubernetes will try to pull the image from Docker Hub from the internet and will complain about not finidng it.
 
 # Contributing
 

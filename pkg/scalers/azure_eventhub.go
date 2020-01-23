@@ -29,7 +29,7 @@ type baseCheckpoint struct {
 
 // Checkpoint is the object eventhub processor stores in storage
 // for checkpointing event processors. This matches the object
-// stored by the eventhub C# sdk
+// stored by the eventhub C# sdk and Java sdk
 type Checkpoint struct {
 	baseCheckpoint
 	PartitionID    string `json:"PartitionId"`
@@ -80,13 +80,25 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 		return Checkpoint{}, fmt.Errorf("unable to parse storage connection string: %s", err)
 	}
 
+	// Remove trailing spaces from endpointSuffix
+	endpointSuffix = strings.TrimSpace(endpointSuffix)
+
 	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(eventHubMetadata.eventHubConnection)
 	if err != nil {
 		return Checkpoint{}, fmt.Errorf("unable to parse event hub connection string: %s", err)
 	}
 
 	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
-	u, _ := url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
+	var u *url.URL
+	// Checking blob store for C# and Java applications
+	if eventHubMetadata.blobContainer != "" {
+		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/<blobContainer>/<eventHubConsumerGroup>/<partitionID>
+		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubMetadata.blobContainer, eventHubMetadata.eventHubConsumerGroup, partitionID))
+	} else {
+		// Checking blob store for Azure functions
+		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/azure-webjobs-eventhub/<eventHubNamespace>/<eventHubName>/<eventHubConsumerGroup>/<partitionID>
+		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
+	}
 
 	_, cred, err := GetStorageCredentials(eventHubMetadata.storageConnection)
 	if err != nil {
