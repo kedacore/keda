@@ -63,12 +63,12 @@ func parsePostgresMetadata(resolvedEnv, metadata, authParams map[string]string) 
 	}
 
 	if val, ok := authParams["connStr"]; ok {
-		meta.connStr = val + "?sslmode=disable"
+		meta.connStr = val
 	} else if val, ok := metadata["connStr"]; ok {
 		hostSetting := val
 
 		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.connStr = val + "?sslmode=disable"
+			meta.connStr = val
 		}
 	} else {
 		meta.connStr = ""
@@ -161,13 +161,11 @@ func (s *postGRESScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *postGRESScaler) getActiveNumber() (int, error) {
 	var id int
-	postgresLog.Info(fmt.Sprintf("Inspecting with query: %s", s.metadata.query))
 	err := s.connection.QueryRow(s.metadata.query).Scan(&id)
 	if err != nil {
 		postgresLog.Error(err, fmt.Sprintf("could not query PG: %s", err))
 		return 0, fmt.Errorf("could not query PG: %s", err)
 	}
-	postgresLog.Info(fmt.Sprintf("Num expected: %d", id))
 	return id, nil
 }
 
