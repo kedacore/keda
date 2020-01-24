@@ -101,11 +101,9 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 
-	fmt.Printf("ISActive: ==========%t===================\n", s.metadata.enableTLS)
-	fmt.Printf("ISACtive: %+v\n", s.metadata)
 	length, err := getRedisListLength(
 		ctx, s.metadata.address, s.metadata.password, s.metadata.listName, s.metadata.enableTLS)
-	fmt.Printf("IsActive: list length: %v\n", length)
+
 	if err != nil {
 		redisLog.Error(err, "error")
 		return false, err
