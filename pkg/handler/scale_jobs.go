@@ -31,8 +31,8 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 }
 
 func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
-	runningJobCount := h.getRunningJobCount(scaledObject)
-	h.logger.Info("Creating Jobs", "Number of running Jobs ", runningJobCount)
+	pendingJobCount := h.getPendingJobCount(scaledObject)
+	h.logger.Info("Creating Jobs", "Number of Jobs which have not started.", pendingJobCount)
 
 	scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
 	if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
@@ -40,14 +40,12 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 	}
 	scaledObject.Spec.JobTargetRef.Template.Labels["scaledobject"] = scaledObject.GetName()
 
-	h.logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
-
 	if scaleTo > maxScale {
 		scaleTo = maxScale
 	}
 	h.logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
-	for i := runningJobCount; i < int(scaleTo); i++ {
+	for i := pendingJobCount; i < int(scaleTo); i++ {
 
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
@@ -113,8 +111,8 @@ func (h *ScaleHandler) isJobFinished(j *batchv1.Job) bool {
 	return false
 }
 
-func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObject) int {
-	var runningJobs int
+func (h *ScaleHandler) getPendingJobCount(scaledObject *kedav1alpha1.ScaledObject) int {
+	var pendingJobs int
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledObject.GetNamespace()),
@@ -129,10 +127,32 @@ func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObjec
 	}
 
 	for _, job := range jobs.Items {
-		if !h.isJobFinished(&job) {
-			runningJobs++
+		if !h.isJobFinished(&job) && !h.isAnyPodRunningOrCompleted(job) {
+			pendingJobs++
 		}
 	}
 
-	return runningJobs
+	return pendingJobs
+}
+
+func (h *ScaleHandler) isAnyPodRunningOrCompleted(job batchv1.Job) bool {
+	opts := []client.ListOption{
+		client.InNamespace(job.GetNamespace()),
+		client.MatchingLabels(map[string]string{"job-name": job.GetName()}),
+	}
+
+	pods := &corev1.PodList{}
+	err := h.client.List(context.TODO(), pods, opts...)
+
+	if err != nil {
+		return false
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodRunning {
+			return true
+		}
+	}
+
+	return false
 }
