@@ -53,6 +53,7 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/imdario/mergo v0.3.8
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
+	github.com/lib/pq v1.3.0
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/operator-framework/operator-sdk v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.8.1
