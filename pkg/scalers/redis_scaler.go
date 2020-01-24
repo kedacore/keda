@@ -64,15 +64,9 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		return nil, fmt.Errorf("no list name given")
 	}
 
-	address := defaultRedisAddress
+	meta.address = defaultRedisAddress
 	if val, ok := metadata["address"]; ok && val != "" {
-		address = val
-	}
-
-	if val, ok := resolvedEnv[address]; ok {
 		meta.address = val
-	} else {
-		return nil, fmt.Errorf("no address given. Address should be in the format of host:port")
 	}
 
 	meta.password = defaultRedisPassword
