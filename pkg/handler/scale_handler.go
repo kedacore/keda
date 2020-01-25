@@ -298,6 +298,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "postgres":
 		return scalers.NewPostgresScaler(resolvedEnv, triggerMetadata, authParams)
+	case "mysql":
+		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}

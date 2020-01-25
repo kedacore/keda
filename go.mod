@@ -49,6 +49,7 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/go-redis/redis v6.15.5+incompatible
+	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/imdario/mergo v0.3.8
