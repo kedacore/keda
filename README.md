@@ -108,7 +108,7 @@ to deploy it as part of KEDA. Do the following:
     the KEDA operator that you can deploy to your local cluster. This should build 2 docker images: `kedacore/keda` 
     and `kedacore/keda-metrics-adapter` tagged with the tag you set in step 2
 4. If you haven't downloaded them before, clone the charts repository: `git clone git@github.com:kedacore/charts.git` 
-5. Still in terminal, navigate to the `charts/keda` folder (downlodaed in step 4), and run the following command 
+5. Still in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
     (don't forget to replace the placeholder text in the command):
     ```bash
     helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.metricsAdapter=kedacore/keda-metrics-adapter:$IMAGE_TAG,image.pullPolicy=IfNotPresent`
