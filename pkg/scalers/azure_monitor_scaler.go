@@ -105,12 +105,6 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		}
 	}
 
-	if val, ok := metadata["metricAggregationType"]; ok && val != "" {
-		meta.subscriptionID = val
-	} else {
-		return nil, fmt.Errorf("no metricAggregationType given")
-	}
-
 	if val, ok := metadata["adServicePrincipleId"]; ok && val != "" {
 		meta.servicePrincipalID = val
 	} else {
