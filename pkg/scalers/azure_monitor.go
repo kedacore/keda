@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
-	"fmt"
-	"strings"
+    "fmt"
+    "math"
+    "strings"
+    "time"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -14,9 +16,7 @@ type azureExternalMetricRequest struct {
 	MetricName                string
 	SubscriptionID            string
 	Type                      string
-	ResourceName              string
-	ResourceProviderNamespace string
-	ResourceType              string
+    ResourceURI               string
 	Aggregation               string
 	Timespan                  string
 	Filter                    string
@@ -46,12 +46,36 @@ type monitorClient struct {
 func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetadata) (int32, error) {
     metricsClient := newMonitorClient(metricMetadata)
 
+    metricRequest := azureExternalMetricRequest{
+		Timespan:       timeSpan(),
+		SubscriptionID: metricMetadata.subscriptionID,
+    }
+    
+    metricRequest.MetricName = metricMetadata.name
+    metricRequest.ResourceGroup = metricMetadata.resourceGroupName
+    metricRequest.ResourceURI = metricMetadata.resourceURI
+    metricRequest.Aggregation = metricMetadata.aggregationType
+
+    filter := metricMetadata.filter
+    if filter != "" {
+        metricRequest.Filter = filter
+    }
+
+    aggregationInterval := metricMetadata.aggregationInterval 
+    if aggregationInterval != "" {
+        metricRequest.Timespan = aggregationInterval
+    }
+
     metricResponse, err := metricsClient.getAzureMetric(metricRequest)
     if err != nil  {
         azureMonitorLog.Error(err, "error getting azure monitor metric")
+		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
     }
 
-    return 2, nil
+    // casting drops everything after decimal, so round first
+    metricValue := int32(math.Round(metricResponse.Value))
+
+    return metricValue, nil
 }
 
 func newMonitorClient(metadata *azureMonitorMetadata) azureExternalMetricClient {
@@ -157,7 +181,13 @@ func (amr azureExternalMetricRequest) metricResourceURI() string {
 	return fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/%s",
 		amr.SubscriptionID,
 		amr.ResourceGroup,
-		amr.ResourceProviderNamespace,
-		amr.ResourceType,
-		amr.ResourceName)
+		amr.ResourceURI)
+}
+
+func timeSpan() string {
+	// defaults to last five minutes.
+	// TODO support configuration via config
+	endtime := time.Now().UTC().Format(time.RFC3339)
+	starttime := time.Now().Add(-(5 * time.Minute)).UTC().Format(time.RFC3339)
+	return fmt.Sprintf("%s/%s", starttime, endtime)
 }
