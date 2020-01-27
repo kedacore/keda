@@ -15,7 +15,7 @@ import (
 
 const (
 	azureMonitorMetricName = "metricName"
-	metricThresholdName    = "metricThreshold"
+	targetValueName        = "targetValue"
 )
 
 type azureMonitorScaler struct {
@@ -33,7 +33,7 @@ type azureMonitorMetadata struct {
 	aggregationType      string
 	servicePrincipalID   string
 	servicePrincipalPass string
-	metricThreshold      int
+	targetValue          int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -53,14 +53,14 @@ func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string) 
 func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{}
 
-	if val, ok := metadata[metricThresholdName]; ok && val != "" {
-		metricThreshold, err := strconv.Atoi(val)
+	if val, ok := metadata[targetValueName]; ok && val != "" {
+		targetValue, err := strconv.Atoi(val)
 		if err != nil {
-			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "metricThreshold", metricThresholdName)
-			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", metricThresholdName, err.Error())
+			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
+			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
 		}
 
-		meta.metricThreshold = metricThreshold
+		meta.targetValue = targetValue
 	}
 
 	if val, ok := metadata["resourceURI"]; ok && val != "" {
@@ -69,16 +69,16 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("no resourceURI given")
 	}
 
-	if val, ok := metadata["resourceTenantId"]; ok && val != "" {
+	if val, ok := metadata["tenantId"]; ok && val != "" {
 		meta.tentantID = val
 	} else {
-		return nil, fmt.Errorf("no resourceTenantId given")
+		return nil, fmt.Errorf("no tenantId given")
 	}
 
-	if val, ok := metadata["resourceSubscriptionId"]; ok && val != "" {
+	if val, ok := metadata["subscriptionId"]; ok && val != "" {
 		meta.subscriptionID = val
 	} else {
-		return nil, fmt.Errorf("no resourceSubscriptionId given")
+		return nil, fmt.Errorf("no subscriptionId given")
 	}
 
 	if val, ok := metadata["resourceGroupName"]; ok && val != "" {
@@ -128,7 +128,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 // needs to interact with azure monitor
 func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.GetAzureMetric()
+	val, err := GetAzureMetricValue(ctx, s.metadata)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return false, err
@@ -142,7 +142,7 @@ func (s *azureMonitorScaler) Close() error {
 }
 
 func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.metricThreshold), resource.DecimalSI)
+	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{MetricName: azureMonitorMetricName, TargetAverageValue: targetMetricVal}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta1.MetricSpec{metricSpec}
@@ -150,7 +150,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := s.GetAzureMetric()
+	val, err := GetAzureMetricValue(ctx, s.metadata)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, err
@@ -164,123 +164,3 @@ func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, 
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
-
-// GetAzureMetric does things
-func (s *azureMonitorScaler) GetAzureMetric() (int, error) {
-	return 16, nil
-}
-
-/*
-package externalmetrics
-
-import (
-	"context"
-	"fmt"
-	"strings"
-
-	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"k8s.io/klog"
-)
-
-type insightsmonitorClient interface {
-	List(ctx context.Context, resourceURI string, timespan string, interval *string, metricnames string, aggregation string, top *int32, orderby string, filter string, resultType insights.ResultType, metricnamespace string) (result insights.Response, err error)
-}
-
-type monitorClient struct {
-	client                insightsmonitorClient
-	DefaultSubscriptionID string
-}
-
-func NewMonitorClient(defaultsubscriptionID string) AzureExternalMetricClient {
-	client := insights.NewMetricsClient(defaultsubscriptionID)
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
-	if err == nil {
-		client.Authorizer = authorizer
-	}
-
-	return &monitorClient{
-		client:                client,
-		DefaultSubscriptionID: defaultsubscriptionID,
-	}
-}
-
-func newMonitorClient(defaultsubscriptionID string, client insightsmonitorClient) monitorClient {
-	return monitorClient{
-		client:                client,
-		DefaultSubscriptionID: defaultsubscriptionID,
-	}
-}
-
-// GetAzureMetric calls Azure Monitor endpoint and returns a metric
-func (c *monitorClient) GetAzureMetric(azMetricRequest AzureExternalMetricRequest) (AzureExternalMetricResponse, error) {
-	err := azMetricRequest.Validate()
-	if err != nil {
-		return AzureExternalMetricResponse{}, err
-	}
-
-	metricResourceURI := azMetricRequest.MetricResourceURI()
-	klog.V(2).Infof("resource uri: %s", metricResourceURI)
-
-	metricResult, err := c.client.List(context.Background(), metricResourceURI,
-		azMetricRequest.Timespan, nil,
-		azMetricRequest.MetricName, azMetricRequest.Aggregation, nil,
-		"", azMetricRequest.Filter, "", "")
-	if err != nil {
-		return AzureExternalMetricResponse{}, err
-	}
-
-	value, err := extractValue(azMetricRequest, metricResult)
-
-	return AzureExternalMetricResponse{
-		Value: value,
-	}, err
-}
-
-func extractValue(azMetricRequest AzureExternalMetricRequest, metricResult insights.Response) (float64, error) {
-	metricVals := *metricResult.Value
-
-	if len(metricVals) == 0 {
-		err := fmt.Errorf("Got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
-	}
-
-	timeseries := *metricVals[0].Timeseries
-	if timeseries == nil {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
-	}
-
-	data := *timeseries[0].Data
-	if data == nil {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
-	}
-
-	var valuePtr *float64
-	if strings.EqualFold(string(insights.Average), azMetricRequest.Aggregation) && data[len(data)-1].Average != nil {
-		valuePtr = data[len(data)-1].Average
-	} else if strings.EqualFold(string(insights.Total), azMetricRequest.Aggregation) && data[len(data)-1].Total != nil {
-		valuePtr = data[len(data)-1].Total
-	} else if strings.EqualFold(string(insights.Maximum), azMetricRequest.Aggregation) && data[len(data)-1].Maximum != nil {
-		valuePtr = data[len(data)-1].Maximum
-	} else if strings.EqualFold(string(insights.Minimum), azMetricRequest.Aggregation) && data[len(data)-1].Minimum != nil {
-		valuePtr = data[len(data)-1].Minimum
-	} else if strings.EqualFold(string(insights.Count), azMetricRequest.Aggregation) && data[len(data)-1].Count != nil {
-		fValue := float64(*data[len(data)-1].Count)
-		valuePtr = &fValue
-	} else {
-		err := fmt.Errorf("Unsupported aggregation type %s specified in metric %s/%s", insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)), azMetricRequest.Namespace, azMetricRequest.MetricName)
-		return 0, err
-	}
-
-	if valuePtr == nil {
-		err := fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by the Azure Monitor", azMetricRequest.Namespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
-		return 0, err
-	}
-
-	klog.V(2).Infof("metric type: %s %f", azMetricRequest.Aggregation, *valuePtr)
-
-	return *valuePtr, nil
-}
-*/
