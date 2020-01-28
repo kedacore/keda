@@ -55,10 +55,14 @@ func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetada
 	metricRequest.MetricName = metricMetadata.name
 	metricRequest.ResourceGroup = metricMetadata.resourceGroupName
 	resourceInfo := strings.Split(metricMetadata.resourceURI, "/")
+
+	if len(resourceInfo) != 3 {
+		return -1, fmt.Errorf("resourceURI is missing resource namespace, resource type, or resource name")
+	}
+
 	metricRequest.ResourceProviderNamespace = resourceInfo[0]
 	metricRequest.ResourceType = resourceInfo[1]
 	metricRequest.ResourceName = resourceInfo[2]
-	// do empty checking
 
 	metricRequest.Aggregation = metricMetadata.aggregationType
 
@@ -75,8 +79,8 @@ func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetada
 	metricResponse, err := metricsClient.getAzureMetric(metricRequest)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
-		return -1, fmt.Errorf("MetricName %s: , ResourceGroup: %s, Namespace: %s, ResourceType: %s, ResourceName: %s, Aggregation: %s, Timespan: %s", metricRequest.MetricName, metricRequest.ResourceGroup, metricRequest.ResourceProviderNamespace, metricRequest.ResourceType, metricRequest.ResourceName, metricRequest.Aggregation, metricRequest.Timespan)
-		//return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
+		//return -1, fmt.Errorf("MetricName %s: , ResourceGroup: %s, Namespace: %s, ResourceType: %s, ResourceName: %s, Aggregation: %s, Timespan: %s", metricRequest.MetricName, metricRequest.ResourceGroup, metricRequest.ResourceProviderNamespace, metricRequest.ResourceType, metricRequest.ResourceName, metricRequest.Aggregation, metricRequest.Timespan)
+		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
 	}
 
 	// casting drops everything after decimal, so round first
