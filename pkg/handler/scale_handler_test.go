@@ -15,7 +15,6 @@ var (
 )
 
 type testMetadata struct {
-	name      string
 	isError   bool
 	comment   string
 	container *corev1.Container
