@@ -4,7 +4,7 @@ metadata:
   name: v1beta1.external.metrics.k8s.io
 spec:
   service:
-    name: keda-operator
+    name: keda-metrics-apiserver
     namespace: keda
   group: external.metrics.k8s.io
   version: v1beta1
