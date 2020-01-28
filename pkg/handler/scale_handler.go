@@ -60,6 +60,9 @@ func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string)
 					for k, v := range configMap {
 						resolved[k] = v
 					}
+				} else if source.ConfigMapRef.Optional != nil && *source.ConfigMapRef.Optional {
+					// ignore error when ConfigMap is marked as optional
+					continue
 				} else {
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
 				}
@@ -68,6 +71,9 @@ func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string)
 					for k, v := range secretsMap {
 						resolved[k] = v
 					}
+				} else if source.SecretRef.Optional != nil && *source.SecretRef.Optional {
+					// ignore error when Secret is marked as optional
+					continue
 				} else {
 					return nil, fmt.Errorf("error reading secret ref %s on namespace %s: %s", source.SecretRef, namespace, err)
 				}
