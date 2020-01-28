@@ -110,7 +110,7 @@ to deploy it as part of KEDA. Do the following:
 5. Still in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
     (don't forget to replace the placeholder text in the command):
     ```bash
-    helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.metricsAdapter=kedacore/keda-metrics-adapter:$IMAGE_TAG,image.pullPolicy=IfNotPresent`
+    helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.metricsAdapter=kedacore/keda-metrics-adapter:$IMAGE_TAG,image.pullPolicy=IfNotPresent
     ```
     This will use the images built at step 3. Notice the need to override the image pullPolicy to `IfNotPresent` in 
     order to use the locally built images and not try to pull the images from remote repo on Docker Hub (and complain 
