@@ -93,6 +93,12 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("no metricName given")
 	}
 
+	if val, ok := metadata["metricAggregationType"]; ok && val != "" {
+		meta.aggregationType = val
+	} else {
+		return nil, fmt.Errorf("no metricAggregationType given")
+	}
+
 	if val, ok := metadata["metricFilter"]; ok {
 		if val != "" {
 			meta.filter = val

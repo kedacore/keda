@@ -2,10 +2,10 @@ package scalers
 
 import (
 	"context"
-    "fmt"
-    "math"
-    "strings"
-    "time"
+	"fmt"
+	"math"
+	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -16,12 +16,13 @@ type azureExternalMetricRequest struct {
 	MetricName                string
 	SubscriptionID            string
 	Type                      string
-    ResourceURI               string
+	ResourceName              string
+	ResourceProviderNamespace string
+	ResourceType              string
 	Aggregation               string
 	Timespan                  string
 	Filter                    string
 	ResourceGroup             string
-	Namespace                 string
 	Topic                     string
 	Subscription              string
 }
@@ -44,44 +45,50 @@ type monitorClient struct {
 
 // GetAzureMetricValue is a func
 func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetadata) (int32, error) {
-    metricsClient := newMonitorClient(metricMetadata)
+	metricsClient := newMonitorClient(metricMetadata)
 
-    metricRequest := azureExternalMetricRequest{
+	metricRequest := azureExternalMetricRequest{
 		Timespan:       timeSpan(),
 		SubscriptionID: metricMetadata.subscriptionID,
-    }
-    
-    metricRequest.MetricName = metricMetadata.name
-    metricRequest.ResourceGroup = metricMetadata.resourceGroupName
-    metricRequest.ResourceURI = metricMetadata.resourceURI
-    metricRequest.Aggregation = metricMetadata.aggregationType
+	}
 
-    filter := metricMetadata.filter
-    if filter != "" {
-        metricRequest.Filter = filter
-    }
+	metricRequest.MetricName = metricMetadata.name
+	metricRequest.ResourceGroup = metricMetadata.resourceGroupName
+	resourceInfo := strings.Split(metricMetadata.resourceURI, "/")
+	metricRequest.ResourceProviderNamespace = resourceInfo[0]
+	metricRequest.ResourceType = resourceInfo[1]
+	metricRequest.ResourceName = resourceInfo[2]
+	// do empty checking
 
-    aggregationInterval := metricMetadata.aggregationInterval 
-    if aggregationInterval != "" {
-        metricRequest.Timespan = aggregationInterval
-    }
+	metricRequest.Aggregation = metricMetadata.aggregationType
 
-    metricResponse, err := metricsClient.getAzureMetric(metricRequest)
-    if err != nil  {
-        azureMonitorLog.Error(err, "error getting azure monitor metric")
-		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
-    }
+	filter := metricMetadata.filter
+	if filter != "" {
+		metricRequest.Filter = filter
+	}
 
-    // casting drops everything after decimal, so round first
-    metricValue := int32(math.Round(metricResponse.Value))
+	aggregationInterval := metricMetadata.aggregationInterval
+	if aggregationInterval != "" {
+		metricRequest.Timespan = aggregationInterval
+	}
 
-    return metricValue, nil
+	metricResponse, err := metricsClient.getAzureMetric(metricRequest)
+	if err != nil {
+		azureMonitorLog.Error(err, "error getting azure monitor metric")
+		return -1, fmt.Errorf("MetricName %s: , ResourceGroup: %s, Namespace: %s, ResourceType: %s, ResourceName: %s, Aggregation: %s, Timespan: %s", metricRequest.MetricName, metricRequest.ResourceGroup, metricRequest.ResourceProviderNamespace, metricRequest.ResourceType, metricRequest.ResourceName, metricRequest.Aggregation, metricRequest.Timespan)
+		//return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
+	}
+
+	// casting drops everything after decimal, so round first
+	metricValue := int32(math.Round(metricResponse.Value))
+
+	return metricValue, nil
 }
 
 func newMonitorClient(metadata *azureMonitorMetadata) azureExternalMetricClient {
-    client := insights.NewMetricsClient(metadata.subscriptionID)
-    config := auth.NewClientCredentialsConfig(metadata.servicePrincipalID, metadata.servicePrincipalPass, metadata.tentantID)
-    
+	client := insights.NewMetricsClient(metadata.subscriptionID)
+	config := auth.NewClientCredentialsConfig(metadata.servicePrincipalID, metadata.servicePrincipalPass, metadata.tentantID)
+
 	authorizer, err := config.Authorizer()
 	if err == nil {
 		client.Authorizer = authorizer
@@ -120,19 +127,19 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 	metricVals := *metricResult.Value
 
 	if len(metricVals) == 0 {
-		err := fmt.Errorf("Got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("Got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return 0, err
 	}
 
 	timeseries := *metricVals[0].Timeseries
 	if timeseries == nil {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return 0, err
 	}
 
 	data := *timeseries[0].Data
 	if data == nil {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.Namespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return 0, err
 	}
 
@@ -149,12 +156,12 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 		fValue := float64(*data[len(data)-1].Count)
 		valuePtr = &fValue
 	} else {
-		err := fmt.Errorf("Unsupported aggregation type %s specified in metric %s/%s", insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)), azMetricRequest.Namespace, azMetricRequest.MetricName)
+		err := fmt.Errorf("Unsupported aggregation type %s specified in metric %s/%s", insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)), azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName)
 		return 0, err
 	}
 
 	if valuePtr == nil {
-		err := fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by the Azure Monitor", azMetricRequest.Namespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
+		err := fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by the Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 		return 0, err
 	}
 
@@ -178,10 +185,12 @@ func (amr azureExternalMetricRequest) validate() error {
 }
 
 func (amr azureExternalMetricRequest) metricResourceURI() string {
-	return fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/%s",
+	return fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s",
 		amr.SubscriptionID,
 		amr.ResourceGroup,
-		amr.ResourceURI)
+		amr.ResourceProviderNamespace,
+		amr.ResourceType,
+		amr.ResourceName)
 }
 
 func timeSpan() string {
