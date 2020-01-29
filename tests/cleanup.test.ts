@@ -10,13 +10,14 @@ test('Remove Keda', t => {
   const resources = [
     'apiservice.apiregistration.k8s.io/v1beta1.external.metrics.k8s.io',
     'deployment.apps/keda-operator',
+    'deployment.apps/keda-metrics-apiserver',
     'clusterrole.rbac.authorization.k8s.io/keda-operator',
     'clusterrole.rbac.authorization.k8s.io/keda-external-metrics-reader',
     'clusterrolebinding.rbac.authorization.k8s.io/keda-operator',
     'clusterrolebinding.rbac.authorization.k8s.io/keda:system:auth-delegator',
     'rolebinding.rbac.authorization.k8s.io/keda-auth-reader',
     'clusterrolebinding.rbac.authorization.k8s.io/keda-hpa-controller-external-metrics',
-    'service/keda-operator',
+    'service/keda-metrics-apiserver',
     'serviceaccount/keda-operator',
   ]
 

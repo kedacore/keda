@@ -31,21 +31,21 @@ test.serial('Deployment should have 0 replicas on start', t => {
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial.cb('Deployment should scale to 4 with 2000 blobs on the blob container then back to 0', t => {
+test.serial.cb('Deployment should scale to 2 with 2000 blobs on the blob container then back to 0', t => {
     // add 2000 files
     const blobSvc = azure.createBlobService(connectionString)
     blobSvc.createContainerIfNotExists('container-name', err => {
         t.falsy(err, 'unable to create blob')
         async.mapLimit(Array(2000).keys(), 500, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
             let replicaCount = '0'
-            for (let i = 0; i < 10 && replicaCount !== '4'; i++) {
+            for (let i = 0; i < 40 && replicaCount !== '2'; i++) {
                 replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-                if (replicaCount !== '4') {
+                if (replicaCount !== '2') {
                     sh.exec('sleep 1s')
                 }
             }
 
-            t.is('4', replicaCount, 'Replica count should be 4 after 10 seconds')
+            t.is('2', replicaCount, 'Replica count should be 2 after 40 seconds')
 
             for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
                 replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
@@ -60,7 +60,7 @@ test.serial.cb('Deployment should scale to 4 with 2000 blobs on the blob contain
     })
 })
 
-test.after.always.cb('clean up azure-blob deployment', t => {
+test.after.always('clean up azure-blob deployment', t => {
     const resources = [
         'secret/test-secrets',
         'deployment.apps/test-deployment',
@@ -71,13 +71,6 @@ test.after.always.cb('clean up azure-blob deployment', t => {
         sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
     }
     sh.exec(`kubectl delete namespace ${defaultNamespace}`)
-
-    // delete test blob
-    const blobSvc = azure.createBlobService(connectionString)
-    blobSvc.deleteContainerIfExists('container-name', err => {
-        t.falsy(err, 'should delete test blob container successfully')
-        t.end()
-    })
 })
 
 const deployYaml = `apiVersion: v1
@@ -140,8 +133,8 @@ metadata:
 spec:
   scaleTargetRef:
     deploymentName: test-deployment
-  pollingInterval: 5
-  maxReplicaCount: 4
+  pollingInterval: 20
+  maxReplicaCount: 2
   cooldownPeriod: 10
   triggers:
   - type: azure-blob
