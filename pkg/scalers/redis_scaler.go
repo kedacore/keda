@@ -31,7 +31,7 @@ type redisMetadata struct {
 	listName         string
 	address          string
 	password         string
-	dbIdx            int
+	databaseIndex    int
 }
 
 var redisLog = logf.Log.WithName("redis_scaler")
@@ -86,13 +86,13 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		}
 	}
 
-	meta.dbIdx = defaultDbIdx
+	meta.databaseIndex = defaultDbIdx
 	if val, ok := metadata["db"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("dbIdx: parsing error %s", err.Error())
+			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())
 		}
-		meta.dbIdx = int(dbIndex)
+		meta.databaseIndex = int(dbIndex)
 	}
 
 	return &meta, nil
@@ -101,7 +101,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := getRedisListLength(
-		ctx, s.metadata.address, s.metadata.password, s.metadata.listName, s.metadata.dbIdx)
+		ctx, s.metadata.address, s.metadata.password, s.metadata.listName, s.metadata.databaseIndex)
 
 	if err != nil {
 		redisLog.Error(err, "error")
@@ -125,7 +125,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 // GetMetrics connects to Redis and finds the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	listLen, err := getRedisListLength(ctx, s.metadata.address, s.metadata.password, s.metadata.listName, s.metadata.dbIdx)
+	listLen, err := getRedisListLength(ctx, s.metadata.address, s.metadata.password, s.metadata.listName, s.metadata.databaseIndex)
 
 	if err != nil {
 		redisLog.Error(err, "error getting list length")
