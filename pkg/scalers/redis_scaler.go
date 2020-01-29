@@ -90,7 +90,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 	}
 
 	meta.databaseIndex = defaultDbIdx
-	if val, ok := metadata["db"]; ok {
+	if val, ok := metadata["databaseIndex"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())
