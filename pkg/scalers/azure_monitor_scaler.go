@@ -112,7 +112,6 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 			if len(aggregationInterval) != 3 {
 				return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
 			}
-
 			meta.aggregationInterval = val
 		}
 	}
