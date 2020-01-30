@@ -3,7 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
+    "strconv"
+    "strings"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -107,6 +108,11 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 	if val, ok := metadata["metricAggregationInterval"]; ok {
 		if val != "" {
+            aggregationInterval := strings.Split(val, ":")
+            if len(aggregationInterval) != 3 {
+                return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
+            }
+
 			meta.aggregationInterval = val
 		}
 	}
