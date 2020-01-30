@@ -91,7 +91,7 @@ func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetada
 
 func newMonitorClient(metadata *azureMonitorMetadata) azureExternalMetricClient {
 	client := insights.NewMetricsClient(metadata.subscriptionID)
-	config := auth.NewClientCredentialsConfig(metadata.servicePrincipalID, metadata.servicePrincipalPass, metadata.tentantID)
+	config := auth.NewClientCredentialsConfig(metadata.clientID, metadata.clientPassword, metadata.tentantID)
 
 	authorizer, err := config.Authorizer()
 	if err == nil {

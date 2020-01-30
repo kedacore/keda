@@ -3,8 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
-    "strconv"
-    "strings"
+	"strconv"
+	"strings"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -24,17 +24,17 @@ type azureMonitorScaler struct {
 }
 
 type azureMonitorMetadata struct {
-	resourceURI          string
-	tentantID            string
-	subscriptionID       string
-	resourceGroupName    string
-	name                 string
-	filter               string
-	aggregationInterval  string
-	aggregationType      string
-	servicePrincipalID   string
-	servicePrincipalPass string
-	targetValue          int
+	resourceURI         string
+	tentantID           string
+	subscriptionID      string
+	resourceGroupName   string
+	name                string
+	filter              string
+	aggregationInterval string
+	aggregationType     string
+	clientID            string
+	clientPassword      string
+	targetValue         int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -108,25 +108,25 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 	if val, ok := metadata["metricAggregationInterval"]; ok {
 		if val != "" {
-            aggregationInterval := strings.Split(val, ":")
-            if len(aggregationInterval) != 3 {
-                return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
-            }
+			aggregationInterval := strings.Split(val, ":")
+			if len(aggregationInterval) != 3 {
+				return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
+			}
 
 			meta.aggregationInterval = val
 		}
 	}
 
-	if val, ok := metadata["adServicePrincipleId"]; ok && val != "" {
-		meta.servicePrincipalID = val
+	if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
+		meta.clientID = val
 	} else {
-		return nil, fmt.Errorf("no adServicePrincipleId given")
+		return nil, fmt.Errorf("no activeDirectoryClientId given")
 	}
 
-	if val, ok := metadata["adServicePrinciplePassword"]; ok {
-		meta.servicePrincipalPass = val
+	if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
+		meta.clientPassword = val
 	} else {
-		return nil, fmt.Errorf("no adServicePrinciplePassword given")
+		return nil, fmt.Errorf("no activeDirectoryClientPassword given")
 	}
 
 	return &meta, nil
