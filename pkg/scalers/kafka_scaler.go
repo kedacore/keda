@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Shopify/sarama"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -49,6 +50,7 @@ const (
 	kafkaAuthModeForSaslScramSha256 kafkaAuthMode = "sasl_scram_sha256"
 	kafkaAuthModeForSaslScramSha512 kafkaAuthMode = "sasl_scram_sha512"
 	kafkaAuthModeForSaslSSL         kafkaAuthMode = "sasl_ssl"
+	kafkaAuthModeForSaslSSLPlain    kafkaAuthMode = "sasl_ssl_plain"
 )
 
 const (
@@ -108,8 +110,10 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 
 	meta.authMode = kafkaAuthModeForNone
 	if val, ok := authParams["authMode"]; ok {
+		val = strings.TrimSpace(val)
 		mode := kafkaAuthMode(val)
-		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
+		
+		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslSSLPlain && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
 			return meta, fmt.Errorf("err auth mode %s given", mode)
 		}
 
@@ -120,12 +124,12 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		if authParams["username"] == "" {
 			return meta, errors.New("no username given")
 		}
-		meta.username = authParams["username"]
+		meta.username = strings.TrimSpace(authParams["username"])
 
 		if authParams["password"] == "" {
 			return meta, errors.New("no password given")
 		}
-		meta.password = authParams["password"]
+		meta.password = strings.TrimSpace(authParams["password"])
 	}
 
 	if meta.authMode == kafkaAuthModeForSaslSSL {
@@ -177,10 +181,23 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 
-	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslSSL || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
+	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslSSL || metadata.authMode == kafkaAuthModeForSaslSSLPlain || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
 		config.Net.SASL.Password = metadata.password
+	}
+
+	if metadata.authMode == kafkaAuthModeForSaslSSLPlain {
+		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypePlaintext)
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ClientAuth:         0,
+		}
+
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config = tlsConfig
+		config.Net.DialTimeout = 10 * time.Second
 	}
 
 	if metadata.authMode == kafkaAuthModeForSaslSSL {
