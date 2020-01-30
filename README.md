@@ -94,7 +94,32 @@ cd keda
 make build
 ```
 
-## Deploying Custom KEDA
+## Deploying: Custom KEDA locally outside cluster
+The Operator SDK framework allows you to [run the operator/controller locally](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#2-run-locally-outside-the-cluster)
+outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
+
+To be KEDA to be fully operational we need to deploy Metrics Server first.
+
+1. Deploy CRDs and KEDA into `keda` namespace
+   ```bash
+   kubectl create namespace keda
+   kubectl apply -f deploy/crds/keda.k8s.io_scaledobjects_crd.yaml
+   kubectl apply -f deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml
+   kubectl apply -f deploy/
+   ```
+2. Scale down `keda-operator` Deployment
+   ```bash
+   kubectl scale deployment/keda-operator --replicas=0 -n keda
+   ```
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`
+   ```bash
+   operator-sdk run --local --namespace=""
+   ``` 
+   > Note: On older operator-sdk versions you need to use command `up` instead of `run`.
+
+   > Note: Please run `operator-sdk -h` to see all possible commands and options (eg. for debugging: `--enable-delve`)
+
+## Deploying: Custom KEDA as an image
 
 If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want 
 to deploy it as part of KEDA. Do the following:
@@ -115,8 +140,12 @@ to deploy it as part of KEDA. Do the following:
     This will use the images built at step 3. Notice the need to override the image pullPolicy to `IfNotPresent` in 
     order to use the locally built images and not try to pull the images from remote repo on Docker Hub (and complain 
     about not finding them).
-6. Once the keda operator pod is up, check the logs of both containers to verify everything running ok, eg: 
-`kubectl logs <keda operator pod name> -c keda-operator-metrics-apiserver` and `kubectl logs <keda operator pod name> -c keda-operator`
+6. Once the keda pods are up, check the logs to verify everything running ok, eg: 
+    ```bash
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs -f
+
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs -f
+    ```
 
 
 # Contributing
