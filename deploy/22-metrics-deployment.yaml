@@ -2,44 +2,27 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: keda-operator
+    app: keda-metrics-apiserver
+    app.kubernetes.io/name: keda-metrics-apiserver
     app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/component: operator
     app.kubernetes.io/part-of: keda-operator
-    app: keda-operator
-  name: keda-operator
+  name: keda-metrics-apiserver
   namespace: keda
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: keda-operator
+      app: keda-metrics-apiserver
   template:
     metadata:
       labels:
-        app: keda-operator
-      name: keda-operator
+        app: keda-metrics-apiserver
+      name: keda-metrics-apiserver
     spec:
       serviceAccountName: keda-operator
       containers:
-        - name: keda-operator
-          image: docker.io/kedacore/keda:1.0.0
-          command:
-          - keda
-          args:
-          - '--zap-level=info'
-          imagePullPolicy: Always
-          env:
-            - name: WATCH_NAMESPACE
-              value: ""
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: OPERATOR_NAME
-              value: "keda-operator"
         - name: keda-metrics-apiserver
-          image: docker.io/kedacore/keda-metrics-adapter:1.0.0
+          image: docker.io/kedacore/keda-metrics-adapter:1.1.0
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE

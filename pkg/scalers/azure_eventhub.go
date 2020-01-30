@@ -80,6 +80,9 @@ func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, event
 		return Checkpoint{}, fmt.Errorf("unable to parse storage connection string: %s", err)
 	}
 
+	// Remove trailing spaces from endpointSuffix
+	endpointSuffix = strings.TrimSpace(endpointSuffix)
+
 	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(eventHubMetadata.eventHubConnection)
 	if err != nil {
 		return Checkpoint{}, fmt.Errorf("unable to parse event hub connection string: %s", err)

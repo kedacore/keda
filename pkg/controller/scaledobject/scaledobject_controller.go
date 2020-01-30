@@ -138,7 +138,7 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	reqLogger.Info("Detecting ScaleType from ScaledObject")
-	if  scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
+	if scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
 		reqLogger.Info("Detected ScaleType = Job")
 		return r.reconcileJobType(reqLogger, scaledObject)
 	} else {
@@ -184,10 +184,9 @@ func (r *ReconcileScaledObject) reconcileJobType(logger logr.Logger, scaledObjec
 func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (reconcile.Result, error) {
 	scaledObject.Spec.ScaleType = kedav1alpha1.ScaleTypeDeployment
 
-	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	if deploymentName == "" {
-		err := fmt.Errorf("Notified about ScaledObject with missing deployment name")
-		logger.Error(err, "Notified about ScaledObject with missing deployment")
+	deploymentName, err := checkDeploymentTypeScaledObject(scaledObject)
+	if err != nil {
+		logger.Error(err, "Notified about ScaledObject with incorrect deploymentName specification")
 		return reconcile.Result{}, err
 	}
 
@@ -196,7 +195,7 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 
 	// Check if this HPA already exists
 	foundHpa := &autoscalingv2beta1.HorizontalPodAutoscaler{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: hpaNamespace}, foundHpa)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: hpaNamespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new HPA", "HPA.Namespace", hpaNamespace, "HPA.Name", hpaName)
 		hpa, err := r.newHPAForScaledObject(logger, scaledObject)
@@ -263,6 +262,34 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 	r.startScaleLoop(logger, scaledObject)
 
 	return reconcile.Result{}, nil
+}
+
+func checkDeploymentTypeScaledObject(scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+	var err error
+	var errMsg string
+
+	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
+	labelDeploymentName := scaledObject.Labels["deploymentName"]
+
+	if deploymentName == "" {
+		errMsg = "ScaledObject.spec.scaleTargetRef.deploymentName is missing"
+	}
+	if labelDeploymentName == "" {
+		if errMsg != "" {
+			errMsg += ", "
+		}
+		errMsg += "ScaledObject.metadata.labels.deploymentName is missing"
+	}
+	if deploymentName != "" && labelDeploymentName != "" &&
+		labelDeploymentName != deploymentName {
+		errMsg = errMsg + "ScaledObject.spec.scaleTargetRef.deploymentName and ScaledObject.metadata.labels.deploymentName are not equal"
+	}
+
+	if errMsg != "" {
+		err = fmt.Errorf(errMsg)
+	}
+
+	return deploymentName, err
 }
 
 // startScaleLoop starts ScaleLoop handler for the respective ScaledObject
