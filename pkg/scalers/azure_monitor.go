@@ -120,41 +120,24 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 
 	if len(metricVals) == 0 {
 		err := fmt.Errorf("Got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
+		return -1, err
 	}
 
 	timeseries := *metricVals[0].Timeseries
 	if timeseries == nil {
 		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
+		return -1, err
 	}
 
 	data := *timeseries[0].Data
 	if data == nil {
 		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
-		return 0, err
+		return -1, err
 	}
 
-	var valuePtr *float64
-	if strings.EqualFold(string(insights.Average), azMetricRequest.Aggregation) && data[len(data)-1].Average != nil {
-		valuePtr = data[len(data)-1].Average
-	} else if strings.EqualFold(string(insights.Total), azMetricRequest.Aggregation) && data[len(data)-1].Total != nil {
-		valuePtr = data[len(data)-1].Total
-	} else if strings.EqualFold(string(insights.Maximum), azMetricRequest.Aggregation) && data[len(data)-1].Maximum != nil {
-		valuePtr = data[len(data)-1].Maximum
-	} else if strings.EqualFold(string(insights.Minimum), azMetricRequest.Aggregation) && data[len(data)-1].Minimum != nil {
-		valuePtr = data[len(data)-1].Minimum
-	} else if strings.EqualFold(string(insights.Count), azMetricRequest.Aggregation) && data[len(data)-1].Count != nil {
-		fValue := float64(*data[len(data)-1].Count)
-		valuePtr = &fValue
-	} else {
-		err := fmt.Errorf("Unsupported aggregation type %s specified in metric %s/%s", insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)), azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName)
-		return 0, err
-	}
-
-	if valuePtr == nil {
-		err := fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by the Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
-		return 0, err
+	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, data)
+	if err != nil {
+		return -1, fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 	}
 
 	klog.V(2).Infof("metric type: %s %f", azMetricRequest.Aggregation, *valuePtr)
@@ -202,4 +185,24 @@ func formatTimeSpan(timeSpan string) (string, error) {
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC().Format(time.RFC3339)
 	}
 	return fmt.Sprintf("%s/%s", starttime, endtime), nil
+}
+
+func verifyAggregationTypeIsSupported(aggregationType string, data []insights.MetricValue) (*float64, error) {
+	var valuePtr *float64
+	if strings.EqualFold(string(insights.Average), aggregationType) && data[len(data)-1].Average != nil {
+		valuePtr = data[len(data)-1].Average
+	} else if strings.EqualFold(string(insights.Total), aggregationType) && data[len(data)-1].Total != nil {
+		valuePtr = data[len(data)-1].Total
+	} else if strings.EqualFold(string(insights.Maximum), aggregationType) && data[len(data)-1].Maximum != nil {
+		valuePtr = data[len(data)-1].Maximum
+	} else if strings.EqualFold(string(insights.Minimum), aggregationType) && data[len(data)-1].Minimum != nil {
+		valuePtr = data[len(data)-1].Minimum
+	} else if strings.EqualFold(string(insights.Count), aggregationType) && data[len(data)-1].Count != nil {
+		fValue := float64(*data[len(data)-1].Count)
+		valuePtr = &fValue
+	} else {
+		err := fmt.Errorf("Unsupported aggregation type %s", insights.AggregationType(strings.ToTitle(aggregationType)))
+		return nil, err
+	}
+	return valuePtr, nil
 }
