@@ -15,8 +15,12 @@ import (
 )
 
 const (
-	azureMonitorMetricName = "metricName"
-	targetValueName        = "targetValue"
+	azureMonitorMetricName       = "metricName"
+	targetValueName              = "targetValue"
+	defaultSubscriptionIDSetting = "xxx"
+	defaultTenantIDSetting       = "yyy"
+	defaultClientIDSetting       = "zzz"
+	defaultClientPasswordSetting = "qqq"
 )
 
 type azureMonitorScaler struct {
@@ -60,7 +64,6 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
 			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
 		}
-
 		meta.targetValue = targetValue
 	}
 
@@ -68,18 +71,6 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		meta.resourceURI = val
 	} else {
 		return nil, fmt.Errorf("no resourceURI given")
-	}
-
-	if val, ok := metadata["tenantId"]; ok && val != "" {
-		meta.tentantID = val
-	} else {
-		return nil, fmt.Errorf("no tenantId given")
-	}
-
-	if val, ok := metadata["subscriptionId"]; ok && val != "" {
-		meta.subscriptionID = val
-	} else {
-		return nil, fmt.Errorf("no subscriptionId given")
 	}
 
 	if val, ok := metadata["resourceGroupName"]; ok && val != "" {
@@ -100,32 +91,81 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("no metricAggregationType given")
 	}
 
-	if val, ok := metadata["metricFilter"]; ok {
-		if val != "" {
-			meta.filter = val
+	if val, ok := metadata["metricFilter"]; ok && val != "" {
+		meta.filter = val
+	}
+
+	if val, ok := metadata["metricAggregationInterval"]; ok && val != "" {
+		aggregationInterval := strings.Split(val, ":")
+		if len(aggregationInterval) != 3 {
+			return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
 		}
 	}
 
-	if val, ok := metadata["metricAggregationInterval"]; ok {
-		if val != "" {
-			aggregationInterval := strings.Split(val, ":")
-			if len(aggregationInterval) != 3 {
-				return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
-			}
-			meta.aggregationInterval = val
+	// Required authentication parameters below
+
+	subscriptionID := authParams["subscriptionId"]
+	if subscriptionID != "" {
+		meta.subscriptionID = subscriptionID
+	} else {
+		subscriptionIDSetting := defaultSubscriptionIDSetting
+		if val, ok := metadata["subscriptionId"]; ok && val != "" {
+			subscriptionIDSetting = val
+		}
+
+		if val, ok := resolvedEnv[subscriptionIDSetting]; ok {
+			meta.subscriptionID = val
+		} else {
+			return nil, fmt.Errorf("no subscriptionId given")
 		}
 	}
 
-	if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
-		meta.clientID = val
+	tentantID := authParams["tenantId"]
+	if tentantID != "" {
+		meta.tentantID = tentantID
 	} else {
-		return nil, fmt.Errorf("no activeDirectoryClientId given")
+		tenantIDSetting := defaultTenantIDSetting
+		if val, ok := metadata["tenantId"]; ok && val != "" {
+			tenantIDSetting = val
+		}
+
+		if val, ok := resolvedEnv[tenantIDSetting]; ok {
+			meta.tentantID = val
+		} else {
+			return nil, fmt.Errorf("no tenantId given")
+		}
 	}
 
-	if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
-		meta.clientPassword = val
+	clientID := authParams["activeDirectoryClientId"]
+	if clientID != "" {
+		meta.clientID = clientID
 	} else {
-		return nil, fmt.Errorf("no activeDirectoryClientPassword given")
+		clientIDSetting := defaultClientIDSetting
+		if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
+			clientIDSetting = val
+		}
+
+		if val, ok := resolvedEnv[clientIDSetting]; ok {
+			meta.clientID = val
+		} else {
+			return nil, fmt.Errorf("no activeDirectoryClientId given")
+		}
+	}
+
+	clientPassword := authParams["activeDirectoryClientPassword"]
+	if clientPassword != "" {
+		meta.clientPassword = clientPassword
+	} else {
+		clientPasswordSetting := defaultClientPasswordSetting
+		if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
+			clientPasswordSetting = val
+		}
+
+		if val, ok := resolvedEnv[clientPasswordSetting]; ok {
+			meta.clientPassword = val
+		} else {
+			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
+		}
 	}
 
 	return &meta, nil
