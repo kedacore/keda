@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	scalehandler "github.com/kedacore/keda/pkg/handler"
+	version "github.com/kedacore/keda/version"
 
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -323,7 +324,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
 	labels := map[string]string{
 		"app.kubernetes.io/name": getHpaName(deploymentName),
-		"app.kubernetes.io/version": "1.0.0",
+		"app.kubernetes.io/version": version.Version,
 		"app.kubernetes.io/part-of": deploymentName,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	  }
