@@ -55,8 +55,15 @@ publish: build
 ##################################################
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 
+.PHONY: checkenv
+checkenv:
+ifndef GOROOT
+	@echo "GOROOT is not defined"
+	@exit 1
+endif
+
 .PHONY: build
-build: build-adapter build-controller
+build: checkenv build-adapter build-controller
 
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
