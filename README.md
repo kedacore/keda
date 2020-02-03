@@ -102,7 +102,6 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
 
 1. Deploy CRDs and KEDA into `keda` namespace
    ```bash
-   kubectl create namespace keda
    kubectl apply -f deploy/crds/keda.k8s.io_scaledobjects_crd.yaml
    kubectl apply -f deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml
    kubectl apply -f deploy/
@@ -111,9 +110,9 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
-3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-level=` if needed
    ```bash
-   operator-sdk run --local --namespace=""
+   operator-sdk run --local --namespace="" --operator-flags="--zap-level=info"
    ``` 
    > Note: On older operator-sdk versions you need to use command `up` instead of `run`.
 
