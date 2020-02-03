@@ -94,6 +94,21 @@ cd keda
 make build
 ```
 
+If the build process fails due to some "checksum mismatch" errors, make sure that `GOPROXY` and `GOSUMDB` environment variables are set properly.
+With Go installation on Fedora, for example, it could happen they are wrong.
+
+```bash
+go env GOPROXY GOSUMDB
+direct
+off
+```
+
+If not set properly you can just run.
+
+```bash
+go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
+```
+
 ## Deploying: Custom KEDA locally outside cluster
 The Operator SDK framework allows you to [run the operator/controller locally](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#2-run-locally-outside-the-cluster)
 outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
