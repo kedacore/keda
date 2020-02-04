@@ -8,6 +8,7 @@ IMAGE_REPO     ?= kedacore
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(IMAGE_TAG)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(IMAGE_TAG)
 
+VERSION	?= 1.1.0
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -68,12 +69,12 @@ build: checkenv build-adapter build-controller
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -o build/_output/bin/keda"
+		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) go build \
-		-ldflags "-X=main.GitCommit=$(GIT_COMMIT)" \
+		-ldflags "-X=main.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 		-o build/_output/bin/keda-adapter \
 		cmd/adapter/main.go
 	docker build -f build/Dockerfile.adapter -t $(IMAGE_ADAPTER) .
