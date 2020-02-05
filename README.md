@@ -139,7 +139,7 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 to deploy it as part of KEDA. Do the following:
 
 1. Make your change in the code.
-2. In terminal, create an environment variable `IMAGE_TAG` and assign it a value for your preference, this tag will 
+2. In terminal, create an environment variable `VERSION` and assign it a value for your preference, this tag will 
     be used when creating the operator image that will run KEDA.
     ***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
 3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for 
@@ -149,7 +149,7 @@ to deploy it as part of KEDA. Do the following:
 5. Still in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
     (don't forget to replace the placeholder text in the command):
     ```bash
-    helm install . --set image.keda=kedacore/keda:$IMAGE_TAG,image.metricsAdapter=kedacore/keda-metrics-adapter:$IMAGE_TAG,image.pullPolicy=IfNotPresent
+    helm install . --set image.keda=kedacore/keda:$VERSION,image.metricsAdapter=kedacore/keda-metrics-adapter:$VERSION,image.pullPolicy=IfNotPresent
     ```
     This will use the images built at step 3. Notice the need to override the image pullPolicy to `IfNotPresent` in 
     order to use the locally built images and not try to pull the images from remote repo on Docker Hub (and complain 

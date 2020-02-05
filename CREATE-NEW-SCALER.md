@@ -12,7 +12,7 @@ In order to develop a scaler, a developer should do the following:
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally 
-1. Run `export IMAGE_TAG=local`
+1. Run `export VERSION=local`
 2. Open the terminal and go to the root of the source code
 3. Run `make build`
 5. If you haven't done it yet clone the charts repository: `git  clone git@github.com:kedacore/charts.git` 
