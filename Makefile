@@ -1,12 +1,12 @@
 ##################################################
 # Variables                                      #
 ##################################################
-IMAGE_TAG      ?= master
+VERSION		   ?= master
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
-IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(IMAGE_TAG)
-IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(IMAGE_TAG)
+IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
+IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -56,11 +56,11 @@ K8S_DEPLOY_FILES = $(shell find ./deploy -name '*.yaml')
 
 .PHONY: release
 release:
-	@sed -i 's@Version =.*@Version = "$(IMAGE_TAG)"@g' ./version/version.go;
+	@sed -i 's@Version =.*@Version = "$(VERSION)"@g' ./version/version.go;
 	@for file in $(K8S_DEPLOY_FILES); do \
-	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(IMAGE_TAG)"@g' $$file; \
-	sed -i 's@image: docker.io/kedacore/keda:.*@image: docker.io/kedacore/keda:$(IMAGE_TAG)@g' $$file; \
-	sed -i 's@image: docker.io/kedacore/keda-metrics-adapter:.*@image: docker.io/kedacore/keda-metrics-adapter:$(IMAGE_TAG)@g' $$file; \
+	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(VERSION)"@g' $$file; \
+	sed -i 's@image: docker.io/kedacore/keda:.*@image: docker.io/kedacore/keda:$(VERSION)@g' $$file; \
+	sed -i 's@image: docker.io/kedacore/keda-metrics-adapter:.*@image: docker.io/kedacore/keda-metrics-adapter:$(VERSION)@g' $$file; \
 	done
 
 ##################################################
@@ -80,12 +80,12 @@ build: checkenv build-adapter build-controller
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -ldflags -X=github.com/kedacore/keda/version.Version=$(IMAGE_TAG) -o build/_output/bin/keda"
+		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) go build \
-		-ldflags "-X=main.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(IMAGE_TAG)" \
+		-ldflags "-X=main.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 		-o build/_output/bin/keda-adapter \
 		cmd/adapter/main.go
 	docker build -f build/Dockerfile.adapter -t $(IMAGE_ADAPTER) .

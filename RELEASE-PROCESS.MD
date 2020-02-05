@@ -10,9 +10,9 @@ The next version will thus be 1.2.0
 
 **1) Update KEDA version in code and YAMLs**
 
-* Run the following command to update the version, setting the `IMAGE_TAG` value to the next version, eg 1.2.0:
+* Run the following command to update the version, setting the `VERSION` value to the next version, eg 1.2.0:
     ```bash
-    IMAGE_TAG=1.2.0 make release
+    VERSION=1.2.0 make release
     ```
     > Note: This will update the version labels and images in the yaml files located in the `deploy` folder as well as the version in `version.go`.
 * Commit these changes.
