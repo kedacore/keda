@@ -67,8 +67,8 @@ build: checkenv build-adapter build-controller
 
 .PHONY: release
 release:
-	sed -i 's@Version =.*@Version = "$(IMAGE_TAG)"@g' ./version/version.go; \
-	for file in $(K8S_DEPLOY_FILES); do \
+	@sed -i 's@Version =.*@Version = "$(IMAGE_TAG)"@g' ./version/version.go;
+	@for file in $(K8S_DEPLOY_FILES); do \
 	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(IMAGE_TAG)"@g' $$file; \
 	sed -i 's@image: docker.io/kedacore/keda:.*@image: docker.io/kedacore/keda:$(IMAGE_TAG)@g' $$file; \
 	sed -i 's@image: docker.io/kedacore/keda-metrics-adapter:.*@image: docker.io/kedacore/keda-metrics-adapter:$(IMAGE_TAG)@g' $$file; \
