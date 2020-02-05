@@ -29,7 +29,7 @@ type azureMonitorScaler struct {
 
 type azureMonitorMetadata struct {
 	resourceURI         string
-	tentantID           string
+	tenantID            string
 	subscriptionID      string
 	resourceGroupName   string
 	name                string
@@ -120,9 +120,9 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		}
 	}
 
-	tentantID := authParams["tenantId"]
-	if tentantID != "" {
-		meta.tentantID = tentantID
+	tenantID := authParams["tenantId"]
+	if tenantID != "" {
+		meta.tenantID = tenantID
 	} else {
 		tenantIDSetting := defaultTenantIDSetting
 		if val, ok := metadata["tenantId"]; ok && val != "" {
@@ -130,7 +130,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		}
 
 		if val, ok := resolvedEnv[tenantIDSetting]; ok {
-			meta.tentantID = val
+			meta.tenantID = val
 		} else {
 			return nil, fmt.Errorf("no tenantId given")
 		}

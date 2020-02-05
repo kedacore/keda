@@ -39,7 +39,7 @@ func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetada
 
 func createMetricsClient(metadata *azureMonitorMetadata) insights.MetricsClient {
 	client := insights.NewMetricsClient(metadata.subscriptionID)
-	config := auth.NewClientCredentialsConfig(metadata.clientID, metadata.clientPassword, metadata.tentantID)
+	config := auth.NewClientCredentialsConfig(metadata.clientID, metadata.clientPassword, metadata.tenantID)
 
 	authorizer, _ := config.Authorizer()
 	client.Authorizer = authorizer
