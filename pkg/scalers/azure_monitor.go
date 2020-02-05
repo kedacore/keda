@@ -3,9 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-    "math"
-    "strconv"
-    "strings"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
@@ -62,7 +62,7 @@ func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetada
 	timespan, err := formatTimeSpan(metricMetadata.aggregationInterval)
 	if err != nil {
 		return -1, err
-    }
+	}
 
 	metricRequest.Timespan = timespan
 
