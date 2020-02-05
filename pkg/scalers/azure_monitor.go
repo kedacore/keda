@@ -25,94 +25,86 @@ type azureExternalMetricRequest struct {
 	ResourceGroup             string
 }
 
-type azureExternalMetricResponse struct {
-	Value float64
-}
-
-type azureExternalMetricClient interface {
-	getAzureMetric(azMetricRequest azureExternalMetricRequest) (azureExternalMetricResponse, error)
-}
-
-type insightsmonitorClient interface {
-	List(ctx context.Context, resourceURI string, timespan string, interval *string, metricnames string, aggregation string, top *int32, orderby string, filter string, resultType insights.ResultType, metricnamespace string) (result insights.Response, err error)
-}
-
-type monitorClient struct {
-	client insightsmonitorClient
-}
-
 // GetAzureMetricValue is a func
 func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetadata) (int32, error) {
-	metricsClient := newMonitorClient(metricMetadata)
+	client := createMetricsClient(metricMetadata)
 
-	metricRequest := azureExternalMetricRequest{
-		MetricName:     metricMetadata.name,
-		SubscriptionID: metricMetadata.subscriptionID,
-		Aggregation:    metricMetadata.aggregationType,
-		Filter:         metricMetadata.filter,
-		ResourceGroup:  metricMetadata.resourceGroupName,
-	}
-
-	resourceInfo := strings.Split(metricMetadata.resourceURI, "/")
-	metricRequest.ResourceProviderNamespace = resourceInfo[0]
-	metricRequest.ResourceType = resourceInfo[1]
-	metricRequest.ResourceName = resourceInfo[2]
-
-	// if no timespan is provided, defaults to 5 minutes
-	timespan, err := formatTimeSpan(metricMetadata.aggregationInterval)
+	requestPtr, err := createMetricsRequest(metricMetadata)
 	if err != nil {
 		return -1, err
 	}
 
-	metricRequest.Timespan = timespan
-
-	metricResponse, err := metricsClient.getAzureMetric(metricRequest)
-	if err != nil {
-		azureMonitorLog.Error(err, "error getting azure monitor metric")
-		//return -1, fmt.Errorf("MetricName %s: , ResourceGroup: %s, Namespace: %s, ResourceType: %s, ResourceName: %s, Aggregation: %s, Timespan: %s", metricRequest.MetricName, metricRequest.ResourceGroup, metricRequest.ResourceProviderNamespace, metricRequest.ResourceType, metricRequest.ResourceName, metricRequest.Aggregation, metricRequest.Timespan)
-		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", metricRequest.MetricName, err.Error())
-	}
-
-	// casting drops everything after decimal, so round first
-	metricValue := int32(math.Round(metricResponse.Value))
-
-	return metricValue, nil
+	return executeRequest(client, requestPtr)
 }
 
-func newMonitorClient(metadata *azureMonitorMetadata) azureExternalMetricClient {
+func createMetricsClient(metadata *azureMonitorMetadata) insights.MetricsClient {
 	client := insights.NewMetricsClient(metadata.subscriptionID)
 	config := auth.NewClientCredentialsConfig(metadata.clientID, metadata.clientPassword, metadata.tentantID)
 
 	authorizer, _ := config.Authorizer()
 	client.Authorizer = authorizer
 
-	return &monitorClient{
-		client: client,
-	}
+	return client
 }
 
-func (c *monitorClient) getAzureMetric(azMetricRequest azureExternalMetricRequest) (azureExternalMetricResponse, error) {
+func createMetricsRequest(metadata *azureMonitorMetadata) (*azureExternalMetricRequest, error) {
+	metricRequest := azureExternalMetricRequest{
+		MetricName:     metadata.name,
+		SubscriptionID: metadata.subscriptionID,
+		Aggregation:    metadata.aggregationType,
+		Filter:         metadata.filter,
+		ResourceGroup:  metadata.resourceGroupName,
+	}
+
+	resourceInfo := strings.Split(metadata.resourceURI, "/")
+	metricRequest.ResourceProviderNamespace = resourceInfo[0]
+	metricRequest.ResourceType = resourceInfo[1]
+	metricRequest.ResourceName = resourceInfo[2]
+
+	// if no timespan is provided, defaults to 5 minutes
+	timespan, err := formatTimeSpan(metadata.aggregationInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	metricRequest.Timespan = timespan
+
+	return &metricRequest, nil
+}
+
+func executeRequest(client insights.MetricsClient, request *azureExternalMetricRequest) (int32, error) {
+	metricResponse, err := getAzureMetric(client, *request)
+	if err != nil {
+		azureMonitorLog.Error(err, "error getting azure monitor metric")
+		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", request.MetricName, err.Error())
+	}
+
+	// casting drops everything after decimal, so round first
+	metricValue := int32(math.Round(metricResponse))
+
+	return metricValue, nil
+}
+
+func getAzureMetric(client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {
 	err := azMetricRequest.validate()
 	if err != nil {
-		return azureExternalMetricResponse{}, err
+		return -1, err
 	}
 
 	metricResourceURI := azMetricRequest.metricResourceURI()
 	klog.V(2).Infof("resource uri: %s", metricResourceURI)
 
-	metricResult, err := c.client.List(context.Background(), metricResourceURI,
+	metricResult, err := client.List(context.Background(), metricResourceURI,
 		azMetricRequest.Timespan, nil,
 		azMetricRequest.MetricName, azMetricRequest.Aggregation, nil,
 		"", azMetricRequest.Filter, "", "")
 	if err != nil {
-		return azureExternalMetricResponse{}, err
+		return -1, err
 	}
 
 	value, err := extractValue(azMetricRequest, metricResult)
 
-	return azureExternalMetricResponse{
-		Value: value,
-	}, err
+	return value, err
 }
 
 func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insights.Response) (float64, error) {
