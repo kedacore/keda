@@ -10,26 +10,12 @@ The next version will thus be 1.2.0
 
 **1) Update KEDA version in code and YAMLs**
 
-Update version string in:
-https://github.com/kedacore/keda/blob/master/version/version.go 
-
-Update sections related to images in these yamls:
-https://github.com/kedacore/keda/blob/master/deploy/12-operator.yaml
-https://github.com/kedacore/keda/blob/master/deploy/22-metrics-deployment.yaml
-
-Update sections related to the version label in these yamls:
-https://github.com/kedacore/keda/blob/master/deploy/00-namespace.yaml
-https://github.com/kedacore/keda/blob/master/deploy/01-service_account.yaml
-https://github.com/kedacore/keda/blob/master/deploy/10-cluster_role.yaml
-https://github.com/kedacore/keda/blob/master/deploy/11-role_binding.yaml
-https://github.com/kedacore/keda/blob/master/deploy/12-operator.yaml
-https://github.com/kedacore/keda/blob/master/deploy/20-metrics-cluster_role.yaml
-https://github.com/kedacore/keda/blob/master/deploy/21-metrics-role_binding.yaml
-https://github.com/kedacore/keda/blob/master/deploy/22-metrics-deployment.yaml
-https://github.com/kedacore/keda/blob/master/deploy/23-metrics-service.yaml
-https://github.com/kedacore/keda/blob/master/deploy/24-metrics-api_service.yaml
-
-Commit these changes.
+* Run the following command to update the version, setting the `VERSION` value to the next version, eg 1.2.0:
+    ```bash
+    VERSION=1.2.0 make release
+    ```
+    > Note: This will update the version labels and images in the yaml files located in the `deploy` folder as well as the version in `version.go`.
+* Commit these changes.
 
 **2) Deploy the new KEDA images to Docker Hub**
 
