@@ -94,6 +94,21 @@ cd keda
 make build
 ```
 
+If the build process fails due to some "checksum mismatch" errors, make sure that `GOPROXY` and `GOSUMDB` environment variables are set properly.
+With Go installation on Fedora, for example, it could happen they are wrong.
+
+```bash
+go env GOPROXY GOSUMDB
+direct
+off
+```
+
+If not set properly you can just run.
+
+```bash
+go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
+```
+
 ## Deploying: Custom KEDA locally outside cluster
 The Operator SDK framework allows you to [run the operator/controller locally](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#2-run-locally-outside-the-cluster)
 outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
@@ -102,7 +117,6 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
 
 1. Deploy CRDs and KEDA into `keda` namespace
    ```bash
-   kubectl create namespace keda
    kubectl apply -f deploy/crds/keda.k8s.io_scaledobjects_crd.yaml
    kubectl apply -f deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml
    kubectl apply -f deploy/
@@ -111,9 +125,9 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
-3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-level=` if needed
    ```bash
-   operator-sdk run --local --namespace=""
+   operator-sdk run --local --namespace="" --operator-flags="--zap-level=info"
    ``` 
    > Note: On older operator-sdk versions you need to use command `up` instead of `run`.
 

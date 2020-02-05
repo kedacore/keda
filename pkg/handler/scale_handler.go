@@ -321,8 +321,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
-	case "postgres":
-		return scalers.NewPostgresScaler(resolvedEnv, triggerMetadata, authParams)
+	case "postgresql":
+		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
 	case "mysql":
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	default:

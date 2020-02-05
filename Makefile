@@ -59,8 +59,7 @@ GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH
 .PHONY: checkenv
 checkenv:
 ifndef GOROOT
-	@echo "GOROOT is not defined"
-	@exit 1
+	@echo "WARNING: GOROOT is not defined"
 endif
 
 .PHONY: build
