@@ -10,15 +10,11 @@ The next version will thus be 1.2.0
 
 **1) Update KEDA version in code and YAMLs**
 
-* Set the `IMAGE_TAG` value to the next version, eg 1.2.0.
+* Run the following command to update the version, setting the `IMAGE_TAG` value to the next version, eg 1.2.0:
     ```bash
-    export IMAGE_TAG=1.2.0
+    IMAGE_TAG=1.2.0 make release
     ```
-* Run the following command to update the versions:
-    ```bash
-    make release
-    ```
-    > Note: This will update the version label and images in the yaml files located in the `deploy` folder as well as the version in `version.go`.
+    > Note: This will update the version labels and images in the yaml files located in the `deploy` folder as well as the version in `version.go`.
 * Commit these changes.
 
 **2) Deploy the new KEDA images to Docker Hub**
