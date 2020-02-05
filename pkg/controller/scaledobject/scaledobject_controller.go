@@ -359,7 +359,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 	labels := map[string]string{
 		"app.kubernetes.io/name": getHpaName(deploymentName),
 		"app.kubernetes.io/version": version.Version,
-		"app.kubernetes.io/part-of": deploymentName,
+		"app.kubernetes.io/part-of": scaledObject.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",
 	  }
 
