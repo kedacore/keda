@@ -17,6 +17,18 @@ Update sections related to images in these yamls:
 https://github.com/kedacore/keda/blob/master/deploy/12-operator.yaml
 https://github.com/kedacore/keda/blob/master/deploy/22-metrics-deployment.yaml
 
+Update sections related to the version label in these yamls:
+https://github.com/kedacore/keda/blob/master/deploy/00-namespace.yaml
+https://github.com/kedacore/keda/blob/master/deploy/01-service_account.yaml
+https://github.com/kedacore/keda/blob/master/deploy/10-cluster_role.yaml
+https://github.com/kedacore/keda/blob/master/deploy/11-role_binding.yaml
+https://github.com/kedacore/keda/blob/master/deploy/12-operator.yaml
+https://github.com/kedacore/keda/blob/master/deploy/20-metrics-cluster_role.yaml
+https://github.com/kedacore/keda/blob/master/deploy/21-metrics-role_binding.yaml
+https://github.com/kedacore/keda/blob/master/deploy/22-metrics-deployment.yaml
+https://github.com/kedacore/keda/blob/master/deploy/23-metrics-service.yaml
+https://github.com/kedacore/keda/blob/master/deploy/24-metrics-api_service.yaml
+
 Commit these changes.
 
 **2) Deploy the new KEDA images to Docker Hub**
