@@ -1,6 +1,6 @@
 name: release build
 on:
-  push:
+  create:
     tags:
       - 'v*'
 jobs:
