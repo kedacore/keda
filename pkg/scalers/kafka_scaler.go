@@ -26,10 +26,10 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	brokers      []string
-	group        string
-	topic        string
-	lagThreshold int64
+	bootstrapServers []string
+	group            string
+	topic            string
+	lagThreshold     int64
 
 	// auth
 	authMode kafkaAuthMode
@@ -83,10 +83,20 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if metadata["brokerList"] == "" {
-		return meta, errors.New("no brokerList given")
+	// brokerList marked as deprecated, bootstrapServers is the new one to use
+	if metadata["brokerList"] != "" && metadata["bootstrapServers"] != "" {
+		return meta, errors.New("cannot specify both bootstrapServers and brokerList (deprecated)")
 	}
-	meta.brokers = strings.Split(metadata["brokerList"], ",")
+	if metadata["brokerList"] == "" && metadata["bootstrapServers"] == "" {
+		return meta, errors.New("no bootstrapServers or brokerList (deprecated) given")
+	}
+	if metadata["bootstrapServers"] != "" {
+		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
+	}
+	if metadata["brokerList"] != "" {
+		kafkaLog.V(0).Info("WARNING: usage of brokerList is deprecated. use bootstrapServers instead.")
+		meta.bootstrapServers = strings.Split(metadata["brokerList"], ",")
+	}
 
 	if metadata["consumerGroup"] == "" {
 		return meta, errors.New("no consumer group given")
@@ -112,7 +122,7 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 	if val, ok := authParams["authMode"]; ok {
 		val = strings.TrimSpace(val)
 		mode := kafkaAuthMode(val)
-		
+
 		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslSSLPlain && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
 			return meta, fmt.Errorf("err auth mode %s given", mode)
 		}
@@ -233,12 +243,12 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		config.Net.TLS.Enable = true
 	}
 
-	client, err := sarama.NewClient(metadata.brokers, config)
+	client, err := sarama.NewClient(metadata.bootstrapServers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
 	}
 
-	admin, err := sarama.NewClusterAdmin(metadata.brokers, config)
+	admin, err := sarama.NewClusterAdmin(metadata.bootstrapServers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
 	}
