@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	version "github.com/kedacore/keda/version"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -52,6 +54,10 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 				GenerateName: scaledObject.GetName() + "-",
 				Namespace:    scaledObject.GetNamespace(),
 				Labels: map[string]string{
+					"app.kubernetes.io/name": scaledObject.GetName(),
+					"app.kubernetes.io/version": version.Version,
+					"app.kubernetes.io/part-of": scaledObject.GetName(),
+					"app.kubernetes.io/managed-by": "keda-operator",
 					"scaledobject": scaledObject.GetName(),
 				},
 			},

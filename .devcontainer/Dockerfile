@@ -47,7 +47,7 @@ RUN apt-get update \
         github.com/cweill/gotests/... \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
-        golang.org/x/tools/cmd/gopls \
+        golang.org/x/tools/gopls \
         github.com/alecthomas/gometalinter \
         honnef.co/go/tools/... \
         github.com/golangci/golangci-lint/cmd/golangci-lint \

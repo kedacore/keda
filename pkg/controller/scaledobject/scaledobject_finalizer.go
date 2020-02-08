@@ -21,6 +21,9 @@ func (r *ReconcileScaledObject) finalizeScaledObject(logger logr.Logger, scaledO
 		return err
 	}
 
+	// store ScaledObject's current Generation
+	r.scaledObjectsGenerations.Delete(key)
+
 	result, ok := r.scaleLoopContexts.Load(key)
 	if ok {
 		cancel, ok := result.(context.CancelFunc)

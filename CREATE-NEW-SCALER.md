@@ -6,13 +6,13 @@ In order to develop a scaler, a developer should do the following:
 1. Download KEDA's code
 2. Define the main pieces of data that you expect the user to supply so the scaler runs properly. For example, if your scaler needs to connect to an external source based on a connection string, you expect the user to supply this connection string in the configuration within the ScaledObject under `trigger`. This data will be passed to your constructing function as map[string]string.
 2. Create the new scaler struct under the `pkg/scalers` folder.
-3. Implement the methods above
-4. Create a constructor according to the above.
+3. Implement the methods defined in the [scaler interface](#scaler-interface) section.
+4. Create a constructor according to [this](#constructor).
 5. Change the `getScaler` function in `pkg/handler/scale_handler.go` by adding another switch case that matches your scaler.
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally 
-1. Run `export IMAGE_TAG=local`
+1. Run `export VERSION=local`
 2. Open the terminal and go to the root of the source code
 3. Run `make build`
 5. If you haven't done it yet clone the charts repository: `git  clone git@github.com:kedacore/charts.git` 
@@ -20,9 +20,9 @@ If you want to deploy locally
 
 The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we substitute the image with the image we built in step 1. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
 
-## Main Functions
+## Scaler interface
 
-The scalers in KEDA are implementations of a KEDA Go interface called `scaler.go`.  This documentation describes how scalers works and is targeted towards contributors and maintainers.
+The scalers in KEDA are implementations of a KEDA `Scaler` Go interface declared in `pkg/scalers/scaler.go`.  This documentation describes how scalers works and is targeted towards contributors and maintainers.
 
 ### GetMetrics
 

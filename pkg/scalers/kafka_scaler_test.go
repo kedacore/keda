@@ -25,17 +25,23 @@ var validMetadata = map[string]string{
 var validWithAuthParams = map[string]string{
 	"authMode": "sasl_plaintext",
 	"username": "admin",
-	"passwd":   "admin",
+	"password": "admin",
 }
 
 // A complete valid authParams example for sasl, without username and passwd
 var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
+	// failure, no brokerList
 	{map[string]string{}, true, 0, nil, "", ""},
+	// failure, no consumer group
 	{map[string]string{"brokerList": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
-	{map[string]string{"brokerList": "foo:9092,bar:9092"}, true, 2, []string{"foo:9092", "bar:9092"}, "", ""},
-	{map[string]string{"brokerList": "a", "consumerGroup": "my-group"}, true, 1, []string{"a"}, "my-group", ""},
+	// failure, no topic
+	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", ""},
+	// success
+	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic"},
+	// success, more brokers
+	{map[string]string{"brokerList": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic"},
 }
 
 func TestGetBrokers(t *testing.T) {
