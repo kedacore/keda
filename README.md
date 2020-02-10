@@ -156,7 +156,7 @@ to deploy it as part of KEDA. Do the following:
     about not finding them).
 6. Once the keda pods are up, check the logs to verify everything running ok, eg: 
     ```bash
-    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs -f
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda logs -f
 
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs -f
     ```
