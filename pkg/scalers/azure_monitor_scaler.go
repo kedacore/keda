@@ -64,6 +64,10 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	}
 
 	if val, ok := metadata["resourceURI"]; ok && val != "" {
+		resourceURI := strings.Split(val, "/")
+		if len(resourceURI) != 3 {
+			return nil, fmt.Errorf("resourceURI not in the correct format. Should be namespace/resource_type/resource_name")
+		}
 		meta.resourceURI = val
 	} else {
 		return nil, fmt.Errorf("no resourceURI given")
