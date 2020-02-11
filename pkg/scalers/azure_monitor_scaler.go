@@ -61,6 +61,8 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
 		}
 		meta.targetValue = targetValue
+	} else {
+		return nil, fmt.Errorf("no targetValue given")
 	}
 
 	if val, ok := metadata["resourceURI"]; ok && val != "" {
