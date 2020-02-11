@@ -15,12 +15,8 @@ import (
 )
 
 const (
-	azureMonitorMetricName       = "metricName"
-	targetValueName              = "targetValue"
-	defaultSubscriptionIDSetting = "xxx"
-	defaultTenantIDSetting       = "yyy"
-	defaultClientIDSetting       = "zzz"
-	defaultClientPasswordSetting = "qqq"
+	azureMonitorMetricName = "metricName"
+	targetValueName        = "targetValue"
 )
 
 type azureMonitorScaler struct {
@@ -104,64 +100,40 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 	// Required authentication parameters below
 
-	subscriptionID := authParams["subscriptionId"]
-	if subscriptionID != "" {
-		meta.subscriptionID = subscriptionID
+	if val, ok := authParams["subscriptionId"]; ok && val != "" {
+		meta.subscriptionID = val
 	} else {
-		subscriptionIDSetting := defaultSubscriptionIDSetting
 		if val, ok := metadata["subscriptionId"]; ok && val != "" {
-			subscriptionIDSetting = val
-		}
-
-		if val, ok := resolvedEnv[subscriptionIDSetting]; ok {
 			meta.subscriptionID = val
 		} else {
 			return nil, fmt.Errorf("no subscriptionId given")
 		}
 	}
 
-	tenantID := authParams["tenantId"]
-	if tenantID != "" {
-		meta.tenantID = tenantID
+	if val, ok := authParams["tenantId"]; ok && val != "" {
+		meta.tenantID = val
 	} else {
-		tenantIDSetting := defaultTenantIDSetting
 		if val, ok := metadata["tenantId"]; ok && val != "" {
-			tenantIDSetting = val
-		}
-
-		if val, ok := resolvedEnv[tenantIDSetting]; ok {
 			meta.tenantID = val
 		} else {
 			return nil, fmt.Errorf("no tenantId given")
 		}
 	}
 
-	clientID := authParams["activeDirectoryClientId"]
-	if clientID != "" {
-		meta.clientID = clientID
+	if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
+		meta.clientID = val
 	} else {
-		clientIDSetting := defaultClientIDSetting
 		if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
-			clientIDSetting = val
-		}
-
-		if val, ok := resolvedEnv[clientIDSetting]; ok {
 			meta.clientID = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientId given")
 		}
 	}
 
-	clientPassword := authParams["activeDirectoryClientPassword"]
-	if clientPassword != "" {
-		meta.clientPassword = clientPassword
+	if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
+		meta.clientPassword = val
 	} else {
-		clientPasswordSetting := defaultClientPasswordSetting
 		if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
-			clientPasswordSetting = val
-		}
-
-		if val, ok := resolvedEnv[clientPasswordSetting]; ok {
 			meta.clientPassword = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
