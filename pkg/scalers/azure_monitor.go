@@ -13,6 +13,9 @@ import (
 	"k8s.io/klog"
 )
 
+// Much of the code in this file is taken from the Azure Kubernetes Metrics Adapter
+// https://github.com/Azure/azure-k8s-metrics-adapter/tree/master/pkg/azure/externalmetrics
+
 type azureExternalMetricRequest struct {
 	MetricName                string
 	SubscriptionID            string
@@ -25,7 +28,7 @@ type azureExternalMetricRequest struct {
 	ResourceGroup             string
 }
 
-// GetAzureMetricValue is a func
+// GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
 func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetadata) (int32, error) {
 	client := createMetricsClient(metricMetadata)
 
@@ -138,7 +141,6 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 }
 
 func (amr azureExternalMetricRequest) validate() error {
-	// Shared
 	if amr.MetricName == "" {
 		return fmt.Errorf("metricName is required")
 	}
@@ -160,8 +162,8 @@ func (amr azureExternalMetricRequest) metricResourceURI() string {
 		amr.ResourceName)
 }
 
+// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one
 func formatTimeSpan(timeSpan string) (string, error) {
-	// defaults to last five minutes.
 	endtime := time.Now().UTC().Format(time.RFC3339)
 	starttime := time.Now().Add(-(5 * time.Minute)).UTC().Format(time.RFC3339)
 	if timeSpan != "" {

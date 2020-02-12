@@ -39,7 +39,7 @@ type azureMonitorMetadata struct {
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
-// NewAzureMonitorScaler stuff
+// NewAzureMonitorScaler creates a new AzureMonitorScaler
 func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
 	meta, err := parseAzureMonitorMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
@@ -150,7 +150,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	return &meta, nil
 }
 
-// needs to interact with azure monitor
+// Returns true if the Azure Monitor metric value is greater than zero
 func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := GetAzureMetricValue(ctx, s.metadata)
 	if err != nil {
