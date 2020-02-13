@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	azureMonitorMetricName = "metricName"
-	targetValueName        = "targetValue"
+	azureMonitorMetricName       = "metricName"
+	targetValueName              = "targetValue"
+	defaultClientIDSetting       = ""
+	defaultClientPasswordSetting = ""
 )
 
 type azureMonitorScaler struct {
@@ -122,7 +124,12 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
 		meta.clientID = val
 	} else {
+		clientIDSetting := defaultClientIDSetting
 		if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
+			clientIDSetting = val
+		}
+
+		if val, ok := resolvedEnv[clientIDSetting]; ok {
 			meta.clientID = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientId given")
@@ -132,7 +139,12 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
 		meta.clientPassword = val
 	} else {
+		clientPasswordSetting := defaultClientPasswordSetting
 		if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
+			clientPasswordSetting = val
+		}
+
+		if val, ok := resolvedEnv[clientPasswordSetting]; ok {
 			meta.clientPassword = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
