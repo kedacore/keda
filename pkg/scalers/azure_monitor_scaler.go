@@ -107,24 +107,16 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 	// Required authentication parameters below
 
-	if val, ok := authParams["subscriptionId"]; ok && val != "" {
+	if val, ok := metadata["subscriptionId"]; ok && val != "" {
 		meta.subscriptionID = val
 	} else {
-		if val, ok := metadata["subscriptionId"]; ok && val != "" {
-			meta.subscriptionID = val
-		} else {
-			return nil, fmt.Errorf("no subscriptionId given")
-		}
+		return nil, fmt.Errorf("no subscriptionId given")
 	}
 
-	if val, ok := authParams["tenantId"]; ok && val != "" {
+	if val, ok := metadata["tenantId"]; ok && val != "" {
 		meta.tenantID = val
 	} else {
-		if val, ok := metadata["tenantId"]; ok && val != "" {
-			meta.tenantID = val
-		} else {
-			return nil, fmt.Errorf("no tenantId given")
-		}
+		return nil, fmt.Errorf("no tenantId given")
 	}
 
 	if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
