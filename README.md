@@ -26,7 +26,7 @@ In partnership with
 
 * [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
 * [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
-* [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/keda/wiki/Using-Keda-and-Azure-Functions-on-Openshift-4)
+* [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/sample-azure-functions-on-ocp4)
 
 ## Deploying KEDA
 
