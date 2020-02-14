@@ -44,6 +44,10 @@ You can find a [FAQ here](https://keda.sh/faq/) with some common questions.
 
 You can find several samples for various event sources [here](https://github.com/kedacore/samples).
 
+## Releases
+
+You can find the latest releases [here] (https://github.com/kedacore/keda/releases)
+
 ## Community
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
