@@ -46,7 +46,7 @@ You can find several samples for various event sources [here](https://github.com
 
 ## Releases
 
-You can find the latest releases [here] (https://github.com/kedacore/keda/releases)
+You can find the latest releases [here](https://github.com/kedacore/keda/releases)
 
 ## Community
 
