@@ -116,6 +116,7 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ## Deploying: Custom KEDA locally outside cluster
 The Operator SDK framework allows you to [run the operator/controller locally](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#2-run-locally-outside-the-cluster)
 outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
+> Note: This approach works only on Linux or macOS. 
 
 To be KEDA to be fully operational we need to deploy Metrics Server first.
 
@@ -164,6 +165,23 @@ to deploy it as part of KEDA. Do the following:
 
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs -f
     ```
+
+## Setting log levels
+You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/logging.md) mechanism.
+
+### KEDA Operator logging
+Find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+
+Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
+
+Default value: `info`
+
+### Metrics Server logging
+Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deployment.yaml` file, modify it's value and redeploy.
+
+Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
+
+Default value: `"0"`
 
 
 # Contributing
