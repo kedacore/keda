@@ -71,8 +71,8 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 	return props.ApproximateMessagesCount(), nil
 }
 
-// GetAzureQueueVisibleLength returns the number of visible messages in a queue in int
-func GetAzureQueueVisibleLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string, maxCount int32) (int32, error) {
+// GetAzureVisibleQueueLength returns the number of visible messages in a queue in int
+func GetAzureVisibleQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string, maxCount int32) (int32, error) {
 
 	var err error
 
