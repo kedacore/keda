@@ -150,6 +150,10 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+func (s *azureServiceBusScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 // Returns the current metrics to be served to the HPA
 func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := s.GetAzureServiceBusLength(ctx)

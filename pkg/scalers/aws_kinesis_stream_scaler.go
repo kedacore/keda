@@ -108,6 +108,10 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec 
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+func (s *awsKinesisStreamScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsKinesisStreamScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	shardCount, err := s.GetAwsKinesisOpenShardCount()

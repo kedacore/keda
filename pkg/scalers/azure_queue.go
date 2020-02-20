@@ -8,8 +8,8 @@ import (
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 )
 
-// GetAzureQueueLength returns the length of a queue in int
-func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
+// GetAzureQueueURL returns a ready endpoint to comunicate with the API
+func GetAzureQueueURL(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
 
 	var credential azqueue.Credential
 	var err error
@@ -50,10 +50,42 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 		return -1, err
 	}
 
+	return queueURL, nil
+}
+
+// GetAzureQueueLength returns the length of a queue in int
+func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
+
+	var err error
+
+	queueURL, err := GetAzureQueueURL(ctx, podIdentity, connectionString, queueName, accountName)
+	if err != nil {
+		return -1, err
+	}
+
 	props, err := queueURL.GetProperties(ctx)
 	if err != nil {
 		return -1, err
 	}
 
 	return props.ApproximateMessagesCount(), nil
+}
+
+// GetAzureQueueVisibleLength returns the number of visible messages in a queue in int
+func GetAzureQueueVisibleLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string, maxCount int32) (int32, error) {
+
+	var err error
+
+	queueURL, err := GetAzureQueueURL(ctx, podIdentity, connectionString, queueName, accountName)
+	if err != nil {
+		return -1, err
+	}
+
+	pmr, err := queueURL.Peek(ctx, maxCount)
+	if err != nil {
+		return -1, err
+	}
+	count = pmr.NumMessages()
+
+	return count, nil
 }

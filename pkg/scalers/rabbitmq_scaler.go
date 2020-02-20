@@ -145,6 +145,11 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	}
 }
 
+func (s *rabbitMQScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	rabbitmqLog.Error(fmt.Errorf("error getting rabbitMQ MetricSpec for scaling a job"), "rabbitMQScaler does not implements this metric yet")
+	return []v2beta1.MetricSpec{}
+}
+
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	messages, err := s.getQueueMessages()

@@ -59,31 +59,32 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1a
 
 	isScaledObjectActive := false
 	h.logger.Info("Scalers count", "Count", len(scalers))
-	var queueLength int64
-	var maxValue int64
 
 	for _, scaler := range scalers {
+		var queueLength int64
+		var maxValue int64
+
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-		metricSpecs := scaler.GetMetricSpecForScaling()
+		metricSpecs := scaler.GetMetricSpecForScalingJobs()
 
 		var metricValue int64
 		for _, metric := range metricSpecs {
 			metricValue, _ = metric.External.TargetAverageValue.AsInt64()
 			maxValue += metricValue
-		}
-		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
 
-		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
+			metrics, _ := scaler.GetMetrics(ctx, metric.External.MetricName, nil)
 
-		for _, m := range metrics {
-			if m.MetricName == "queueLength" {
-				metricValue, _ = m.Value.AsInt64()
-				queueLength += metricValue
+			for _, m := range metrics {
+				if m.MetricName == metric.External.MetricName {
+					metricValue, _ = m.Value.AsInt64()
+					queueLength += metricValue
+				}
 			}
 		}
+		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
 		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
 
 		if err != nil {
@@ -94,9 +95,10 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1a
 			scalerLogger.Info("Scaler is active")
 		}
 		scaler.Close()
+
+		h.scaleJobs(scaledObject, isScaledObjectActive, queueLength, maxValue)
 	}
 
-	h.scaleJobs(scaledObject, isScaledObjectActive, queueLength, maxValue)
 }
 
 // handleScaleDeployment contains the main logic for the ScaleHandler scaling logic.

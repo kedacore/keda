@@ -121,6 +121,10 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	}
 }
 
+func (s *prometheusScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
 	query_escaped := url_pkg.QueryEscape(s.metadata.query)

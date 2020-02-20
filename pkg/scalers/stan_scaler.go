@@ -191,6 +191,10 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	}
 }
 
+func (s *stanScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	resp, err := http.Get(s.getMonitoringEndpoint())

@@ -124,6 +124,10 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+func (s *awsSqsQueueScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := s.GetAwsSqsQueueLength()

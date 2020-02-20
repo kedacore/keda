@@ -182,6 +182,11 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+func (s *postgreSQLScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	postgreSQLLog.Error(fmt.Errorf("error getting postgreSQL MetricSpec for scaling a job"), "postgreSQLScaler does not implements this metric yet")
+	return []v2beta1.MetricSpec{}
+}
+
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getActiveNumber()

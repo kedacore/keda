@@ -89,6 +89,10 @@ func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	}
 }
 
+func (s *liiklusScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 func (s *liiklusScaler) Close() error {
 	err := s.connection.Close()
 	if err != nil {

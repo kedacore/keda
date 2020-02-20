@@ -163,6 +163,10 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return result
 }
 
+func (s *externalScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return s.GetMetricSpecForScaling()
+}
+
 // GetMetrics connects calls the gRPC interface to get the metrics with a specific name
 func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 

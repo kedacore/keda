@@ -17,6 +17,9 @@ type Scaler interface {
 	// this scaled object. The labels used should match the selectors used in GetMetrics
 	GetMetricSpecForScaling() []v2beta1.MetricSpec
 
+	//returns the metrics based on which this scaler determines that the job scales. The labels used should match the selectors used in GetMetrics
+	GetMetricSpecForScalingJob() []v2beta1.MetricSpec
+
 	IsActive(ctx context.Context) (bool, error)
 
 	// Close any resources that need disposing when scaler is no longer used or destroyed

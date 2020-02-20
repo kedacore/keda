@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	queueLengthMetricName    = "queueLength"
-	defaultTargetQueueLength = 5
-	externalMetricType       = "External"
-	defaultConnectionSetting = "AzureWebJobsStorage"
+	queueLengthMetricName        = "queueLength"
+	visibleQueueLengthMetricName = "visibleQueueLength"
+	defaultTargetQueueLength     = 5
+	externalMetricType           = "External"
+	defaultConnectionSetting     = "AzureWebJobsStorage"
 )
 
 type azureQueueScaler struct {
@@ -138,15 +139,35 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
+func (s *azureQueueScaler) GetMetricSpecForScalingJobs() []v2beta1.MetricSpec {
+	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
+	externalMetric := &v2beta1.ExternalMetricSource{MetricName: visibleQueueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
+	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta1.MetricSpec{metricSpec}
+}
+
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := GetAzureQueueLength(
-		ctx,
-		s.podIdentity,
-		s.metadata.connection,
-		s.metadata.queueName,
-		s.metadata.accountName,
-	)
+	switch metricName {
+		case queueLengthMetricName:
+			queuelen, err := GetAzureQueueLength(
+				ctx,
+				s.podIdentity,
+				s.metadata.connection,
+				s.metadata.queueName,
+				s.metadata.accountName,
+			)
+		case visibleQueueLengthMetricName:
+			queuelen, err := GetAzureVisibleQueueLength(
+				ctx,
+				s.podIdentity,
+				s.metadata.connection,
+				s.metadata.queueName,
+				s.metadata.accountName,
+			)
+		default:
+			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("no metric found with name: %s", metricName)
+	}
 
 	if err != nil {
 		azureQueueLog.Error(err, "error getting queue length")
