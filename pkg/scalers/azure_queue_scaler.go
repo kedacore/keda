@@ -164,6 +164,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 				s.metadata.connection,
 				s.metadata.queueName,
 				s.metadata.accountName,
+				s.metadata.targetQueueLength,
 			)
 		default:
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("no metric found with name: %s", metricName)
