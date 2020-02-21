@@ -139,7 +139,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-func (s *azureQueueScaler) GetMetricSpecForScalingJobs() []v2beta1.MetricSpec {
+func (s *azureQueueScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{MetricName: visibleQueueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
 	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
@@ -148,26 +148,30 @@ func (s *azureQueueScaler) GetMetricSpecForScalingJobs() []v2beta1.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+	var err error
+	var queuelen int32
+	err = nil
+	queuelen = 0
 	switch metricName {
-		case queueLengthMetricName:
-			queuelen, err := GetAzureQueueLength(
-				ctx,
-				s.podIdentity,
-				s.metadata.connection,
-				s.metadata.queueName,
-				s.metadata.accountName,
-			)
-		case visibleQueueLengthMetricName:
-			queuelen, err := GetAzureVisibleQueueLength(
-				ctx,
-				s.podIdentity,
-				s.metadata.connection,
-				s.metadata.queueName,
-				s.metadata.accountName,
-				s.metadata.targetQueueLength,
-			)
-		default:
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("no metric found with name: %s", metricName)
+	case queueLengthMetricName:
+		queuelen, err = GetAzureQueueLength(
+			ctx,
+			s.podIdentity,
+			s.metadata.connection,
+			s.metadata.queueName,
+			s.metadata.accountName,
+		)
+	case visibleQueueLengthMetricName:
+		queuelen, err = GetAzureVisibleQueueLength(
+			ctx,
+			s.podIdentity,
+			s.metadata.connection,
+			s.metadata.queueName,
+			s.metadata.accountName,
+			int32(s.metadata.targetQueueLength),
+		)
+	default:
+		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("no metric found with name: %s", metricName)
 	}
 
 	if err != nil {

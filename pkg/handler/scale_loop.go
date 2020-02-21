@@ -68,7 +68,7 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1a
 
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-		metricSpecs := scaler.GetMetricSpecForScalingJobs()
+		metricSpecs := scaler.GetMetricSpecForScalingJob()
 
 		var metricValue int64
 		for _, metric := range metricSpecs {
