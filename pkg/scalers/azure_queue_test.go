@@ -76,7 +76,7 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error to contain base64 error message, but got", err.Error())
 	}
 
-	length, err := GetAzureVisibleQueueLength(context.TODO(), "", "", "queueName", "")
+	length, err = GetAzureVisibleQueueLength(context.TODO(), "", "", "queueName", "", 10)
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
 	}
@@ -89,7 +89,7 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
-	length, err = GetAzureVisibleQueueLength(context.TODO(), "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "queueName", "")
+	length, err = GetAzureVisibleQueueLength(context.TODO(), "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "queueName", "", 10)
 
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)

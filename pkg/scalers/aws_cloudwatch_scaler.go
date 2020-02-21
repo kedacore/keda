@@ -181,8 +181,8 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-func (s *awsCloudwatchScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
-	return s.GetMetricSpecForScaling()
+func (c *awsCloudwatchScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return c.GetMetricSpecForScaling()
 }
 
 func (c *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {

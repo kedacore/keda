@@ -185,8 +185,8 @@ func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpe
 	}
 }
 
-func (s *AzureEventHubScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
-	return s.GetMetricSpecForScaling()
+func (scaler *AzureEventHubScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return scaler.GetMetricSpecForScaling()
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub

@@ -248,8 +248,8 @@ func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 	return []v2beta1.MetricSpec{metricSpec}
 }
 
-func (s *huaweiCloudeyeScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
-	return s.GetMetricSpecForScaling()
+func (h *huaweiCloudeyeScaler) GetMetricSpecForScalingJob() []v2beta1.MetricSpec {
+	return h.GetMetricSpecForScaling()
 }
 
 func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
