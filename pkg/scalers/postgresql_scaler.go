@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 )
 
 const (
@@ -24,14 +25,15 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
-	connection string
-	userName   string
-	password   string
-	host       string
-	port       string
-	query      string
-	dbName     string
-	sslmode    string
+	targetQueryValue int
+	connection       string
+	userName         string
+	password         string
+	host             string
+	port             string
+	query            string
+	dbName           string
+	sslmode          string
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
@@ -60,6 +62,16 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no query given")
+	}
+
+	if val, ok := metadata["targetQueryValue"]; ok {
+		targetQueryValue, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+		}
+		meta.targetQueryValue = targetQueryValue
+	} else {
+		return nil, fmt.Errorf("no targetQueryValue given")
 	}
 
 	if val, ok := authParams["connection"]; ok {
@@ -171,10 +183,10 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	targetListLengthQty := resource.NewQuantity(1, resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 	externalMetric := &v2beta1.ExternalMetricSource{
 		MetricName:         pgMetricName,
-		TargetAverageValue: targetListLengthQty,
+		TargetAverageValue: targetQueryValue,
 	}
 	metricSpec := v2beta1.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
