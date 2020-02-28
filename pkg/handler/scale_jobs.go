@@ -194,7 +194,7 @@ func (h *ScaleHandler) getPendingJobCount(scaledObject *kedav1alpha1.ScaledObjec
 	}
 
 	for _, job := range jobs.Items {
-		if !h.isAnyPodRunningOrCompleted(&job) {
+		if !h.isAnyPodRunningOrCompleted(job) {
 			pendingJobs++
 		}
 	}
