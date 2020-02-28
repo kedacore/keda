@@ -17,12 +17,20 @@ import (
 
 func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActive bool, scaleTo int64, maxScale int64) {
 	runningJobCount := h.getRunningJobCount(scaledObject, maxScale)
+	pendingJobCount := h.getPendingJobCount(scaledObject, maxScale)
 	h.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
+	h.logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
 	var effectiveMaxScale int64
 	effectiveMaxScale = maxScale - runningJobCount
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
+	}
+
+	var effectiveScaleTo int64
+	effectiveScaleTo = scaleTo - pendingJobCount
+	if effectiveScaleTo < 0 {
+		effectiveScaleTo = 0
 	}
 
 	h.logger.Info("Scaling Jobs")
@@ -32,7 +40,7 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 		now := metav1.Now()
 		scaledObject.Status.LastActiveTime = &now
 		h.updateScaledObjectStatus(scaledObject)
-		h.createJobs(scaledObject, scaleTo, effectiveMaxScale)
+		h.createJobs(scaledObject, effectiveScaleTo, effectiveMaxScale)
 
 	} else {
 		h.logger.V(1).Info("No change in activity")
@@ -61,11 +69,11 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 				GenerateName: scaledObject.GetName() + "-",
 				Namespace:    scaledObject.GetNamespace(),
 				Labels: map[string]string{
-					"app.kubernetes.io/name": scaledObject.GetName(),
-					"app.kubernetes.io/version": version.Version,
-					"app.kubernetes.io/part-of": scaledObject.GetName(),
+					"app.kubernetes.io/name":       scaledObject.GetName(),
+					"app.kubernetes.io/version":    version.Version,
+					"app.kubernetes.io/part-of":    scaledObject.GetName(),
 					"app.kubernetes.io/managed-by": "keda-operator",
-					"scaledobject": scaledObject.GetName(),
+					"scaledobject":                 scaledObject.GetName(),
 				},
 			},
 			Spec: *scaledObject.Spec.JobTargetRef.DeepCopy(),
@@ -146,4 +154,50 @@ func (h *ScaleHandler) getRunningJobCount(scaledObject *kedav1alpha1.ScaledObjec
 	}
 
 	return runningJobs
+}
+
+func (h *ScaleHandler) isAnyPodRunningOrCompleted(job batchv1.Job) bool {
+	opts := []client.ListOption{
+		client.InNamespace(job.GetNamespace()),
+		client.MatchingLabels(map[string]string{"job-name": job.GetName()}),
+	}
+
+	pods := &corev1.PodList{}
+	err := h.client.List(context.TODO(), pods, opts...)
+
+	if err != nil {
+		return false
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodRunning {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (h *ScaleHandler) getPendingJobCount(scaledObject *kedav1alpha1.ScaledObject, maxScale int64) int64 {
+	var pendingJobs int64
+
+	opts := []client.ListOption{
+		client.InNamespace(scaledObject.GetNamespace()),
+		client.MatchingLabels(map[string]string{"scaledobject": scaledObject.GetName()}),
+	}
+
+	jobs := &batchv1.JobList{}
+	err := h.client.List(context.TODO(), jobs, opts...)
+
+	if err != nil {
+		return 0
+	}
+
+	for _, job := range jobs.Items {
+		if !h.isAnyPodRunningOrCompleted(&job) {
+			pendingJobs++
+		}
+	}
+
+	return pendingJobs
 }
