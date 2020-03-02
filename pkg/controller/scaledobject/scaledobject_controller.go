@@ -280,26 +280,11 @@ func checkDeploymentTypeScaledObject(scaledObject *kedav1alpha1.ScaledObject) (s
 	var errMsg string
 
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	labelDeploymentName := scaledObject.Labels["deploymentName"]
 
 	if deploymentName == "" {
 		errMsg = "ScaledObject.spec.scaleTargetRef.deploymentName is missing"
-	}
-	if labelDeploymentName == "" {
-		if errMsg != "" {
-			errMsg += ", "
-		}
-		errMsg += "ScaledObject.metadata.labels.deploymentName is missing"
-	}
-	if deploymentName != "" && labelDeploymentName != "" &&
-		labelDeploymentName != deploymentName {
-		errMsg = errMsg + "ScaledObject.spec.scaleTargetRef.deploymentName and ScaledObject.metadata.labels.deploymentName are not equal"
-	}
-
-	if errMsg != "" {
 		err = fmt.Errorf(errMsg)
 	}
-
 	return deploymentName, err
 }
 
@@ -357,11 +342,11 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
 	labels := map[string]string{
-		"app.kubernetes.io/name": getHpaName(deploymentName),
-		"app.kubernetes.io/version": version.Version,
-		"app.kubernetes.io/part-of": scaledObject.GetName(),
+		"app.kubernetes.io/name":       getHpaName(deploymentName),
+		"app.kubernetes.io/version":    version.Version,
+		"app.kubernetes.io/part-of":    scaledObject.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",
-	  }
+	}
 
 	if err != nil {
 		return nil, err
