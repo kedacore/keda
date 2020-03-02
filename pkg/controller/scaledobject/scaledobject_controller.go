@@ -148,13 +148,25 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	reqLogger.V(1).Info("Detecting ScaleType from ScaledObject")
-	if scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Spec.ScaleTargetRef.DeploymentName == "" {
+	var errMsg string
+	if scaledObject.Spec.ScaleTargetRef != nil {
+		if scaledObject.Spec.JobTargetRef == nil {
+			reqLogger.Info("Detected ScaleType = Deployment")
+			return r.reconcileDeploymentType(reqLogger, scaledObject)
+		}
+		errMsg = "Both ScaledObject.Spec.ScaleTargetRef and ScaledObject.Spec.JobTargetRef cannot be set at the same time"
+	} else if scaledObject.Spec.JobTargetRef != nil {
 		reqLogger.Info("Detected ScaleType = Job")
 		return r.reconcileJobType(reqLogger, scaledObject)
 	} else {
-		reqLogger.Info("Detected ScaleType = Deployment")
-		return r.reconcileDeploymentType(reqLogger, scaledObject)
+		errMsg = "ScaledObject.Spec.ScaleTargetRef or ScaledObject.Spec.JobTargetRef is not set"
 	}
+	if errMsg == "" {
+		errMsg = "Unknown error while detecting ScaleType"
+	}
+	err = fmt.Errorf(errMsg)
+	reqLogger.Error(err, "Failed to detect ScaleType")
+	return reconcile.Result{}, err
 }
 
 // reconcileJobType implemets reconciler logic for K8s Jobs based ScaleObject
