@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -207,6 +208,19 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 
 	for i, trigger := range scaledObject.Spec.Triggers {
 		authParams, podIdentity := h.parseDeploymentAuthRef(trigger.AuthenticationRef, scaledObject, deployment)
+
+		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+			serviceAccountName := deployment.Spec.Template.Spec.ServiceAccountName
+			serviceAccount := &v1.ServiceAccount{}
+			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: scaledObject.GetNamespace()}, serviceAccount)
+			if err != nil {
+				return scalers, nil, fmt.Errorf("error getting deployment: %s", err)
+			}
+			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+			authParams["awsRoleArn"] = deployment.Spec.Template.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		}
+
 		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
 			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
