@@ -44,10 +44,17 @@ type TriggerAuthenticationList struct {
 type PodIdentityProvider string
 
 const (
-	PodIdentityProviderNone   PodIdentityProvider = "none"
-	PodIdentityProviderAzure                      = "azure"
-	PodIdentityProviderGCP                        = "gcp"
-	PodIdentityProviderSpiffe                     = "spiffe"
+	PodIdentityProviderNone    PodIdentityProvider = "none"
+	PodIdentityProviderAzure                       = "azure"
+	PodIdentityProviderGCP                         = "gcp"
+	PodIdentityProviderSpiffe                      = "spiffe"
+	PodIdentityProviderAwsEKS                      = "aws-eks"
+	PodIdentityProviderAwsKiam                     = "aws-kiam"
+)
+
+const (
+	PodIdentityAnnotationEKS  = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationKiam = "iam.amazonaws.com/role"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
