@@ -29,9 +29,5 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
-      - name: Get the image tag
-        id: get_image_tag
-        run: echo ::set-output name=IMAGE_TAG::${GITHUB_REF#refs/tags/v}
-
       - name: Publish
-        run: make publish IMAGE_TAG=$VERSION
+        run: make VERSION=${GITHUB_REF#refs/tags/v} publish

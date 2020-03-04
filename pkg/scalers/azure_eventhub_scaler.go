@@ -23,6 +23,7 @@ const (
 	defaultEventHubConsumerGroup     = "$Default"
 	defaultEventHubConnectionSetting = "EventHub"
 	defaultStorageConnectionSetting  = "AzureWebJobsStorage"
+	defaultBlobContainer             = ""
 )
 
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
@@ -38,6 +39,7 @@ type EventHubMetadata struct {
 	eventHubConsumerGroup string
 	threshold             int64
 	storageConnection     string
+	blobContainer         string
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -103,6 +105,11 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	meta.eventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := metadata["consumerGroup"]; ok {
 		meta.eventHubConsumerGroup = val
+	}
+
+	meta.blobContainer = defaultBlobContainer
+	if val, ok := metadata["blobContainer"]; ok {
+		meta.blobContainer = val
 	}
 
 	return &meta, nil

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Shopify/sarama"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -25,10 +26,10 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	brokers      []string
-	group        string
-	topic        string
-	lagThreshold int64
+	bootstrapServers []string
+	group            string
+	topic            string
+	lagThreshold     int64
 
 	// auth
 	authMode kafkaAuthMode
@@ -49,6 +50,7 @@ const (
 	kafkaAuthModeForSaslScramSha256 kafkaAuthMode = "sasl_scram_sha256"
 	kafkaAuthModeForSaslScramSha512 kafkaAuthMode = "sasl_scram_sha512"
 	kafkaAuthModeForSaslSSL         kafkaAuthMode = "sasl_ssl"
+	kafkaAuthModeForSaslSSLPlain    kafkaAuthMode = "sasl_ssl_plain"
 )
 
 const (
@@ -81,10 +83,20 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if metadata["brokerList"] == "" {
-		return meta, errors.New("no brokerList given")
+	// brokerList marked as deprecated, bootstrapServers is the new one to use
+	if metadata["brokerList"] != "" && metadata["bootstrapServers"] != "" {
+		return meta, errors.New("cannot specify both bootstrapServers and brokerList (deprecated)")
 	}
-	meta.brokers = strings.Split(metadata["brokerList"], ",")
+	if metadata["brokerList"] == "" && metadata["bootstrapServers"] == "" {
+		return meta, errors.New("no bootstrapServers or brokerList (deprecated) given")
+	}
+	if metadata["bootstrapServers"] != "" {
+		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
+	}
+	if metadata["brokerList"] != "" {
+		kafkaLog.V(0).Info("WARNING: usage of brokerList is deprecated. use bootstrapServers instead.")
+		meta.bootstrapServers = strings.Split(metadata["brokerList"], ",")
+	}
 
 	if metadata["consumerGroup"] == "" {
 		return meta, errors.New("no consumer group given")
@@ -108,8 +120,10 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 
 	meta.authMode = kafkaAuthModeForNone
 	if val, ok := authParams["authMode"]; ok {
+		val = strings.TrimSpace(val)
 		mode := kafkaAuthMode(val)
-		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
+
+		if mode != kafkaAuthModeForNone && mode != kafkaAuthModeForSaslPlaintext && mode != kafkaAuthModeForSaslSSL && mode != kafkaAuthModeForSaslSSLPlain && mode != kafkaAuthModeForSaslScramSha256 && mode != kafkaAuthModeForSaslScramSha512 {
 			return meta, fmt.Errorf("err auth mode %s given", mode)
 		}
 
@@ -120,12 +134,12 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		if authParams["username"] == "" {
 			return meta, errors.New("no username given")
 		}
-		meta.username = authParams["username"]
+		meta.username = strings.TrimSpace(authParams["username"])
 
 		if authParams["password"] == "" {
 			return meta, errors.New("no password given")
 		}
-		meta.password = authParams["password"]
+		meta.password = strings.TrimSpace(authParams["password"])
 	}
 
 	if meta.authMode == kafkaAuthModeForSaslSSL {
@@ -177,10 +191,23 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 
-	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslSSL || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
+	if ok := metadata.authMode == kafkaAuthModeForSaslPlaintext || metadata.authMode == kafkaAuthModeForSaslSSL || metadata.authMode == kafkaAuthModeForSaslSSLPlain || metadata.authMode == kafkaAuthModeForSaslScramSha256 || metadata.authMode == kafkaAuthModeForSaslScramSha512; ok {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
 		config.Net.SASL.Password = metadata.password
+	}
+
+	if metadata.authMode == kafkaAuthModeForSaslSSLPlain {
+		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypePlaintext)
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ClientAuth:         0,
+		}
+
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config = tlsConfig
+		config.Net.DialTimeout = 10 * time.Second
 	}
 
 	if metadata.authMode == kafkaAuthModeForSaslSSL {
@@ -211,12 +238,17 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA512)
 	}
 
-	client, err := sarama.NewClient(metadata.brokers, config)
+	if metadata.authMode == kafkaAuthModeForSaslPlaintext {
+		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+		config.Net.TLS.Enable = true
+	}
+
+	client, err := sarama.NewClient(metadata.bootstrapServers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
 	}
 
-	admin, err := sarama.NewClusterAdmin(metadata.brokers, config)
+	admin, err := sarama.NewClusterAdmin(metadata.bootstrapServers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
 	}

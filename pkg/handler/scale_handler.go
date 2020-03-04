@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,9 +46,27 @@ func NewScaleHandler(client client.Client, reconcilerScheme *runtime.Scheme) *Sc
 func (h *ScaleHandler) updateScaledObjectStatus(scaledObject *kedav1alpha1.ScaledObject) error {
 	err := h.client.Status().Update(context.TODO(), scaledObject)
 	if err != nil {
+		if errors.IsConflict(err) {
+			// ScaledObject's metadata that are not necessary to restart the ScaleLoop were updated (eg. labels)
+			// we should try to fetch the scaledObject again and process the update once again
+			h.logger.V(1).Info("Trying to fetch updated version of ScaledObject to properly update it's Status")
+			updatedScaledObject := &kedav1alpha1.ScaledObject{}
+			err2 := h.client.Get(context.TODO(), types.NamespacedName{Name: scaledObject.Name, Namespace: scaledObject.Namespace}, updatedScaledObject)
+			if err2 != nil {
+				h.logger.Error(err2, "Error getting updated version of ScaledObject before updating it's Status")
+			} else {
+				scaledObject = updatedScaledObject
+				if h.client.Status().Update(context.TODO(), scaledObject) == nil {
+					h.logger.V(1).Info("ScaledObject's Status was properly updated on re-fetched ScaledObject")
+					return nil
+				}
+			}
+		}
+		// we got another type of error
 		h.logger.Error(err, "Error updating scaledObject status")
 		return err
 	}
+	h.logger.V(1).Info("ScaledObject's Status was properly updated")
 	return nil
 }
 
@@ -61,6 +80,9 @@ func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string)
 					for k, v := range configMap {
 						resolved[k] = v
 					}
+				} else if source.ConfigMapRef.Optional != nil && *source.ConfigMapRef.Optional {
+					// ignore error when ConfigMap is marked as optional
+					continue
 				} else {
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
 				}
@@ -69,6 +91,9 @@ func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string)
 					for k, v := range secretsMap {
 						resolved[k] = v
 					}
+				} else if source.SecretRef.Optional != nil && *source.SecretRef.Optional {
+					// ignore error when Secret is marked as optional
+					continue
 				} else {
 					return nil, fmt.Errorf("error reading secret ref %s on namespace %s: %s", source.SecretRef, namespace, err)
 				}
@@ -286,6 +311,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
+	case "aws-kinesis-stream":
+		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "rabbitmq":
@@ -306,6 +333,14 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+	case "azure-blob":
+		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "postgresql":
+		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
+	case "mysql":
+		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
+	case "azure-monitor":
+		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}

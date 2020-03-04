@@ -20,6 +20,7 @@ A clear and concise description of what the bug is.
 
 ## Specifications
 
-  - **Version:** *Please elaborate*
-  - **Platform:** *Please elaborate*
+  - **KEDA Version:** *Please elaborate*
+  - **Platform & Version:** *Please elaborate*
+  - **Kubernetes Version:** *Please elaborate*
   - **Scaler(s):** *Please elaborate*
