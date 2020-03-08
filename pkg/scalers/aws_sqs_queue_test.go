@@ -117,6 +117,17 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		},
 		false,
 		"with AWS Role from TriggerAuthentication"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1",
+		"podIdentity": "false"},
+		map[string]string{
+			"awsAccessKeyId":     "",
+			"awsSecretAccessKey": "",
+		},
+		false,
+		"with AWS Role assigned on KEDA operator itself"},
 }
 
 func TestSQSParseMetadata(t *testing.T) {

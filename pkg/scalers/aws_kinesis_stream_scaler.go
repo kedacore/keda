@@ -135,16 +135,24 @@ func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount() (int64, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(s.metadata.awsRegion),
 	}))
-	creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
 
-	if s.metadata.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
+	var kinesisClinent *kinesis.Kinesis
+	if s.metadata.awsAuthorization.podIdentity {
+		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if s.metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
+		}
+
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region:      aws.String(s.metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region: aws.String(s.metadata.awsRegion),
+		})
 	}
-
-	kinesisClinent := kinesis.New(sess, &aws.Config{
-		Region:      aws.String(s.metadata.awsRegion),
-		Credentials: creds,
-	})
 
 	output, err := kinesisClinent.DescribeStreamSummary(input)
 	if err != nil {

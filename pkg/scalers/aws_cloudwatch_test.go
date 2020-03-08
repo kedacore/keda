@@ -144,6 +144,21 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		},
 		false,
 		"with AWS Role from TriggerAuthentication"},
+	{map[string]string{
+		"namespace":            "AWS/SQS",
+		"dimensionName":        "QueueName",
+		"dimensionValue":       "keda",
+		"metricName":           "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":    "2",
+		"minMetricValue":       "0",
+		"metricCollectionTime": "300",
+		"metricStat":           "Average",
+		"metricStatPeriod":     "300",
+		"awsRegion":            "eu-west-1",
+		"podIdentity":          "false"},
+		map[string]string{},
+		false,
+		"with AWS Role assigned on KEDA operator itself"},
 }
 
 func TestCloudwatchParseMetadata(t *testing.T) {

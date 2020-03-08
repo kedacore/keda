@@ -152,16 +152,24 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(s.metadata.awsRegion),
 	}))
-	creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
 
-	if s.metadata.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
+	var sqsClient *sqs.SQS
+	if s.metadata.awsAuthorization.podIdentity {
+		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if s.metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
+		}
+
+		sqsClient = sqs.New(sess, &aws.Config{
+			Region:      aws.String(s.metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		sqsClient = sqs.New(sess, &aws.Config{
+			Region: aws.String(s.metadata.awsRegion),
+		})
 	}
-
-	sqsClient := sqs.New(sess, &aws.Config{
-		Region:      aws.String(s.metadata.awsRegion),
-		Credentials: creds,
-	})
 
 	output, err := sqsClient.GetQueueAttributes(input)
 	if err != nil {

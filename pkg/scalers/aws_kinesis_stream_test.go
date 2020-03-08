@@ -51,6 +51,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				podIdentity:        true,
 			},
 		},
 		isError: false,
@@ -86,6 +87,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				podIdentity:        true,
 			},
 		},
 		isError: false,
@@ -103,6 +105,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				podIdentity:        true,
 			},
 		},
 		isError: false,
@@ -143,11 +146,28 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsRoleArn: testAWSKinesisRoleArn,
+				awsRoleArn:  testAWSKinesisRoleArn,
+				podIdentity: true,
 			},
 		},
 		isError: false,
 		comment: "with AWS Role from TriggerAuthentication"},
+	{metadata: map[string]string{
+		"streamName":  testAWSKinesisStreamName,
+		"shardCount":  "2",
+		"awsRegion":   testAWSRegion,
+		"podIdentity": "false"},
+		authParams: map[string]string{},
+		expected: &awsKinesisStreamMetadata{
+			targetShardCount: 2,
+			streamName:       testAWSKinesisStreamName,
+			awsRegion:        testAWSRegion,
+			awsAuthorization: awsAuthorizationMetadata{
+				podIdentity: false,
+			},
+		},
+		isError: false,
+		comment: "with AWS Role assigned on KEDA operator itself"},
 }
 
 func TestKinesisParseMetadata(t *testing.T) {

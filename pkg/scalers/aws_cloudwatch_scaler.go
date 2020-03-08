@@ -199,16 +199,24 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(c.metadata.awsRegion),
 	}))
-	creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
 
-	if c.metadata.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, c.metadata.awsAuthorization.awsRoleArn)
+	var cloudwatchClient *cloudwatch.CloudWatch
+	if c.metadata.awsAuthorization.podIdentity {
+		creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if c.metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, c.metadata.awsAuthorization.awsRoleArn)
+		}
+
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region:      aws.String(c.metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region: aws.String(c.metadata.awsRegion),
+		})
 	}
-
-	cloudwatchClient := cloudwatch.New(sess, &aws.Config{
-		Region:      aws.String(c.metadata.awsRegion),
-		Credentials: creds,
-	})
 
 	input := cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
