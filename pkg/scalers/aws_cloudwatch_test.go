@@ -155,7 +155,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"metricStat":           "Average",
 		"metricStatPeriod":     "300",
 		"awsRegion":            "eu-west-1",
-		"podIdentity":          "false"},
+		"identityOwner":        "operator"},
 		map[string]string{},
 		false,
 		"with AWS Role assigned on KEDA operator itself"},

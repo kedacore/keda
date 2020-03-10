@@ -118,10 +118,10 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"with AWS Role from TriggerAuthentication"},
 	{map[string]string{
-		"queueURL":    testAWSSQSProperQueueURL,
-		"queueLength": "1",
-		"awsRegion":   "eu-west-1",
-		"podIdentity": "false"},
+		"queueURL":      testAWSSQSProperQueueURL,
+		"queueLength":   "1",
+		"awsRegion":     "eu-west-1",
+		"identityOwner": "operator"},
 		map[string]string{
 			"awsAccessKeyId":     "",
 			"awsSecretAccessKey": "",

@@ -153,10 +153,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		isError: false,
 		comment: "with AWS Role from TriggerAuthentication"},
 	{metadata: map[string]string{
-		"streamName":  testAWSKinesisStreamName,
-		"shardCount":  "2",
-		"awsRegion":   testAWSRegion,
-		"podIdentity": "false"},
+		"streamName":    testAWSKinesisStreamName,
+		"shardCount":    "2",
+		"awsRegion":     testAWSRegion,
+		"identityOwner": "operator"},
 		authParams: map[string]string{},
 		expected: &awsKinesisStreamMetadata{
 			targetShardCount: 2,
