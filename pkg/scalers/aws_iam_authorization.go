@@ -15,16 +15,16 @@ type awsAuthorizationMetadata struct {
 	awsSecretAccessKey string
 	awsSessionToken    string
 
-	podIdentity bool
+	podIdentityOwner bool
 }
 
 func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (awsAuthorizationMetadata, error) {
 	meta := awsAuthorizationMetadata{}
 
-	if metadata["podIdentity"] == "false" {
-		meta.podIdentity = false
-	} else {
-		meta.podIdentity = true
+	if metadata["identityOwner"] == "operator" {
+		meta.podIdentityOwner = false
+	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
+		meta.podIdentityOwner = true
 		if authParams["awsRoleArn"] != "" {
 			meta.awsRoleArn = authParams["awsRoleArn"]
 		} else if (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "" {

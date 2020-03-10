@@ -201,7 +201,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	}))
 
 	var cloudwatchClient *cloudwatch.CloudWatch
-	if c.metadata.awsAuthorization.podIdentity {
+	if c.metadata.awsAuthorization.podIdentityOwner {
 		creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
 
 		if c.metadata.awsAuthorization.awsRoleArn != "" {

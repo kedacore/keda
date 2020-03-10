@@ -51,7 +51,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentity:        true,
+				podIdentityOwner:   true,
 			},
 		},
 		isError: false,
@@ -87,7 +87,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentity:        true,
+				podIdentityOwner:   true,
 			},
 		},
 		isError: false,
@@ -105,7 +105,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentity:        true,
+				podIdentityOwner:   true,
 			},
 		},
 		isError: false,
@@ -146,8 +146,8 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsRoleArn:  testAWSKinesisRoleArn,
-				podIdentity: true,
+				awsRoleArn:       testAWSKinesisRoleArn,
+				podIdentityOwner: true,
 			},
 		},
 		isError: false,
@@ -163,7 +163,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				podIdentity: false,
+				podIdentityOwner: false,
 			},
 		},
 		isError: false,

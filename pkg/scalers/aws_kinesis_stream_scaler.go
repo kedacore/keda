@@ -137,7 +137,7 @@ func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount() (int64, error) {
 	}))
 
 	var kinesisClinent *kinesis.Kinesis
-	if s.metadata.awsAuthorization.podIdentity {
+	if s.metadata.awsAuthorization.podIdentityOwner {
 		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
 
 		if s.metadata.awsAuthorization.awsRoleArn != "" {
