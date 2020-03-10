@@ -43,3 +43,55 @@ None.
 - Correcting release process doc ([#602](https://github.com/kedacore/keda/issues/602))
 - Mentioning problem with checksum mismatch error ([#605](https://github.com/kedacore/keda/issues/605))
 - Local deployment minor fix ([#603](https://github.com/kedacore/keda/issues/603))
+
+## v1.1
+
+### New
+
+- Introduce new Huawei Cloud CloudEye scaler ([#478](https://github.com/kedacore/keda/issues/478))
+- Introduce new kinesis stream scaler ([#526](https://github.com/kedacore/keda/issues/526))
+- Introduce new Azure blob scaler ([#514](https://github.com/kedacore/keda/issues/514))
+
+### Improvements
+
+- Add kafka scaler sasl ([#486](https://github.com/kedacore/keda/issues/486))
+- Event Hub scalar expansion to work with Java and C# applications ([#517](https://github.com/kedacore/keda/issues/517))
+- Escape Prometheus querystring ([#521](https://github.com/kedacore/keda/issues/521))
+- Change how number of pending messages is calculated and add more error handling. ([#533](https://github.com/kedacore/keda/issues/533))
+- Service bus scaler pod identity fix ([#534](https://github.com/kedacore/keda/issues/534))
+- Eventhub scalar fix ([#537](https://github.com/kedacore/keda/issues/537))
+- Kafka scaler fix for SASL plaintext auth ([#544](https://github.com/kedacore/keda/issues/544))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+- ScaledObject Status clean up ([#466](https://github.com/kedacore/keda/issues/466))
+- Add default log level for operator ([#468](https://github.com/kedacore/keda/issues/468))
+- Ensure get the metrics that have been aggregated ([#509](https://github.com/kedacore/keda/issues/509))
+- Scale from zero when minReplicaCount is > 0 ([#524](https://github.com/kedacore/keda/issues/524))
+- Total running Jobs must not exceed maxScale - Running jobs ([#528](https://github.com/kedacore/keda/issues/528))
+- Check deploymentName definition in ScaledObject ([#532](https://github.com/kedacore/keda/issues/532))
+
+## v1.0
+
+### New
+
+- Many more scalers added
+- Scaler extensibility (run scalers in a different container and communicate with KEDA via gRPC)
+- TriggerAuthentication and Pod Identity for identity based auth that can be shared across deployments
+- Schedule jobs on events in addition scaling out deployments
+
+### Improvements
+
+- Additional tests and automation through GitHub Actions
+
+### Breaking Changes
+
+- RabbitMQ `host` property now must resolve from a secret ([#347](https://github.com/kedacore/keda/issues/347))
+
+### Other
+
+None.
