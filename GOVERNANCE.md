@@ -18,7 +18,7 @@ vote of the existing maintainers. A potential maintainer may be nominated by an
 existing maintainer. A vote is conducted in private between the current
 maintainers over the course of a one week voting period. At the end of the week,
 votes are counted and a pull request is made on the repo adding the new
-maintainer to the [CODEOWNERS](MAINTAINERS.md) file.
+maintainer to the [MAINTAINERS](MAINTAINERS.md) file.
 
 A maintainer may step down by submitting an
 [issue](https://github.com/kedacore/keda/issues/new) stating their intent.
@@ -26,3 +26,16 @@ A maintainer may step down by submitting an
 Changes to this governance document require a pull request with approval from a
 [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote) of
 the current maintainers.
+
+## Managing Projects
+
+New projects can be added to the organization after a successful
+[super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote)
+vote of the existing maintainers.
+
+Contributors who want to donate a scaler, sample or other contribution must
+create an issue explaining what the benefit would be for KEDA after which the
+maintainers will vote and require a [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote)
+of the current maintainers.
+
+When KEDA wants to archive an existing project, maintainers have to take vote where  a [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote) of the current maintainers agrees to archive the project with a clear indication of why it is being archived. We must not delete projects to avoid customer confusion.
