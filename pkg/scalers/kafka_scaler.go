@@ -130,7 +130,7 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		meta.authMode = mode
 	}
 
-	if meta.authMode != kafkaAuthModeForNone {
+	if meta.authMode != kafkaAuthModeForNone && meta.authMode != kafkaAuthModeForSaslSSL {
 		if authParams["username"] == "" {
 			return meta, errors.New("no username given")
 		}
