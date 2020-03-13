@@ -118,19 +118,19 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 		return -1, err
 	}
 
-	timeseries := *metricVals[0].Timeseries
-	if timeseries == nil {
+	timeseriesPtr := metricVals[0].Timeseries
+	if timeseriesPtr == nil || len(*timeseriesPtr) == 0 {
 		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return -1, err
 	}
 
-	data := *timeseries[0].Data
-	if data == nil {
+	dataPtr := (*timeseriesPtr)[0].Data
+	if dataPtr == nil || len(*dataPtr) == 0 {
 		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return -1, err
 	}
 
-	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, data)
+	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, *dataPtr)
 	if err != nil {
 		return -1, fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 	}
