@@ -12,15 +12,8 @@ resource definition.
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal 
 Pod Autoscaler, and has no external dependencies.
 
----
-<p align="center">
-In partnership with
-</p>
-<p align="center">
-<img src="images/partner-logos.png" width="500"/>
-</p>
-
----
+We are a Cloud Native Computing Foundation (CNCF) sandbox project.
+![CNCF Logo](./images/logo-cncf.svg)
   
 ## Getting started
 
