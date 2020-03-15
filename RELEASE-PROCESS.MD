@@ -19,7 +19,9 @@ The next version will thus be 1.2.0
 
 **2) Changelog**
 
-Provide a new section in `CHANGELOG.md` for the new version that is being released along with the new features, patches and deprecations it introduces.
+Provide a new section in `CHANGELOG.md` for the new version that is being released along with the new features, patches and deprecations it introduces. 
+
+It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
 
 **3) Deploy the new KEDA images to Docker Hub**
 
