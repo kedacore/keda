@@ -46,7 +46,7 @@ func NewMySQLScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 
 	conn, err := newMySQLConnection(meta)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing MySQL connectionString: %s", err)
+		return nil, fmt.Errorf("error establishing MySQL connection: %s", err)
 	}
 	return &mySQLScaler{
 		metadata:   meta,
@@ -145,7 +145,7 @@ func newMySQLConnection(meta *mySQLMetadata) (*sql.DB, error) {
 	}
 	err = db.Ping()
 	if err != nil {
-		mySQLLog.Error(err, fmt.Sprintf("Found error when pinging databse: %s", err))
+		mySQLLog.Error(err, fmt.Sprintf("Found error when pinging database: %s", err))
 		return nil, err
 	}
 	return db, nil
