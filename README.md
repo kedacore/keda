@@ -41,6 +41,10 @@ You can find several samples for various event sources [here](https://github.com
 
 You can find the latest releases [here](https://github.com/kedacore/keda/releases)
 
+## Contributing
+
+You can find Contributing guide [here](./CONTRIBUTING.md)
+
 ## Community
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
@@ -175,18 +179,3 @@ Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deplo
 Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
 
 Default value: `"0"`
-
-
-# Contributing
-
-This project welcomes contributions and suggestions. Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.microsoft.com.
-
-When you submit a pull request, a CLA-bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
