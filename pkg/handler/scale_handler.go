@@ -221,7 +221,7 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: scaledObject.GetNamespace()}, serviceAccount)
 			if err != nil {
 				closeScalers(scalersRes)
-				return []scalers.Scaler{}, nil, fmt.Errorf("error getting deployment: %s", err)
+				return []scalers.Scaler{}, nil, fmt.Errorf("error getting service account: %s", err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
