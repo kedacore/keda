@@ -186,24 +186,30 @@ func (h *ScaleHandler) resolveConfigValue(configKeyRef *corev1.ConfigMapKeySelec
 	return string(configMap.Data[keyName]), nil
 }
 
+func closeScalers(scalers []scalers.Scaler) {
+	for _, scaler := range scalers {
+		defer scaler.Close()
+	}
+}
+
 // GetDeploymentScalers returns list of Scalers and Deployment for the specified ScaledObject
 func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, *appsv1.Deployment, error) {
-	scalers := []scalers.Scaler{}
+	scalersRes := []scalers.Scaler{}
 
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	if deploymentName == "" {
-		return scalers, nil, fmt.Errorf("notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
+		return scalersRes, nil, fmt.Errorf("notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
 	}
 
 	deployment := &appsv1.Deployment{}
 	err := h.client.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: scaledObject.GetNamespace()}, deployment)
 	if err != nil {
-		return scalers, nil, fmt.Errorf("error getting deployment: %s", err)
+		return scalersRes, nil, fmt.Errorf("error getting deployment: %s", err)
 	}
 
 	resolvedEnv, err := h.resolveDeploymentEnv(deployment, scaledObject.Spec.ScaleTargetRef.ContainerName)
 	if err != nil {
-		return scalers, nil, fmt.Errorf("error resolving secrets for deployment: %s", err)
+		return scalersRes, nil, fmt.Errorf("error resolving secrets for deployment: %s", err)
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
@@ -214,7 +220,8 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 			serviceAccount := &v1.ServiceAccount{}
 			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: scaledObject.GetNamespace()}, serviceAccount)
 			if err != nil {
-				return scalers, nil, fmt.Errorf("error getting deployment: %s", err)
+				closeScalers(scalersRes)
+				return []scalers.Scaler{}, nil, fmt.Errorf("error getting deployment: %s", err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
@@ -223,34 +230,36 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 
 		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
-			return scalers, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
+			closeScalers(scalersRes)
+			return []scalers.Scaler{}, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
 
-		scalers = append(scalers, scaler)
+		scalersRes = append(scalersRes, scaler)
 	}
 
-	return scalers, deployment, nil
+	return scalersRes, deployment, nil
 }
 
 func (h *ScaleHandler) getJobScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, error) {
-	scalers := []scalers.Scaler{}
+	scalersRes := []scalers.Scaler{}
 
 	resolvedEnv, err := h.resolveJobEnv(scaledObject)
 	if err != nil {
-		return scalers, fmt.Errorf("error resolving secrets for job: %s", err)
+		return scalersRes, fmt.Errorf("error resolving secrets for job: %s", err)
 	}
 
 	for i, trigger := range scaledObject.Spec.Triggers {
 		authParams, podIdentity := h.parseJobAuthRef(trigger.AuthenticationRef, scaledObject)
 		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
-			return scalers, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
+			closeScalers(scalersRes)
+			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
 
-		scalers = append(scalers, scaler)
+		scalersRes = append(scalersRes, scaler)
 	}
 
-	return scalers, nil
+	return scalersRes, nil
 }
 
 func (h *ScaleHandler) resolveAuthSecret(name, namespace, key string) string {
