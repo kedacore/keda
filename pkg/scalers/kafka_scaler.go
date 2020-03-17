@@ -288,6 +288,10 @@ func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchRespons
 
 func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) int64 {
 	block := offsets.GetBlock(s.metadata.topic, partition)
+	if block == nil {
+		kafkaLog.Error(fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition), "")
+		return 0
+	}
 	consumerOffset := block.Offset
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
