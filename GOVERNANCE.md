@@ -33,7 +33,7 @@ New projects can be added to the organization after a successful
 [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote)
 vote of the existing maintainers.
 
-Contributors who want to donate a scaler, sample or other contribution must
+Contributors who want to donate an add-on scaler, sample or donate a repo must
 create an issue explaining what the benefit would be for KEDA after which the
 maintainers will vote and require a [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote)
 of the current maintainers.
