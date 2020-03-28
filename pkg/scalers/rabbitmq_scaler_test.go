@@ -38,8 +38,8 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10", "host": host}, true, map[string]string{}},
 	// host defined in authParams
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
-	// properly formed metadata with countUnacked
-	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "countUnacked": "true"}, false, map[string]string{}},
+	// properly formed metadata with includeUnacked
+	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
@@ -83,10 +83,10 @@ func TestGetQueueInfo(t *testing.T) {
 		resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s/%s", apiStub.URL, "myhost")}
 
 		metadata := map[string]string{
-			"queueLength":  "10",
-			"queueName":    "evaluate_trials",
-			"apiHost":      apiHost,
-			"countUnacked": "true",
+			"queueLength":    "10",
+			"queueName":      "evaluate_trials",
+			"apiHost":        apiHost,
+			"includeUnacked": "true",
 		}
 
 		s, err := NewRabbitMQScaler(resolvedEnv, metadata, map[string]string{})

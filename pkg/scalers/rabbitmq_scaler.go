@@ -22,8 +22,8 @@ import (
 const (
 	rabbitQueueLengthMetricName = "queueLength"
 	rabbitMetricType            = "External"
-	rabbitCountUnacked          = "countUnacked"
-	defaultCountUnacked         = false
+	rabbitIncludeUnacked        = "includeUnacked"
+	defaultIncludeUnacked       = false
 )
 
 type rabbitMQScaler struct {
@@ -33,11 +33,11 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName    string
-	host         string // connection string for AMQP protocol
-	apiHost      string // connection string for management API requests
-	queueLength  int
-	countUnacked bool // if true uses HTTP API and requires apiHost, if false uses AMQP and requires host
+	queueName      string
+	host           string // connection string for AMQP protocol
+	apiHost        string // connection string for management API requests
+	queueLength    int
+	includeUnacked bool // if true uses HTTP API and requires apiHost, if false uses AMQP and requires host
 }
 
 type queueInfo struct {
@@ -55,7 +55,7 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
 
-	if meta.countUnacked {
+	if meta.includeUnacked {
 		return &rabbitMQScaler{metadata: meta}, nil
 	} else {
 		conn, ch, err := getConnectionAndChannel(meta.host)
@@ -74,16 +74,16 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
-	meta.countUnacked = defaultCountUnacked
-	if val, ok := metadata[rabbitCountUnacked]; ok {
-		countUnacked, err := strconv.ParseBool(val)
+	meta.includeUnacked = defaultIncludeUnacked
+	if val, ok := metadata[rabbitIncludeUnacked]; ok {
+		includeUnacked, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("countUnacked parsing error %s", err.Error())
+			return nil, fmt.Errorf("includeUnacked parsing error %s", err.Error())
 		}
-		meta.countUnacked = countUnacked
+		meta.includeUnacked = includeUnacked
 	}
 
-	if meta.countUnacked {
+	if meta.includeUnacked {
 		if val, ok := authParams["apiHost"]; ok {
 			meta.apiHost = val
 		} else if val, ok := metadata["apiHost"]; ok {
@@ -149,7 +149,7 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close() error {
-	if s.metadata.countUnacked == false {
+	if s.connection != nil {
 		err := s.connection.Close()
 		if err != nil {
 			rabbitmqLog.Error(err, "Error closing rabbitmq connection")
@@ -170,7 +170,7 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *rabbitMQScaler) getQueueMessages() (int, error) {
-	if s.metadata.countUnacked {
+	if s.metadata.includeUnacked {
 		info, err := s.getQueueInfoViaHttp()
 		if err != nil {
 			return -1, err
