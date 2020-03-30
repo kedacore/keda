@@ -216,6 +216,13 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 		return reconcile.Result{}, err
 	}
 
+	// add deploymentName label if needed
+	err = r.checkScaledObjectLabel(logger, scaledObject)
+	if err != nil {
+		logger.Error(err, "Failed to update ScaledObject with deploymentName label")
+		return reconcile.Result{}, err
+	}
+
 	hpaName := getHpaName(deploymentName)
 	hpaNamespace := scaledObject.Namespace
 
@@ -298,6 +305,22 @@ func checkDeploymentTypeScaledObject(scaledObject *kedav1alpha1.ScaledObject) (s
 		err = fmt.Errorf(errMsg)
 	}
 	return deploymentName, err
+}
+
+func (r *ReconcileScaledObject) checkScaledObjectLabel(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+
+	if scaledObject.Labels == nil {
+		scaledObject.Labels = map[string]string{"deploymentName": scaledObject.Spec.ScaleTargetRef.DeploymentName}
+	} else {
+		value, found := scaledObject.Labels["deploymentName"]
+		if found && value == scaledObject.Spec.ScaleTargetRef.DeploymentName {
+			return nil
+		}
+		scaledObject.Labels["deploymentName"] = scaledObject.Spec.ScaleTargetRef.DeploymentName
+	}
+
+	logger.V(1).Info("Adding deploymentName label on ScaledObject")
+	return r.client.Update(context.TODO(), scaledObject)
 }
 
 // startScaleLoop starts ScaleLoop handler for the respective ScaledObject
