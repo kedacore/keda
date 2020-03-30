@@ -353,8 +353,16 @@ func (r *ReconcileScaledObject) scaledObjectGenerationChanged(logger logr.Logger
 func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
+
+	// label can have max 63 chars
+	labelName := ""
+	if len(getHpaName(deploymentName)) > 63 {
+		labelName = getHpaName(deploymentName)[:63]
+	} else {
+		labelName = getHpaName(deploymentName)
+	}
 	labels := map[string]string{
-		"app.kubernetes.io/name":       getHpaName(deploymentName),
+		"app.kubernetes.io/name":       labelName,
 		"app.kubernetes.io/version":    version.Version,
 		"app.kubernetes.io/part-of":    scaledObject.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",
