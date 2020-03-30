@@ -22,6 +22,8 @@ const (
 	defaultRedisPassword    = ""
 	defaultDbIdx            = 0
 	defaultEnableTLS        = false
+	defaultHost             = ""
+	defaultPort             = ""
 )
 
 type redisScaler struct {
@@ -33,6 +35,8 @@ type redisMetadata struct {
 	listName         string
 	address          string
 	password         string
+	host             string
+	port             string
 	databaseIndex    int
 	enableTLS        bool
 }
@@ -70,14 +74,38 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 	}
 
 	address := defaultRedisAddress
+	host := defaultHost
+	port := defaultPort
 	if val, ok := metadata["address"]; ok && val != "" {
 		address = val
+	} else {
+		if val, ok := metadata["host"]; ok && val != "" {
+			host = val
+		} else {
+			return nil, fmt.Errorf("no address or host given. address should be in the format of host:port or you should set the host/port values")
+		}
+		if val, ok := metadata["port"]; ok && val != "" {
+			port = val
+		} else {
+			return nil, fmt.Errorf("no address or port given. address should be in the format of host:port or you should set the host/port values")
+		}
 	}
 
 	if val, ok := resolvedEnv[address]; ok {
 		meta.address = val
 	} else {
-		return nil, fmt.Errorf("no address given. Address should be in the format of host:port")
+		if val, ok := resolvedEnv[host]; ok {
+			meta.host = val
+		} else {
+			return nil, fmt.Errorf("no address given or host given. Address should be in the format of host:port or you should provide both host and port")
+		}
+
+		if val, ok := resolvedEnv[port]; ok {
+			meta.port = val
+		} else {
+			return nil, fmt.Errorf("no address or port given. Address should be in the format of host:port or you should provide both host and port")
+		}
+		meta.address = fmt.Sprintf("%s:%s", meta.host, meta.port)
 	}
 
 	meta.password = defaultRedisPassword
