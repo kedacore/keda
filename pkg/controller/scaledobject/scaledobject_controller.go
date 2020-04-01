@@ -216,6 +216,13 @@ func (r *ReconcileScaledObject) reconcileDeploymentType(logger logr.Logger, scal
 		return reconcile.Result{}, err
 	}
 
+	// add deploymentName label if needed
+	err = r.checkScaledObjectLabel(logger, scaledObject)
+	if err != nil {
+		logger.Error(err, "Failed to update ScaledObject with deploymentName label")
+		return reconcile.Result{}, err
+	}
+
 	hpaName := getHpaName(deploymentName)
 	hpaNamespace := scaledObject.Namespace
 
@@ -300,6 +307,22 @@ func checkDeploymentTypeScaledObject(scaledObject *kedav1alpha1.ScaledObject) (s
 	return deploymentName, err
 }
 
+func (r *ReconcileScaledObject) checkScaledObjectLabel(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+
+	if scaledObject.Labels == nil {
+		scaledObject.Labels = map[string]string{"deploymentName": scaledObject.Spec.ScaleTargetRef.DeploymentName}
+	} else {
+		value, found := scaledObject.Labels["deploymentName"]
+		if found && value == scaledObject.Spec.ScaleTargetRef.DeploymentName {
+			return nil
+		}
+		scaledObject.Labels["deploymentName"] = scaledObject.Spec.ScaleTargetRef.DeploymentName
+	}
+
+	logger.V(1).Info("Adding deploymentName label on ScaledObject")
+	return r.client.Update(context.TODO(), scaledObject)
+}
+
 // startScaleLoop starts ScaleLoop handler for the respective ScaledObject
 func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 
@@ -353,8 +376,16 @@ func (r *ReconcileScaledObject) scaledObjectGenerationChanged(logger logr.Logger
 func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject, deploymentName)
+
+	// label can have max 63 chars
+	labelName := ""
+	if len(getHpaName(deploymentName)) > 63 {
+		labelName = getHpaName(deploymentName)[:63]
+	} else {
+		labelName = getHpaName(deploymentName)
+	}
 	labels := map[string]string{
-		"app.kubernetes.io/name":       getHpaName(deploymentName),
+		"app.kubernetes.io/name":       labelName,
 		"app.kubernetes.io/version":    version.Version,
 		"app.kubernetes.io/part-of":    scaledObject.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",

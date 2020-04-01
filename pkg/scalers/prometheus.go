@@ -101,8 +101,8 @@ func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 		prometheusLog.Error(err, "error executing prometheus query")
 		return false, err
 	}
-
-	return val > 0, nil
+	
+	return val > -1, nil
 }
 
 func (s *prometheusScaler) Close() error {
@@ -144,9 +144,9 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 
 	var v float64 = -1
 
-	// only allow for single element result sets
+	// allow for zero element or single element result sets
 	if len(result.Data.Result) == 0 {
-		return -1, fmt.Errorf("Prometheus query %s returned empty", s.metadata.query)
+		return 0, nil
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("Prometheus query %s returned multiple elements", s.metadata.query)
 	}
