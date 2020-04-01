@@ -107,7 +107,7 @@ build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 .PHONY: generate-api
 generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
-	$(GO_BUILD_VARS) operator-sdk generate openapi
+	$(GO_BUILD_VARS) operator-sdk generate crds
 
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
