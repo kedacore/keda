@@ -13,8 +13,8 @@ If you have a question about KEDA or how best to contribute, the [#KEDA](https:/
 One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/master/pkg/scalers).  When writing a scaler, please consider:
 
 1. Is this an event source that many others will access from Kubernetes? If not, potentially consider [creating an external scaler](https://github.com/kedacore/keda/blob/master/pkg/scalers/externalscaler/externalscaler.proto).
-1. Include tests
-1. Include documentation and examples for [keda.sh](https://keda.sh) via [https://github.com/kedacore/keda-docs](https://github.com/kedacore/keda-docs)
+1. Provide tests
+1. Provide [documentation and examples](https://github.com/kedacore/keda-docs#adding-scaler-documentation) for [keda.sh](https://keda.sh)
 
 Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW-SCALER.md).
 
