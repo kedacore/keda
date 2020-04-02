@@ -28,7 +28,7 @@ For any contribution you make that impacts the behavior or experience of KEDA, p
 
 ## Developer Certificate of Origin: Signing your work
 
-**Every commit needs to be signed.**
+### Every commit needs to be signed
 
 The Developer Certificate of Origin (DCO) is a lightweight way for contributors to certify that they wrote or otherwise have the right to submit the code they are contributing to the project. Here is the full text of the DCO, reformatted for readability:
 ```
@@ -56,3 +56,15 @@ $ git commit -s -m 'This is my commit message'
 ```
 
 Each Pull Request is checked  whether or not commits in a Pull Request do contain a valid Signed-off-by line.
+
+### I didn't sign my commit, now what?!
+
+No worries - You can easily replay your changes, sign them and force push them!
+
+```
+git checkout <branch-name>
+git reset $(git merge-base master <branch-name>)
+git add -A
+git commit -sm "one commit on <branch-name>"
+git push --force
+```
