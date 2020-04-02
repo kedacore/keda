@@ -6,6 +6,7 @@ import (
 
 var testRedisResolvedEnv = map[string]string{
 	"REDIS_HOST":     "none",
+	"REDIS_PORT":     "6379",
 	"REDIS_PASSWORD": "none",
 }
 
@@ -20,6 +21,12 @@ var testRedisMetadata = []parseRedisMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// properly formed listName
 	{map[string]string{"listName": "mylist", "listLength": "10", "address": "REDIS_HOST", "password": "REDIS_PASSWORD"}, false, map[string]string{}},
+	// properly formed hostPort
+	{map[string]string{"listName": "mylist", "listLength": "10", "host": "REDIS_HOST", "port": "REDIS_PORT", "password": "REDIS_PASSWORD"}, false, map[string]string{}},
+	// properly formed hostPort
+	{map[string]string{"listName": "mylist", "listLength": "10", "address": "REDIS_HOST", "host": "REDIS_HOST", "port": "REDIS_PORT", "password": "REDIS_PASSWORD"}, false, map[string]string{}},
+	// improperly formed hostPort
+	{map[string]string{"listName": "mylist", "listLength": "10", "host": "REDIS_HOST", "password": "REDIS_PASSWORD"}, true, map[string]string{}},
 	// properly formed listName, empty address
 	{map[string]string{"listName": "mylist", "listLength": "10", "address": "", "password": ""}, true, map[string]string{}},
 	// improperly formed listLength
