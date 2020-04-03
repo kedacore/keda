@@ -28,6 +28,7 @@ rules:
   - deployments
   - deployments/finalizers
   - replicasets
+  - statefulsets
   verbs:
   - '*'
 - apiGroups:
@@ -44,7 +45,7 @@ rules:
   - get
   - create
 - apiGroups:
-  - keda.k8s.io
+  - keda.sh
   resources:
   - '*'
   verbs:
@@ -55,3 +56,9 @@ rules:
   - horizontalpodautoscalers
   verbs:
    - '*'
+- apiGroups:
+  - "*"
+  resources:
+  - "*/scale"
+  verbs:
+  - "*"
