@@ -11,11 +11,9 @@ type TriggerAuthenticationSpec struct {
 	PodIdentity AuthPodIdentity `json:"podIdentity"`
 
 	// +optional
-	// +listType
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef"`
 
 	// +optional
-	// +listType
 	Env []AuthEnvironment `json:"env"`
 }
 
