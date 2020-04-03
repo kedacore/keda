@@ -1,0 +1,6 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: example-scaledjob
+spec:
+  # Add fields here
