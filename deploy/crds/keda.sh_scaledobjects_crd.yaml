@@ -1,0 +1,123 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: scaledobjects.keda.sh
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.scaleTargetKind
+    name: ScaleTargetKind
+    type: string
+  - JSONPath: .spec.scaleTargetRef.name
+    name: ScaleTargetName
+    type: string
+  - JSONPath: .spec.triggers[*].type
+    name: Triggers
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: keda.sh
+  names:
+    kind: ScaledObject
+    listKind: ScaledObjectList
+    plural: scaledobjects
+    singular: scaledobject
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ScaledObject is a specification for a ScaledObject resource
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ScaledObjectSpec is the spec for a ScaledObject resource
+          properties:
+            cooldownPeriod:
+              format: int32
+              type: integer
+            maxReplicaCount:
+              format: int32
+              type: integer
+            minReplicaCount:
+              format: int32
+              type: integer
+            pollingInterval:
+              format: int32
+              type: integer
+            scaleTargetRef:
+              description: ScaleTarget holds the a reference to the scale target Object
+              properties:
+                apiVersion:
+                  type: string
+                containerName:
+                  type: string
+                kind:
+                  type: string
+                name:
+                  type: string
+              required:
+              - name
+              type: object
+            triggers:
+              items:
+                description: ScaleTriggers reference the scaler that will be used
+                properties:
+                  authenticationRef:
+                    description: ScaledObjectAuthRef points to the TriggerAuthentication
+                      object that is used to authenticate the scaler with the environment
+                    properties:
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  metadata:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  name:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - metadata
+                - type
+                type: object
+              type: array
+          required:
+          - scaleTargetRef
+          - triggers
+          type: object
+        status:
+          description: ScaledObjectStatus is the status for a ScaledObject resource
+          properties:
+            externalMetricNames:
+              items:
+                type: string
+              type: array
+            lastActiveTime:
+              format: date-time
+              type: string
+            scaleTargetKind:
+              type: string
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
