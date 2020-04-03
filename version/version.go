@@ -1,6 +1,6 @@
 package version
 
 var (
-	Version   = "1.4.1"
+	Version   = "2.0.0-alpha1"
 	GitCommit string
 )

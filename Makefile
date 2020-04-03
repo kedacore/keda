@@ -1,7 +1,7 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= master
+VERSION		   ?= 2.0.0-alpha1
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
