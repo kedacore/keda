@@ -11,11 +11,9 @@ type TriggerAuthenticationSpec struct {
 	PodIdentity AuthPodIdentity `json:"podIdentity"`
 
 	// +optional
-	// +listType
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef"`
 
 	// +optional
-	// +listType
 	Env []AuthEnvironment `json:"env"`
 
 	// +optional
@@ -91,8 +89,6 @@ type AuthEnvironment struct {
 type HashiCorpVault struct {
 	Address        string              `json:"address"`
 	Authentication VaultAuthentication `json:"authentication"`
-
-	// +listType
 	Secrets []VaultSecret `json:"secrets"`
 
 	// +optional
