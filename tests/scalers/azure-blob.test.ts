@@ -64,7 +64,7 @@ test.after.always('clean up azure-blob deployment', t => {
     const resources = [
         'secret/test-secrets',
         'deployment.apps/test-deployment',
-        'scaledobject.keda.k8s.io/test-scaledobject'
+        'scaledobject.keda.sh/test-scaledobject'
     ]
 
     for (const resource of resources) {
@@ -124,15 +124,13 @@ spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
-  labels:
-    deploymentName: test-deployment
 spec:
   scaleTargetRef:
-    deploymentName: test-deployment
+    name: test-deployment
   pollingInterval: 20
   maxReplicaCount: 2
   cooldownPeriod: 10
