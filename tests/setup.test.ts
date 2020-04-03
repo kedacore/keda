@@ -43,11 +43,11 @@ test.serial('Deploy Keda', t => {
     }
   }
 
-  if (sh.exec('kubectl apply -f ../deploy/crds/keda.k8s.io_scaledobjects_crd.yaml').code !== 0) {
+  if (sh.exec('kubectl apply -f ../deploy/crds/keda.sh_scaledobjects_crd.yaml').code !== 0) {
     t.fail('error deploying keda. ' + result)
   }
   if (
-    sh.exec('kubectl apply -f ../deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml').code !==
+    sh.exec('kubectl apply -f ../deploy/crds/keda.sh_triggerauthentications_crd.yaml').code !==
     0
   ) {
     t.fail('error deploying keda. ' + result)
