@@ -1,3 +1,8 @@
+<p style="font-size: 30px" align="center"><b>This branch contains unstable KEDA v2.0.0-alpha1, currently under development</b></p>
+
+
+
+
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
