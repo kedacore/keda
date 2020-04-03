@@ -1,18 +1,7 @@
 package v1alpha1
 
 import (
-	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-// ScaledObjectScaleType distinguish between Deployment based and K8s Jobs
-type ScaledObjectScaleType string
-
-const (
-	// ScaleTypeDeployment specifies Deployment based ScaleObject
-	ScaleTypeDeployment ScaledObjectScaleType = "deployment"
-	// ScaleTypeJob specifies K8s Jobs based ScaleObject
-	ScaleTypeJob ScaledObjectScaleType = "job"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -21,7 +10,8 @@ const (
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=scaledobjects,scope=Namespaced
-// +kubebuilder:printcolumn:name="Deployment",type="string",JSONPath=".spec.scaleTargetRef.deploymentName"
+// +kubebuilder:printcolumn:name="ScaleTargetKind",type="string",JSONPath=".status.scaleTargetKind"
+// +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type ScaledObject struct {
@@ -36,12 +26,7 @@ type ScaledObject struct {
 // ScaledObjectSpec is the spec for a ScaledObject resource
 // +k8s:openapi-gen=true
 type ScaledObjectSpec struct {
-	// +optional
-	ScaleType ScaledObjectScaleType `json:"scaleType,omitempty"`
-	// +optional
-	ScaleTargetRef *ObjectReference `json:"scaleTargetRef,omitempty"`
-	// +optional
-	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef,omitempty"`
+	ScaleTargetRef *ScaleTarget `json:"scaleTargetRef"`
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
@@ -50,18 +35,22 @@ type ScaledObjectSpec struct {
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
-	// +listType
 	Triggers []ScaleTriggers `json:"triggers"`
 }
 
-// ObjectReference holds the a reference to the deployment this
-// ScaledObject applies
+//ScaleTarget holds the a reference to the scale target Object
 // +k8s:openapi-gen=true
-type ObjectReference struct {
-	DeploymentName string `json:"deploymentName"`
+type ScaleTarget struct {
+	Name string `json:"name"`
+	// +optional
+	ApiVersion  string `json:"apiVersion,omitempty"`
+	// +optional
+	Kind string `json:"kind,omitempty"`
+
 	// +optional
 	ContainerName string `json:"containerName,omitempty"`
 }
+
 
 // ScaleTriggers reference the scaler that will be used
 // +k8s:openapi-gen=true
@@ -78,10 +67,11 @@ type ScaleTriggers struct {
 // +k8s:openapi-gen=true
 // +optional
 type ScaledObjectStatus struct {
+	// +optionl
+	ScaleTargetKind	string `json:"scaleTargetKind,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
-	// +listType
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
 }
 
