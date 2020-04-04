@@ -1,6 +1,6 @@
 module github.com/kedacore/keda
 
-go 1.13.1
+go 1.13
 
 // Required deps for operator-sdk v0.11.0 <-> kubernetes-incubator/custom-metrics-apiserver on kubernetes-1.14.1
 replace (
@@ -36,9 +36,9 @@ replace github.com/operator-framework/operator-sdk => github.com/operator-framew
 
 require (
 	cloud.google.com/go v0.46.3
-	github.com/Azure/azure-amqp-common-go v1.1.4
 	github.com/Azure/azure-amqp-common-go/v2 v2.1.0
 	github.com/Azure/azure-event-hubs-go v1.3.1
+	github.com/Azure/azure-sdk-for-go v30.1.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.9.1
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20190416192124-a17745f1cdbf
@@ -58,7 +58,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/operator-framework/operator-sdk v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.8.1
-	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.4.0
@@ -70,7 +69,7 @@ require (
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apimachinery v0.0.0-20191014065749-fb3eea214746
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/component-base v0.0.0-20191014071552-ca590c444ad5
+	k8s.io/component-base v0.0.0-20191014071552-ca590c444ad5 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c
 	k8s.io/metrics v0.0.0-00010101000000-000000000000

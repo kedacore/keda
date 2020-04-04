@@ -24,7 +24,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 
 ## Deploying KEDA
 
-There are many ways to [deploy KEDA including Helm, YAML files, and the Azure Functions Core Tools](https://keda.sh/deploy/).
+There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/deploy/).
 
 ## Documentation
 
