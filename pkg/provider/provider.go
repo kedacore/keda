@@ -83,14 +83,25 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	}
 
 	for _, scaler := range scalers {
-		metrics, err := scaler.GetMetrics(context.TODO(), info.Metric, metricSelector)
-		if err != nil {
-			logger.Error(err, "error getting metric for scaler", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "Scaler", scaler)
-		} else {
-			matchingMetrics = append(matchingMetrics, metrics...)
+		metricSpecs := scaler.GetMetricSpecForScaling()
+
+		for _, metricSpec := range metricSpecs {
+			// Filter only the desired metric
+			if metricSpec.External.MetricName == info.Metric {
+				metrics, err := scaler.GetMetrics(context.TODO(), info.Metric, metricSelector)
+				if err != nil {
+					logger.Error(err, "error getting metric for scaler", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "Scaler", scaler)
+				} else {
+					matchingMetrics = append(matchingMetrics, metrics...)
+				}
+			}
 		}
 
 		scaler.Close()
+	}
+
+	if len(matchingMetrics) <= 0 {
+		return nil, fmt.Errorf("No matching metrics found")
 	}
 
 	return &external_metrics.ExternalMetricValueList{
