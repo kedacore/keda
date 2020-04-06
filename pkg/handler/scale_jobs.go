@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	version "github.com/kedacore/keda/version"
@@ -41,11 +41,12 @@ func (h *ScaleHandler) scaleJobs(scaledObject *kedav1alpha1.ScaledObject, isActi
 }
 
 func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scaleTo int64, maxScale int64) {
-	scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
-	if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
-		scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
-	}
-	scaledObject.Spec.JobTargetRef.Template.Labels["scaledobject"] = scaledObject.GetName()
+	// FIXME use ScaledJob
+	// scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
+	// if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
+	// 	scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
+	// }
+	// scaledObject.Spec.JobTargetRef.Template.Labels["scaledobject"] = scaledObject.GetName()
 
 	h.logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 
@@ -68,7 +69,8 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 					"scaledobject":                 scaledObject.GetName(),
 				},
 			},
-			Spec: *scaledObject.Spec.JobTargetRef.DeepCopy(),
+			// FIXME use ScaledJob
+			//Spec: *scaledObject.Spec.JobTargetRef.DeepCopy(),
 		}
 
 		// Job doesn't allow RestartPolicyAlways, it seems like this value is set by the client as a default one,
@@ -96,13 +98,15 @@ func (h *ScaleHandler) createJobs(scaledObject *kedav1alpha1.ScaledObject, scale
 
 func (h *ScaleHandler) resolveJobEnv(scaledObject *kedav1alpha1.ScaledObject) (map[string]string, error) {
 
-	if len(scaledObject.Spec.JobTargetRef.Template.Spec.Containers) < 1 {
-		return nil, fmt.Errorf("Scaled Object (%s) doesn't have containers", scaledObject.GetName())
-	}
+	// FIXME use ScaledJob
+	// if len(scaledObject.Spec.JobTargetRef.Template.Spec.Containers) < 1 {
+	// 	return nil, fmt.Errorf("Scaled Object (%s) doesn't have containers", scaledObject.GetName())
+	// }
 
-	container := scaledObject.Spec.JobTargetRef.Template.Spec.Containers[0]
+	// container := scaledObject.Spec.JobTargetRef.Template.Spec.Containers[0]
 
-	return h.resolveEnv(&container, scaledObject.GetNamespace())
+	// return h.resolveEnv(&container, scaledObject.GetNamespace())
+	return nil, nil
 }
 
 func (h *ScaleHandler) parseJobAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject) (map[string]string, string) {

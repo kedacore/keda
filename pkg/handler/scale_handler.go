@@ -8,12 +8,11 @@ import (
 	"github.com/kedacore/keda/pkg/scalers"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -22,6 +21,7 @@ import (
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler struct {
 	client           client.Client
+	scaleClient      scale.ScalesGetter // TODO pointer
 	logger           logr.Logger
 	reconcilerScheme *runtime.Scheme
 }
@@ -29,14 +29,15 @@ type ScaleHandler struct {
 const (
 	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
 	defaultPollingInterval = 30
-	// Default cooldown period for a deployment if no cooldownPeriod is defined on the scaledObject
+	// Default cooldown period for a ScaleTarget if no cooldownPeriod is defined on the scaledObject
 	defaultCooldownPeriod = 5 * 60 // 5 minutes
 )
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, reconcilerScheme *runtime.Scheme) *ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme) *ScaleHandler {
 	handler := &ScaleHandler{
 		client:           client,
+		scaleClient:      scaleClient,
 		logger:           logf.Log.WithName("scalehandler"),
 		reconcilerScheme: reconcilerScheme,
 	}
@@ -68,6 +69,31 @@ func (h *ScaleHandler) updateScaledObjectStatus(scaledObject *kedav1alpha1.Scale
 	}
 	h.logger.V(1).Info("ScaledObject's Status was properly updated")
 	return nil
+}
+
+func (h *ScaleHandler) resolveContainerEnv(podSpec *corev1.PodSpec, containerName string, namespace string) (map[string]string, error) {
+
+	if len(podSpec.Containers) < 1 {
+		return nil, fmt.Errorf("Target object doesn't have containers")
+	}
+
+	var container corev1.Container
+	if containerName != "" {
+		for _, c := range podSpec.Containers {
+			if c.Name == containerName {
+				container = c
+				break
+			}
+		}
+
+		if &container == nil {
+			return nil, fmt.Errorf("Couldn't find container with name %s on Target object", containerName)
+		}
+	} else {
+		container = podSpec.Containers[0]
+	}
+
+	return h.resolveEnv(&container, namespace)
 }
 
 func (h *ScaleHandler) resolveEnv(container *corev1.Container, namespace string) (map[string]string, error) {
@@ -190,54 +216,6 @@ func closeScalers(scalers []scalers.Scaler) {
 	for _, scaler := range scalers {
 		defer scaler.Close()
 	}
-}
-
-// GetDeploymentScalers returns list of Scalers and Deployment for the specified ScaledObject
-func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, *appsv1.Deployment, error) {
-	scalersRes := []scalers.Scaler{}
-
-	deploymentName := scaledObject.Spec.ScaleTargetRef.DeploymentName
-	if deploymentName == "" {
-		return scalersRes, nil, fmt.Errorf("notified about ScaledObject with missing deployment name: %s", scaledObject.GetName())
-	}
-
-	deployment := &appsv1.Deployment{}
-	err := h.client.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: scaledObject.GetNamespace()}, deployment)
-	if err != nil {
-		return scalersRes, nil, fmt.Errorf("error getting deployment: %s", err)
-	}
-
-	resolvedEnv, err := h.resolveDeploymentEnv(deployment, scaledObject.Spec.ScaleTargetRef.ContainerName)
-	if err != nil {
-		return scalersRes, nil, fmt.Errorf("error resolving secrets for deployment: %s", err)
-	}
-
-	for i, trigger := range scaledObject.Spec.Triggers {
-		authParams, podIdentity := h.parseDeploymentAuthRef(trigger.AuthenticationRef, scaledObject, deployment)
-
-		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := deployment.Spec.Template.Spec.ServiceAccountName
-			serviceAccount := &v1.ServiceAccount{}
-			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: scaledObject.GetNamespace()}, serviceAccount)
-			if err != nil {
-				closeScalers(scalersRes)
-				return []scalers.Scaler{}, nil, fmt.Errorf("error getting service account: %s", err)
-			}
-			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
-			authParams["awsRoleArn"] = deployment.Spec.Template.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-		}
-
-		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
-		if err != nil {
-			closeScalers(scalersRes)
-			return []scalers.Scaler{}, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
-		}
-
-		scalersRes = append(scalersRes, scaler)
-	}
-
-	return scalersRes, deployment, nil
 }
 
 func (h *ScaleHandler) getJobScalers(scaledObject *kedav1alpha1.ScaledObject) ([]scalers.Scaler, error) {
