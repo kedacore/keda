@@ -78,7 +78,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 
 	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	scalers, _, err := p.scaleHandler.GetDeploymentScalers(scaledObject)
+	scalers, err := p.scaleHandler.GetScaledObjectScalers(scaledObject)
 	if err != nil {
 		return nil, fmt.Errorf("Error when getting scalers %s", err)
 	}

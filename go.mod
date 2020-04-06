@@ -39,6 +39,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	k8s.io/metrics v0.17.4
+	knative.dev/pkg v0.0.0-20200404181734-92cdec5b3593
 	pack.ag/amqp v0.12.5 // indirect
 	sigs.k8s.io/controller-runtime v0.5.2
 )

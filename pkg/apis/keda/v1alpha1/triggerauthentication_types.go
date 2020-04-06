@@ -71,7 +71,7 @@ type AuthSecretTargetRef struct {
 }
 
 // AuthEnvironment is used to authenticate using environment variables
-// in the destination deployment spec
+// in the destination ScaleTarget spec
 // +k8s:openapi-gen=true
 type AuthEnvironment struct {
 	Parameter string `json:"parameter"`
