@@ -1,6 +1,15 @@
 <p style="font-size: 30px" align="center"><b>This branch contains unstable KEDA v2.0.0-alpha1, currently under development</b></p>
 
-
+## How can I try KEDA v2 alpha version?
+Make sure to remove previous KEDA (including CRD) from the cluster. Switch to the `v2` branch and deploy yaml files:
+```bash
+   git fetch --all
+   git checkout v2
+   kubectl apply -f deploy/crds/keda.sh_scaledobjects_crd.yaml
+   kubectl apply -f deploy/crds/keda.sh_scaledjob_crd.yaml
+   kubectl apply -f deploy/crds/keda.sh_triggerauthentications_crd.yaml
+   kubectl apply -f deploy/
+```
 
 
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
