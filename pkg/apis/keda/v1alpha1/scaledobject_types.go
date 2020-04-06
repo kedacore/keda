@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	kedautil "github.com/kedacore/keda/pkg/util"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,8 +36,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
-	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
-	Triggers []ScaleTriggers `json:"triggers"`
+	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
+	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
 //ScaleTarget holds the a reference to the scale target Object
@@ -43,14 +45,13 @@ type ScaledObjectSpec struct {
 type ScaleTarget struct {
 	Name string `json:"name"`
 	// +optional
-	ApiVersion  string `json:"apiVersion,omitempty"`
+	ApiVersion string `json:"apiVersion,omitempty"`
 	// +optional
 	Kind string `json:"kind,omitempty"`
 
 	// +optional
 	ContainerName string `json:"containerName,omitempty"`
 }
-
 
 // ScaleTriggers reference the scaler that will be used
 // +k8s:openapi-gen=true
@@ -67,8 +68,11 @@ type ScaleTriggers struct {
 // +k8s:openapi-gen=true
 // +optional
 type ScaledObjectStatus struct {
-	// +optionl
-	ScaleTargetKind	string `json:"scaleTargetKind,omitempty"`
+	// +optional
+	ScaleTargetKind string `json:"scaleTargetKind,omitempty"`
+
+	ScaleTargetGVKR *kedautil.GroupVersionKindResource `json:"scaleTargetGVKR"`
+
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
