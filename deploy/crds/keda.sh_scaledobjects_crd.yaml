@@ -111,8 +111,28 @@ spec:
               lastActiveTime:
                 format: date-time
                 type: string
+              scaleTargetGVKR:
+                description: GroupVersionKindResource provides unified structure for
+                  schema.GroupVersionKind and Resource
+                properties:
+                  group:
+                    type: string
+                  kind:
+                    type: string
+                  resource:
+                    type: string
+                  version:
+                    type: string
+                required:
+                - group
+                - kind
+                - resource
+                - version
+                type: object
               scaleTargetKind:
                 type: string
+            required:
+            - scaleTargetGVKR
             type: object
         required:
         - spec
