@@ -9,7 +9,7 @@ import (
 
 // HandleScaleLoop blocks forever and checks the scaledObject based on its pollingInterval
 func (h *ScaleHandler) HandleScaleLoop(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
-	h.logger = h.logger.WithValues("ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "ScaledObject.ScaleType", scaledObject.Spec.ScaleType)
+	h.logger = h.logger.WithValues("ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name)
 
 	h.handleScale(ctx, scaledObject)
 
@@ -34,19 +34,22 @@ func (h *ScaleHandler) HandleScaleLoop(ctx context.Context, scaledObject *kedav1
 }
 
 // handleScale contains the main logic for the ScaleHandler scaling logic.
-// It'll check each trigger active status then call scaleDeployment
+// It'll check each trigger active status then call handleScaleOnScaleObject
 func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
 
-	switch scaledObject.Spec.ScaleType {
-	case kedav1alpha1.ScaleTypeJob:
-		h.handleScaleJob(ctx, scaledObject)
-		break
-	default:
-		h.handleScaleDeployment(ctx, scaledObject)
-	}
+	// TODO refactor
+
+	// switch scaledObject.Spec.ScaleType {
+	// case kedav1alpha1.ScaleTypeJob:
+	// 	h.handleScaleJob(ctx, scaledObject)
+	// 	break
+	// default:
+	h.handleScaledObject(ctx, scaledObject)
+	//}
 	return
 }
 
+// TODO refactor
 func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
 	//TODO: need to actually handle the scale here
 	h.logger.V(1).Info("Handle Scale Job called")
@@ -99,14 +102,10 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1a
 	h.scaleJobs(scaledObject, isScaledObjectActive, queueLength, maxValue)
 }
 
-// handleScaleDeployment contains the main logic for the ScaleHandler scaling logic.
-// It'll check each trigger active status then call scaleDeployment
-func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
-	scalers, deployment, err := h.GetDeploymentScalers(scaledObject)
-
-	if deployment == nil {
-		return
-	}
+// handleScaledObject contains the main logic for the ScaleHandler scaling logic.
+// It'll check each trigger active status then call scaleScaledObject
+func (h *ScaleHandler) handleScaledObject(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
+	scalers, err := h.GetScaledObjectScalers(scaledObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers")
 		return
@@ -127,5 +126,5 @@ func (h *ScaleHandler) handleScaleDeployment(ctx context.Context, scaledObject *
 		}
 	}
 
-	h.scaleDeployment(deployment, scaledObject, isScaledObjectActive)
+	h.scaleScaledObject(scaledObject, isScaledObjectActive)
 }

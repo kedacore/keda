@@ -32,7 +32,7 @@ spec:
             env:
               items:
                 description: AuthEnvironment is used to authenticate using environment
-                  variables in the destination deployment spec
+                  variables in the destination ScaleTarget spec
                 properties:
                   containerName:
                     type: string
