@@ -59,7 +59,7 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 		os.Exit(1)
 	}
 
-	handler := handler.NewScaleHandler(kubeclient, scheme)
+	handler := handler.NewScaleHandler(kubeclient, nil, scheme)
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {

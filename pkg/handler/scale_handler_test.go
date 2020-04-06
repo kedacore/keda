@@ -108,7 +108,7 @@ var testMetadatas = []testMetadata{
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 
 	for _, testData := range testMetadatas {
-		testScaleHandler := NewScaleHandler(fake.NewFakeClient(), scheme.Scheme)
+		testScaleHandler := NewScaleHandler(fake.NewFakeClient(), nil, scheme.Scheme)
 
 		_, err := testScaleHandler.resolveEnv(testData.container, namespace)
 
