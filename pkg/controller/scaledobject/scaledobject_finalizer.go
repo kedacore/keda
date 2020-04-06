@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	scaledObjectFinalizer = "finalizer.keda.k8s.io"
+	scaledObjectFinalizer = "finalizer.keda.sh"
 )
 
 // finalizeScaledObject is stopping ScaleLoop for the respective ScaleObject
