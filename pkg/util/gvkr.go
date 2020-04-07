@@ -57,7 +57,6 @@ func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (Grou
 	// if kind is not specified, we suppose that default one should be used
 	if kind == "" {
 		kind = defaultKind
-		resource = defaultResource
 	}
 
 	// get resource

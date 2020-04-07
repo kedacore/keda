@@ -11,7 +11,7 @@ import (
 func (h *ScaleHandler) HandleScaleLoop(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
 	h.logger = h.logger.WithValues("ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name)
 
-	h.handleScale(ctx, scaledObject)
+	h.handleScaledObject(ctx, scaledObject)
 
 	var pollingInterval time.Duration
 	if scaledObject.Spec.PollingInterval != nil {
@@ -25,28 +25,12 @@ func (h *ScaleHandler) HandleScaleLoop(ctx context.Context, scaledObject *kedav1
 	for {
 		select {
 		case <-time.After(pollingInterval):
-			h.handleScale(ctx, scaledObject)
+			h.handleScaledObject(ctx, scaledObject)
 		case <-ctx.Done():
 			h.logger.V(1).Info("Context for scaledObject canceled")
 			return
 		}
 	}
-}
-
-// handleScale contains the main logic for the ScaleHandler scaling logic.
-// It'll check each trigger active status then call handleScaleOnScaleObject
-func (h *ScaleHandler) handleScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) {
-
-	// TODO refactor
-
-	// switch scaledObject.Spec.ScaleType {
-	// case kedav1alpha1.ScaleTypeJob:
-	// 	h.handleScaleJob(ctx, scaledObject)
-	// 	break
-	// default:
-	h.handleScaledObject(ctx, scaledObject)
-	//}
-	return
 }
 
 // TODO refactor
