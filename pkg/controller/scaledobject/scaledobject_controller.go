@@ -143,32 +143,13 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
-	isScaledObjectMarkedToBeDeleted := scaledObject.GetDeletionTimestamp() != nil
-	if isScaledObjectMarkedToBeDeleted {
-		if contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
-			// Run finalization logic for scaledObjectFinalizer. If the
-			// finalization logic fails, don't remove the finalizer so
-			// that we can retry during the next reconciliation.
-			if err := r.finalizeScaledObject(reqLogger, scaledObject); err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Remove scaledObjectFinalizer. Once all finalizers have been
-			// removed, the object will be deleted.
-			scaledObject.SetFinalizers(remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-			err := r.client.Update(context.TODO(), scaledObject)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{}, nil
+	if scaledObject.GetDeletionTimestamp() != nil {
+		return reconcile.Result{}, r.finalizeScaledObject(reqLogger, scaledObject)
 	}
 
-	// Add finalizer for this CR
-	if !contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
-		if err := r.addFinalizer(reqLogger, scaledObject); err != nil {
-			return reconcile.Result{}, err
-		}
+	// ensure finalizer is set on this CR
+	if err := r.ensureFinalizer(reqLogger, scaledObject); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, r.reconcileScaledObject(reqLogger, scaledObject)
@@ -340,6 +321,31 @@ func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject 
 		r.scaleLoopContexts.Store(key, cancel)
 	}
 	go scaleHandler.HandleScaleLoop(ctx, scaledObject)
+
+	return nil
+}
+
+// stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
+func (r *ReconcileScaledObject) stopScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledObject")
+		return err
+	}
+
+	// delete ScaledObject's current Generation
+	r.scaledObjectsGenerations.Delete(key)
+
+	result, ok := r.scaleLoopContexts.Load(key)
+	if ok {
+		cancel, ok := result.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+		r.scaleLoopContexts.Delete(key)
+	} else {
+		logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
+	}
 
 	return nil
 }
