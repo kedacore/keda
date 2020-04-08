@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -183,16 +183,21 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{
-		MetricName:         mySQLMetricName,
-		TargetAverageValue: targetQueryValue,
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: mySQLMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetQueryValue,
+		},
 	}
-	metricSpec := v2beta1.MetricSpec{
+	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta1.MetricSpec{metricSpec}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

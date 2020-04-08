@@ -21,7 +21,7 @@ import (
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler struct {
 	client           client.Client
-	scaleClient      scale.ScalesGetter // TODO pointer
+	scaleClient      *scale.ScalesGetter
 	logger           logr.Logger
 	reconcilerScheme *runtime.Scheme
 }
@@ -34,7 +34,7 @@ const (
 )
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme) *ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) *ScaleHandler {
 	handler := &ScaleHandler{
 		client:           client,
 		scaleClient:      scaleClient,
