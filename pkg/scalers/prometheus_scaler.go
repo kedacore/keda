@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -109,16 +109,21 @@ func (s *prometheusScaler) Close() error {
 	return nil
 }
 
-func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				TargetAverageValue: resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI),
-				MetricName:         s.metadata.metricName,
-			},
-			Type: externalMetricType,
+func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: s.metadata.metricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: externalMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 func (s *prometheusScaler) ExecutePromQuery() (float64, error) {

@@ -58,7 +58,7 @@ func (h *ScaleHandler) handleScaleJob(ctx context.Context, scaledObject *kedav1a
 
 		var metricValue int64
 		for _, metric := range metricSpecs {
-			metricValue, _ = metric.External.TargetAverageValue.AsInt64()
+			metricValue, _ = metric.External.Target.AverageValue.AsInt64()
 			maxValue += metricValue
 		}
 		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
