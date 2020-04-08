@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,15 +14,15 @@ import (
 )
 
 const (
-	blobCountMetricName     	 = "blobCount"
-	defaultTargetBlobCount  	 = 5
-	defaultBlobDelimiter     	 = "/"
-	defaultBlobPrefix        	 = ""
+	blobCountMetricName          = "blobCount"
+	defaultTargetBlobCount       = 5
+	defaultBlobDelimiter         = "/"
+	defaultBlobPrefix            = ""
 	defaultBlobConnectionSetting = "AzureWebJobsStorage"
 )
 
 type azureBlobScaler struct {
-	metadata *azureBlobMetadata
+	metadata    *azureBlobMetadata
 	podIdentity string
 }
 
@@ -30,7 +30,7 @@ type azureBlobMetadata struct {
 	targetBlobCount   int
 	blobContainerName string
 	blobDelimiter     string
-	blobPrefix 		  string
+	blobPrefix        string
 	connection        string
 	useAAdPodIdentity bool
 	accountName       string
@@ -46,7 +46,7 @@ func NewAzureBlobScaler(resolvedEnv, metadata, authParams map[string]string, pod
 	}
 
 	return &azureBlobScaler{
-		metadata: meta,
+		metadata:    meta,
 		podIdentity: podIdentity,
 	}, nil
 }
@@ -101,17 +101,17 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 			// Found the connection in a parameter from TriggerAuthentication
 			meta.connection = connection
 		} else {
-		connectionSetting := defaultBlobConnectionSetting
-		if val, ok := metadata["connection"]; ok && val != "" {
-			connectionSetting = val
-		}
+			connectionSetting := defaultBlobConnectionSetting
+			if val, ok := metadata["connection"]; ok && val != "" {
+				connectionSetting = val
+			}
 
-		if val, ok := resolvedEnv[connectionSetting]; ok {
-			meta.connection = val
-		} else {
-			return nil, "", fmt.Errorf("no connection setting given")
+			if val, ok := resolvedEnv[connectionSetting]; ok {
+				meta.connection = val
+			} else {
+				return nil, "", fmt.Errorf("no connection setting given")
+			}
 		}
-	}
 	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := metadata["accountName"]; ok && val != "" {
@@ -150,11 +150,19 @@ func (s *azureBlobScaler) Close() error {
 	return nil
 }
 
-func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: blobCountMetricName, TargetAverageValue: targetBlobCount}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: blobCountMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetBlobCount,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
