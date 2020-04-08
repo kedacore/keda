@@ -7,7 +7,7 @@ import (
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -128,7 +128,7 @@ func (s *externalScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	// TODO: Pass Context
 	ctx := context.Background()
@@ -140,19 +140,24 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 		return nil
 	}
 
-	var result []v2beta1.MetricSpec
+	var result []v2beta2.MetricSpec
 
 	for _, spec := range response.MetricSpecs {
 		// Construct the target subscription size as a quantity
 		qty := resource.NewQuantity(int64(spec.TargetSize), resource.DecimalSI)
 
-		externalMetric := &v2beta1.ExternalMetricSource{
-			MetricName:         spec.MetricName,
-			TargetAverageValue: qty,
+		externalMetric := &v2beta2.ExternalMetricSource{
+			Metric: v2beta2.MetricIdentifier{
+				Name: spec.MetricName,
+			},
+			Target: v2beta2.MetricTarget{
+				Type:         v2beta2.AverageValueMetricType,
+				AverageValue: qty,
+			},
 		}
 
 		// Create the metric spec for the HPA
-		metricSpec := v2beta1.MetricSpec{
+		metricSpec := v2beta2.MetricSpec{
 			External: externalMetric,
 			Type:     externalMetricType,
 		}

@@ -10,7 +10,7 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
-	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -41,11 +41,11 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-	return add(mgr, newReconciler(mgr, scaleClient))
+	return add(mgr, newReconciler(mgr, &scaleClient))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, scaleClient scale.ScalesGetter) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter) reconcile.Reconciler {
 	return &ReconcileScaledObject{
 		client:                   mgr.GetClient(),
 		scaleClient:              scaleClient,
@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to secondary resource HPA and requeue the owner ScaledObject
-	err = c.Watch(&source.Kind{Type: &autoscalingv2beta1.HorizontalPodAutoscaler{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &autoscalingv2beta2.HorizontalPodAutoscaler{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kedav1alpha1.ScaledObject{},
 	})
@@ -110,7 +110,7 @@ type ReconcileScaledObject struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client                   client.Client
-	scaleClient              scale.ScalesGetter
+	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scheme                   *runtime.Scheme
 	scaleLoopContexts        *sync.Map
@@ -237,7 +237,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkr.GVKString(), "Resource", gvkr.Resource)
 
 	// let's try to detect /scale subresource
-	_, errScale := r.scaleClient.Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
+	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
 	if errScale != nil {
 		// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 		unstruct := &unstructured.Unstructured{}
@@ -267,7 +267,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (bool, error) {
 	hpaName := getHPAName(scaledObject)
-	foundHpa := &autoscalingv2beta1.HorizontalPodAutoscaler{}
+	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
