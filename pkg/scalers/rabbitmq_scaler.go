@@ -2,8 +2,13 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/streadway/amqp"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -17,6 +22,8 @@ import (
 const (
 	rabbitQueueLengthMetricName = "queueLength"
 	rabbitMetricType            = "External"
+	rabbitIncludeUnacked        = "includeUnacked"
+	defaultIncludeUnacked       = false
 )
 
 type rabbitMQScaler struct {
@@ -26,9 +33,17 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	host        string
-	queueLength int
+	queueName      string
+	host           string // connection string for AMQP protocol
+	apiHost        string // connection string for management API requests
+	queueLength    int
+	includeUnacked bool // if true uses HTTP API and requires apiHost, if false uses AMQP and requires host
+}
+
+type queueInfo struct {
+	Messages               int    `json:"messages"`
+	MessagesUnacknowledged int    `json:"messages_unacknowledged"`
+	Name                   string `json:"name"`
 }
 
 var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
@@ -40,33 +55,62 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
 
-	conn, ch, err := getConnectionAndChannel(meta.host)
-	if err != nil {
-		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
-	}
+	if meta.includeUnacked {
+		return &rabbitMQScaler{metadata: meta}, nil
+	} else {
+		conn, ch, err := getConnectionAndChannel(meta.host)
+		if err != nil {
+			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+		}
 
-	return &rabbitMQScaler{
-		metadata:   meta,
-		connection: conn,
-		channel:    ch,
-	}, nil
+		return &rabbitMQScaler{
+			metadata:   meta,
+			connection: conn,
+			channel:    ch,
+		}, nil
+	}
 }
 
 func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
-	if val, ok := authParams["host"]; ok {
-		meta.host = val
-	} else if val, ok := metadata["host"]; ok {
-		hostSetting := val
-
-		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.host = val
+	meta.includeUnacked = defaultIncludeUnacked
+	if val, ok := metadata[rabbitIncludeUnacked]; ok {
+		includeUnacked, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("includeUnacked parsing error %s", err.Error())
 		}
+		meta.includeUnacked = includeUnacked
 	}
 
-	if meta.host == "" {
-		return nil, fmt.Errorf("no host setting given")
+	if meta.includeUnacked {
+		if val, ok := authParams["apiHost"]; ok {
+			meta.apiHost = val
+		} else if val, ok := metadata["apiHost"]; ok {
+			hostSetting := val
+
+			if val, ok := resolvedEnv[hostSetting]; ok {
+				meta.apiHost = val
+			}
+		}
+
+		if meta.apiHost == "" {
+			return nil, fmt.Errorf("no apiHost setting given")
+		}
+	} else {
+		if val, ok := authParams["host"]; ok {
+			meta.host = val
+		} else if val, ok := metadata["host"]; ok {
+			hostSetting := val
+
+			if val, ok := resolvedEnv[hostSetting]; ok {
+				meta.host = val
+			}
+		}
+
+		if meta.host == "" {
+			return nil, fmt.Errorf("no host setting given")
+		}
 	}
 
 	if val, ok := metadata["queueName"]; ok {
@@ -105,10 +149,12 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close() error {
-	err := s.connection.Close()
-	if err != nil {
-		rabbitmqLog.Error(err, "Error closing rabbitmq connection")
-		return err
+	if s.connection != nil {
+		err := s.connection.Close()
+		if err != nil {
+			rabbitmqLog.Error(err, "Error closing rabbitmq connection")
+			return err
+		}
 	}
 	return nil
 }
@@ -124,12 +170,59 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *rabbitMQScaler) getQueueMessages() (int, error) {
-	items, err := s.channel.QueueInspect(s.metadata.queueName)
+	if s.metadata.includeUnacked {
+		info, err := s.getQueueInfoViaHttp()
+		if err != nil {
+			return -1, err
+		} else {
+			return info.Messages + info.MessagesUnacknowledged, nil
+		}
+	} else {
+		items, err := s.channel.QueueInspect(s.metadata.queueName)
+		if err != nil {
+			return -1, err
+		} else {
+			return items.Messages, nil
+		}
+	}
+}
+
+func getJson(url string, target interface{}) error {
+	var client = &http.Client{Timeout: 5 * time.Second}
+	r, err := client.Get(url)
 	if err != nil {
-		return -1, err
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode == 200 {
+		return json.NewDecoder(r.Body).Decode(target)
+	} else {
+		body, _ := ioutil.ReadAll(r.Body)
+		return fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
+	}
+}
+
+func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
+	parsedUrl, err := url.Parse(s.metadata.apiHost)
+
+	if err != nil {
+		return nil, err
 	}
 
-	return items.Messages, nil
+	vhost := parsedUrl.Path
+	parsedUrl.Path = ""
+
+	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedUrl.String(), "api/queues", vhost, s.metadata.queueName)
+
+	info := queueInfo{}
+	err = getJson(getQueueInfoManagementURI, &info)
+
+	if err != nil {
+		return nil, err
+	} else {
+		return &info, nil
+	}
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
