@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -100,12 +100,19 @@ func (s *awsKinesisStreamScaler) Close() error {
 	return nil
 }
 
-func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s", "AWS-Kinesis-Stream", awsKinesisStreamMetricName, s.metadata.streamName),
-		TargetAverageValue: targetShardCountQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "AWS-Kinesis-Stream", awsKinesisStreamMetricName, s.metadata.streamName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetShardCountQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
