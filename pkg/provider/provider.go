@@ -88,7 +88,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 
 		for _, metricSpec := range metricSpecs {
 			// Filter only the desired metric
-			if strings.EqualFold(metricSpec.External.MetricName, info.Metric) {
+			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
 				metrics, err := scaler.GetMetrics(context.TODO(), info.Metric, metricSelector)
 				if err != nil {
 					logger.Error(err, "error getting metric for scaler", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "Scaler", scaler)

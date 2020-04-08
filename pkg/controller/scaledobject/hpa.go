@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/version"
-	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -45,9 +45,8 @@ func (r *ReconcileScaledObject) createAndDeployNewHPA(logger logr.Logger, scaled
 	return nil
 }
 
-//FIXME unify location from where we load gvkt - param vs. scaledObject
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
+func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject)
 	if err != nil {
 		return nil, err
@@ -65,12 +64,12 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
 
-	return &autoscalingv2beta1.HorizontalPodAutoscaler{
-		Spec: autoscalingv2beta1.HorizontalPodAutoscalerSpec{
+	return &autoscalingv2beta2.HorizontalPodAutoscaler{
+		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
 			MinReplicas: getHPAMinReplicas(scaledObject),
 			MaxReplicas: getHPAMaxReplicas(scaledObject),
 			Metrics:     scaledObjectMetricSpecs,
-			ScaleTargetRef: autoscalingv2beta1.CrossVersionObjectReference{
+			ScaleTargetRef: autoscalingv2beta2.CrossVersionObjectReference{
 				Name:       scaledObject.Spec.ScaleTargetRef.Name,
 				Kind:       gvkr.Kind,
 				APIVersion: gvkr.GroupVersion().String(),
@@ -81,38 +80,13 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 			Labels:    labels,
 		},
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v2beta1",
+			APIVersion: "v2beta2",
 		},
 	}, nil
 }
 
-// checkHPAForUpdate checks whether update of HPA is needed
-func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta1.HorizontalPodAutoscaler, gvkr *kedautil.GroupVersionKindResource) error {
-
-	// updateHPA := false
-	// scaledObjectMinReplicaCount := getHPAMinReplicas(scaledObject)
-	// if *foundHpa.Spec.MinReplicas != *scaledObjectMinReplicaCount {
-	// 	updateHPA = true
-	// 	foundHpa.Spec.MinReplicas = scaledObjectMinReplicaCount
-	// }
-
-	// scaledObjectMaxReplicaCount := getHPAMaxReplicas(scaledObject)
-	// if foundHpa.Spec.MaxReplicas != scaledObjectMaxReplicaCount {
-	// 	updateHPA = true
-	// 	foundHpa.Spec.MaxReplicas = scaledObjectMaxReplicaCount
-	// }
-
-	// newMetricSpec, err := r.getScaledObjectMetricSpecs(logger, scaledObject)
-	// if err != nil {
-	// 	logger.Error(err, "Failed to create MetricSpec")
-	// 	return err
-	// }
-	// if fmt.Sprintf("%v", foundHpa.Spec.Metrics) != fmt.Sprintf("%v", newMetricSpec) {
-	// 	updateHPA = true
-	// 	foundHpa.Spec.Metrics = newMetricSpec
-	// }
-
-	//if updateHPA {
+// updateHPAIfNeeded checks whether update of HPA is needed
+func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedautil.GroupVersionKindResource) error {
 
 	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
 	if err != nil {
@@ -122,7 +96,6 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 
 	if !equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
 		if r.client.Update(context.TODO(), foundHpa) != nil {
-			//foundHpa.Spec = *hpa.Spec.DeepCopy()
 			foundHpa.Spec = hpa.Spec
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
@@ -134,8 +107,8 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
-func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta1.MetricSpec, error) {
-	var scaledObjectMetricSpecs []autoscalingv2beta1.MetricSpec
+func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
+	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
 	var externalMetricNames []string
 
 	scalers, err := scalehandler.NewScaleHandler(r.client, r.scaleClient, r.scheme).GetScaledObjectScalers(scaledObject)
@@ -149,9 +122,9 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 
 		// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 		for _, metricSpec := range metricSpecs {
-			metricSpec.External.MetricSelector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.MetricSelector.MatchLabels["scaledObjectName"] = scaledObject.Name
-			externalMetricNames = append(externalMetricNames, metricSpec.External.MetricName)
+			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
+			metricSpec.External.Metric.Selector.MatchLabels["scaledObjectName"] = scaledObject.Name
+			externalMetricNames = append(externalMetricNames, metricSpec.External.Metric.Name)
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 		scaler.Close()

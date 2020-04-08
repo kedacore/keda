@@ -10,7 +10,7 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
-	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -41,11 +41,11 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-	return add(mgr, newReconciler(mgr, scaleClient))
+	return add(mgr, newReconciler(mgr, &scaleClient))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, scaleClient scale.ScalesGetter) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter) reconcile.Reconciler {
 	return &ReconcileScaledObject{
 		client:                   mgr.GetClient(),
 		scaleClient:              scaleClient,
@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to secondary resource HPA and requeue the owner ScaledObject
-	err = c.Watch(&source.Kind{Type: &autoscalingv2beta1.HorizontalPodAutoscaler{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &autoscalingv2beta2.HorizontalPodAutoscaler{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kedav1alpha1.ScaledObject{},
 	})
@@ -110,7 +110,7 @@ type ReconcileScaledObject struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client                   client.Client
-	scaleClient              scale.ScalesGetter
+	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scheme                   *runtime.Scheme
 	scaleLoopContexts        *sync.Map
@@ -143,32 +143,13 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
-	isScaledObjectMarkedToBeDeleted := scaledObject.GetDeletionTimestamp() != nil
-	if isScaledObjectMarkedToBeDeleted {
-		if contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
-			// Run finalization logic for scaledObjectFinalizer. If the
-			// finalization logic fails, don't remove the finalizer so
-			// that we can retry during the next reconciliation.
-			if err := r.finalizeScaledObject(reqLogger, scaledObject); err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Remove scaledObjectFinalizer. Once all finalizers have been
-			// removed, the object will be deleted.
-			scaledObject.SetFinalizers(remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-			err := r.client.Update(context.TODO(), scaledObject)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{}, nil
+	if scaledObject.GetDeletionTimestamp() != nil {
+		return reconcile.Result{}, r.finalizeScaledObject(reqLogger, scaledObject)
 	}
 
-	// Add finalizer for this CR
-	if !contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
-		if err := r.addFinalizer(reqLogger, scaledObject); err != nil {
-			return reconcile.Result{}, err
-		}
+	// ensure finalizer is set on this CR
+	if err := r.ensureFinalizer(reqLogger, scaledObject); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, r.reconcileScaledObject(reqLogger, scaledObject)
@@ -256,7 +237,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkr.GVKString(), "Resource", gvkr.Resource)
 
 	// let's try to detect /scale subresource
-	_, errScale := r.scaleClient.Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
+	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
 	if errScale != nil {
 		// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 		unstruct := &unstructured.Unstructured{}
@@ -286,7 +267,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (bool, error) {
 	hpaName := getHPAName(scaledObject)
-	foundHpa := &autoscalingv2beta1.HorizontalPodAutoscaler{}
+	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
@@ -340,6 +321,31 @@ func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject 
 		r.scaleLoopContexts.Store(key, cancel)
 	}
 	go scaleHandler.HandleScaleLoop(ctx, scaledObject)
+
+	return nil
+}
+
+// stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
+func (r *ReconcileScaledObject) stopScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledObject")
+		return err
+	}
+
+	// delete ScaledObject's current Generation
+	r.scaledObjectsGenerations.Delete(key)
+
+	result, ok := r.scaleLoopContexts.Load(key)
+	if ok {
+		cancel, ok := result.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+		r.scaleLoopContexts.Delete(key)
+	} else {
+		logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
+	}
 
 	return nil
 }
