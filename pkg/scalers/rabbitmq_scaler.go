@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -231,16 +231,21 @@ func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         rabbitQueueLengthMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
-			},
-			Type: rabbitMetricType,
+func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: rabbitQueueLengthMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: rabbitMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
