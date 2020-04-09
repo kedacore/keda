@@ -4,8 +4,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/kedacore/keda/pkg/handler"
 	kedaprovider "github.com/kedacore/keda/pkg/provider"
+	"github.com/kedacore/keda/pkg/scaling"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -59,7 +59,7 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 		os.Exit(1)
 	}
 
-	handler := handler.NewScaleHandler(kubeclient, nil, scheme)
+	handler := scaling.NewScaleHandler(kubeclient, nil, scheme)
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {

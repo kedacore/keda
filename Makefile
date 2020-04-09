@@ -74,13 +74,18 @@ ifndef GOROOT
 	@echo "WARNING: GOROOT is not defined"
 endif
 
+.PHONY: gofmt
+gofmt:
+	go fmt ./...
+
 .PHONY: build
-build: checkenv build-adapter build-controller
+build: gofmt checkenv build-adapter build-controller
 
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
+		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -o build/_output/bin/keda"
+	go vet ./...
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
@@ -94,6 +99,9 @@ build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
 	$(GO_BUILD_VARS) operator-sdk generate crds
+	# withTriggers is only used for duck typing so we only need the deepcopy methods
+	# However operator-sdk generate doesn't appear to have an option for that
+	rm deploy/crds/keda.sh_withtriggers_crd.yaml
 
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus

@@ -3,7 +3,7 @@ module github.com/kedacore/keda
 go 1.13
 
 require (
-	cloud.google.com/go v0.49.0
+	cloud.google.com/go v0.50.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.0.0
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/azure-sdk-for-go v41.1.0+incompatible
@@ -15,12 +15,15 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.26.1
 	github.com/aws/aws-sdk-go v1.30.3
+	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.7
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.3.5
+	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
@@ -29,7 +32,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20200108173154-1c71cc93ed71
 	github.com/stretchr/testify v1.5.1
+	github.com/tmc/grpc-websocket-proxy v0.0.0-20200122045848-3419fae592fc // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
+	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d // indirect
 	google.golang.org/api v0.14.0
 	google.golang.org/genproto v0.0.0-20191115194625-c23dd37a84c9
 	google.golang.org/grpc v1.27.0
