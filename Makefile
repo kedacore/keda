@@ -55,7 +55,10 @@ publish: build
 K8S_DEPLOY_FILES = $(shell find ./deploy -name '*.yaml')
 
 .PHONY: release
-release: release_prepare release_pkg
+release: release_prepare release_file release_pkg
+
+.PHONY: release_file
+release_file:
 	@sed -i 's@Version =.*@Version = "$(VERSION)"@g' ./version/version.go;
 	@for file in $(K8S_DEPLOY_FILES); do \
 	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(VERSION)"@g' $$file; \
