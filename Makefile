@@ -55,13 +55,31 @@ publish: build
 K8S_DEPLOY_FILES = $(shell find ./deploy -name '*.yaml')
 
 .PHONY: release
-release:
+release: release_prepare release_file release_pkg
+
+.PHONY: release_file
+release_file:
 	@sed -i 's@Version =.*@Version = "$(VERSION)"@g' ./version/version.go;
 	@for file in $(K8S_DEPLOY_FILES); do \
 	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(VERSION)"@g' $$file; \
 	sed -i 's@image: docker.io/kedacore/keda:.*@image: docker.io/kedacore/keda:$(VERSION)@g' $$file; \
 	sed -i 's@image: docker.io/kedacore/keda-metrics-adapter:.*@image: docker.io/kedacore/keda-metrics-adapter:$(VERSION)@g' $$file; \
 	done
+
+.PHONY: release_prepare
+release_prepare:
+	rm -rf ./keda-$(VERSION)
+	rm -f ./keda-$(VERSION).tar.gz
+	rm -f ./keda-$(VERSION).zip
+	mkdir -p ./keda-$(VERSION)/crds
+
+.PHONY: release_pkg
+release_pkg:
+	cp -r ./deploy/*.yaml ./keda-$(VERSION)
+	cp ./deploy/crds/*_crd.yaml ./keda-$(VERSION)/crds
+	tar -z -cf ./keda-$(VERSION).tar.gz keda-$(VERSION)/
+	zip -r ./keda-$(VERSION).zip keda-$(VERSION)/
+	rm -rf ./keda-$(VERSION)
 
 ##################################################
 # Build                                          #
