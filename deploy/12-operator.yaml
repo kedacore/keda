@@ -18,6 +18,7 @@ spec:
     metadata:
       labels:
         app: keda-operator
+        name: keda-operator
       name: keda-operator
     spec:
       serviceAccountName: keda-operator
