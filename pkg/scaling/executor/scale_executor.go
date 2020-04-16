@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/scalers"
@@ -86,4 +87,28 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, object interfa
 		break
 	}
 	return nil
+}
+
+func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, mesage string) error {
+	var patch client.Patch
+
+	runtimeObj := object.(runtime.Object)
+	switch obj := runtimeObj.(type) {
+	case *kedav1alpha1.ScaledObject:
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Status.Conditions.SetActiveCondition(status, reason, mesage)
+	case *kedav1alpha1.ScaledJob:
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Status.Conditions.SetActiveCondition(status, reason, mesage)
+	default:
+		err := fmt.Errorf("Unknown scalable object type %v", obj)
+		logger.Error(err, "Failed to patch Objects Status")
+		return err
+	}
+
+	err := e.client.Status().Patch(ctx, runtimeObj, patch)
+	if err != nil {
+		logger.Error(err, "Failed to patch Objects Status")
+	}
+	return err
 }
