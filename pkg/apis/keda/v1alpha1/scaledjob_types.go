@@ -7,6 +7,12 @@ import (
 
 // ScaledJobSpec defines the desired state of ScaledJob
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:path=scaledobjects,scope=Namespaced
+// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
+// +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type ScaledJobSpec struct {
 
 	// TODO define the spec
@@ -30,6 +36,8 @@ type ScaledJobSpec struct {
 type ScaledJobStatus struct {
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
+	// +optional
+	Conditions Conditions `json:"conditions,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
