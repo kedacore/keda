@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	scalehandler "github.com/kedacore/keda/pkg/handler"
 	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
@@ -111,7 +110,7 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
 	var externalMetricNames []string
 
-	scalers, err := scalehandler.NewScaleHandler(r.client, r.scaleClient, r.scheme).GetScaledObjectScalers(scaledObject)
+	scalers, err := r.scaleHandler.GetScalers(scaledObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err
