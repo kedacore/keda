@@ -20,7 +20,7 @@ func (r *ReconcileScaledObject) finalizeScaledObject(logger logr.Logger, scaledO
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
 		if err := r.stopScaleLoop(logger, scaledObject); err != nil {
-			return  err
+			return err
 		}
 
 		// Remove scaledObjectFinalizer. Once all finalizers have been

@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetBlobLength(t *testing.T) {
-	length, err := GetAzureBlobListLength(context.TODO(), "", "", "blobContainerName", "", "","")
+	length, err := GetAzureBlobListLength(context.TODO(), "", "", "blobContainerName", "", "", "")
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
 	}
@@ -20,7 +20,7 @@ func TestGetBlobLength(t *testing.T) {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
-	length, err = GetAzureBlobListLength(context.TODO(), "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "blobContainerName", "", "","")
+	length, err = GetAzureBlobListLength(context.TODO(), "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "blobContainerName", "", "", "")
 
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
@@ -40,8 +40,8 @@ var testAzBlobResolvedEnv = map[string]string{
 }
 
 type parseAzBlobMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata    map[string]string
+	isError     bool
 	resolvedEnv map[string]string
 	authParams  map[string]string
 	podIdentity string
@@ -64,7 +64,6 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{"accountName": "sample_acc", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, "azure"},
 	// connection from authParams
 	{map[string]string{"blobContainerName": "sample_container", "blobCount": "5"}, false, testAzBlobResolvedEnv, map[string]string{"connection": "value"}, "none"},
-
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {

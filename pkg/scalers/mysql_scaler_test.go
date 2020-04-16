@@ -10,17 +10,17 @@ var testMySQLResolvedEnv = map[string]string{
 }
 
 type parseMySQLMetadataTestData struct {
-	metdadata   map[string] string
+	metdadata   map[string]string
 	raisesError bool
 }
 
 var testMySQLMetdata = []parseMySQLMetadataTestData{
 	// No metadata
-	{metdadata: map[string]string{}, raisesError:true},
+	{metdadata: map[string]string{}, raisesError: true},
 	// connectionString
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, raisesError:false},
+	{metdadata: map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, raisesError: false},
 	// Params instead of conn str
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, raisesError:false},
+	{metdadata: map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, raisesError: false},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
@@ -55,4 +55,3 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 		t.Errorf("%s != %s", expected, connStr)
 	}
 }
-
