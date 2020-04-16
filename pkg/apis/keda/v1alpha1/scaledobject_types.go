@@ -15,6 +15,8 @@ import (
 // +kubebuilder:printcolumn:name="ScaleTargetKind",type="string",JSONPath=".status.scaleTargetKind"
 // +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
+// +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type ScaledObject struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -70,13 +72,14 @@ type ScaleTriggers struct {
 type ScaledObjectStatus struct {
 	// +optional
 	ScaleTargetKind string `json:"scaleTargetKind,omitempty"`
-
-	ScaleTargetGVKR *kedautil.GroupVersionKindResource `json:"scaleTargetGVKR"`
-
+	// +optional
+	ScaleTargetGVKR *kedautil.GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
+	// +optional
+	Conditions Conditions `json:"conditions,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
