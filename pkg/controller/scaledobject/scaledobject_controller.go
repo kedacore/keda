@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/pkg/controller/util"
 	"github.com/kedacore/keda/pkg/scaling"
 	kedautil "github.com/kedacore/keda/pkg/util"
 
@@ -13,6 +14,7 @@ import (
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -67,13 +68,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to primary resource ScaledObject
 	err = c.Watch(&source.Kind{Type: &kedav1alpha1.ScaledObject{}},
 		&handler.EnqueueRequestForObject{},
-		predicate.Funcs{
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				// Ignore updates to ScaledObject Status (in this case metadata.Generation does not change)
-				// so reconcile loop is not started on Status updates
-				return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
-			},
-		})
+		// Ignore updates to ScaledObject Status (in this case metadata.Generation does not change)
+		// so reconcile loop is not started on Status updates
+		predicate.GenerationChangedPredicate{},
+	)
 	if err != nil {
 		return err
 	}
@@ -125,7 +123,6 @@ type ReconcileScaledObject struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling ScaledObject")
 
 	// Fetch the ScaledObject instance
 	scaledObject := &kedav1alpha1.ScaledObject{}
@@ -142,6 +139,8 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
+	reqLogger.Info("Reconciling ScaledObject")
+
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledObject.GetDeletionTimestamp() != nil {
@@ -153,38 +152,52 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, r.reconcileScaledObject(reqLogger, scaledObject)
+	// ensure Status Conditions are initialized
+	if !scaledObject.Status.Conditions.AreInitialized() {
+		conditions := kedav1alpha1.GetInitializedConditions()
+		kedacontrollerutil.SetStatusConditions(r.client, reqLogger, scaledObject, conditions)
+	}
+
+	// reconcile ScaledObject and set status appropriately
+	msg, err := r.reconcileScaledObject(reqLogger, scaledObject)
+	conditions := scaledObject.Status.Conditions.DeepCopy()
+	if err != nil {
+		reqLogger.Error(err, msg)
+		conditions.SetReadyCondition(v1.ConditionFalse, "ScaledObjectCheckFailed", msg)
+		conditions.SetActiveCondition(v1.ConditionUnknown, "UnkownState", "ScaledObject check failed")
+	} else {
+		reqLogger.V(1).Info(msg)
+		conditions.SetReadyCondition(v1.ConditionTrue, "ScaledObjectReady", msg)
+	}
+	kedacontrollerutil.SetStatusConditions(r.client, reqLogger, scaledObject, &conditions)
+	return reconcile.Result{}, err
 }
 
 // reconcileScaledObject implements reconciler logic for ScaleObject
-func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
 		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")
-		logger.Error(err, "Notified about ScaledObject with incorrect scaleTargetRef specification")
-		return err
+		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
 	// Check the label needed for Metrics servers is present on ScaledObject
 	err := r.ensureScaledObjectLabel(logger, scaledObject)
 	if err != nil {
-		logger.Error(err, "Failed to update ScaledObject with scaledObjectName label")
-		return err
+		return "Failed to update ScaledObject with scaledObjectName label", err
 	}
 
 	// Check if resource targeted for scaling exists and exposes /scale subresource
 	gvkr, err := r.checkTargetResourceIsScalable(logger, scaledObject)
 	if err != nil {
-		logger.Error(err, "Notified about ScaledObject with incorrect scaleTargetRef specification")
-		return err
+		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
 	if err != nil {
-		logger.Error(err, "Failed to reconcile HPA for ScaledObject")
-		return err
+		return "Failed to reconcile HPA for ScaledObject", err
 	}
 	scaleObjectSpecChanged := false
 	if !newHPACreated {
@@ -193,20 +206,18 @@ func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaled
 		// (we can omit this check if a new HPA was created, which fires new ScaleLoop anyway)
 		scaleObjectSpecChanged, err = r.scaledObjectGenerationChanged(logger, scaledObject)
 		if err != nil {
-			logger.Error(err, "Failed to check whether ScaledObject's Generation was changed")
-			return err
+			return "Failed to check whether ScaledObject's Generation was changed", err
 		}
 	}
 
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
 		if r.requestScaleLoop(logger, scaledObject) != nil {
-			logger.Error(err, "Failed to start a new ScaleLoop")
-			return err
+			return "Failed to start a new scale loop with scaling logic", err
 		}
 	}
 
-	return nil
+	return "ScaledObject is defined correctly and is ready for scaling", nil
 }
 
 // ensureScaledObjectLabel ensures that scaledObjectName=<scaledObject.Name> label exist in the ScaledObject
@@ -235,7 +246,8 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 		logger.Error(err, "Failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.ApiVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
 		return gvkr, err
 	}
-	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkr.GVKString(), "Resource", gvkr.Resource)
+	gvkString := gvkr.GVKString()
+	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// let's try to detect /scale subresource
 	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
@@ -245,23 +257,26 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 		unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
 		if err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 			// resource doesn't exist
-			logger.Error(err, "Target resource doesn't exist", "resource", gvkr.GVKString(), "name", scaledObject.Spec.ScaleTargetRef.Name)
+			logger.Error(err, "Target resource doesn't exist", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			return gvkr, err
 		} else {
 			// resource exist but doesn't expose /scale subresource
-			logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkr.GVKString(), "name", scaledObject.Spec.ScaleTargetRef.Name)
+			logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			return gvkr, errScale
 		}
 	}
 
-	// store discovered GVK and GVKR into the Status
-	scaledObject.Status.ScaleTargetKind = gvkr.GVKString()
-	scaledObject.Status.ScaleTargetGVKR = &gvkr
-	if err = r.client.Status().Update(context.TODO(), scaledObject); err != nil {
-		logger.Error(err, "Failed to update ScaledObject.Status", "scaledObject.Status.ScaleTargetKind", gvkr.GVKString(), "scaledObject.Status.ScaleTargetGVKR", gvkr)
+	// store discovered GVK and GVKR into the Status if it is not present already
+	if scaledObject.Status.ScaleTargetKind != gvkString {
+		status := scaledObject.Status.DeepCopy()
+		status.ScaleTargetKind = gvkString
+		status.ScaleTargetGVKR = &gvkr
+		if err := kedacontrollerutil.UpdateScaledObjectStatus(r.client, logger, scaledObject, status); err != nil {
+			return gvkr, err
+		}
+		logger.Info("Detected resource targeted for scaling", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 	}
 
-	logger.Info("Detected resource targeted for scaling", "resource", gvkr.GVKString(), "name", scaledObject.Spec.ScaleTargetRef.Name)
 	return gvkr, nil
 }
 

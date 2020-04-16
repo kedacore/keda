@@ -13,6 +13,12 @@ spec:
   - JSONPath: .spec.triggers[*].type
     name: Triggers
     type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    name: Ready
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Active")].status
+    name: Active
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -103,6 +109,27 @@ spec:
         status:
           description: ScaledObjectStatus is the status for a ScaledObject resource
           properties:
+            conditions:
+              items:
+                properties:
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  reason:
+                    description: The reason for the condition's last transition.
+                    type: string
+                  status:
+                    description: Status of the condition, one of True, False, Unknown.
+                    type: string
+                  type:
+                    description: Type of condition
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
             externalMetricNames:
               items:
                 type: string
@@ -130,8 +157,6 @@ spec:
               type: object
             scaleTargetKind:
               type: string
-          required:
-          - scaleTargetGVKR
           type: object
       required:
       - spec
