@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/pkg/handler"
+	"github.com/kedacore/keda/pkg/scaling"
 
 	"github.com/go-logr/logr"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
@@ -23,7 +23,7 @@ type KedaProvider struct {
 	client           client.Client
 	values           map[provider.CustomMetricInfo]int64
 	externalMetrics  []externalMetric
-	scaleHandler     *handler.ScaleHandler
+	scaleHandler     scaling.ScaleHandler
 	watchedNamespace string
 }
 type externalMetric struct {
@@ -35,7 +35,7 @@ type externalMetric struct {
 var logger logr.Logger
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(adapterLogger logr.Logger, scaleHandler *handler.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
+func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
 		values:           make(map[provider.CustomMetricInfo]int64),
 		externalMetrics:  make([]externalMetric, 2, 10),
@@ -78,7 +78,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 
 	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	scalers, err := p.scaleHandler.GetScaledObjectScalers(scaledObject)
+	scalers, err := p.scaleHandler.GetScalers(scaledObject)
 	if err != nil {
 		return nil, fmt.Errorf("Error when getting scalers %s", err)
 	}

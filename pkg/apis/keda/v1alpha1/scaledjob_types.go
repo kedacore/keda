@@ -29,7 +29,7 @@ type ScaledJobSpec struct {
 // +optional
 type ScaledJobStatus struct {
 	// +optional
-	LastActiveTime  *metav1.Time `json:"lastActiveTime,omitempty"`
+	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
