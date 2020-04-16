@@ -6375,6 +6375,27 @@ spec:
           status:
             description: ScaledJobStatus defines the observed state of ScaledJob
             properties:
+              conditions:
+                items:
+                  properties:
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               lastActiveTime:
                 format: date-time
                 type: string
