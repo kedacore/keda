@@ -6,18 +6,17 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/kedacore/keda/pkg/handler"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	kedaprovider "github.com/kedacore/keda/pkg/provider"
+	"github.com/kedacore/keda/pkg/scaling"
 	"github.com/kedacore/keda/version"
 
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
-	"k8s.io/klog/klogr"
-
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/klog"
+	"k8s.io/klog/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -62,7 +61,7 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 		os.Exit(1)
 	}
 
-	handler := handler.NewScaleHandler(kubeclient, nil, scheme)
+	handler := scaling.NewScaleHandler(kubeclient, nil, scheme)
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {

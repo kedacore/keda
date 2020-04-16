@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	scalehandler "github.com/kedacore/keda/pkg/handler"
+	"github.com/kedacore/keda/pkg/scaling"
 	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
@@ -51,8 +51,9 @@ func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter) reconci
 		scaleClient:              scaleClient,
 		restMapper:               mgr.GetRESTMapper(),
 		scheme:                   mgr.GetScheme(),
-		scaleLoopContexts:        &sync.Map{},
-		scaledObjectsGenerations: &sync.Map{}}
+		scaledObjectsGenerations: &sync.Map{},
+		scaleHandler:             scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme()),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -113,8 +114,8 @@ type ReconcileScaledObject struct {
 	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scheme                   *runtime.Scheme
-	scaleLoopContexts        *sync.Map
 	scaledObjectsGenerations *sync.Map
+	scaleHandler             scaling.ScaleHandler
 }
 
 // Reconcile reads that state of the cluster for a ScaledObject object and makes changes based on the state read
@@ -197,9 +198,9 @@ func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaled
 		}
 	}
 
-	// Let's start a new ScaleLoop if a new HPA was created or if ScaledObject was updated
+	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
-		if r.startScaleLoop(logger, scaledObject) != nil {
+		if r.requestScaleLoop(logger, scaledObject) != nil {
 			logger.Error(err, "Failed to start a new ScaleLoop")
 			return err
 		}
@@ -294,11 +295,8 @@ func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logge
 }
 
 // startScaleLoop starts ScaleLoop handler for the respective ScaledObject
-func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-
-	logger.V(1).Info("Starting a new ScaleLoop")
-
-	scaleHandler := scalehandler.NewScaleHandler(r.client, r.scaleClient, r.scheme)
+func (r *ReconcileScaledObject) requestScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
 
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
@@ -306,21 +304,12 @@ func (r *ReconcileScaledObject) startScaleLoop(logger logr.Logger, scaledObject 
 		return err
 	}
 
+	if err = r.scaleHandler.HandleScalableObject(scaledObject); err != nil {
+		return err
+	}
+
 	// store ScaledObject's current Generation
 	r.scaledObjectsGenerations.Store(key, scaledObject.Generation)
-
-	ctx, cancel := context.WithCancel(context.TODO())
-
-	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
-	value, loaded := r.scaleLoopContexts.LoadOrStore(key, cancel)
-	if loaded {
-		cancelValue, ok := value.(context.CancelFunc)
-		if ok {
-			cancelValue()
-		}
-		r.scaleLoopContexts.Store(key, cancel)
-	}
-	go scaleHandler.HandleScaleLoop(ctx, scaledObject)
 
 	return nil
 }
@@ -333,20 +322,11 @@ func (r *ReconcileScaledObject) stopScaleLoop(logger logr.Logger, scaledObject *
 		return err
 	}
 
+	if err := r.scaleHandler.DeleteScalableObject(scaledObject); err != nil {
+		return err
+	}
 	// delete ScaledObject's current Generation
 	r.scaledObjectsGenerations.Delete(key)
-
-	result, ok := r.scaleLoopContexts.Load(key)
-	if ok {
-		cancel, ok := result.(context.CancelFunc)
-		if ok {
-			cancel()
-		}
-		r.scaleLoopContexts.Delete(key)
-	} else {
-		logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
-	}
-
 	return nil
 }
 

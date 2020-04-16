@@ -45,16 +45,16 @@ func GetAzureBlobListLength(ctx context.Context, podIdentity string, connectionS
 	if blobPrefix != "" {
 		listBlobsSegmentOptions.Prefix = blobPrefix
 	}
-	 
+
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", accountName))
 	serviceURL := azblob.NewServiceURL(*u, p)
 	containerURL := serviceURL.NewContainerURL(blobContainerName)
 
-	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{} , blobDelimiter, listBlobsSegmentOptions)
+	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, blobDelimiter, listBlobsSegmentOptions)
 	if err != nil {
 		return -1, err
 	}
 
-	return len(props.Segment.BlobItems) , nil
+	return len(props.Segment.BlobItems), nil
 }
