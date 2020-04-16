@@ -2,10 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/kedacore/keda/pkg/handler"
 	kedaprovider "github.com/kedacore/keda/pkg/provider"
+	"github.com/kedacore/keda/version"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -70,8 +73,17 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace)
 }
 
+func printVersion() {
+	logger.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
+	logger.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))
+	logger.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	logger.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+}
+
 func main() {
 	defer klog.Flush()
+
+	printVersion()
 
 	cmd := &Adapter{}
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
