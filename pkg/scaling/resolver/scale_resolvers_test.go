@@ -1,11 +1,11 @@
-package handler
+package resolver
 
 import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -108,9 +108,7 @@ var testMetadatas = []testMetadata{
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 
 	for _, testData := range testMetadatas {
-		testScaleHandler := NewScaleHandler(fake.NewFakeClient(), nil, scheme.Scheme)
-
-		_, err := testScaleHandler.resolveEnv(testData.container, namespace)
+		_, err := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), testData.container, namespace)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
