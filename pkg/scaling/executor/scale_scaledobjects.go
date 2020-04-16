@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) {
@@ -47,7 +48,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scal
 		// There is no minimum configured or minimum is set to ZERO. HPA will handles other scale down operations
 
 		// Try to scale it down.
-		e.scaleToZero(logger, scaledObject, currentScale)
+		e.scaleToZero(ctx, logger, scaledObject, currentScale)
 	} else if !isActive &&
 		scaledObject.Spec.MinReplicaCount != nil &&
 		currentScale.Spec.Replicas < *scaledObject.Spec.MinReplicaCount {
@@ -69,11 +70,21 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scal
 	} else {
 		logger.V(1).Info("ScaleTarget no change")
 	}
+
+	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	if condition.IsUnknown() || condition.IsTrue() != isActive {
+		if isActive {
+			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
+		} else {
+			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
+		}
+	}
+
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
-func (e *scaleExecutor) scaleToZero(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
 	var cooldownPeriod time.Duration
 
 	if scaledObject.Spec.CooldownPeriod != nil {
@@ -91,11 +102,17 @@ func (e *scaleExecutor) scaleToZero(logger logr.Logger, scaledObject *kedav1alph
 		err := e.updateScaleOnScaleTarget(scaledObject, scale)
 		if err == nil {
 			logger.Info("Successfully scaled ScaleTarget to 0 replicas")
+			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down",
 			"LastActiveTime", scaledObject.Status.LastActiveTime,
 			"CoolDownPeriod", cooldownPeriod)
+
+		activeCondition := scaledObject.Status.Conditions.GetActiveCondition()
+		if !activeCondition.IsFalse() || activeCondition.Reason != "ScalerCooldown" {
+			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active")
+		}
 	}
 }
 

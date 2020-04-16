@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/pkg/controller/util"
 	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
@@ -130,8 +131,9 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	}
 
 	// store External.MetricNames used by scalers defined in the ScaledObject
-	scaledObject.Status.ExternalMetricNames = externalMetricNames
-	err = r.client.Status().Update(context.TODO(), scaledObject)
+	status := scaledObject.Status.DeepCopy()
+	status.ExternalMetricNames = externalMetricNames
+	err = kedacontrollerutil.UpdateScaledObjectStatus(r.client, logger, scaledObject, status)
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
 		return nil, err
