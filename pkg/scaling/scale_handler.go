@@ -3,21 +3,21 @@ package scaling
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scaling/resolver"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"knative.dev/pkg/apis/duck"
 	"sync"
 	"time"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/scalers"
 	"github.com/kedacore/keda/pkg/scaling/executor"
+	"github.com/kedacore/keda/pkg/scaling/resolver"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
+	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,12 +59,12 @@ func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler,
 		return nil, err
 	}
 
-	withPods, containerName, err := h.getPods(scalableObject)
+	podTemplateSpec, containerName, err := h.getPods(scalableObject)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.buildScalers(withTriggers, withPods, containerName)
+	return h.buildScalers(withTriggers, podTemplateSpec, containerName)
 }
 
 func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
@@ -117,10 +117,10 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 
 // startScaleLoop blocks forever and checks the scaledObject based on its pollingInterval
 func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}) {
-	logger := h.logger.WithValues("namespace", withTriggers.GetNamespace(), "name", withTriggers.GetName())
+	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	// kick off one check to the scalers now
-	h.checkScalers(ctx, withTriggers, scalableObject)
+	h.checkScalers(ctx, scalableObject)
 
 	pollingInterval := getPollingInterval(withTriggers)
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
@@ -128,7 +128,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	for {
 		select {
 		case <-time.After(pollingInterval):
-			h.checkScalers(ctx, withTriggers, scalableObject)
+			h.checkScalers(ctx, scalableObject)
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
 			return
@@ -138,7 +138,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
-func (h *scaleHandler) checkScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}) {
+func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}) {
 	scalers, err := h.GetScalers(scalableObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers", "object", scalableObject)
@@ -153,21 +153,21 @@ func (h *scaleHandler) checkScalers(ctx context.Context, withTriggers *kedav1alp
 	}
 }
 
-// GetScaledObjectScalers returns list of Scalers for the specified ScaledObject
-func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, withPods *duckv1.WithPod, containerName string) ([]scalers.Scaler, error) {
+// buildScalers returns list of Scalers for the specified triggers
+func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
+	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var scalersRes []scalers.Scaler
-	logger := h.logger.WithValues("name", withTriggers.Name, "namespace", withTriggers.Namespace)
 
-	resolvedEnv, err := resolver.ResolveContainerEnv(h.client, logger, &withPods.Spec.Template.Spec, containerName, withTriggers.Namespace)
+	resolvedEnv, err := resolver.ResolveContainerEnv(h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
 	if err != nil {
 		return scalersRes, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
 	}
 
 	for i, trigger := range withTriggers.Spec.Triggers {
-		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &withPods.Spec.Template.Spec, withTriggers.Namespace)
+		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
 
 		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := withPods.Spec.Template.Spec.ServiceAccountName
+			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
 			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
 			if err != nil {
@@ -176,7 +176,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, wit
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
-			authParams["awsRoleArn"] = withPods.Spec.Template.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
 		scaler, err := buildScaler(withTriggers.Name, withTriggers.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
@@ -191,7 +191,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, wit
 	return scalersRes, nil
 }
 
-func (h *scaleHandler) getPods(scalableObject interface{}) (*duckv1.WithPod, string, error) {
+func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		unstruct := &unstructured.Unstructured{}
@@ -212,11 +212,17 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*duckv1.WithPod, str
 			return nil, "", fmt.Errorf("no containers found")
 		}
 
-		return withPods, obj.Spec.ScaleTargetRef.ContainerName, nil
+		podTemplateSpec := corev1.PodTemplateSpec{
+			ObjectMeta: withPods.ObjectMeta,
+			Spec:       withPods.Spec.Template.Spec,
+		}
+		return &podTemplateSpec, obj.Spec.ScaleTargetRef.ContainerName, nil
+	case *kedav1alpha1.ScaledJob:
+		// TODO add ContainerName for ScaledJobs!!
+		return &obj.Spec.JobTargetRef.Template, "", nil
+	default:
+		return nil, "", fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
-
-	// TODO: implement this for ScaledJobs!!
-	return nil, "", fmt.Errorf("resolvePods is only implemented for ScaledObjects so far")
 }
 
 func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
@@ -269,6 +275,8 @@ func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers,
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		withTriggers = &kedav1alpha1.WithTriggers{
+			TypeMeta:   obj.TypeMeta,
+			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
@@ -276,6 +284,8 @@ func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers,
 		}
 	case *kedav1alpha1.ScaledJob:
 		withTriggers = &kedav1alpha1.WithTriggers{
+			TypeMeta:   obj.TypeMeta,
+			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
