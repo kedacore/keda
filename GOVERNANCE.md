@@ -20,6 +20,11 @@ maintainers over the course of a one week voting period. At the end of the week,
 votes are counted and a pull request is made on the repo adding the new
 maintainer to the [MAINTAINERS](MAINTAINERS.md) file.
 
+Individuals interested in becoming maintainers may submit an [issue](https://github.com/kedacore/keda/issues/new) 
+stating their interest.  Existing maintainers can choose if they would
+like to nominate these individuals to be a maintainer following the process
+above.
+
 A maintainer may step down by submitting an
 [issue](https://github.com/kedacore/keda/issues/new) stating their intent.
 
