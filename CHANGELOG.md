@@ -14,7 +14,7 @@
 
 - Fix scalers leaking ([#684](https://github.com/kedacore/keda/pull/684))
 - Provide installation YAML in the release ([#740](https://github.com/kedacore/keda/pull/740))
-- Handle nil pointers and empty arrays properly in Azure Monitor Scaler ([#680](https://github.com/kedacore/keda/pull/680))
+- Improve Azure Monitor scaler to handle queries without metrics ([#680](https://github.com/kedacore/keda/pull/680))
 - Authenticate to AWS with dedicated role without AssumeRole permissions ([#656](https://github.com/kedacore/keda/pull/656))
 
 ### Breaking Changes
