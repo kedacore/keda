@@ -197,7 +197,7 @@ func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaled
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
 	if err != nil {
-		return "Failed to reconcile HPA for ScaledObject", err
+		return "Failed to ensure HPA is correctly created for ScaledObject", err
 	}
 	scaleObjectSpecChanged := false
 	if !newHPACreated {
@@ -214,6 +214,8 @@ func (r *ReconcileScaledObject) reconcileScaledObject(logger logr.Logger, scaled
 	if newHPACreated || scaleObjectSpecChanged {
 		if r.requestScaleLoop(logger, scaledObject) != nil {
 			return "Failed to start a new scale loop with scaling logic", err
+		} else {
+			logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 		}
 	}
 
@@ -295,7 +297,7 @@ func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logge
 		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
 		return true, nil
 	} else if err != nil {
-		logger.Error(err, "Failed to get HPA")
+		logger.Error(err, "Failed to get HPA from cluster")
 		return false, err
 	}
 
