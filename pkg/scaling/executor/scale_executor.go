@@ -8,12 +8,9 @@ import (
 	"github.com/kedacore/keda/pkg/scalers"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
-	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -44,49 +41,29 @@ func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, rec
 	}
 }
 
-func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, object interface{}) error {
-	key, err := cache.MetaNamespaceKeyFunc(object)
-	if err != nil {
+func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Logger, object interface{}) error {
+	var patch client.Patch
+
+	now := metav1.Now()
+	runtimeObj := object.(runtime.Object)
+	switch obj := runtimeObj.(type) {
+	case *kedav1alpha1.ScaledObject:
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Status.LastActiveTime = &now
+	case *kedav1alpha1.ScaledJob:
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Status.LastActiveTime = &now
+	default:
+		err := fmt.Errorf("Unknown scalable object type %v", obj)
+		logger.Error(err, "Failed to patch Objects Status")
 		return err
 	}
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	err := e.client.Status().Patch(ctx, runtimeObj, patch)
 	if err != nil {
-		return err
+		logger.Error(err, "Failed to patch Objects Status")
 	}
-
-	for i := 0; i < 10; i++ {
-		// ScaledObject's metadata that are not necessary to restart the ScaleLoop were updated (eg. labels)
-		// we should try to fetch the scaledObject again and process the update once again
-		runtimeObj := object.(runtime.Object)
-		logger := e.logger.WithValues("object", runtimeObj)
-		logger.V(1).Info("Trying to fetch updated version of object to properly update it's Status")
-
-		if err := e.client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, runtimeObj); err != nil {
-			logger.Error(err, "Error getting updated version of object before updating it's Status")
-			return err
-		}
-
-		now := metav1.Now()
-		switch obj := object.(type) {
-		case *kedav1alpha1.ScaledObject:
-			obj.Status.LastActiveTime = &now
-		case *kedav1alpha1.ScaledJob:
-			obj.Status.LastActiveTime = &now
-		}
-
-		if err := e.client.Status().Update(ctx, runtimeObj); err != nil {
-			if errors.IsConflict(err) {
-				logger.Error(err, "conflict updating object", "iteration", i)
-				continue
-			}
-			logger.Error(err, "Error updating scaledObject status")
-			return err
-		}
-		logger.V(1).Info("Object's Status was properly updated on re-fetched object")
-		break
-	}
-	return nil
+	return err
 }
 
 func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, mesage string) error {
