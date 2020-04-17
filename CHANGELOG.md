@@ -29,7 +29,6 @@ None.
 - Filter returned metrics from api server based on queried name ([#732](https://github.com/kedacore/keda/pull/732))
 - Add redis host and port parameter to the scaler with tests ([#719](https://github.com/kedacore/keda/pull/719))
 - Remove go micro version ([#718](https://github.com/kedacore/keda/pull/718))
-- add deploymentName label if needed ([#709](https://github.com/kedacore/keda/pull/709))
 - Update zero result return to be non-error inducing ([#695](https://github.com/kedacore/keda/pull/695))
 - Return if kafka offset response is nil ([#689](https://github.com/kedacore/keda/pull/689))
 - Fix typos in MySQL scaler ([#683](https://github.com/kedacore/keda/pull/683))
