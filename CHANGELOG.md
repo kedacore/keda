@@ -24,7 +24,6 @@ None.
 ### Other
 
 - Adding label for metrics service selection ([#745](https://github.com/kedacore/keda/pull/745))
-- Provide installation YAML in the release ([#740](https://github.com/kedacore/keda/pull/740))
 - Filter returned metrics from api server based on queried name ([#732](https://github.com/kedacore/keda/pull/732))
 - Add redis host and port parameter to the scaler with tests ([#719](https://github.com/kedacore/keda/pull/719))
 - Remove go micro version ([#718](https://github.com/kedacore/keda/pull/718))
