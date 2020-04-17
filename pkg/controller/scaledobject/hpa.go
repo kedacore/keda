@@ -6,7 +6,6 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/pkg/controller/util"
-	kedautil "github.com/kedacore/keda/pkg/util"
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/version"
@@ -22,7 +21,7 @@ const (
 )
 
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specifed ScaledObject
-func (r *ReconcileScaledObject) createAndDeployNewHPA(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) error {
+func (r *ReconcileScaledObject) createAndDeployNewHPA(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
 	logger.Info("Creating a new HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)
 	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
@@ -46,7 +45,7 @@ func (r *ReconcileScaledObject) createAndDeployNewHPA(logger logr.Logger, scaled
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
+func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject)
 	if err != nil {
 		return nil, err
@@ -86,7 +85,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 }
 
 // updateHPAIfNeeded checks whether update of HPA is needed
-func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedautil.GroupVersionKindResource) error {
+func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 
 	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
 	if err != nil {
