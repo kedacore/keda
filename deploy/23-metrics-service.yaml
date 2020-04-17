@@ -4,7 +4,7 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/name: keda-metrics-apiserver
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/part-of: keda-operator
   name: keda-metrics-apiserver
   namespace: keda
