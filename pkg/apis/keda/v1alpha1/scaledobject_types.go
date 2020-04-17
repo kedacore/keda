@@ -1,8 +1,6 @@
 package v1alpha1
 
 import (
-	kedautil "github.com/kedacore/keda/pkg/util"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -73,7 +71,7 @@ type ScaledObjectStatus struct {
 	// +optional
 	ScaleTargetKind string `json:"scaleTargetKind,omitempty"`
 	// +optional
-	ScaleTargetGVKR *kedautil.GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
+	ScaleTargetGVKR *GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional

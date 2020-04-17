@@ -1,6 +1,8 @@
 package util
 
 import (
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -12,32 +14,8 @@ const (
 	defaultResource = "deployments"
 )
 
-// GroupVersionKindResource provides unified structure for schema.GroupVersionKind and Resource
-type GroupVersionKindResource struct {
-	Group    string `json:"group"`
-	Version  string `json:"version"`
-	Kind     string `json:"kind"`
-	Resource string `json:"resource"`
-}
-
-func (gvkr GroupVersionKindResource) GroupVersionKind() schema.GroupVersionKind {
-	return schema.GroupVersionKind{Group: gvkr.Group, Version: gvkr.Version, Kind: gvkr.Kind}
-}
-
-func (gvkr GroupVersionKindResource) GroupVersion() schema.GroupVersion {
-	return schema.GroupVersion{Group: gvkr.Group, Version: gvkr.Version}
-}
-
-func (gvkr GroupVersionKindResource) GroupResource() schema.GroupResource {
-	return schema.GroupResource{Group: gvkr.Group, Resource: gvkr.Resource}
-}
-
-func (gvkr GroupVersionKindResource) GVKString() string {
-	return gvkr.Group + "/" + gvkr.Version + "." + gvkr.Kind
-}
-
 // ParseGVKR returns GroupVersionKindResource for specified apiVersion (groupVersion) and Kind
-func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (GroupVersionKindResource, error) {
+func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (kedav1alpha1.GroupVersionKindResource, error) {
 	var group, version, resource string
 
 	// if apiVersion is not specified, we suppose the default one should be used
@@ -47,7 +25,7 @@ func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (Grou
 	} else {
 		groupVersion, err := schema.ParseGroupVersion(apiVersion)
 		if err != nil {
-			return GroupVersionKindResource{}, err
+			return kedav1alpha1.GroupVersionKindResource{}, err
 		}
 
 		group = groupVersion.Group
@@ -62,10 +40,10 @@ func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (Grou
 	// get resource
 	resource, err := getResource(restMapper, group, version, kind)
 	if err != nil {
-		return GroupVersionKindResource{}, err
+		return kedav1alpha1.GroupVersionKindResource{}, err
 	}
 
-	return GroupVersionKindResource{
+	return kedav1alpha1.GroupVersionKindResource{
 		Group:    group,
 		Version:  version,
 		Kind:     kind,
