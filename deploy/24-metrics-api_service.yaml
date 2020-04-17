@@ -3,7 +3,7 @@ kind: APIService
 metadata:
   labels:
     app.kubernetes.io/name: v1beta1.external.metrics.k8s.io
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/part-of: keda-operator
   name: v1beta1.external.metrics.k8s.io
 spec:

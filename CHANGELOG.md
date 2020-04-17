@@ -4,6 +4,46 @@
 
 - As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
 
+## v1.4
+
+### New
+
+- Extend RabbitMQ scaler to support count unacked messages([#700](https://github.com/kedacore/keda/pull/700))
+
+### Improvements
+
+- Fix scalers leaking ([#684](https://github.com/kedacore/keda/pull/684))
+- Provide installation YAML in the release ([#740](https://github.com/kedacore/keda/pull/740))
+- Handle nil pointers and empty arrays properly in Azure Monitor Scaler ([#680](https://github.com/kedacore/keda/pull/680))
+- Authenticate to AWS with dedicated role without AssumeRole permissions ([#656](https://github.com/kedacore/keda/pull/656))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+- Adding label for metrics service selection ([#745](https://github.com/kedacore/keda/pull/745))
+- Provide installation YAML in the release ([#740](https://github.com/kedacore/keda/pull/740))
+- Filter returned metrics from api server based on queried name ([#732](https://github.com/kedacore/keda/pull/732))
+- Provide better guidance around contributions & DCO ([#720](https://github.com/kedacore/keda/pull/720))
+- Add redis host and port parameter to the scaler with tests ([#719](https://github.com/kedacore/keda/pull/719))
+- Remove go micro version ([#718](https://github.com/kedacore/keda/pull/718))
+- Remove mit license ([#716](https://github.com/kedacore/keda/pull/716))
+- Link to guide for adding new scaler docs ([#715](https://github.com/kedacore/keda/pull/715))
+- Correct deploying methods ([#714](https://github.com/kedacore/keda/pull/714))
+- HPA: label can have max 63 chars ([#707](https://github.com/kedacore/keda/pull/707))
+- add deploymentName label if needed ([#709](https://github.com/kedacore/keda/pull/709))
+- Introduce CII Badge ([#691](https://github.com/kedacore/keda/pull/691))
+- Update test dependencies ([#696](https://github.com/kedacore/keda/pull/696))
+- Provide project governance ([#690](https://github.com/kedacore/keda/pull/690))
+- Update zero result return to be non-error inducing ([#695](https://github.com/kedacore/keda/pull/695))
+- Return if kafka offset response is nil ([#689](https://github.com/kedacore/keda/pull/689))
+- Add DCO and remove Microsoft CLA section ([#686](https://github.com/kedacore/keda/pull/686))
+- Fix typos in MySQL scaler ([#683](https://github.com/kedacore/keda/pull/683))
+- Cleanup v1.3 in changelog ([#677](https://github.com/kedacore/keda/pull/677))
+- Update README to mention CNCF ([#682](https://github.com/kedacore/keda/pull/682))
+
 ## v1.3
 
 ### New
