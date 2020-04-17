@@ -240,7 +240,7 @@ func (r *ReconcileScaledObject) ensureScaledObjectLabel(logger logr.Logger, scal
 }
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource
-func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedautil.GroupVersionKindResource, error) {
+func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
 	gvkr, err := kedautil.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.ApiVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		logger.Error(err, "Failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.ApiVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
@@ -281,7 +281,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
-func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedautil.GroupVersionKindResource) (bool, error) {
+func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
 	hpaName := getHPAName(scaledObject)
 	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
