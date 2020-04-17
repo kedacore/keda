@@ -41,7 +41,7 @@ var log = logf.Log.WithName("cmd")
 
 func printVersion() {
 	log.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	log.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))
+	//log.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))	// multiple -ldflags doesn't work with operator-sdk v0.12, let's reenable this for KEDA v2
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))

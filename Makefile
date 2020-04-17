@@ -98,7 +98,7 @@ build: checkenv build-adapter build-controller
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
+		--go-build-args "-ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
