@@ -27,7 +27,7 @@ require (
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
-	github.com/operator-framework/operator-sdk v0.16.1-0.20200402200254-b448429687fd
+	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20200108173154-1c71cc93ed71
