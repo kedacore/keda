@@ -42,7 +42,11 @@ Update the following file:
 https://github.com/Azure/azure-functions-core-tools/blob/dev/src/Azure.Functions.Cli/StaticResources/keda.yaml
 [Search for 1.1.0 etc. and replace it]
 
-**5) Upload release packages**
+**5) Create Helm release on GitHub**
+
+Create Helm release on GitHub with changelog of what changed to our Helm chart.
+
+**6) Upload release packages**
 
 When a new GitHub release is created, upload the tar.gz and zip release package files generated during the release process.
 They are named like `keda-$(VERSION).zip` and `keda-$(VERSION).tar.gz`.
