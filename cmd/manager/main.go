@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/kedacore/keda/pkg/apis"
+	"github.com/kedacore/keda/version"
 	"github.com/kedacore/keda/pkg/controller"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -32,7 +33,6 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	GitCommit           string
 	metricsHost               = "0.0.0.0"
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
@@ -40,10 +40,11 @@ var (
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
+	log.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
+	//log.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))	// multiple -ldflags doesn't work with operator-sdk v0.12, let's reenable this for KEDA v2
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
-	log.Info(fmt.Sprintf("Keda Commit: %s", GitCommit))
 }
 
 func main() {
