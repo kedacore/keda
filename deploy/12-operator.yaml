@@ -28,6 +28,7 @@ spec:
           - keda
           args:
           - '--zap-level=info'
+          - '--zap-time-encoding=epoch'
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
