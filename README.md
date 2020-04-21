@@ -168,11 +168,15 @@ to deploy it as part of KEDA. Do the following:
 You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/logging.md) mechanism.
 
 ### KEDA Operator logging
-Find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+To change the logging level, find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
+
+To change the logging time format, find `--zap-time-encoding=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+
+Allowed values are `epoch`, `millis`, `nano`, or `iso8601`
 
 ### Metrics Server logging
 Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deployment.yaml` file, modify it's value and redeploy.
