@@ -66,7 +66,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scal
 	} else if isActive {
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.
-		e.updateLastActiveTime(ctx, scaledObject)
+		e.updateLastActiveTime(ctx, logger, scaledObject)
 	} else {
 		logger.V(1).Info("ScaleTarget no change")
 	}
@@ -132,7 +132,7 @@ func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, s
 			"New Replicas Count", scale.Spec.Replicas)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
-		e.updateLastActiveTime(ctx, scaledObject)
+		e.updateLastActiveTime(ctx, logger, scaledObject)
 	}
 }
 
