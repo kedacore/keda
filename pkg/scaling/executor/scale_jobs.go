@@ -74,7 +74,7 @@ func (e *scaleExecutor) scaleJobs(ctx context.Context, scaledJob *kedav1alpha1.S
 		e.logger.V(1).Info("At least one scaler is active")
 		now := metav1.Now()
 		scaledJob.Status.LastActiveTime = &now
-		e.updateLastActiveTime(ctx, scaledJob)
+		e.updateLastActiveTime(ctx, e.logger, scaledJob)
 		e.createJobs(scaledJob, scaleTo, effectiveMaxScale)
 
 	} else {
