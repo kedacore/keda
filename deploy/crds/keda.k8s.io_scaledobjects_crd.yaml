@@ -19,6 +19,8 @@ spec:
     listKind: ScaledObjectList
     plural: scaledobjects
     singular: scaledobject
+    shortNames:
+    - so
   scope: Namespaced
   subresources:
     status: {}

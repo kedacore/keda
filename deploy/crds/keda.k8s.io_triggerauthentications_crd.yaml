@@ -9,6 +9,8 @@ spec:
     listKind: TriggerAuthenticationList
     plural: triggerauthentications
     singular: triggerauthentication
+    shortNames:
+    - triggerauth
   scope: Namespaced
   validation:
     openAPIV3Schema:
