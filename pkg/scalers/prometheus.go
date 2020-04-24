@@ -102,7 +102,7 @@ func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	
-	return val > -1, nil
+	return val > 0, nil
 }
 
 func (s *prometheusScaler) Close() error {
