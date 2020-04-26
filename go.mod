@@ -5,7 +5,6 @@ go 1.13
 // Required deps for operator-sdk v0.11.0 <-> kubernetes-incubator/custom-metrics-apiserver on kubernetes-1.14.1
 replace (
 	github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
-	// github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190703094830-abe433176c52
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 	github.com/ugorji/go => github.com/ugorji/go v1.1.7
 
@@ -61,6 +60,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.4.1 // indirect
 	github.com/prometheus/procfs v0.0.2 // indirect
+	github.com/servicemeshinterface/smi-sdk-go v0.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.4.0
@@ -69,11 +69,11 @@ require (
 	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143
 	google.golang.org/grpc v1.24.0
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
-	k8s.io/api v0.15.7
-	k8s.io/apimachinery v0.15.7
+	k8s.io/api v0.18.0
+	k8s.io/apimachinery v0.18.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c
+	k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
 	k8s.io/metrics v0.0.0-00010101000000-000000000000
 	k8s.io/utils v0.0.0-20191010214722-8d271d903fe4 // indirect
 	sigs.k8s.io/controller-runtime v0.2.0
