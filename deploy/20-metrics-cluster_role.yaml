@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: keda-external-metrics-reader
-    app.kubernetes.io/version: "1.4.0"
+    app.kubernetes.io/version: "1.4.1"
     app.kubernetes.io/part-of: keda-operator
   creationTimestamp: null
   name: keda-external-metrics-reader
