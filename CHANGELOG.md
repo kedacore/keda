@@ -1,15 +1,17 @@
 # Changelog
 
+## Deprecations
+
+- As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
+
+## History
+
 - [v1.4.1](#v141)
 - [v1.4.0](#v140)
 - [v1.3.0](#v130)
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
-
-## Deprecations
-
-- As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
 
 ## v1.4.1
 
