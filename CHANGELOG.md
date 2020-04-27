@@ -4,7 +4,36 @@
 
 - As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
 
-## v1.4
+## History
+
+- [v1.4.1](#v141)
+- [v1.4.0](#v140)
+- [v1.3.0](#v130)
+- [v1.2.0](#v120)
+- [v1.1.0](#v110)
+- [v1.0.0](#v100)
+
+## v1.4.1
+
+### New
+
+None
+
+### Improvements
+
+- Fix for scale-to-zero for Prometheus scaler no longer working ([#770](https://github.com/kedacore/keda/issues/770))
+- Fix for passing default VHost for Rabbit MQ scaler no longer working ([#770](https://github.com/kedacore/keda/issues/768))
+- Provide capability to define time encoding for operator ([#766](https://github.com/kedacore/keda/pull/766))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+- Print version of metric adapter in logs ([#770](https://github.com/kedacore/keda/issues/748))
+
+## v1.4.0
 
 ### New
 
@@ -34,7 +63,7 @@ None.
 - Fix typos in MySQL scaler ([#683](https://github.com/kedacore/keda/pull/683))
 - Update README to mention CNCF ([#682](https://github.com/kedacore/keda/pull/682))
 
-## v1.3
+## v1.3.0
 
 ### New
 
@@ -57,7 +86,7 @@ None.
 
 - Updating license to Apache per CNCF donation ([#661](https://github.com/kedacore/keda/pull/661))
 
-## v1.2
+## v1.2.0
 
 ### New
 
@@ -87,7 +116,7 @@ None.
 - Add a checkenv target ([#600](https://github.com/kedacore/keda/issues/600))
 - Mentioning problem with checksum mismatch error ([#605](https://github.com/kedacore/keda/issues/605))
 
-## v1.1
+## v1.1.0
 
 ### New
 
@@ -118,7 +147,7 @@ None.
 - Total running Jobs must not exceed maxScale - Running jobs ([#528](https://github.com/kedacore/keda/issues/528))
 - Check deploymentName definition in ScaledObject ([#532](https://github.com/kedacore/keda/issues/532))
 
-## v1.0
+## v1.0.0
 
 ### New
 
