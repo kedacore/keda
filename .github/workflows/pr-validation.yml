@@ -20,6 +20,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Verify Generated clientset is up to date
+        run: make verify-clientset
+
       - name: Test
         run: make test
 
