@@ -23,6 +23,7 @@ type TriggerAuthenticationSpec struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TriggerAuthentication defines how a trigger can authenticate
+// +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:path=triggerauthentications,scope=Namespaced
 type TriggerAuthentication struct {
