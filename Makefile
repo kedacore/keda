@@ -126,3 +126,16 @@ pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+##################################################
+# Clientset                                      #
+##################################################
+.PHONY: verify-clientset
+verify-clientset:
+	$(GO_BUILD_VARS) go mod vendor
+	./hack/verify-codegen.sh
+	
+.PHONY: generate-clientset
+generate-clientset:
+	$(GO_BUILD_VARS) go mod vendor
+	./hack/update-codegen.sh
