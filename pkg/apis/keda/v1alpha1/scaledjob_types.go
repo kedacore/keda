@@ -12,7 +12,7 @@ import (
 // ScaledJob is the Schema for the scaledjobs API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=scaledobjects,scope=Namespaced
+// +kubebuilder:resource:path=scaledjobs,scope=Namespaced,shortName=sj
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"

@@ -3,11 +3,26 @@ kind: CustomResourceDefinition
 metadata:
   name: scaledjobs.keda.sh
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.triggers[*].type
+    name: Triggers
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    name: Ready
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Active")].status
+    name: Active
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: keda.sh
   names:
     kind: ScaledJob
     listKind: ScaledJobList
     plural: scaledjobs
+    shortNames:
+    - sj
     singular: scaledjob
   scope: Namespaced
   subresources:
