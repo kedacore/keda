@@ -10,6 +10,9 @@ import (
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:path=triggerauthentications,scope=Namespaced,shortName=ta;triggerauth
+// +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
+// +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
+// +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 type TriggerAuthentication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

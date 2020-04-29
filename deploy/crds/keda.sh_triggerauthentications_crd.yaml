@@ -3,6 +3,16 @@ kind: CustomResourceDefinition
 metadata:
   name: triggerauthentications.keda.sh
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.podIdentity.provider
+    name: PodIdentity
+    type: string
+  - JSONPath: .spec.secretTargetRef[*].name
+    name: Secret
+    type: string
+  - JSONPath: .spec.env[*].name
+    name: Env
+    type: string
   group: keda.sh
   names:
     kind: TriggerAuthentication
@@ -13,6 +23,7 @@ spec:
     - triggerauth
     singular: triggerauthentication
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: TriggerAuthentication defines how a trigger can authenticate
