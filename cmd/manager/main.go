@@ -9,10 +9,6 @@ import (
 	"runtime"
 	"strings"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
-
 	"github.com/kedacore/keda/pkg/apis"
 	"github.com/kedacore/keda/pkg/controller"
 	"github.com/kedacore/keda/version"
@@ -26,8 +22,11 @@ import (
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -95,8 +94,9 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Namespace:              namespace,
+		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		HealthProbeBindAddress: ":8080",
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -112,6 +112,20 @@ func main() {
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Add readiness probe
+	err = mgr.AddReadyzCheck("ready-ping", healthz.Ping)
+	if err != nil {
+		log.Error(err, "Unable to add a readiness check")
+		os.Exit(1)
+	}
+
+	// Add liveness probe
+	err = mgr.AddHealthzCheck("health-ping", healthz.Ping)
+	if err != nil {
+		log.Error(err, "Unable to add a health check")
 		os.Exit(1)
 	}
 
