@@ -31,6 +31,16 @@ spec:
           - '--zap-level=info'
           - '--zap-time-encoding=epoch'
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 25
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 20
           env:
             - name: WATCH_NAMESPACE
               value: ""

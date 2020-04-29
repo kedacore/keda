@@ -24,6 +24,18 @@ spec:
         - name: keda-metrics-apiserver
           image: docker.io/kedacore/keda-metrics-adapter:2.0.0-alpha1
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: 6443
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /readyz
+              port: 6443
+            initialDelaySeconds: 5
           env:
             - name: WATCH_NAMESPACE
               value: ""
