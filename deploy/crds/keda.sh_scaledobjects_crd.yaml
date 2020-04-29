@@ -23,6 +23,9 @@ spec:
     - jsonPath: .spec.triggers[*].type
       name: Triggers
       type: string
+    - jsonPath: .spec.triggers[*].authenticationRef.name
+      name: Authentication
+      type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
