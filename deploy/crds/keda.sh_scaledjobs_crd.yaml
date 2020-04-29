@@ -7,6 +7,9 @@ spec:
   - JSONPath: .spec.triggers[*].type
     name: Triggers
     type: string
+  - JSONPath: .spec.triggers[*].authenticationRef.name
+    name: Authentication
+    type: string
   - JSONPath: .status.conditions[?(@.type=="Ready")].status
     name: Ready
     type: string
