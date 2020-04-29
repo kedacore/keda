@@ -8,6 +8,9 @@ spec:
     kind: TriggerAuthentication
     listKind: TriggerAuthenticationList
     plural: triggerauthentications
+    shortNames:
+    - ta
+    - triggerauth
     singular: triggerauthentication
   scope: Namespaced
   validation:
