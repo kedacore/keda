@@ -8,6 +8,8 @@ spec:
     kind: ScaledObject
     listKind: ScaledObjectList
     plural: scaledobjects
+    shortNames:
+    - so
     singular: scaledobject
   scope: Namespaced
   versions:

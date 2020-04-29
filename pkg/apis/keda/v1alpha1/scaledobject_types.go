@@ -10,7 +10,7 @@ import (
 // ScaledObject is a specification for a ScaledObject resource
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=scaledobjects,scope=Namespaced
+// +kubebuilder:resource:path=scaledobjects,scope=Namespaced,shortName=so
 // +kubebuilder:printcolumn:name="ScaleTargetKind",type="string",JSONPath=".status.scaleTargetKind"
 // +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
