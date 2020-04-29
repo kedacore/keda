@@ -14,7 +14,17 @@ spec:
     singular: triggerauthentication
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.podIdentity.provider
+      name: PodIdentity
+      type: string
+    - jsonPath: .spec.secretTargetRef[*].name
+      name: Secret
+      type: string
+    - jsonPath: .spec.env[*].name
+      name: Env
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: TriggerAuthentication defines how a trigger can authenticate
@@ -128,3 +138,4 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
