@@ -3,10 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/kedacore/keda/pkg/scalers/azure"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -124,8 +125,18 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 			t.Errorf("err creating container: %s", err)
 		}
 
-		unprocessedEventCountInPartition0, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "0")
-		unprocessedEventCountInPartition1, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, "1")
+		partitionInfo0, err := testEventHubScaler.client.GetPartitionInformation(ctx, "0")
+		if err != nil {
+			t.Errorf("unable to get partitionRuntimeInfo for partition 0: %s", err)
+		}
+
+		partitionInfo1, err := testEventHubScaler.client.GetPartitionInformation(ctx, "0")
+		if err != nil {
+			t.Errorf("unable to get partitionRuntimeInfo for partition 1: %s", err)
+		}
+
+		unprocessedEventCountInPartition0, _, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, partitionInfo0)
+		unprocessedEventCountInPartition1, _, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, partitionInfo1)
 		if err0 != nil {
 			t.Errorf("Expected success but got error: %s", err0)
 		}
@@ -147,6 +158,121 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+	}
+}
+func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
+	t.Log("This test will use the environment variable EVENTHUB_CONNECTION_STRING and STORAGE_CONNECTION_STRING if it is set.")
+	t.Log("If set, it will connect to the storage account and event hub to determine how many messages are in the event hub.")
+	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
+
+	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
+	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
+
+	if eventHubKey != "" && storageConnectionString != "" {
+		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
+		t.Log("Creating event hub client...")
+		hubOption := eventhub.HubWithPartitionedSender("0")
+		client, err := eventhub.NewHubFromConnectionString(eventHubConnectionString, hubOption)
+		if err != nil {
+			t.Errorf("Expected to create event hub client but got error: %s", err)
+		}
+
+		if eventHubConnectionString == "" {
+			t.Fatal("Event hub connection string needed for test")
+		}
+
+		if storageConnectionString == "" {
+			t.Fatal("Storage connection string needed for test")
+		}
+
+		// Can actually test that numbers return
+		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.eventHubInfo.StorageConnection = storageConnectionString
+		testEventHubScaler.client = client
+		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
+
+		// Send 1 message to event hub first
+		t.Log("Sending message to event hub")
+		err = SendMessageToEventHub(client)
+		if err != nil {
+			t.Error(err)
+		}
+
+		ctx := context.Background()
+
+		partitionInfo0, err := testEventHubScaler.client.GetPartitionInformation(ctx, "0")
+		if err != nil {
+			t.Errorf("unable to get partitionRuntimeInfo for partition 0: %s", err)
+		}
+
+		partitionInfo1, err := testEventHubScaler.client.GetPartitionInformation(ctx, "1")
+		if err != nil {
+			t.Errorf("unable to get partitionRuntimeInfo for partition 1: %s", err)
+		}
+
+		unprocessedEventCountInPartition0, _, err0 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, partitionInfo0)
+		unprocessedEventCountInPartition1, _, err1 := testEventHubScaler.GetUnprocessedEventCountInPartition(ctx, partitionInfo1)
+		if err0 != nil {
+			t.Errorf("Expected success but got error: %s", err0)
+		}
+		if err1 != nil {
+			t.Errorf("Expected success but got error: %s", err1)
+		}
+
+		if unprocessedEventCountInPartition0 != 1 {
+			t.Errorf("Expected 1 message in partition 0, got %d", unprocessedEventCountInPartition0)
+		}
+
+		if unprocessedEventCountInPartition1 != 0 {
+			t.Errorf("Expected 0 messages in partition 1, got %d", unprocessedEventCountInPartition1)
+		}
+	}
+}
+
+func TestGetUnprocessedEventCountWithoutCheckpointReturning1Message(t *testing.T) {
+
+	//After the first message the lastsequencenumber init to 0
+	partitionInfo := eventhub.HubPartitionRuntimeInformation{
+		PartitionID:             "0",
+		LastSequenceNumber:      0,
+		BeginningSequenceNumber: 0,
+	}
+
+	unprocessedEventCountInPartition0 := GetUnprocessedEventCountWithoutCheckpoint(&partitionInfo)
+
+	if unprocessedEventCountInPartition0 != 1 {
+		t.Errorf("Expected 1 messages in partition 0, got %d", unprocessedEventCountInPartition0)
+	}
+}
+
+func TestGetUnprocessedEventCountWithoutCheckpointReturning0Message(t *testing.T) {
+
+	//An empty partition starts with an equal value on last-/beginning-sequencenumber other than 0
+	partitionInfo := eventhub.HubPartitionRuntimeInformation{
+		PartitionID:             "0",
+		LastSequenceNumber:      255,
+		BeginningSequenceNumber: 255,
+	}
+
+	unprocessedEventCountInPartition0 := GetUnprocessedEventCountWithoutCheckpoint(&partitionInfo)
+
+	if unprocessedEventCountInPartition0 != 0 {
+		t.Errorf("Expected 0 messages in partition 0, got %d", unprocessedEventCountInPartition0)
+	}
+}
+
+func TestGetUnprocessedEventCountWithoutCheckpointReturning2Messages(t *testing.T) {
+
+	partitionInfo := eventhub.HubPartitionRuntimeInformation{
+		PartitionID:             "0",
+		LastSequenceNumber:      1,
+		BeginningSequenceNumber: 0,
+	}
+
+	unprocessedEventCountInPartition0 := GetUnprocessedEventCountWithoutCheckpoint(&partitionInfo)
+
+	if unprocessedEventCountInPartition0 != 2 {
+		t.Errorf("Expected 0 messages in partition 0, got %d", unprocessedEventCountInPartition0)
 	}
 }
 
