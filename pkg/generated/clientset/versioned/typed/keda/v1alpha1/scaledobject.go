@@ -18,6 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
@@ -36,15 +37,15 @@ type ScaledObjectsGetter interface {
 
 // ScaledObjectInterface has methods to work with ScaledObject resources.
 type ScaledObjectInterface interface {
-	Create(*v1alpha1.ScaledObject) (*v1alpha1.ScaledObject, error)
-	Update(*v1alpha1.ScaledObject) (*v1alpha1.ScaledObject, error)
-	UpdateStatus(*v1alpha1.ScaledObject) (*v1alpha1.ScaledObject, error)
-	Delete(name string, options *v1.DeleteOptions) error
-	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
-	Get(name string, options v1.GetOptions) (*v1alpha1.ScaledObject, error)
-	List(opts v1.ListOptions) (*v1alpha1.ScaledObjectList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ScaledObject, err error)
+	Create(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.CreateOptions) (*v1alpha1.ScaledObject, error)
+	Update(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error)
+	UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error)
+	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScaledObject, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScaledObjectList, error)
+	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledObject, err error)
 	ScaledObjectExpansion
 }
 
@@ -63,20 +64,20 @@ func newScaledObjects(c *KedaV1alpha1Client, namespace string) *scaledObjects {
 }
 
 // Get takes name of the scaledObject, and returns the corresponding scaledObject object, and an error if there is any.
-func (c *scaledObjects) Get(name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {
+func (c *scaledObjects) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {
 	result = &v1alpha1.ScaledObject{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("scaledobjects").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of ScaledObjects that match those selectors.
-func (c *scaledObjects) List(opts v1.ListOptions) (result *v1alpha1.ScaledObjectList, err error) {
+func (c *scaledObjects) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledObjectList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -87,13 +88,13 @@ func (c *scaledObjects) List(opts v1.ListOptions) (result *v1alpha1.ScaledObject
 		Resource("scaledobjects").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested scaledObjects.
-func (c *scaledObjects) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *scaledObjects) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -104,87 +105,90 @@ func (c *scaledObjects) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("scaledobjects").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a scaledObject and creates it.  Returns the server's representation of the scaledObject, and an error, if there is any.
-func (c *scaledObjects) Create(scaledObject *v1alpha1.ScaledObject) (result *v1alpha1.ScaledObject, err error) {
+func (c *scaledObjects) Create(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.CreateOptions) (result *v1alpha1.ScaledObject, err error) {
 	result = &v1alpha1.ScaledObject{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("scaledobjects").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scaledObject).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a scaledObject and updates it. Returns the server's representation of the scaledObject, and an error, if there is any.
-func (c *scaledObjects) Update(scaledObject *v1alpha1.ScaledObject) (result *v1alpha1.ScaledObject, err error) {
+func (c *scaledObjects) Update(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (result *v1alpha1.ScaledObject, err error) {
 	result = &v1alpha1.ScaledObject{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("scaledobjects").
 		Name(scaledObject.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scaledObject).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *scaledObjects) UpdateStatus(scaledObject *v1alpha1.ScaledObject) (result *v1alpha1.ScaledObject, err error) {
+func (c *scaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (result *v1alpha1.ScaledObject, err error) {
 	result = &v1alpha1.ScaledObject{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("scaledobjects").
 		Name(scaledObject.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scaledObject).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the scaledObject and deletes it. Returns an error if one occurs.
-func (c *scaledObjects) Delete(name string, options *v1.DeleteOptions) error {
+func (c *scaledObjects) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("scaledobjects").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *scaledObjects) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+func (c *scaledObjects) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("scaledobjects").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched scaledObject.
-func (c *scaledObjects) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ScaledObject, err error) {
+func (c *scaledObjects) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledObject, err error) {
 	result = &v1alpha1.ScaledObject{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("scaledobjects").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

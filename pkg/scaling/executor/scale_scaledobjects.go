@@ -31,7 +31,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scal
 		}
 	}
 
-	currentScale, err := e.getScaleTargetScale(scaledObject)
+	currentScale, err := e.getScaleTargetScale(ctx, scaledObject)
 	if err != nil {
 		logger.Error(err, "Error getting Scale")
 	}
@@ -58,7 +58,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scal
 		// Let's set ScaleTarget replicas count to correct value
 		currentScale.Spec.Replicas = *scaledObject.Spec.MinReplicaCount
 
-		err := e.updateScaleOnScaleTarget(scaledObject, currentScale)
+		err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale)
 		if err == nil {
 			logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
 				"ScaleTarget.Replicas", currentScale.Spec.Replicas)
@@ -99,7 +99,7 @@ func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, sca
 		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
 		// or last time a trigger was active was > cooldown period, so scale down.
 		scale.Spec.Replicas = 0
-		err := e.updateScaleOnScaleTarget(scaledObject, scale)
+		err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale)
 		if err == nil {
 			logger.Info("Successfully scaled ScaleTarget to 0 replicas")
 			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
@@ -124,7 +124,7 @@ func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, s
 		scale.Spec.Replicas = 1
 	}
 
-	err := e.updateScaleOnScaleTarget(scaledObject, scale)
+	err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale)
 
 	if err == nil {
 		logger.Info("Successfully updated ScaleTarget",
@@ -136,11 +136,11 @@ func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, s
 	}
 }
 
-func (e *scaleExecutor) getScaleTargetScale(scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv1.Scale, error) {
-	return (*e.scaleClient).Scales(scaledObject.Namespace).Get(scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
+func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv1.Scale, error) {
+	return (*e.scaleClient).Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 }
 
-func (e *scaleExecutor) updateScaleOnScaleTarget(scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) error {
-	_, err := (*e.scaleClient).Scales(scaledObject.Namespace).Update(scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale)
+func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) error {
+	_, err := (*e.scaleClient).Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 	return err
 }
