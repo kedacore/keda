@@ -18,6 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
@@ -60,13 +61,13 @@ func NewFilteredScaledJobInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KedaV1alpha1().ScaledJobs(namespace).List(options)
+				return client.KedaV1alpha1().ScaledJobs(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KedaV1alpha1().ScaledJobs(namespace).Watch(options)
+				return client.KedaV1alpha1().ScaledJobs(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&kedav1alpha1.ScaledJob{},
