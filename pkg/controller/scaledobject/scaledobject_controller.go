@@ -14,7 +14,7 @@ import (
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -163,11 +163,11 @@ func (r *ReconcileScaledObject) Reconcile(request reconcile.Request) (reconcile.
 	conditions := scaledObject.Status.Conditions.DeepCopy()
 	if err != nil {
 		reqLogger.Error(err, msg)
-		conditions.SetReadyCondition(v1.ConditionFalse, "ScaledObjectCheckFailed", msg)
-		conditions.SetActiveCondition(v1.ConditionUnknown, "UnkownState", "ScaledObject check failed")
+		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
+		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnkownState", "ScaledObject check failed")
 	} else {
 		reqLogger.V(1).Info(msg)
-		conditions.SetReadyCondition(v1.ConditionTrue, "ScaledObjectReady", msg)
+		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
 	}
 	kedacontrollerutil.SetStatusConditions(r.client, reqLogger, scaledObject, &conditions)
 	return reconcile.Result{}, err
@@ -252,7 +252,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// let's try to detect /scale subresource
-	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name)
+	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 	if errScale != nil {
 		// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 		unstruct := &unstructured.Unstructured{}
