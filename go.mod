@@ -3,7 +3,7 @@ module github.com/kedacore/keda
 go 1.13
 
 require (
-	cloud.google.com/go v0.50.0
+	cloud.google.com/go v0.55.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.0.0
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/azure-sdk-for-go v41.1.0+incompatible
@@ -20,14 +20,13 @@ require (
 	github.com/go-openapi/spec v0.19.7
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.3.5
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
-	github.com/operator-framework/operator-sdk v0.17.0
+	github.com/operator-framework/operator-sdk v0.17.1-0.20200501204426-0f43da11b8c0
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
@@ -35,26 +34,27 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20200122045848-3419fae592fc // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
-	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d // indirect
-	google.golang.org/api v0.14.0
-	google.golang.org/genproto v0.0.0-20191115194625-c23dd37a84c9
-	google.golang.org/grpc v1.27.0
-	k8s.io/api v0.17.4
-	k8s.io/apimachinery v0.17.4
+	google.golang.org/api v0.20.0
+	google.golang.org/genproto v0.0.0-20200326112834-f447254575fd
+	google.golang.org/grpc v1.28.0
+	k8s.io/api v0.18.2
+	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.17.4
+	k8s.io/code-generator v0.18.2
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
-	k8s.io/metrics v0.17.4
-	knative.dev/pkg v0.0.0-20200404181734-92cdec5b3593
+	k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
+	k8s.io/metrics v0.18.2
 	pack.ag/amqp v0.12.5 // indirect
-	sigs.k8s.io/controller-runtime v0.5.2
+	sigs.k8s.io/controller-runtime v0.6.0
 )
+
+// Need to use this until this PR with k8s 1.18 is merged https://github.com/kubernetes-sigs/custom-metrics-apiserver/pull/66
+replace github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/zroubalik/custom-metrics-apiserver v0.0.0-20200504115811-b4bb20049e83
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
-	k8s.io/apiserver => k8s.io/apiserver v0.17.4 // Required by kubernetes-incubator/custom-metrics-apiserver
-	k8s.io/client-go => k8s.io/client-go v0.17.4 // Required by prometheus-operator
+	k8s.io/apiserver => k8s.io/apiserver v0.18.2 // Required by kubernetes-incubator/custom-metrics-apiserver
+	k8s.io/client-go => k8s.io/client-go v0.18.2
 )
 
 // Required to resolve go/grpc issues

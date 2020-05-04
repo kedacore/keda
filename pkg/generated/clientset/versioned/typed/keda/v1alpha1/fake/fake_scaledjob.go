@@ -18,6 +18,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var scaledjobsResource = schema.GroupVersionResource{Group: "keda.sh", Version: 
 var scaledjobsKind = schema.GroupVersionKind{Group: "keda.sh", Version: "v1alpha1", Kind: "ScaledJob"}
 
 // Get takes name of the scaledJob, and returns the corresponding scaledJob object, and an error if there is any.
-func (c *FakeScaledJobs) Get(name string, options v1.GetOptions) (result *v1alpha1.ScaledJob, err error) {
+func (c *FakeScaledJobs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledJob, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(scaledjobsResource, c.ns, name), &v1alpha1.ScaledJob{})
 
@@ -49,7 +51,7 @@ func (c *FakeScaledJobs) Get(name string, options v1.GetOptions) (result *v1alph
 }
 
 // List takes label and field selectors, and returns the list of ScaledJobs that match those selectors.
-func (c *FakeScaledJobs) List(opts v1.ListOptions) (result *v1alpha1.ScaledJobList, err error) {
+func (c *FakeScaledJobs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledJobList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(scaledjobsResource, scaledjobsKind, c.ns, opts), &v1alpha1.ScaledJobList{})
 
@@ -71,14 +73,14 @@ func (c *FakeScaledJobs) List(opts v1.ListOptions) (result *v1alpha1.ScaledJobLi
 }
 
 // Watch returns a watch.Interface that watches the requested scaledJobs.
-func (c *FakeScaledJobs) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeScaledJobs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(scaledjobsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scaledJob and creates it.  Returns the server's representation of the scaledJob, and an error, if there is any.
-func (c *FakeScaledJobs) Create(scaledJob *v1alpha1.ScaledJob) (result *v1alpha1.ScaledJob, err error) {
+func (c *FakeScaledJobs) Create(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.CreateOptions) (result *v1alpha1.ScaledJob, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(scaledjobsResource, c.ns, scaledJob), &v1alpha1.ScaledJob{})
 
@@ -89,7 +91,7 @@ func (c *FakeScaledJobs) Create(scaledJob *v1alpha1.ScaledJob) (result *v1alpha1
 }
 
 // Update takes the representation of a scaledJob and updates it. Returns the server's representation of the scaledJob, and an error, if there is any.
-func (c *FakeScaledJobs) Update(scaledJob *v1alpha1.ScaledJob) (result *v1alpha1.ScaledJob, err error) {
+func (c *FakeScaledJobs) Update(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (result *v1alpha1.ScaledJob, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(scaledjobsResource, c.ns, scaledJob), &v1alpha1.ScaledJob{})
 
@@ -101,7 +103,7 @@ func (c *FakeScaledJobs) Update(scaledJob *v1alpha1.ScaledJob) (result *v1alpha1
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScaledJobs) UpdateStatus(scaledJob *v1alpha1.ScaledJob) (*v1alpha1.ScaledJob, error) {
+func (c *FakeScaledJobs) UpdateStatus(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (*v1alpha1.ScaledJob, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(scaledjobsResource, "status", c.ns, scaledJob), &v1alpha1.ScaledJob{})
 
@@ -112,7 +114,7 @@ func (c *FakeScaledJobs) UpdateStatus(scaledJob *v1alpha1.ScaledJob) (*v1alpha1.
 }
 
 // Delete takes name of the scaledJob and deletes it. Returns an error if one occurs.
-func (c *FakeScaledJobs) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeScaledJobs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(scaledjobsResource, c.ns, name), &v1alpha1.ScaledJob{})
 
@@ -120,15 +122,15 @@ func (c *FakeScaledJobs) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeScaledJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scaledjobsResource, c.ns, listOptions)
+func (c *FakeScaledJobs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(scaledjobsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScaledJobList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched scaledJob.
-func (c *FakeScaledJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ScaledJob, err error) {
+func (c *FakeScaledJobs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledJob, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(scaledjobsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScaledJob{})
 

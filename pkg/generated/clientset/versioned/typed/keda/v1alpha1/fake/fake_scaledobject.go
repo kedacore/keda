@@ -18,6 +18,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var scaledobjectsResource = schema.GroupVersionResource{Group: "keda.sh", Versio
 var scaledobjectsKind = schema.GroupVersionKind{Group: "keda.sh", Version: "v1alpha1", Kind: "ScaledObject"}
 
 // Get takes name of the scaledObject, and returns the corresponding scaledObject object, and an error if there is any.
-func (c *FakeScaledObjects) Get(name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {
+func (c *FakeScaledObjects) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(scaledobjectsResource, c.ns, name), &v1alpha1.ScaledObject{})
 
@@ -49,7 +51,7 @@ func (c *FakeScaledObjects) Get(name string, options v1.GetOptions) (result *v1a
 }
 
 // List takes label and field selectors, and returns the list of ScaledObjects that match those selectors.
-func (c *FakeScaledObjects) List(opts v1.ListOptions) (result *v1alpha1.ScaledObjectList, err error) {
+func (c *FakeScaledObjects) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledObjectList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(scaledobjectsResource, scaledobjectsKind, c.ns, opts), &v1alpha1.ScaledObjectList{})
 
@@ -71,14 +73,14 @@ func (c *FakeScaledObjects) List(opts v1.ListOptions) (result *v1alpha1.ScaledOb
 }
 
 // Watch returns a watch.Interface that watches the requested scaledObjects.
-func (c *FakeScaledObjects) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeScaledObjects) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(scaledobjectsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scaledObject and creates it.  Returns the server's representation of the scaledObject, and an error, if there is any.
-func (c *FakeScaledObjects) Create(scaledObject *v1alpha1.ScaledObject) (result *v1alpha1.ScaledObject, err error) {
+func (c *FakeScaledObjects) Create(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.CreateOptions) (result *v1alpha1.ScaledObject, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(scaledobjectsResource, c.ns, scaledObject), &v1alpha1.ScaledObject{})
 
@@ -89,7 +91,7 @@ func (c *FakeScaledObjects) Create(scaledObject *v1alpha1.ScaledObject) (result 
 }
 
 // Update takes the representation of a scaledObject and updates it. Returns the server's representation of the scaledObject, and an error, if there is any.
-func (c *FakeScaledObjects) Update(scaledObject *v1alpha1.ScaledObject) (result *v1alpha1.ScaledObject, err error) {
+func (c *FakeScaledObjects) Update(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (result *v1alpha1.ScaledObject, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(scaledobjectsResource, c.ns, scaledObject), &v1alpha1.ScaledObject{})
 
@@ -101,7 +103,7 @@ func (c *FakeScaledObjects) Update(scaledObject *v1alpha1.ScaledObject) (result 
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScaledObjects) UpdateStatus(scaledObject *v1alpha1.ScaledObject) (*v1alpha1.ScaledObject, error) {
+func (c *FakeScaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(scaledobjectsResource, "status", c.ns, scaledObject), &v1alpha1.ScaledObject{})
 
@@ -112,7 +114,7 @@ func (c *FakeScaledObjects) UpdateStatus(scaledObject *v1alpha1.ScaledObject) (*
 }
 
 // Delete takes name of the scaledObject and deletes it. Returns an error if one occurs.
-func (c *FakeScaledObjects) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeScaledObjects) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(scaledobjectsResource, c.ns, name), &v1alpha1.ScaledObject{})
 
@@ -120,15 +122,15 @@ func (c *FakeScaledObjects) Delete(name string, options *v1.DeleteOptions) error
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeScaledObjects) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scaledobjectsResource, c.ns, listOptions)
+func (c *FakeScaledObjects) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(scaledobjectsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScaledObjectList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched scaledObject.
-func (c *FakeScaledObjects) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ScaledObject, err error) {
+func (c *FakeScaledObjects) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledObject, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(scaledobjectsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScaledObject{})
 
