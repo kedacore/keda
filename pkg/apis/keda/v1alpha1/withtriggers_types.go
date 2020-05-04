@@ -1,10 +1,10 @@
 package v1alpha1
 
 import (
+	"github.com/kedacore/keda/pkg/apis/duck"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"knative.dev/pkg/apis"
-	"knative.dev/pkg/apis/duck"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -29,7 +29,7 @@ type WithTriggersSpec struct {
 var (
 	_ duck.Populatable   = (*WithTriggers)(nil)
 	_ duck.Implementable = (*ScaleTriggers)(nil)
-	_ apis.Listable      = (*WithTriggers)(nil)
+	_ duck.Listable      = (*WithTriggers)(nil)
 )
 
 // GetFullType implements duck.Implementable

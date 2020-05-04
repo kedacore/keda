@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kedacore/keda/pkg/apis/duck"
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/pkg/scalers"
 	"github.com/kedacore/keda/pkg/scaling/executor"
@@ -17,8 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
-	"knative.dev/pkg/apis/duck"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -202,7 +201,7 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 			return nil, "", err
 		}
 
-		withPods := &duckv1.WithPod{}
+		withPods := &kedav1alpha1.WithPod{}
 		if err := duck.FromUnstructured(unstruct, withPods); err != nil {
 			h.logger.Error(err, "Cannot convert unstructured into PodSpecable Duck-type", "object", unstruct)
 		}
