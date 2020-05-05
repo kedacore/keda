@@ -51,6 +51,13 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 		return nil, err
 	}
 
+	var behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior
+	if r.kubeVersion.MinorVersion >= 18 {
+		behavior = scaledObject.Spec.Behavior
+	} else {
+		behavior = nil
+	}
+
 	// label can have max 63 chars
 	labelName := getHPAName(scaledObject)
 	if len(labelName) > 63 {
@@ -68,6 +75,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 			MinReplicas: getHPAMinReplicas(scaledObject),
 			MaxReplicas: getHPAMaxReplicas(scaledObject),
 			Metrics:     scaledObjectMetricSpecs,
+			Behavior:    behavior,
 			ScaleTargetRef: autoscalingv2beta2.CrossVersionObjectReference{
 				Name:       scaledObject.Spec.ScaleTargetRef.Name,
 				Kind:       gvkr.Kind,
@@ -94,11 +102,15 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 	}
 
 	if !equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
+		logger.V(1).Info("Found difference in the HPA spec accordint to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
 		if r.client.Update(context.TODO(), foundHpa) != nil {
 			foundHpa.Spec = hpa.Spec
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
+		// check if scaledObject.spec.behavior was defined, because it is supported only on k8s >= 1.18
+		r.checkMinK8sVersionforHPABehavior(logger, scaledObject)
+
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
@@ -139,6 +151,15 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	}
 
 	return scaledObjectMetricSpecs, nil
+}
+
+// checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior
+func (r *ReconcileScaledObject) checkMinK8sVersionforHPABehavior(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) {
+	if r.kubeVersion.MinorVersion < 18 {
+		if scaledObject.Spec.Behavior != nil {
+			logger.Info("Warning: Ignoring scaledObject.spec.behavior, it is only supported on kubernetes version >= 1.18", "kubernetes.version", r.kubeVersion.PrettyVersion)
+		}
+	}
 }
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter
