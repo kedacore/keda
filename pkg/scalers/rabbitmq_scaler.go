@@ -213,7 +213,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
 
 	vhost := parsedUrl.Path
 
-	if vhost == "/" || vhost == "//" {
+	if vhost == "" || vhost == "/" || vhost == "//" {
 		vhost = "/%2F"
 	}
 
