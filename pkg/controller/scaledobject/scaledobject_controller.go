@@ -37,16 +37,32 @@ var log = logf.Log.WithName("controller_scaledobject")
 // Add creates a new ScaledObject Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	// Create Scale Client
-	scaleClient, err := initScaleClient(mgr)
+
+	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
-	return add(mgr, newReconciler(mgr, &scaleClient))
+
+	// Find out Kubernetes version
+	var kubeVersion kedautil.K8sVersion
+	version, err := clientset.ServerVersion()
+	if err == nil {
+		kubeVersion = kedautil.NewK8sVersion(version)
+		log.Info("Running on Kubernetes " + kubeVersion.PrettyVersion)
+	} else {
+		log.Error(err, "Not able to get Kubernetes version")
+	}
+
+	// Create Scale Client
+	scaleClient, err := initScaleClient(mgr, clientset)
+	if err != nil {
+		return err
+	}
+	return add(mgr, newReconciler(mgr, &scaleClient, kubeVersion))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter, kubeVersion kedautil.K8sVersion) reconcile.Reconciler {
 	return &ReconcileScaledObject{
 		client:                   mgr.GetClient(),
 		scaleClient:              scaleClient,
@@ -54,6 +70,7 @@ func newReconciler(mgr manager.Manager, scaleClient *scale.ScalesGetter) reconci
 		scheme:                   mgr.GetScheme(),
 		scaledObjectsGenerations: &sync.Map{},
 		scaleHandler:             scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme()),
+		kubeVersion:              kubeVersion,
 	}
 }
 
@@ -87,11 +104,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func initScaleClient(mgr manager.Manager) (scale.ScalesGetter, error) {
-	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		return nil, err
-	}
+func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) (scale.ScalesGetter, error) {
 
 	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(clientset)
 	return scale.New(
@@ -114,6 +127,7 @@ type ReconcileScaledObject struct {
 	scheme                   *runtime.Scheme
 	scaledObjectsGenerations *sync.Map
 	scaleHandler             scaling.ScaleHandler
+	kubeVersion              kedautil.K8sVersion
 }
 
 // Reconcile reads that state of the cluster for a ScaledObject object and makes changes based on the state read
@@ -294,6 +308,10 @@ func (r *ReconcileScaledObject) ensureHPAForScaledObjectExists(logger logr.Logge
 		if err != nil {
 			return false, err
 		}
+
+		// check if scaledObject.spec.behavior was defined, because it is supported only on k8s >= 1.18
+		r.checkMinK8sVersionforHPABehavior(logger, scaledObject)
+
 		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
 		return true, nil
 	} else if err != nil {
