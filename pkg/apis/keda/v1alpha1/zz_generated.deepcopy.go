@@ -20,6 +20,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/batch/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -462,6 +463,11 @@ func (in *ScaledObjectSpec) DeepCopyInto(out *ScaledObjectSpec) {
 		in, out := &in.MaxReplicaCount, &out.MaxReplicaCount
 		*out = new(int32)
 		**out = **in
+	}
+	if in.Behavior != nil {
+		in, out := &in.Behavior, &out.Behavior
+		*out = new(v2beta2.HorizontalPodAutoscalerBehavior)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Triggers != nil {
 		in, out := &in.Triggers, &out.Triggers
