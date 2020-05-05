@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,8 +39,11 @@ type ScaledObjectSpec struct {
 	// +optional
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
-	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
-	Triggers        []ScaleTriggers `json:"triggers"`
+	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
+	// +optional
+	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+
+	Triggers []ScaleTriggers `json:"triggers"`
 }
 
 //ScaleTarget holds the a reference to the scale target Object
