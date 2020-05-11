@@ -4,7 +4,7 @@ metadata:
   labels:
     app: keda-operator
     app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/version: "1.4.0"
+    app.kubernetes.io/version: "1.4.1"
     app.kubernetes.io/component: operator
     app.kubernetes.io/part-of: keda-operator
   name: keda-operator
@@ -24,7 +24,7 @@ spec:
       serviceAccountName: keda-operator
       containers:
         - name: keda-operator
-          image: docker.io/kedacore/keda:1.4.0
+          image: docker.io/kedacore/keda:1.4.1
           command:
           - keda
           args:

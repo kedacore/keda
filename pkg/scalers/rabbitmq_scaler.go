@@ -175,7 +175,8 @@ func (s *rabbitMQScaler) getQueueMessages() (int, error) {
 		if err != nil {
 			return -1, err
 		} else {
-			return info.Messages + info.MessagesUnacknowledged, nil
+			// messages count includes count of ready and unack-ed
+			return info.Messages, nil
 		}
 	} else {
 		items, err := s.channel.QueueInspect(s.metadata.queueName)
@@ -211,6 +212,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
 	}
 
 	vhost := parsedUrl.Path
+
+	if vhost == "" || vhost == "/" || vhost == "//" {
+		vhost = "/%2F"
+	}
+
 	parsedUrl.Path = ""
 
 	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedUrl.String(), "api/queues", vhost, s.metadata.queueName)
