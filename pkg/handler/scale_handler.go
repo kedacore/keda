@@ -228,7 +228,7 @@ func (h *ScaleHandler) GetDeploymentScalers(scaledObject *kedav1alpha1.ScaledObj
 			authParams["awsRoleArn"] = deployment.Spec.Template.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
-		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
+		scaler, err := h.getScaler(scaledObject, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
 			closeScalers(scalersRes)
 			return []scalers.Scaler{}, nil, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
@@ -250,7 +250,7 @@ func (h *ScaleHandler) getJobScalers(scaledObject *kedav1alpha1.ScaledObject) ([
 
 	for i, trigger := range scaledObject.Spec.Triggers {
 		authParams, podIdentity := h.parseJobAuthRef(trigger.AuthenticationRef, scaledObject)
-		scaler, err := h.getScaler(scaledObject.Name, scaledObject.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
+		scaler, err := h.getScaler(scaledObject, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
 		if err != nil {
 			closeScalers(scalersRes)
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
@@ -310,7 +310,7 @@ func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAut
 	return result, podIdentity
 }
 
-func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
+func (h *ScaleHandler) getScaler(scaledObject *kedav1alpha1.ScaledObject, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
 	switch triggerType {
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
@@ -335,7 +335,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "external":
-		return scalers.NewExternalScaler(name, namespace, resolvedEnv, triggerMetadata)
+		return scalers.NewExternalScaler(scaledObject.Name, scaledObject.Namespace, resolvedEnv, triggerMetadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "stan":
