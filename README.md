@@ -6,7 +6,7 @@ Make sure to remove previous KEDA (including CRD) from the cluster. Switch to th
    git fetch --all
    git checkout v2
    kubectl apply -f deploy/crds/keda.sh_scaledobjects_crd.yaml
-   kubectl apply -f deploy/crds/keda.sh_scaledjob_crd.yaml
+   kubectl apply -f deploy/crds/keda.sh_scaledjobs_crd.yaml
    kubectl apply -f deploy/crds/keda.sh_triggerauthentications_crd.yaml
    kubectl apply -f deploy/
 ```
