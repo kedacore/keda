@@ -55,7 +55,7 @@ If interested in contributing or participating in the direction of KEDA, you can
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 Just want to learn or chat about KEDA? Feel free to join the conversation in 
-**[#KEDA](kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
+**[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
 ## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
 
