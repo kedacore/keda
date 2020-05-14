@@ -24,7 +24,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 
 ## Deploying KEDA
 
-There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/docs/deploy/).
+There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/docs/latest/deploy/).
 
 ## Documentation
 
@@ -32,7 +32,7 @@ Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ## FAQ
 
-You can find a [FAQ here](https://keda.sh/faq/) with some common questions.
+You can find a [FAQ here](https://keda.sh/docs/latest/faq/) with some common questions.
 
 ## Samples
 
