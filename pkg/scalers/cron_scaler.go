@@ -44,8 +44,8 @@ type cronMetadata struct {
 var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
-func NewCronScaler(deploymentName, namespace string, resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseCronMetadata(deploymentName, namespace, metadata, resolvedEnv, authParams)
+func NewCronScaler(deploymentName, namespace string, resolvedEnv, metadata map[string]string) (Scaler, error) {
+	meta, err := parseCronMetadata(deploymentName, namespace, metadata, resolvedEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cron metadata: %s", err)
 	}
@@ -89,8 +89,12 @@ func getK8sClient() (client.Client, error) {
 
 	return kubeclient, nil
 }
-func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv, authParams map[string]string) (*cronMetadata, error) {
+func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv map[string]string) (*cronMetadata, error) {
 	meta := cronMetadata{}
+	if len(metadata) == 0 || deploymentName == "" || namespace == ""{
+		return nil, fmt.Errorf("Invalid Input Metadata.")
+	}
+
 	meta.deploymentName = deploymentName
 	meta.namespace = namespace
 	meta.startTime = 0
@@ -99,7 +103,7 @@ func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv, 
 	if val, ok := metadata["startTime"]; ok && val != "" {
 	    metadataStartTime, err := strconv.Atoi(val)
 	    if err != nil {
-			cronLog.Error(err, "Error parsing startTime metadata")
+			return nil, fmt.Errorf("Error parsing startTime metadata.")
 		} else {
 		    meta.startTime = int64(metadataStartTime)
 		}
@@ -107,18 +111,23 @@ func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv, 
 	if val, ok := metadata["endTime"]; ok && val != "" {
 	    metadataEndTime, err := strconv.Atoi(val)
 	    if err != nil {
-			cronLog.Error(err, "Error parsing endTime metadata")
+			return nil, fmt.Errorf("Error parsing startTime metadata.")
 		} else {
 		    meta.endTime = int64(metadataEndTime)
 		}
 	}
+	if meta.startTime > meta.endTime {
+		return nil, fmt.Errorf("StartTime cannot be after endTime")
+	}
 	if val, ok := metadata["metricName"]; ok && val != "" {
 		meta.metricName = val
+	} else {
+		return nil, fmt.Errorf("No metricName specified.")
 	}
 	if val, ok := metadata["desiredReplicas"]; ok && val != "" {
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
-			cronLog.Error(err, "Error parsing maxPods metadata")
+			cronLog.Error(err, "Error parsing desiredReplicas metadata")
 		} else {
 			meta.desiredReplicas = int64(metadataDesiredReplicas)
 		}
