@@ -3,20 +3,20 @@ package scalers
 import (
 	"context"
 	"fmt"
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"strconv"
 	"time"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -130,35 +130,9 @@ func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv, 
 // IsActive checks if the startTime or endTime has reached
 func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
     var currentTime = time.Now().Unix()
-
-    //IST, _ := time.LoadLocation("Asia/Kolkata")
-    //if(IST == nil) {
-    //	cronLog.V(0).Info("Unable to load time. INACTIVE SCALER ")
-    //	return false, nil
-	//} else {
-	//	cronLog.V(0).Info(fmt.Sprintf("Time present", IST))
-	//}
-	//c := cron.New(cron.WithLocation(IST))
-	//c.AddFunc("0 30 * * * *", func() {fmt.Println("Every half an hour" )})
-	//c.AddFunc("0 10 20 13 May ?", func() { fmt.Println("13th May 8:10 PM" )})
-	////c.Start()
-	//
-	//cronLog.V(0).Info(fmt.Sprintf("CK Next cron start: %s", c.Entries()))
-	//cronLog.V(0).Info(fmt.Sprintf("CK Next cron start: %s", c.Entries()[0].Next.Unix()))
-	//cronLog.V(0).Info(fmt.Sprintf("CK Next cron end: %s", c.Entries()[1].Next.Unix()))
-	//
-	////for _, entry := range c.Entries() {
-	////	sec := entry.Next.Unix()
-	////	cronLog.V(0).Info(fmt.Sprintf("CK Next cron start: %s", sec))
-	////}
-	//
-	//c.Stop()
-
-	if currentTime >= s.metadata.startTime && currentTime < s.metadata.endTime {
-        cronLog.Info("CK SCALER Active")
+    if currentTime >= s.metadata.startTime && currentTime < s.metadata.endTime {
         return true, nil
     } else {
-        cronLog.Info("CK SCALER Inactive")
         return false, nil
     }
 }
