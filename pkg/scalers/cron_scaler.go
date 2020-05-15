@@ -6,18 +6,15 @@ import (
 	"strconv"
 	"time"
 
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	"github.com/ringtail/go-cron"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -27,16 +24,18 @@ const (
 )
 
 type cronScaler struct {
-	metadata *cronMetadata
-	client client.Client
-	namespace string
+	metadata               *cronMetadata
+	deploymentName         string
+	namespace              string
+	startCron              *cron.Cron
+	endCron                *cron.Cron
+	client                 client.Client
 }
 
 type cronMetadata struct {
-	startTime        int64
-	endTime          int64
-	deploymentName   string
-	namespace        string
+	start            string
+	end              string
+	timezone         string
 	metricName       string
 	desiredReplicas  int64
 }
@@ -44,90 +43,88 @@ type cronMetadata struct {
 var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
-func NewCronScaler(deploymentName, namespace string, resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parseCronMetadata(deploymentName, namespace, metadata, resolvedEnv)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing cron metadata: %s", err)
+func NewCronScaler(client client.Client, deploymentName, namespace string, resolvedEnv, metadata map[string]string) (Scaler, error) {
+	meta, parseErr := parseCronMetadata(metadata, resolvedEnv)
+	if parseErr != nil {
+		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
 	}
 
-	client, err := getK8sClient()
+	location, err := time.LoadLocation(meta.timezone)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to load timezone. Error: %s", err)
 	}
+
+	startCron, scronErr := initCron(location, meta.start)
+	if scronErr != nil {
+		return nil, fmt.Errorf("error initializing start cron: %s", scronErr)
+	}
+
+	endCron, ecronErr := initCron(location, meta.end)
+	if ecronErr != nil {
+		return nil, fmt.Errorf("error intializing end cron: %s", ecronErr)
+	}
+
+	startTime := startCron.Entries()[0].Next.Unix()
+	endTime   := endCron.Entries()[0].Next.Unix()
+
+	if startTime > endTime {
+		return nil, fmt.Errorf("start time cannot be greater than end time while initializing itself. %s", metadata)
+	}
+
 	return &cronScaler{
-		metadata: meta,
-		client: client,
+		metadata               : meta,
+		deploymentName         : deploymentName,
+		namespace              : namespace,
+		startCron              : startCron,
+		endCron                : endCron,
+		client                 : client,
 	}, nil
 }
 
-func getK8sClient() (client.Client, error) {
-
-	// Get a config to talk to the apiserver
-	cfg, err := config.GetConfig()
-	if err != nil {
-		cronLog.Error(err, "CronScaler Client init: failed to get the config")
-		return nil, err
-	}
-
-	scheme := scheme.Scheme
-	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
-		cronLog.Error(err, "CronScaler Client init: failed to add apps/v1 scheme to runtime scheme")
-		return nil, err
-	}
-	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
-		cronLog.Error(err, "CronScaler Client init: failed to add keda scheme to runtime scheme")
-		return nil, err
-	}
-
-	kubeclient, err := client.New(cfg, client.Options{
-		Scheme: scheme,
+func initCron(location *time.Location, spec string) (*cron.Cron, error) {
+	cron := cron.NewWithLocation(location)
+	err := cron.AddFunc( spec , func() (msg string, err error) {
+		return "Cron initialized", nil
 	})
 	if err != nil {
-		cronLog.Error(err, "CronScaler Client init: unable to construct new client")
 		return nil, err
 	}
 
-	return kubeclient, nil
+	cron.Start()
+
+	return cron, nil
 }
-func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv map[string]string) (*cronMetadata, error) {
+
+func parseCronMetadata(metadata, resolvedEnv map[string]string) (*cronMetadata, error) {
+	if len(metadata) == 0 {
+		return nil, fmt.Errorf("Invalid Input Metadata. %s", metadata)
+	}
+
 	meta := cronMetadata{}
-	if len(metadata) == 0 || deploymentName == "" || namespace == ""{
-		return nil, fmt.Errorf("Invalid Input Metadata.")
+	if val, ok := metadata["timezone"]; ok && val != "" {
+		meta.timezone = val
+	} else {
+		return nil, fmt.Errorf("No timezone specified. %s", metadata)
 	}
-
-	meta.deploymentName = deploymentName
-	meta.namespace = namespace
-	meta.startTime = 0
-	meta.endTime = 0
-
-	if val, ok := metadata["startTime"]; ok && val != "" {
-	    metadataStartTime, err := strconv.Atoi(val)
-	    if err != nil {
-			return nil, fmt.Errorf("Error parsing startTime metadata.")
-		} else {
-		    meta.startTime = int64(metadataStartTime)
-		}
+	if val, ok := metadata["start"]; ok && val != "" {
+		meta.start = val
+	} else {
+		return nil, fmt.Errorf("No start schedule specified. %s", metadata)
 	}
-	if val, ok := metadata["endTime"]; ok && val != "" {
-	    metadataEndTime, err := strconv.Atoi(val)
-	    if err != nil {
-			return nil, fmt.Errorf("Error parsing startTime metadata.")
-		} else {
-		    meta.endTime = int64(metadataEndTime)
-		}
-	}
-	if meta.startTime > meta.endTime {
-		return nil, fmt.Errorf("StartTime cannot be after endTime")
+	if val, ok := metadata["end"]; ok && val != "" {
+		meta.end = val
+	} else {
+		return nil, fmt.Errorf("No end schedule specified. %s", metadata)
 	}
 	if val, ok := metadata["metricName"]; ok && val != "" {
 		meta.metricName = val
 	} else {
-		return nil, fmt.Errorf("No metricName specified.")
+		return nil, fmt.Errorf("No metricName specified. %s", metadata)
 	}
 	if val, ok := metadata["desiredReplicas"]; ok && val != "" {
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
-			cronLog.Error(err, "Error parsing desiredReplicas metadata")
+			return nil, fmt.Errorf("Error parsing desiredReplicas metadata. %s", metadata)
 		} else {
 			meta.desiredReplicas = int64(metadataDesiredReplicas)
 		}
@@ -139,14 +136,21 @@ func parseCronMetadata(deploymentName, namespace string, metadata, resolvedEnv m
 // IsActive checks if the startTime or endTime has reached
 func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
     var currentTime = time.Now().Unix()
-    if currentTime >= s.metadata.startTime && currentTime < s.metadata.endTime {
-        return true, nil
-    } else {
-        return false, nil
+    startTime := s.startCron.Entries()[0].Next.Unix()
+	endTime := s.endCron.Entries()[0].Next.Unix()
+
+    if startTime < endTime && currentTime < startTime {
+    	return false, nil
+    } else if currentTime <= endTime {
+    	return true, nil
+	} else {
+		return false, nil
     }
 }
 
 func (s *cronScaler) Close() error {
+	s.startCron.Stop()
+	s.endCron.Stop()
 	return nil
 }
 
@@ -167,7 +171,7 @@ func (s *cronScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 
 	deployment := &appsv1.Deployment{}
-	err := s.client.Get(context.TODO(), types.NamespacedName{Name: s.metadata.deploymentName, Namespace: s.metadata.namespace}, deployment)
+	err := s.client.Get(context.TODO(), types.NamespacedName{Name: s.deploymentName, Namespace: s.namespace}, deployment)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting deployment: %s", err)
 	}

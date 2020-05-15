@@ -58,6 +58,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/operator-framework/operator-sdk v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.8.1
+	github.com/ringtail/go-cron v0.0.0-20190829034403-064b52d195fc
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.4.0
