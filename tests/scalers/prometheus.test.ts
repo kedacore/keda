@@ -193,4 +193,5 @@ spec:
         - -n 700000
         - http://test-app/
       restartPolicy: Never
+  activeDeadlineSeconds: 60
   backoffLimit: 2`
