@@ -203,5 +203,5 @@ spec:
         - -c 20 
         - -n 700000
         - http://test-app/
-      restartPolicy: Never`
-
+      restartPolicy: Never
+  backoffLimit: 2`
