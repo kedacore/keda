@@ -10,7 +10,7 @@ test.before('configure shelljs', () => {
 })
 
 test.serial('Verify all commands', t => {
-  for (const command of ['kubectl']) {
+  for (const command of ['kubectl', 'helm']) {
     if (!sh.which(command)) {
       t.fail(`${command} is required for setup`)
     }
@@ -21,6 +21,10 @@ test.serial('Verify all commands', t => {
 test.serial('Verify environment variables', t => {
   const cluster = kc.getCurrentCluster()
   t.truthy(cluster, 'Make sure kubectl is logged into a cluster.')
+})
+
+test.serial('Init helm client', t => {
+  t.is(0, sh.exec('helm init --client-only').code)
 })
 
 test.serial('Deploy Keda', t => {
