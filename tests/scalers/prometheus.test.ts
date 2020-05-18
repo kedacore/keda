@@ -6,23 +6,12 @@ import test from 'ava'
 
 const testNamespace = 'prometheus-test'
 const prometheusNamespace = 'monitoring'
-const prometheusDeploymentFile = 'prometheus-deployment.yaml'
-
+const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
 
 test.before(t => {
-
   // install prometheus
-  sh.exec('helm repo add stable https://kubernetes-charts.storage.googleapis.com/')
-  sh.exec('helm fetch stable/prometheus --version 11.1.0')
-  sh.exec(`helm template --name prometheus --namespace ${prometheusNamespace} \
-  --set alertmanager.enabled=false \
-  --set kubeStateMetrics.enabled=false \
-  --set nodeExporter.enabled=false \
-  --set pushgateway.enabled=false $(ls prometheus*.tgz) > ${prometheusDeploymentFile}`)
-
-
   sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-  t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Promehteus deployment should work.')
+  t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
   // wait for prometheus to load
   for (let i = 0; i < 10; i++) {
     const readyReplicaCount = sh.exec(`kubectl get deploy/prometheus-server -n ${prometheusNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
@@ -204,4 +193,5 @@ spec:
         - -n 700000
         - http://test-app/
       restartPolicy: Never
+  activeDeadlineSeconds: 60
   backoffLimit: 2`
