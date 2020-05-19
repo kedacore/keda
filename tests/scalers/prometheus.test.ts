@@ -32,6 +32,12 @@ test.before(t => {
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating a deployment should work.'
   )
+  for (let i = 0; i < 10; i++) {
+    const readyReplicaCount = sh.exec(`kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}`).stdout
+    if (readyReplicaCount != '2') {
+      sh.exec('sleep 2s')
+    }
+  }
 })
 
 test.serial('Deployment should have 0 replicas on start', t => {
@@ -51,6 +57,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating job should work.'
   )
+
   t.is(
     '1',
     sh.exec(
