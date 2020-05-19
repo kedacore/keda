@@ -51,6 +51,13 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating job should work.'
   )
+  t.is(
+    '1',
+    sh.exec(
+      `kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}"`
+    ).stdout,
+    'There should be 1 replica for the test-app deployment'
+  )
 
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '0'
@@ -66,6 +73,9 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   t.is('5', replicaCount, 'Replica count should be maxed at 5')
 
   for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
+    t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
+    const jobLogs = sh.exec(`kubectl logs -l app=generate-requests-job -n ${testNamespace}`).stdout
+    t.log(`Logs from the generate requests: ${jobLogs}`)
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
@@ -182,6 +192,8 @@ const generateRequestsYaml = `apiVersion: batch/v1
 kind: Job
 metadata:
   name: generate-requests
+  labels:
+    app: generate-requests-job
 spec:
   template:
     spec:
