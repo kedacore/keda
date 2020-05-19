@@ -29,5 +29,11 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+
       - name: Publish
-        run: make VERSION=${GITHUB_REF#refs/tags/v} publish
+        run: make publish
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
