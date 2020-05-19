@@ -34,7 +34,7 @@ test.before(t => {
   )
   for (let i = 0; i < 10; i++) {
     const readyReplicaCount = sh.exec(`kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}`).stdout
-    if (readyReplicaCount != '2') {
+    if (readyReplicaCount != '1') {
       sh.exec('sleep 2s')
     }
   }
