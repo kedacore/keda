@@ -156,7 +156,7 @@ func (s *stanScaler) getMaxMsgLag() int64 {
 	return s.channelInfo.LastSequence - maxValue
 }
 
-func (s *stanScaler) hasPendingMessage() bool {	
+func (s *stanScaler) hasPendingMessage() bool {
 	subscriberFound := false
 	combinedQueueName := s.metadata.durableName + ":" + s.metadata.queueGroup
 

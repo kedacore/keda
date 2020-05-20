@@ -3,11 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	"math"
 	"strconv"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
-	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,17 +29,13 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type AzureEventHubScaler struct {
-	metadata           *EventHubMetadata
-	client             *eventhub.Hub
-	storageCredentials *azblob.SharedKeyCredential
+	metadata *EventHubMetadata
+	client   *eventhub.Hub
 }
 
 type EventHubMetadata struct {
-	eventHubConnection    string
-	eventHubConsumerGroup string
-	threshold             int64
-	storageConnection     string
-	blobContainer         string
+	eventHubInfo azure.EventHubInfo
+	threshold    int64
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -49,26 +45,22 @@ func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
 
-	_, cred, err := GetStorageCredentials(parsedMetadata.storageConnection)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get storage credentials: %s", err)
-	}
-
-	hub, err := GetEventHubClient(parsedMetadata.eventHubConnection)
+	hub, err := azure.GetEventHubClient(parsedMetadata.eventHubInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
 
 	return &AzureEventHubScaler{
-		metadata:           parsedMetadata,
-		storageCredentials: cred,
-		client:             hub,
+		metadata: parsedMetadata,
+		client:   hub,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
 func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*EventHubMetadata, error) {
-	meta := EventHubMetadata{}
+	meta := EventHubMetadata{
+		eventHubInfo: azure.EventHubInfo{},
+	}
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := metadata[thresholdMetricName]; ok {
@@ -86,7 +78,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	}
 
 	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
-		meta.storageConnection = val
+		meta.eventHubInfo.StorageConnection = val
 	} else {
 		return nil, fmt.Errorf("no storage connection string given")
 	}
@@ -97,19 +89,19 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	}
 
 	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
-		meta.eventHubConnection = val
+		meta.eventHubInfo.EventHubConnection = val
 	} else {
 		return nil, fmt.Errorf("no event hub connection string given")
 	}
 
-	meta.eventHubConsumerGroup = defaultEventHubConsumerGroup
+	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := metadata["consumerGroup"]; ok {
-		meta.eventHubConsumerGroup = val
+		meta.eventHubInfo.EventHubConsumerGroup = val
 	}
 
-	meta.blobContainer = defaultBlobContainer
+	meta.eventHubInfo.BlobContainer = defaultBlobContainer
 	if val, ok := metadata["blobContainer"]; ok {
-		meta.blobContainer = val
+		meta.eventHubInfo.BlobContainer = val
 	}
 
 	return &meta, nil
@@ -122,7 +114,7 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		return -1, fmt.Errorf("unable to get partition info: %s", err)
 	}
 
-	checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
+	checkpoint, err := azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionID)
 	if err != nil {
 		return -1, fmt.Errorf("unable to get checkpoint from storage: %s", err)
 	}
@@ -202,7 +194,7 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
 		}
 
-		checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
+		checkpoint, err := azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionID)
 		if err != nil {
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get checkpoint from storage: %s", err)
 		}

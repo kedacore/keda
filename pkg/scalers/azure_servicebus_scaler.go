@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
 	servicebus "github.com/Azure/azure-service-bus-go"
@@ -173,7 +174,7 @@ type azureTokenProvider struct {
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
-	token, err := getAzureADPodIdentityToken("https://servicebus.azure.net")
+	token, err := azure.GetAzureADPodIdentityToken("https://servicebus.azure.net")
 	if err != nil {
 		return nil, err
 	}
