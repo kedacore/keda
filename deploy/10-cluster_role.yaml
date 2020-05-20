@@ -5,7 +5,6 @@ metadata:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/version: "2.0.0-alpha1"
     app.kubernetes.io/part-of: keda-operator
-  creationTimestamp: null
   name: keda-operator
 rules:
 - apiGroups:
@@ -62,3 +61,9 @@ rules:
   - "*/scale"
   verbs:
   - "*"
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "get"
