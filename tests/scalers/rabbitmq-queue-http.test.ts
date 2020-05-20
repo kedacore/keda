@@ -64,7 +64,7 @@ test.after.always.cb('clean up rabbitmq-queue deployment', t => {
   const resources = [
     'secret/test-secrets-api',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.k8s.io/test-scaledobject',
+    'scaledobject.keda.sh/test-scaledobject',
   ]
 
   for (const resource of resources) {
@@ -111,15 +111,13 @@ spec:
         - secretRef:
             name: test-secrets-api
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
-  labels:
-    deploymentName: test-deployment
 spec:
   scaleTargetRef:
-    deploymentName: test-deployment
+    name: test-deployment
   pollingInterval: 5
   cooldownPeriod: 10
   minReplicaCount: 0
