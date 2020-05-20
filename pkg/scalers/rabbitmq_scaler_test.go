@@ -62,20 +62,20 @@ type getQueueInfoTestData struct {
 
 var testQueueInfoTestData = []getQueueInfoTestData{
 	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true},
-	{`{"messages": 0, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true},
+	{`{"messages": 1, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true},
 	{`{"messages": 1, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, true},
 	{`{"messages": 0, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, false},
 	{`Password is incorrect`, http.StatusUnauthorized, false},
 }
 
-var vhosts = []string{"myhost", "", "/", "%2F"}
+var vhost_pathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
-		for _, vhost := range vhosts {
-			expeced_vhost := vhost
+		for _, vhost_path := range vhost_pathes {
+			expeced_vhost := "myhost"
 
-			if vhost != "myhost" {
+			if vhost_path != "/myhost" {
 				expeced_vhost = "%2F"
 			}
 
@@ -89,7 +89,7 @@ func TestGetQueueInfo(t *testing.T) {
 				w.Write([]byte(testData.response))
 			}))
 
-			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s/%s", apiStub.URL, vhost)}
+			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhost_path)}
 
 			metadata := map[string]string{
 				"queueLength":    "10",
