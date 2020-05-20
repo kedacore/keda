@@ -27,7 +27,7 @@ all: test build
 ##################################################
 .PHONY: test
 test:
-	go test ./...
+	go test ./... -covermode=atomic -coverprofile cover.out
 
 .PHONY: e2e-test
 e2e-test:

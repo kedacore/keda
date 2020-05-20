@@ -3,12 +3,10 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -54,8 +52,10 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 
 var testEventHubScaler = AzureEventHubScaler{
 	metadata: &EventHubMetadata{
-		eventHubConnection: "none",
-		storageConnection:  "none",
+		eventHubInfo: azure.EventHubInfo{
+			EventHubConnection: "none",
+			StorageConnection:  "none",
+		},
 	},
 }
 
@@ -83,18 +83,17 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageAccountName := strings.Split(strings.Split(storageConnectionString, ";")[1], "=")[1]
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection("none", storageConnectionString, "")
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
 
 		t.Log("Creating event hub client...")
 		hubOption := eventhub.HubWithPartitionedSender("0")
 		client, err := eventhub.NewHubFromConnectionString(eventHubConnectionString, hubOption)
 		if err != nil {
-			t.Errorf("Expected to create event hub client but got error: %s", err)
-		}
-
-		_, storageCredentials, err := GetStorageCredentials(storageConnectionString)
-		if err != nil {
-			t.Errorf("Expected to generate storage credentials but got error: %s", err)
+			t.Fatalf("Expected to create event hub client but got error: %s", err)
 		}
 
 		if eventHubConnectionString == "" {
@@ -106,11 +105,10 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 		}
 
 		// Can actually test that numbers return
-		testEventHubScaler.metadata.eventHubConnection = eventHubConnectionString
-		testEventHubScaler.metadata.storageConnection = storageConnectionString
+		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.eventHubInfo.StorageConnection = storageConnectionString
 		testEventHubScaler.client = client
-		testEventHubScaler.storageCredentials = storageCredentials
-		testEventHubScaler.metadata.eventHubConsumerGroup = "$Default"
+		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")
@@ -121,7 +119,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 		// Create fake checkpoint with path azure-webjobs-eventhub/<eventhub-namespace-name>.servicebus.windows.net/<eventhub-name>/$Default
 		t.Log("Creating container..")
-		ctx, err := CreateNewCheckpointInStorage(storageAccountName, storageCredentials, client)
+		ctx, err := CreateNewCheckpointInStorage(endpoint, storageCredentials, client)
 		if err != nil {
 			t.Errorf("err creating container: %s", err)
 		}
@@ -145,49 +143,20 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 		// Delete container - this will also delete checkpoint
 		t.Log("Deleting container...")
-		err = DeleteContainerInStorage(ctx, storageAccountName, storageCredentials)
+		err = DeleteContainerInStorage(ctx, endpoint, storageCredentials)
 		if err != nil {
 			t.Error(err)
 		}
 	}
 }
 
-const csharpSdkCheckpoint = `{
-		"Epoch": 123456,
-		"Offset": "test offset",
-		"Owner": "test owner",
-		"PartitionId": "test partitionId",
-		"SequenceNumber": 12345
-	}`
-
-const pythonSdkCheckpoint = `{
-		"epoch": 123456,
-		"offset": "test offset",
-		"owner": "test owner",
-		"partition_id": "test partitionId",
-		"sequence_number": 12345
-	}`
-
-func TestGetCheckpoint(t *testing.T) {
-	cckp, err := getCheckpoint([]byte(csharpSdkCheckpoint))
-	if err != nil {
-		t.Error(err)
-	}
-
-	pckp, err := getCheckpoint([]byte(pythonSdkCheckpoint))
-	if err != nil {
-		t.Error(err)
-	}
-
-	assert.Equal(t, cckp, pckp)
-}
-
-func CreateNewCheckpointInStorage(storageAccountName string, credential *azblob.SharedKeyCredential, client *eventhub.Hub) (context.Context, error) {
+func CreateNewCheckpointInStorage(endpoint *url.URL, credential azblob.Credential, client *eventhub.Hub) (context.Context, error) {
 	urlPath := fmt.Sprintf("%s.servicebus.windows.net/%s/$Default/", testEventHubNamespace, testEventHubName)
 
 	// Create container
 	ctx := context.Background()
-	url, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", storageAccountName, testContainerName))
+	path, _ := url.Parse(testContainerName)
+	url := endpoint.ResolveReference(path)
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
 	_, err := containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
 	if err != nil {
@@ -283,8 +252,9 @@ func SendMessageToEventHub(client *eventhub.Hub) error {
 	return nil
 }
 
-func DeleteContainerInStorage(ctx context.Context, storageAccountName string, credential *azblob.SharedKeyCredential) error {
-	url, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", storageAccountName, testContainerName))
+func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential azblob.Credential) error {
+	path, _ := url.Parse(testContainerName)
+	url := endpoint.ResolveReference(path)
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
 
 	_, err := containerURL.Delete(ctx, azblob.ContainerAccessConditions{
