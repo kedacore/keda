@@ -24,7 +24,7 @@ var testExtractAzMonitordata = []testExtractAzMonitorTestData{
 	{"Average Aggregation requested", false, 41, azureExternalMetricRequest{Aggregation: "Average"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Average: returnFloat64Ptr(41)}}}}}}}},
 	{"Maximum Aggregation requested", false, 42, azureExternalMetricRequest{Aggregation: "Maximum"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Maximum: returnFloat64Ptr(42)}}}}}}}},
 	{"Minimum Aggregation requested", false, 43, azureExternalMetricRequest{Aggregation: "Minimum"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Minimum: returnFloat64Ptr(43)}}}}}}}},
-	{"Count Aggregation requested", false, 44, azureExternalMetricRequest{Aggregation: "Count"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Count: returnint64Ptr(44)}}}}}}}},
+	{"Count Aggregation requested", false, 44, azureExternalMetricRequest{Aggregation: "Count"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Count: returnFloat64Ptr(44)}}}}}}}},
 }
 
 func returnFloat64Ptr(x float64) *float64 {

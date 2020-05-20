@@ -118,10 +118,11 @@ build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
 	$(GO_BUILD_VARS) operator-sdk generate crds
-	# withTriggers is only used for duck typing so we only need the deepcopy methods
+	# withTriggers and withPods are only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398 
 	rm deploy/crds/keda.sh_withtriggers_crd.yaml
+	rm deploy/crds/keda.sh_withpods_crd.yaml
 
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
