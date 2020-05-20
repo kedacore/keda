@@ -69,6 +69,12 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '0'
   for (let i = 0; i < 50 && replicaCount !== '5'; i++) {
+    t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
+    const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
+    t.log(`Logs from the generate requests: ${jobLogs}`)
+    const jobDescription = sh.exec(`kubectl describe job generate-requests -n ${testNamespace}`).stdout
+    t.log(`Job description from the generate requests: ${jobDescription}`)
+
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
@@ -80,9 +86,6 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   t.is('5', replicaCount, 'Replica count should be maxed at 5')
 
   for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-    t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
-    const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
-    t.log(`Logs from the generate requests: ${jobLogs}`)
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
