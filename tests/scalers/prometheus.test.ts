@@ -99,7 +99,7 @@ test.after.always.cb('clean up prometheus deployment', t => {
     'deployment.apps/test-app',
     'deployment.apps/keda-test-app',
     'service/test-app',
-    'scaledobject.keda.k8s.io/prometheus-scaledobject',
+    'scaledobject.keda.sh/prometheus-scaledobject',
     'job/generate-requests',
   ]
 
@@ -176,13 +176,13 @@ spec:
   selector:
     type: keda-testing
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: prometheus-scaledobject
 spec:
   scaleTargetRef:
-    deploymentName: keda-test-app
+    name: keda-test-app
   minReplicaCount: 0
   maxReplicaCount: 5
   pollingInterval: 5
