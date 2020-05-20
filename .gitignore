@@ -344,3 +344,4 @@ config
 
 # GO Vendor
 vendor
+cover.out

@@ -12,8 +12,8 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/kedacore/keda/pkg/apis"
-	"github.com/kedacore/keda/version"
 	"github.com/kedacore/keda/pkg/controller"
+	"github.com/kedacore/keda/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
