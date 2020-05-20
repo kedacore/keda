@@ -38,7 +38,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 
 ## Deploying KEDA
 
-There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/deploy/).
+There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/docs/latest/deploy/).
 
 ## Documentation
 
@@ -46,7 +46,7 @@ Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ## FAQ
 
-You can find a [FAQ here](https://keda.sh/faq/) with some common questions.
+You can find a [FAQ here](https://keda.sh/docs/latest/faq/) with some common questions.
 
 ## Samples
 
@@ -64,12 +64,12 @@ You can find Contributing guide [here](./CONTRIBUTING.md)
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-* **Meeting time:** Bi-weekly Thurs 17:00 UTC (does follow US daylight savings). ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) | [Convert to your timezone](https://www.thetimezoneconverter.com/?t=10%3A00%20am&tz=Seattle&))
+* **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings). ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) | [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 Just want to learn or chat about KEDA? Feel free to join the conversation in 
-**[#KEDA](kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
+**[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
 ## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
 
