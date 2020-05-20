@@ -63,8 +63,8 @@ test.after.always.cb('clean up rabbitmq-queue deployment', t => {
   const resources = [
     'secret/test-secrets',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.k8s.io/test-scaledobject',
-    'triggerauthentications.keda.k8s.io/rabbitmq-trigger-auth',
+    'scaledobject.keda.sh/test-scaledobject',
+    'triggerauthentications.keda.sh/rabbitmq-trigger-auth',
   ]
 
   for (const resource of resources) {
@@ -109,7 +109,7 @@ spec:
         args:
           - '{{CONNECTION_STRING}}'
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: rabbitmq-trigger-auth
@@ -119,15 +119,13 @@ spec:
     name: rabbitmq-test-secret
     key: RabbitMqHost
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
-  labels:
-    deploymentName: test-deployment
 spec:
   scaleTargetRef:
-    deploymentName: test-deployment
+    name: test-deployment
   pollingInterval: 5
   cooldownPeriod: 10
   minReplicaCount: 0
