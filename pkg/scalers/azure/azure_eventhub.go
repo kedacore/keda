@@ -87,7 +87,7 @@ func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partit
 
 	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false)
 	if err != nil {
-		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %s", err)
+		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %w", err)
 	}
 
 	blobData := &bytes.Buffer{}
