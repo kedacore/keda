@@ -16,6 +16,8 @@ GIT_VERSION = $(shell git describe --always --abbrev=7)
 GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
+TEST_CLUSTER_NAME ?= keda-nightly-run
+
 ##################################################
 # All                                            #
 ##################################################
@@ -35,7 +37,7 @@ e2e-test:
 	TERM=linux
 	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
-		--name keda-nightly-run \
+		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
 	npm install --prefix tests
