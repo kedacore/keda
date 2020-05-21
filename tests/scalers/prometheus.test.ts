@@ -13,12 +13,14 @@ test.before(t => {
   sh.exec(`kubectl create namespace ${prometheusNamespace}`)
   t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
   // wait for prometheus to load
-  for (let i = 0; i < 10; i++) {
-    const readyReplicaCount = sh.exec(`kubectl get deploy/prometheus-server -n ${prometheusNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-    if (readyReplicaCount != '2') {
+  let prometheusReadyReplicaCount = '0'
+  for (let i = 0; i < 30; i++) {
+    prometheusReadyReplicaCount = sh.exec(`kubectl get deploy/prometheus-server -n ${prometheusNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
+    if (prometheusReadyReplicaCount != '1') {
       sh.exec('sleep 2s')
     }
   }
+  t.is('1', prometheusReadyReplicaCount, 'Prometheus is not in a ready state')
 
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
@@ -51,7 +53,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   // generate a large number of HTTP requests (using Apache Bench) that will take some time
   // so prometheus has some time to scrape it
   const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, generateRequestsYaml)
+  fs.writeFileSync(tmpFile.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
@@ -68,12 +70,10 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
 
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '0'
-  for (let i = 0; i < 50 && replicaCount !== '5'; i++) {
+  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
     t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
     const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
     t.log(`Logs from the generate requests: ${jobLogs}`)
-    const jobDescription = sh.exec(`kubectl describe job generate-requests -n ${testNamespace}`).stdout
-    t.log(`Job description from the generate requests: ${jobDescription}`)
 
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
@@ -207,11 +207,9 @@ spec:
     spec:
       containers:
       - image: jordi/ab
-        name: ab
-        args:
-        - -c 20 
-        - -n 700000
-        - http://test-app/
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "for i in $(seq 1 60);do echo $i;ab -c 5 -n 1000 -v 2 http://test-app.{{NAMESPACE}}.svc/;sleep 1;done"]
       restartPolicy: Never
-  activeDeadlineSeconds: 60
+  activeDeadlineSeconds: 120
   backoffLimit: 2`
