@@ -144,7 +144,9 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
 		return unprocessedEventCountInPartition, checkpoint, nil
 	}	
-
+	
+	// Partition is a circular buffer, so it is possible that
+    // partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
 	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
 
 	// Checkpointing may or may not be always behind partition's LastSequenceNumber.  
