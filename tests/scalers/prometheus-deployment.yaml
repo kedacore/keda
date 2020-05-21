@@ -270,25 +270,6 @@ data:
     {}
     
 ---
-# Source: prometheus/templates/server-pvc.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  labels:
-    component: "server"
-    app: prometheus
-    release: prometheus
-    chart: prometheus-11.1.0
-    heritage: Tiller
-  name: prometheus-server
-spec:
-  accessModes:
-    - ReadWriteOnce
-    
-  resources:
-    requests:
-      storage: "8Gi"
----
 # Source: prometheus/templates/server-serviceaccount.yaml
 
 apiVersion: v1
@@ -485,8 +466,7 @@ spec:
           configMap:
             name: prometheus-server
         - name: storage-volume
-          persistentVolumeClaim:
-            claimName: prometheus-server
+          emptyDir: {}
 ---
 # Source: prometheus/templates/alertmanager-clusterrole.yaml
 
