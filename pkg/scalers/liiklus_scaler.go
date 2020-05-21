@@ -23,6 +23,7 @@ type liiklusScaler struct {
 }
 
 type liiklusMetadata struct {
+	metricName   string
 	lagThreshold int64
 	address      string
 	topic        string
@@ -32,7 +33,6 @@ type liiklusMetadata struct {
 
 const (
 	defaultLiiklusLagThreshold    int64 = 10
-	liiklusLagThresholdMetricName       = "lagThreshold"
 	liiklusMetricType                   = "External"
 )
 
@@ -81,7 +81,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: liiklusLagThresholdMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -148,10 +148,10 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 
 	lagThreshold := defaultLiiklusLagThreshold
 
-	if val, ok := metadata[liiklusLagThresholdMetricName]; ok {
+	if val, ok := metadata["lagThreshold"]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing %s: %s", "lagThreshold", err)
 		}
 		lagThreshold = int64(t)
 	}
@@ -171,6 +171,12 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		return nil, errors.New("no liiklus API address provided")
 	} else if metadata["group"] == "" {
 		return nil, errors.New("no consumer group provided")
+	}
+
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s-%s", "liiklus", metadata["topic"], metadata["group"])
 	}
 
 	return &liiklusMetadata{

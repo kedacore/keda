@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -15,7 +14,6 @@ import (
 )
 
 const (
-	blobCountMetricName          = "blobCount"
 	defaultTargetBlobCount       = 5
 	defaultBlobDelimiter         = "/"
 	defaultBlobPrefix            = ""
@@ -28,6 +26,7 @@ type azureBlobScaler struct {
 }
 
 type azureBlobMetadata struct {
+	metricName        string
 	targetBlobCount   int
 	blobContainerName string
 	blobDelimiter     string
@@ -58,11 +57,11 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 	meta.blobDelimiter = defaultBlobDelimiter
 	meta.blobPrefix = defaultBlobPrefix
 
-	if val, ok := metadata[blobCountMetricName]; ok {
+	if val, ok := metadata["blobCount"]; ok {
 		blobCount, err := strconv.Atoi(val)
 		if err != nil {
-			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
+			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", "blobCount")
+			return nil, "", fmt.Errorf("Error parsing azure blob metadata %s: %s", "blobCount", err.Error())
 		}
 
 		meta.targetBlobCount = blobCount
@@ -124,12 +123,18 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", podAuth)
 	}
 
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "azure-blob", metadata["blobContainerName"])
+	}
+
 	return &meta, podAuth, nil
 }
 
 // GetScaleDecision is a func
 func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := azure.GetAzureBlobListLength(
+	length, err := GetAzureBlobListLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
@@ -155,7 +160,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: blobCountMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -168,7 +173,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	bloblen, err := azure.GetAzureBlobListLength(
+	bloblen, err := GetAzureBlobListLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,

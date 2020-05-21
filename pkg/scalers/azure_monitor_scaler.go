@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 	"strings"
 
@@ -27,8 +26,17 @@ type azureMonitorScaler struct {
 }
 
 type azureMonitorMetadata struct {
-	azureMonitorInfo azure.AzureMonitorInfo
-	targetValue      int
+	resourceURI         string
+	tenantID            string
+	subscriptionID      string
+	resourceGroupName   string
+	name                string
+	filter              string
+	aggregationInterval string
+	aggregationType     string
+	clientID            string
+	clientPassword      string
+	targetValue         int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -46,9 +54,7 @@ func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string) 
 }
 
 func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string) (*azureMonitorMetadata, error) {
-	meta := azureMonitorMetadata{
-		azureMonitorInfo: azure.AzureMonitorInfo{},
-	}
+	meta := azureMonitorMetadata{}
 
 	if val, ok := metadata[targetValueName]; ok && val != "" {
 		targetValue, err := strconv.Atoi(val)
@@ -66,31 +72,31 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		if len(resourceURI) != 3 {
 			return nil, fmt.Errorf("resourceURI not in the correct format. Should be namespace/resource_type/resource_name")
 		}
-		meta.azureMonitorInfo.ResourceURI = val
+		meta.resourceURI = val
 	} else {
 		return nil, fmt.Errorf("no resourceURI given")
 	}
 
 	if val, ok := metadata["resourceGroupName"]; ok && val != "" {
-		meta.azureMonitorInfo.ResourceGroupName = val
+		meta.resourceGroupName = val
 	} else {
 		return nil, fmt.Errorf("no resourceGroupName given")
 	}
 
 	if val, ok := metadata[azureMonitorMetricName]; ok && val != "" {
-		meta.azureMonitorInfo.Name = val
+		meta.name = val
 	} else {
 		return nil, fmt.Errorf("no metricName given")
 	}
 
 	if val, ok := metadata["metricAggregationType"]; ok && val != "" {
-		meta.azureMonitorInfo.AggregationType = val
+		meta.aggregationType = val
 	} else {
 		return nil, fmt.Errorf("no metricAggregationType given")
 	}
 
 	if val, ok := metadata["metricFilter"]; ok && val != "" {
-		meta.azureMonitorInfo.Filter = val
+		meta.filter = val
 	}
 
 	if val, ok := metadata["metricAggregationInterval"]; ok && val != "" {
@@ -98,25 +104,25 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		if len(aggregationInterval) != 3 {
 			return nil, fmt.Errorf("metricAggregationInterval not in the correct format. Should be hh:mm:ss")
 		}
-		meta.azureMonitorInfo.AggregationInterval = val
+		meta.aggregationInterval = val
 	}
 
 	// Required authentication parameters below
 
 	if val, ok := metadata["subscriptionId"]; ok && val != "" {
-		meta.azureMonitorInfo.SubscriptionID = val
+		meta.subscriptionID = val
 	} else {
 		return nil, fmt.Errorf("no subscriptionId given")
 	}
 
 	if val, ok := metadata["tenantId"]; ok && val != "" {
-		meta.azureMonitorInfo.TenantID = val
+		meta.tenantID = val
 	} else {
 		return nil, fmt.Errorf("no tenantId given")
 	}
 
 	if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
-		meta.azureMonitorInfo.ClientID = val
+		meta.clientID = val
 	} else {
 		clientIDSetting := defaultClientIDSetting
 		if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
@@ -124,14 +130,14 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		}
 
 		if val, ok := resolvedEnv[clientIDSetting]; ok {
-			meta.azureMonitorInfo.ClientID = val
+			meta.clientID = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientId given")
 		}
 	}
 
 	if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
-		meta.azureMonitorInfo.ClientPassword = val
+		meta.clientPassword = val
 	} else {
 		clientPasswordSetting := defaultClientPasswordSetting
 		if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
@@ -139,7 +145,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		}
 
 		if val, ok := resolvedEnv[clientPasswordSetting]; ok {
-			meta.azureMonitorInfo.ClientPassword = val
+			meta.clientPassword = val
 		} else {
 			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
 		}
@@ -150,7 +156,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 // Returns true if the Azure Monitor metric value is greater than zero
 func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo)
+	val, err := GetAzureMetricValue(ctx, s.metadata)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return false, err
@@ -167,7 +173,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: azureMonitorMetricName,
+			Name: s.metadata.name,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -180,7 +186,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo)
+	val, err := GetAzureMetricValue(ctx, s.metadata)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, err

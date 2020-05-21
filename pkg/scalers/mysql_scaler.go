@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	mySQLMetricName      = "MySQLQueryValue"
 	defaultMySQLPassword = ""
 )
 
@@ -25,6 +24,7 @@ type mySQLScaler struct {
 }
 
 type mySQLMetadata struct {
+	metricName       string
 	connectionString string // Database connection string
 	username         string
 	password         string
@@ -113,6 +113,12 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		}
 	}
 
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "mysql", metadata["dbName"])
+	}
+
 	return &meta, nil
 }
 
@@ -187,7 +193,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: mySQLMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -208,7 +214,7 @@ func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: mySQLMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
