@@ -131,7 +131,7 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo.LastEnqueuedOffset == "-1" {		
-		return 0 , checkpoint, nil
+		return 0, nil
 	}
 
 	//If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
@@ -139,12 +139,12 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
 	if checkpoint.Offset == "" {
 		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber + 1
-		return unprocessedEventCountInPartition, checkpoint, nil
+		return unprocessedEventCountInPartition, nil
 	}
 
 	if partitionInfo.LastSequenceNumber == checkpoint.SequenceNumber || partitionInfo.LastSequenceNumber > checkpoint.SequenceNumber {
 		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
-		return unprocessedEventCountInPartition, checkpoint, nil
+		return unprocessedEventCountInPartition, nil
 	}	
 
 	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
