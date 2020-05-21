@@ -129,15 +129,31 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 
 	unprocessedEventCountInPartition := int64(0)
 
-	if checkpoint.SequenceNumber != partitionInfo.LastSequenceNumber {
-		if partitionInfo.LastSequenceNumber > checkpoint.SequenceNumber {
-			unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
-
-			return unprocessedEventCountInPartition, nil
-		}
-
-		unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
+	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
+	if partitionInfo.LastEnqueuedOffset == "-1" {		
+		return 0 , checkpoint, nil
 	}
+
+	//If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
+	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
+	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
+	if checkpoint.Offset == "" {
+		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber + 1
+		return unprocessedEventCountInPartition, checkpoint, nil
+	}
+
+	if partitionInfo.LastSequenceNumber == checkpoint.SequenceNumber || partitionInfo.LastSequenceNumber > checkpoint.SequenceNumber {
+		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
+		return unprocessedEventCountInPartition, checkpoint, nil
+	}	
+
+	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
+
+	// Checkpointing may or may not be always behind partition's LastSequenceNumber.  
+	// The partition information read could be stale compared to checkpoint,
+	// especially when load is very small and checkpointing is happening often.
+	// e.g., (9223372036854775807 - 10) + 11 = -9223372036854775808
+	// If unprocessedEventCountInPartition is negative that means there are 0 unprocessed messages in the partition
 	if unprocessedEventCountInPartition < 0 {
 		unprocessedEventCountInPartition = 0
 	}
