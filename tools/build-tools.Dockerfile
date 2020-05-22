@@ -55,10 +55,10 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get install -y nodejs
 
 # Install operator-sdk
-RUN RELEASE_VERSION=v0.17.0 && \
+RUN RELEASE_VERSION=v0.17.1 && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
-    gpg --keyserver keyserver.ubuntu.com --recv-key 7CC439CD21EE1031C3831C6590354A3F09FCE996 && \
+    gpg --keyserver keyserver.ubuntu.com --recv-key 8018D6F1B58E194625E38581D16086E39AF46519 && \
     gpg --verify operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
     chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     mkdir -p /usr/local/bin/ && \
