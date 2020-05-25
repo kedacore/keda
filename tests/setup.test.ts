@@ -36,7 +36,7 @@ test.serial('Deploy Keda', t => {
   if (sh.exec('kubectl apply -f ../deploy/crds/keda.sh_scaledobjects_crd.yaml').code !== 0) {
     t.fail('error deploying ScaledObject CRD. ' + result)
   }
-  if (sh.exec('kubectl apply -f ../deploy/crds/keda.sh_scaledjobs_crd.yaml').code !== 0) {
+  if (sh.exec('kubectl apply -f ../deploy/crds/keda.sh_scaledjobs_crd.yaml --validate=false').code !== 0) {
     t.fail('error deploying ScaledJob CRD. ' + result)
   }
   if (
