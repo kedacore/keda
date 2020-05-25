@@ -1,4 +1,0 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
-RUN microdnf clean all
-RUN microdnf update
-RUN microdnf install tzdata-java
