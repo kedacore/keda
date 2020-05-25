@@ -37,3 +37,34 @@ jobs:
         run: make publish
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+        # Get release information to determine id of the current release
+      - name: Get Release
+        id: get-release-info
+        uses: bruceadams/get-release@v1.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload deployment YAML files as ZIP to GitHub release
+      - name: Upload Deployment YAML (zip)
+        id: upload-deployment-yaml-zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      # Upload deployment YAML files as TAR to GitHub release
+      - name: Upload Deployment YAML (tar.gz)
+        id: upload-deployment-yaml-tar
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          asset_content_type: application/tar+gzip

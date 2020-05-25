@@ -29,18 +29,13 @@ The Docker Hub repo with all the different images can be seen here: https://hub.
 
 Creating a new release in the the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0) and also change the latest tag to point to this image as well.
 
-## 4. Upload release packages
-
-When a new GitHub release is created, upload the tar.gz and zip release package files generated during the release process.
-They are named like `keda-$(VERSION).zip` and `keda-$(VERSION).tar.gz`.
-
-## 5. Publish documentation for new version
+## 4. Publish documentation for new version
 
 Publish documentation for new version on https://keda.sh.
 
 See [docs](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
-## 6. Update Helm Charts
+## 5. Update Helm Charts
 
 a). Update the version and appVersion here:  https://github.com/kedacore/charts/blob/master/keda/Chart.yaml 
 b). In the image section update the keda and metricsAdapter to point to the docker images from step 1 https://github.com/kedacore/charts/blob/master/keda/values.yaml
@@ -53,6 +48,6 @@ Update the following file:
 https://github.com/Azure/azure-functions-core-tools/blob/dev/src/Azure.Functions.Cli/StaticResources/keda.yaml
 [Search for 1.1.0 etc. and replace it]
 
-## 7. Create Helm release on GitHub
+## 6. Create Helm release on GitHub
 
 Create Helm release on GitHub with changelog of what changed to our Helm chart.
