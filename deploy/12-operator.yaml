@@ -40,3 +40,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "keda-operator"
+      nodeSelector:
+        beta.kubernetes.io/os: linux
