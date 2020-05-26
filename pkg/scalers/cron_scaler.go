@@ -42,7 +42,7 @@ func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	}
 
 	return &cronScaler{
-		metadata               : meta,
+		metadata : meta,
 	}, nil
 }
 
