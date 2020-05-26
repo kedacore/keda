@@ -8,15 +8,15 @@ import (
 )
 
 type parseCronMetadataTestData struct {
-	metadata   map[string]string
-	isError    bool
+	metadata map[string]string
+	isError  bool
 }
 
 // A complete valid metadata example for reference
 var validCronMetadata = map[string]string{
-	"timezone"       : "Etc/UTC",
-	"start"          : "0 0 * * Thu",
-	"end"            : "59 23 * * Thu",
+	"timezone":        "Etc/UTC",
+	"start":           "0 0 * * Thu",
+	"end":             "59 23 * * Thu",
 	"desiredReplicas": "10",
 }
 
@@ -43,7 +43,7 @@ func TestCronParseMetadata(t *testing.T) {
 }
 
 func TestIsActive(t *testing.T) {
-	scaler,_ := NewCronScaler(map[string]string{}, validCronMetadata)
+	scaler, _ := NewCronScaler(map[string]string{}, validCronMetadata)
 	isActive, _ := scaler.IsActive(context.TODO())
 	if currentDay == "Thursday" {
 		assert.Equal(t, isActive, true)
@@ -53,8 +53,8 @@ func TestIsActive(t *testing.T) {
 }
 
 func TestGetMetrics(t *testing.T) {
-	scaler,_ := NewCronScaler(map[string]string{}, validCronMetadata)
-	metrics,_ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
+	scaler, _ := NewCronScaler(map[string]string{}, validCronMetadata)
+	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentDay == "Thursday" {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))

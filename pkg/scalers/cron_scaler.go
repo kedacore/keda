@@ -26,10 +26,10 @@ type cronScaler struct {
 }
 
 type cronMetadata struct {
-	start            string
-	end              string
-	timezone         string
-	desiredReplicas  int64
+	start           string
+	end             string
+	timezone        string
+	desiredReplicas int64
 }
 
 var cronLog = logf.Log.WithName("cron_scaler")
@@ -48,7 +48,7 @@ func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 
 func getCronTime(location *time.Location, spec string) (int64, error) {
 	c := cron.New(cron.WithLocation(location))
-	_, err := c.AddFunc( spec , func() { fmt.Sprintf("Cron initialized for location %s", location.String()) })
+	_, err := c.AddFunc(spec, func() { fmt.Sprintf("Cron initialized for location %s", location.String()) })
 	if err != nil {
 		return 0, err
 	}
