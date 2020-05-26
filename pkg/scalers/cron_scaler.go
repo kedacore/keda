@@ -103,20 +103,21 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("Unable to load timezone. Error: %s", err)
 	}
 
-	startTime, scronErr := getCronTime(location, s.metadata.start)
-	if scronErr != nil {
-		return false, fmt.Errorf("error initializing start cron: %s", scronErr)
+	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
+	if startTimecronErr != nil {
+		return false, fmt.Errorf("error initializing start cron: %s", startTimecronErr)
 	}
 
-	endTime, ecronErr := getCronTime(location, s.metadata.end)
-	if ecronErr != nil {
-		return false, fmt.Errorf("error intializing end cron: %s", ecronErr)
+	nextEndTime, endTimecronErr := getCronTime(location, s.metadata.end)
+	if endTimecronErr != nil {
+		return false, fmt.Errorf("error intializing end cron: %s", endTimecronErr)
 	}
 
+	// Since we are considering the timestamp here and not the exact time, timezone does matter.
 	currentTime := time.Now().Unix()
-	if startTime < endTime && currentTime < startTime {
+	if nextStartTime < nextEndTime && currentTime < nextStartTime {
 		return false, nil
-	} else if currentTime <= endTime {
+	} else if currentTime <= nextEndTime {
 		return true, nil
 	} else {
 		return false, nil
