@@ -9,5 +9,8 @@ chmod ug+rwx ${HOME}
 # runtime user will need to be able to self-insert in /etc/passwd
 chmod g+rw /etc/passwd
 
+# install tzdata needed for Cron Scaler
+microdnf install tzdata-2020a
+
 # no need for this script to remain in the image after running
 rm $0
