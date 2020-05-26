@@ -22,7 +22,7 @@ const (
 )
 
 type cronScaler struct {
-	metadata               *cronMetadata
+	metadata *cronMetadata
 }
 
 type cronMetadata struct {
@@ -42,7 +42,7 @@ func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	}
 
 	return &cronScaler{
-		metadata : meta,
+		metadata: meta,
 	}, nil
 }
 
