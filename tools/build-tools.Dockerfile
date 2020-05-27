@@ -66,3 +66,6 @@ RUN RELEASE_VERSION=v0.12.0 && \
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
     GOPATH=/go
+
+# Install FOSSA tooling
+RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash 
