@@ -21,11 +21,12 @@ require (
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.3
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.3.2
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
+	github.com/mitchellh/hashstructure v0.0.0-20170609045927-2bca23e0e452
 	github.com/operator-framework/operator-sdk v0.17.1-0.20200501204426-0f43da11b8c0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5

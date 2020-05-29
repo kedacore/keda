@@ -1,15 +1,13 @@
 syntax = "proto3";
 
 package externalscaler;
-
-import "google/protobuf/empty.proto";
+option go_package = ".;externalscaler";
 
 service ExternalScaler {
-    rpc New(NewRequest) returns (google.protobuf.Empty) {}
     rpc IsActive(ScaledObjectRef) returns (IsActiveResponse) {}
+    rpc StreamIsActive(ScaledObjectRef) returns (stream IsActiveResponse) {}
     rpc GetMetricSpec(ScaledObjectRef) returns (GetMetricSpecResponse) {}
     rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {}
-    rpc Close(ScaledObjectRef) returns (google.protobuf.Empty) {}
 }
 
 message ScaledObjectRef {

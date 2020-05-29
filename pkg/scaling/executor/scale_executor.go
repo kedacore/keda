@@ -3,11 +3,8 @@ package executor
 import (
 	"context"
 	"fmt"
-
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/pkg/scalers"
-
 	"github.com/go-logr/logr"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/scale"
@@ -21,8 +18,8 @@ const (
 )
 
 type ScaleExecutor interface {
-	RequestJobScale(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledJob)
-	RequestScale(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject)
+	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64)
+	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool)
 }
 
 type scaleExecutor struct {
