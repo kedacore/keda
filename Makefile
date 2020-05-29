@@ -16,6 +16,8 @@ GIT_VERSION = $(shell git describe --always --abbrev=7)
 GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
+TEST_CLUSTER_NAME ?= keda-nightly-run
+
 ##################################################
 # All                                            #
 ##################################################
@@ -27,7 +29,7 @@ all: test build
 ##################################################
 .PHONY: test
 test:
-	go test ./...
+	go test ./... -covermode=atomic -coverprofile cover.out
 
 .PHONY: e2e-test
 e2e-test:
@@ -35,7 +37,7 @@ e2e-test:
 	TERM=linux
 	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
-		--name keda-nightly-run \
+		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
 	npm install --prefix tests
@@ -59,7 +61,7 @@ release: release_prepare release_file release_pkg
 
 .PHONY: release_file
 release_file:
-	@sed -i 's@Version =.*@Version = "$(VERSION)"@g' ./version/version.go;
+	@sed -i 's@Version   =.*@Version   = "$(VERSION)"@g' ./version/version.go;
 	@for file in $(K8S_DEPLOY_FILES); do \
 	sed -i 's@app.kubernetes.io/version:.*@app.kubernetes.io/version: "$(VERSION)"@g' $$file; \
 	sed -i 's@image: docker.io/kedacore/keda:.*@image: docker.io/kedacore/keda:$(VERSION)@g' $$file; \
@@ -98,12 +100,12 @@ build: checkenv build-adapter build-controller
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) operator-sdk build $(IMAGE_CONTROLLER) \
-		--go-build-args "-ldflags -X=main.GitCommit=$(GIT_COMMIT) -ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
+		--go-build-args "-ldflags -X=github.com/kedacore/keda/version.Version=$(VERSION) -o build/_output/bin/keda"
 
 .PHONY: build-adapter
 build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 	$(GO_BUILD_VARS) go build \
-		-ldflags "-X=main.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
+		-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 		-o build/_output/bin/keda-adapter \
 		cmd/adapter/main.go
 	docker build -f build/Dockerfile.adapter -t $(IMAGE_ADAPTER) .

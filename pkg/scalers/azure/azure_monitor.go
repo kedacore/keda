@@ -1,4 +1,4 @@
-package scalers
+package azure
 
 import (
 	"context"
@@ -28,21 +28,34 @@ type azureExternalMetricRequest struct {
 	ResourceGroup             string
 }
 
-// GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, metricMetadata *azureMonitorMetadata) (int32, error) {
-	client := createMetricsClient(metricMetadata)
+type AzureMonitorInfo struct {
+	ResourceURI         string
+	TenantID            string
+	SubscriptionID      string
+	ResourceGroupName   string
+	Name                string
+	Filter              string
+	AggregationInterval string
+	AggregationType     string
+	ClientID            string
+	ClientPassword      string
+}
 
-	requestPtr, err := createMetricsRequest(metricMetadata)
+// GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
+func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo) (int32, error) {
+	client := createMetricsClient(info)
+
+	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
 		return -1, err
 	}
 
-	return executeRequest(client, requestPtr)
+	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(metadata *azureMonitorMetadata) insights.MetricsClient {
-	client := insights.NewMetricsClient(metadata.subscriptionID)
-	config := auth.NewClientCredentialsConfig(metadata.clientID, metadata.clientPassword, metadata.tenantID)
+func createMetricsClient(info AzureMonitorInfo) insights.MetricsClient {
+	client := insights.NewMetricsClient(info.SubscriptionID)
+	config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
 
 	authorizer, _ := config.Authorizer()
 	client.Authorizer = authorizer
@@ -50,22 +63,22 @@ func createMetricsClient(metadata *azureMonitorMetadata) insights.MetricsClient 
 	return client
 }
 
-func createMetricsRequest(metadata *azureMonitorMetadata) (*azureExternalMetricRequest, error) {
+func createMetricsRequest(info AzureMonitorInfo) (*azureExternalMetricRequest, error) {
 	metricRequest := azureExternalMetricRequest{
-		MetricName:     metadata.name,
-		SubscriptionID: metadata.subscriptionID,
-		Aggregation:    metadata.aggregationType,
-		Filter:         metadata.filter,
-		ResourceGroup:  metadata.resourceGroupName,
+		MetricName:     info.Name,
+		SubscriptionID: info.SubscriptionID,
+		Aggregation:    info.AggregationType,
+		Filter:         info.Filter,
+		ResourceGroup:  info.ResourceGroupName,
 	}
 
-	resourceInfo := strings.Split(metadata.resourceURI, "/")
+	resourceInfo := strings.Split(info.ResourceURI, "/")
 	metricRequest.ResourceProviderNamespace = resourceInfo[0]
 	metricRequest.ResourceType = resourceInfo[1]
 	metricRequest.ResourceName = resourceInfo[2]
 
 	// if no timespan is provided, defaults to 5 minutes
-	timespan, err := formatTimeSpan(metadata.aggregationInterval)
+	timespan, err := formatTimeSpan(info.AggregationInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +88,10 @@ func createMetricsRequest(metadata *azureMonitorMetadata) (*azureExternalMetricR
 	return &metricRequest, nil
 }
 
-func executeRequest(client insights.MetricsClient, request *azureExternalMetricRequest) (int32, error) {
-	metricResponse, err := getAzureMetric(client, *request)
+func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (int32, error) {
+	metricResponse, err := getAzureMetric(ctx, client, *request)
 	if err != nil {
-		azureMonitorLog.Error(err, "error getting azure monitor metric")
-		return -1, fmt.Errorf("Error getting azure monitor metric %s: %s", request.MetricName, err.Error())
+		return -1, fmt.Errorf("error getting azure monitor metric %s: %w", request.MetricName, err)
 	}
 
 	// casting drops everything after decimal, so round first
@@ -88,7 +100,7 @@ func executeRequest(client insights.MetricsClient, request *azureExternalMetricR
 	return metricValue, nil
 }
 
-func getAzureMetric(client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {
+func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {
 	err := azMetricRequest.validate()
 	if err != nil {
 		return -1, err
@@ -97,7 +109,7 @@ func getAzureMetric(client insights.MetricsClient, azMetricRequest azureExternal
 	metricResourceURI := azMetricRequest.metricResourceURI()
 	klog.V(2).Infof("resource uri: %s", metricResourceURI)
 
-	metricResult, err := client.List(context.Background(), metricResourceURI,
+	metricResult, err := client.List(ctx, metricResourceURI,
 		azMetricRequest.Timespan, nil,
 		azMetricRequest.MetricName, azMetricRequest.Aggregation, nil,
 		"", azMetricRequest.Filter, "", "")

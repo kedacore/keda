@@ -4,7 +4,66 @@
 
 - As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
 
-## v1.3
+## History
+
+- [v1.4.1](#v141)
+- [v1.4.0](#v140)
+- [v1.3.0](#v130)
+- [v1.2.0](#v120)
+- [v1.1.0](#v110)
+- [v1.0.0](#v100)
+
+## v1.4.1
+
+### New
+
+None
+
+### Improvements
+
+- Fix for scale-to-zero for Prometheus scaler no longer working ([#770](https://github.com/kedacore/keda/issues/770))
+- Fix for passing default VHost for Rabbit MQ scaler no longer working ([#770](https://github.com/kedacore/keda/issues/768))
+- Provide capability to define time encoding for operator ([#766](https://github.com/kedacore/keda/pull/766))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+- Print version of metric adapter in logs ([#770](https://github.com/kedacore/keda/issues/748))
+
+## v1.4.0
+
+### New
+
+- Extend RabbitMQ scaler to support count unacked messages([#700](https://github.com/kedacore/keda/pull/700))
+
+### Improvements
+
+- Fix scalers leaking ([#684](https://github.com/kedacore/keda/pull/684))
+- Provide installation YAML package as release artifact ([#740](https://github.com/kedacore/keda/pull/740))
+- Improve Azure Monitor scaler to handle queries without metrics ([#680](https://github.com/kedacore/keda/pull/680))
+- Authenticate to AWS with dedicated role without AssumeRole permissions ([#656](https://github.com/kedacore/keda/pull/656))
+- KEDA now respects label restrictions on Horizontal Pod Autoscaler to have max 63 chars ([#707](https://github.com/kedacore/keda/pull/707))
+- KEDA will automatically assign `deploymentName` label if it was not defined in `ScaledObject` ([#709](https://github.com/kedacore/keda/pull/709))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+- Adding label for metrics service selection ([#745](https://github.com/kedacore/keda/pull/745))
+- Filter returned metrics from api server based on queried name ([#732](https://github.com/kedacore/keda/pull/732))
+- Add redis host and port parameter to the scaler with tests ([#719](https://github.com/kedacore/keda/pull/719))
+- Remove go micro version ([#718](https://github.com/kedacore/keda/pull/718))
+- Update zero result return to be non-error inducing ([#695](https://github.com/kedacore/keda/pull/695))
+- Return if kafka offset response is nil ([#689](https://github.com/kedacore/keda/pull/689))
+- Fix typos in MySQL scaler ([#683](https://github.com/kedacore/keda/pull/683))
+- Update README to mention CNCF ([#682](https://github.com/kedacore/keda/pull/682))
+
+## v1.3.0
 
 ### New
 
@@ -27,7 +86,7 @@ None.
 
 - Updating license to Apache per CNCF donation ([#661](https://github.com/kedacore/keda/pull/661))
 
-## v1.2
+## v1.2.0
 
 ### New
 
@@ -57,7 +116,7 @@ None.
 - Add a checkenv target ([#600](https://github.com/kedacore/keda/issues/600))
 - Mentioning problem with checksum mismatch error ([#605](https://github.com/kedacore/keda/issues/605))
 
-## v1.1
+## v1.1.0
 
 ### New
 
@@ -88,7 +147,7 @@ None.
 - Total running Jobs must not exceed maxScale - Running jobs ([#528](https://github.com/kedacore/keda/issues/528))
 - Check deploymentName definition in ScaledObject ([#532](https://github.com/kedacore/keda/issues/532))
 
-## v1.0
+## v1.0.0
 
 ### New
 

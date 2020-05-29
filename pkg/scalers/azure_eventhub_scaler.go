@@ -2,9 +2,12 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/kedacore/keda/pkg/scalers/azure"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -29,17 +32,13 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type AzureEventHubScaler struct {
-	metadata           *EventHubMetadata
-	client             *eventhub.Hub
-	storageCredentials *azblob.SharedKeyCredential
+	metadata *EventHubMetadata
+	client   *eventhub.Hub
 }
 
 type EventHubMetadata struct {
-	eventHubConnection    string
-	eventHubConsumerGroup string
-	threshold             int64
-	storageConnection     string
-	blobContainer         string
+	eventHubInfo azure.EventHubInfo
+	threshold    int64
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -49,26 +48,22 @@ func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
 
-	_, cred, err := GetStorageCredentials(parsedMetadata.storageConnection)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get storage credentials: %s", err)
-	}
-
-	hub, err := GetEventHubClient(parsedMetadata.eventHubConnection)
+	hub, err := azure.GetEventHubClient(parsedMetadata.eventHubInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
 
 	return &AzureEventHubScaler{
-		metadata:           parsedMetadata,
-		storageCredentials: cred,
-		client:             hub,
+		metadata: parsedMetadata,
+		client:   hub,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
 func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*EventHubMetadata, error) {
-	meta := EventHubMetadata{}
+	meta := EventHubMetadata{
+		eventHubInfo: azure.EventHubInfo{},
+	}
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := metadata[thresholdMetricName]; ok {
@@ -86,7 +81,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	}
 
 	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
-		meta.storageConnection = val
+		meta.eventHubInfo.StorageConnection = val
 	} else {
 		return nil, fmt.Errorf("no storage connection string given")
 	}
@@ -97,52 +92,84 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 	}
 
 	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
-		meta.eventHubConnection = val
+		meta.eventHubInfo.EventHubConnection = val
 	} else {
 		return nil, fmt.Errorf("no event hub connection string given")
 	}
 
-	meta.eventHubConsumerGroup = defaultEventHubConsumerGroup
+	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := metadata["consumerGroup"]; ok {
-		meta.eventHubConsumerGroup = val
+		meta.eventHubInfo.EventHubConsumerGroup = val
 	}
 
-	meta.blobContainer = defaultBlobContainer
+	meta.eventHubInfo.BlobContainer = defaultBlobContainer
 	if val, ok := metadata["blobContainer"]; ok {
-		meta.blobContainer = val
+		meta.eventHubInfo.BlobContainer = val
 	}
 
 	return &meta, nil
 }
 
 //GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
-func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionID string) (newEventCount int64, err error) {
-	partitionInfo, err := scaler.client.GetPartitionInformation(ctx, partitionID)
-	if err != nil {
-		return -1, fmt.Errorf("unable to get partition info: %s", err)
+func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
+
+	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
+	if partitionInfo!= nil && partitionInfo.LastEnqueuedOffset == "-1" {		
+		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
-		return -1, fmt.Errorf("unable to get checkpoint from storage: %s", err)
+		// if blob not found return the total partition event count
+		err = errors.Unwrap(err)
+		if stErr, ok := err.(azblob.StorageError); ok {
+			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
+				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
+			}
+		}
+		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %s", err)
 	}
 
 	unprocessedEventCountInPartition := int64(0)
 
-	if checkpoint.SequenceNumber != partitionInfo.LastSequenceNumber {
-		if partitionInfo.LastSequenceNumber > checkpoint.SequenceNumber {
-			unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
-
-			return unprocessedEventCountInPartition, nil
-		}
-
-		unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
+	//If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
+	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
+	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
+	if checkpoint.Offset == "" {
+		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber + 1
+		return unprocessedEventCountInPartition, checkpoint, nil
 	}
+
+	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
+		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
+		return unprocessedEventCountInPartition, checkpoint, nil
+	}	
+	
+	// Partition is a circular buffer, so it is possible that
+    // partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
+	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
+
+	// Checkpointing may or may not be always behind partition's LastSequenceNumber.  
+	// The partition information read could be stale compared to checkpoint,
+	// especially when load is very small and checkpointing is happening often.
+	// e.g., (9223372036854775807 - 10) + 11 = -9223372036854775808
+	// If unprocessedEventCountInPartition is negative that means there are 0 unprocessed messages in the partition
 	if unprocessedEventCountInPartition < 0 {
 		unprocessedEventCountInPartition = 0
 	}
 
-	return unprocessedEventCountInPartition, nil
+	return unprocessedEventCountInPartition, checkpoint, nil
+}
+
+// GetUnprocessedEventCountWithoutCheckpoint returns the number of messages on the without a checkoutpoint info
+func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartitionRuntimeInformation) int64 {
+
+	// if both values are 0 then there is exactly one message inside the hub. First message after init
+	if (partitionInfo.BeginningSequenceNumber == 0 && partitionInfo.LastSequenceNumber == 0) || (partitionInfo.BeginningSequenceNumber != partitionInfo.LastSequenceNumber) {
+		return (partitionInfo.LastSequenceNumber - partitionInfo.BeginningSequenceNumber) + 1
+	}
+
+	return 0
 }
 
 // IsActive determines if eventhub is active based on number of unprocessed events
@@ -158,7 +185,12 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	for i := 0; i < len(partitionIDs); i++ {
 		partitionID := partitionIDs[i]
 
-		unprocessedEventCount, err := scaler.GetUnprocessedEventCountInPartition(ctx, partitionID)
+		partitionRuntimeInfo, err := scaler.client.GetPartitionInformation(ctx, partitionID)
+		if err != nil {
+			return false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
+		}
+
+		unprocessedEventCount, _, err := scaler.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
 
 		if err != nil {
 			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %s", err)
@@ -202,14 +234,9 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
 		}
 
-		checkpoint, err := GetCheckpointFromBlobStorage(ctx, partitionID, *scaler.metadata)
-		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get checkpoint from storage: %s", err)
-		}
-
 		unprocessedEventCount := int64(0)
 
-		unprocessedEventCount, err = scaler.GetUnprocessedEventCountInPartition(ctx, partitionID)
+		unprocessedEventCount, checkpoint, err := scaler.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
 		if err != nil {
 			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get unprocessedEventCount for metrics: %s", err)
 		}

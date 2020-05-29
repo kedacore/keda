@@ -10,7 +10,7 @@ RUN apt-get install apt-transport-https lsb-release software-properties-common d
     echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | \
         tee /etc/apt/sources.list.d/azure-cli.list && \
     apt-key --keyring /etc/apt/trusted.gpg.d/Microsoft.gpg adv \
-        --keyserver packages.microsoft.com \
+        --keyserver keyserver.ubuntu.com \
         --recv-keys BC528686B50D79E339D3721CEB3E94ADBE1229CF && \
     apt-get update && \
     apt-get install -y azure-cli
@@ -66,3 +66,6 @@ RUN RELEASE_VERSION=v0.12.0 && \
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
     GOPATH=/go
+
+# Install FOSSA tooling
+RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash 

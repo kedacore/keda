@@ -203,7 +203,7 @@ func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: mySQLMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

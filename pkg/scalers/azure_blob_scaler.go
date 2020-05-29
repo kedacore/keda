@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -14,15 +15,15 @@ import (
 )
 
 const (
-	blobCountMetricName     	 = "blobCount"
-	defaultTargetBlobCount  	 = 5
-	defaultBlobDelimiter     	 = "/"
-	defaultBlobPrefix        	 = ""
+	blobCountMetricName          = "blobCount"
+	defaultTargetBlobCount       = 5
+	defaultBlobDelimiter         = "/"
+	defaultBlobPrefix            = ""
 	defaultBlobConnectionSetting = "AzureWebJobsStorage"
 )
 
 type azureBlobScaler struct {
-	metadata *azureBlobMetadata
+	metadata    *azureBlobMetadata
 	podIdentity string
 }
 
@@ -30,7 +31,7 @@ type azureBlobMetadata struct {
 	targetBlobCount   int
 	blobContainerName string
 	blobDelimiter     string
-	blobPrefix 		  string
+	blobPrefix        string
 	connection        string
 	useAAdPodIdentity bool
 	accountName       string
@@ -46,7 +47,7 @@ func NewAzureBlobScaler(resolvedEnv, metadata, authParams map[string]string, pod
 	}
 
 	return &azureBlobScaler{
-		metadata: meta,
+		metadata:    meta,
 		podIdentity: podIdentity,
 	}, nil
 }
@@ -101,17 +102,17 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 			// Found the connection in a parameter from TriggerAuthentication
 			meta.connection = connection
 		} else {
-		connectionSetting := defaultBlobConnectionSetting
-		if val, ok := metadata["connection"]; ok && val != "" {
-			connectionSetting = val
-		}
+			connectionSetting := defaultBlobConnectionSetting
+			if val, ok := metadata["connection"]; ok && val != "" {
+				connectionSetting = val
+			}
 
-		if val, ok := resolvedEnv[connectionSetting]; ok {
-			meta.connection = val
-		} else {
-			return nil, "", fmt.Errorf("no connection setting given")
+			if val, ok := resolvedEnv[connectionSetting]; ok {
+				meta.connection = val
+			} else {
+				return nil, "", fmt.Errorf("no connection setting given")
+			}
 		}
-	}
 	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := metadata["accountName"]; ok && val != "" {
@@ -128,7 +129,7 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 
 // GetScaleDecision is a func
 func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := GetAzureBlobListLength(
+	length, err := azure.GetAzureBlobListLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
@@ -159,7 +160,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	bloblen, err := GetAzureBlobListLength(
+	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
