@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	pgMetricName              = "num"
 	defaultPostgreSQLPassword = ""
 )
 
@@ -25,6 +24,7 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
+	metricName       string
 	targetQueryValue int
 	connection       string
 	userName         string
@@ -119,7 +119,13 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 			}
 		}
 	}
-
+	
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "postgres", metadata["dbName"])
+	}
+	
 	return &meta, nil
 }
 
@@ -186,7 +192,7 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: pgMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -207,7 +213,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: pgMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
