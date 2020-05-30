@@ -101,10 +101,10 @@ func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
 
 	meta.lagThreshold = defaultStanLagThreshold
 
-	if val, ok := metadata[lagThresholdMetricName]; ok {
+	if val, ok := metadata["lagThreshold"]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %s: %s", "lagThreshold", err)
 		}
 		meta.lagThreshold = t
 	}
