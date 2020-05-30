@@ -31,6 +31,7 @@ type awsSqsQueueScaler struct {
 }
 
 type awsSqsQueueMetadata struct {
+	metricName        string
 	targetQueueLength int
 	queueURL          string
 	queueName         string
@@ -84,7 +85,13 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]strin
 	}
 
 	meta.queueName = queueURLPathParts[2]
-
+	
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s-%s", "AWS-SQS-Queue", awsSqsQueueMetricName, queueURLPathParts[2])
+	}
+	
 	if val, ok := metadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
@@ -120,7 +127,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "AWS-SQS-Queue", awsSqsQueueMetricName, s.metadata.queueName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
