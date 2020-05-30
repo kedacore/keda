@@ -180,7 +180,7 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 	}
 	
 	return &liiklusMetadata{
-		metricName:   metricName
+		metricName:   metricName,
 		topic:        metadata["topic"],
 		address:      metadata["address"],
 		group:        metadata["group"],
