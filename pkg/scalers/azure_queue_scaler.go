@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	queueLengthMetricName    = "queueLength"
 	defaultTargetQueueLength = 5
 	externalMetricType       = "External"
 	defaultConnectionSetting = "AzureWebJobsStorage"
@@ -27,6 +26,7 @@ type azureQueueScaler struct {
 }
 
 type azureQueueMetadata struct {
+	metricName        string
 	targetQueueLength int
 	queueName         string
 	connection        string
@@ -52,11 +52,11 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
-	if val, ok := metadata[queueLengthMetricName]; ok {
+	if val, ok := metadata["queueLength"]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", "queueLength")
+			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", "queueLength", err.Error())
 		}
 
 		meta.targetQueueLength = queueLength
@@ -106,7 +106,13 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 	} else {
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", podAuth)
 	}
-
+	
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "azure-queue", metadata["queueName"])
+	}
+	
 	return &meta, podAuth, nil
 }
 
@@ -136,7 +142,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: queueLengthMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
