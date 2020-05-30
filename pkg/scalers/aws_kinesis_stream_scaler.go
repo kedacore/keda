@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	awsKinesisStreamMetricName = "ShardCount"
 	targetShardCountDefault    = 2
 )
 
