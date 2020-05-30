@@ -29,6 +29,7 @@ type awsKinesisStreamScaler struct {
 }
 
 type awsKinesisStreamMetadata struct {
+	metricName       string
 	targetShardCount int
 	streamName       string
 	awsRegion        string
@@ -74,7 +75,13 @@ func parseAwsKinesisStreamMetadata(metadata, resolvedEnv, authParams map[string]
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
 	}
-
+	
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "AWS-Kinesis-Stream", metadata["streamName"])
+	}
+	
 	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
 	if err != nil {
 		return nil, err
@@ -104,7 +111,7 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec 
 	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "AWS-Kinesis-Stream", awsKinesisStreamMetricName, s.metadata.streamName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
