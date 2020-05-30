@@ -173,10 +173,9 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		return nil, errors.New("no consumer group provided")
 	}
 	
+	metricName := fmt.Sprintf("%s-%s-%s", "liiklus", metadata["topic"], metadata["group"])
 	if metadata["metricName"] != ""{
 		metricName := metadata["metricName"]
-	} else {
-		metricName := fmt.Sprintf("%s-%s-%s", "liiklus", metadata["topic"], metadata["group"])
 	}
 	
 	return &liiklusMetadata{
