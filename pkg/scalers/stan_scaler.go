@@ -42,6 +42,7 @@ type stanScaler struct {
 }
 
 type stanMetadata struct {
+	metricName                   string
 	natsServerMonitoringEndpoint string
 	queueGroup                   string
 	durableName                  string
@@ -50,7 +51,6 @@ type stanMetadata struct {
 }
 
 const (
-	stanLagThresholdMetricName = "lagThreshold"
 	stanMetricType             = "External"
 	defaultStanLagThreshold    = 10
 )
@@ -92,6 +92,12 @@ func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
 		return meta, errors.New("no subject given")
 	}
 	meta.subject = metadata["subject"]
+	
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s-%s", "stan", metadata["topic"], metadata["consumerGroup"])
+	}
 
 	meta.lagThreshold = defaultStanLagThreshold
 
@@ -183,7 +189,7 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: lagThresholdMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
