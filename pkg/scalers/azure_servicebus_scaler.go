@@ -33,6 +33,7 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
+	metricName       string
 	targetLength     int
 	queueName        string
 	topicName        string
@@ -62,10 +63,10 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	meta.targetLength = defaultTargetQueueLength
 
 	// get target metric value
-	if val, ok := metadata[queueLengthMetricName]; ok {
+	if val, ok := metadata["queueLength"]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
+			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", "queueLength")
 		} else {
 			meta.targetLength = queueLength
 		}
@@ -123,7 +124,13 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	} else {
 		return nil, fmt.Errorf("Azure service bus doesn't support pod identity %s", podIdentity)
 	}
-
+	
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "azure-servicebus", metadata["subscriptionName"])
+	}
+	
 	return &meta, nil
 }
 
@@ -148,7 +155,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: queueLengthMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
