@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	listLengthMetricName    = "RedisListLength"
 	defaultTargetListLength = 5
 	defaultRedisAddress     = "redis-master.default.svc.cluster.local:6379"
 	defaultRedisPassword    = ""
@@ -31,6 +30,7 @@ type redisScaler struct {
 }
 
 type redisMetadata struct {
+	metricName       string
 	targetListLength int
 	listName         string
 	address          string
@@ -134,7 +134,13 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		}
 		meta.enableTLS = tls
 	}
-
+	
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "redis", metadata["listName"])
+	}
+	
 	return &meta, nil
 }
 
@@ -161,7 +167,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: listLengthMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
