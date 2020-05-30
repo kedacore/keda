@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	blobCountMetricName          = "blobCount"
 	defaultTargetBlobCount       = 5
 	defaultBlobDelimiter         = "/"
 	defaultBlobPrefix            = ""
@@ -28,6 +27,7 @@ type azureBlobScaler struct {
 }
 
 type azureBlobMetadata struct {
+	metricName        string
 	targetBlobCount   int
 	blobContainerName string
 	blobDelimiter     string
@@ -58,11 +58,11 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 	meta.blobDelimiter = defaultBlobDelimiter
 	meta.blobPrefix = defaultBlobPrefix
 
-	if val, ok := metadata[blobCountMetricName]; ok {
+	if val, ok := metadata["blobCount"]; ok {
 		blobCount, err := strconv.Atoi(val)
 		if err != nil {
-			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
+			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", "blobCount")
+			return nil, "", fmt.Errorf("Error parsing azure blob metadata %s: %s", "blobCount", err.Error())
 		}
 
 		meta.targetBlobCount = blobCount
@@ -123,7 +123,13 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 	} else {
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", podAuth)
 	}
-
+	
+	if metadata["metricName"] != "" {
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "azure-blob", metadata["blobContainerName"])
+	}
+	
 	return &meta, podAuth, nil
 }
 
@@ -155,7 +161,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: blobCountMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
