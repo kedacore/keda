@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	rabbitQueueLengthMetricName = "queueLength"
 	rabbitMetricType            = "External"
 	rabbitIncludeUnacked        = "includeUnacked"
 	defaultIncludeUnacked       = false
@@ -33,6 +32,7 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
+	metricName     string
 	queueName      string
 	host           string // connection string for AMQP protocol
 	apiHost        string // connection string for management API requests
@@ -119,10 +119,10 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	if val, ok := metadata[rabbitQueueLengthMetricName]; ok {
+	if val, ok := metadata["queueLength"]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+			return nil, fmt.Errorf("can't parse %s: %s", "queueLength", err)
 		}
 
 		meta.queueLength = queueLength
@@ -130,6 +130,12 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 		return nil, fmt.Errorf("no queue length given")
 	}
 
+	if metadata["metricName"] != ""{
+		meta.metricName = metadata["metricName"]
+	} else {
+		meta.metricName = fmt.Sprintf("%s-%s", "rabbitmq", metadata["queueName"])
+	}
+	
 	return &meta, nil
 }
 
@@ -236,7 +242,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: rabbitQueueLengthMetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -257,7 +263,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: rabbitQueueLengthMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
