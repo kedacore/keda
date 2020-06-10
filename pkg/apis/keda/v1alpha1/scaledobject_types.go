@@ -41,9 +41,15 @@ type ScaledObjectSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
-	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+	HPAConfig *HPAConfig `json:"hpaConfig,omitempty"`
 
 	Triggers []ScaleTriggers `json:"triggers"`
+}
+
+type HPAConfig struct {
+	ResourceMetrics *autoscalingv2beta2.ResourceMetricSource `json:"resourcemetrics,omitempty"`
+	// +optional
+	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
 
 //ScaleTarget holds the a reference to the scale target Object
