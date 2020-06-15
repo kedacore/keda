@@ -58,7 +58,7 @@ spec:
             cooldownPeriod:
               format: int32
               type: integer
-            hpaConfig:
+            horizontalPodAutoscalerConfig:
               properties:
                 behavior:
                   description: HorizontalPodAutoscalerBehavior configures the scaling
@@ -174,7 +174,7 @@ spec:
                           type: integer
                       type: object
                   type: object
-                resourcemetrics:
+                resourceMetrics:
                   description: ResourceMetricSource indicates how to scale on a resource
                     metric known to Kubernetes, as specified in requests and limits,
                     describing each pod in the current scale target (e.g. CPU or memory).  The

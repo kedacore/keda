@@ -41,13 +41,13 @@ type ScaledObjectSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
-	HPAConfig *HPAConfig `json:"hpaConfig,omitempty"`
+	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
 
 	Triggers []ScaleTriggers `json:"triggers"`
 }
 
-type HPAConfig struct {
-	ResourceMetrics *autoscalingv2beta2.ResourceMetricSource `json:"resourcemetrics,omitempty"`
+type HorizontalPodAutoscalerConfig struct {
+	ResourceMetrics *autoscalingv2beta2.ResourceMetricSource `json:"resourceMetrics,omitempty"`
 	// +optional
 	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
