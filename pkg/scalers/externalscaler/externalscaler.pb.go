@@ -348,9 +348,7 @@ func init() {
 	proto.RegisterType((*MetricValue)(nil), "externalscaler.MetricValue")
 }
 
-func init() {
-	proto.RegisterFile("externalscaler.proto", fileDescriptor_3d382708546499d1)
-}
+func init() { proto.RegisterFile("externalscaler.proto", fileDescriptor_3d382708546499d1) }
 
 var fileDescriptor_3d382708546499d1 = []byte{
 	// 442 bytes of a gzipped FileDescriptorProto
@@ -386,11 +384,11 @@ var fileDescriptor_3d382708546499d1 = []byte{
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConnInterface
+var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion4
 
 // ExternalScalerClient is the client API for ExternalScaler service.
 //
@@ -403,10 +401,10 @@ type ExternalScalerClient interface {
 }
 
 type externalScalerClient struct {
-	cc grpc.ClientConnInterface
+	cc *grpc.ClientConn
 }
 
-func NewExternalScalerClient(cc grpc.ClientConnInterface) ExternalScalerClient {
+func NewExternalScalerClient(cc *grpc.ClientConn) ExternalScalerClient {
 	return &externalScalerClient{cc}
 }
 
