@@ -30,6 +30,7 @@ type externalPushScaler struct {
 type externalScalerMetadata struct {
 	scalerAddress string
 	tlsCertFile   string
+	originalMetadata      map[string]string
 }
 
 type connectionGroup struct {
@@ -71,13 +72,16 @@ func NewExternalPushScaler(name, namespace string, metadata map[string]string) (
 			scaledObjectRef: pb.ScaledObjectRef{
 				Name:      name,
 				Namespace: namespace,
+				ScalerMetadata: meta.originalMetadata,
 			},
 		},
 	}, nil
 }
 
 func parseExternalScalerMetadata(metadata map[string]string) (externalScalerMetadata, error) {
-	meta := externalScalerMetadata{}
+	meta := externalScalerMetadata{
+		originalMetadata: metadata,
+	}
 
 	// Check if scalerAddress is present
 	if val, ok := metadata["scalerAddress"]; ok && val != "" {
@@ -255,8 +259,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
 		if metadata.tlsCertFile != "" {
-			certFile := fmt.Sprintf("/grpccerts/%s", metadata.tlsCertFile)
-			creds, err := credentials.NewClientTLSFromFile(certFile, "")
+			creds, err := credentials.NewClientTLSFromFile(metadata.tlsCertFile, "")
 			if err != nil {
 				return nil, err
 			}

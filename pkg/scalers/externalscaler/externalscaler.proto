@@ -13,11 +13,7 @@ service ExternalScaler {
 message ScaledObjectRef {
     string name = 1;
     string namespace = 2;
-}
-
-message NewRequest {
-    ScaledObjectRef scaledObjectRef = 1;
-    map<string, string> metadata = 2;
+    map<string, string> scalerMetadata = 3;
 }
 
 message IsActiveResponse {
