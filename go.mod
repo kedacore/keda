@@ -26,6 +26,7 @@ require (
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
+	github.com/mitchellh/hashstructure v0.0.0-20170609045927-2bca23e0e452
 	github.com/operator-framework/operator-sdk v0.17.1-0.20200501204426-0f43da11b8c0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
