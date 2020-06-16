@@ -4,32 +4,16 @@ import (
 	"context"
 	"time"
 
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/pkg/scalers"
-
 	"github.com/go-logr/logr"
+	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (e *scaleExecutor) RequestScale(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) {
+func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool) {
 	logger := e.logger.WithValues("Scaledobject.Name", scaledObject.Name,
 		"ScaledObject.Namespace", scaledObject.Namespace,
 		"ScaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
-
-	isActive := false
-	for _, scaler := range scalers {
-		defer scaler.Close()
-		isTriggerActive, err := scaler.IsActive(ctx)
-
-		if err != nil {
-			logger.V(1).Info("Error getting scale decision", "Error", err)
-			continue
-		} else if isTriggerActive {
-			isActive = true
-			logger.V(1).Info("Scaler for scaledObject is active", "Scaler", scaler)
-		}
-	}
 
 	currentScale, err := e.getScaleTargetScale(ctx, scaledObject)
 	if err != nil {
