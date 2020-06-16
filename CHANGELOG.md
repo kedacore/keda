@@ -6,6 +6,7 @@
 
 ## History
 
+- [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
 - [v1.4.0](#v140)
@@ -13,6 +14,12 @@
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## v2.0.0
+
+### Breaking Changes
+
+- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
 
 ## v1.5.0
 
