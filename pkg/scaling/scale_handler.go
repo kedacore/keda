@@ -87,7 +87,10 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 		h.scaleLoopContexts.Store(key, cancel)
 	}
 
-	go h.startScaleLoop(ctx, withTriggers, scalableObject)
+	// a mutex is used to synchronize scale requests per scalableObject
+	scalingMutex := &sync.Mutex{}
+	go h.startPushScalers(ctx, withTriggers, scalableObject, scalingMutex)
+	go h.startScaleLoop(ctx, withTriggers, scalableObject, scalingMutex)
 	return nil
 }
 
@@ -115,11 +118,11 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 }
 
 // startScaleLoop blocks forever and checks the scaledObject based on its pollingInterval
-func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}) {
+func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex *sync.Mutex) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	// kick off one check to the scalers now
-	h.checkScalers(ctx, scalableObject)
+	h.checkScalers(ctx, scalableObject, scalingMutex)
 
 	pollingInterval := getPollingInterval(withTriggers)
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
@@ -127,7 +130,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	for {
 		select {
 		case <-time.After(pollingInterval):
-			h.checkScalers(ctx, scalableObject)
+			h.checkScalers(ctx, scalableObject, scalingMutex)
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
 			return
@@ -135,21 +138,120 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	}
 }
 
+func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex *sync.Mutex) {
+	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
+	ss, err := h.GetScalers(scalableObject)
+	if err != nil {
+		logger.Error(err, "Error getting scalers", "object", scalableObject)
+		return
+	}
+
+	for _, s := range ss {
+		scaler, ok := s.(scalers.PushScaler)
+		if !ok {
+			continue
+		}
+
+		go func() {
+			activeCh := make(chan bool)
+			go scaler.Run(ctx, activeCh)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case active := <-activeCh:
+					scalingMutex.Lock()
+					switch obj := scalableObject.(type) {
+					case *kedav1alpha1.ScaledObject:
+						h.scaleExecutor.RequestScale(ctx, obj, active)
+					case *kedav1alpha1.ScaledJob:
+						// TODO: revisit when implementing ScaledJob
+						h.scaleExecutor.RequestJobScale(ctx, obj, active, 1, 1)
+					}
+					scalingMutex.Unlock()
+				}
+			}
+		}()
+	}
+}
+
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
-func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}) {
+func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}, scalingMutex *sync.Mutex) {
 	scalers, err := h.GetScalers(scalableObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
 	}
 
+	scalingMutex.Lock()
+	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		h.scaleExecutor.RequestScale(ctx, scalers, obj)
+		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers))
 	case *kedav1alpha1.ScaledJob:
-		h.scaleExecutor.RequestJobScale(ctx, scalers, obj)
+		isActive, scaleTo, maxScale := h.checkScaledJobScalers(ctx, scalers)
+		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
 	}
+}
+
+func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler) bool {
+	isActive := false
+	for _, scaler := range scalers {
+		isTriggerActive, err := scaler.IsActive(ctx)
+		scaler.Close()
+
+		if err != nil {
+			h.logger.V(1).Info("Error getting scale decision", "Error", err)
+			continue
+		} else if isTriggerActive {
+			isActive = true
+			h.logger.V(1).Info("Scaler for scaledObject is active", "Scaler", scaler)
+		}
+	}
+	return isActive
+}
+
+func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scalers.Scaler) (bool, int64, int64) {
+	var queueLength int64
+	var maxValue int64
+	isActive := false
+
+	for _, scaler := range scalers {
+		scalerLogger := h.logger.WithValues("Scaler", scaler)
+
+		isTriggerActive, err := scaler.IsActive(ctx)
+		scaler.Close()
+		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
+		metricSpecs := scaler.GetMetricSpecForScaling()
+
+		var metricValue int64
+		for _, metric := range metricSpecs {
+			metricValue, _ = metric.External.Target.AverageValue.AsInt64()
+			maxValue += metricValue
+		}
+		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
+
+		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
+
+		for _, m := range metrics {
+			if m.MetricName == "queueLength" {
+				metricValue, _ = m.Value.AsInt64()
+				queueLength += metricValue
+			}
+		}
+		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
+
+		if err != nil {
+			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
+			continue
+		} else if isTriggerActive {
+			isActive = true
+			scalerLogger.Info("Scaler is active")
+		}
+	}
+
+	return isActive, queueLength, maxValue
 }
 
 // buildScalers returns list of Scalers for the specified triggers
@@ -249,7 +351,9 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "external":
-		return scalers.NewExternalScaler(name, namespace, resolvedEnv, triggerMetadata)
+		return scalers.NewExternalScaler(name, namespace, triggerMetadata)
+	case "external-push":
+		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "stan":

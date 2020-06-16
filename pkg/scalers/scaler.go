@@ -22,3 +22,10 @@ type Scaler interface {
 	// Close any resources that need disposing when scaler is no longer used or destroyed
 	Close() error
 }
+
+type PushScaler interface {
+	Scaler
+
+	// Run is the only writer to the active channel and must close it once done.
+	Run(ctx context.Context, active chan<- bool)
+}

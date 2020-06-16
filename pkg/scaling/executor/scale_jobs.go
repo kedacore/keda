@@ -5,7 +5,6 @@ import (
 	//"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/pkg/scalers"
 	version "github.com/kedacore/keda/version"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -16,49 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (e *scaleExecutor) RequestJobScale(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) {
-	var queueLength int64
-	var maxValue int64
-	isActive := false
-
-	for _, scaler := range scalers {
-		defer scaler.Close()
-		scalerLogger := e.logger.WithValues("Scaler", scaler)
-
-		isTriggerActive, err := scaler.IsActive(ctx)
-		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-		metricSpecs := scaler.GetMetricSpecForScaling()
-
-		var metricValue int64
-		for _, metric := range metricSpecs {
-			metricValue, _ = metric.External.Target.AverageValue.AsInt64()
-			maxValue += metricValue
-		}
-		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
-
-		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
-
-		for _, m := range metrics {
-			if m.MetricName == "queueLength" {
-				metricValue, _ = m.Value.AsInt64()
-				queueLength += metricValue
-			}
-		}
-		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
-
-		if err != nil {
-			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
-			continue
-		} else if isTriggerActive {
-			isActive = true
-			scalerLogger.Info("Scaler is active")
-		}
-	}
-
-	e.scaleJobs(ctx, scaledJob, isActive, queueLength, maxValue)
-}
-
-func (e *scaleExecutor) scaleJobs(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
 	runningJobCount := e.getRunningJobCount(scaledJob, maxScale)
 	e.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
 
