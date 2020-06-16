@@ -85,7 +85,7 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	size, err := s.GetSubscriptionSize(ctx)
 
 	if err != nil {
-		gcpPubSubLog.Error(err, "error")
+		gcpPubSubLog.Error(err, "error getting Active Status")
 		return false, err
 	}
 
