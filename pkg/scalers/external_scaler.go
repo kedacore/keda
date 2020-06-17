@@ -28,9 +28,9 @@ type externalPushScaler struct {
 }
 
 type externalScalerMetadata struct {
-	scalerAddress string
-	tlsCertFile   string
-	originalMetadata      map[string]string
+	scalerAddress    string
+	tlsCertFile      string
+	originalMetadata map[string]string
 }
 
 type connectionGroup struct {
@@ -70,8 +70,8 @@ func NewExternalPushScaler(name, namespace string, metadata map[string]string) (
 		externalScaler{
 			metadata: meta,
 			scaledObjectRef: pb.ScaledObjectRef{
-				Name:      name,
-				Namespace: namespace,
+				Name:           name,
+				Namespace:      namespace,
 				ScalerMetadata: meta.originalMetadata,
 			},
 		},
