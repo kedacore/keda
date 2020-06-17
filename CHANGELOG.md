@@ -17,7 +17,7 @@
 ### Breaking Changes
 
 - Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
-- Removed deprecated brokerList ([#882](https://github.com/kedacore/keda/pull/882))
+- Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
 
 ## v1.4.1
 
