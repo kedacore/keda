@@ -352,6 +352,8 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams)
+	case "redis-streams":
+		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
