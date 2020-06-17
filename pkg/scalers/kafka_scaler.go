@@ -83,19 +83,11 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	// brokerList marked as deprecated, bootstrapServers is the new one to use
-	if metadata["brokerList"] != "" && metadata["bootstrapServers"] != "" {
-		return meta, errors.New("cannot specify both bootstrapServers and brokerList (deprecated)")
-	}
-	if metadata["brokerList"] == "" && metadata["bootstrapServers"] == "" {
-		return meta, errors.New("no bootstrapServers or brokerList (deprecated) given")
+	if metadata["bootstrapServers"] == "" {
+		return meta, errors.New("no bootstrapServers given")
 	}
 	if metadata["bootstrapServers"] != "" {
 		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
-	}
-	if metadata["brokerList"] != "" {
-		kafkaLog.V(0).Info("WARNING: usage of brokerList is deprecated. use bootstrapServers instead.")
-		meta.bootstrapServers = strings.Split(metadata["brokerList"], ",")
 	}
 
 	if metadata["consumerGroup"] == "" {

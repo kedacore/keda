@@ -16,9 +16,9 @@ type parseKafkaMetadataTestData struct {
 
 // A complete valid metadata example for reference
 var validMetadata = map[string]string{
-	"brokerList":    "broker1:9092,broker2:9092",
-	"consumerGroup": "my-group",
-	"topic":         "my-topic",
+	"bootstrapServers": "broker1:9092,broker2:9092",
+	"consumerGroup":    "my-group",
+	"topic":            "my-topic",
 }
 
 // A complete valid authParams example for sasl, with username and passwd
@@ -32,22 +32,9 @@ var validWithAuthParams = map[string]string{
 var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
-	// failure, no brokerList (deprecated) or bootstrapServers
+	// failure, no bootstrapServers
 	{map[string]string{}, true, 0, nil, "", ""},
-	// failure, both brokerList (deprecated) and bootstrapServers
-	{map[string]string{"brokerList": "foobar:9092", "bootstrapServers": "foobar:9092"}, true, 0, nil, "", ""},
 
-	// tests with brokerList (deprecated)
-	// failure, no consumer group
-	{map[string]string{"brokerList": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
-	// failure, no topic
-	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", ""},
-	// success
-	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic"},
-	// success, more brokers
-	{map[string]string{"brokerList": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic"},
-
-	// tests with bootstrapServers
 	// failure, no consumer group
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
 	// failure, no topic
