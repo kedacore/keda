@@ -10,6 +10,7 @@ import (
 	"github.com/kedacore/keda/pkg/scalers/azure"
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,7 +114,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
 
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
-	if partitionInfo!= nil && partitionInfo.LastEnqueuedOffset == "-1" {		
+	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
 		return 0, azure.Checkpoint{}, nil
 	}
 
@@ -142,13 +143,13 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
 		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
 		return unprocessedEventCountInPartition, checkpoint, nil
-	}	
-	
-	// Partition is a circular buffer, so it is possible that
-    // partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
-	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
+	}
 
-	// Checkpointing may or may not be always behind partition's LastSequenceNumber.  
+	// Partition is a circular buffer, so it is possible that
+	// partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
+	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
+
+	// Checkpointing may or may not be always behind partition's LastSequenceNumber.
 	// The partition information read could be stale compared to checkpoint,
 	// especially when load is very small and checkpointing is happening often.
 	// e.g., (9223372036854775807 - 10) + 11 = -9223372036854775808

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -129,17 +129,20 @@ func (s *cronScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cronScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	specReplicas := 1
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         cronMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(specReplicas), resource.DecimalSI),
-			},
-			Type: cronMetricType,
+	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: cronMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics finds the current value of the metric
