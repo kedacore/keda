@@ -2,8 +2,6 @@
 
 ## Deprecations
 
-- As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
-
 ## History
 
 - [v2.0.0](#v200)
@@ -19,6 +17,7 @@
 ### Breaking Changes
 
 - Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
+- Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
 
 ## v1.4.1
 
@@ -81,7 +80,6 @@ None.
 ### Improvements
 
 - Make targetQueryValue configurable in postgreSQL scaler ([#643](https://github.com/kedacore/keda/pull/643))
-- Added bootstrapServers to deprecate brokerList ([#621](https://github.com/kedacore/keda/pull/621))
 - Removed the need for deploymentName label ([#644](https://github.com/kedacore/keda/pull/644))
 - Adding Kubernetes recommended labels to resources ([#596](https://github.com/kedacore/keda/pull/596))
 
