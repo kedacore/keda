@@ -7,18 +7,18 @@ require (
 	github.com/Azure/azure-amqp-common-go/v3 v3.0.0
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/azure-sdk-for-go v41.1.0+incompatible
-	github.com/Azure/azure-service-bus-go v0.10.0
+	github.com/Azure/azure-service-bus-go v0.10.2
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/Shopify/sarama v1.26.1
-	github.com/aws/aws-sdk-go v1.30.3
+	github.com/Shopify/sarama v1.26.4
+	github.com/aws/aws-sdk-go v1.32.3
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.7
-	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.3.5
@@ -27,7 +27,7 @@ require (
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
 	github.com/mitchellh/hashstructure v0.0.0-20170609045927-2bca23e0e452
-	github.com/operator-framework/operator-sdk v0.17.1-0.20200501204426-0f43da11b8c0
+	github.com/operator-framework/operator-sdk v0.18.1
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
