@@ -355,7 +355,7 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 	case "redis-streams":
 		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
 	case "artemis":
-		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewArtemisScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
