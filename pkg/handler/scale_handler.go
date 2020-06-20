@@ -354,8 +354,11 @@ func (h *ScaleHandler) getScaler(name, namespace, triggerType string, resolvedEn
 		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams)
 	case "redis-streams":
 		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+<<<<<<< HEAD
 	case "artemis":
 		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+=======
+>>>>>>> upstream/master
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
