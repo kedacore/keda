@@ -21,6 +21,7 @@ import (
 
 const (
 	rabbitQueueLengthMetricName = "queueLength"
+	defaultRabbitMQQueueLength  = 20
 	rabbitMetricType            = "External"
 	rabbitIncludeUnacked        = "includeUnacked"
 	defaultIncludeUnacked       = false
@@ -127,7 +128,7 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 
 		meta.queueLength = queueLength
 	} else {
-		return nil, fmt.Errorf("no queue length given")
+		meta.queueLength = defaultRabbitMQQueueLength
 	}
 
 	return &meta, nil

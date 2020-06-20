@@ -54,6 +54,26 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 	}
 }
 
+var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
+	// use default queueLength
+	{map[string]string{"queueName": "sample", "host": host}, false, map[string]string{}},
+	// use default queueLength with includeUnacked
+	{map[string]string{"queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+}
+
+func TestParseDefaultQueueLength(t *testing.T) {
+	for _, testData := range testDefaultQueueLength {
+		metadata, err := parseRabbitMQMetadata(sampleRabbitMqResolvedEnv, testData.metadata, testData.authParams)
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		} else if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		} else if metadata.queueLength != defaultRabbitMQQueueLength {
+			t.Error("Expected default queueLength =", defaultRabbitMQQueueLength, "but got", metadata.queueLength)
+		}
+	}
+}
+
 type getQueueInfoTestData struct {
 	response       string
 	responseStatus int
