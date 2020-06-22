@@ -1,9 +1,10 @@
 name: FOSSA pr
 
 on:
-  pull_request_review_comment:
+  pull_request:
+    types: [opened]
+  issue_comment:
     types: [created]
-    branches: [master]
 
 jobs:
   build:
