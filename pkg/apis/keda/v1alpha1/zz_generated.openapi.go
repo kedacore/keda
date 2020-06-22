@@ -14,6 +14,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment":           schema_pkg_apis_keda_v1alpha1_AuthEnvironment(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity":           schema_pkg_apis_keda_v1alpha1_AuthPodIdentity(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef":       schema_pkg_apis_keda_v1alpha1_AuthSecretTargetRef(ref),
+		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Credential":                schema_pkg_apis_keda_v1alpha1_Credential(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ObjectReference":           schema_pkg_apis_keda_v1alpha1_ObjectReference(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaleTriggers":             schema_pkg_apis_keda_v1alpha1_ScaleTriggers(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObject":              schema_pkg_apis_keda_v1alpha1_ScaledObject(ref),
@@ -22,6 +23,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.ScaledObjectStatus":        schema_pkg_apis_keda_v1alpha1_ScaledObjectStatus(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthentication":     schema_pkg_apis_keda_v1alpha1_TriggerAuthentication(ref),
 		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.TriggerAuthenticationSpec": schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref),
+		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Vault":                     schema_pkg_apis_keda_v1alpha1_Vault(ref),
+		"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.VaultSecret":               schema_pkg_apis_keda_v1alpha1_VaultSecret(ref),
 	}
 }
 
@@ -104,6 +107,31 @@ func schema_pkg_apis_keda_v1alpha1_AuthSecretTargetRef(ref common.ReferenceCallb
 					},
 				},
 				Required: []string{"parameter", "name", "key"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_keda_v1alpha1_Credential(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Credential defines the Hashicorp Vault credentials depending on the authentication method",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"token": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
 			},
 		},
 	}
@@ -444,10 +472,109 @@ func schema_pkg_apis_keda_v1alpha1_TriggerAuthenticationSpec(ref common.Referenc
 							},
 						},
 					},
+					"vault": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Vault"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef"},
+			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthEnvironment", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthPodIdentity", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.AuthSecretTargetRef", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Vault"},
+	}
+}
+
+func schema_pkg_apis_keda_v1alpha1_Vault(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Vault is used to authenticate using Hashicorp Vault",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"address": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"authentication": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"secrets": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.VaultSecret"),
+									},
+								},
+							},
+						},
+					},
+					"credetial": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Credential"),
+						},
+					},
+					"role": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"mount": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"address", "authentication", "secrets"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Credential", "github.com/kedacore/keda/pkg/apis/keda/v1alpha1.VaultSecret"},
+	}
+}
+
+func schema_pkg_apis_keda_v1alpha1_VaultSecret(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "VaultSecret defines the mapping between the path of the secret in Vault to the parameter",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"parameter": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"parameter", "path", "key"},
+			},
+		},
 	}
 }

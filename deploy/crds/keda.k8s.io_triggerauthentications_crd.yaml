@@ -72,6 +72,50 @@ spec:
                 - parameter
                 type: object
               type: array
+            vault:
+              description: Vault is used to authenticate using Hashicorp Vault
+              properties:
+                address:
+                  type: string
+                authentication:
+                  description: VaultAuthentication contains the list of Hashicorp
+                    Vault authentication methods
+                  type: string
+                credetial:
+                  description: Credential defines the Hashicorp Vault credentials
+                    depending on the authentication method
+                  properties:
+                    serviceAccount:
+                      type: string
+                    token:
+                      type: string
+                  type: object
+                mount:
+                  type: string
+                role:
+                  type: string
+                secrets:
+                  items:
+                    description: VaultSecret defines the mapping between the path
+                      of the secret in Vault to the parameter
+                    properties:
+                      key:
+                        type: string
+                      parameter:
+                        type: string
+                      path:
+                        type: string
+                    required:
+                    - key
+                    - parameter
+                    - path
+                    type: object
+                  type: array
+              required:
+              - address
+              - authentication
+              - secrets
+              type: object
           type: object
       required:
       - spec
