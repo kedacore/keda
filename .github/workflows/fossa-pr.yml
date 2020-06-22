@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: self-hosted
-    if: github.event.comment.body == '/run all' && github.actor == 'zroubalik' || github.actor == 'ahmelsayed' ||
+    if: github.event.comment.body == '/run all' && github.actor == 'zroubalik' || github.actor == 'ahmelsayed'
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: kedacore/build-tools:latest
     steps:
