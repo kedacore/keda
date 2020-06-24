@@ -13,9 +13,6 @@ test.before(t => {
     t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
 
-  // poznamka - yaml subor je tu iba ako string, na to aby sa dal deploynut ako
-  // apply -f ho musim zapisat do suboru, na to je tu generovanie nahodneho suboru
-  // (fileSync), donho sa potom zapise yaml string
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
   const tmpFile = tmp.fileSync()
