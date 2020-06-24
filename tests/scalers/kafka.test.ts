@@ -14,81 +14,59 @@ const kafkaTopicYamlFile = tmp.fileSync()
 const kafkaClientYamlFile = tmp.fileSync()
 const kafkaApplicationYamlFile = tmp.fileSync()
 
-// test.before('Set up, create necessary resources.', t => {
-// 	sh.config.silent = true
-// 	sh.exec(`kubectl create namespace ${defaultNamespace}`)
-// 	// 1. - nainstaluje strimzi.io operator
-// 	// - oc apply -f 'https://strimzi.io/install/latest?namespace=myproject' -n myproject
-// 	// ide
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl apply -f 'https://strimzi.io/install/latest?namespace=${defaultNamespace}' --namespace ${defaultNamespace}`).code,
-// 		'Deploying Strimzi.io operator should work.'
-// 	)
-// 	// 2.1 - vytvorim apache kafka cluster
-// 	//     - zkombinovat:
-// 	//         - navod: https://github.com/kedacore/sample-azure-functions-on-ocp4#create-a-kafka-instance
-// 	//         - strimzi example: https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml
-// 	// const kafkaClusterYamlFile = tmp.fileSync()
-// 	fs.writeFileSync(kafkaClusterYamlFile.name, kafkaClusterYaml)
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl apply -f ${kafkaClusterYamlFile.name} --namespace ${defaultNamespace}`).code,
-// 		'Deploying Kafka cluster instance should work.'
-// 	)
-// 	// 2.2 - pockat kym sa vsetko vytvori
-// 	//     - oc wait kafka/my-cluster --for=condition=Ready --timeout=300s -n myproject
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl wait kafka/${defaultCluster} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
-// 		'Kafka instacne should be ready within given time limit.'
-// 	)
-// 	// 3. - vytvorit topic - yaml z navodu
-// 	// const kafkaTopicYamlFile = tmp.fileSync()
-// 	fs.writeFileSync(kafkaTopicYamlFile.name, kafkaTopicYaml)
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl apply -f ${kafkaTopicYamlFile.name} --namespace ${defaultNamespace}`).code,
-// 		'Deploying Kafka topic should work.'
-// 	)
-// 	// 4. - deploynut kafka client - yaml z navodu
-// 	// const kafkaClientYamlFile = tmp.fileSync()
-// 	fs.writeFileSync(kafkaClientYamlFile.name, kafkaClientYaml)
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl apply -f ${kafkaClientYamlFile.name} --namespace ${defaultNamespace}`).code,
-// 		'Deploying Kafka client should work.'
-// 	)
-// 	// 5. - deploynut twitter-function (yaml z gitu z navodu)
-//   // const kafkaApplicationYamlFile = tmp.fileSync()
-// 	fs.writeFileSync(kafkaApplicationYamlFile.name, kafkaApplicationYaml)
-// 	t.is(
-// 		0,
-// 		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
-// 		'Deploying Kafka application should work.'
-// 	)
-// 	// 6. - poslat spravu do topicu (z navodu)
-// 	// 7. - zkontrolovat ci pribudol pod
-// });
+test.before('Set up, create necessary resources.', t => {
+	sh.config.silent = true
+	sh.exec(`kubectl create namespace ${defaultNamespace}`)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f 'https://strimzi.io/install/latest?namespace=${defaultNamespace}' --namespace ${defaultNamespace}`).code,
+		'Deploying Strimzi.io operator should work.'
+	)
+	fs.writeFileSync(kafkaClusterYamlFile.name, kafkaClusterYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${kafkaClusterYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Kafka cluster instance should work.'
+	)
+	t.is(
+		0,
+		sh.exec(`kubectl wait kafka/${defaultCluster} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
+		'Kafka instacne should be ready within given time limit.'
+	)
+	fs.writeFileSync(kafkaTopicYamlFile.name, kafkaTopicYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${kafkaTopicYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Kafka topic should work.'
+	)
+	fs.writeFileSync(kafkaClientYamlFile.name, kafkaClientYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${kafkaClientYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Kafka client should work.'
+	)
+	fs.writeFileSync(kafkaApplicationYamlFile.name, kafkaApplicationYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Kafka application should work.'
+	)
+});
 
 test.serial('Scale application with kafka message.', t => {
 
   let replicaCount = '0'
-  // for (let i = 0; i < 10 && replicaCount !== '0'; i++) {
-  //   replicaCount = sh.exec(
-  //     `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-  //   ).stdout
-  //   if (replicaCount !== '0') {
-  //     sh.exec('sleep 1s')
-  //   }
-  // }
-  // t.is(replicaCount, '0', 'Replica count should be 0.')
+  for (let i = 0; i < 10 && replicaCount !== '0'; i++) {
+    replicaCount = sh.exec(
+      `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+    ).stdout
+    if (replicaCount !== '0') {
+      sh.exec('sleep 1s')
+    }
+  }
+  t.is(replicaCount, '0', 'Replica count should be 0.')
 
-  t.is(
-		0,
-		sh.exec(`kubectl exec ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`).code,
-		'Sending a fake message should work.'
-	)
+  sh.exec(`kubectl exec ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
 
   for (let i = 0; i < 10 && replicaCount !== '1'; i++) {
     replicaCount = sh.exec(
