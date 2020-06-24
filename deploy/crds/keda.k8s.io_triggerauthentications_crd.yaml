@@ -45,35 +45,9 @@ spec:
                 - parameter
                 type: object
               type: array
-            podIdentity:
-              description: AuthPodIdentity allows users to select the platform native
-                identity mechanism
-              properties:
-                provider:
-                  description: PodIdentityProvider contains the list of providers
-                  type: string
-              required:
-              - provider
-              type: object
-            secretTargetRef:
-              items:
-                description: AuthSecretTargetRef is used to authenticate using a reference
-                  to a secret
-                properties:
-                  key:
-                    type: string
-                  name:
-                    type: string
-                  parameter:
-                    type: string
-                required:
-                - key
-                - name
-                - parameter
-                type: object
-              type: array
-            vault:
-              description: Vault is used to authenticate using Hashicorp Vault
+            hashiCorpVault:
+              description: HashiCorpVault is used to authenticate using Hashicorp
+                Vault
               properties:
                 address:
                   type: string
@@ -116,6 +90,33 @@ spec:
               - authentication
               - secrets
               type: object
+            podIdentity:
+              description: AuthPodIdentity allows users to select the platform native
+                identity mechanism
+              properties:
+                provider:
+                  description: PodIdentityProvider contains the list of providers
+                  type: string
+              required:
+              - provider
+              type: object
+            secretTargetRef:
+              items:
+                description: AuthSecretTargetRef is used to authenticate using a reference
+                  to a secret
+                properties:
+                  key:
+                    type: string
+                  name:
+                    type: string
+                  parameter:
+                    type: string
+                required:
+                - key
+                - name
+                - parameter
+                type: object
+              type: array
           type: object
       required:
       - spec

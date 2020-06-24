@@ -320,13 +320,14 @@ func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAut
 					result[e.Parameter] = h.resolveAuthSecret(e.Name, scaledObject.Namespace, e.Key)
 				}
 			}
-			if triggerAuth.Spec.Vault.Secrets != nil {
-				vault, err := triggerAuth.Spec.Vault.Authenticate(h.logger)
+			if triggerAuth.Spec.HashiCorpVault.Secrets != nil {
+				vault := NewHashicorpVaultHandler(&triggerAuth.Spec.HashiCorpVault)
+				err := vault.Initialize(h.logger)
 				if err != nil {
 					h.logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
-					for _, e := range triggerAuth.Spec.Vault.Secrets {
-						secret, err := vault.Logical().Read(e.Path)
+					for _, e := range triggerAuth.Spec.HashiCorpVault.Secrets {
+						secret, err := vault.Read(e.Path)
 						if err != nil {
 							h.logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.path", e.Path)
@@ -335,6 +336,8 @@ func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAut
 
 						result[e.Parameter] = h.resolveVaultSecret(secret.Data, e.Key)
 					}
+
+					vault.Stop()
 				}
 			}
 		}
