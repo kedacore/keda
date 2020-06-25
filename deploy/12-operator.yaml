@@ -4,7 +4,7 @@ metadata:
   labels:
     app: keda-operator
     app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/version: "1.4.1"
+    app.kubernetes.io/version: "2.0.0-alpha1"
     app.kubernetes.io/component: operator
     app.kubernetes.io/part-of: keda-operator
   name: keda-operator
@@ -24,13 +24,23 @@ spec:
       serviceAccountName: keda-operator
       containers:
         - name: keda-operator
-          image: docker.io/kedacore/keda:1.4.1
+          image: docker.io/kedacore/keda:2.0.0-alpha1
           command:
           - keda
           args:
           - '--zap-level=info'
           - '--zap-time-encoding=epoch'
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 25
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 20
           env:
             - name: WATCH_NAMESPACE
               value: ""
@@ -40,3 +50,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "keda-operator"
+      nodeSelector:
+        beta.kubernetes.io/os: linux

@@ -4,6 +4,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TriggerAuthentication defines how a trigger can authenticate
+// +genclient
+// +k8s:openapi-gen=true
+// +kubebuilder:resource:path=triggerauthentications,scope=Namespaced,shortName=ta;triggerauth
+// +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
+// +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
+// +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
+type TriggerAuthentication struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec TriggerAuthenticationSpec `json:"spec"`
+}
+
 // TriggerAuthenticationSpec defines the various ways to authenticate
 // +k8s:openapi-gen=true
 type TriggerAuthenticationSpec struct {
@@ -11,24 +27,10 @@ type TriggerAuthenticationSpec struct {
 	PodIdentity AuthPodIdentity `json:"podIdentity"`
 
 	// +optional
-	// +listType
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef"`
 
 	// +optional
-	// +listType
 	Env []AuthEnvironment `json:"env"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// TriggerAuthentication defines how a trigger can authenticate
-// +k8s:openapi-gen=true
-// +kubebuilder:resource:path=triggerauthentications,scope=Namespaced
-type TriggerAuthentication struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec TriggerAuthenticationSpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -73,7 +75,7 @@ type AuthSecretTargetRef struct {
 }
 
 // AuthEnvironment is used to authenticate using environment variables
-// in the destination deployment spec
+// in the destination ScaleTarget spec
 // +k8s:openapi-gen=true
 type AuthEnvironment struct {
 	Parameter string `json:"parameter"`

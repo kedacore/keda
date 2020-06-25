@@ -1,7 +1,7 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= master
+VERSION		   ?= 2.0.0-alpha1
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
@@ -94,8 +94,12 @@ ifndef GOROOT
 	@echo "WARNING: GOROOT is not defined"
 endif
 
+.PHONY: gofmt
+gofmt:
+	go fmt ./...
+
 .PHONY: build
-build: checkenv build-adapter build-controller
+build: gofmt checkenv build-adapter build-controller
 
 .PHONY: build-controller
 build-controller: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
@@ -113,10 +117,28 @@ build-adapter: generate-api pkg/scalers/liiklus/LiiklusService.pb.go
 .PHONY: generate-api
 generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
-	$(GO_BUILD_VARS) operator-sdk generate openapi
+	$(GO_BUILD_VARS) operator-sdk generate crds
+	# withTriggers and withPods are only used for duck typing so we only need the deepcopy methods
+	# However operator-sdk generate doesn't appear to have an option for that
+	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398 
+	rm deploy/crds/keda.sh_withtriggers_crd.yaml
+	rm deploy/crds/keda.sh_withpods_crd.yaml
 
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
 
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+##################################################
+# Clientset                                      #
+##################################################
+.PHONY: verify-clientset
+verify-clientset:
+	$(GO_BUILD_VARS) go mod vendor
+	./hack/verify-codegen.sh
+	
+.PHONY: generate-clientset
+generate-clientset:
+	$(GO_BUILD_VARS) go mod vendor
+	./hack/update-codegen.sh

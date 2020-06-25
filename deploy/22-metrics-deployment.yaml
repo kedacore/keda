@@ -4,7 +4,7 @@ metadata:
   labels:
     app: keda-metrics-apiserver
     app.kubernetes.io/name: keda-metrics-apiserver
-    app.kubernetes.io/version: "1.4.1"
+    app.kubernetes.io/version: "2.0.0-alpha1"
     app.kubernetes.io/part-of: keda-operator
   name: keda-metrics-apiserver
   namespace: keda
@@ -22,8 +22,20 @@ spec:
       serviceAccountName: keda-operator
       containers:
         - name: keda-metrics-apiserver
-          image: docker.io/kedacore/keda-metrics-adapter:1.4.1
+          image: docker.io/kedacore/keda-metrics-adapter:2.0.0-alpha1
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: 6443
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /readyz
+              port: 6443
+            initialDelaySeconds: 5
           env:
             - name: WATCH_NAMESPACE
               value: ""
@@ -40,6 +52,8 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       volumes:
       - name: temp-vol
         emptyDir: {}

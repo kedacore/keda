@@ -1,0 +1,27 @@
+name: FOSSA
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: kedacore/build-tools:latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.13.1"
+      - run: go version
+      # Runs a set of commands to initialize and analyze with FOSSA
+      - name: run FOSSA analysis
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+        run: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$(go env GOPATH)/bin
+          fossa init
+          fossa analyze

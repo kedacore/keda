@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -83,19 +83,11 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	// brokerList marked as deprecated, bootstrapServers is the new one to use
-	if metadata["brokerList"] != "" && metadata["bootstrapServers"] != "" {
-		return meta, errors.New("cannot specify both bootstrapServers and brokerList (deprecated)")
-	}
-	if metadata["brokerList"] == "" && metadata["bootstrapServers"] == "" {
-		return meta, errors.New("no bootstrapServers or brokerList (deprecated) given")
+	if metadata["bootstrapServers"] == "" {
+		return meta, errors.New("no bootstrapServers given")
 	}
 	if metadata["bootstrapServers"] != "" {
 		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
-	}
-	if metadata["brokerList"] != "" {
-		kafkaLog.V(0).Info("WARNING: usage of brokerList is deprecated. use bootstrapServers instead.")
-		meta.bootstrapServers = strings.Split(metadata["brokerList"], ",")
 	}
 
 	if metadata["consumerGroup"] == "" {
@@ -326,16 +318,19 @@ func (s *kafkaScaler) Close() error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         lagThresholdMetricName,
-				TargetAverageValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
-			},
-			Type: kafkaMetricType,
+func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: lagThresholdMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

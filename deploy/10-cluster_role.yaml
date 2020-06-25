@@ -3,9 +3,8 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/version: "1.4.1"
+    app.kubernetes.io/version: "2.0.0-alpha1"
     app.kubernetes.io/part-of: keda-operator
-  creationTimestamp: null
   name: keda-operator
 rules:
 - apiGroups:
@@ -28,6 +27,7 @@ rules:
   - deployments
   - deployments/finalizers
   - replicasets
+  - statefulsets
   verbs:
   - '*'
 - apiGroups:
@@ -44,7 +44,7 @@ rules:
   - get
   - create
 - apiGroups:
-  - keda.k8s.io
+  - keda.sh
   resources:
   - '*'
   verbs:
@@ -55,3 +55,15 @@ rules:
   - horizontalpodautoscalers
   verbs:
    - '*'
+- apiGroups:
+  - "*"
+  resources:
+  - "*/scale"
+  verbs:
+  - "*"
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "get"

@@ -3,52 +3,52 @@ package scaledobject
 import (
 	"context"
 
-	"github.com/go-logr/logr"
-	"k8s.io/client-go/tools/cache"
-
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+
+	"github.com/go-logr/logr"
 )
 
 const (
-	scaledObjectFinalizer = "finalizer.keda.k8s.io"
+	scaledObjectFinalizer = "finalizer.keda.sh"
 )
 
-// finalizeScaledObject is stopping ScaleLoop for the respective ScaleObject
+// finalizeScaledObject runs finalization logic on ScaledObject if there's finalizer
 func (r *ReconcileScaledObject) finalizeScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
-	if err != nil {
-		logger.Error(err, "Error getting key for scaledObject (%s/%s)", scaledObject.GetNamespace(), scaledObject.GetName())
-		return err
-	}
 
-	// store ScaledObject's current Generation
-	r.scaledObjectsGenerations.Delete(key)
-
-	result, ok := r.scaleLoopContexts.Load(key)
-	if ok {
-		cancel, ok := result.(context.CancelFunc)
-		if ok {
-			cancel()
+	if contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
+		// Run finalization logic for scaledObjectFinalizer. If the
+		// finalization logic fails, don't remove the finalizer so
+		// that we can retry during the next reconciliation.
+		if err := r.stopScaleLoop(logger, scaledObject); err != nil {
+			return err
 		}
-		r.scaleLoopContexts.Delete(key)
-	} else {
-		logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
+
+		// Remove scaledObjectFinalizer. Once all finalizers have been
+		// removed, the object will be deleted.
+		scaledObject.SetFinalizers(remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
+		if err := r.client.Update(context.TODO(), scaledObject); err != nil {
+			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
+			return err
+		}
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
 	return nil
 }
 
-// addFinalizer adds finalizer to the ScaledObject
-func (r *ReconcileScaledObject) addFinalizer(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	logger.Info("Adding Finalizer for the ScaledObject")
-	scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))
+// ensureFinalizer check there is finalizer present on the ScaledObject, if not it adds one
+func (r *ReconcileScaledObject) ensureFinalizer(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 
-	// Update CR
-	err := r.client.Update(context.TODO(), scaledObject)
-	if err != nil {
-		logger.Error(err, "Failed to update ScaledObject with finalizer")
-		return err
+	if !contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
+		logger.Info("Adding Finalizer for the ScaledObject")
+		scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))
+
+		// Update CR
+		err := r.client.Update(context.TODO(), scaledObject)
+		if err != nil {
+			logger.Error(err, "Failed to update ScaledObject with a finalizer", "finalizer", scaledObjectFinalizer)
+			return err
+		}
 	}
 	return nil
 }

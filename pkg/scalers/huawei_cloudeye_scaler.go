@@ -11,7 +11,7 @@ import (
 	"github.com/Huawei/gophercloud/auth/aksk"
 	"github.com/Huawei/gophercloud/openstack"
 	"github.com/Huawei/gophercloud/openstack/ces/v1/metricdata"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -238,14 +238,21 @@ func (h *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: fmt.Sprintf("%s-%s-%s-%s", strings.ReplaceAll(h.metadata.namespace, ".", "-"),
-		h.metadata.metricsName,
-		h.metadata.dimensionName, h.metadata.dimensionValue),
-		TargetAverageValue: targetMetricValue}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s-%s", strings.ReplaceAll(h.metadata.namespace, ".", "-"),
+				h.metadata.metricsName,
+				h.metadata.dimensionName, h.metadata.dimensionValue),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {

@@ -8,8 +8,8 @@ import (
 
 	servicebus "github.com/Azure/azure-service-bus-go"
 
-	"github.com/Azure/azure-amqp-common-go/v2/auth"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -144,11 +144,19 @@ func (s *azureServiceBusScaler) Close() error {
 }
 
 // Returns the metric spec to be used by the HPA
-func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetLengthQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: queueLengthMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetLengthQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // Returns the current metrics to be served to the HPA

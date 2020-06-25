@@ -5,7 +5,7 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:v2
     steps:
       - name: Check out code
         uses: actions/checkout@v1
@@ -19,6 +19,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Verify Generated clientset is up to date
+        run: make verify-clientset
 
       - name: Test
         run: make test

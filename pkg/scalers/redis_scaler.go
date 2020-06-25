@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -157,11 +157,21 @@ func (s *redisScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: listLengthMetricName, TargetAverageValue: targetListLengthQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: listLengthMetricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetListLengthQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: externalMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Redis and finds the length of the list
