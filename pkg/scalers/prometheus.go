@@ -101,8 +101,8 @@ func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 		prometheusLog.Error(err, "error executing prometheus query")
 		return false, err
 	}
-
-	return val > 0, nil
+	
+	return val > -1, nil
 }
 
 func (s *prometheusScaler) Close() error {
