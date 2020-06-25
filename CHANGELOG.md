@@ -14,10 +14,30 @@
 
 ## v2.0.0
 
+### New
+
+- KEDA scales any CustomResource that implements Scale subresource ([#703]https://github.com/kedacore/keda/issues/703)
+- Provide KEDA go-client ([#494]https://github.com/kedacore/keda/issues/494)
+- Define KEDA readiness and liveness probes ([#788]https://github.com/kedacore/keda/issues/788)
+- KEDA Support for configurable scaling behavior in HPA v2beta2 ([#802]https://github.com/kedacore/keda/issues/802)
+
+### Improvements
+
+- HPA: move from autoscaling v2beta1 to v2beta2 ([#721]https://github.com/kedacore/keda/issues/721)
+- Introduce shortnames for CRDs ([#774]https://github.com/kedacore/keda/issues/774)
+- kubectl get scaledobject should show related trigger authentication ([#777]https://github.com/kedacore/keda/issues/777)
+- kubectl get triggerauthentication should show information about configured parameters ([#778]https://github.com/kedacore/keda/issues/778)
+
 ### Breaking Changes
 
+- Change apiGroup from keda.k8s.io to keda.sh ([#552]https://github.com/kedacore/keda/issues/552)
+- Introduce a separate ScaledObject and ScaledJob([#653]https://github.com/kedacore/keda/issues/653)
 - Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
 - Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
+
+### Other
+- Update Operator SDK and k8s deps ([#870]https://github.com/kedacore/keda/issues/870)
+- Added ScaledObject Status Conditions to display status of scaling ([#750]https://github.com/kedacore/keda/pull/750)
 
 ## v1.4.1
 
