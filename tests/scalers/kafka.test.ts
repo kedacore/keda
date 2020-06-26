@@ -8,7 +8,9 @@ const defaultCluster = 'kafka-cluster'
 const timeToWait = 300
 const defaultTopic = 'kafka-topic'
 const defaultKafkaClient = 'kafka-client'
+const strimziOperatorVersion = '0.18.0'
 
+const strimziOperatroYamlFile = tmp.fileSync()
 const kafkaClusterYamlFile = tmp.fileSync()
 const kafkaTopicYamlFile = tmp.fileSync()
 const kafkaClientYamlFile = tmp.fileSync()
@@ -17,11 +19,15 @@ const kafkaApplicationYamlFile = tmp.fileSync()
 test.before('Set up, create necessary resources.', t => {
 	sh.config.silent = true
 	sh.exec(`kubectl create namespace ${defaultNamespace}`)
+
+  const strimziOperatorYaml = sh.exec(`curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimziOperatorVersion}/strimzi-cluster-operator-${strimziOperatorVersion}.yaml`).stdout
+  fs.writeFileSync(strimziOperatroYamlFile.name, strimziOperatorYaml.replace(/myproject/g, `${defaultNamespace}`))
 	t.is(
 		0,
-		sh.exec(`kubectl apply -f 'https://strimzi.io/install/latest?namespace=${defaultNamespace}' --namespace ${defaultNamespace}`).code,
-		'Deploying Strimzi.io operator should work.'
+		sh.exec(`kubectl apply -f ${strimziOperatroYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Strimzi operator should work.'
 	)
+
 	fs.writeFileSync(kafkaClusterYamlFile.name, kafkaClusterYaml)
 	t.is(
 		0,
@@ -31,7 +37,7 @@ test.before('Set up, create necessary resources.', t => {
 	t.is(
 		0,
 		sh.exec(`kubectl wait kafka/${defaultCluster} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
-		'Kafka instacne should be ready within given time limit.'
+		'Kafka instance should be ready within given time limit.'
 	)
 	fs.writeFileSync(kafkaTopicYamlFile.name, kafkaTopicYaml)
 	t.is(
@@ -51,46 +57,63 @@ test.before('Set up, create necessary resources.', t => {
 		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka application should work.'
 	)
-});
-
-test.serial('Scale application with kafka message.', t => {
-
   let replicaCount = '0'
   for (let i = 0; i < 10 && replicaCount !== '0'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      sh.exec('sleep 1s')
+      sh.exec('sleep 2s')
     }
   }
   t.is(replicaCount, '0', 'Replica count should be 0.')
+});
 
-  sh.exec(`kubectl exec ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+test.serial('Scale application with kafka messages.', t => {
+  let replicaCount = '0'
+  for (let d = 1; d <= 3; d++) {
+    let desiredReplicaCount = d.toString()
+    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
 
-  for (let i = 0; i < 10 && replicaCount !== '1'; i++) {
+    for (let i = 0; i < 10 && replicaCount !== desiredReplicaCount; i++) {
+      replicaCount = sh.exec(
+        `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+      ).stdout
+      if (replicaCount !== desiredReplicaCount) {
+        sh.exec('sleep 2s')
+      }
+    }
+    t.is(desiredReplicaCount, replicaCount, `Replica count should be ${desiredReplicaCount}.`)
+  }
+})
+
+test.serial('Scale application beyond partition max.', t => {
+  let replicaCount = '3'
+  sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+
+  for (let i = 0; i < 10 && replicaCount === '3'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
-    if (replicaCount !== '1') {
-      sh.exec('sleep 1s')
+    if (replicaCount === '3') {
+      sh.exec('sleep 2s')
     }
   }
-  t.is('1', replicaCount, 'Replica count should be 1 after 10 seconds.')
+  t.is('3', replicaCount, `Replica count should still be 3.`)
 })
 
 test.after.always('Clean up, delete created resources.', t => {
   const resources = [
-    `${kafkaClusterYamlFile.name}`,
-    `${kafkaTopicYamlFile.name}`,
-    `${kafkaClientYamlFile.name}`,
     `${kafkaApplicationYamlFile.name}`,
+    `${kafkaClientYamlFile.name}`,
+    `${kafkaTopicYamlFile.name}`,
+    `${kafkaClusterYamlFile.name}`,
+    `${strimziOperatroYamlFile}`
   ]
 
   for (const resource of resources) {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
   }
-  sh.exec(`kubectl delete -f 'https://strimzi.io/install/latest?namespace=${defaultNamespace}' --namespace ${defaultNamespace}`)
   sh.exec(`kubectl delete namespace ${defaultNamespace}`)
 })
 
@@ -129,8 +152,8 @@ metadata:
     strimzi.io/cluster: ${defaultCluster}
   namespace: ${defaultNamespace}
 spec:
-  partitions: 10
-  replicas: 3
+  partitions: 3
+  replicas: 1
   config:
     retention.ms: 604800000
     segment.bytes: 1073741824`
@@ -198,11 +221,7 @@ spec:
   triggers:
   - type: kafka
     metadata:
-      type: kafkaTrigger
-      direction: in
-      name: event
       topic: ${defaultTopic}
       brokerList: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
       consumerGroup: functions
-      dataType: binary
-      lagThreshold: '5'`
+      lagThreshold: '1'`
