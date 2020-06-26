@@ -44,10 +44,10 @@ const (
 	defaultArtemisQueueLength    = 10
 )
 
-var artemisLog = logf.Log.WithName("artemis_scaler")
+var artemisLog = logf.Log.WithName("artemis_queue_scaler")
 
-// NewArtemisScaler creates a new artemisScaler
-func NewArtemisScaler(resolvedSecrets, metadata, authParams map[string]string) (Scaler, error) {
+// NewArtemisQueueScaler creates a new artemis queue Scaler
+func NewArtemisQueueScaler(resolvedSecrets, metadata, authParams map[string]string) (Scaler, error) {
 	artemisMetadata, err := parseArtemisMetadata(resolvedSecrets, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)

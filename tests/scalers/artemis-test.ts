@@ -103,7 +103,7 @@ spec:
   minReplicaCount: 0 # Optional. Default: 0
   maxReplicaCount: 5 # Optional. Default: 100
   triggers:
-    - type: artemis
+    - type: artemis-queue
       metadata:
         managementEndpoint: "artemis-activemq.artemis:8161"
         queueName: "test"
