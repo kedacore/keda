@@ -53,7 +53,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 
 	var behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior
 	if r.kubeVersion.MinorVersion >= 18 {
-		behavior = scaledObject.Spec.HorizontalPodAutoscalerConfig.Behavior
+		behavior = scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior
 	} else {
 		behavior = nil
 	}
@@ -129,10 +129,8 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	}
 
 	// Handling the Resource metrics through KEDA
-	if scaledObject.Spec.HorizontalPodAutoscalerConfig.ResourceMetrics != nil {
-		metrics := getResourceMetrics(scaledObject)
-		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metrics...)
-	}
+	metrics := getResourceMetrics(scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.ResourceMetrics)
+	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metrics...)
 
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
@@ -159,19 +157,22 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	return scaledObjectMetricSpecs, nil
 }
 
-func getResourceMetrics(scaledObject *kedav1alpha1.ScaledObject) []autoscalingv2beta2.MetricSpec {
+func getResourceMetrics(resourceMetrics []*autoscalingv2beta2.ResourceMetricSource) []autoscalingv2beta2.MetricSpec {
 	var metrics []autoscalingv2beta2.MetricSpec
-	metrics = append(metrics, autoscalingv2beta2.MetricSpec{
-		Type:     "Resource",
-		Resource: scaledObject.Spec.HorizontalPodAutoscalerConfig.ResourceMetrics,
-	})
+	for _, resourceMetric := range resourceMetrics {
+		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
+			Type:     "Resource",
+			Resource: resourceMetric,
+		})
+	}
+
 	return metrics
 }
 
 // checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior
 func (r *ReconcileScaledObject) checkMinK8sVersionforHPABehavior(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) {
 	if r.kubeVersion.MinorVersion < 18 {
-		if scaledObject.Spec.HorizontalPodAutoscalerConfig.Behavior != nil {
+		if scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior != nil {
 			logger.Info("Warning: Ignoring scaledObject.spec.behavior, it is only supported on kubernetes version >= 1.18", "kubernetes.version", r.kubeVersion.PrettyVersion)
 		}
 	}
