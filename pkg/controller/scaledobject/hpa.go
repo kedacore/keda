@@ -52,7 +52,7 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 	}
 
 	var behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior
-	if r.kubeVersion.MinorVersion >= 18 {
+	if r.kubeVersion.MinorVersion >= 18 && scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
 		behavior = scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior
 	} else {
 		behavior = nil
@@ -129,8 +129,10 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 	}
 
 	// Handling the Resource metrics through KEDA
-	metrics := getResourceMetrics(scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.ResourceMetrics)
-	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metrics...)
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
+		metrics := getResourceMetrics(scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.ResourceMetrics)
+		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metrics...)
+	}
 
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
@@ -158,7 +160,7 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 }
 
 func getResourceMetrics(resourceMetrics []*autoscalingv2beta2.ResourceMetricSource) []autoscalingv2beta2.MetricSpec {
-	var metrics []autoscalingv2beta2.MetricSpec
+	metrics := make ([]autoscalingv2beta2.MetricSpec, 0, len(resourceMetrics))
 	for _, resourceMetric := range resourceMetrics {
 		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
 			Type:     "Resource",
