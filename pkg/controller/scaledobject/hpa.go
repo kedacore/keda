@@ -174,7 +174,7 @@ func getResourceMetrics(resourceMetrics []*autoscalingv2beta2.ResourceMetricSour
 // checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior
 func (r *ReconcileScaledObject) checkMinK8sVersionforHPABehavior(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) {
 	if r.kubeVersion.MinorVersion < 18 {
-		if scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior != nil {
+		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior != nil {
 			logger.Info("Warning: Ignoring scaledObject.spec.behavior, it is only supported on kubernetes version >= 1.18", "kubernetes.version", r.kubeVersion.PrettyVersion)
 		}
 	}
