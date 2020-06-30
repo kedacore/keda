@@ -173,7 +173,7 @@ func schema_pkg_apis_keda_v1alpha1_HashiCorpVault(ref common.ReferenceCallback) 
 							},
 						},
 					},
-					"credetial": {
+					"credential": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/kedacore/keda/pkg/apis/keda/v1alpha1.Credential"),
 						},

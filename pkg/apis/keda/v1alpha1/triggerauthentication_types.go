@@ -96,7 +96,7 @@ type HashiCorpVault struct {
 	Secrets []VaultSecret `json:"secrets"`
 
 	// +optional
-	Credential Credential `json:"credetial"`
+	Credential Credential `json:"credential"`
 
 	// +optional
 	Role string `json:"role"`
