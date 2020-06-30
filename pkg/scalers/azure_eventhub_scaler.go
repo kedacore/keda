@@ -114,7 +114,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
 
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
-	if partitionInfo!= nil && partitionInfo.LastEnqueuedOffset == "-1" {		
+	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
 		return 0, azure.Checkpoint{}, nil
 	}
 
@@ -143,13 +143,13 @@ func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
 		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
 		return unprocessedEventCountInPartition, checkpoint, nil
-	}	
-	
-	// Partition is a circular buffer, so it is possible that
-    // partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
-	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber	
+	}
 
-	// Checkpointing may or may not be always behind partition's LastSequenceNumber.  
+	// Partition is a circular buffer, so it is possible that
+	// partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
+	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
+
+	// Checkpointing may or may not be always behind partition's LastSequenceNumber.
 	// The partition information read could be stale compared to checkpoint,
 	// especially when load is very small and checkpointing is happening often.
 	// e.g., (9223372036854775807 - 10) + 11 = -9223372036854775808
@@ -247,15 +247,26 @@ func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount))
 	}
 
-	eventhubLog.V(1).Info(fmt.Sprintf("Scaling for %d total unprocessed events in event hub", totalUnprocessedEventCount))
+	// don't scale out beyond the number of partitions
+	lagRelatedToPartitionCount := getTotalLagRelatedToPartitionAmount(totalUnprocessedEventCount, int64(len(partitionIDs)), scaler.metadata.threshold)
+
+	eventhubLog.V(1).Info(fmt.Sprintf("Unprocessed events in event hub total: %d, scaling for a lag of %d related to %d partitions", totalUnprocessedEventCount, lagRelatedToPartitionCount, len(partitionIDs)))
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(totalUnprocessedEventCount, resource.DecimalSI),
+		Value:      *resource.NewQuantity(lagRelatedToPartitionCount, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partitionCount int64, threshold int64) int64 {
+	if (unprocessedEventsCount / threshold) > partitionCount {
+		return partitionCount * threshold
+	}
+
+	return unprocessedEventsCount
 }
 
 // Close closes Azure Event Hub Scaler
