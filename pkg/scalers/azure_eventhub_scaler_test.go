@@ -276,6 +276,22 @@ func TestGetUnprocessedEventCountWithoutCheckpointReturning2Messages(t *testing.
 	}
 }
 
+func TestGetATotalLagOf20For2PartitionsOn100UnprocessedEvents(t *testing.T) {
+	lag := getTotalLagRelatedToPartitionAmount(100, 2, 10)
+
+	if lag != 20 {
+		t.Errorf("Expected a lag of 20 for 2 partitions, got %d", lag)
+	}
+}
+
+func TestGetATotalLagOf100For20PartitionsOn100UnprocessedEvents(t *testing.T) {
+	lag := getTotalLagRelatedToPartitionAmount(100, 20, 10)
+
+	if lag != 100 {
+		t.Errorf("Expected a lag of 100 for 20 partitions, got %d", lag)
+	}
+}
+
 func CreateNewCheckpointInStorage(endpoint *url.URL, credential azblob.Credential, client *eventhub.Hub) (context.Context, error) {
 	urlPath := fmt.Sprintf("%s.servicebus.windows.net/%s/$Default/", testEventHubNamespace, testEventHubName)
 
