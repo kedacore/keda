@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/Shopify/sarama"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -30,6 +31,7 @@ type kafkaMetadata struct {
 	group            string
 	topic            string
 	lagThreshold     int64
+	minimumThreshold int64
 
 	// auth
 	authMode kafkaAuthMode
@@ -60,6 +62,11 @@ const (
 )
 
 var kafkaLog = logf.Log.WithName("kafka_scaler")
+
+var statusDict = struct{
+    sync.RWMutex
+    isRunningMap map[string]bool
+}{isRunningMap: make(map[string]bool)}
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
@@ -164,6 +171,10 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 
 // IsActive determines if we need to scale from zero
 func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
+	// return true if isRunning is true and message_size > 0
+	// return true if isRunning is false and message_size >= threshold, set isRunning = true.
+	// return false if message_size == 0, set isRunning false.
+
 	partitions, err := s.getPartitions()
 	if err != nil {
 		return false, err
@@ -174,14 +185,43 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
+	var lagTotal int64 = 0
 	for _, partition := range partitions {
 		lag := s.getLagForPartition(partition, offsets)
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
-		// Return as soon as a lag was detected for any partition
-		if lag > 0 {
-			return true, nil
+		if minimumThreshold == 0 {
+			// Return as soon as a lag was detected for any partition
+			if lag > 0 {
+				return true, nil
+			}
 		}
+		// Sum lag across all Kafka partitions.
+		lagTotal += lag
+	}
+
+	var topicPlusGroup string = s.metadata.topic + s.metadata.group
+
+	// Read
+	statusDict.RLock()
+	isRunning := statusDict.isRunningMap[topicPlusGroup]
+	statusDict.RUnlock()
+	kafkaLog.V(1).Info(fmt.Sprintf("Topic+Group Key = %s; current state isRunning = %t; totalLag = %d\n", topicPlusGroup, isRunning, totalLag))
+	if isRunning == true && lagTotal > 0 {
+		kafkaLog.V(1).Info(fmt.Sprintf("%s isActive, lagTotal > 0.\n", topicPlusGroup))
+		return true, nil
+	} else if isRunning == true && lagTotal == 0 {
+		statusDict.Lock()
+		statusDict.isRunningMap[topicPlusGroup] = false
+		statusDict.Unlock()
+		kafkaLog.V(1).Info(fmt.Sprintf("%s isActive true -> false, lagTotal == 0.\n", topicPlusGroup))
+		return false, nil
+	} else if isRunning == false && lagTotal >= s.metadata.minimumThreshold {
+		statusDict.Lock()
+		statusDict.isRunningMap[topicPlusGroup] = true
+		statusDict.Unlock()
+		kafkaLog.V(1).Info(fmt.Sprintf("%s isActive false -> true, minimumThreshold met, running to 0.\n", topicPlusGroup))
+		return true, nil
 	}
 
 	return false, nil
