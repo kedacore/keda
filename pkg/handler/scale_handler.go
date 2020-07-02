@@ -283,6 +283,22 @@ func (h *ScaleHandler) resolveAuthSecret(name, namespace, key string) string {
 	return string(result)
 }
 
+func (h *ScaleHandler) resolveVaultSecret(data map[string]interface{}, key string) string {
+	if v2Data, ok := data["data"].(map[string]interface{}); ok {
+		if value, ok := v2Data[key]; ok {
+			if s, ok := value.(string); ok {
+				return s
+			}
+		} else {
+			h.logger.Error(fmt.Errorf("key '%s' not found", key), "Error trying to get key from Vault secret")
+			return ""
+		}
+	}
+
+	h.logger.Error(fmt.Errorf("unable to convert Vault Data value"), "Error trying to convert Data secret vaule")
+	return ""
+}
+
 func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, scaledObject *kedav1alpha1.ScaledObject, resolveEnv func(string, string) string) (map[string]string, string) {
 	result := make(map[string]string)
 	podIdentity := ""
@@ -302,6 +318,26 @@ func (h *ScaleHandler) parseAuthRef(triggerAuthRef *kedav1alpha1.ScaledObjectAut
 			if triggerAuth.Spec.SecretTargetRef != nil {
 				for _, e := range triggerAuth.Spec.SecretTargetRef {
 					result[e.Parameter] = h.resolveAuthSecret(e.Name, scaledObject.Namespace, e.Key)
+				}
+			}
+			if triggerAuth.Spec.HashiCorpVault.Secrets != nil {
+				vault := NewHashicorpVaultHandler(&triggerAuth.Spec.HashiCorpVault)
+				err := vault.Initialize(h.logger)
+				if err != nil {
+					h.logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, e := range triggerAuth.Spec.HashiCorpVault.Secrets {
+						secret, err := vault.Read(e.Path)
+						if err != nil {
+							h.logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.path", e.Path)
+							continue
+						}
+
+						result[e.Parameter] = h.resolveVaultSecret(secret.Data, e.Key)
+					}
+
+					vault.Stop()
 				}
 			}
 		}
