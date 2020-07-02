@@ -74,6 +74,7 @@ test.serial('Scale application with kafka messages.', t => {
   for (let d = 1; d <= 3; d++) {
     let desiredReplicaCount = d.toString()
     sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+    sh.exec(`sleep 5s`)
 
     for (let i = 0; i < 10 && replicaCount !== desiredReplicaCount; i++) {
       replicaCount = sh.exec(
@@ -90,6 +91,7 @@ test.serial('Scale application with kafka messages.', t => {
 test.serial('Scale application beyond partition max.', t => {
   let replicaCount = '3'
   sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+  sh.exec(`sleep 5s`)
 
   for (let i = 0; i < 10 && replicaCount === '3'; i++) {
     replicaCount = sh.exec(
