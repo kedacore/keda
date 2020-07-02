@@ -240,8 +240,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
 	}
 
-	admin, err := sarama.NewClusterAdmin(metadata.bootstrapServers, config)
+	admin, err := sarama.NewClusterAdminFromClient(client)
 	if err != nil {
+		if !client.Closed() {
+			client.Close()
+		}
 		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
 	}
 
@@ -306,11 +309,8 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 
 // Close closes the kafka admin and client
 func (s *kafkaScaler) Close() error {
-	err := s.client.Close()
-	if err != nil {
-		return err
-	}
-	err = s.admin.Close()
+	// underlying client will also be closed on admin's Close() call
+	err := s.admin.Close()
 	if err != nil {
 		return err
 	}
