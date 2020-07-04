@@ -9,6 +9,7 @@ const timeToWait = 300
 const defaultTopic = 'kafka-topic'
 const defaultKafkaClient = 'kafka-client'
 const strimziOperatorVersion = '0.18.0'
+const commandToCheckReplicas = `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
 
 const strimziOperatroYamlFile = tmp.fileSync()
 const kafkaClusterYamlFile = tmp.fileSync()
@@ -45,11 +46,21 @@ test.before('Set up, create necessary resources.', t => {
 		sh.exec(`kubectl apply -f ${kafkaTopicYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka topic should work.'
 	)
+	t.is(
+		0,
+		sh.exec(`kubectl wait kafkatopic/${defaultTopic} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
+		'Kafka topic should be ready within given time limit.'
+	)
 	fs.writeFileSync(kafkaClientYamlFile.name, kafkaClientYaml)
 	t.is(
 		0,
 		sh.exec(`kubectl apply -f ${kafkaClientYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka client should work.'
+	)
+	t.is(
+		0,
+		sh.exec(`kubectl wait pod/${defaultKafkaClient} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
+		'Kafka client should be ready within given time limit.'
 	)
 	fs.writeFileSync(kafkaApplicationYamlFile.name, kafkaApplicationYaml)
 	t.is(
@@ -57,51 +68,52 @@ test.before('Set up, create necessary resources.', t => {
 		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka application should work.'
 	)
-  let replicaCount = '0'
-  for (let i = 0; i < 10 && replicaCount !== '0'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '0') {
-      sh.exec('sleep 2s')
-    }
-  }
-  t.is(replicaCount, '0', 'Replica count should be 0.')
+  waitForReplicaCount(0, commandToCheckReplicas)
+  t.is('0', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 0.')
 });
 
+function waitForReplicaCount(desiredReplicaCount: number, commandToCheck: string) {
+  let replicaCount = undefined
+  let changed = undefined
+  for (let i = 0; i < 10; i++) {
+    changed = false
+    // checks the replica count 3 times, it tends to fluctuate from the beginning
+    for (let j = 0; j < 3; j++) {
+      replicaCount = sh.exec(commandToCheck).stdout
+      if (replicaCount === desiredReplicaCount.toString()) {
+        sh.exec('sleep 2s')
+      } else {
+        changed = true
+        break
+      }
+    }
+    if (changed === false) {
+      return
+    } else {
+      sh.exec('sleep 3s')
+    }
+  }
+}
+
 test.serial('Scale application with kafka messages.', t => {
-  let replicaCount = '0'
-  for (let d = 1; d <= 3; d++) {
-    let desiredReplicaCount = d.toString()
+  for (let r = 1; r <= 3; r++) {
+
     sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
     sh.exec(`sleep 5s`)
 
-    for (let i = 0; i < 10 && replicaCount !== desiredReplicaCount; i++) {
-      replicaCount = sh.exec(
-        `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-      ).stdout
-      if (replicaCount !== desiredReplicaCount) {
-        sh.exec('sleep 2s')
-      }
-    }
-    t.is(desiredReplicaCount, replicaCount, `Replica count should be ${desiredReplicaCount}.`)
+    waitForReplicaCount(r, commandToCheckReplicas)
+
+    t.is(r.toString(), sh.exec(commandToCheckReplicas).stdout, `Replica count should be ${r}.`)
   }
 })
 
 test.serial('Scale application beyond partition max.', t => {
-  let replicaCount = '3'
   sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
   sh.exec(`sleep 5s`)
 
-  for (let i = 0; i < 10 && replicaCount === '3'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount === '3') {
-      sh.exec('sleep 2s')
-    }
-  }
-  t.is('3', replicaCount, `Replica count should still be 3.`)
+  waitForReplicaCount(3, commandToCheckReplicas)
+
+  t.is('3', sh.exec(commandToCheckReplicas).stdout, `Replica count should be 3.`)
 })
 
 test.after.always('Clean up, delete created resources.', t => {
