@@ -81,7 +81,7 @@ function waitForReplicaCount(desiredReplicaCount: number, commandToCheck: string
     for (let j = 0; j < 3; j++) {
       replicaCount = sh.exec(commandToCheck).stdout
       if (replicaCount === desiredReplicaCount.toString()) {
-        sh.exec('sleep 2s')
+        sh.exec('sleep 1s')
       } else {
         changed = true
         break
