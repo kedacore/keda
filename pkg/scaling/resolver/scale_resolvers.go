@@ -63,6 +63,26 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 					result[e.Parameter] = resolveAuthSecret(client, logger, e.Name, namespace, e.Key)
 				}
 			}
+			if triggerAuth.Spec.HashiCorpVault.Secrets != nil {
+				vault := NewHashicorpVaultHandler(&triggerAuth.Spec.HashiCorpVault)
+				err := vault.Initialize(logger)
+				if err != nil {
+					logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, e := range triggerAuth.Spec.HashiCorpVault.Secrets {
+						secret, err := vault.Read(e.Path)
+						if err != nil {
+							logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.path", e.Path)
+							continue
+						}
+
+						result[e.Parameter] = resolveVaultSecret(logger, secret.Data, e.Key)
+					}
+
+					vault.Stop()
+				}
+			}
 		}
 	}
 
@@ -204,4 +224,20 @@ func resolveAuthSecret(client client.Client, logger logr.Logger, name, namespace
 	}
 
 	return string(result)
+}
+
+func resolveVaultSecret(logger logr.Logger, data map[string]interface{}, key string) string {
+	if v2Data, ok := data["data"].(map[string]interface{}); ok {
+		if value, ok := v2Data[key]; ok {
+			if s, ok := value.(string); ok {
+				return s
+			}
+		} else {
+			logger.Error(fmt.Errorf("key '%s' not found", key), "Error trying to get key from Vault secret")
+			return ""
+		}
+	}
+
+	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "Error trying to convert Data secret vaule")
+	return ""
 }

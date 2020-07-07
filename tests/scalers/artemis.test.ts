@@ -76,7 +76,7 @@ test.after.always.cb('clean up artemis deployment', t => {
 
 
 const scaledObjectYaml=`
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: trigger-auth-kedartemis
@@ -89,15 +89,13 @@ spec:
       name: kedartemis
       key: artemis-password
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: kedartemis-consumer-scaled-object
-  labels:
-    deploymentName: kedartemis-consumer
 spec:
   scaleTargetRef:
-    deploymentName: kedartemis-consumer
+    name: kedartemis-consumer
   pollingInterval: 3 # Optional. Default: 30 seconds
   cooldownPeriod: 10 # Optional. Default: 300 seconds
   minReplicaCount: 0 # Optional. Default: 0
