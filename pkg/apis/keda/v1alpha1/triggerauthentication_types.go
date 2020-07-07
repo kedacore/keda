@@ -93,7 +93,7 @@ type AuthEnvironment struct {
 type HashiCorpVault struct {
 	Address        string              `json:"address"`
 	Authentication VaultAuthentication `json:"authentication"`
-	Secrets []VaultSecret `json:"secrets"`
+	Secrets        []VaultSecret       `json:"secrets"`
 
 	// +optional
 	Credential Credential `json:"credential"`

@@ -160,7 +160,7 @@ func (r *ReconcileScaledObject) getScaledObjectMetricSpecs(logger logr.Logger, s
 }
 
 func getResourceMetrics(resourceMetrics []*autoscalingv2beta2.ResourceMetricSource) []autoscalingv2beta2.MetricSpec {
-	metrics := make ([]autoscalingv2beta2.MetricSpec, 0, len(resourceMetrics))
+	metrics := make([]autoscalingv2beta2.MetricSpec, 0, len(resourceMetrics))
 	for _, resourceMetric := range resourceMetrics {
 		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
 			Type:     "Resource",
