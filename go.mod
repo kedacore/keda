@@ -23,6 +23,7 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.3.5
 	github.com/gorilla/websocket v1.4.1 // indirect
+	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.9
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200323093244-5046ce1afe6b
 	github.com/lib/pq v1.3.0
