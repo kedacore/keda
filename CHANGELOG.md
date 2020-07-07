@@ -6,12 +6,45 @@
 
 ## History
 
+- [v1.5.0](#v150)
 - [v1.4.1](#v141)
 - [v1.4.0](#v140)
 - [v1.3.0](#v130)
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## v1.5.0
+
+Learn more about our release in [our milestone](https://github.com/kedacore/keda/milestone/12).
+
+### New
+
+- **Scalers**
+    - Introduce Active MQ Artemis scaler ([Docs](https://keda.sh/docs/1.5/scalers/artemis/))
+    - Introduce Redis Streams scaler ([Docs](https://keda.sh/docs/1.5/scalers/redis-streams/) | [Details](https://github.com/kedacore/keda/issues/746))
+    - Introduce Cron scaler ([Docs](https://keda.sh/docs/1.5/scalers/cron/) | [Details](https://github.com/kedacore/keda/issues/812))
+- **Secret Providers**
+    - Introduce HashiCorp Vault secret provider ([Docs](https://keda.sh/docs/1.5/concepts/authentication/#hashicorp-vault-secrets) | [Details](https://github.com/kedacore/keda/issues/673))
+- **Other**
+    - Introduction of `nodeSelector` in raw YAML deployment specifications ([Details](https://github.com/kedacore/keda/pull/856))
+
+### Improvements
+
+- Improved message count determination when using `includeUnacked` in RabbitMQ scaler ([Details](https://github.com/kedacore/keda/pull/781))
+- Fix for blank path without trailing slash in RabbitMQ scaler ([Details](https://github.com/kedacore/keda/issues/790))
+- Improved parsing of connection strings to support `BlobEndpoint`, `QueueEndpoint`, `TableEndpoint` & `FileEndpoint` segments ([Details](https://github.com/kedacore/keda/issues/821))
+- Support scaling when no storage checkpoint exists in Azure Event Hubs scaler ([Details](https://github.com/kedacore/keda/issues/797))
+- GCP Pub Scaler should not panic on invalid credentials ([Details](https://github.com/kedacore/keda/issues/616))
+- Make `queueLength` optional in RabbitMQ scaler ([Details](https://github.com/kedacore/keda/issues/880))
+
+### Breaking Changes
+
+None.
+
+### Other
+
+None.
 
 ## v1.4.1
 
