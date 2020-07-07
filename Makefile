@@ -47,7 +47,7 @@ e2e-test:
 # PUBLISH                                        #
 ##################################################
 .PHONY: publish
-publish: build
+publish: build release
 	docker push $(IMAGE_ADAPTER)
 	docker push $(IMAGE_CONTROLLER)
 
