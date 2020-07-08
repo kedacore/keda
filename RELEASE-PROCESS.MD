@@ -12,7 +12,7 @@ The next version will thus be 1.2.0
 
 * Run the following command to update the version, setting the `VERSION` value to the next version, eg 1.2.0:
     ```bash
-    VERSION=1.2.0 make release
+    VERSION=1.2.0 make set-version
     ```
     > Note: This will update the version labels and images in the yaml files located in the `deploy` folder as well as the version in `version.go`.
 * Commit these changes.
@@ -23,11 +23,13 @@ Provide a new section in `CHANGELOG.md` for the new version that is being releas
 
 It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
 
-## 3. Deploy the new KEDA images to Docker Hub
+## 3. Create KEDA release on GitHub
 
-The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda/tags
+Creating a new release in the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0) and also change the latest tag to point to this image as well. 
 
-Creating a new release in the the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0) and also change the latest tag to point to this image as well.
+Archives (.zip and .tar.gz) containing KEDA Deployment YAML files are also automatically created and attached to the Release as part of the workflow.
+
+> Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda/tags
 
 ## 4. Publish documentation for new version
 

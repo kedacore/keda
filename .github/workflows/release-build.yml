@@ -33,8 +33,13 @@ jobs:
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
 
-      - name: Publish
+      - name: Publish KEDA images to Docker Hub
         run: make publish
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Release Deployment YAML files
+        run: make release
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
@@ -46,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Upload deployment YAML files as ZIP to GitHub release
-      - name: Upload Deployment YAML (zip)
+      - name: Upload Deployment YAML files (zip)
         id: upload-deployment-yaml-zip
         uses: actions/upload-release-asset@v1
         env:
@@ -58,7 +63,7 @@ jobs:
           asset_content_type: application/zip
 
       # Upload deployment YAML files as TAR to GitHub release
-      - name: Upload Deployment YAML (tar.gz)
+      - name: Upload Deployment YAML files (tar.gz)
         id: upload-deployment-yaml-tar
         uses: actions/upload-release-asset@v1
         env:
