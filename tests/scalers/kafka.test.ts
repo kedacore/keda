@@ -39,7 +39,8 @@ test.before('Set up, create necessary resources.', t => {
 		0,
 		sh.exec(`kubectl wait kafka/${defaultCluster} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
 		'Kafka instance should be ready within given time limit.'
-	)
+  )
+
 	fs.writeFileSync(kafkaTopicYamlFile.name, kafkaTopicYaml)
 	t.is(
 		0,
@@ -50,7 +51,8 @@ test.before('Set up, create necessary resources.', t => {
 		0,
 		sh.exec(`kubectl wait kafkatopic/${defaultTopic} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
 		'Kafka topic should be ready within given time limit.'
-	)
+  )
+
 	fs.writeFileSync(kafkaClientYamlFile.name, kafkaClientYaml)
 	t.is(
 		0,
@@ -61,12 +63,18 @@ test.before('Set up, create necessary resources.', t => {
 		0,
 		sh.exec(`kubectl wait pod/${defaultKafkaClient} --for=condition=Ready --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
 		'Kafka client should be ready within given time limit.'
-	)
+  )
+
 	fs.writeFileSync(kafkaApplicationYamlFile.name, kafkaApplicationYaml)
 	t.is(
 		0,
 		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka application should work.'
+	)
+	t.is(
+		0,
+		sh.exec(`kubectl wait deployment/twitter-function --for=condition=Available --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
+		'Kafka application should be ready within given time limit.'
 	)
   waitForReplicaCount(0, commandToCheckReplicas)
   t.is('0', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 0.')
@@ -81,7 +89,7 @@ function waitForReplicaCount(desiredReplicaCount: number, commandToCheck: string
     for (let j = 0; j < 3; j++) {
       replicaCount = sh.exec(commandToCheck).stdout
       if (replicaCount === desiredReplicaCount.toString()) {
-        sh.exec('sleep 1s')
+        sh.exec('sleep 2s')
       } else {
         changed = true
         break
