@@ -23,6 +23,16 @@ test.serial('Verify environment variables', t => {
   t.truthy(cluster, 'Make sure kubectl is logged into a cluster.')
 })
 
+test.serial('Get Kubernetes version', t => {
+  let result = sh.exec('kubectl version ')
+  if (result.code !== 0) {
+    t.fail('error getting Kubernetes version')
+  } else {
+    t.log('kubernetes version: ' + result.stdout)
+    t.pass()
+  }
+})
+
 test.serial('Deploy Keda', t => {
   let result = sh.exec('kubectl get namespace keda')
   if (result.code !== 0 && result.stderr.indexOf('not found') !== -1) {
@@ -96,7 +106,7 @@ test.serial('verifyKeda', t => {
     )
     const parsedOperator = parseInt(resultOperator.stdout, 10)
     const parsedMetrics = parseInt(resultMetrics.stdout, 10)
-    if (isNaN(parsedOperator) || parsedOperator != 1 || isNaN(parsedMetrics) || parsedMetrics != 1)  {
+    if (isNaN(parsedOperator) || parsedOperator != 1 || isNaN(parsedMetrics) || parsedMetrics != 1) {
       t.log(`Keda is not ready. sleeping`)
       sh.exec('sleep 1s')
     } else if (parsedOperator == 1 && parsedMetrics == 1) {
