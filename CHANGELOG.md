@@ -21,6 +21,7 @@
 - Provide KEDA go-client ([#494](https://github.com/kedacore/keda/issues/494))
 - Define KEDA readiness and liveness probes ([#788](https://github.com/kedacore/keda/issues/788))
 - KEDA Support for configurable scaling behavior in HPA v2beta2 ([#802](https://github.com/kedacore/keda/issues/802))
+- Adding Standard Resource metrics to KEDA ([#874](https://github.com/kedacore/keda/pull/874))
 
 ### Improvements
 
