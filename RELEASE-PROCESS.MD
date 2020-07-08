@@ -25,7 +25,7 @@ It should not include every single change but solely what matters to our custome
 
 ## 3. Create KEDA release on GitHub
 
-Creating a new release in the the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0) and also change the latest tag to point to this image as well. 
+Creating a new release in the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0) and also change the latest tag to point to this image as well. 
 
 Archives (.zip and .tar.gz) containing KEDA Deployment YAML files are also automatically created and attached to the Release as part of the workflow.
 
