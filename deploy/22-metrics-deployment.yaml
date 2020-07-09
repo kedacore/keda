@@ -24,6 +24,13 @@ spec:
         - name: keda-metrics-apiserver
           image: docker.io/kedacore/keda-metrics-adapter:2.0.0-alpha1
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
           livenessProbe:
             httpGet:
               scheme: HTTPS
