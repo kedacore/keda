@@ -31,6 +31,13 @@ spec:
           - '--zap-level=info'
           - '--zap-time-encoding=epoch'
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
           livenessProbe:
             httpGet:
               path: /healthz
