@@ -112,9 +112,9 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 	meta.consumerOffsetReset = defaultOffsetReset
 
 	if metadata["consumerOffsetReset"] != "" {
-		policy := offsetResetPolicy(metadata["offsetReset"])
+		policy := offsetResetPolicy(metadata["consumerOffsetReset"])
 		if policy != earliest && policy != latest {
-			return meta, fmt.Errorf("err offsetReset policy %s given", policy)
+			return meta, fmt.Errorf("err consumerOffsetReset policy %s given", policy)
 		}
 		meta.consumerOffsetReset = policy
 	}
