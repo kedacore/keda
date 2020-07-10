@@ -65,7 +65,7 @@ const (
 	lagThresholdMetricName   = "lagThreshold"
 	kafkaMetricType          = "External"
 	defaultKafkaLagThreshold = 10
-	defaultOffsetReset       = latest
+	defaultOffsetReset       = earliest
 )
 
 var kafkaLog = logf.Log.WithName("kafka_scaler")
