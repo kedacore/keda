@@ -26,11 +26,11 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	bootstrapServers    []string
-	group               string
-	topic               string
-	lagThreshold        int64
-	consumerOffsetReset offsetResetPolicy
+	bootstrapServers  []string
+	group             string
+	topic             string
+	lagThreshold      int64
+	offsetResetPolicy offsetResetPolicy
 
 	// auth
 	authMode kafkaAuthMode
@@ -65,7 +65,7 @@ const (
 	lagThresholdMetricName   = "lagThreshold"
 	kafkaMetricType          = "External"
 	defaultKafkaLagThreshold = 10
-	defaultOffsetReset       = earliest
+	defaultOffsetResetPolicy = latest
 )
 
 var kafkaLog = logf.Log.WithName("kafka_scaler")
@@ -109,14 +109,14 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 	}
 	meta.topic = metadata["topic"]
 
-	meta.consumerOffsetReset = defaultOffsetReset
+	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
-	if metadata["consumerOffsetReset"] != "" {
-		policy := offsetResetPolicy(metadata["consumerOffsetReset"])
+	if metadata["offsetResetPolicy"] != "" {
+		policy := offsetResetPolicy(metadata["offsetResetPolicy"])
 		if policy != earliest && policy != latest {
-			return meta, fmt.Errorf("err consumerOffsetReset policy %s given", policy)
+			return meta, fmt.Errorf("err offsetResetPolicy policy %s given", policy)
 		}
-		meta.consumerOffsetReset = policy
+		meta.offsetResetPolicy = policy
 	}
 
 	meta.lagThreshold = defaultKafkaLagThreshold
@@ -316,7 +316,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 	var lag int64
 
 	if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
-		if s.metadata.consumerOffsetReset == latest {
+		if s.metadata.offsetResetPolicy == latest {
 			lag = 0
 		} else {
 			lag = latestOffset
