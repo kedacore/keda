@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -111,7 +112,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 
 // GetScaleDecision is a func
 func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := GetAzureQueueLength(
+	length, err := azure.GetAzureQueueLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,
@@ -140,7 +141,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := GetAzureQueueLength(
+	queuelen, err := azure.GetAzureQueueLength(
 		ctx,
 		s.podIdentity,
 		s.metadata.connection,

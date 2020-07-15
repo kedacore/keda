@@ -1,4 +1,4 @@
-package scalers
+package azure
 
 import (
 	"bytes"
@@ -13,11 +13,6 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/Azure/go-autorest/autorest/azure"
-)
-
-const (
-	environmentName = "AzurePublicCloud"
 )
 
 type baseCheckpoint struct {
@@ -43,29 +38,16 @@ type pythonCheckpoint struct {
 	SequenceNumber int64  `json:"sequence_number"`
 }
 
-// GetStorageCredentials returns azure env and storage credentials
-func GetStorageCredentials(storageConnection string) (azure.Environment, *azblob.SharedKeyCredential, error) {
-	_, storageAccountName, storageAccountKey, _, err := ParseAzureStorageConnectionString(storageConnection)
-	if err != nil {
-		return azure.Environment{}, &azblob.SharedKeyCredential{}, fmt.Errorf("unable to parse connection string: %s", storageConnection)
-	}
-
-	azureEnv, err := azure.EnvironmentFromName(environmentName)
-	if err != nil {
-		return azureEnv, nil, fmt.Errorf("could not get azure.Environment struct: %s", err)
-	}
-
-	cred, err := azblob.NewSharedKeyCredential(storageAccountName, storageAccountKey)
-	if err != nil {
-		return azureEnv, nil, fmt.Errorf("could not prepare a blob storage credential: %s", err)
-	}
-
-	return azureEnv, cred, nil
+type EventHubInfo struct {
+	EventHubConnection    string
+	EventHubConsumerGroup string
+	StorageConnection     string
+	BlobContainer         string
 }
 
 // GetEventHubClient returns eventhub client
-func GetEventHubClient(connectionString string) (*eventhub.Hub, error) {
-	hub, err := eventhub.NewHubFromConnectionString(connectionString)
+func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
+	hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create hub client: %s", err)
 	}
@@ -74,40 +56,38 @@ func GetEventHubClient(connectionString string) (*eventhub.Hub, error) {
 }
 
 // GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
-func GetCheckpointFromBlobStorage(ctx context.Context, partitionID string, eventHubMetadata EventHubMetadata) (Checkpoint, error) {
-	endpointProtocol, storageAccountName, _, endpointSuffix, err := ParseAzureStorageConnectionString(eventHubMetadata.storageConnection)
+func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
+
+	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection("none", info.StorageConnection, "")
 	if err != nil {
-		return Checkpoint{}, fmt.Errorf("unable to parse storage connection string: %s", err)
+		return Checkpoint{}, err
 	}
 
-	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(eventHubMetadata.eventHubConnection)
+	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(info.EventHubConnection)
 	if err != nil {
-		return Checkpoint{}, fmt.Errorf("unable to parse event hub connection string: %s", err)
+		return Checkpoint{}, err
 	}
 
 	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
-	var u *url.URL
+	var baseURL *url.URL
 	// Checking blob store for C# and Java applications
-	if eventHubMetadata.blobContainer != "" {
-		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/<blobContainer>/<eventHubConsumerGroup>/<partitionID>
-		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubMetadata.blobContainer, eventHubMetadata.eventHubConsumerGroup, partitionID))
+	if info.BlobContainer != "" {
+		// URL format - <storageEndpoint>/<blobContainer>/<eventHubConsumerGroup>/<partitionID>
+		path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s", info.BlobContainer, info.EventHubConsumerGroup, partitionID))
+		baseURL = storageEndpoint.ResolveReference(path)
 	} else {
 		// Checking blob store for Azure functions
-		// URL format - <endpointProtocol>://<storageAccountName>.blob.<endpointSuffix>/azure-webjobs-eventhub/<eventHubNamespace>/<eventHubName>/<eventHubConsumerGroup>/<partitionID>
-		u, _ = url.Parse(fmt.Sprintf("%s://%s.blob.%s/azure-webjobs-eventhub/%s/%s/%s/%s", endpointProtocol, storageAccountName, endpointSuffix, eventHubNamespace, eventHubName, eventHubMetadata.eventHubConsumerGroup, partitionID))
-	}
-
-	_, cred, err := GetStorageCredentials(eventHubMetadata.storageConnection)
-	if err != nil {
-		return Checkpoint{}, fmt.Errorf("unable to get storage credentials: %s", err)
+		// URL format - <storageEndpoint>/azure-webjobs-eventhub/<eventHubNamespace>/<eventHubName>/<eventHubConsumerGroup>/<partitionID>
+		path, _ := url.Parse(fmt.Sprintf("/azure-webjobs-eventhub/%s/%s/%s/%s", eventHubNamespace, eventHubName, info.EventHubConsumerGroup, partitionID))
+		baseURL = storageEndpoint.ResolveReference(path)
 	}
 
 	// Create a BlockBlobURL object to a blob in the container.
-	blobURL := azblob.NewBlockBlobURL(*u, azblob.NewPipeline(cred, azblob.PipelineOptions{}))
+	blobURL := azblob.NewBlockBlobURL(*baseURL, azblob.NewPipeline(blobCreds, azblob.PipelineOptions{}))
 
 	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false)
 	if err != nil {
-		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %s", err)
+		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %w", err)
 	}
 
 	blobData := &bytes.Buffer{}
@@ -161,7 +141,7 @@ func ParseAzureEventHubConnectionString(connectionString string) (string, string
 	}
 
 	if eventHubNamespace == "" || eventHubName == "" {
-		return "", "", errors.New("Can't parse event hub connection string")
+		return "", "", errors.New("can't parse event hub connection string. Missing eventHubNamespace or eventHubName")
 	}
 
 	return eventHubNamespace, eventHubName, nil

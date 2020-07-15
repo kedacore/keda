@@ -1,4 +1,4 @@
-package scalers
+package azure
 
 import (
 	"encoding/json"
@@ -13,11 +13,11 @@ const (
 	msiURL = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
 )
 
-func getAzureADPodIdentityToken(uri string) (AADToken, error) {
+func GetAzureADPodIdentityToken(audience string) (AADToken, error) {
 
 	var token AADToken
 
-	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(uri)))
+	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(audience)))
 	if err != nil {
 		return token, err
 	}

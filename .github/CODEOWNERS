@@ -1,6 +1,3 @@
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence
-*       @ahmelsayed @Aarthisk
-
-# Owners of KEDA specifications
-/spec/ @tomkerkhove @ahmelsayed @Aarthisk
+*       @ahmelsayed @zroubalik 

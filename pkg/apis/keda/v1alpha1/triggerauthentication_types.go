@@ -17,6 +17,9 @@ type TriggerAuthenticationSpec struct {
 	// +optional
 	// +listType
 	Env []AuthEnvironment `json:"env"`
+
+	// +optional
+	HashiCorpVault HashiCorpVault `json:"hashiCorpVault"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -44,10 +47,17 @@ type TriggerAuthenticationList struct {
 type PodIdentityProvider string
 
 const (
-	PodIdentityProviderNone   PodIdentityProvider = "none"
-	PodIdentityProviderAzure                      = "azure"
-	PodIdentityProviderGCP                        = "gcp"
-	PodIdentityProviderSpiffe                     = "spiffe"
+	PodIdentityProviderNone    PodIdentityProvider = "none"
+	PodIdentityProviderAzure                       = "azure"
+	PodIdentityProviderGCP                         = "gcp"
+	PodIdentityProviderSpiffe                      = "spiffe"
+	PodIdentityProviderAwsEKS                      = "aws-eks"
+	PodIdentityProviderAwsKiam                     = "aws-kiam"
+)
+
+const (
+	PodIdentityAnnotationEKS  = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationKiam = "iam.amazonaws.com/role"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
@@ -74,6 +84,53 @@ type AuthEnvironment struct {
 
 	// +optional
 	ContainerName string `json:"containerName"`
+}
+
+// HashiCorpVault is used to authenticate using Hashicorp Vault
+// +k8s:openapi-gen=true
+type HashiCorpVault struct {
+	Address        string              `json:"address"`
+	Authentication VaultAuthentication `json:"authentication"`
+
+	// +listType
+	Secrets []VaultSecret `json:"secrets"`
+
+	// +optional
+	Credential Credential `json:"credential"`
+
+	// +optional
+	Role string `json:"role"`
+
+	// +optional
+	Mount string `json:"mount"`
+}
+
+// Credential defines the Hashicorp Vault credentials depending on the authentication method
+// +k8s:openapi-gen=true
+type Credential struct {
+	// +optional
+	Token string `json:"token"`
+
+	// +optional
+	ServiceAccount string `json:"serviceAccount"`
+}
+
+// VaultAuthentication contains the list of Hashicorp Vault authentication methods
+type VaultAuthentication string
+
+// Client authenticating to Vault
+const (
+	VaultAuthenticationToken      VaultAuthentication = "token"
+	VaultAuthenticationKubernetes                     = "kubernetes"
+	// VaultAuthenticationAWS                            = "aws"
+)
+
+// VaultSecret defines the mapping between the path of the secret in Vault to the parameter
+// +k8s:openapi-gen=true
+type VaultSecret struct {
+	Parameter string `json:"parameter"`
+	Path      string `json:"path"`
+	Key       string `json:"key"`
 }
 
 func init() {

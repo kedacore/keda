@@ -1,10 +1,14 @@
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
 metadata:
+  labels:
+    app.kubernetes.io/name: v1beta1.external.metrics.k8s.io
+    app.kubernetes.io/version: "1.5.0"
+    app.kubernetes.io/part-of: keda-operator
   name: v1beta1.external.metrics.k8s.io
 spec:
   service:
-    name: keda-operator
+    name: keda-metrics-apiserver
     namespace: keda
   group: external.metrics.k8s.io
   version: v1beta1
