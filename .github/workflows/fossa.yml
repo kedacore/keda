@@ -19,7 +19,7 @@ jobs:
       # Runs a set of commands to initialize and analyze with FOSSA
       - name: run FOSSA analysis
         env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+          FOSSA_API_KEY: 'b0bfb312cf03c6c63752afaa5c98c7c8'
         run: |
           export GOPATH=$HOME/go
           export PATH=$PATH:$(go env GOPATH)/bin
