@@ -41,11 +41,11 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 }
 
 func (e *scaleExecutor) createJobs(scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
-	// scaledObject.Spec.JobTargetRef.Template.GenerateName = scaledObject.GetName() + "-"
-	// if scaledObject.Spec.JobTargetRef.Template.Labels == nil {
-	// 	scaledObject.Spec.JobTargetRef.Template.Labels = map[string]string{}
-	// }
-	// scaledObject.Spec.JobTargetRef.Template.Labels["scaledobject"] = scaledObject.GetName()
+	scaledJob.Spec.JobTargetRef.Template.GenerateName = scaledJob.GetName() + "-"
+	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
+		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
+	}
+	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob"] = scaledJob.GetName()
 
 	e.logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 
@@ -68,7 +68,7 @@ func (e *scaleExecutor) createJobs(scaledJob *kedav1alpha1.ScaledJob, scaleTo in
 					"scaledobject":                 scaledJob.GetName(),
 				},
 			},
-			//Spec: *scaledObject.Spec.JobTargetRef.DeepCopy(),
+			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}
 
 		// Job doesn't allow RestartPolicyAlways, it seems like this value is set by the client as a default one,

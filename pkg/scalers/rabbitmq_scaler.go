@@ -99,7 +99,13 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 			return nil, fmt.Errorf("no apiHost setting given")
 		}
 	} else {
-		if val, ok := authParams["host"]; ok {
+		if val, ok := metadata["localhost"]; ok {
+			hostSetting := val
+
+			if val, ok := resolvedEnv[hostSetting]; ok {
+				meta.host = val
+			}
+		} else if val, ok := authParams["host"]; ok {
 			meta.host = val
 		} else if val, ok := metadata["host"]; ok {
 			hostSetting := val
