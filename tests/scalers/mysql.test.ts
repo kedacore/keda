@@ -9,6 +9,7 @@ const mySQLNamespace = 'mysql'
 const mySQLUsername = 'test-user'
 const mySQLPassword = 'test-password'
 const mySQLDatabase = 'test_db'
+const mySQLRootPassword = 'some-password'
 const deploymentName = 'worker'
 
 test.before(t => {
@@ -16,7 +17,9 @@ test.before(t => {
     sh.exec(`kubectl create namespace ${mySQLNamespace}`)
     const mySQLTmpFile = tmp.fileSync()
     fs.writeFileSync(mySQLTmpFile.name, mysqlDeploymentYaml.replace('{{MYSQL_USER}}', mySQLUsername)
-        .replace('{{MYSQL_PASSWORD}}', mySQLPassword).replace('{{MYSQL_DATABASE}}', mySQLDatabase))
+        .replace('{{MYSQL_PASSWORD}}', mySQLPassword)
+        .replace('{{MYSQL_DATABASE}}', mySQLDatabase)
+        .replace('{{MYSQL_ROOT_PASSWORD}}', mySQLRootPassword))
 
     t.is(0, sh.exec(`kubectl apply --namespace ${mySQLNamespace} -f ${mySQLTmpFile.name}`).code, 'creating a MySQL deployment should work.')
     // wait for mysql to load
@@ -28,15 +31,13 @@ test.before(t => {
         }
     }
     t.is('1', mysqlReadyReplicaCount, 'MySQL is not in a ready state')
-    // wait time for startup
-    sh.exec('sleep 5s')
 
     // create table that used by the job and the worker
     const createTableSQL = `CREATE TABLE ${mySQLDatabase}.task_instance (id INT AUTO_INCREMENT PRIMARY KEY,state VARCHAR(10));`
     const mysqlPod = sh.exec(`kubectl get po -n ${mySQLNamespace} -o jsonpath='{.items[0].metadata.name}'`).stdout
     t.not(mysqlPod, '')
-    const sqlResult = sh.exec( `kubectl exec -n ${mySQLNamespace} ${mysqlPod} -- mysql -u${mySQLUsername} -p${mySQLPassword} -e \"${createTableSQL}\"`).stdout
-
+    sh.exec( `kubectl exec -n ${mySQLNamespace} ${mysqlPod} -- mysql -u${mySQLUsername} -p${mySQLPassword} -e \"${createTableSQL}\"`)
+    
     sh.config.silent = true
 
     sh.exec(`kubectl create namespace ${testNamespace}`)
@@ -240,7 +241,7 @@ spec:
         name: mysql
         env:
           - name: MYSQL_ROOT_PASSWORD
-            value: some-password 
+            value: {{MYSQL_ROOT_PASSWORD}} 
           - name: MYSQL_USER
             value: {{MYSQL_USER}}
           - name: MYSQL_PASSWORD
@@ -251,6 +252,12 @@ spec:
           - name: mysql
             protocol: TCP
             containerPort: 3600
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p{{MYSQL_ROOT_PASSWORD}}"
 ---
 apiVersion: v1
 kind: Service
