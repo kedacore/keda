@@ -42,9 +42,14 @@ type AzureMonitorInfo struct {
 }
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo) (int32, error) {
-	client := createMetricsClient(info)
+func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo, podIdentity string) (int32, error) {
+	var podIdentityEnabled = true
 
+	if podIdentity == "" || podIdentity == "none" {
+		podIdentityEnabled = false
+	}
+
+	client := createMetricsClient(info, podIdentityEnabled)
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
 		return -1, err
@@ -53,10 +58,14 @@ func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo) (int32, err
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(info AzureMonitorInfo) insights.MetricsClient {
+func createMetricsClient(info AzureMonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
 	client := insights.NewMetricsClient(info.SubscriptionID)
-	config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-
+	var config auth.AuthorizerConfig
+	if podIdentityEnabled {
+		config = auth.NewMSIConfig()
+	} else {
+		config = auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+	}
 	authorizer, _ := config.Authorizer()
 	client.Authorizer = authorizer
 
