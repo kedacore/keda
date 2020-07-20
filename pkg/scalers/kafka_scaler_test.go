@@ -6,12 +6,13 @@ import (
 )
 
 type parseKafkaMetadataTestData struct {
-	metadata   map[string]string
-	isError    bool
-	numBrokers int
-	brokers    []string
-	group      string
-	topic      string
+	metadata          map[string]string
+	isError           bool
+	numBrokers        int
+	brokers           []string
+	group             string
+	topic             string
+	offsetResetPolicy offsetResetPolicy
 }
 
 // A complete valid metadata example for reference
@@ -33,16 +34,21 @@ var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	// failure, no bootstrapServers
-	{map[string]string{}, true, 0, nil, "", ""},
-
+	{map[string]string{}, true, 0, nil, "", "", ""},
 	// failure, no consumer group
-	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
+	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", "latest"},
 	// failure, no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", ""},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest")},
 	// success
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic"},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
 	// success, more brokers
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic"},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
+	// success, offsetResetPolicy policy latest
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "latest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
+	// failure, offsetResetPolicy policy wrong
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "foo"}, true, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", ""},
+	// success, offsetResetPolicy policy earliest
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "earliest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("earliest")},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -67,6 +73,9 @@ func TestGetBrokers(t *testing.T) {
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
 		}
+		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+		}
 
 		meta, err = parseKafkaMetadata(nil, testData.metadata, validWithoutAuthParams)
 
@@ -87,6 +96,9 @@ func TestGetBrokers(t *testing.T) {
 		}
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
+		}
+		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 	}
 }
