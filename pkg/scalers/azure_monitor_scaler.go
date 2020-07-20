@@ -23,7 +23,8 @@ const (
 )
 
 type azureMonitorScaler struct {
-	metadata *azureMonitorMetadata
+	metadata    *azureMonitorMetadata
+	podIdentity string
 }
 
 type azureMonitorMetadata struct {
@@ -34,18 +35,19 @@ type azureMonitorMetadata struct {
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
-func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseAzureMonitorMetadata(metadata, resolvedEnv, authParams)
+func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+	meta, err := parseAzureMonitorMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %s", err)
 	}
 
 	return &azureMonitorScaler{
-		metadata: meta,
+		metadata:    meta,
+		podIdentity: podIdentity,
 	}, nil
 }
 
-func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string) (*azureMonitorMetadata, error) {
+func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string, podIdentity string) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
 		azureMonitorInfo: azure.AzureMonitorInfo{},
 	}
@@ -115,34 +117,38 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("no tenantId given")
 	}
 
-	if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
-		meta.azureMonitorInfo.ClientID = val
-	} else {
-		clientIDSetting := defaultClientIDSetting
-		if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
-			clientIDSetting = val
-		}
-
-		if val, ok := resolvedEnv[clientIDSetting]; ok {
+	if podIdentity == "" || podIdentity == "none" {
+		if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
 			meta.azureMonitorInfo.ClientID = val
 		} else {
-			return nil, fmt.Errorf("no activeDirectoryClientId given")
-		}
-	}
+			clientIDSetting := defaultClientIDSetting
+			if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
+				clientIDSetting = val
+			}
 
-	if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
-		meta.azureMonitorInfo.ClientPassword = val
-	} else {
-		clientPasswordSetting := defaultClientPasswordSetting
-		if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
-			clientPasswordSetting = val
+			if val, ok := resolvedEnv[clientIDSetting]; ok {
+				meta.azureMonitorInfo.ClientID = val
+			} else {
+				return nil, fmt.Errorf("no activeDirectoryClientId given")
+			}
 		}
 
-		if val, ok := resolvedEnv[clientPasswordSetting]; ok {
+		if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
 			meta.azureMonitorInfo.ClientPassword = val
 		} else {
-			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
+			clientPasswordSetting := defaultClientPasswordSetting
+			if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
+				clientPasswordSetting = val
+			}
+
+			if val, ok := resolvedEnv[clientPasswordSetting]; ok {
+				meta.azureMonitorInfo.ClientPassword = val
+			} else {
+				return nil, fmt.Errorf("no activeDirectoryClientPassword given")
+			}
 		}
+	} else if podIdentity != "azure" {
+		return nil, fmt.Errorf("Azure Monitor doesn't support pod identity %s", podIdentity)
 	}
 
 	return &meta, nil
@@ -150,7 +156,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 // Returns true if the Azure Monitor metric value is greater than zero
 func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo)
+	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return false, err
@@ -172,7 +178,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo)
+	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
 		azureMonitorLog.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, err
