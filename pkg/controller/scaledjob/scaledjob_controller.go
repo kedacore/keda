@@ -139,8 +139,6 @@ func (r *ReconcileScaledJob) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 	}
 
-	reqLogger.V(1).Info("Detecting ScaleType from scaledJob")
-
 	var errMsg string
 	if scaledJob.Spec.JobTargetRef != nil {
 		reqLogger.Info("Detected ScaleType = Job")
@@ -156,12 +154,12 @@ func (r *ReconcileScaledJob) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 
 		return reconcile.Result{}, err
-	} else {
-		errMsg = "scaledJob.Spec.JobTargetRef is not set"
-		err = fmt.Errorf(errMsg)
-		reqLogger.Error(err, "Failed to detect ScaleType")
-		return reconcile.Result{}, err
 	}
+
+	errMsg = "scaledJob.Spec.JobTargetRef is not set"
+	err = fmt.Errorf(errMsg)
+	reqLogger.Error(err, "scaledJob.Spec.JobTargetRef not found")
+	return reconcile.Result{}, err
 }
 
 // reconcileJobType implemets reconciler logic for K8s Jobs based ScaleObject
