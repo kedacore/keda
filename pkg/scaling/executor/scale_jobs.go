@@ -65,7 +65,7 @@ func (e *scaleExecutor) createJobs(scaledJob *kedav1alpha1.ScaledJob, scaleTo in
 					"app.kubernetes.io/version":    version.Version,
 					"app.kubernetes.io/part-of":    scaledJob.GetName(),
 					"app.kubernetes.io/managed-by": "keda-operator",
-					"scaledobject":                 scaledJob.GetName(),
+					"scaledjob":                    scaledJob.GetName(),
 				},
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
