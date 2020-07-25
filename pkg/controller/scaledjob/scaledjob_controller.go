@@ -148,7 +148,7 @@ func (r *ReconcileScaledJob) Reconcile(request reconcile.Request) (reconcile.Res
 		msg, err := r.reconcileScaledJob(reqLogger, scaledJob)
 		if err != nil {
 			reqLogger.Error(err, msg)
-			conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
+			conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 			conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
 		} else {
 			reqLogger.V(1).Info(msg)
