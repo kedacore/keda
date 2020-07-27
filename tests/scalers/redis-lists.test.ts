@@ -12,12 +12,15 @@ const redisPort = 6379
 const redisAddress = `${redisHost}:${redisPort}`
 const listNameForHostPortRef = 'my-test-list-host-port-ref'
 const listNameForAddressRef = 'my-test-list-address-ref'
+const listNameForHostPortTriggerAuth = 'my-test-list-host-port-trigger'
 const redisWorkerHostPortRefDeploymentName = 'redis-worker-test-hostport'
 const redisWorkerAddressRefDeploymentName = 'redis-worker-test-address'
+const redisWorkerHostPortRefTriggerAuthDeploymentName = 'redis-worker-test-hostport-triggerauth'
 const itemsToWrite = 200
 const deploymentContainerImage = 'redis-keda-test:latest'
 const writeJobNameForHostPortRef = 'redis-writer-host-port-ref'
 const writeJobNameForAddressRef = 'redis-writer-address-ref'
+const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-auth'
 
 test.before(t => {
     // setup Redis
@@ -40,7 +43,6 @@ test.before(t => {
 
     sh.exec(`kubectl create namespace ${testNamespace}`)
 
-    // deploy worker for host port specification
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
 
@@ -50,6 +52,20 @@ test.before(t => {
         0,
         sh.exec(`kubectl apply -f ${triggerAuthTmpFile.name} --namespace ${testNamespace}`).code,
         'creating trigger auth should work..'
+    )
+
+    const triggerAuthHostPortTmpFile = tmp.fileSync()
+
+    fs.writeFileSync(triggerAuthHostPortTmpFile.name,
+        scaledObjectTriggerAuthHostPortYaml.replace('{{REDIS_PASSWORD}}', base64Password)
+            .replace('{{REDIS_HOST}}', Buffer.from(redisHost).toString('base64'))
+            .replace('{{REDIS_PORT}}', Buffer.from(redisPort.toString()).toString('base64'))
+    )
+
+    t.is(
+        0,
+        sh.exec(`kubectl apply -f ${triggerAuthHostPortTmpFile.name} --namespace ${testNamespace}`).code,
+        'creating trigger auth with host port should work..'
     )
 
     const deploymentHostPortRefTmpFile = tmp.fileSync()
@@ -70,7 +86,7 @@ test.before(t => {
 
     const deploymentAddressRefTmpFile = tmp.fileSync()
 
-    fs.writeFileSync(deploymentAddressRefTmpFile.name, redisRedisListDeployAddressYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
+    fs.writeFileSync(deploymentAddressRefTmpFile.name, redisListDeployAddressYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
         .replace(/{{REDIS_ADDRESS}}/g, redisAddress)
         .replace(/{{LIST_NAME}}/g, listNameForAddressRef)
         .replace(/{{DEPLOYMENT_NAME}}/g, redisWorkerAddressRefDeploymentName)
@@ -81,6 +97,23 @@ test.before(t => {
         0,
         sh.exec(`kubectl apply -f ${deploymentAddressRefTmpFile.name} --namespace ${testNamespace}`).code,
         'creating a deployment using redis address var should work..'
+    )
+
+
+    const deploymentHostPortRefTriggerAuthTmpFile = tmp.fileSync()
+
+    fs.writeFileSync(deploymentHostPortRefTriggerAuthTmpFile.name, redisListDeployHostPortInTriggerAuhYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
+        .replace(/{{REDIS_HOST}}/g, redisHost)
+        .replace(/{{REDIS_PORT}}/g, redisPort.toString())
+        .replace(/{{LIST_NAME}}/g, listNameForHostPortTriggerAuth)
+        .replace(/{{DEPLOYMENT_NAME}}/g, redisWorkerHostPortRefTriggerAuthDeploymentName)
+        .replace(/{{CONTAINER_IMAGE}}/g, deploymentContainerImage)
+    )
+
+    t.is(
+        0,
+        sh.exec(`kubectl apply -f ${deploymentHostPortRefTriggerAuthTmpFile.name} --namespace ${testNamespace}`).code,
+        'creating a deployment using redis host port in trigger auth should work..'
     )
 })
 
@@ -94,29 +127,8 @@ test.serial('Deployment for redis host and port env vars should have 0 replica o
 
 
 test.serial(`Deployment using redis host port env vars should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-    // write to list
-    const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, writeJobYaml.replace('{{REDIS_ADDRESS}}', redisAddress).replace('{{REDIS_PASSWORD}}', redisPassword)
-        .replace('{{LIST_NAME}}', listNameForHostPortRef)
-        .replace('{{NUMBER_OF_ITEMS_TO_WRITE}}',itemsToWrite.toString())
-        .replace('{{CONTAINER_IMAGE}}', deploymentContainerImage)
-        .replace('{{JOB_NAME}}', writeJobNameForHostPortRef)
-    )
-
-    t.is(
-        0,
-        sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
-        'list writer job should apply.'
-    )
-
-    // wait for the write job to complete
-    for (let i = 0; i < 20; i++) {
-        const succeeded = sh.exec(`kubectl get job ${writeJobNameForHostPortRef} --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
-        if (succeeded == '1') {
-            break
-        }
-        sh.exec('sleep 1s')
-    }
+    
+    runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
     for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
@@ -155,29 +167,8 @@ test.serial('Deployment for redis address env var should have 0 replica on start
 
 
 test.serial(`Deployment using redis address env var should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-    // write to list
-    const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, writeJobYaml.replace('{{REDIS_ADDRESS}}', redisAddress).replace('{{REDIS_PASSWORD}}', redisPassword)
-        .replace('{{LIST_NAME}}', listNameForAddressRef)
-        .replace('{{NUMBER_OF_ITEMS_TO_WRITE}}',itemsToWrite.toString())
-        .replace('{{CONTAINER_IMAGE}}', deploymentContainerImage)
-        .replace('{{JOB_NAME}}', writeJobNameForAddressRef)
-    )
-
-    t.is(
-        0,
-        sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
-        'list writer job should apply.'
-    )
-
-    // wait for the write job to complete
-    for (let i = 0; i < 20; i++) {
-        const succeeded = sh.exec(`kubectl get job ${writeJobNameForAddressRef} --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
-        if (succeeded == '1') {
-            break
-        }
-        sh.exec('sleep 1s')
-    }
+    
+    runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
     for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
@@ -206,16 +197,60 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
 })
 
 
+test.serial('Deployment for redis host and port in the trigger auth should have 0 replica on start', t => {
+
+    const replicaCount = sh.exec(
+        `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
+    ).stdout
+    t.is(replicaCount, '0', 'replica count should start out as 0')
+})
+
+
+test.serial(`Deployment using redis host port in triggerAuth should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
+    
+    runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
+
+    let replicaCount = '0'
+    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+        replicaCount = sh.exec(
+            `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
+        ).stdout
+        t.log('(scale up) replica count is:' + replicaCount)
+        if (replicaCount !== '5') {
+            sh.exec('sleep 3s')
+        }
+    }
+
+    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+
+    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+        replicaCount = sh.exec(
+            `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
+        ).stdout
+        t.log('(scale down) replica count is:' + replicaCount)
+        if (replicaCount !== '0') {
+            sh.exec('sleep 10s')
+        }
+    }
+
+    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+})
+
+
 test.after.always.cb('clean up deployment', t => {
     const resources = [
         'secret/redis-password',
         `job/${writeJobNameForHostPortRef}`,
         `job/${writeJobNameForAddressRef}`,
+        `job/${writeJobNameForHostPortInTriggerAuth}`,
         `deployment/${redisWorkerHostPortRefDeploymentName}`,
         `scaledobject.keda.k8s.io/${redisWorkerHostPortRefDeploymentName}`,
-        `deployment/${redisRedisListDeployHostPortYaml}`,
-        `scaledobject.keda.k8s.io/${redisRedisListDeployHostPortYaml}`,
-        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth'
+        `deployment/${redisWorkerAddressRefDeploymentName}`,
+        `scaledobject.keda.k8s.io/${redisWorkerAddressRefDeploymentName}`,
+        `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
+        `scaledobject.keda.k8s.io/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
+        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth',
+        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth-host-port'
     ]
 
     for (const resource of resources) {
@@ -226,6 +261,32 @@ test.after.always.cb('clean up deployment', t => {
     sh.exec(`kubectl delete namespace ${redisNamespace}`)
     t.end()
 })
+
+function runWriteJob(t, jobName, listName) {
+    // write to list
+    const tmpFile = tmp.fileSync()
+    fs.writeFileSync(tmpFile.name, writeJobYaml.replace('{{REDIS_ADDRESS}}', redisAddress).replace('{{REDIS_PASSWORD}}', redisPassword)
+        .replace('{{LIST_NAME}}', listName)
+        .replace('{{NUMBER_OF_ITEMS_TO_WRITE}}', itemsToWrite.toString())
+        .replace('{{CONTAINER_IMAGE}}', deploymentContainerImage)
+        .replace('{{JOB_NAME}}', jobName)
+    )
+
+    t.is(
+        0,
+        sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
+        'list writer job should apply.'
+    )
+
+    // wait for the write job to complete
+    for (let i = 0; i < 20; i++) {
+        const succeeded = sh.exec(`kubectl get job ${writeJobNameForHostPortRef} --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
+        if (succeeded == '1') {
+            break
+        }
+        sh.exec('sleep 1s')
+    }
+}
 
 const redisDeployYaml = `apiVersion: apps/v1
 kind: Deployment
@@ -322,7 +383,7 @@ spec:
 `
 
 
-const redisRedisListDeployAddressYaml = `apiVersion: apps/v1
+const redisListDeployAddressYaml = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{DEPLOYMENT_NAME}}
@@ -376,6 +437,87 @@ spec:
       name: keda-redis-list-triggerauth
 `
 
+const redisListDeployHostPortInTriggerAuhYaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{DEPLOYMENT_NAME}}
+  labels:
+    app: {{DEPLOYMENT_NAME}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{DEPLOYMENT_NAME}}
+  template:
+    metadata:
+      labels:
+        app: {{DEPLOYMENT_NAME}}
+    spec:
+      containers:
+      - name: redis-worker
+        image: {{CONTAINER_IMAGE}}
+        imagePullPolicy: IfNotPresent
+        args: ["read"]
+        env:
+        - name: REDIS_HOST
+          value: {{REDIS_HOST}}
+        - name: REDIS_PORT
+          value: "{{REDIS_PORT}}"
+        - name: LIST_NAME
+          value: {{LIST_NAME}}
+        - name: REDIS_PASSWORD
+          value: {{REDIS_PASSWORD}}
+        - name: READ_PROCESS_TIME
+          value: "200"
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{DEPLOYMENT_NAME}}
+  labels:
+    deploymentName: {{DEPLOYMENT_NAME}}
+spec:
+  scaleTargetRef:
+    deploymentName: {{DEPLOYMENT_NAME}}
+  pollingInterval: 5 
+  cooldownPeriod: 30
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  triggers:
+  - type: redis
+    metadata:
+      listName: {{LIST_NAME}} 
+      listLength: "5"
+    authenticationRef:
+      name: keda-redis-list-triggerauth-host-port
+`
+
+const scaledObjectTriggerAuthHostPortYaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-config
+type: Opaque
+data:
+  password: {{REDIS_PASSWORD}}
+  redisHost: {{REDIS_HOST}}
+  redisPort: {{REDIS_PORT}}
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-redis-list-triggerauth-host-port
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: redis-config
+      key: password
+    - parameter: host
+      name: redis-config
+      key: redisHost
+    - parameter: port
+      name: redis-config
+      key: redisPort
+`
 
 const scaledObjectTriggerAuthYaml = `apiVersion: v1
 kind: Secret
