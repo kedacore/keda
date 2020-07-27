@@ -221,13 +221,22 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		isTriggerActive, err := scaler.IsActive(ctx)
-		scaler.Close()
+
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
 		var metricValue int64
+		var flag bool
 		for _, metric := range metricSpecs {
-			metricValue, _ = metric.External.Target.AverageValue.AsInt64()
+			if metric.External.Target.AverageValue == nil {
+				metricValue = 0
+			} else {
+				metricValue, flag = metric.External.Target.AverageValue.AsInt64()
+				if !flag {
+					metricValue = 0
+				}
+			}
+
 			maxValue += metricValue
 		}
 		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
@@ -242,6 +251,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		}
 		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
 
+		scaler.Close()
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
 			continue
