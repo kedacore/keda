@@ -15,7 +15,7 @@ const listNameForAddressRef = 'my-test-list-address-ref'
 const redisWorkerHostPortRefDeploymentName = 'redis-worker-test-hostport'
 const redisWorkerAddressRefDeploymentName = 'redis-worker-test-address'
 const itemsToWrite = 200
-const deploymentContainerImage = 'redis-keda-test:latest'
+const deploymentContainerImage = 'kedacore/tests-redis-lists:824031e'
 const writeJobNameForHostPortRef = 'redis-writer-host-port-ref'
 const writeJobNameForAddressRef = 'redis-writer-address-ref'
 
@@ -40,10 +40,8 @@ test.before(t => {
 
     sh.exec(`kubectl create namespace ${testNamespace}`)
 
-    // deploy worker for host port specification
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
-
     fs.writeFileSync(triggerAuthTmpFile.name, scaledObjectTriggerAuthYaml.replace('{{REDIS_PASSWORD}}', base64Password))
 
     t.is(
