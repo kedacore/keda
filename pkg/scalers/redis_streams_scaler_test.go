@@ -103,3 +103,33 @@ type redisStreamsTestMetadata struct {
 	isError    bool
 	authParams map[string]string
 }
+
+func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
+
+	type redisStreamsMetricIdentifier struct {
+		metadataTestData *redisStreamsTestMetadata
+		name             string
+	}
+
+	var redisStreamsTestData = []redisStreamsTestMetadata{
+		{map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "address": "REDIS_SERVICE", "password": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, false, nil},
+	}
+
+	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
+		{&redisStreamsTestData[0], "redis-streams-my-stream-my-stream-consumer-group"},
+	}
+
+	for _, testData := range redisStreamMetricIdentifiers {
+		meta, err := parseRedisStreamsMetadata(testData.metadataTestData.metadata, map[string]string{"REDIS_SERVICE": "my-address"}, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockRedisStreamsScaler := redisStreamsScaler{meta, nil}
+
+		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}

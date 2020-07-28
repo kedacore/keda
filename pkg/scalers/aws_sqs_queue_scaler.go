@@ -120,7 +120,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "AWS-SQS-Queue", awsSqsQueueMetricName, s.metadata.queueName),
+			Name: fmt.Sprintf("%s-%s", "AWS-SQS-Queue", s.metadata.queueName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

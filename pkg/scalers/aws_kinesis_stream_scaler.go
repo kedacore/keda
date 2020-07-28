@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	awsKinesisStreamMetricName = "ShardCount"
-	targetShardCountDefault    = 2
+	// awsKinesisStreamMetricName = "ShardCount"
+	targetShardCountDefault = 2
 )
 
 type awsKinesisStreamScaler struct {
@@ -104,7 +104,7 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec 
 	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "AWS-Kinesis-Stream", awsKinesisStreamMetricName, s.metadata.streamName),
+			Name: fmt.Sprintf("%s-%s", "AWS-Kinesis-Stream", s.metadata.streamName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

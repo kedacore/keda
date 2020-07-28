@@ -39,9 +39,8 @@ type artemisMonitoring struct {
 }
 
 const (
-	artemisQueueLengthMetricName = "queueLength"
-	artemisMetricType            = "External"
-	defaultArtemisQueueLength    = 10
+	artemisMetricType         = "External"
+	defaultArtemisQueueLength = 10
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -184,7 +183,7 @@ func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: artemisQueueLengthMetricName,
+			Name: fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

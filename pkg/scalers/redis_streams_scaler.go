@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	pendingEntriesCountMetricName = "RedisStreamPendingEntriesCount"
-
 	// defaults
 	defaultTargetPendingEntriesCount = 5
 	defaultAddress                   = "redis-master.default.svc.cluster.local:6379"
@@ -214,7 +212,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPendingEntriesCount := resource.NewQuantity(int64(s.metadata.targetPendingEntriesCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: pendingEntriesCountMetricName,
+			Name: fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -31,6 +31,11 @@ type parseAWSKinesisMetadataTestData struct {
 	comment    string
 }
 
+type awsKinesisMetricIdentifier struct {
+	metadataTestData *parseAWSKinesisMetadataTestData
+	name             string
+}
+
 var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 	{
 		metadata:   map[string]string{},
@@ -170,6 +175,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		comment: "with AWS Role assigned on KEDA operator itself"},
 }
 
+var awsKinesisMetricIdentifiers = []awsKinesisMetricIdentifier{
+	{&testAWSKinesisMetadata[1], "AWS-Kinesis-Stream-test"},
+}
+
 func TestKinesisParseMetadata(t *testing.T) {
 	for _, testData := range testAWSKinesisMetadata {
 		result, err := parseAwsKinesisStreamMetadata(testData.metadata, testAWSKinesisAuthentication, testData.authParams)
@@ -182,6 +191,22 @@ func TestKinesisParseMetadata(t *testing.T) {
 
 		if !testData.isError && !reflect.DeepEqual(testData.expected, result) {
 			t.Fatalf("Expected %#v but got %+#v", testData.expected, result)
+		}
+	}
+}
+
+func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range awsKinesisMetricIdentifiers {
+		meta, err := parseAwsKinesisStreamMetadata(testData.metadataTestData.metadata, testAWSKinesisAuthentication, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta}
+
+		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

@@ -9,6 +9,11 @@ type parseAzMonitorMetadataTestData struct {
 	authParams  map[string]string
 }
 
+type azMonitorMetricIdentifier struct {
+	metadataTestData *parseAzMonitorMetadataTestData
+	name             string
+}
+
 var testAzMonitorResolvedEnv = map[string]string{
 	"CLIENT_ID":       "xxx",
 	"CLIENT_PASSWORD": "yyy",
@@ -49,6 +54,10 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "targetValue": "5"}, false, map[string]string{}, map[string]string{"activeDirectoryClientId": "zzz", "activeDirectoryClientPassword": "password"}},
 }
 
+var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
+	{&testParseAzMonitorMetadata[1], "azure-monitor-test/resource/uri-test-metric"},
+}
+
 func TestAzMonitorParseMetadata(t *testing.T) {
 	for _, testData := range testParseAzMonitorMetadata {
 		_, err := parseAzureMonitorMetadata(testData.metadata, testData.resolvedEnv, testData.authParams)
@@ -57,6 +66,22 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success. testData: %v", testData)
+		}
+	}
+}
+
+func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range azMonitorMetricIdentifiers {
+		meta, err := parseAzureMonitorMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAzMonitorScaler := azureMonitorScaler{meta}
+
+		metricSpec := mockAzMonitorScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

@@ -183,7 +183,7 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: lagThresholdMetricName,
+			Name: fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

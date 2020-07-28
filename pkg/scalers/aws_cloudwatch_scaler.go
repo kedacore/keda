@@ -176,8 +176,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", strings.ReplaceAll(c.metadata.namespace, "/", "-"),
-				c.metadata.dimensionName, c.metadata.dimensionValue),
+			Name: fmt.Sprintf("%s-%s-%s-%s", "aws-cloudwatch", strings.ReplaceAll(c.metadata.namespace, "/", "-"), c.metadata.dimensionName, c.metadata.dimensionValue),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

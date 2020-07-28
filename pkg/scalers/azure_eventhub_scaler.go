@@ -209,7 +209,7 @@ func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: thresholdMetricName,
+			Name: fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

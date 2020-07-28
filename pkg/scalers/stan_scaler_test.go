@@ -9,6 +9,11 @@ type parseStanMetadataTestData struct {
 	isError  bool
 }
 
+type stanMetricIdentifier struct {
+	metadataTestData *parseStanMetadataTestData
+	name             string
+}
+
 var testStanMetadata = []parseStanMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
@@ -22,6 +27,10 @@ var testStanMetadata = []parseStanMetadataTestData{
 	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, false},
 }
 
+var stanMetricIdentifiers = []stanMetricIdentifier{
+	{&testStanMetadata[4], "stan-grp1-ImDurable-mySubject"},
+}
+
 func TestStanParseMetadata(t *testing.T) {
 	for _, testData := range testStanMetadata {
 		_, err := parseStanMetadata(testData.metadata)
@@ -30,6 +39,22 @@ func TestStanParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestStanGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range stanMetricIdentifiers {
+		meta, err := parseStanMetadata(testData.metadataTestData.metadata)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockStanScaler := stanScaler{nil, meta}
+
+		metricSpec := mockStanScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }
