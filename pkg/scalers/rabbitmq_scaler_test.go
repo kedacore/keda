@@ -10,55 +10,70 @@ import (
 )
 
 const (
-	host    = "myHostSecret"
-	apiHost = "myApiHostSecret"
+	host         = "myHostSecret"
+	apiHost      = "myApiHostSecret"
+	localHost    = "myLocalHostSecret"
+	hostURL      = "amqp://user:sercet@somehost.com:5236/vhost"
+	apiHostURL   = "https://user:secret@somehost.com/vhost"
+	localHostURL = "amqp://user:PASSWORD@127.0.0.1:5672"
 )
 
 type parseRabbitMQMetadataTestData struct {
-	metadata   map[string]string
-	isError    bool
-	authParams map[string]string
+	metadata     map[string]string
+	isError      bool
+	authParams   map[string]string
+	expectedHost string
 }
 
 var sampleRabbitMqResolvedEnv = map[string]string{
-	host:    "amqp://user:sercet@somehost.com:5236/vhost",
-	apiHost: "https://user:secret@somehost.com/vhost",
+	host:      hostURL,
+	apiHost:   apiHostURL,
+	localHost: localHostURL,
 }
 
 var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// nothing passed
-	{map[string]string{}, true, map[string]string{}},
+	{map[string]string{}, true, map[string]string{}, ""},
 	// properly formed metadata
-	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host}, false, map[string]string{}, hostURL},
 	// malformed queueLength
-	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": host}, true, map[string]string{}, ""},
+	// properly formed metadata
+	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "localhost": localHost}, false, map[string]string{}, localHostURL},
+	// malformed queueLength
+	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": host, "localhost": localHost}, true, map[string]string{}, ""},
 	// missing host
-	{map[string]string{"queueLength": "AA", "queueName": "sample"}, true, map[string]string{}},
+	{map[string]string{"queueLength": "AA", "queueName": "sample"}, true, map[string]string{}, ""},
 	// missing queueName
-	{map[string]string{"queueLength": "10", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "10", "host": host}, true, map[string]string{}, ""},
 	// host defined in authParams
-	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
+	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}, ""},
 	// properly formed metadata with includeUnacked
-	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}, ""},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
 	for _, testData := range testRabbitMQMetadata {
-		_, err := parseRabbitMQMetadata(sampleRabbitMqResolvedEnv, testData.metadata, testData.authParams)
+		metadata, err := parseRabbitMQMetadata(sampleRabbitMqResolvedEnv, testData.metadata, testData.authParams)
+		t.Logf("%v", metadata)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+		if metadata != nil && metadata.host != testData.expectedHost {
+			t.Error("Unmatch Expected hostname: metadata.host: ", metadata.host, " expectedHost:", testData.expectedHost)
+		}
+
 	}
 }
 
 var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 	// use default queueLength
-	{map[string]string{"queueName": "sample", "host": host}, false, map[string]string{}},
+	{map[string]string{"queueName": "sample", "host": host}, false, map[string]string{}, hostURL},
 	// use default queueLength with includeUnacked
-	{map[string]string{"queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	{map[string]string{"queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}, ""},
 }
 
 func TestParseDefaultQueueLength(t *testing.T) {
