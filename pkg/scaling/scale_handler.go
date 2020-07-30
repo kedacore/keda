@@ -190,7 +190,8 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	case *kedav1alpha1.ScaledObject:
 		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers))
 	case *kedav1alpha1.ScaledJob:
-		isActive, scaleTo, maxScale := h.checkScaledJobScalers(ctx, scalers)
+		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
+		isActive, scaleTo, maxScale := h.checkScaledJobScalers(ctx, scalers, scaledJob)
 		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
 	}
 }
@@ -212,8 +213,9 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 	return isActive
 }
 
-func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scalers.Scaler) (bool, int64, int64) {
+func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
 	var queueLength int64
+	var targetAverageValue int64
 	var maxValue int64
 	isActive := false
 
@@ -237,9 +239,9 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 				}
 			}
 
-			maxValue += metricValue
+			targetAverageValue += metricValue
 		}
-		scalerLogger.Info("Scaler max value", "MaxValue", maxValue)
+		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
 
 		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
 
@@ -260,8 +262,32 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 			scalerLogger.Info("Scaler is active")
 		}
 	}
-
+	var maxReplicaCount int64
+	if scaledJob.Spec.MaxReplicaCount != nil {
+		maxReplicaCount = int64(*scaledJob.Spec.MaxReplicaCount)
+	} else {
+		maxReplicaCount = 100
+	}
+	maxValue = min(maxReplicaCount, devideWithCeil(queueLength, targetAverageValue))
+	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
+}
+
+func devideWithCeil(x, y int64) int64 {
+	ans := x / y
+	reminder := x % y
+	if reminder != 0 {
+		return ans + 1
+	}
+	return ans
+}
+
+// Min function for int64
+func min(x, y int64) int64 {
+	if x > y {
+		return y
+	}
+	return x
 }
 
 // buildScalers returns list of Scalers for the specified triggers
