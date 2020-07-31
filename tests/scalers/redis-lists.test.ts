@@ -17,7 +17,7 @@ const redisWorkerHostPortRefDeploymentName = 'redis-worker-test-hostport'
 const redisWorkerAddressRefDeploymentName = 'redis-worker-test-address'
 const redisWorkerHostPortRefTriggerAuthDeploymentName = 'redis-worker-test-hostport-triggerauth'
 const itemsToWrite = 200
-const deploymentContainerImage = 'redis-keda-test:latest'
+const deploymentContainerImage = 'kedacore/tests-redis-lists:824031e'
 const writeJobNameForHostPortRef = 'redis-writer-host-port-ref'
 const writeJobNameForAddressRef = 'redis-writer-address-ref'
 const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-auth'
@@ -45,7 +45,6 @@ test.before(t => {
 
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
-
     fs.writeFileSync(triggerAuthTmpFile.name, scaledObjectTriggerAuthYaml.replace('{{REDIS_PASSWORD}}', base64Password))
 
     t.is(
@@ -239,18 +238,18 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
 
 test.after.always.cb('clean up deployment', t => {
     const resources = [
-        'secret/redis-password',
         `job/${writeJobNameForHostPortRef}`,
         `job/${writeJobNameForAddressRef}`,
         `job/${writeJobNameForHostPortInTriggerAuth}`,
-        `deployment/${redisWorkerHostPortRefDeploymentName}`,
         `scaledobject.keda.k8s.io/${redisWorkerHostPortRefDeploymentName}`,
-        `deployment/${redisWorkerAddressRefDeploymentName}`,
         `scaledobject.keda.k8s.io/${redisWorkerAddressRefDeploymentName}`,
-        `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         `scaledobject.keda.k8s.io/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth',
-        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth-host-port'
+        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth-host-port',
+        `deployment/${redisWorkerAddressRefDeploymentName}`,
+        `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
+        `deployment/${redisWorkerHostPortRefDeploymentName}`,
+        'secret/redis-password',
     ]
 
     for (const resource of resources) {
