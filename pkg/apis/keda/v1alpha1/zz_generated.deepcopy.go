@@ -352,16 +352,6 @@ func (in *ScaledJobSpec) DeepCopyInto(out *ScaledJobSpec) {
 		*out = new(int32)
 		**out = **in
 	}
-	if in.CooldownPeriod != nil {
-		in, out := &in.CooldownPeriod, &out.CooldownPeriod
-		*out = new(int32)
-		**out = **in
-	}
-	if in.MinReplicaCount != nil {
-		in, out := &in.MinReplicaCount, &out.MinReplicaCount
-		*out = new(int32)
-		**out = **in
-	}
 	if in.MaxReplicaCount != nil {
 		in, out := &in.MaxReplicaCount, &out.MaxReplicaCount
 		*out = new(int32)
