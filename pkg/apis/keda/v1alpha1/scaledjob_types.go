@@ -36,10 +36,6 @@ type ScaledJobSpec struct {
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
-	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
-	// +optional
-	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
-	// +optional
 	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
 	Triggers        []ScaleTriggers `json:"triggers"`
 }
