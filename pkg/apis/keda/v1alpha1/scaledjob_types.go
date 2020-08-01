@@ -36,6 +36,10 @@ type ScaledJobSpec struct {
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
+	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
+	// +optional
+	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
+	// +optional
 	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
 	Triggers        []ScaleTriggers `json:"triggers"`
 }

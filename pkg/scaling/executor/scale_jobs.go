@@ -2,6 +2,9 @@ package executor
 
 import (
 	"context"
+	"fmt"
+	"sort"
+
 	//"fmt"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
@@ -33,10 +36,15 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		scaledJob.Status.LastActiveTime = &now
 		e.updateLastActiveTime(ctx, e.logger, scaledJob)
 		e.createJobs(scaledJob, scaleTo, effectiveMaxScale)
-
 	} else {
 		e.logger.V(1).Info("No change in activity")
 	}
+
+	err := e.cleanUp(scaledJob)
+	if err != nil {
+		e.logger.Error(err, "Failed to cleanUp jobs")
+	}
+
 	return
 }
 
@@ -125,4 +133,88 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob, ma
 	}
 
 	return runningJobs
+}
+
+// Clean up will delete the jobs that is exceed historyLimit
+func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
+	opts := []client.ListOption{
+		client.InNamespace(scaledJob.GetNamespace()),
+		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+	}
+
+	jobs := &batchv1.JobList{}
+	err := e.client.List(context.TODO(), jobs, opts...)
+	if err != nil {
+		e.logger.Info("Can not get job list: ", scaledJob.GetName())
+		return err
+	}
+
+	completedJobs := []batchv1.Job{}
+	failedJobs := []batchv1.Job{}
+	for _, job := range jobs.Items {
+		finishedJobConditionType := e.getFinishedJobConditionType(&job)
+		switch finishedJobConditionType {
+		case batchv1.JobComplete:
+			completedJobs = append(completedJobs, job)
+		case batchv1.JobFailed:
+			failedJobs = append(failedJobs, job)
+		}
+	}
+
+	sort.Sort(byCompletedTime(completedJobs))
+	sort.Sort(byCompletedTime(failedJobs))
+
+	successfulJobsHistoryLimit := int32(100) // TODO Default value should be somewhere constant.
+	failedJobsHistoryLimit := int32(100)     // TODO Default value should be somewhere constant.
+
+	if scaledJob.Spec.SuccessfulJobsHistoryLimit != nil {
+		successfulJobsHistoryLimit = *scaledJob.Spec.SuccessfulJobsHistoryLimit
+	}
+
+	if scaledJob.Spec.FailedJobsHistoryLimit != nil {
+		failedJobsHistoryLimit = *scaledJob.Spec.FailedJobsHistoryLimit
+	}
+
+	err = e.deleteJobsWithHistoryLimit(completedJobs, successfulJobsHistoryLimit)
+	if err != nil {
+		return err
+	}
+	err = e.deleteJobsWithHistoryLimit(failedJobs, failedJobsHistoryLimit)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *scaleExecutor) deleteJobsWithHistoryLimit(jobs []batchv1.Job, historyLimit int32) error {
+	if len(jobs) <= int(historyLimit) {
+		return nil
+	}
+
+	deleteJobLength := len(jobs) - int(historyLimit)
+	for _, j := range (jobs)[0:deleteJobLength] {
+		err := e.client.Delete(context.TODO(), j.DeepCopyObject())
+		if err != nil {
+			return err
+		}
+		e.logger.Info(fmt.Sprintf("Remove a job (%s) by reaching the historyLimit: %d", j.ObjectMeta.Name, historyLimit))
+	}
+	return nil
+}
+
+type byCompletedTime []batchv1.Job
+
+func (c byCompletedTime) Len() int { return len(c) }
+func (c byCompletedTime) Less(i, j int) bool {
+	return c[i].Status.CompletionTime.Before(c[j].Status.CompletionTime)
+}
+func (c byCompletedTime) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobConditionType {
+	for _, c := range j.Status.Conditions {
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == v1.ConditionTrue {
+			return c.Type
+		}
+	}
+	return ""
 }
