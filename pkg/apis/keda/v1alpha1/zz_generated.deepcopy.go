@@ -352,6 +352,16 @@ func (in *ScaledJobSpec) DeepCopyInto(out *ScaledJobSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.SuccessfulJobsHistoryLimit != nil {
+		in, out := &in.SuccessfulJobsHistoryLimit, &out.SuccessfulJobsHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
+	if in.FailedJobsHistoryLimit != nil {
+		in, out := &in.FailedJobsHistoryLimit, &out.FailedJobsHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	if in.MaxReplicaCount != nil {
 		in, out := &in.MaxReplicaCount, &out.MaxReplicaCount
 		*out = new(int32)

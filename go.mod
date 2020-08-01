@@ -20,7 +20,7 @@ require (
 	github.com/go-openapi/spec v0.19.7
 	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.3.5
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/hashicorp/vault/api v1.0.4
@@ -47,6 +47,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
 	k8s.io/metrics v0.18.2
 	pack.ag/amqp v0.12.5 // indirect
+	rsc.io/quote/v3 v3.1.0 // indirect
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 
