@@ -36,13 +36,15 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		scaledJob.Status.LastActiveTime = &now
 		e.updateLastActiveTime(ctx, e.logger, scaledJob)
 		e.createJobs(scaledJob, scaleTo, effectiveMaxScale)
-		err := e.cleanUp(scaledJob)
-		if err != nil {
-			e.logger.Error(err, "Failed to cleanUp jobs")
-		}
 	} else {
 		e.logger.V(1).Info("No change in activity")
 	}
+
+	err := e.cleanUp(scaledJob)
+	if err != nil {
+		e.logger.Error(err, "Failed to cleanUp jobs")
+	}
+
 	return
 }
 
