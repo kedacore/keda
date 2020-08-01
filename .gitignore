@@ -345,3 +345,6 @@ config
 # GO Vendor
 vendor
 cover.out
+
+# GO debug binary
+cmd/manager/debug.test
