@@ -132,8 +132,8 @@ func (s *cronScaler) Close() error {
 func parseCronTimeFormat(s string) string {
 	s = strings.ReplaceAll(s, " ", "")
 	s = strings.ReplaceAll(s, "*", "x")
-	s = strings.ReplaceAll(s, "/", "(Sl)")
-	s = strings.ReplaceAll(s, "?", "(Qm)")
+	s = strings.ReplaceAll(s, "/", "Sl")
+	s = strings.ReplaceAll(s, "?", "Qm")
 	return s
 }
 
