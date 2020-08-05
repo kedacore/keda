@@ -184,9 +184,15 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
+	metricName := "postgresql"
+	if s.metadata.connection != "" {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.connection)
+	} else {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
+	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: pgMetricName,
+			Name: metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

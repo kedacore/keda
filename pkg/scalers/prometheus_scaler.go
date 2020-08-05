@@ -113,7 +113,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: fmt.Sprintf("%s-%s-%s", "prometheus", s.metadata.serverAddress, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -237,7 +237,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: rabbitQueueLengthMetricName,
+			Name: fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

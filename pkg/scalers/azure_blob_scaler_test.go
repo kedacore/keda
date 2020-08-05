@@ -14,6 +14,11 @@ type parseAzBlobMetadataTestData struct {
 	podIdentity string
 }
 
+type azBlobMetricIdentifier struct {
+	metadataTestData *parseAzBlobMetadataTestData
+	name             string
+}
+
 var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
@@ -33,6 +38,11 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{"blobContainerName": "sample_container", "blobCount": "5"}, false, testAzBlobResolvedEnv, map[string]string{"connection": "value"}, "none"},
 }
 
+var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
+	{&testAzBlobMetadata[1], "azure-blob-sample"},
+	{&testAzBlobMetadata[4], "azure-blob-sample_container"},
+}
+
 func TestAzBlobParseMetadata(t *testing.T) {
 	for _, testData := range testAzBlobMetadata {
 		_, podIdentity, err := parseAzureBlobMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
@@ -45,6 +55,22 @@ func TestAzBlobParseMetadata(t *testing.T) {
 		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
 			t.Error("Expected success but got error: podIdentity value is not returned as expected")
 
+		}
+	}
+}
+
+func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range azBlobMetricIdentifiers {
+		meta, podIdentity, err := parseAzureBlobMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAzBlobScaler := azureBlobScaler{meta, podIdentity}
+
+		metricSpec := mockAzBlobScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

@@ -155,7 +155,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: blobCountMetricName,
+			Name: fmt.Sprintf("%s-%s", "azure-blob", s.metadata.blobContainerName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -128,13 +129,21 @@ func (s *cronScaler) Close() error {
 	return nil
 }
 
+func parseCronTimeFormat(s string) string {
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "*", "x")
+	s = strings.ReplaceAll(s, "/", "Sl")
+	s = strings.ReplaceAll(s, "?", "Qm")
+	return s
+}
+
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	specReplicas := 1
 	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: cronMetricName,
+			Name: fmt.Sprintf("%s-%s-%s-%s", "cron", strings.ReplaceAll(s.metadata.timezone, "/", "-"), parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

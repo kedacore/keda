@@ -22,6 +22,11 @@ type parseHuaweiCloudeyeMetadataTestData struct {
 	comment    string
 }
 
+type huaweiCloudeyeMetricIdentifier struct {
+	metadataTestData *parseHuaweiCloudeyeMetadataTestData
+	name             string
+}
+
 var testHuaweiAuthenticationWithCloud = map[string]string{
 	"IdentityEndpoint": testHuaweiCloudeyeIdentityEndpoint,
 	"ProjectID":        testHuaweiCloudeyeProjectID,
@@ -134,6 +139,10 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 		"metadata miss minMetricValue"},
 }
 
+var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
+	{&testHuaweiCloudeyeMetadata[0], "huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
+}
+
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 	for _, testData := range testHuaweiCloudeyeMetadata {
 		_, err := parseHuaweiCloudeyeMetadata(testData.metadata, testData.authParams)
@@ -142,6 +151,22 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Errorf("%s: Expected error but got success", testData.comment)
+		}
+	}
+}
+
+func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range huaweiCloudeyeMetricIdentifiers {
+		meta, err := parseHuaweiCloudeyeMetadata(testData.metadataTestData.metadata, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{meta}
+
+		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

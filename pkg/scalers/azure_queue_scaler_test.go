@@ -14,6 +14,11 @@ type parseAzQueueMetadataTestData struct {
 	podIdentity string
 }
 
+type azQueueMetricIdentifier struct {
+	metadataTestData *parseAzQueueMetadataTestData
+	name             string
+}
+
 var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
@@ -39,6 +44,11 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	{map[string]string{"queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{"connection": "value"}, "none"},
 }
 
+var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
+	{&testAzQueueMetadata[1], "azure-queue-sample"},
+	{&testAzQueueMetadata[4], "azure-queue-sample_queue"},
+}
+
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
 		_, podIdentity, err := parseAzureQueueMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
@@ -50,6 +60,22 @@ func TestAzQueueParseMetadata(t *testing.T) {
 		}
 		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
 			t.Error("Expected success but got error: podIdentity value is not returned as expected")
+		}
+	}
+}
+
+func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range azQueueMetricIdentifiers {
+		meta, podIdentity, err := parseAzureQueueMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAzQueueScaler := azureQueueScaler{meta, podIdentity}
+
+		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }
