@@ -31,6 +31,11 @@ type parseAWSSQSMetadataTestData struct {
 	comment    string
 }
 
+type awsSQSMetricIdentifier struct {
+	metadataTestData *parseAWSSQSMetadataTestData
+	name             string
+}
+
 var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 	{map[string]string{},
 		testAWSSQSAuthentication,
@@ -130,6 +135,10 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"with AWS Role assigned on KEDA operator itself"},
 }
 
+var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
+	{&testAWSSQSMetadata[1], "AWS-SQS-Queue-DeleteArtifactQ"},
+}
+
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
 		_, err := parseAwsSqsQueueMetadata(testData.metadata, testAWSSQSAuthentication, testData.authParams)
@@ -138,6 +147,22 @@ func TestSQSParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error because %s but got success, %#v", testData.comment, testData)
+		}
+	}
+}
+
+func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range awsSQSMetricIdentifiers {
+		meta, err := parseAwsSqsQueueMetadata(testData.metadataTestData.metadata, testAWSSQSAuthentication, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAWSSQSScaler := awsSqsQueueScaler{meta}
+
+		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

@@ -81,7 +81,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: liiklusLagThresholdMetricName,
+			Name: fmt.Sprintf("%s-%s-%s", "liiklus", s.metadata.topic, s.metadata.group),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

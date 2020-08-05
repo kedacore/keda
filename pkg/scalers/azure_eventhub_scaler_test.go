@@ -28,6 +28,11 @@ type parseEventHubMetadataTestData struct {
 	isError  bool
 }
 
+type eventHubMetricIdentifier struct {
+	metadataTestData *parseEventHubMetadataTestData
+	name             string
+}
+
 type resolvedEnvTestData struct {
 	resolvedEnv map[string]string
 	isError     bool
@@ -49,6 +54,10 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting}, false},
 	// added blob container details
 	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "blobContainer": testContainerName}, false},
+}
+
+var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
+	{&parseEventHubMetadataDataset[1], "azure-eventhub-none-testEventHubConsumerGroup"},
 }
 
 var testEventHubScaler = AzureEventHubScaler{
@@ -406,4 +415,20 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 		return fmt.Errorf("failed to delete container in blob storage: %s", err)
 	}
 	return nil
+}
+
+func TestEventHubGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range eventHubMetricIdentifiers {
+		meta, err := parseAzureEventHubMetadata(testData.metadataTestData.metadata, sampleEventHubResolvedEnv)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockEventHubScaler := AzureEventHubScaler{meta, nil}
+
+		metricSpec := mockEventHubScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
 }

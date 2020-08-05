@@ -185,9 +185,15 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
+	metricName := "mysql"
+	if s.metadata.connectionString != "" {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.connectionString)
+	} else {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
+	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: mySQLMetricName,
+			Name: metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

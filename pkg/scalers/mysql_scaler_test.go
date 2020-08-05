@@ -14,13 +14,23 @@ type parseMySQLMetadataTestData struct {
 	raisesError bool
 }
 
+type mySQLMetricIdentifier struct {
+	metadataTestData *parseMySQLMetadataTestData
+	name             string
+}
+
 var testMySQLMetdata = []parseMySQLMetadataTestData{
 	// No metadata
-	{metdadata: map[string]string{}, raisesError: true},
+	{map[string]string{}, true},
 	// connectionString
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, raisesError: false},
+	{map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, false},
 	// Params instead of conn str
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, raisesError: false},
+	{map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, false},
+}
+
+var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
+	{&testMySQLMetdata[1], "mysql-test_value"},
+	{&testMySQLMetdata[2], "mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
@@ -53,5 +63,21 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 	connStr := metadataToConnectionStr(meta)
 	if connStr != expected {
 		t.Errorf("%s != %s", expected, connStr)
+	}
+}
+
+func TestMySQLGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range mySQLMetricIdentifiers {
+		meta, err := parseMySQLMetadata(map[string]string{"test_value": "test_value"}, testData.metadataTestData.metdadata, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockMySQLScaler := mySQLScaler{meta, nil}
+
+		metricSpec := mockMySQLScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
 	}
 }

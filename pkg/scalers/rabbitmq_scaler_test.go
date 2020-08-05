@@ -20,6 +20,11 @@ type parseRabbitMQMetadataTestData struct {
 	authParams map[string]string
 }
 
+type rabbitMQMetricIdentifier struct {
+	metadataTestData *parseRabbitMQMetadataTestData
+	name             string
+}
+
 var sampleRabbitMqResolvedEnv = map[string]string{
 	host:    "amqp://user:sercet@somehost.com:5236/vhost",
 	apiHost: "https://user:secret@somehost.com/vhost",
@@ -40,6 +45,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
 	// properly formed metadata with includeUnacked
 	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+}
+
+var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
+	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
@@ -144,6 +153,22 @@ func TestGetQueueInfo(t *testing.T) {
 					t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 				}
 			}
+		}
+	}
+}
+
+func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range rabbitMQMetricIdentifiers {
+		meta, err := parseRabbitMQMetadata(map[string]string{"myHostSecret": "myHostSecret"}, testData.metadataTestData.metadata, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockRabbitMQScaler := rabbitMQScaler{meta, nil, nil}
+
+		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

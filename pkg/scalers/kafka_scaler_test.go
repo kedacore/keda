@@ -15,6 +15,11 @@ type parseKafkaMetadataTestData struct {
 	offsetResetPolicy offsetResetPolicy
 }
 
+type kafkaMetricIdentifier struct {
+	metadataTestData *parseKafkaMetadataTestData
+	name             string
+}
+
 // A complete valid metadata example for reference
 var validMetadata = map[string]string{
 	"bootstrapServers": "broker1:9092,broker2:9092",
@@ -49,6 +54,10 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "foo"}, true, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", ""},
 	// success, offsetResetPolicy policy earliest
 	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "earliest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("earliest")},
+}
+
+var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
+	{&parseKafkaMetadataTestDataset[4], "kafka-my-topic-my-group"},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -99,6 +108,22 @@ func TestGetBrokers(t *testing.T) {
 		}
 		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+		}
+	}
+}
+
+func TestKafkaGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range kafkaMetricIdentifiers {
+		meta, err := parseKafkaMetadata(nil, testData.metadataTestData.metadata, validWithAuthParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockKafkaScaler := kafkaScaler{meta, nil, nil}
+
+		metricSpec := mockKafkaScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

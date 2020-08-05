@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	pubSubSubscriptionSizeMetricName = "GCPPubSubSubscriptionSize"
-	defaultTargetSubscriptionSize    = 5
-	pubSubStackDriverMetricName      = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+	defaultTargetSubscriptionSize = 5
+	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
 )
 
 type pubsubScaler struct {
@@ -104,7 +103,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: pubSubSubscriptionSizeMetricName,
+			Name: fmt.Sprintf("%s-%s", "gcp", s.metadata.subscriptionName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -77,7 +77,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		meta.entityType = Queue
 
 		if _, ok := metadata["subscriptionName"]; ok {
-			return nil, fmt.Errorf("No subscription name provided with topic name")
+			return nil, fmt.Errorf("Subscription name provided with queue name")
 		}
 	}
 
@@ -146,9 +146,15 @@ func (s *azureServiceBusScaler) Close() error {
 // Returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
+	metricName := "azure-servicebus"
+	if s.metadata.entityType == Queue {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.queueName)
+	} else {
+		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName)
+	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: queueLengthMetricName,
+			Name: metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

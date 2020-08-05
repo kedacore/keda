@@ -17,6 +17,11 @@ type parseRedisMetadataTestData struct {
 	authParams map[string]string
 }
 
+type redisMetricIdentifier struct {
+	metadataTestData *parseRedisMetadataTestData
+	name             string
+}
+
 var testRedisMetadata = []parseRedisMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
@@ -43,6 +48,10 @@ var testRedisMetadata = []parseRedisMetadataTestData{
 	// host only is defined in the authParams
 	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}}}
 
+var redisMetricIdentifiers = []redisMetricIdentifier{
+	{&testRedisMetadata[1], "redis-mylist"},
+}
+
 func TestRedisParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testRedisMetadata {
@@ -54,5 +63,21 @@ func TestRedisParseMetadata(t *testing.T) {
 			t.Error(fmt.Sprintf("Expected error but got success for unit test #%v", testCaseNum))
 		}
 		testCaseNum++
+	}
+}
+
+func TestRedisGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range redisMetricIdentifiers {
+		meta, err := parseRedisMetadata(testData.metadataTestData.metadata, testRedisResolvedEnv, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockRedisScaler := redisScaler{meta}
+
+		metricSpec := mockRedisScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
 	}
 }
