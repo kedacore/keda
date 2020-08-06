@@ -47,7 +47,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
 	k8s.io/metrics v0.18.2
 	pack.ag/amqp v0.12.5 // indirect
-	rsc.io/quote/v3 v3.1.0 // indirect
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 

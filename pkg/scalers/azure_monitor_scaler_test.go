@@ -77,11 +77,11 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azMonitorMetricIdentifiers {
-		meta, err := parseAzureMonitorMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams)
+		meta, err := parseAzureMonitorMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAzMonitorScaler := azureMonitorScaler{meta}
+		mockAzMonitorScaler := azureMonitorScaler{meta, testData.metadataTestData.podIdentity}
 
 		metricSpec := mockAzMonitorScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
