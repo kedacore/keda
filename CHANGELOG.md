@@ -23,6 +23,7 @@
 - KEDA Support for configurable scaling behavior in HPA v2beta2 ([#802](https://github.com/kedacore/keda/issues/802))
 - Adding Standard Resource metrics to KEDA ([#874](https://github.com/kedacore/keda/pull/874))
 - Managed Identity support for Azure Monitor scaler ([#936](https://github.com/kedacore/keda/issues/936))
+- Add support for multiple triggers on ScaledObject ([#476](https://github.com/kedacore/keda/issues/476))
 
 ### Improvements
 
@@ -30,6 +31,7 @@
 - Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
 - kubectl get scaledobject should show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
 - kubectl get triggerauthentication should show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
+- Add consumer offset reset policy option to Kafka scaler ([#925](https://github.com/kedacore/keda/pull/925))
 
 ### Breaking Changes
 
