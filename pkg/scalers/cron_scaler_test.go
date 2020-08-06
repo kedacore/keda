@@ -72,7 +72,6 @@ func TestGetMetrics(t *testing.T) {
 	}
 }
 
-
 func TestCronGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMetricIdentifiers {
 		meta, err := parseCronMetadata(testData.metadataTestData.metadata, nil)
