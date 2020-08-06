@@ -49,7 +49,7 @@ spec:
         spec:
           description: ScaledJobSpec defines the desired state of ScaledJob
           properties:
-            cooldownPeriod:
+            failedJobsHistoryLimit:
               format: int32
               type: integer
             jobTargetRef:
@@ -6174,10 +6174,10 @@ spec:
             maxReplicaCount:
               format: int32
               type: integer
-            minReplicaCount:
+            pollingInterval:
               format: int32
               type: integer
-            pollingInterval:
+            successfulJobsHistoryLimit:
               format: int32
               type: integer
             triggers:
