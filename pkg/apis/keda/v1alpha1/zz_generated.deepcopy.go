@@ -550,6 +550,11 @@ func (in *ScaledObjectStatus) DeepCopyInto(out *ScaledObjectStatus) {
 		*out = new(GroupVersionKindResource)
 		**out = **in
 	}
+	if in.OriginalReplicaCount != nil {
+		in, out := &in.OriginalReplicaCount, &out.OriginalReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.LastActiveTime != nil {
 		in, out := &in.LastActiveTime, &out.LastActiveTime
 		*out = (*in).DeepCopy()

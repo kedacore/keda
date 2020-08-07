@@ -232,6 +232,8 @@ spec:
                         type: object
                       type: array
                   type: object
+                restoreToOriginalReplicaCount:
+                  type: boolean
               type: object
             cooldownPeriod:
               format: int32
@@ -320,6 +322,9 @@ spec:
             lastActiveTime:
               format: date-time
               type: string
+            originalReplicaCount:
+              format: int32
+              type: integer
             scaleTargetGVKR:
               description: GroupVersionKindResource provides unified structure for
                 schema.GroupVersionKind and Resource
