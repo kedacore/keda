@@ -47,7 +47,10 @@ type ScaledObjectSpec struct {
 }
 
 type AdvancedConfig struct {
+	// +optional
 	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
+	// +optional
+	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
 }
 
 type HorizontalPodAutoscalerConfig struct {
@@ -88,6 +91,8 @@ type ScaledObjectStatus struct {
 	ScaleTargetKind string `json:"scaleTargetKind,omitempty"`
 	// +optional
 	ScaleTargetGVKR *GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
+	// +optional
+	OriginalReplicaCount *int32 `json:"originalReplicaCount,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
