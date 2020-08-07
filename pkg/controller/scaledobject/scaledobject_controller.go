@@ -266,7 +266,7 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// let's try to detect /scale subresource
-	_, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	scale, errScale := (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gvkr.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 	if errScale != nil {
 		// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 		unstruct := &unstructured.Unstructured{}
@@ -282,11 +282,19 @@ func (r *ReconcileScaledObject) checkTargetResourceIsScalable(logger logr.Logger
 		}
 	}
 
-	// store discovered GVK and GVKR into the Status if it is not present already
-	if scaledObject.Status.ScaleTargetKind != gvkString {
+	// if it is not already present in ScaledObject Status:
+	// - store discovered GVK and GVKR
+	// - store original scaleTarget's replica count (before scaling with KEDA)
+	if scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil {
 		status := scaledObject.Status.DeepCopy()
-		status.ScaleTargetKind = gvkString
-		status.ScaleTargetGVKR = &gvkr
+		if scaledObject.Status.ScaleTargetKind != gvkString {
+			status.ScaleTargetKind = gvkString
+			status.ScaleTargetGVKR = &gvkr
+		}
+		if scaledObject.Status.OriginalReplicaCount == nil {
+			status.OriginalReplicaCount = &scale.Spec.Replicas
+		}
+
 		if err := kedacontrollerutil.UpdateScaledObjectStatus(r.client, logger, scaledObject, status); err != nil {
 			return gvkr, err
 		}
