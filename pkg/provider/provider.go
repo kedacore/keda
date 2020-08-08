@@ -37,7 +37,7 @@ var logger logr.Logger
 var metricsServer prommetrics.PrometheusMetricServer
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string, metricsPort int, metricsPath string) provider.MetricsProvider {
+func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
 		values:           make(map[provider.CustomMetricInfo]int64),
 		externalMetrics:  make([]externalMetric, 2, 10),
@@ -47,7 +47,6 @@ func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, c
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
-	go func() { metricsServer.NewServer(fmt.Sprintf(":%v", metricsPort), metricsPath) }()
 	return provider
 }
 

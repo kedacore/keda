@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	prommetrics "github.com/kedacore/keda/pkg/metrics"
 	kedaprovider "github.com/kedacore/keda/pkg/provider"
 	"github.com/kedacore/keda/pkg/scaling"
 	"github.com/kedacore/keda/version"
@@ -74,7 +75,10 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 		os.Exit(1)
 	}
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace, prometheusMetricsPort, prometheusMetricsPath)
+	prometheusServer := &prommetrics.PrometheusMetricServer{}
+	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
+
+	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace)
 }
 
 func printVersion() {
