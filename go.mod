@@ -1,6 +1,6 @@
 module github.com/kedacore/keda
 
-go 1.13
+go 1.14
 
 require (
 	cloud.google.com/go v0.62.0
@@ -14,10 +14,10 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.26.4
-	github.com/aws/aws-sdk-go v1.33.20
+	github.com/aws/aws-sdk-go v1.34.0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.9
-	github.com/go-redis/redis v6.15.8+incompatible
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.2
@@ -28,7 +28,7 @@ require (
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v1.0.0

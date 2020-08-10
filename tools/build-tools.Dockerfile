@@ -26,9 +26,9 @@ RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03
     rm -rf docker docker-19.03.2.tgz
 
 # Install golang
-RUN GO_VERSION=1.13.3 && \
-    curl -LO https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=0804bf02020dceaa8a7d7275ee79f7a142f1996bfd0c39216ccb405f93f994c0 && \
+RUN GO_VERSION=1.14.7 && \
+    curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    go_sha256=4a7fa60f323ee1416a4b1425aefc37ea359e9d64df19c326a58953a97ad41ea5 && \
     echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
@@ -55,7 +55,7 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get install -y nodejs
 
 # Install operator-sdk
-RUN RELEASE_VERSION=v0.18.1 && \
+RUN RELEASE_VERSION=v0.18.2 && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
     gpg --keyserver keyserver.ubuntu.com --recv-key 8018D6F1B58E194625E38581D16086E39AF46519 && \
