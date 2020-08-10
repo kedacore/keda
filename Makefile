@@ -41,7 +41,8 @@ e2e-test:
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
 	npm install --prefix tests
-	IMAGE_CONTROLLER=$(IMAGE_CONTROLLER) IMAGE_ADAPTER=$(IMAGE_ADAPTER) npm test --verbose --prefix tests
+
+	IMAGE_CONTROLLER=$(IMAGE_CONTROLLER) IMAGE_ADAPTER=$(IMAGE_ADAPTER) ./tests/run-all.sh
 
 ##################################################
 # PUBLISH                                        #
