@@ -12,9 +12,6 @@
     ]
   },
   "scripts": {
-    "pretest": "ava setup.test.ts",
-    "test": "ava **/**.test.ts",
-    "posttest": "ava cleanup.test.ts"
   },
   "dependencies": {
     "@kubernetes/client-node": "^0.10.3",
