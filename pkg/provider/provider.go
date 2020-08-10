@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	prommetrics "github.com/kedacore/keda/pkg/metrics"
 	"github.com/kedacore/keda/pkg/scaling"
 
 	"github.com/go-logr/logr"
@@ -33,6 +34,7 @@ type externalMetric struct {
 }
 
 var logger logr.Logger
+var metricsServer prommetrics.PrometheusMetricServer
 
 // NewProvider returns an instance of KedaProvider
 func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
@@ -79,12 +81,14 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	scaledObject := &scaledObjects.Items[0]
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
 	scalers, err := p.scaleHandler.GetScalers(scaledObject)
+	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return nil, fmt.Errorf("Error when getting scalers %s", err)
 	}
 
-	for _, scaler := range scalers {
+	for scalerIndex, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
+		scalerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
 
 		for _, metricSpec := range metricSpecs {
 			// Filter only the desired metric
@@ -93,8 +97,13 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 				if err != nil {
 					logger.Error(err, "error getting metric for scaler", "ScaledObject.Namespace", scaledObject.Namespace, "ScaledObject.Name", scaledObject.Name, "Scaler", scaler)
 				} else {
+					for _, metric := range metrics {
+						metricValue, _ := metric.Value.AsInt64()
+						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
+					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
+				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
 
