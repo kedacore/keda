@@ -8,6 +8,8 @@ IMAGE_REPO     ?= kedacore
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
 
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:v2
+
 ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
@@ -137,3 +139,11 @@ verify-clientset:
 generate-clientset:
 	$(GO_BUILD_VARS) go mod vendor
 	./hack/update-codegen.sh
+
+##################################################
+# Build Tools Image                              #
+##################################################
+.PHONY: publish-build-tools
+publish-build-tools:
+	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+	docker push $(IMAGE_BUILD_TOOLS)
