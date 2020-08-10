@@ -33,6 +33,8 @@
 - Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
 - kubectl get scaledobject should show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
 - kubectl get triggerauthentication should show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
+- Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
+- Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
 
 ### Breaking Changes
 
@@ -43,7 +45,6 @@
 
 ### Other
 - Update Operator SDK and k8s deps ([#870](https://github.com/kedacore/keda/issues/870))
-- Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 
 ## v1.5.0
 
