@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	pgMetricName              = "num"
 	defaultPostgreSQLPassword = ""
 )
 
@@ -213,7 +212,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: pgMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

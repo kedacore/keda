@@ -258,7 +258,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: rabbitQueueLengthMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
