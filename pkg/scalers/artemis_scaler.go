@@ -92,13 +92,15 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		meta.queueLength = queueLength
 	}
 
-	if val, ok := authParams["username"]; ok {
+	if val, ok := authParams["username"]; ok && val != "" {
 		meta.username = val
-	} else if val, ok := metadata["username"]; ok {
+	} else if val, ok := metadata["username"]; ok && val != "" {
 		username := val
 
-		if val, ok := resolvedEnv[username]; ok {
+		if val, ok := resolvedEnv[username]; ok && val != "" {
 			meta.username = val
+		} else {
+			meta.username = username
 		}
 	}
 
@@ -106,13 +108,15 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		return nil, fmt.Errorf("username cannot be empty")
 	}
 
-	if val, ok := authParams["password"]; ok {
+	if val, ok := authParams["password"]; ok && val != "" {
 		meta.password = val
-	} else if val, ok := metadata["password"]; ok {
+	} else if val, ok := metadata["password"]; ok && val != "" {
 		password := val
 
-		if val, ok := resolvedEnv[password]; ok {
+		if val, ok := resolvedEnv[password]; ok && val != "" {
 			meta.password = val
+		} else {
+			meta.password = password
 		}
 	}
 
