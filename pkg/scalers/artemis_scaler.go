@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -28,6 +29,7 @@ type artemisMetadata struct {
 	brokerAddress      string
 	username           string
 	password           string
+	restApiTemplate    string
 	queueLength        int
 }
 
@@ -41,6 +43,7 @@ type artemisMonitoring struct {
 const (
 	artemisMetricType         = "External"
 	defaultArtemisQueueLength = 10
+	defaultRestApiTemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -62,6 +65,12 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
+
+	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
+		meta.restApiTemplate = metadata["restApiTemplate"]
+	} else {
+		meta.restApiTemplate = defaultRestApiTemplate
+	}
 
 	if metadata["managementEndpoint"] == "" {
 		return nil, errors.New("no management endpoint given")
@@ -137,13 +146,15 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *artemisScaler) getArtemisManagementEndpoint() string {
-	return "http://" + s.metadata.managementEndpoint
-}
-
 func (s *artemisScaler) getMonitoringEndpoint() string {
-	monitoringEndpoint := fmt.Sprintf("%s/console/jolokia/read/org.apache.activemq.artemis:broker=\"%s\",component=addresses,address=\"%s\",subcomponent=queues,routing-type=\"anycast\",queue=\"%s\"/MessageCount",
-		s.getArtemisManagementEndpoint(), s.metadata.brokerName, s.metadata.brokerAddress, s.metadata.queueName)
+
+	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.managementEndpoint,
+		"<<queueName>>", s.metadata.queueName,
+		"<<brokerName>>", s.metadata.brokerName,
+		"<<brokerAddress>>", s.metadata.brokerAddress)
+
+	monitoringEndpoint := replacer.Replace(s.metadata.restApiTemplate)
+
 	return monitoringEndpoint
 }
 
