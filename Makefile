@@ -18,7 +18,7 @@ GIT_VERSION = $(shell git describe --always --abbrev=7)
 GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run
+TEST_CLUSTER_NAME ?= keda-nightly-run-2
 
 ##################################################
 # All                                            #
@@ -117,7 +117,7 @@ generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate crds --crd-version=v1beta1
 	# withTriggers and withPods are only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
-	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398 
+	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm deploy/crds/keda.sh_withtriggers_crd.yaml
 	rm deploy/crds/keda.sh_withpods_crd.yaml
 
@@ -134,7 +134,7 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb
 verify-clientset:
 	$(GO_BUILD_VARS) go mod vendor
 	./hack/verify-codegen.sh
-	
+
 .PHONY: generate-clientset
 generate-clientset:
 	$(GO_BUILD_VARS) go mod vendor

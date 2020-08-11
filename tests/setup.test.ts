@@ -111,7 +111,7 @@ test.serial('verifyKeda', t => {
     const parsedMetrics = parseInt(resultMetrics.stdout, 10)
     if (isNaN(parsedOperator) || parsedOperator != 1 || isNaN(parsedMetrics) || parsedMetrics != 1) {
       t.log(`Keda is not ready. sleeping`)
-      sh.exec('sleep 1s')
+      sh.exec('sleep 5s')
     } else if (parsedOperator == 1 && parsedMetrics == 1) {
       t.log('keda is running 1 pod for operator and 1 pod for metrics server')
       success = true
