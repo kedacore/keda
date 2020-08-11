@@ -18,7 +18,6 @@ import (
 
 const (
 	defaultDesiredReplicas = 1
-	cronMetricName         = "ReplicaCount"
 	cronMetricType         = "External"
 )
 
@@ -169,7 +168,7 @@ func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 
 	/*******************************************************************************/
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: cronMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(currentReplicas, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
