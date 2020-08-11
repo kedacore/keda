@@ -37,7 +37,7 @@ test.before(t => {
     const mysqlPod = sh.exec(`kubectl get po -n ${mySQLNamespace} -o jsonpath='{.items[0].metadata.name}'`).stdout
     t.not(mysqlPod, '')
     sh.exec( `kubectl exec -n ${mySQLNamespace} ${mysqlPod} -- mysql -u${mySQLUsername} -p${mySQLPassword} -e \"${createTableSQL}\"`)
-    
+
     sh.config.silent = true
 
     sh.exec(`kubectl create namespace ${testNamespace}`)
@@ -95,7 +95,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
         sh.exec('sleep 5s')
       }
     }
-  
+
     t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
 })
 
@@ -160,7 +160,7 @@ type: Opaque
 data:
   mysql_conn_str: {{MYSQL_CONNECTION_STRING}}
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-trigger-auth-mysql-secret
@@ -170,13 +170,13 @@ spec:
     name: mysql-secrets
     key: mysql_conn_str
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: mysql-scaledobject
 spec:
   scaleTargetRef:
-    deploymentName: worker
+    name: worker
   pollingInterval: 5
   cooldownPeriod:  10
   minReplicaCount: 0
@@ -241,7 +241,7 @@ spec:
         name: mysql
         env:
           - name: MYSQL_ROOT_PASSWORD
-            value: {{MYSQL_ROOT_PASSWORD}} 
+            value: {{MYSQL_ROOT_PASSWORD}}
           - name: MYSQL_USER
             value: {{MYSQL_USER}}
           - name: MYSQL_PASSWORD

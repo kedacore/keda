@@ -242,6 +242,6 @@ spec:
   - type: kafka
     metadata:
       topic: ${defaultTopic}
-      brokerList: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
+      bootstrapServers: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
       consumerGroup: functions
       lagThreshold: '1'`
