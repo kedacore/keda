@@ -31,12 +31,12 @@ test.serial('Deployment should have 0 replicas on start', t => {
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial.cb('Deployment should scale to 2 with 2000 blobs on the blob container then back to 0', t => {
+test.serial.cb('Deployment should scale to 2 with 150 blobs on the blob container then back to 0', t => {
     // add 2000 files
     const blobSvc = azure.createBlobService(connectionString)
     blobSvc.createContainerIfNotExists('container-name', err => {
         t.falsy(err, 'unable to create blob')
-        async.mapLimit(Array(2000).keys(), 500, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
+        async.mapLimit(Array(150).keys(), 50, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
             let replicaCount = '0'
             for (let i = 0; i < 40 && replicaCount !== '2'; i++) {
                 replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout

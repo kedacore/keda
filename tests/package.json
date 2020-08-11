@@ -11,8 +11,7 @@
       "ts-node/register"
     ]
   },
-  "scripts": {
-  },
+  "scripts": {},
   "dependencies": {
     "@kubernetes/client-node": "^0.10.3",
     "@types/async": "^3.0.3",
