@@ -36,7 +36,8 @@ function wait_for_jobs {
         echo "Job $job finished"
     done
 
-    printf "\n$failed_count jobs failes\n"
+    printf "\n$failed_count jobs failed\n"
+    printf '%s\n' "${failed_lookup[@]}"
 }
 
 function print_logs {
@@ -47,6 +48,16 @@ function print_logs {
         printf "\n\n##############################################\n"
         printf "##############################################\n\n"
     done
+
+    echo ">>> KEDA Operator log <<<"
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda logs
+    printf "\n\n##############################################\n"
+    printf "##############################################\n\n"
+
+    echo ">>> KEDA Metrics Server log <<<"
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs
+    printf "\n\n##############################################\n"
+    printf "##############################################\n\n"
 }
 
 function run_cleanup {
