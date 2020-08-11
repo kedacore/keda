@@ -364,6 +364,8 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 
 func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
 	switch triggerType {
+	case "artemis-queue":
+		return scalers.NewArtemisQueueScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-servicebus":
