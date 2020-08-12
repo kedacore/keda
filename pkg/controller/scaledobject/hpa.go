@@ -119,7 +119,6 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 
 	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta, foundHpa.ObjectMeta) {
 		logger.V(1).Info("Found difference in the HPA object meta accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta, "newHPA", hpa.ObjectMeta)
-		logger.Info("Naslo rozdiel")
 		if r.client.Update(context.TODO(), foundHpa) != nil {
 			foundHpa.ObjectMeta = hpa.ObjectMeta
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
