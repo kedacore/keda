@@ -117,10 +117,10 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
-	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta, foundHpa.ObjectMeta) {
-		logger.V(1).Info("Found difference in the HPA object meta accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta, "newHPA", hpa.ObjectMeta)
+	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Labels, foundHpa.ObjectMeta.Labels) {
+		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
 		if r.client.Update(context.TODO(), foundHpa) != nil {
-			foundHpa.ObjectMeta = hpa.ObjectMeta
+			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
