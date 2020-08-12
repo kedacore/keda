@@ -406,6 +406,8 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "cron":
+		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
