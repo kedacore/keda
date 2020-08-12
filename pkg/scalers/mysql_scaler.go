@@ -12,6 +12,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -187,7 +188,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 	metricName := "mysql"
 	if s.metadata.connectionString != "" {
-		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.connectionString)
+		metricName = fmt.Sprintf("%s-%s", metricName, strings.ReplaceAll(s.metadata.connectionString, "/", "-"))
 	} else {
 		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
 	}
