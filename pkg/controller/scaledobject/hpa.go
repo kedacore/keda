@@ -69,6 +69,9 @@ func (r *ReconcileScaledObject) newHPAForScaledObject(logger logr.Logger, scaled
 		"app.kubernetes.io/part-of":    scaledObject.Name,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
+	for key, value := range scaledObject.ObjectMeta.Labels {
+		labels[key] = value
+	}
 
 	return &autoscalingv2beta2.HorizontalPodAutoscaler{
 		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
@@ -111,6 +114,16 @@ func (r *ReconcileScaledObject) updateHPAIfNeeded(logger logr.Logger, scaledObje
 		// check if scaledObject.spec.behavior was defined, because it is supported only on k8s >= 1.18
 		r.checkMinK8sVersionforHPABehavior(logger, scaledObject)
 
+		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+	}
+
+	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Labels, foundHpa.ObjectMeta.Labels) {
+		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
+		if r.client.Update(context.TODO(), foundHpa) != nil {
+			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
+			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+			return err
+		}
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
