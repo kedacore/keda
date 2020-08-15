@@ -9,13 +9,16 @@ const timeToWait = 300
 const defaultTopic = 'kafka-topic'
 const defaultKafkaClient = 'kafka-client'
 const strimziOperatorVersion = '0.18.0'
-const commandToCheckReplicas = `kubectl get deployments/twitter-function --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+const commandToCheckReplicas = `kubectl get deployments/kafka-consumer --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
 
 const strimziOperatroYamlFile = tmp.fileSync()
 const kafkaClusterYamlFile = tmp.fileSync()
 const kafkaTopicYamlFile = tmp.fileSync()
 const kafkaClientYamlFile = tmp.fileSync()
-const kafkaApplicationYamlFile = tmp.fileSync()
+const kafkaApplicationLatestYamlFile = tmp.fileSync()
+const kafkaApplicationEarliestYamlFile = tmp.fileSync()
+const scaledObjectEarliestYamlFile = tmp.fileSync()
+const scaledObjectLatestYamlFile = tmp.fileSync()
 
 test.before('Set up, create necessary resources.', t => {
 	sh.config.silent = true
@@ -65,15 +68,22 @@ test.before('Set up, create necessary resources.', t => {
 		'Kafka client should be ready within given time limit.'
   )
 
-	fs.writeFileSync(kafkaApplicationYamlFile.name, kafkaApplicationYaml)
+  fs.writeFileSync(kafkaApplicationEarliestYamlFile.name, kafkaApplicationEarliestYaml)
+
 	t.is(
 		0,
-		sh.exec(`kubectl apply -f ${kafkaApplicationYamlFile.name} --namespace ${defaultNamespace}`).code,
+		sh.exec(`kubectl apply -f ${kafkaApplicationEarliestYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Kafka application should work.'
+  )
+  fs.writeFileSync(scaledObjectEarliestYamlFile.name, scaledObjectEarliestYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${scaledObjectEarliestYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Scaled Object should work.'
 	)
 	t.is(
 		0,
-		sh.exec(`kubectl wait deployment/twitter-function --for=condition=Available --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
+		sh.exec(`kubectl wait deployment/kafka-consumer --for=condition=Available --timeout=${timeToWait}s --namespace ${defaultNamespace}`).code,
 		'Kafka application should be ready within given time limit.'
 	)
   waitForReplicaCount(0, commandToCheckReplicas)
@@ -124,15 +134,69 @@ test.serial('Scale application beyond partition max.', t => {
   t.is('3', sh.exec(commandToCheckReplicas).stdout, `Replica count should be 3.`)
 })
 
+test.serial('cleanup after earliest policy test', t=> {
+  t.is(
+		0,
+		sh.exec(`kubectl delete -f ${scaledObjectEarliestYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deleting Scaled Object should work.'
+  )
+  t.is(
+		0,
+		sh.exec(`kubectl delete -f ${kafkaApplicationEarliestYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deleting kafka application should work.'
+  )
+
+  sh.exec(`sleep 30s`)
+})
+
+test.serial('Applying ScaledObject latest policy should not scale up pods', t => {
+  fs.writeFileSync(kafkaApplicationLatestYamlFile.name, kafkaApplicationLatestYaml)
+	t.is(
+		0,
+		sh.exec(`kubectl apply -f ${kafkaApplicationLatestYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Kafka application should work.'
+  )
+  sh.exec(`sleep 10s`)
+  fs.writeFileSync(scaledObjectLatestYamlFile.name, scaledObjectLatestYaml)
+  t.is(
+		0,
+		sh.exec(`kubectl apply -f ${scaledObjectLatestYamlFile.name} --namespace ${defaultNamespace}`).code,
+		'Deploying Scaled Object should work.'
+  )
+  sh.exec(`sleep 5s`)
+  waitForReplicaCount(1, commandToCheckReplicas)
+  t.is('1', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 1.')
+  //Make the consumer commit the first offset.
+  sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+
+})
+
+
+// This test should check if the scaling works, but is not currently feasible if consumer commits offsets regularly.
+// test.serial('Latest Scale object should scale with new messages', t => {
+
+//   for (let r = 1; r <= 3; r++) {
+
+//     sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+//     sh.exec(`sleep 5s`)
+
+//     waitForReplicaCount(r, commandToCheckReplicas)
+
+//     t.is(r.toString(), sh.exec(commandToCheckReplicas).stdout, `Replica count should be ${r}.`)
+//   }
+// })  
+
 test.after.always('Clean up, delete created resources.', t => {
   const resources = [
-    `${kafkaApplicationYamlFile.name}`,
+    `${kafkaApplicationLatestYamlFile.name}`,
+    `${scaledObjectEarliestYamlFile.name}`,
+    `${scaledObjectLatestYamlFile.name}`,
     `${kafkaClientYamlFile.name}`,
     `${kafkaTopicYamlFile.name}`,
     `${kafkaClusterYamlFile.name}`,
     `${strimziOperatroYamlFile}`
   ]
-
+  
   for (const resource of resources) {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
   }
@@ -194,54 +258,87 @@ spec:
       - -c
       - "exec tail -f /dev/null"`
 
-const kafkaApplicationYaml = `data:
-  FUNCTIONS_WORKER_RUNTIME: bm9kZQ==
-  AzureWebJobsStorage: Tm9uZQ==
-  POWER_BI_URL: aHR0cHM6Ly9hcGkucG93ZXJiaS5jb20vYmV0YS83MmY5ODhiZi04NmYxLTQxYWYtOTFhYi0yZDdjZDAxMWRiNDcvZGF0YXNldHMvMjVkYmRkMjAtZWM5OS00NDI2LTgyY2ItOGI3YTFlYmU2YTdlL3Jvd3M/a2V5PWRXNnpLeURYRWZMQTVycCUyRjdtNzFyaE55RU1hYVMwZUdOUm1ZOWlEMTdyUkxPbjIzOHBPWDFGWmo5M0sxWWszbzRnbW9wVmZFRng1NnNrc0tsb010clElM0QlM0Q=
-apiVersion: v1
-kind: Secret
-metadata:
-  name: twitter-function
-  namespace: ${defaultNamespace}
----
+const kafkaApplicationLatestYaml = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: twitter-function
+  name: kafka-consumer
   namespace: ${defaultNamespace}
   labels:
-    app: twitter-function
+    app: kafka-consumer
 spec:
   selector:
     matchLabels:
-      app: twitter-function
+      app: kafka-consumer
   template:
     metadata:
       labels:
-        app: twitter-function
+        app: kafka-consumer
     spec:
       containers:
-      - name: twitter-function
-        image: jeffhollan/twitter-function
-        env:
-        - name: AzureFunctionsJobHost__functions__0
-          value: KafkaTwitterTrigger
-        envFrom:
-        - secretRef:
-            name: twitter-function
----
-apiVersion: keda.sh/v1alpha1
+      - name: kafka-consumer
+        image: confluentinc/cp-kafka:5.2.1
+        command:
+          - sh
+          - -c
+          - "kafka-console-consumer --bootstrap-server ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic} --group latest "`
+
+
+const kafkaApplicationEarliestYaml = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+  namespace: ${defaultNamespace}
+  labels:
+    app: kafka-consumer
+spec:
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      - name: kafka-consumer
+        image: confluentinc/cp-kafka:5.2.1
+        command:
+          - sh
+          - -c
+          - "kafka-console-consumer --bootstrap-server ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic} --group earliest --from-beginning --consumer-property enable.auto.commit=false"`
+
+const scaledObjectEarliestYaml = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: twitter-function
+  name: kafka-consumer-earliest
   namespace: ${defaultNamespace}
 spec:
   scaleTargetRef:
-    name: twitter-function
+    name: kafka-consumer
   triggers:
   - type: kafka
     metadata:
       topic: ${defaultTopic}
       bootstrapServers: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
-      consumerGroup: functions
-      lagThreshold: '1'`
+      consumerGroup: earliest
+      lagThreshold: '1'
+      offsetResetPolicy: 'earliest'`
+
+const scaledObjectLatestYaml = `apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-consumer-latest
+  namespace: ${defaultNamespace}
+spec:
+  scaleTargetRef:
+    name: kafka-consumer
+  triggers:
+  - type: kafka
+    metadata:
+      topic: ${defaultTopic}
+      bootstrapServers: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
+      consumerGroup: latest
+      lagThreshold: '1'
+      offsetResetPolicy: 'latest'`
