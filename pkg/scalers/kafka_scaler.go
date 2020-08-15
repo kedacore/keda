@@ -190,7 +190,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
 		// Return as soon as a lag was detected for any partition
-		if lag > 0 {
+		if s.metadata.offsetResetPolicy == earliest && lag > 0 || s.metadata.offsetResetPolicy == latest && lag != 0 {
 			return true, nil
 		}
 	}
@@ -317,7 +317,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 
 	if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
 		if s.metadata.offsetResetPolicy == latest {
-			lag = 0
+			lag = sarama.OffsetNewest
 		} else {
 			lag = latestOffset
 		}
