@@ -8,8 +8,9 @@ _Provide a description of what has been changed_
 
 ### Checklist
 
-- [ ] A PR is opened to update the documentation on https://github.com/kedacore/keda-docs
 - [ ] Commits are signed with Developer Certificate of Origin (DCO)
 - [ ] Tests have been added
+- [ ] A PR is opened to update the documentation on https://github.com/kedacore/keda-docs
+- [ ] Changelog has been updated
 
 Fixes #
