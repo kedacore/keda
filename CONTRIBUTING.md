@@ -2,7 +2,7 @@
 
 Thanks for helping make KEDA better 😍.
 
-There are many areas we can use contributions - ranging from code, documentation, feature proposals, issue triage, samples, and content creation.  
+There are many areas we can use contributions - ranging from code, documentation, feature proposals, issue triage, samples, and content creation.
 
 ## Getting Help
 

@@ -73,38 +73,39 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		return nil, fmt.Errorf("no list name given")
 	}
 
-	address := defaultRedisAddress
-	host := defaultHost
-	port := defaultPort
-	if val, ok := metadata["address"]; ok && val != "" {
-		address = val
-	} else {
-		if val, ok := metadata["host"]; ok && val != "" {
-			host = val
-		} else {
-			return nil, fmt.Errorf("no address or host given. address should be in the format of host:port or you should set the host/port values")
-		}
-		if val, ok := metadata["port"]; ok && val != "" {
-			port = val
-		} else {
-			return nil, fmt.Errorf("no address or port given. address should be in the format of host:port or you should set the host/port values")
-		}
-	}
-
-	if val, ok := resolvedEnv[address]; ok {
+	if val, ok := authParams["address"]; ok {
 		meta.address = val
+	} else if addressEnvName, ok := metadata["address"]; ok && addressEnvName != "" {
+		if val, ok := resolvedEnv[addressEnvName]; ok {
+			meta.address = val
+		}
+		if meta.address == "" {
+			return nil, fmt.Errorf("no address given")
+		}
 	} else {
-		if val, ok := resolvedEnv[host]; ok {
+		if val, ok := authParams["host"]; ok {
 			meta.host = val
+		} else if hostEnvName, ok := metadata["host"]; ok && hostEnvName != "" {
+			if val, ok := resolvedEnv[hostEnvName]; ok {
+				meta.host = val
+			} else {
+				return nil, fmt.Errorf("no host given. Address should be in the format of host:port or you should provide both host and port")
+			}
 		} else {
-			return nil, fmt.Errorf("no address given or host given. Address should be in the format of host:port or you should provide both host and port")
+			return nil, fmt.Errorf("no host given. address should be in the format of host:port or you should set the host/port values")
+		}
+		if val, ok := authParams["port"]; ok {
+			meta.port = val
+		} else if portEnvName, ok := metadata["port"]; ok && portEnvName != "" {
+			if val, ok := resolvedEnv[portEnvName]; ok {
+				meta.port = val
+			} else {
+				return nil, fmt.Errorf("no port given. Address should be in the format of host:port or you should provide both host and port")
+			}
+		} else {
+			return nil, fmt.Errorf("no port given. address should be in the format of host:port or you should set the host/port values")
 		}
 
-		if val, ok := resolvedEnv[port]; ok {
-			meta.port = val
-		} else {
-			return nil, fmt.Errorf("no address or port given. Address should be in the format of host:port or you should provide both host and port")
-		}
 		meta.address = fmt.Sprintf("%s:%s", meta.host, meta.port)
 	}
 

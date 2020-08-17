@@ -8,6 +8,8 @@ IMAGE_REPO     ?= kedacore
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
 
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:latest
+
 ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
@@ -41,7 +43,8 @@ e2e-test:
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
 	npm install --prefix tests
-	IMAGE_CONTROLLER=$(IMAGE_CONTROLLER) IMAGE_ADAPTER=$(IMAGE_ADAPTER) npm test --verbose --prefix tests
+
+	IMAGE_CONTROLLER=$(IMAGE_CONTROLLER) IMAGE_ADAPTER=$(IMAGE_ADAPTER) ./tests/run-all.sh
 
 ##################################################
 # PUBLISH                                        #
@@ -114,3 +117,11 @@ pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+##################################################
+# Build Tools Image                              #
+##################################################
+.PHONY: publish-build-tools
+publish-build-tools:
+	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+	docker push $(IMAGE_BUILD_TOOLS)

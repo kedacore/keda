@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -35,16 +36,23 @@ var testRedisMetadata = []parseRedisMetadataTestData{
 	{map[string]string{"listName": "mylist", "listLength": "0", "address": "REDIS_WRONG", "password": ""}, true, map[string]string{}},
 	// password is defined in the authParams
 	{map[string]string{"listName": "mylist", "listLength": "0", "address": "REDIS_WRONG"}, true, map[string]string{"password": ""}},
-}
+	// address is defined in the authParams
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379"}},
+	// host and port is defined in the authParams
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"host": "localhost", "port": "6379"}},
+	// host only is defined in the authParams
+	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}}}
 
 func TestRedisParseMetadata(t *testing.T) {
+	testCaseNum := 1
 	for _, testData := range testRedisMetadata {
 		_, err := parseRedisMetadata(testData.metadata, testRedisResolvedEnv, testData.authParams)
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Error(fmt.Sprintf("Expected success but got error for unit test # %v", testCaseNum), err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Error(fmt.Sprintf("Expected error but got success for unit test #%v", testCaseNum))
 		}
+		testCaseNum++
 	}
 }
