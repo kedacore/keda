@@ -1,7 +1,0 @@
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: example-triggerauthentication
-spec:
-  # Add fields here
-  

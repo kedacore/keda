@@ -5,10 +5,7 @@ Make sure to remove previous KEDA (including CRD) from the cluster. Switch to th
 ```bash
    git fetch --all
    git checkout v2
-   kubectl apply -f deploy/crds/keda.sh_scaledobjects_crd.yaml
-   kubectl apply -f deploy/crds/keda.sh_scaledjobs_crd.yaml
-   kubectl apply -f deploy/crds/keda.sh_triggerauthentications_crd.yaml
-   kubectl apply -f deploy/
+   make deploy
 ```
 
 
@@ -126,30 +123,23 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ```
 
 ## Deploying: Custom KEDA locally outside cluster
-The Operator SDK framework allows you to [run the operator/controller locally](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#2-run-locally-outside-the-cluster)
-outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
+The Operator SDK framework allows you to run the operator/controller locally outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
 > Note: This approach works only on Linux or macOS. 
 
 To be KEDA to be fully operational we need to deploy Metrics Server first.
 
 1. Deploy CRDs and KEDA into `keda` namespace
    ```bash
-   kubectl apply -f deploy/crds/keda.sh_scaledobjects_crd.yaml
-   kubectl apply -f deploy/crds/keda.sh_scaledjob_crd.yaml
-   kubectl apply -f deploy/crds/keda.sh_triggerauthentications_crd.yaml
-   kubectl apply -f deploy/
+   make deploy
    ```
 2. Scale down `keda-operator` Deployment
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
-3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-level=` if needed
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-log-level=` if needed
    ```bash
-   operator-sdk run --local --namespace="" --operator-flags="--zap-level=info"
+   make run ARGS="--zap-log-level=debug"
    ``` 
-   > Note: On older operator-sdk versions you need to use command `up` instead of `run`.
-
-   > Note: Please run `operator-sdk -h` to see all possible commands and options (eg. for debugging: `--enable-delve`)
 
 ## Deploying: Custom KEDA as an image
 
@@ -157,22 +147,15 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 to deploy it as part of KEDA. Do the following:
 
 1. Make your change in the code.
-2. In terminal, create an environment variable `VERSION` and assign it a value for your preference, this tag will 
-    be used when creating the operator image that will run KEDA.
-    ***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
-3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for 
-    the KEDA operator that you can deploy to your local cluster. This should build 2 docker images: `kedacore/keda` 
-    and `kedacore/keda-metrics-adapter` tagged with the tag you set in step 2
-4. If you haven't downloaded them before, clone the charts repository: `git clone git@github.com:kedacore/charts.git` 
-5. Still in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
-    (don't forget to replace the placeholder text in the command):
-    ```bash
-    helm install . --set image.keda=kedacore/keda:$VERSION,image.metricsAdapter=kedacore/keda-metrics-adapter:$VERSION,image.pullPolicy=IfNotPresent
-    ```
-    This will use the images built at step 3. Notice the need to override the image pullPolicy to `IfNotPresent` in 
-    order to use the locally built images and not try to pull the images from remote repo on Docker Hub (and complain 
-    about not finding them).
-6. Once the keda pods are up, check the logs to verify everything running ok, eg: 
+2. Build and publish on Docker Hub images with your changes, `IMAGE_REPO` should point to your repository (specifying `IMAGE_REGISTRY` as well allows you to use registry of your choice eg. quay.io).
+   ```bash
+   IMAGE_REPO=johndoe make publish
+   ```
+3. Deploy KEDA with your custom images.
+   ```bash
+   IMAGE_REPO=johndoe make deploy
+   ```
+4. Once the keda pods are up, check the logs to verify everything running ok, eg: 
     ```bash
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda logs -f
 
@@ -180,21 +163,23 @@ to deploy it as part of KEDA. Do the following:
     ```
 
 ## Setting log levels
-You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/logging.md) mechanism.
+You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://sdk.operatorframework.io/docs/building-operators/golang/references/logging/) mechanism.
 
 ### KEDA Operator logging
-To change the logging level, find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file, modify it's value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
 
-To change the logging time format, find `--zap-time-encoding=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file, modify it's value and redeploy.
 
-Allowed values are `epoch`, `millis`, `nano`, or `iso8601`
+Allowed values are `json` and `console`
+
+Default value: `console`
 
 ### Metrics Server logging
-Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deployment.yaml` file, modify it's value and redeploy.
+Find `--v=0` argument in Operator Deployment section in `config/metrics-server/deployment.yaml` file, modify it's value and redeploy.
 
 Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
 

@@ -38,7 +38,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Release Deployment YAML files
+      - name: Release Deployment YAML file
         run: make release
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
@@ -50,26 +50,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload deployment YAML files as ZIP to GitHub release
-      - name: Upload Deployment YAML files (zip)
-        id: upload-deployment-yaml-zip
+      # Upload deployment YAML file to GitHub release
+      - name: Upload Deployment YAML file
+        id: upload-deployment-yaml
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_content_type: application/zip
-
-      # Upload deployment YAML files as TAR to GitHub release
-      - name: Upload Deployment YAML files (tar.gz)
-        id: upload-deployment-yaml-tar
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
-          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
-          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.tar.gz
-          asset_content_type: application/tar+gzip
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.yaml
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.yaml
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.yaml
+          asset_content_type: application/x-yaml

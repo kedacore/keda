@@ -21,7 +21,7 @@ import (
 	"context"
 	time "time"
 
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	versioned "github.com/kedacore/keda/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kedacore/keda/pkg/generated/informers/externalversions/internalinterfaces"
 	v1alpha1 "github.com/kedacore/keda/pkg/generated/listers/keda/v1alpha1"
