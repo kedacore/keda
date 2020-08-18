@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	kedautil "github.com/kedacore/keda/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,7 +174,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", s.metadata.azureMonitorInfo.ResourceURI, s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name),
+			Name: fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", kedautil.NormalizeString(s.metadata.azureMonitorInfo.ResourceURI), s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	kedautil "github.com/kedacore/keda/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -176,7 +176,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s-%s", "aws-cloudwatch", strings.ReplaceAll(c.metadata.namespace, "/", "-"), c.metadata.dimensionName, c.metadata.dimensionValue),
+			Name: fmt.Sprintf("%s-%s-%s-%s", "aws-cloudwatch", kedautil.NormalizeString(c.metadata.namespace), c.metadata.dimensionName, c.metadata.dimensionValue),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

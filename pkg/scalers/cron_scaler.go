@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	kedautil "github.com/kedacore/keda/pkg/util"
 	"github.com/robfig/cron/v3"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -142,7 +143,7 @@ func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s-%s", "cron", strings.ReplaceAll(s.metadata.timezone, "/", "-"), parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)),
+			Name: fmt.Sprintf("%s-%s-%s-%s", "cron", kedautil.NormalizeString(s.metadata.timezone), parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
