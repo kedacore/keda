@@ -35,6 +35,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 * [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
 * [QuickStart - Azure Functions and Queues](https://github.com/kedacore/sample-hello-world-azure-functions)
 * [QuickStart - Azure Functions and Kafka on Openshift 4](https://github.com/kedacore/sample-azure-functions-on-ocp4)
+* [QuickStart - Azure Storage Queue with ScaledJob](https://github.com/kedacore/sample-go-storage-queue)
 
 ## Deploying KEDA
 
