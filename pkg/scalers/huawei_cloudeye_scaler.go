@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Huawei/gophercloud"
 	"github.com/Huawei/gophercloud/auth/aksk"
 	"github.com/Huawei/gophercloud/openstack"
 	"github.com/Huawei/gophercloud/openstack/ces/v1/metricdata"
+	kedautil "github.com/kedacore/keda/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -242,7 +242,7 @@ func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s-%s-%s", "huawei-cloudeye", strings.ReplaceAll(h.metadata.namespace, ".", "-"),
+			Name: fmt.Sprintf("%s-%s-%s-%s-%s", "huawei-cloudeye", kedautil.NormalizeString(h.metadata.namespace),
 				h.metadata.metricsName,
 				h.metadata.dimensionName, h.metadata.dimensionValue),
 		},
