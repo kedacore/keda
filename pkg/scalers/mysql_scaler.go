@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	kedautil "github.com/kedacore/keda/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +13,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -188,7 +188,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 	metricName := "mysql"
 	if s.metadata.connectionString != "" {
-		metricName = fmt.Sprintf("%s-%s", metricName, strings.ReplaceAll(s.metadata.connectionString, "/", "-"))
+		metricName = fmt.Sprintf("%s-%s", metricName, kedautil.NormalizeString(s.metadata.connectionString))
 	} else {
 		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
 	}
