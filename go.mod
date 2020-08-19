@@ -61,5 +61,5 @@ replace (
 	google.golang.org/grpc => google.golang.org/grpc v1.24.0
 )
 
-// WORKAROUND until k8s v1.18+ is not present in knative/pkg
+// WORKAROUND - we can remove this once k8s v1.18+ is present in knative/pkg
 replace knative.dev/pkg => github.com/zroubalik/pkg v0.0.0-20200714090639-88ee0a9b8a22
