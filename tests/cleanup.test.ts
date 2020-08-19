@@ -6,7 +6,7 @@ test.before('setup shelljs', () => {
 })
 
 test('Remove Keda', t => {
-  let result = sh.exec('make undeploy')
+  let result = sh.exec('(cd .. && make undeploy)')
   if (result.code !== 0) {
     t.fail('error removing keda. ' + result)
   }
