@@ -18,7 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	"github.com/kedacore/keda/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
@@ -30,7 +30,7 @@ type KedaV1alpha1Interface interface {
 	TriggerAuthenticationsGetter
 }
 
-// KedaV1alpha1Client is used to interact with features provided by the keda.sh group.
+// KedaV1alpha1Client is used to interact with features provided by the keda group.
 type KedaV1alpha1Client struct {
 	restClient rest.Interface
 }

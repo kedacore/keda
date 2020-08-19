@@ -32,14 +32,8 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
-      - name: Backup the original ScaledJob CRD
-        run: cp deploy/crds/keda.sh_scaledjobs_crd.yaml deploy/crds/keda.sh_scaledjobs_crd.yaml.orig
-
       - name: Publish
         run: make publish
-
-      - name: Use the original ScaledJob CRD
-        run: mv -f deploy/crds/keda.sh_scaledjobs_crd.yaml.orig deploy/crds/keda.sh_scaledjobs_crd.yaml
 
       - name: Run end to end tests
         env:

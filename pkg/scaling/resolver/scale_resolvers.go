@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {

@@ -1,0 +1,14 @@
+domain: keda.sh
+layout: go.kubebuilder.io/v2
+projectName: keda
+repo: github.com/kedacore/keda
+resources:
+- group: keda.sh
+  kind: ScaledObject
+  version: v1alpha1
+- group: keda.sh
+  kind: ScaledJob
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}

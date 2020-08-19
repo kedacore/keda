@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	prommetrics "github.com/kedacore/keda/pkg/metrics"
 	"github.com/kedacore/keda/pkg/scaling"
 

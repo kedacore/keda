@@ -21,10 +21,10 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Verify Generated clientset is up to date
-        run: make verify-clientset
+        run: make clientset-verify
+      
+      - name: Build
+        run: make build
 
       - name: Test
         run: make test
-
-      - name: Build
-        run: make build
