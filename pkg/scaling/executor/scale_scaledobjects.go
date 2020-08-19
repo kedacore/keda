@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool) {

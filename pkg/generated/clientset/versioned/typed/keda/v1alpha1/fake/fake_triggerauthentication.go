@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,9 +35,9 @@ type FakeTriggerAuthentications struct {
 	ns   string
 }
 
-var triggerauthenticationsResource = schema.GroupVersionResource{Group: "keda.sh", Version: "v1alpha1", Resource: "triggerauthentications"}
+var triggerauthenticationsResource = schema.GroupVersionResource{Group: "keda", Version: "v1alpha1", Resource: "triggerauthentications"}
 
-var triggerauthenticationsKind = schema.GroupVersionKind{Group: "keda.sh", Version: "v1alpha1", Kind: "TriggerAuthentication"}
+var triggerauthenticationsKind = schema.GroupVersionKind{Group: "keda", Version: "v1alpha1", Kind: "TriggerAuthentication"}
 
 // Get takes name of the triggerAuthentication, and returns the corresponding triggerAuthentication object, and an error if there is any.
 func (c *FakeTriggerAuthentications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TriggerAuthentication, err error) {

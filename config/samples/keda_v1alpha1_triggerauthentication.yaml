@@ -1,0 +1,9 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: example-triggerauthentication
+spec:
+  secretTargetRef:
+    - parameter: exmaple-secret-parameter
+      name: example-secret-name
+      key: example-role-key

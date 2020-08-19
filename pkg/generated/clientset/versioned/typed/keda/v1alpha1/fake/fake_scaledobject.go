@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,9 +35,9 @@ type FakeScaledObjects struct {
 	ns   string
 }
 
-var scaledobjectsResource = schema.GroupVersionResource{Group: "keda.sh", Version: "v1alpha1", Resource: "scaledobjects"}
+var scaledobjectsResource = schema.GroupVersionResource{Group: "keda", Version: "v1alpha1", Resource: "scaledobjects"}
 
-var scaledobjectsKind = schema.GroupVersionKind{Group: "keda.sh", Version: "v1alpha1", Kind: "ScaledObject"}
+var scaledobjectsKind = schema.GroupVersionKind{Group: "keda", Version: "v1alpha1", Kind: "ScaledObject"}
 
 // Get takes name of the scaledObject, and returns the corresponding scaledObject object, and an error if there is any.
 func (c *FakeScaledObjects) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {

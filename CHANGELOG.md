@@ -46,7 +46,7 @@
 - Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
 
 ### Other
-- Update Operator SDK and k8s deps ([#870](https://github.com/kedacore/keda/issues/870))
+- Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870))
 
 ## v1.5.0
 

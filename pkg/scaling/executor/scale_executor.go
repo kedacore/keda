@@ -3,13 +3,15 @@ package executor
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 const (

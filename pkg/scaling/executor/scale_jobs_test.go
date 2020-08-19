@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/pkg/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/pkg/mock/mock_client"
 	"github.com/stretchr/testify/assert"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -16,6 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	"github.com/kedacore/keda/pkg/mock/mock_client"
 )
 
 func TestCleanUpNormalCase(t *testing.T) {
@@ -31,9 +32,9 @@ func TestCleanUpNormalCase(t *testing.T) {
 
 	// Setup current running jobs
 	client := getMockClient(t, ctrl, &[]mockJobParameter{
-		mockJobParameter{Name: "name1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
-		mockJobParameter{Name: "name2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
-		mockJobParameter{Name: "name3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobComplete},
 	}, &actualDeletedJobName)
 
 	scaleExecutor := getMockScaleExecutor(client)
@@ -57,12 +58,12 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 
 	// Setup current running jobs
 	client := getMockClient(t, ctrl, &[]mockJobParameter{
-		mockJobParameter{Name: "success1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
-		mockJobParameter{Name: "success2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
-		mockJobParameter{Name: "success3", CompletionTime: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete},
-		mockJobParameter{Name: "fail1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobFailed},
-		mockJobParameter{Name: "fail2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobFailed},
-		mockJobParameter{Name: "fail3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "success1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "success2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "success3", CompletionTime: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "fail1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "fail2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "fail3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobFailed},
 	}, &actualDeletedJobName)
 
 	scaleExecutor := getMockScaleExecutor(client)
@@ -188,7 +189,7 @@ func getJob(t *testing.T, name string, completionTime string, jobConditionType b
 		Spec: batchv1.JobSpec{},
 		Status: batchv1.JobStatus{
 			Conditions: []batchv1.JobCondition{
-				batchv1.JobCondition{
+				{
 					Type:   jobConditionType,
 					Status: v1.ConditionTrue,
 				},

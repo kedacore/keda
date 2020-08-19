@@ -331,11 +331,10 @@ ASALocalRun/
 
 # Keda artifacts
 dist/
-build/_output
+bin
 .DS_Store
 
 apiserver.local.config/
-config
 *.cert
 *.key
 
