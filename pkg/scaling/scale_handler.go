@@ -367,48 +367,50 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	switch triggerType {
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(resolvedEnv, triggerMetadata, authParams)
-	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
-	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
-	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
-	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
-	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
+	case "aws-sqs-queue":
+		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
+	case "azure-blob":
+		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata)
-	case "prometheus":
-		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
-	case "redis":
-		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
-	case "gcp-pubsub":
-		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
+	case "azure-monitor":
+		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "azure-queue":
+		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "azure-servicebus":
+		return scalers.NewAzureServiceBusScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+	case "cron":
+		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
 	case "external":
 		return scalers.NewExternalScaler(name, namespace, triggerMetadata)
 	case "external-push":
 		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata)
-	case "liiklus":
-		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
-	case "stan":
-		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
+	case "gcp-pubsub":
+		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
-	case "azure-blob":
-		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
-	case "postgresql":
-		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
+	case "kafka":
+		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
+	case "liiklus":
+		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "mysql":
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
-	case "azure-monitor":
-		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
-	case "cron":
-		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
+	case "postgresql":
+		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
+	case "prometheus":
+		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
+	case "rabbitmq":
+		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
+	case "redis":
+		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
+	case "redis-streams":
+		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+	case "stan":
+		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
