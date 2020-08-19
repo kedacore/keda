@@ -34,7 +34,7 @@ test.serial('Get Kubernetes version', t => {
 })
 
 test.serial('Deploy Keda', t => {
-  let result = sh.exec('make deploy')
+  let result = sh.exec('(cd .. && make deploy)')
   if (result.code !== 0) {
     t.fail('error deploying keda. ' + result)
   }
