@@ -206,9 +206,30 @@ func getRedisListLength(ctx context.Context, address string, password string, li
 	}
 
 	client := redis.NewClient(options)
+	var listType *redis.StatusCmd
 
-	cmd := client.LLen(listName)
+	listType = client.Type(listName)
+	if listType.Err() != nil {
+		return -1, listType.Err()
+	}
 
+	var cmd *redis.IntCmd
+	switch listType.Val() {
+	case "list":
+		cmd = client.LLen(listName)
+	case "set":
+		cmd = client.SCard(listName)
+	case "hash":
+		cmd = client.HLen(listName)
+	case "zset":
+		cmd = client.ZCard(listName)
+	default:
+		cmd = nil
+	}
+
+	if cmd == nil {
+		return -1, fmt.Errorf("list must be of type:list,set,hash,zset but was %s", listType.Val())
+	}
 	if cmd.Err() != nil {
 		return -1, cmd.Err()
 	}
