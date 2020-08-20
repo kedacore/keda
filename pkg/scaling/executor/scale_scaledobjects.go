@@ -12,9 +12,9 @@ import (
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool) {
-	logger := e.logger.WithValues("Scaledobject.Name", scaledObject.Name,
-		"ScaledObject.Namespace", scaledObject.Namespace,
-		"ScaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
+	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
+		"scaledObject.Namespace", scaledObject.Namespace,
+		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
 
 	currentScale, err := e.getScaleTargetScale(ctx, scaledObject)
 	if err != nil {
