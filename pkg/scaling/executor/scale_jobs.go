@@ -2,9 +2,9 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
+	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -22,8 +22,10 @@ const (
 )
 
 func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
+	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
+	
 	runningJobCount := e.getRunningJobCount(scaledJob, maxScale)
-	e.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
+	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 
 	var effectiveMaxScale int64
 	effectiveMaxScale = maxScale - runningJobCount
@@ -31,39 +33,37 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		effectiveMaxScale = 0
 	}
 
-	e.logger.Info("Scaling Jobs")
-
 	if isActive {
-		e.logger.V(1).Info("At least one scaler is active")
+		logger.V(1).Info("At least one scaler is active")
 		now := metav1.Now()
 		scaledJob.Status.LastActiveTime = &now
-		e.updateLastActiveTime(ctx, e.logger, scaledJob)
-		e.createJobs(scaledJob, scaleTo, effectiveMaxScale)
+		e.updateLastActiveTime(ctx, logger, scaledJob)
+		e.createJobs(logger, scaledJob, scaleTo, effectiveMaxScale)
 	} else {
-		e.logger.V(1).Info("No change in activity")
+		logger.V(1).Info("No change in activity")
 	}
 
 	err := e.cleanUp(scaledJob)
 	if err != nil {
-		e.logger.Error(err, "Failed to cleanUp jobs")
+		logger.Error(err, "Failed to cleanUp jobs")
 	}
 
 	return
 }
 
-func (e *scaleExecutor) createJobs(scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
 	scaledJob.Spec.JobTargetRef.Template.GenerateName = scaledJob.GetName() + "-"
 	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
 		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
 	}
 	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob"] = scaledJob.GetName()
 
-	e.logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
+	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 
 	if scaleTo > maxScale {
 		scaleTo = maxScale
 	}
-	e.logger.Info("Creating jobs", "Number of jobs", scaleTo)
+	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	for i := 0; i < int(scaleTo); i++ {
 
@@ -85,23 +85,23 @@ func (e *scaleExecutor) createJobs(scaledJob *kedav1alpha1.ScaledJob, scaleTo in
 		// Job doesn't allow RestartPolicyAlways, it seems like this value is set by the client as a default one,
 		// we should set this property to allowed value in that case
 		if job.Spec.Template.Spec.RestartPolicy == "" {
-			e.logger.V(1).Info("Job RestartPolicy is not set, setting it to 'OnFailure', to avoid setting it to the client's default value 'Always'")
+			logger.V(1).Info("Job RestartPolicy is not set, setting it to 'OnFailure', to avoid setting it to the client's default value 'Always'")
 			job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
 		}
 
 		// Set ScaledObject instance as the owner and controller
 		err := controllerutil.SetControllerReference(scaledJob, job, e.reconcilerScheme)
 		if err != nil {
-			e.logger.Error(err, "Failed to set ScaledObject as the owner of the new Job")
+			logger.Error(err, "Failed to set ScaledObject as the owner of the new Job")
 		}
 
 		err = e.client.Create(context.TODO(), job)
 		if err != nil {
-			e.logger.Error(err, "Failed to create a new Job")
+			logger.Error(err, "Failed to create a new Job")
 
 		}
 	}
-	e.logger.Info("Created jobs", "Number of jobs", scaleTo)
+	logger.Info("Created jobs", "Number of jobs", scaleTo)
 
 }
 
@@ -140,6 +140,8 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob, ma
 
 // Clean up will delete the jobs that is exceed historyLimit
 func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
+	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
+
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
 		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
@@ -148,7 +150,7 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 	jobs := &batchv1.JobList{}
 	err := e.client.List(context.TODO(), jobs, opts...)
 	if err != nil {
-		e.logger.Info("Can not get job list: ", scaledJob.GetName())
+		logger.Error(err, "Can not get list of Jobs")
 		return err
 	}
 
@@ -178,18 +180,18 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 		failedJobsHistoryLimit = *scaledJob.Spec.FailedJobsHistoryLimit
 	}
 
-	err = e.deleteJobsWithHistoryLimit(completedJobs, successfulJobsHistoryLimit)
+	err = e.deleteJobsWithHistoryLimit(logger, completedJobs, successfulJobsHistoryLimit)
 	if err != nil {
 		return err
 	}
-	err = e.deleteJobsWithHistoryLimit(failedJobs, failedJobsHistoryLimit)
+	err = e.deleteJobsWithHistoryLimit(logger, failedJobs, failedJobsHistoryLimit)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *scaleExecutor) deleteJobsWithHistoryLimit(jobs []batchv1.Job, historyLimit int32) error {
+func (e *scaleExecutor) deleteJobsWithHistoryLimit(logger logr.Logger, jobs []batchv1.Job, historyLimit int32) error {
 	if len(jobs) <= int(historyLimit) {
 		return nil
 	}
@@ -200,7 +202,7 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(jobs []batchv1.Job, historyLi
 		if err != nil {
 			return err
 		}
-		e.logger.Info(fmt.Sprintf("Remove a job (%s) by reaching the historyLimit: %d", j.ObjectMeta.Name, historyLimit))
+		logger.Info("Remove a job by reaching the historyLimit", "job.Name", j.ObjectMeta.Name, "historyLimit", historyLimit)
 	}
 	return nil
 }
