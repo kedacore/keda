@@ -16,6 +16,11 @@ import (
 	version "github.com/kedacore/keda/version"
 )
 
+const (
+	defaultSuccessfulJobsHistoryLimit = int32(100)
+	defaultFailedJobsHistoryLimit     = int32(100)
+)
+
 func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
 	runningJobCount := e.getRunningJobCount(scaledJob, maxScale)
 	e.logger.Info("Scaling Jobs", "Number of running Jobs ", runningJobCount)
@@ -162,8 +167,8 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 	sort.Sort(byCompletedTime(completedJobs))
 	sort.Sort(byCompletedTime(failedJobs))
 
-	successfulJobsHistoryLimit := int32(100) // TODO Default value should be somewhere constant.
-	failedJobsHistoryLimit := int32(100)     // TODO Default value should be somewhere constant.
+	successfulJobsHistoryLimit := defaultSuccessfulJobsHistoryLimit
+	failedJobsHistoryLimit := defaultFailedJobsHistoryLimit
 
 	if scaledJob.Spec.SuccessfulJobsHistoryLimit != nil {
 		successfulJobsHistoryLimit = *scaledJob.Spec.SuccessfulJobsHistoryLimit
