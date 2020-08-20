@@ -78,7 +78,7 @@ release: manifests kustomize
 
 .PHONY: set-version
 set-version:
-	@sed -i 's@Version   =.*@Version   = "$(VERSION)"@g' ./version/version.go;	
+	@sed -i 's@Version   =.*@Version   = "$(VERSION)"@g' ./version/version.go;
 
 ##################################################
 # RUN / (UN)INSTALL / DEPLOY                     #
@@ -118,7 +118,7 @@ undeploy:
 
 ##################################################
 # Build                                          #
-##################################################	
+##################################################
 .PHONY: build
 build: manifests set-version manager adapter
 
@@ -161,6 +161,7 @@ generate: controller-gen
 controller-gen:
 ifeq (, $(shell which controller-gen))
 	@{ \
+	cd / ;\
 	GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
@@ -173,6 +174,7 @@ endif
 kustomize:
 ifeq (, $(shell which kustomize))
 	@{ \
+	cd / ;\
 	GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
 	}
 KUSTOMIZE=$(GOBIN)/kustomize
@@ -202,7 +204,7 @@ govet:
 ##################################################
 # Kubebuilder project layout has API under 'api/v1alpha1'
 # client-go codegen expects group name (keda) in the path ie. 'api/keda/v1alpha'
-# Because there's no way how to modify any of these settings, 
+# Because there's no way how to modify any of these settings,
 # we need to hack things a little bit (use tmp directory 'api/keda/v1alpha' and replace the name of package)
 .PHONY: clientset-prepare
 clientset-prepare:
