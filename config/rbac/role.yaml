@@ -57,3 +57,10 @@ rules:
   - scaledobjects/status
   verbs:
   - '*'
+- apiGroups:
+  - keda.sh
+  resources:
+  - triggerauthentications
+  - triggerauthentications/status
+  verbs:
+  - '*'

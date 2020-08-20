@@ -19,6 +19,7 @@ import (
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/status,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=triggerauthentications;triggerauthentications/status,verbs="*"
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
 
 // ScaledJobReconciler reconciles a ScaledJob object
