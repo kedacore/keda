@@ -17,11 +17,6 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
 	serviceURL := azqueue.NewServiceURL(*endpoint, p)
 	queueURL := serviceURL.NewQueueURL(queueName)
-	_, err = queueURL.Create(ctx, azqueue.Metadata{})
-	if err != nil {
-		return -1, err
-	}
-
 	props, err := queueURL.GetProperties(ctx)
 	if err != nil {
 		return -1, err
