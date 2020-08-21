@@ -64,9 +64,8 @@ type ScaleTarget struct {
 	ApiVersion string `json:"apiVersion,omitempty"`
 	// +optional
 	Kind string `json:"kind,omitempty"`
-
 	// +optional
-	ContainerName string `json:"containerName,omitempty"`
+	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 }
 
 // ScaleTriggers reference the scaler that will be used
