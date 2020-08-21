@@ -54,6 +54,8 @@ spec:
         spec:
           description: ScaledJobSpec defines the desired state of ScaledJob
           properties:
+            envSourceContainerName:
+              type: string
             failedJobsHistoryLimit:
               format: int32
               type: integer

@@ -27,13 +27,14 @@ type ScaledJob struct {
 // ScaledJobSpec defines the desired state of ScaledJob
 type ScaledJobSpec struct {
 	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef"`
-
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
 	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
 	// +optional
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
+	// +optional
+	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
 	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
 	Triggers        []ScaleTriggers `json:"triggers"`

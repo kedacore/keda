@@ -354,10 +354,9 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 			ObjectMeta: withPods.ObjectMeta,
 			Spec:       withPods.Spec.Template.Spec,
 		}
-		return &podTemplateSpec, obj.Spec.ScaleTargetRef.ContainerName, nil
+		return &podTemplateSpec, obj.Spec.ScaleTargetRef.EnvSourceContainerName, nil
 	case *kedav1alpha1.ScaledJob:
-		// TODO add ContainerName for ScaledJobs!!
-		return &obj.Spec.JobTargetRef.Template, "", nil
+		return &obj.Spec.JobTargetRef.Template, obj.Spec.EnvSourceContainerName, nil
 	default:
 		return nil, "", fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
