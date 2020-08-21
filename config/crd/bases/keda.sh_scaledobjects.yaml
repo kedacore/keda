@@ -257,7 +257,7 @@ spec:
               properties:
                 apiVersion:
                   type: string
-                containerName:
+                envSourceContainerName:
                   type: string
                 kind:
                   type: string
