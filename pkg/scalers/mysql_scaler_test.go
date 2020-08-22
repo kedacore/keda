@@ -10,22 +10,22 @@ var testMySQLResolvedEnv = map[string]string{
 }
 
 type parseMySQLMetadataTestData struct {
-	metdadata   map[string]string
+	metadata    map[string]string
 	raisesError bool
 }
 
-var testMySQLMetdata = []parseMySQLMetadataTestData{
+var testMySQLMetadata = []parseMySQLMetadataTestData{
 	// No metadata
-	{metdadata: map[string]string{}, raisesError: true},
+	{metadata: map[string]string{}, raisesError: true},
 	// connectionString
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, raisesError: false},
+	{metadata: map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, raisesError: false},
 	// Params instead of conn str
-	{metdadata: map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, raisesError: false},
+	{metadata: map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, raisesError: false},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
-	for _, testData := range testMySQLMetdata {
-		_, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metdadata, map[string]string{})
+	for _, testData := range testMySQLMetadata {
+		_, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metadata, map[string]string{})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
