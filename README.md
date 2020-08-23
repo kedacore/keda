@@ -6,7 +6,7 @@
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 
-KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves 
+KEDA allows for fine-grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves 
 as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom 
 resource definition.
 
@@ -116,7 +116,7 @@ The Operator SDK framework allows you to [run the operator/controller locally](h
 outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
 > Note: This approach works only on Linux or macOS. 
 
-To be KEDA to be fully operational we need to deploy Metrics Server first.
+To have fully operational KEDA we need to deploy Metrics Server first.
 
 1. Deploy CRDs and KEDA into `keda` namespace
    ```bash
@@ -128,7 +128,8 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
-3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-level=` if needed
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the
+   operator log level via `--zap-level=` if needed
    ```bash
    operator-sdk run --local --namespace="" --operator-flags="--zap-level=info"
    ``` 
@@ -145,11 +146,12 @@ to deploy it as part of KEDA. Do the following:
 2. In terminal, create an environment variable `VERSION` and assign it a value for your preference, this tag will 
     be used when creating the operator image that will run KEDA.
     ***Note***: make sure it doesn't clash with the official tags of KEDA containers in DockerHub.
-3. Still in terminal, run `make build` at the root of the source code. This will also build the docker image for 
+3. Still, in terminal, run `make build` at the root of the source code. This will also build the docker image for 
     the KEDA operator that you can deploy to your local cluster. This should build 2 docker images: `kedacore/keda` 
     and `kedacore/keda-metrics-adapter` tagged with the tag you set in step 2
-4. If you haven't downloaded them before, clone the charts repository: `git clone git@github.com:kedacore/charts.git` 
-5. Still in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
+4. If you haven't downloaded them before, clone the [charts](https://github.com/kedacore/charts) 
+    repository: `git clone git@github.com:kedacore/charts.git` 
+5. Still, in terminal, navigate to the `charts/keda` folder (downloaded in step 4), and run the following command 
     (don't forget to replace the placeholder text in the command):
     ```bash
     helm install . --set image.keda=kedacore/keda:$VERSION,image.metricsAdapter=kedacore/keda-metrics-adapter:$VERSION,image.pullPolicy=IfNotPresent
@@ -165,21 +167,25 @@ to deploy it as part of KEDA. Do the following:
     ```
 
 ## Setting log levels
-You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/logging.md) mechanism.
+You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses
+[Operator SDK logging](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/logging.md) mechanism.
 
 ### KEDA Operator logging
-To change the logging level, find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+To change the logging level, find `--zap-level=` argument in Operator Deployment section in `deploy/12-operator.yaml`
+file, modify it's value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
 
-To change the logging time format, find `--zap-time-encoding=` argument in Operator Deployment section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
+To change the logging time format, find `--zap-time-encoding=` argument in Operator Deployment
+section in `deploy/12-operator.yaml` file, modify it's value and redeploy.
 
 Allowed values are `epoch`, `millis`, `nano`, or `iso8601`
 
 ### Metrics Server logging
-Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deployment.yaml` file, modify it's value and redeploy.
+Find `--v=0` argument in Operator Deployment section in `deploy/22-metrics-deployment.yaml` file, modify
+it's value and redeploy.
 
 Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
 
