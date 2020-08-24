@@ -412,6 +412,8 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
 	case "stan":
 		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
+	case "external-metric-source":
+		return scalers.NewHTTPScaler(resolvedEnv, triggerMetadata, authParams)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
