@@ -68,3 +68,15 @@ git add -A
 git commit -sm "one commit on <branch-name>"
 git push --force
 ```
+
+## Code quality
+
+This project is using [pre-commits](https://pre-commit.com) to ensure the
+quality of the code. To install pre-commits just do:
+```bash
+pip install pre-commit
+# or
+brew install pre-commit
+```
+then from project directory run `pre-commit install`. For more installation options
+visit the [pre-commits](https://pre-commit.com).

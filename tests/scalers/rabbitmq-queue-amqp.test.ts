@@ -88,7 +88,7 @@ metadata:
   labels:
     app: test-deployment
 spec:
-  replicas: 0 
+  replicas: 0
   selector:
     matchLabels:
       app: test-deployment

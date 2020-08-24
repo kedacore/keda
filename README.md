@@ -21,12 +21,12 @@ KEDA allows for fine-grained autoscaling (including to/from zero) for event driv
 as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom 
 resource definition.
 
-KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal 
+KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal
 Pod Autoscaler, and has no external dependencies.
 
 We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 <img src="https://raw.githubusercontent.com/kedacore/keda/master/images/logo-cncf.svg" height="75px">
-  
+
 ## Getting started
 
 * [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
@@ -68,13 +68,13 @@ If interested in contributing or participating in the direction of KEDA, you can
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
-Just want to learn or chat about KEDA? Feel free to join the conversation in 
+Just want to learn or chat about KEDA? Feel free to join the conversation in
 **[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
 ## Building: Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
 
-This helps you pull and build quickly - dev containers launch the project inside a container with all the tooling 
-required for a consistent and seamless developer experience. 
+This helps you pull and build quickly - dev containers launch the project inside a container with all the tooling
+required for a consistent and seamless developer experience.
 
 This means you don't have to install and configure your dev environment as the container handles this for you.
 
@@ -92,11 +92,11 @@ code .
 Once VSCode launches run `CTRL+SHIFT+P -> Remote-Containers: Reopen in container` and then use the integrated
 terminal to run:
 
-```bash 
+```bash
 make build
 ```
 
-> Note: The first time you run the container it will take some time to build and install the tooling. The image 
+> Note: The first time you run the container it will take some time to build and install the tooling. The image
 > will be cached so this is only required the first time.
 
 ## Building: Locally directly
@@ -127,9 +127,14 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ```
 
 ## Deploying: Custom KEDA locally outside cluster
+<<<<<<< HEAD
 The Operator SDK framework allows you to run the operator/controller locally outside the cluster without
  a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
 > Note: This approach works only on Linux or macOS. 
+=======
+The Operator SDK framework allows you to run the operator/controller locally outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
+> Note: This approach works only on Linux or macOS.
+>>>>>>> Add pre-commit and CI static checks
 
 To have fully operational KEDA we need to deploy Metrics Server first.
 
@@ -145,11 +150,11 @@ To have fully operational KEDA we need to deploy Metrics Server first.
  and change the operator log level via `--zap-log-level=` if needed
    ```bash
    make run ARGS="--zap-log-level=debug"
-   ``` 
+   ```
 
 ## Deploying: Custom KEDA as an image
 
-If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want 
+If you want to change KEDA's behaviour, or if you have created a new scaler (more docs on this to come) and you want
 to deploy it as part of KEDA. Do the following:
 
 1. Make your change in the code.
@@ -162,7 +167,7 @@ to deploy it as part of KEDA. Do the following:
    ```bash
    IMAGE_REPO=johndoe make deploy
    ```
-4. Once the keda pods are up, check the logs to verify everything running ok, eg: 
+4. Once the keda pods are up, check the logs to verify everything running ok, eg:
     ```bash
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda logs -f
 
