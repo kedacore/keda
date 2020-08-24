@@ -8,17 +8,13 @@ In order to develop a scaler, a developer should do the following:
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods defined in the [scaler interface](#scaler-interface) section.
 4. Create a constructor according to [this](#constructor).
-5. Change the `getScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler.
+5. Change the `getScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally
-1. Run `export VERSION=local`
-2. Open the terminal and go to the root of the source code
-3. Run `make build`
-5. If you haven't done it yet clone the charts repository: `git  clone git@github.com:kedacore/charts.git`
-6. In the terminal, navigate to the `chart/keda` folder (the charts downloaded in step 3), and run the following command (don't forget to replace the placeholder text in the command) `helm install . --set image.keda=kedacore/keda:[tag used in step 1],image.pullPolicy=IfNotPresent`.
-
-The last step assumes that you have `helm` already installed in the cluster. In this step we install the helm chart, and we substitute the image with the image we built in step 1. Notice that we are also overriding the image PullPolice to `IfNotPresent` since this is a local cluster.
+1. Open the terminal and go to the root of the source code
+2. Run `IMAGE_REPO=johndoe make publish`, where `johndoe ` is your GitHub repo, this will create and publis images with your build of KEDA into your repo. Please refer [the guide for local deployment](Readme.md#deploying-custom-keda-locally-outside-cluster) for more details. 
+3. Run `IMAGE_REPO=johndoe make deploy`, this will deploy KEDA to your cluster.
 
 ## Scaler interface
 
@@ -27,7 +23,7 @@ The scalers in KEDA are implementations of a KEDA `Scaler` Go interface declared
 ### GetMetrics
 
 This is the key function of a scaler; it returns a value that represents a current state of an external metric (e.g. length of a queue). The return type is an `ExternalMetricValue` struct which has the following fields:
-- `MetricName`: this is the name of the metric that we are returning.
+- `MetricName`: this is the name of the metric that we are returning. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
 - `Timestamp`: indicates the time at which the metrics were produced.
 - `WindowSeconds`: //TODO
 - `Value`: A numerical value that represents the state of the metric. It could be the length of a queue, or it can be the amount of lag in a stream, but it can also be a simple representation of the state.
@@ -43,7 +39,7 @@ For more details check [Kubernetes HPA documentation](https://kubernetes.io/docs
 KEDA works in conjunction with Kubernetes Horizontal Pod Autoscaler (HPA). When KEDA notices a new ScaledObject, it creates an HPA object that has basic information about the metric it needs to poll and scale the pods accordingly. To create this HPA object, KEDA invokes `GetMetricSpecForScaling`.
 
 The return type of this function is `MetricSpec`, but in KEDA's case we will mostly write External metrics. So the property that should be filled is `ExternalMetricSource`, where the:
-- `MetricName`: the name of our metric we are returning in this scaler
+- `MetricName`: the name of our metric we are returning in this scaler. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
 - `MetricSelector`: //TODO
 - `TargetValue`: is the value of the metric we want to reach at all times at all costs. As long as the current metric doesn't match TargetValue, HPA will increase the number of the pods until it reaches the maximum number of pods allowed to scale to.
 - `TargetAverageValue`: the value of the metric for which we require one pod to handle. e.g. if we are have a scaler based on the length of a message queue, and we specificy 10 for `TargetAverageValue`, we are saying that each pod will handle 10 messages. So if the length of the queue becomes 30, we expect that we have 3 pods in our cluster. (`TargetAveryage` and `TargetValue` are mutually exclusive)
