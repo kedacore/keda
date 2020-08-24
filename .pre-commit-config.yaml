@@ -53,6 +53,15 @@ repos:
       - id: end-of-file-fixer
       - id: check-merge-conflict
       - id: mixed-line-ending
+  - repo: https://github.com/thlorenz/doctoc.git
+    rev: v1.4.0
+    hooks:
+      - id: doctoc
+        name: Add TOC for md files
+        files: ^README\.md$|^CONTRIBUTING\.md$
+        args:
+          - "--maxlevel"
+          - "2"
   - repo: local
     hooks:
     - id: language-matters

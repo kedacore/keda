@@ -4,6 +4,19 @@ Thanks for helping make KEDA better 😍.
 
 There are many areas we can use contributions - ranging from code, documentation, feature proposals, issue triage, samples, and content creation.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of contents**
+
+- [Getting Help](#getting-help)
+- [Contributing Scalers](#contributing-scalers)
+- [Including Documentation Changes](#including-documentation-changes)
+- [Creating and building a local environment](#creating-and-building-a-local-environment)
+- [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
+- [Code quality](#code-quality)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Getting Help
 
 If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community-standup) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.

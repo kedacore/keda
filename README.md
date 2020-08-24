@@ -27,6 +27,27 @@ Pod Autoscaler, and has no external dependencies.
 We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 <img src="https://raw.githubusercontent.com/kedacore/keda/master/images/logo-cncf.svg" height="75px">
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of contents**
+
+- [Getting started](#getting-started)
+- [Deploying KEDA](#deploying-keda)
+- [Documentation](#documentation)
+- [FAQ](#faq)
+- [Samples](#samples)
+- [Releases](#releases)
+- [Contributing](#contributing)
+- [Community](#community)
+- [Building: Quick start with Visual Studio Code Remote - Containers](#building-quick-start-with-visual-studio-code-remote---containers)
+- [Building: Locally directly](#building-locally-directly)
+- [Deploying: Custom KEDA locally outside cluster](#deploying-custom-keda-locally-outside-cluster)
+- [Deploying: Custom KEDA as an image](#deploying-custom-keda-as-an-image)
+- [Setting log levels](#setting-log-levels)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
 ## Getting started
 
 * [QuickStart - RabbitMQ and Go](https://github.com/kedacore/sample-go-rabbitmq)
