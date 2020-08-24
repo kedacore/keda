@@ -46,8 +46,23 @@ repos:
             ^version/version\.go$
           )
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
+    rev: v3.2.0
     hooks:
       - id: trailing-whitespace
       - id: detect-private-key
       - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+  - repo: local
+    hooks:
+    - id: language-matters
+      language: pygrep
+      name: Check for language that we do not accept as community
+      description: Please use "deny_list" or "allow_list"  instead.
+      entry: "(?i)(black|white)[_-]?(list|List)"
+      pass_filenames: true
+    - id: sort-scalers
+      name: Check if scalers are sorted in scaler_handler.go
+      language: system
+      entry: "bash tools/sort_scalers.sh"
+      files: .*scale_handler\.go$

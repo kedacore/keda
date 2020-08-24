@@ -363,6 +363,7 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 }
 
 func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
+	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(resolvedEnv, triggerMetadata, authParams)
@@ -413,6 +414,7 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
+	// TRIGGERS-END
 }
 
 func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers, error) {
