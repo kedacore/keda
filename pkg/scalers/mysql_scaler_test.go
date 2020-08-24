@@ -10,7 +10,7 @@ var testMySQLResolvedEnv = map[string]string{
 }
 
 type parseMySQLMetadataTestData struct {
-	metdadata   map[string]string
+	metadata    map[string]string
 	raisesError bool
 }
 
@@ -19,7 +19,7 @@ type mySQLMetricIdentifier struct {
 	name             string
 }
 
-var testMySQLMetdata = []parseMySQLMetadataTestData{
+var testMySQLMetadata = []parseMySQLMetadataTestData{
 	// No metadata
 	{map[string]string{}, true},
 	// connectionString
@@ -29,13 +29,13 @@ var testMySQLMetdata = []parseMySQLMetadataTestData{
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{&testMySQLMetdata[1], "mysql-test_value"},
-	{&testMySQLMetdata[2], "mysql-test_dbname"},
+	{&testMySQLMetadata[1], "mysql-test_value"},
+	{&testMySQLMetadata[2], "mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
-	for _, testData := range testMySQLMetdata {
-		_, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metdadata, map[string]string{})
+	for _, testData := range testMySQLMetadata {
+		_, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metadata, map[string]string{})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -68,7 +68,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(map[string]string{"test_value": "test_value"}, testData.metadataTestData.metdadata, nil)
+		meta, err := parseMySQLMetadata(map[string]string{"test_value": "test_value"}, testData.metadataTestData.metadata, nil)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
