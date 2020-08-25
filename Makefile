@@ -203,9 +203,9 @@ govet:
 # Clientset                                      #
 ##################################################
 # Kubebuilder project layout has API under 'api/v1alpha1'
-# client-go codegen expects group name (keda) in the path ie. 'api/keda/v1alpha'
+# client-go codegen expects group name (keda) in the path ie. 'api/keda/v1alpha1'
 # Because there's no way how to modify any of these settings,
-# we need to hack things a little bit (use tmp directory 'api/keda/v1alpha' and replace the name of package)
+# we need to hack things a little bit (use tmp directory 'api/keda/v1alpha1' and replace the name of package)
 .PHONY: clientset-prepare
 clientset-prepare:
 	go mod vendor

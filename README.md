@@ -17,7 +17,7 @@ Make sure to remove previous KEDA (including CRD) from the cluster. Switch to th
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 
-KEDA allows for fine grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves 
+KEDA allows for fine-grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves 
 as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom 
 resource definition.
 
@@ -62,7 +62,9 @@ You can find Contributing guide [here](./CONTRIBUTING.md)
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-* **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings). ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) | [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
+* **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings). 
+([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
+ [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
@@ -108,7 +110,8 @@ cd keda
 make build
 ```
 
-If the build process fails due to some "checksum mismatch" errors, make sure that `GOPROXY` and `GOSUMDB` environment variables are set properly.
+If the build process fails due to some "checksum mismatch" errors, make sure that `GOPROXY` and `GOSUMDB`
+ environment variables are set properly.
 With Go installation on Fedora, for example, it could happen they are wrong.
 
 ```bash
@@ -124,10 +127,11 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ```
 
 ## Deploying: Custom KEDA locally outside cluster
-The Operator SDK framework allows you to run the operator/controller locally outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
+The Operator SDK framework allows you to run the operator/controller locally outside the cluster without
+ a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
 > Note: This approach works only on Linux or macOS. 
 
-To be KEDA to be fully operational we need to deploy Metrics Server first.
+To have fully operational KEDA we need to deploy Metrics Server first.
 
 1. Deploy CRDs and KEDA into `keda` namespace
    ```bash
@@ -137,7 +141,8 @@ To be KEDA to be fully operational we need to deploy Metrics Server first.
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
-3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config` and change the operator log level via `--zap-log-level=` if needed
+3. Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`
+ and change the operator log level via `--zap-log-level=` if needed
    ```bash
    make run ARGS="--zap-log-level=debug"
    ``` 
@@ -148,7 +153,8 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 to deploy it as part of KEDA. Do the following:
 
 1. Make your change in the code.
-2. Build and publish on Docker Hub images with your changes, `IMAGE_REPO` should point to your repository (specifying `IMAGE_REGISTRY` as well allows you to use registry of your choice eg. quay.io).
+2. Build and publish on Docker Hub images with your changes, `IMAGE_REPO` should point to your repository
+ (specifying `IMAGE_REGISTRY` as well allows you to use registry of your choice eg. quay.io).
    ```bash
    IMAGE_REPO=johndoe make publish
    ```
@@ -164,16 +170,19 @@ to deploy it as part of KEDA. Do the following:
     ```
 
 ## Setting log levels
-You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses [Operator SDK logging](https://sdk.operatorframework.io/docs/building-operators/golang/references/logging/) mechanism.
+You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses
+ [Operator SDK logging](https://sdk.operatorframework.io/docs/building-operators/golang/references/logging/) mechanism.
 
 ### KEDA Operator logging
-To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file, modify it's value and redeploy.
+To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
+ modify it's value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
 
-To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file, modify it's value and redeploy.
+To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
+ modify it's value and redeploy.
 
 Allowed values are `json` and `console`
 
