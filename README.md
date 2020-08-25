@@ -17,8 +17,8 @@ Make sure to remove previous KEDA (including CRD) from the cluster. Switch to th
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 
-KEDA allows for fine-grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves 
-as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom 
+KEDA allows for fine-grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves
+as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom
 resource definition.
 
 KEDA can run on both the cloud and the edge, integrates natively with Kubernetes components such as the Horizontal
@@ -83,7 +83,7 @@ You can find Contributing guide [here](./CONTRIBUTING.md)
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-* **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings). 
+* **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings).
 ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
  [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
 * **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
@@ -150,8 +150,8 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ## Deploying: Custom KEDA locally outside cluster
 <<<<<<< HEAD
 The Operator SDK framework allows you to run the operator/controller locally outside the cluster without
- a need of building an image. This should help during development/debugging of KEDA Operator or Scalers. 
-> Note: This approach works only on Linux or macOS. 
+ a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
+> Note: This approach works only on Linux or macOS.
 =======
 The Operator SDK framework allows you to run the operator/controller locally outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
 > Note: This approach works only on Linux or macOS.

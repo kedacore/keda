@@ -13,7 +13,7 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
-- [Code quality](#code-quality)
+- [Code Quality](#code-quality)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -82,7 +82,7 @@ git commit -sm "one commit on <branch-name>"
 git push --force
 ```
 
-## Code quality
+## Code Quality
 
 This project is using [pre-commits](https://pre-commit.com) to ensure the quality of the code. Every change
 is checked on CI and if it does not pass the tests it cannot be accepted. If you want to check locally then
