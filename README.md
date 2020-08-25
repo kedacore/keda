@@ -148,14 +148,11 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ```
 
 ## Deploying: Custom KEDA locally outside cluster
-<<<<<<< HEAD
+
 The Operator SDK framework allows you to run the operator/controller locally outside the cluster without
- a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
+a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
 > Note: This approach works only on Linux or macOS.
-=======
-The Operator SDK framework allows you to run the operator/controller locally outside the cluster without a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
-> Note: This approach works only on Linux or macOS.
->>>>>>> Add pre-commit and CI static checks
+
 
 To have fully operational KEDA we need to deploy Metrics Server first.
 
