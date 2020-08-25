@@ -399,7 +399,7 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
 	case "metrics-api":
-		return scalers.NewHTTPScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewMetricsAPIScaler(resolvedEnv, triggerMetadata, authParams)
 	case "mysql":
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	case "postgresql":

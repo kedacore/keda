@@ -17,13 +17,13 @@ import (
 	"strings"
 )
 
-type httpScaler struct {
-	metadata *httpScalerMetadata
+type metricsAPIScaler struct {
+	metadata *metricsAPIScalerMetadata
 }
 
-type httpScalerMetadata struct {
+type metricsAPIScalerMetadata struct {
 	targetValue int
-	apiURL      string
+	url         string
 	metricName  string
 }
 
@@ -32,19 +32,19 @@ type metric struct {
 	Value float64 `json:"value"`
 }
 
-var httpLog = logf.Log.WithName("http_scaler")
+var httpLog = logf.Log.WithName("metrics_api_scaler")
 
-// NewHTTPScaler creates a new HTTP scaler
-func NewHTTPScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseHTTPMetadata(resolvedEnv, metadata, authParams)
+// NewMetricsAPIScaler creates a new HTTP scaler
+func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	meta, err := metricsAPIMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing HTTP metadata: %s", err)
 	}
-	return &httpScaler{metadata: meta}, nil
+	return &metricsAPIScaler{metadata: meta}, nil
 }
 
-func parseHTTPMetadata(resolvedEnv, metadata, authParams map[string]string) (*httpScalerMetadata, error) {
-	meta := httpScalerMetadata{}
+func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
+	meta := metricsAPIScalerMetadata{}
 
 	if val, ok := metadata["targetValue"]; ok {
 		targetValue, err := strconv.Atoi(val)
@@ -56,11 +56,11 @@ func parseHTTPMetadata(resolvedEnv, metadata, authParams map[string]string) (*ht
 		return nil, fmt.Errorf("no targetValue given in metadata")
 	}
 
-	if val, ok := metadata["apiURL"]; ok {
+	if val, ok := metadata["url"]; ok {
 		// remove ending / for better string formatting
-		meta.apiURL = strings.TrimSuffix(val, "/")
+		meta.url = strings.TrimSuffix(val, "/")
 	} else {
-		return nil, fmt.Errorf("no apiURL given in metadata")
+		return nil, fmt.Errorf("no url given in metadata")
 	}
 
 	if val, ok := metadata["metricName"]; ok {
@@ -73,9 +73,9 @@ func parseHTTPMetadata(resolvedEnv, metadata, authParams map[string]string) (*ht
 }
 
 
-func (s *httpScaler) getMetricInfo() (*metric, error) {
+func (s *metricsAPIScaler) getMetricInfo() (*metric, error) {
 	var m *metric
-	u := fmt.Sprintf("%s/metrics/%s/", s.metadata.apiURL, s.metadata.metricName)
+	u := fmt.Sprintf("%s/metrics/%s/", s.metadata.url, s.metadata.metricName)
 	r, err := http.Get(u)
 	if err != nil {
 		return nil, err
@@ -92,13 +92,13 @@ func (s *httpScaler) getMetricInfo() (*metric, error) {
 	return m, nil
 }
 
-// Close does nothing in case of httpScaler
-func (s *httpScaler) Close() error {
+// Close does nothing in case of metricsAPIScaler
+func (s *metricsAPIScaler) Close() error {
 	return nil
 }
 
 // IsActive returns true if there are pending messages to be processed
-func (s *httpScaler) IsActive(ctx context.Context) (bool, error) {
+func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 	m, err := s.getMetricInfo()
 	if err != nil {
 		httpLog.Error(err, fmt.Sprintf("Error when checking API health: %s", err))
@@ -109,9 +109,9 @@ func (s *httpScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *httpScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.apiURL), s.metadata.metricName)
+	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.url), s.metadata.metricName)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: metricName,
@@ -128,7 +128,7 @@ func (s *httpScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *httpScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	m, err := s.getMetricInfo()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting metrics endpoint: %s", err)
