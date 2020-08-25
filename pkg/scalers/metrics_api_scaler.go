@@ -72,11 +72,6 @@ func parseHTTPMetadata(resolvedEnv, metadata, authParams map[string]string) (*ht
 	return &meta, nil
 }
 
-func (s *httpScaler) checkHealth() error {
-	u := fmt.Sprintf("%s/health/", s.metadata.apiURL)
-	_, err := http.Get(u)
-	return err
-}
 
 func (s *httpScaler) getMetricInfo() (*metric, error) {
 	var m *metric
@@ -104,18 +99,19 @@ func (s *httpScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *httpScaler) IsActive(ctx context.Context) (bool, error) {
-	err := s.checkHealth()
+	m, err := s.getMetricInfo()
 	if err != nil {
 		httpLog.Error(err, fmt.Sprintf("Error when checking API health: %s", err))
 		return false, err
 	}
-	return true, nil
+
+	return m.Value > 0.0, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *httpScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	metricName := fmt.Sprintf("%s-%s", "http", kedautil.NormalizeString(s.metadata.apiURL), s.metadata.metricName)
+	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.apiURL), s.metadata.metricName)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: metricName,
