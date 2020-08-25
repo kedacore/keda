@@ -208,7 +208,8 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			h.logger.V(1).Info("Scaler for scaledObject is active", "Scaler", scaler)
+			h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			break
 		}
 	}
 	return isActive
