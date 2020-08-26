@@ -15,7 +15,7 @@ const connectionString = `amqp://${username}:${password}@rabbitmq.${rabbitmqName
 const messageCount = 500
 
 test.before(t => {
-  // install rabbitmq 
+  // install rabbitmq
   RabbitMQHelper.installRabbit(t, username, password, vhost, rabbitmqNamespace)
 
   sh.config.silent = true
@@ -72,7 +72,7 @@ test.after.always.cb('clean up rabbitmq-queue deployment', t => {
   }
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
-  // remove rabbitmq 
+  // remove rabbitmq
   RabbitMQHelper.uninstallRabbit(rabbitmqNamespace)
   t.end()
 })
@@ -91,7 +91,7 @@ metadata:
   labels:
     app: test-deployment
 spec:
-  replicas: 0 
+  replicas: 0
   selector:
     matchLabels:
       app: test-deployment

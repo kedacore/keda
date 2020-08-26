@@ -22,7 +22,7 @@ jobs:
 
       - name: Verify Generated clientset is up to date
         run: make clientset-verify
-      
+
       - name: Build
         run: make build
 

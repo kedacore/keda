@@ -70,4 +70,4 @@ ENV PATH=${PATH}:/usr/local/go/bin \
     GOPATH=/go
 
 # Install FOSSA tooling
-RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash 
+RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash

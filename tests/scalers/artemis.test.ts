@@ -21,11 +21,11 @@ test.before(t => {
   ArtemisHelper.installConsumer(t, testNamespace)
   ArtemisHelper.publishMessages(t, testNamespace)
 
-}); 
+});
 
 test.serial('Deployment should have 0 replicas on start', t => {
     const replicaCount = sh.exec(`kubectl get deployment.apps/kedartemis-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-    
+
     t.log('replica count: %s', replicaCount);
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
@@ -37,8 +37,8 @@ test.serial(`Deployment should scale to 5 with 1000 messages on the queue then b
     t.is(
       0,
       sh.exec(`kubectl -n ${testNamespace} apply -f ${tmpFile.name}`).code, 'creating scaledObject should work.'
-    )    
-  
+    )
+
     // with messages published, the consumer deployment should start receiving the messages
     let replicaCount = '0'
     for (let i = 0; i < 10 && replicaCount !== '5'; i++) {
@@ -50,9 +50,9 @@ test.serial(`Deployment should scale to 5 with 1000 messages on the queue then b
         sh.exec('sleep 5s')
       }
     }
-  
+
     t.is('5', replicaCount, 'Replica count should be 5 after 10 seconds')
-  
+
     for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
       replicaCount = sh.exec(
         `kubectl get deployment.apps/kedartemis-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
@@ -61,7 +61,7 @@ test.serial(`Deployment should scale to 5 with 1000 messages on the queue then b
         sh.exec('sleep 5s')
       }
     }
-  
+
     t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
   })
 
@@ -110,4 +110,4 @@ spec:
         brokerAddress: "test"
       authenticationRef:
         name: trigger-auth-kedartemis
-`           
+`
