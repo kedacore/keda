@@ -7,7 +7,7 @@ import (
 var metricsAPIResolvedEnv = map[string]string{}
 
 type metricsAPIMetadataTestData struct {
-	metadata   map[string]string
+	metadata    map[string]string
 	raisesError bool
 }
 

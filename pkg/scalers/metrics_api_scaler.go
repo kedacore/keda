@@ -72,7 +72,6 @@ func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 	return &meta, nil
 }
 
-
 func (s *metricsAPIScaler) getMetricInfo() (*metric, error) {
 	var m *metric
 	u := fmt.Sprintf("%s/metrics/%s/", s.metadata.url, s.metadata.metricName)
