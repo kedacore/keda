@@ -38,9 +38,15 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
 	meta, err := metricsAPIMetadata(resolvedEnv, metadata, authParams)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing HTTP metadata: %s", err)
+		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
-	return &metricsAPIScaler{metadata: meta}, nil
+	scaler := &metricsAPIScaler{metadata: meta}
+	err = scaler.checkHealth()
+	if err != nil {
+		return nil, fmt.Errorf("error checking metric API health/ endpoint: %s", err)
+	}
+
+	return scaler, nil
 }
 
 func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
@@ -72,6 +78,12 @@ func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 	return &meta, nil
 }
 
+func (s *metricsAPIScaler) checkHealth() error {
+	u := fmt.Sprintf("%s/health/", s.metadata.url)
+	_, err := http.Get(u)
+	return err
+}
+
 func (s *metricsAPIScaler) getMetricInfo() (*metric, error) {
 	var m *metric
 	u := fmt.Sprintf("%s/metrics/%s/", s.metadata.url, s.metadata.metricName)
@@ -100,7 +112,7 @@ func (s *metricsAPIScaler) Close() error {
 func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 	m, err := s.getMetricInfo()
 	if err != nil {
-		httpLog.Error(err, fmt.Sprintf("Error when checking API health: %s", err))
+		httpLog.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
 		return false, err
 	}
 
