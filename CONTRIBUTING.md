@@ -84,8 +84,9 @@ git push --force
 
 ## Code Quality
 
-This project is using [pre-commits](https://pre-commit.com) to ensure the quality of the code. Every change
-is checked on CI and if it does not pass the tests it cannot be accepted. If you want to check locally then
+This project is using [pre-commits](https://pre-commit.com) to ensure the quality of the code.
+We encourage you to use pre-commits, but it's not a required to contribute. Every change is checked
+on CI and if it does not pass the tests it cannot be accepted. If you want to check locally then
 you should install Python3.6 or newer together and run:
 ```bash
 pip install pre-commit
