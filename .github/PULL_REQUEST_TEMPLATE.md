@@ -1,5 +1,5 @@
 <!-- Thank you for contributing!
-     
+
      Read more about how you can contribute in our contribution guide:
      https://github.com/kedacore/keda/blob/master/CONTRIBUTING.md
 -->

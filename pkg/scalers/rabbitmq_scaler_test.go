@@ -101,24 +101,24 @@ var vhost_pathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
-		for _, vhost_path := range vhost_pathes {
-			expeced_vhost := "myhost"
+		for _, vhostPath := range vhost_pathes {
+			expecedVhost := "myhost"
 
-			if vhost_path != "/myhost" {
-				expeced_vhost = "%2F"
+			if vhostPath != "/myhost" {
+				expecedVhost = "%2F"
 			}
 
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expeced_path := "/api/queues/" + expeced_vhost + "/evaluate_trials"
-				if r.RequestURI != expeced_path {
-					t.Error("Expect request path to =", expeced_path, "but it is", r.RequestURI)
+				expecedPath := "/api/queues/" + expecedVhost + "/evaluate_trials"
+				if r.RequestURI != expecedPath {
+					t.Error("Expect request path to =", expecedPath, "but it is", r.RequestURI)
 				}
 
 				w.WriteHeader(testData.responseStatus)
 				w.Write([]byte(testData.response))
 			}))
 
-			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhost_path)}
+			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
 
 			metadata := map[string]string{
 				"queueLength":    "10",

@@ -24,7 +24,7 @@ test.before(t => {
 
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
-  // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics 
+  // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
   // even when the KEDA deployment is at zero - the service points to both deployments
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))

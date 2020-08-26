@@ -96,9 +96,9 @@ spec:
       - image: rabbitmq:3-management
         name: rabbitmq
         env:
-        - name: RABBITMQ_DEFAULT_USER 
+        - name: RABBITMQ_DEFAULT_USER
           value: "{{USERNAME}}"
-        - name: RABBITMQ_DEFAULT_PASS 
+        - name: RABBITMQ_DEFAULT_PASS
           value: "{{PASSWORD}}"
         - name: RABBITMQ_DEFAULT_VHOST
           value: "{{VHOST}}"

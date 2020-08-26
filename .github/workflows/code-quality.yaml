@@ -1,0 +1,25 @@
+name: Code Quality
+on:
+  push:
+    branches:
+      - master
+      - v2
+  pull_request:
+    branches:
+      - master
+      - v2
+jobs:
+  statics:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+      - uses: actions/setup-go@v2-beta
+        with:
+          go-version: 1.15
+      - name: install go-lint
+        run: |
+          go get -u golang.org/x/lint/golint
+          export PATH=$PATH:$(go list -f {{.Target}} golang.org/x/lint/golint)
+      - uses: pre-commit/action@v1.0.1

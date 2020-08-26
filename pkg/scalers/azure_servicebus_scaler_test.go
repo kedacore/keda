@@ -103,12 +103,12 @@ func TestGetServiceBusLength(t *testing.T) {
 	t.Logf("\tQueue '%s' has 1 message\n", queueName)
 	t.Logf("\tTopic '%s' with subscription '%s' has 1 message\n", topicName, subscriptionName)
 
-	connection_string := os.Getenv("SERVICEBUS_CONNECTION_STRING")
+	connectionString := os.Getenv("SERVICEBUS_CONNECTION_STRING")
 
 	for _, scaler := range getServiceBusLengthTestScalers {
-		if connection_string != "" {
+		if connectionString != "" {
 			// Can actually test that numbers return
-			scaler.metadata.connection = connection_string
+			scaler.metadata.connection = connectionString
 			length, err := scaler.GetAzureServiceBusLength(context.TODO())
 
 			if err != nil {
