@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 )
 
+// K8sVersion holds parsed data from a K8s version
 type K8sVersion struct {
 	Version       *version.Info
 	MinorVersion  int
@@ -13,6 +14,7 @@ type K8sVersion struct {
 	Parsed        bool
 }
 
+// NewK8sVersion will parse a version info and return a struct
 func NewK8sVersion(version *version.Info) K8sVersion {
 	minorTrimmed := ""
 	if len(version.Minor) > 2 {
