@@ -62,7 +62,7 @@ func getResource(restMapper meta.RESTMapper, group string, version string, kind 
 		if err == nil {
 			return restmapping.Resource.GroupResource().Resource, nil
 		}
-		
+
 		return "", err
 	}
 }
