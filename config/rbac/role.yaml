@@ -11,12 +11,12 @@ rules:
   resources:
   - configmaps
   - configmaps/status
+  - events
   verbs:
   - '*'
 - apiGroups:
   - ""
   resources:
-  - events
   - external
   - pods
   - secrets

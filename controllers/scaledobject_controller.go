@@ -32,8 +32,8 @@ import (
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
 // +kubebuilder:rbac:groups=keda.sh,resources=triggerauthentications;triggerauthentications/status,verbs="*"
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
-// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs="*"
-// +kubebuilder:rbac:groups="",resources=events;pods;services;services;secrets;external,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
+// +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 
