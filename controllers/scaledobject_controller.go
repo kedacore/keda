@@ -50,7 +50,7 @@ type ScaledObjectReconciler struct {
 	kubeVersion              kedautil.K8sVersion
 }
 
-//SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
+// SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// create Discovery clientset
@@ -101,7 +101,7 @@ func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) 
 	), nil
 }
 
-//Reconcile performs reonciliation on the identified Kubernetes object based on the request information passed, returns the result and an error (if any).
+// Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
 func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 

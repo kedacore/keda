@@ -11,7 +11,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
-//SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
+// SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
 func SetStatusConditions(client runtimeclient.Client, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
 	var patch runtimeclient.Patch
 
@@ -36,7 +36,7 @@ func SetStatusConditions(client runtimeclient.Client, logger logr.Logger, object
 	return err
 }
 
-//UpdateScaledObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
+// UpdateScaledObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
 func UpdateScaledObjectStatus(client runtimeclient.Client, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 	scaledObject.Status = *status
