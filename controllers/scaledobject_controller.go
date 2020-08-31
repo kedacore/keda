@@ -50,6 +50,7 @@ type ScaledObjectReconciler struct {
 	kubeVersion              kedautil.K8sVersion
 }
 
+//SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// create Discovery clientset
@@ -100,6 +101,7 @@ func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) 
 	), nil
 }
 
+//Reconcile performs reonciliation on the identified Kubernetes object based on the request information passed, returns the result and an error (if any).
 func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 
@@ -193,11 +195,9 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 	if newHPACreated || scaleObjectSpecChanged {
 		if r.requestScaleLoop(logger, scaledObject) != nil {
 			return "Failed to start a new scale loop with scaling logic", err
-		} else {
-			logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 		}
+		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-
 	return "ScaledObject is defined correctly and is ready for scaling", nil
 }
 
@@ -240,11 +240,10 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 			// resource doesn't exist
 			logger.Error(err, "Target resource doesn't exist", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			return gvkr, err
-		} else {
-			// resource exist but doesn't expose /scale subresource
-			logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
-			return gvkr, errScale
 		}
+		// resource exist but doesn't expose /scale subresource
+		logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+		return gvkr, errScale
 	}
 
 	// if it is not already present in ScaledObject Status:
