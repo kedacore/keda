@@ -30,6 +30,7 @@ type ScaledJobReconciler struct {
 	scaleHandler scaling.ScaleHandler
 }
 
+//SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme())
@@ -41,6 +42,7 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+//Reconcile performs reonciliation on the identified Kubernetes job based on the request information passed, returns the result and an error (if any).
 func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 
@@ -96,10 +98,8 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 	err = r.requestScaleLoop(logger, scaledJob)
 	if err != nil {
 		return "Failed to start a new scale loop with scaling logic", err
-	} else {
-		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-
+	logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	return "ScaledJob is defined correctly and is ready to scaling", nil
 }
 
