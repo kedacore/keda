@@ -15,10 +15,6 @@ repos:
             ^api/v1alpha1/scaledjob_types\.go$|
             ^api/v1alpha1/scaledobject_types\.go$|
             ^api/v1alpha1/triggerauthentication_types\.go$|
-            ^controllers/scaledjob_controller\.go$|
-            ^controllers/scaledobject_controller\.go$|
-            ^controllers/util/status\.go$|
-            ^controllers/util/string_lists\.go$|
             ^hack/tools\.go$|
             ^pkg/scalers/artemis_scaler\.go$|
             ^pkg/scalers/azure/azure_aad_podidentity\.go$|
