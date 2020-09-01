@@ -39,11 +39,7 @@ repos:
             ^pkg/scalers/scaler\.go$|
             ^pkg/scaling/executor/scale_executor\.go$|
             ^pkg/scaling/resolver/hashicorpvault_handler\.go$|
-            ^pkg/scaling/resolver/scale_resolvers\.go$|
-            ^pkg/util/gvkr\.go$|
-            ^pkg/util/k8sversion\.go$|
-            ^pkg/util/normalize_string\.go$|
-            ^version/version\.go$
+            ^pkg/scaling/resolver/scale_resolvers\.go$
           )
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
