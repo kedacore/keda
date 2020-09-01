@@ -61,8 +61,8 @@ func getResource(restMapper meta.RESTMapper, group string, version string, kind 
 		restmapping, err := restMapper.RESTMapping(schema.GroupKind{Group: group, Kind: kind}, version)
 		if err == nil {
 			return restmapping.Resource.GroupResource().Resource, nil
-		} else {
-			return "", err
 		}
+
+		return "", err
 	}
 }
