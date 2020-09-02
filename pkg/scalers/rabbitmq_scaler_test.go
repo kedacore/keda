@@ -34,17 +34,17 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// properly formed metadata
-	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
 	// malformed queueLength
-	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "AA", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 	// missing host
 	{map[string]string{"queueLength": "AA", "queueName": "sample"}, true, map[string]string{}},
 	// missing queueName
-	{map[string]string{"queueLength": "10", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{}},
 	// host defined in authParams
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
 	// properly formed metadata with includeUnacked
-	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHostFromEnv": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -123,7 +123,7 @@ func TestGetQueueInfo(t *testing.T) {
 			metadata := map[string]string{
 				"queueLength":    "10",
 				"queueName":      "evaluate_trials",
-				"apiHost":        apiHost,
+				"apiHostFromEnv": apiHost,
 				"includeUnacked": "true",
 			}
 
