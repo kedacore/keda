@@ -2,9 +2,10 @@ package scalers
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	kedautil "github.com/kedacore/keda/pkg/util"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,7 +15,6 @@ import (
 	"net/http"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
-	"strings"
 )
 
 type metricsAPIScaler struct {
@@ -22,14 +22,9 @@ type metricsAPIScaler struct {
 }
 
 type metricsAPIScalerMetadata struct {
-	targetValue int
-	url         string
-	metricName  string
-}
-
-type metric struct {
-	Name  string  `json:"name"`
-	Value float64 `json:"value"`
+	targetValue   int
+	url           string
+	valueLocation string
 }
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -40,13 +35,7 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
-	scaler := &metricsAPIScaler{metadata: meta}
-	err = scaler.checkHealth()
-	if err != nil {
-		return nil, fmt.Errorf("error checking metric API health/ endpoint: %s", err)
-	}
-
-	return scaler, nil
+	return &metricsAPIScaler{metadata: meta}, nil
 }
 
 func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
@@ -63,44 +52,45 @@ func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 	}
 
 	if val, ok := metadata["url"]; ok {
-		// remove ending / for better string formatting
-		meta.url = strings.TrimSuffix(val, "/")
+		meta.url = val
 	} else {
 		return nil, fmt.Errorf("no url given in metadata")
 	}
 
-	if val, ok := metadata["metricName"]; ok {
-		meta.metricName = val
+	if val, ok := metadata["valueLocation"]; ok {
+		meta.valueLocation = val
 	} else {
-		return nil, fmt.Errorf("no metricName given in metadata")
+		return nil, fmt.Errorf("no valueLocation given in metadata")
 	}
 
 	return &meta, nil
 }
 
-func (s *metricsAPIScaler) checkHealth() error {
-	u := fmt.Sprintf("%s/health/", s.metadata.url)
-	_, err := http.Get(u)
-	return err
+// GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
+func GetValueFromResponse(body []byte, valueLocation string) (int64, error) {
+	r := gjson.GetBytes(body, valueLocation)
+	if r.Type != gjson.Number {
+		msg := fmt.Sprintf("valueLocation must point to value of type number got: %s", r.Type.String())
+		return 0, errors.New(msg)
+	}
+	return int64(r.Num), nil
 }
 
-func (s *metricsAPIScaler) getMetricInfo() (*metric, error) {
-	var m *metric
-	u := fmt.Sprintf("%s/metrics/%s/", s.metadata.url, s.metadata.metricName)
-	r, err := http.Get(u)
+func (s *metricsAPIScaler) getMetricValue() (int64, error) {
+	r, err := http.Get(s.metadata.url)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	err = json.Unmarshal(b, &m)
+	v, err := GetValueFromResponse(b, s.metadata.valueLocation)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return m, nil
+	return v, nil
 }
 
 // Close does nothing in case of metricsAPIScaler
@@ -110,19 +100,19 @@ func (s *metricsAPIScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
-	m, err := s.getMetricInfo()
+	v, err := s.getMetricValue()
 	if err != nil {
 		httpLog.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
 		return false, err
 	}
 
-	return m.Value > 0.0, nil
+	return v > 0.0, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.url), s.metadata.metricName)
+	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.url), s.metadata.valueLocation)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: metricName,
@@ -140,14 +130,14 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	m, err := s.getMetricInfo()
+	v, err := s.getMetricValue()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting metrics endpoint: %s", err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(m.Value), resource.DecimalSI),
+		Value:      *resource.NewQuantity(v, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

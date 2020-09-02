@@ -31,6 +31,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.6.1
+	github.com/tidwall/gjson v1.6.1
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	google.golang.org/api v0.29.0
 	google.golang.org/genproto v0.0.0-20200731012542-8145dea6a485
