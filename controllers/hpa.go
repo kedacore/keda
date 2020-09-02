@@ -106,7 +106,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObj
 
 	if !equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
 		logger.V(1).Info("Found difference in the HPA spec accordint to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
-		if r.Client.Update(context.TODO(), foundHpa) != nil {
+		if r.Client.Update(context.TODO(), hpa) != nil {
 			foundHpa.Spec = hpa.Spec
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
@@ -119,7 +119,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObj
 
 	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Labels, foundHpa.ObjectMeta.Labels) {
 		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
-		if r.Client.Update(context.TODO(), foundHpa) != nil {
+		if r.Client.Update(context.TODO(), hpa) != nil {
 			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
