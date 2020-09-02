@@ -26,6 +26,11 @@ type parseAWSCloudwatchMetadataTestData struct {
 	comment    string
 }
 
+type awsCloudwatchMetricIdentifier struct {
+	metadataTestData *parseAWSCloudwatchMetadataTestData
+	name             string
+}
+
 var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 	{map[string]string{}, testAWSAuthentication, true, "Empty structures"},
 	// properly formed cloudwatch query and awsRegion
@@ -161,6 +166,10 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"with AWS Role assigned on KEDA operator itself"},
 }
 
+var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
+	{&testAWSCloudwatchMetadata[1], "aws-cloudwatch-AWS-SQS-QueueName-keda"},
+}
+
 func TestCloudwatchParseMetadata(t *testing.T) {
 	for _, testData := range testAWSCloudwatchMetadata {
 		_, err := parseAwsCloudwatchMetadata(testData.metadata, testAWSCloudwatchResolvedEnv, testData.authParams)
@@ -169,6 +178,22 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Errorf("%s: Expected error but got success", testData.comment)
+		}
+	}
+}
+
+func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range awsCloudwatchMetricIdentifiers {
+		meta, err := parseAwsCloudwatchMetadata(testData.metadataTestData.metadata, testAWSCloudwatchResolvedEnv, testData.metadataTestData.authParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta}
+
+		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

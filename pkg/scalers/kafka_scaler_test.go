@@ -6,19 +6,25 @@ import (
 )
 
 type parseKafkaMetadataTestData struct {
-	metadata   map[string]string
-	isError    bool
-	numBrokers int
-	brokers    []string
-	group      string
-	topic      string
+	metadata          map[string]string
+	isError           bool
+	numBrokers        int
+	brokers           []string
+	group             string
+	topic             string
+	offsetResetPolicy offsetResetPolicy
+}
+
+type kafkaMetricIdentifier struct {
+	metadataTestData *parseKafkaMetadataTestData
+	name             string
 }
 
 // A complete valid metadata example for reference
 var validMetadata = map[string]string{
-	"brokerList":    "broker1:9092,broker2:9092",
-	"consumerGroup": "my-group",
-	"topic":         "my-topic",
+	"bootstrapServers": "broker1:9092,broker2:9092",
+	"consumerGroup":    "my-group",
+	"topic":            "my-topic",
 }
 
 // A complete valid authParams example for sasl, with username and passwd
@@ -32,30 +38,26 @@ var validWithAuthParams = map[string]string{
 var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
-	// failure, no brokerList (deprecated) or bootstrapServers
-	{map[string]string{}, true, 0, nil, "", ""},
-	// failure, both brokerList (deprecated) and bootstrapServers
-	{map[string]string{"brokerList": "foobar:9092", "bootstrapServers": "foobar:9092"}, true, 0, nil, "", ""},
-
-	// tests with brokerList (deprecated)
+	// failure, no bootstrapServers
+	{map[string]string{}, true, 0, nil, "", "", ""},
 	// failure, no consumer group
-	{map[string]string{"brokerList": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
+	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", "latest"},
 	// failure, no topic
-	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", ""},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest")},
 	// success
-	{map[string]string{"brokerList": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic"},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
 	// success, more brokers
-	{map[string]string{"brokerList": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic"},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
+	// success, offsetResetPolicy policy latest
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "latest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest")},
+	// failure, offsetResetPolicy policy wrong
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "foo"}, true, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", ""},
+	// success, offsetResetPolicy policy earliest
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "earliest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", offsetResetPolicy("earliest")},
+}
 
-	// tests with bootstrapServers
-	// failure, no consumer group
-	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", ""},
-	// failure, no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", ""},
-	// success
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic"},
-	// success, more brokers
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic"},
+var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
+	{&parseKafkaMetadataTestDataset[4], "kafka-my-topic-my-group"},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -80,6 +82,9 @@ func TestGetBrokers(t *testing.T) {
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
 		}
+		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+		}
 
 		meta, err = parseKafkaMetadata(nil, testData.metadata, validWithoutAuthParams)
 
@@ -100,6 +105,25 @@ func TestGetBrokers(t *testing.T) {
 		}
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
+		}
+		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+		}
+	}
+}
+
+func TestKafkaGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range kafkaMetricIdentifiers {
+		meta, err := parseKafkaMetadata(nil, testData.metadataTestData.metadata, validWithAuthParams)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockKafkaScaler := kafkaScaler{meta, nil, nil}
+
+		metricSpec := mockKafkaScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

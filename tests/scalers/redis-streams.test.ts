@@ -103,8 +103,8 @@ test.after.always.cb('clean up deployment', t => {
   const resources = [
     'secret/redis-password',
     'deployment/redis-streams-consumer',
-    'scaledobject.keda.k8s.io/redis-streams-scaledobject',
-    'triggerauthentications.keda.k8s.io/keda-redis-stream-triggerauth'
+    'scaledobject.keda.sh/redis-streams-scaledobject',
+    'triggerauthentications.keda.sh/keda-redis-stream-triggerauth'
   ]
 
   for (const resource of resources) {
@@ -159,7 +159,7 @@ type: Opaque
 data:
   password: {{REDIS_PASSWORD}}
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-redis-stream-triggerauth
@@ -200,15 +200,13 @@ spec:
                   name: redis-password
                   key: password
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: redis-streams-scaledobject
-  labels:
-    deploymentName: redis-streams-consumer
 spec:
   scaleTargetRef:
-    deploymentName: redis-streams-consumer
+    name: redis-streams-consumer
   pollingInterval: 5
   cooldownPeriod: 10
   minReplicaCount: 1

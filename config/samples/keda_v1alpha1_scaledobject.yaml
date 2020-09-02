@@ -1,0 +1,15 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: example-scaledobject
+spec:
+  scaleTargetRef:
+    name: example-deployment
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 0
+  maxReplicaCount: 100
+  triggers:
+    - type: example-trigger
+      metadata:
+        property: examle-property

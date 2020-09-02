@@ -11,11 +11,7 @@
       "ts-node/register"
     ]
   },
-  "scripts": {
-    "pretest": "ava setup.test.ts",
-    "test": "ava **/**.test.ts",
-    "posttest": "ava cleanup.test.ts"
-  },
+  "scripts": {},
   "dependencies": {
     "@kubernetes/client-node": "^0.10.3",
     "@types/async": "^3.0.3",

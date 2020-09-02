@@ -1,81 +1,63 @@
 module github.com/kedacore/keda
 
-go 1.13
-
-// Required deps for operator-sdk v0.11.0 <-> kubernetes-incubator/custom-metrics-apiserver on kubernetes-1.14.1
-replace (
-	github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190703094830-abe433176c52
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
-	github.com/ugorji/go => github.com/ugorji/go v1.1.7
-
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
-	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2
-
-)
-
-// Pinned to kubernetes-1.14.1
-replace (
-	k8s.io/api => k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190409022649-727a075fdec8
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
-	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20190409021813-1ec86e4da56c
-	k8s.io/client-go => k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20190409023720-1bc0c81fa51d
-	k8s.io/metrics => k8s.io/metrics v0.0.0-20190409022812-850dadb8b49c
-)
-
-replace (
-	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.31.1
-	// Pinned to v2.10.0 (kubernetes-1.14.1) so https://proxy.golang.org can
-	// resolve it correctly.
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20190525122359-d20e84d0fb64
-	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.2.2
-)
-
-replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.11.0
+go 1.15
 
 require (
-	cloud.google.com/go v0.46.3
-	github.com/Azure/azure-amqp-common-go/v2 v2.1.0
+	cloud.google.com/go v0.62.0
+	github.com/Azure/azure-amqp-common-go/v3 v3.0.1
 	github.com/Azure/azure-event-hubs-go v1.3.1
-	github.com/Azure/azure-sdk-for-go v30.1.0+incompatible
-	github.com/Azure/azure-service-bus-go v0.9.1
-	github.com/Azure/azure-storage-blob-go v0.8.0
-	github.com/Azure/azure-storage-queue-go v0.0.0-20190416192124-a17745f1cdbf
-	github.com/Azure/go-autorest v12.0.0+incompatible
-	github.com/Huawei/gophercloud v0.0.0-20190806033045-3f2c8f6aa160
-	github.com/Shopify/sarama v1.23.1
-	github.com/aws/aws-sdk-go v1.25.6
+	github.com/Azure/azure-sdk-for-go v46.0.0+incompatible
+	github.com/Azure/azure-service-bus-go v0.10.6
+	github.com/Azure/azure-storage-blob-go v0.10.0
+	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.1
+	github.com/Huawei/gophercloud v1.0.21
+	github.com/Shopify/sarama v1.27.0
+	github.com/aws/aws-sdk-go v1.34.11
 	github.com/go-logr/logr v0.1.0
-	github.com/go-openapi/spec v0.19.3
-	github.com/go-redis/redis v6.15.5+incompatible
-	github.com/go-sql-driver/mysql v1.4.1
-	github.com/golang/mock v1.3.1
-	github.com/golang/protobuf v1.3.2
+	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-sql-driver/mysql v1.5.0
+	github.com/golang/mock v1.4.4
+	github.com/golang/protobuf v1.4.2
 	github.com/hashicorp/vault/api v1.0.4
-	github.com/imdario/mergo v0.3.8
-	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
-	github.com/lib/pq v1.3.0
-	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/operator-framework/operator-sdk v0.0.0-00010101000000-000000000000
-	github.com/pkg/errors v0.8.1
+	github.com/imdario/mergo v0.3.11
+	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200618121405-54026617ec44
+	github.com/lib/pq v1.8.0
+	github.com/mitchellh/hashstructure v1.0.0
+	github.com/onsi/ginkgo v1.14.0
+	github.com/onsi/gomega v1.10.1
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/spf13/pflag v1.0.5
-	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
-	github.com/stretchr/testify v1.4.0
+	github.com/streadway/amqp v1.0.0
+	github.com/stretchr/testify v1.6.1
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
-	google.golang.org/api v0.10.0
-	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143
-	google.golang.org/grpc v1.24.0
-	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
-	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
-	k8s.io/apimachinery v0.0.0-20191014065749-fb3eea214746
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/component-base v0.0.0-20191014071552-ca590c444ad5 // indirect
+	google.golang.org/api v0.29.0
+	google.golang.org/genproto v0.0.0-20200731012542-8145dea6a485
+	google.golang.org/grpc v1.31.0
+	k8s.io/api v0.18.8
+	k8s.io/apimachinery v0.18.8
+	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/code-generator v0.18.8
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c
-	k8s.io/metrics v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/controller-runtime v0.2.0
-	sigs.k8s.io/structured-merge-diff v0.0.0-20191009170950-ae447d53f5c3 // indirect
-
+	k8s.io/metrics v0.18.8
+	knative.dev/pkg v0.0.0-20200810223505-473bba04ee7f
+	sigs.k8s.io/controller-runtime v0.6.2
 )
+
+replace (
+	k8s.io/apiserver => k8s.io/apiserver v0.18.8 // Required by kubernetes-incubator/custom-metrics-apiserver
+	k8s.io/client-go => k8s.io/client-go v0.18.8
+)
+
+// Required to resolve go/grpc issues
+// (grpc version needed by k8s.io/apiserver vs kubernetes-incubator/custom-metrics-apiserver)
+replace (
+	cloud.google.com/go => cloud.google.com/go v0.48.0
+	google.golang.org/api => google.golang.org/api v0.15.1
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143
+	google.golang.org/grpc => google.golang.org/grpc v1.26.0
+)
+
+// WORKAROUND - we can remove this once k8s v1.18+ is present in knative/pkg
+replace knative.dev/pkg => github.com/zroubalik/pkg v0.0.0-20200714090639-88ee0a9b8a22

@@ -7,7 +7,6 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -26,11 +25,12 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type ScaledObjectRef struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Namespace            string   `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Name                 string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Namespace            string            `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	ScalerMetadata       map[string]string `protobuf:"bytes,3,rep,name=scalerMetadata,proto3" json:"scalerMetadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *ScaledObjectRef) Reset()         { *m = ScaledObjectRef{} }
@@ -72,49 +72,9 @@ func (m *ScaledObjectRef) GetNamespace() string {
 	return ""
 }
 
-type NewRequest struct {
-	ScaledObjectRef      *ScaledObjectRef  `protobuf:"bytes,1,opt,name=scaledObjectRef,proto3" json:"scaledObjectRef,omitempty"`
-	Metadata             map[string]string `protobuf:"bytes,2,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
-	XXX_unrecognized     []byte            `json:"-"`
-	XXX_sizecache        int32             `json:"-"`
-}
-
-func (m *NewRequest) Reset()         { *m = NewRequest{} }
-func (m *NewRequest) String() string { return proto.CompactTextString(m) }
-func (*NewRequest) ProtoMessage()    {}
-func (*NewRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{1}
-}
-
-func (m *NewRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_NewRequest.Unmarshal(m, b)
-}
-func (m *NewRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_NewRequest.Marshal(b, m, deterministic)
-}
-func (m *NewRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NewRequest.Merge(m, src)
-}
-func (m *NewRequest) XXX_Size() int {
-	return xxx_messageInfo_NewRequest.Size(m)
-}
-func (m *NewRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_NewRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NewRequest proto.InternalMessageInfo
-
-func (m *NewRequest) GetScaledObjectRef() *ScaledObjectRef {
+func (m *ScaledObjectRef) GetScalerMetadata() map[string]string {
 	if m != nil {
-		return m.ScaledObjectRef
-	}
-	return nil
-}
-
-func (m *NewRequest) GetMetadata() map[string]string {
-	if m != nil {
-		return m.Metadata
+		return m.ScalerMetadata
 	}
 	return nil
 }
@@ -130,7 +90,7 @@ func (m *IsActiveResponse) Reset()         { *m = IsActiveResponse{} }
 func (m *IsActiveResponse) String() string { return proto.CompactTextString(m) }
 func (*IsActiveResponse) ProtoMessage()    {}
 func (*IsActiveResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{2}
+	return fileDescriptor_3d382708546499d1, []int{1}
 }
 
 func (m *IsActiveResponse) XXX_Unmarshal(b []byte) error {
@@ -169,7 +129,7 @@ func (m *GetMetricSpecResponse) Reset()         { *m = GetMetricSpecResponse{} }
 func (m *GetMetricSpecResponse) String() string { return proto.CompactTextString(m) }
 func (*GetMetricSpecResponse) ProtoMessage()    {}
 func (*GetMetricSpecResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{3}
+	return fileDescriptor_3d382708546499d1, []int{2}
 }
 
 func (m *GetMetricSpecResponse) XXX_Unmarshal(b []byte) error {
@@ -209,7 +169,7 @@ func (m *MetricSpec) Reset()         { *m = MetricSpec{} }
 func (m *MetricSpec) String() string { return proto.CompactTextString(m) }
 func (*MetricSpec) ProtoMessage()    {}
 func (*MetricSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{4}
+	return fileDescriptor_3d382708546499d1, []int{3}
 }
 
 func (m *MetricSpec) XXX_Unmarshal(b []byte) error {
@@ -256,7 +216,7 @@ func (m *GetMetricsRequest) Reset()         { *m = GetMetricsRequest{} }
 func (m *GetMetricsRequest) String() string { return proto.CompactTextString(m) }
 func (*GetMetricsRequest) ProtoMessage()    {}
 func (*GetMetricsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{5}
+	return fileDescriptor_3d382708546499d1, []int{4}
 }
 
 func (m *GetMetricsRequest) XXX_Unmarshal(b []byte) error {
@@ -302,7 +262,7 @@ func (m *GetMetricsResponse) Reset()         { *m = GetMetricsResponse{} }
 func (m *GetMetricsResponse) String() string { return proto.CompactTextString(m) }
 func (*GetMetricsResponse) ProtoMessage()    {}
 func (*GetMetricsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{6}
+	return fileDescriptor_3d382708546499d1, []int{5}
 }
 
 func (m *GetMetricsResponse) XXX_Unmarshal(b []byte) error {
@@ -342,7 +302,7 @@ func (m *MetricValue) Reset()         { *m = MetricValue{} }
 func (m *MetricValue) String() string { return proto.CompactTextString(m) }
 func (*MetricValue) ProtoMessage()    {}
 func (*MetricValue) Descriptor() ([]byte, []int) {
-	return fileDescriptor_3d382708546499d1, []int{7}
+	return fileDescriptor_3d382708546499d1, []int{6}
 }
 
 func (m *MetricValue) XXX_Unmarshal(b []byte) error {
@@ -379,8 +339,7 @@ func (m *MetricValue) GetMetricValue() int64 {
 
 func init() {
 	proto.RegisterType((*ScaledObjectRef)(nil), "externalscaler.ScaledObjectRef")
-	proto.RegisterType((*NewRequest)(nil), "externalscaler.NewRequest")
-	proto.RegisterMapType((map[string]string)(nil), "externalscaler.NewRequest.MetadataEntry")
+	proto.RegisterMapType((map[string]string)(nil), "externalscaler.ScaledObjectRef.ScalerMetadataEntry")
 	proto.RegisterType((*IsActiveResponse)(nil), "externalscaler.IsActiveResponse")
 	proto.RegisterType((*GetMetricSpecResponse)(nil), "externalscaler.GetMetricSpecResponse")
 	proto.RegisterType((*MetricSpec)(nil), "externalscaler.MetricSpec")
@@ -392,38 +351,35 @@ func init() {
 func init() { proto.RegisterFile("externalscaler.proto", fileDescriptor_3d382708546499d1) }
 
 var fileDescriptor_3d382708546499d1 = []byte{
-	// 484 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x53, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0x8d, 0x63, 0x5a, 0xa5, 0x13, 0xfa, 0xc1, 0xa8, 0x54, 0x91, 0x8b, 0x20, 0xac, 0x84, 0x14,
-	0x71, 0x70, 0xa5, 0x70, 0x41, 0x14, 0x09, 0x41, 0x89, 0x50, 0x25, 0x9a, 0x48, 0x1b, 0xa5, 0x12,
-	0xc7, 0x8d, 0x3b, 0x8d, 0x02, 0x4e, 0x6c, 0xbc, 0xeb, 0x96, 0x70, 0xe0, 0x57, 0xf0, 0xeb, 0xf8,
-	0x35, 0xc8, 0xeb, 0xef, 0x55, 0x43, 0xb8, 0xf4, 0x64, 0xef, 0xbc, 0x37, 0xb3, 0xf3, 0xde, 0xcc,
-	0xc2, 0x21, 0xfd, 0x50, 0x14, 0x2d, 0x85, 0x2f, 0x3d, 0xe1, 0x53, 0xe4, 0x86, 0x51, 0xa0, 0x02,
-	0xdc, 0xab, 0x47, 0x9d, 0xe3, 0x59, 0x10, 0xcc, 0x7c, 0x3a, 0xd1, 0xe8, 0x34, 0xbe, 0x3e, 0xa1,
-	0x45, 0xa8, 0x56, 0x29, 0x99, 0x9d, 0xc1, 0xfe, 0x38, 0xa1, 0x5d, 0x8d, 0xa6, 0x5f, 0xc9, 0x53,
-	0x9c, 0xae, 0x11, 0xe1, 0xc1, 0x52, 0x2c, 0xa8, 0x63, 0x75, 0xad, 0xde, 0x0e, 0xd7, 0xff, 0xf8,
-	0x04, 0x76, 0x92, 0xaf, 0x0c, 0x85, 0x47, 0x9d, 0xa6, 0x06, 0xca, 0x00, 0xfb, 0x63, 0x01, 0x0c,
-	0xe9, 0x96, 0xd3, 0xf7, 0x98, 0xa4, 0xc2, 0x73, 0xd8, 0x97, 0xf5, 0x9a, 0xba, 0x56, 0xbb, 0xff,
-	0xcc, 0x35, 0x1a, 0x36, 0xae, 0xe6, 0x66, 0x1e, 0x7e, 0x84, 0xd6, 0x82, 0x94, 0xb8, 0x12, 0x4a,
-	0x74, 0x9a, 0x5d, 0xbb, 0xd7, 0xee, 0xf7, 0xcc, 0x1a, 0xe5, 0xc5, 0xee, 0x45, 0x46, 0x1d, 0x2c,
-	0x55, 0xb4, 0xe2, 0x45, 0xa6, 0x73, 0x0a, 0xbb, 0x35, 0x08, 0x0f, 0xc0, 0xfe, 0x46, 0xab, 0x4c,
-	0x61, 0xf2, 0x8b, 0x87, 0xb0, 0x75, 0x23, 0xfc, 0x38, 0x17, 0x97, 0x1e, 0xde, 0x34, 0x5f, 0x5b,
-	0xec, 0x25, 0x1c, 0x9c, 0xcb, 0xf7, 0x9e, 0x9a, 0xdf, 0x10, 0x27, 0x19, 0x06, 0x4b, 0x49, 0x78,
-	0x04, 0xdb, 0x11, 0xc9, 0xd8, 0x57, 0xba, 0x44, 0x8b, 0x67, 0x27, 0x36, 0x81, 0xc7, 0x9f, 0x48,
-	0x5d, 0x90, 0x8a, 0xe6, 0xde, 0x38, 0x24, 0xaf, 0x48, 0x78, 0x0b, 0xed, 0x45, 0x11, 0x95, 0x1d,
-	0x4b, 0x4b, 0x71, 0x4c, 0x29, 0x95, 0xc4, 0x2a, 0x9d, 0x7d, 0x06, 0x28, 0x21, 0x7c, 0x0a, 0x90,
-	0x82, 0xc3, 0x72, 0x4a, 0x95, 0x48, 0x82, 0x2b, 0x11, 0xcd, 0x48, 0x8d, 0xe7, 0x3f, 0x53, 0x3d,
-	0x36, 0xaf, 0x44, 0xd8, 0x2f, 0x78, 0x54, 0x34, 0x29, 0xef, 0x61, 0x66, 0xf5, 0xfe, 0x9a, 0x66,
-	0x7f, 0x6c, 0x02, 0x58, 0xbd, 0x3f, 0x73, 0xe8, 0x1d, 0x3c, 0x4c, 0x39, 0x97, 0x89, 0xf3, 0xb9,
-	0x45, 0xc7, 0x77, 0x5b, 0xa4, 0x39, 0xbc, 0x96, 0xc0, 0x46, 0xd0, 0xae, 0x80, 0x1b, 0x5d, 0xea,
-	0xe6, 0x13, 0xb9, 0x2c, 0xc6, 0x6e, 0xf3, 0x6a, 0xa8, 0xff, 0xdb, 0x86, 0xbd, 0x41, 0x76, 0xbb,
-	0x16, 0x1d, 0xe1, 0x29, 0xd8, 0x43, 0xba, 0x45, 0x67, 0xfd, 0x0e, 0x3a, 0x47, 0x6e, 0xfa, 0xdc,
-	0xdc, 0xfc, 0xb9, 0xb9, 0x83, 0xe4, 0xb9, 0xb1, 0x06, 0x8e, 0xa0, 0x95, 0x2f, 0x12, 0x6e, 0x72,
-	0xd5, 0xe9, 0x9a, 0x04, 0x73, 0x07, 0x59, 0x03, 0xbf, 0xc0, 0x6e, 0x6d, 0xdb, 0x36, 0x57, 0x7d,
-	0x61, 0x12, 0xee, 0xdc, 0x56, 0xd6, 0xc0, 0x09, 0x40, 0x39, 0x23, 0x7c, 0xbe, 0x36, 0x2d, 0xdf,
-	0x1f, 0x87, 0xfd, 0x8b, 0x52, 0x94, 0xfd, 0x00, 0x5b, 0x67, 0x7e, 0x20, 0xff, 0x43, 0xff, 0x5a,
-	0x1b, 0xa7, 0xdb, 0x3a, 0xf2, 0xea, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x69, 0x62, 0xa3, 0x07,
-	0xfd, 0x04, 0x00, 0x00,
+	// 442 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xdf, 0x6b, 0xd4, 0x40,
+	0x10, 0x6e, 0x12, 0x2d, 0xed, 0x44, 0xd3, 0x73, 0xac, 0x12, 0xa2, 0x68, 0x5c, 0x10, 0x8a, 0x0f,
+	0x87, 0x5c, 0x5f, 0x44, 0x05, 0xa9, 0x50, 0xa4, 0x60, 0x3d, 0xd8, 0x70, 0x15, 0xf5, 0x69, 0x9b,
+	0x8e, 0x72, 0x9a, 0xcb, 0xc5, 0xdd, 0xbd, 0xe2, 0xf9, 0xe0, 0x3f, 0xeb, 0xab, 0x7f, 0x84, 0xe4,
+	0x77, 0xb2, 0x9c, 0xe6, 0xa5, 0x4f, 0xd9, 0x9d, 0xf9, 0xe6, 0xdb, 0x99, 0x6f, 0x3e, 0x02, 0xfb,
+	0xf4, 0x43, 0x93, 0x4c, 0x45, 0xa2, 0x62, 0x91, 0x90, 0x1c, 0x67, 0x72, 0xa9, 0x97, 0xe8, 0xf5,
+	0xa3, 0xec, 0xb7, 0x05, 0x7b, 0x51, 0x7e, 0xbc, 0x98, 0x9e, 0x7f, 0xa5, 0x58, 0x73, 0xfa, 0x8c,
+	0x08, 0xd7, 0x52, 0xb1, 0x20, 0xdf, 0x0a, 0xad, 0x83, 0x5d, 0x5e, 0x9c, 0xf1, 0x3e, 0xec, 0xe6,
+	0x5f, 0x95, 0x89, 0x98, 0x7c, 0xbb, 0x48, 0xb4, 0x01, 0xfc, 0x04, 0x5e, 0xc9, 0x77, 0x4a, 0x5a,
+	0x5c, 0x08, 0x2d, 0x7c, 0x27, 0x74, 0x0e, 0xdc, 0xc9, 0xe1, 0xd8, 0x68, 0xc2, 0x78, 0xaa, 0xbc,
+	0x37, 0x55, 0xc7, 0xa9, 0x96, 0x6b, 0x6e, 0x50, 0x05, 0x47, 0x70, 0x7b, 0x03, 0x0c, 0x47, 0xe0,
+	0x7c, 0xa3, 0x75, 0xd5, 0x64, 0x7e, 0xc4, 0x7d, 0xb8, 0x7e, 0x29, 0x92, 0x55, 0xdd, 0x5f, 0x79,
+	0x79, 0x6e, 0x3f, 0xb3, 0xd8, 0x13, 0x18, 0x9d, 0xa8, 0xa3, 0x58, 0xcf, 0x2f, 0x89, 0x93, 0xca,
+	0x96, 0xa9, 0x22, 0xbc, 0x0b, 0xdb, 0x92, 0xd4, 0x2a, 0xd1, 0x05, 0xc5, 0x0e, 0xaf, 0x6e, 0x6c,
+	0x06, 0x77, 0xde, 0x90, 0x3e, 0x25, 0x2d, 0xe7, 0x71, 0x94, 0x51, 0xdc, 0x14, 0xbc, 0x04, 0x77,
+	0xd1, 0x44, 0x95, 0x6f, 0x15, 0x13, 0x06, 0xe6, 0x84, 0x9d, 0xc2, 0x2e, 0x9c, 0xbd, 0x05, 0x68,
+	0x53, 0xf8, 0x00, 0xa0, 0x4c, 0xbe, 0x6b, 0x85, 0xee, 0x44, 0xf2, 0xbc, 0x16, 0xf2, 0x0b, 0xe9,
+	0x68, 0xfe, 0xb3, 0x9c, 0xc7, 0xe1, 0x9d, 0x08, 0xfb, 0x05, 0xb7, 0x9a, 0x26, 0x15, 0xa7, 0xef,
+	0x2b, 0x52, 0x1a, 0x4f, 0x60, 0x4f, 0xf5, 0xf5, 0x2d, 0x98, 0xdd, 0xc9, 0xc3, 0x81, 0x35, 0x70,
+	0xb3, 0xce, 0xe8, 0xcf, 0x36, 0xfb, 0x63, 0x33, 0xc0, 0xee, 0xfb, 0x95, 0x42, 0xaf, 0xe0, 0x46,
+	0x89, 0x39, 0xcb, 0x95, 0xaf, 0x25, 0xba, 0xb7, 0x59, 0xa2, 0x02, 0xc3, 0x7b, 0x05, 0x6c, 0x0a,
+	0x6e, 0x27, 0x39, 0xa8, 0x52, 0x58, 0x6f, 0xe4, 0xac, 0x59, 0xbb, 0xc3, 0xbb, 0xa1, 0xc9, 0x1f,
+	0x1b, 0xbc, 0xe3, 0xea, 0xf5, 0xd2, 0x44, 0x38, 0x85, 0x9d, 0xda, 0x0b, 0x38, 0x24, 0x4c, 0x10,
+	0x9a, 0x00, 0xd3, 0x46, 0x6c, 0x0b, 0xdf, 0x83, 0x17, 0x69, 0x49, 0x62, 0x71, 0xa5, 0xb4, 0x4f,
+	0x2d, 0xfc, 0x00, 0x37, 0x7b, 0x4e, 0x1c, 0xe6, 0x7d, 0x6c, 0x02, 0x36, 0x3a, 0x99, 0x6d, 0xe1,
+	0x0c, 0xa0, 0xdd, 0x1f, 0x3e, 0xfa, 0x67, 0x59, 0xed, 0xad, 0x80, 0xfd, 0x0f, 0x52, 0xd3, 0xbe,
+	0xc6, 0x8f, 0xa3, 0xf1, 0x8b, 0x3e, 0xf0, 0x7c, 0xbb, 0xf8, 0xf1, 0x1c, 0xfe, 0x0d, 0x00, 0x00,
+	0xff, 0xff, 0xdc, 0xf1, 0x73, 0xce, 0x90, 0x04, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -438,11 +394,10 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ExternalScalerClient interface {
-	New(ctx context.Context, in *NewRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	IsActive(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*IsActiveResponse, error)
+	StreamIsActive(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (ExternalScaler_StreamIsActiveClient, error)
 	GetMetricSpec(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*GetMetricSpecResponse, error)
 	GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error)
-	Close(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
 type externalScalerClient struct {
@@ -453,15 +408,6 @@ func NewExternalScalerClient(cc *grpc.ClientConn) ExternalScalerClient {
 	return &externalScalerClient{cc}
 }
 
-func (c *externalScalerClient) New(ctx context.Context, in *NewRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/externalscaler.ExternalScaler/New", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *externalScalerClient) IsActive(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*IsActiveResponse, error) {
 	out := new(IsActiveResponse)
 	err := c.cc.Invoke(ctx, "/externalscaler.ExternalScaler/IsActive", in, out, opts...)
@@ -469,6 +415,38 @@ func (c *externalScalerClient) IsActive(ctx context.Context, in *ScaledObjectRef
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *externalScalerClient) StreamIsActive(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (ExternalScaler_StreamIsActiveClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_ExternalScaler_serviceDesc.Streams[0], "/externalscaler.ExternalScaler/StreamIsActive", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &externalScalerStreamIsActiveClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ExternalScaler_StreamIsActiveClient interface {
+	Recv() (*IsActiveResponse, error)
+	grpc.ClientStream
+}
+
+type externalScalerStreamIsActiveClient struct {
+	grpc.ClientStream
+}
+
+func (x *externalScalerStreamIsActiveClient) Recv() (*IsActiveResponse, error) {
+	m := new(IsActiveResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *externalScalerClient) GetMetricSpec(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*GetMetricSpecResponse, error) {
@@ -489,33 +467,23 @@ func (c *externalScalerClient) GetMetrics(ctx context.Context, in *GetMetricsReq
 	return out, nil
 }
 
-func (c *externalScalerClient) Close(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/externalscaler.ExternalScaler/Close", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ExternalScalerServer is the server API for ExternalScaler service.
 type ExternalScalerServer interface {
-	New(context.Context, *NewRequest) (*empty.Empty, error)
 	IsActive(context.Context, *ScaledObjectRef) (*IsActiveResponse, error)
+	StreamIsActive(*ScaledObjectRef, ExternalScaler_StreamIsActiveServer) error
 	GetMetricSpec(context.Context, *ScaledObjectRef) (*GetMetricSpecResponse, error)
 	GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error)
-	Close(context.Context, *ScaledObjectRef) (*empty.Empty, error)
 }
 
 // UnimplementedExternalScalerServer can be embedded to have forward compatible implementations.
 type UnimplementedExternalScalerServer struct {
 }
 
-func (*UnimplementedExternalScalerServer) New(ctx context.Context, req *NewRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method New not implemented")
-}
 func (*UnimplementedExternalScalerServer) IsActive(ctx context.Context, req *ScaledObjectRef) (*IsActiveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsActive not implemented")
+}
+func (*UnimplementedExternalScalerServer) StreamIsActive(req *ScaledObjectRef, srv ExternalScaler_StreamIsActiveServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamIsActive not implemented")
 }
 func (*UnimplementedExternalScalerServer) GetMetricSpec(ctx context.Context, req *ScaledObjectRef) (*GetMetricSpecResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMetricSpec not implemented")
@@ -523,30 +491,9 @@ func (*UnimplementedExternalScalerServer) GetMetricSpec(ctx context.Context, req
 func (*UnimplementedExternalScalerServer) GetMetrics(ctx context.Context, req *GetMetricsRequest) (*GetMetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMetrics not implemented")
 }
-func (*UnimplementedExternalScalerServer) Close(ctx context.Context, req *ScaledObjectRef) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Close not implemented")
-}
 
 func RegisterExternalScalerServer(s *grpc.Server, srv ExternalScalerServer) {
 	s.RegisterService(&_ExternalScaler_serviceDesc, srv)
-}
-
-func _ExternalScaler_New_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ExternalScalerServer).New(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/externalscaler.ExternalScaler/New",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExternalScalerServer).New(ctx, req.(*NewRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _ExternalScaler_IsActive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -565,6 +512,27 @@ func _ExternalScaler_IsActive_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ExternalScalerServer).IsActive(ctx, req.(*ScaledObjectRef))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _ExternalScaler_StreamIsActive_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ScaledObjectRef)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ExternalScalerServer).StreamIsActive(m, &externalScalerStreamIsActiveServer{stream})
+}
+
+type ExternalScaler_StreamIsActiveServer interface {
+	Send(*IsActiveResponse) error
+	grpc.ServerStream
+}
+
+type externalScalerStreamIsActiveServer struct {
+	grpc.ServerStream
+}
+
+func (x *externalScalerStreamIsActiveServer) Send(m *IsActiveResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _ExternalScaler_GetMetricSpec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -603,32 +571,10 @@ func _ExternalScaler_GetMetrics_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ExternalScaler_Close_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ScaledObjectRef)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ExternalScalerServer).Close(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/externalscaler.ExternalScaler/Close",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExternalScalerServer).Close(ctx, req.(*ScaledObjectRef))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _ExternalScaler_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "externalscaler.ExternalScaler",
 	HandlerType: (*ExternalScalerServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "New",
-			Handler:    _ExternalScaler_New_Handler,
-		},
 		{
 			MethodName: "IsActive",
 			Handler:    _ExternalScaler_IsActive_Handler,
@@ -641,11 +587,13 @@ var _ExternalScaler_serviceDesc = grpc.ServiceDesc{
 			MethodName: "GetMetrics",
 			Handler:    _ExternalScaler_GetMetrics_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "Close",
-			Handler:    _ExternalScaler_Close_Handler,
+			StreamName:    "StreamIsActive",
+			Handler:       _ExternalScaler_StreamIsActive_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "externalscaler.proto",
 }

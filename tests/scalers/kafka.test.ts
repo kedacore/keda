@@ -230,20 +230,18 @@ spec:
         - secretRef:
             name: twitter-function
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: twitter-function
   namespace: ${defaultNamespace}
-  labels:
-    deploymentName: twitter-function
 spec:
   scaleTargetRef:
-    deploymentName: twitter-function
+    name: twitter-function
   triggers:
   - type: kafka
     metadata:
       topic: ${defaultTopic}
-      brokerList: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
+      bootstrapServers: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
       consumerGroup: functions
       lagThreshold: '1'`

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
+	kedautil "github.com/kedacore/keda/pkg/util"
 	"github.com/robfig/cron/v3"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,7 +19,6 @@ import (
 
 const (
 	defaultDesiredReplicas = 1
-	cronMetricName         = "ReplicaCount"
 	cronMetricType         = "External"
 )
 
@@ -48,7 +49,7 @@ func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 
 func getCronTime(location *time.Location, spec string) (int64, error) {
 	c := cron.New(cron.WithLocation(location))
-	_, err := c.AddFunc(spec, func() { fmt.Sprintf("Cron initialized for location %s", location.String()) })
+	_, err := c.AddFunc(spec, func() { _ = fmt.Sprintf("Cron initialized for location %s", location.String()) })
 	if err != nil {
 		return 0, err
 	}
@@ -128,18 +129,29 @@ func (s *cronScaler) Close() error {
 	return nil
 }
 
+func parseCronTimeFormat(s string) string {
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "*", "x")
+	s = strings.ReplaceAll(s, "/", "Sl")
+	s = strings.ReplaceAll(s, "?", "Qm")
+	return s
+}
+
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cronScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	specReplicas := 1
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         cronMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(specReplicas), resource.DecimalSI),
-			},
-			Type: cronMetricType,
+	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s-%s", "cron", kedautil.NormalizeString(s.metadata.timezone), parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics finds the current value of the metric
@@ -157,7 +169,7 @@ func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 
 	/*******************************************************************************/
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: cronMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(currentReplicas, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

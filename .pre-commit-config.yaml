@@ -1,0 +1,77 @@
+default_stages: [commit, push]
+minimum_pre_commit_version: "1.20.0"
+repos:
+  - repo: git://github.com/dnephin/pre-commit-golang
+    rev: master
+    hooks:
+      - id: go-fmt
+      - id: go-lint
+        exclude: |
+          (?x)(
+            .*zz_generated.*|
+            ^api/v1alpha1/condition_types\.go$|
+            ^api/v1alpha1/groupversion_info\.go$|
+            ^api/v1alpha1/gvkr_types\.go$|
+            ^api/v1alpha1/scaledjob_types\.go$|
+            ^api/v1alpha1/scaledobject_types\.go$|
+            ^api/v1alpha1/triggerauthentication_types\.go$|
+            ^controllers/scaledjob_controller\.go$|
+            ^controllers/scaledobject_controller\.go$|
+            ^controllers/util/status\.go$|
+            ^controllers/util/string_lists\.go$|
+            ^hack/tools\.go$|
+            ^pkg/scalers/artemis_scaler\.go$|
+            ^pkg/scalers/azure/azure_aad_podidentity\.go$|
+            ^pkg/scalers/azure/azure_eventhub\.go$|
+            ^pkg/scalers/azure/azure_monitor\.go$|
+            ^pkg/scalers/azure/azure_queue\.go$|
+            ^pkg/scalers/azure/azure_storage\.go$|
+            ^pkg/scalers/azure_eventhub_scaler\.go$|
+            ^pkg/scalers/azure_queue_scaler\.go$|
+            ^pkg/scalers/azure_servicebus_scaler\.go$|
+            ^pkg/scalers/cron_scaler\.go$|
+            ^pkg/scalers/external_scaler\.go$|
+            ^pkg/scalers/kafka_scram_client\.go$|
+            ^pkg/scalers/liiklus_scaler\.go$|
+            ^pkg/scalers/postgresql_scaler\.go$|
+            ^pkg/scalers/rabbitmq_scaler\.go$|
+            ^pkg/scalers/rabbitmq_scaler_test\.go$|
+            ^pkg/scalers/scaler\.go$|
+            ^pkg/scaling/executor/scale_executor\.go$|
+            ^pkg/scaling/resolver/hashicorpvault_handler\.go$|
+            ^pkg/scaling/resolver/scale_resolvers\.go$|
+            ^pkg/util/gvkr\.go$|
+            ^pkg/util/k8sversion\.go$|
+            ^pkg/util/normalize_string\.go$|
+            ^version/version\.go$
+          )
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+  - repo: https://github.com/thlorenz/doctoc.git
+    rev: v1.4.0
+    hooks:
+      - id: doctoc
+        name: Add TOC for md files
+        files: ^README\.md$|^CONTRIBUTING\.md$
+        args:
+          - "--maxlevel"
+          - "2"
+  - repo: local
+    hooks:
+    - id: language-matters
+      language: pygrep
+      name: Check for language that we do not accept as community
+      description: Please use "deny_list" or "allow_list"  instead.
+      entry: "(?i)(black|white)[_-]?(list|List)"
+      pass_filenames: true
+    - id: sort-scalers
+      name: Check if scalers are sorted in scaler_handler.go
+      language: system
+      entry: "bash tools/sort_scalers.sh"
+      files: .*scale_handler\.go$

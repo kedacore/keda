@@ -34,68 +34,14 @@ test.serial('Get Kubernetes version', t => {
 })
 
 test.serial('Deploy Keda', t => {
-  let result = sh.exec('kubectl get namespace keda')
-  if (result.code !== 0 && result.stderr.indexOf('not found') !== -1) {
-    t.log('creating keda namespace')
-    result = sh.exec('kubectl create namespace keda')
-    if (result.code !== 0) {
-      t.fail('error creating keda namespace')
-    }
-  }
-
-  if (sh.exec('kubectl apply -f ../deploy/crds/keda.k8s.io_scaledobjects_crd.yaml').code !== 0) {
+  let result = sh.exec('(cd .. && make deploy)')
+  if (result.code !== 0) {
     t.fail('error deploying keda. ' + result)
   }
-  if (
-    sh.exec('kubectl apply -f ../deploy/crds/keda.k8s.io_triggerauthentications_crd.yaml').code !==
-    0
-  ) {
-    t.fail('error deploying keda. ' + result)
-  }
-  if (sh.exec('kubectl apply -f ../deploy/').code !== 0) {
-    t.fail('error deploying keda. ' + result)
-  }
-  t.pass('Keda deployed successfully using crds and yaml')
+  t.pass('Keda deployed successfully using make deploy command')
 })
 
 test.serial('verifyKeda', t => {
-  const controllerImage = process.env.IMAGE_CONTROLLER || 'docker.io/kedacore/keda:master'
-  const adapterImage = process.env.IMAGE_ADAPTER || 'docker.io/kedacore/keda-metrics-adapter:master'
-  let result = sh.exec('kubectl scale deployment.apps/keda-operator --namespace keda --replicas=0')
-  if (result.code !== 0) {
-    t.fail(`error scaling keda operator to 0. ${result}`)
-  }
-  result = sh.exec(
-    'kubectl scale deployment.apps/keda-metrics-apiserver --namespace keda --replicas=0'
-  )
-  if (result.code !== 0) {
-    t.fail(`error scaling keda metrics server to 0. ${result}`)
-  }
-
-  result = sh.exec(
-    `kubectl set image deployment.apps/keda-operator --namespace keda keda-operator=${controllerImage}`
-  )
-  if (result.code !== 0) {
-    t.fail(`error updating keda operator image. ${result}`)
-  }
-
-  result = sh.exec(
-    `kubectl set image deployment.apps/keda-metrics-apiserver --namespace keda keda-metrics-apiserver=${adapterImage}`
-  )
-  if (result.code !== 0) {
-    t.fail(`error updating keda metrics server image. ${result}`)
-  }
-
-  result = sh.exec('kubectl scale deployment.apps/keda-operator --namespace keda --replicas=1')
-  if (result.code !== 0) {
-    t.fail(`error scaling keda operator to 1. ${result}`)
-  }
-
-  result = sh.exec('kubectl scale deployment.apps/keda-metrics-apiserver --namespace keda --replicas=1')
-  if (result.code !== 0) {
-    t.fail(`error scaling keda metrics server to 1. ${result}`)
-  }
-
   let success = false
   for (let i = 0; i < 20; i++) {
     let resultOperator = sh.exec(
@@ -108,7 +54,7 @@ test.serial('verifyKeda', t => {
     const parsedMetrics = parseInt(resultMetrics.stdout, 10)
     if (isNaN(parsedOperator) || parsedOperator != 1 || isNaN(parsedMetrics) || parsedMetrics != 1) {
       t.log(`Keda is not ready. sleeping`)
-      sh.exec('sleep 1s')
+      sh.exec('sleep 5s')
     } else if (parsedOperator == 1 && parsedMetrics == 1) {
       t.log('keda is running 1 pod for operator and 1 pod for metrics server')
       success = true

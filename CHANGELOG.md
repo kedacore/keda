@@ -2,10 +2,9 @@
 
 ## Deprecations
 
-- As of v1.3, support for `brokerList` is deprecated for our Kafka topic scaler and will be removed in v2.0 ([#632](https://github.com/kedacore/keda/issues/632))
-
 ## History
 
+- [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
 - [v1.4.0](#v140)
@@ -13,6 +12,41 @@
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## v2.0.0
+
+### New
+
+- KEDA scales any CustomResource that implements Scale subresource ([#703](https://github.com/kedacore/keda/issues/703))
+- Provide KEDA go-client ([#494](https://github.com/kedacore/keda/issues/494))
+- Define KEDA readiness and liveness probes ([#788](https://github.com/kedacore/keda/issues/788))
+- KEDA Support for configurable scaling behavior in HPA v2beta2 ([#802](https://github.com/kedacore/keda/issues/802))
+- Add External Push scaler ([#820](https://github.com/kedacore/keda/issues/820) | [docs](https://keda.sh/docs/2.0/scalers/external-push/))
+- Add Standard Resource metrics to KEDA ([#874](https://github.com/kedacore/keda/pull/874))
+- Managed Identity support for Azure Monitor scaler ([#936](https://github.com/kedacore/keda/issues/936))
+- Add support for multiple triggers on ScaledObject ([#476](https://github.com/kedacore/keda/issues/476))
+- Add consumer offset reset policy option to Kafka scaler ([#925](https://github.com/kedacore/keda/pull/925))
+- Add option to restore to original replica count after ScaledObject's deletion ([#219](https://github.com/kedacore/keda-docs/pull/219))
+- Add Prometheus metrics for KEDA Metrics API Server ([#823](https://github.com/kedacore/keda/issues/823) | [docs](https://keda.sh/docs/2.0/operate/#prometheus-exporter-metrics))
+- add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
+### Improvements
+
+- HPA: move from autoscaling v2beta1 to v2beta2 ([#721](https://github.com/kedacore/keda/issues/721))
+- Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
+- kubectl get scaledobject should show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
+- kubectl get triggerauthentication should show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
+- Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
+- Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
+
+### Breaking Changes
+
+- Change apiGroup from keda.k8s.io to keda.sh ([#552](https://github.com/kedacore/keda/issues/552))
+- Introduce a separate ScaledObject and ScaledJob([#653](https://github.com/kedacore/keda/issues/653))
+- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
+- Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
+
+### Other
+- Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870))
 
 ## v1.5.0
 
@@ -107,7 +141,6 @@ None.
 ### Improvements
 
 - Make targetQueryValue configurable in postgreSQL scaler ([#643](https://github.com/kedacore/keda/pull/643))
-- Added bootstrapServers to deprecate brokerList ([#621](https://github.com/kedacore/keda/pull/621))
 - Removed the need for deploymentName label ([#644](https://github.com/kedacore/keda/pull/644))
 - Adding Kubernetes recommended labels to resources ([#596](https://github.com/kedacore/keda/pull/596))
 

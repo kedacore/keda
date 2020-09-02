@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	pendingEntriesCountMetricName = "RedisStreamPendingEntriesCount"
-
 	// defaults
 	defaultTargetPendingEntriesCount = 5
 	defaultAddress                   = "redis-master.default.svc.cluster.local:6379"
@@ -210,12 +208,19 @@ func (s *redisStreamsScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-
+func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPendingEntriesCount := resource.NewQuantity(int64(s.metadata.targetPendingEntriesCount), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: pendingEntriesCountMetricName, TargetAverageValue: targetPendingEntriesCount}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetPendingEntriesCount,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics fetches the number of pending entries for a consumer group in a stream

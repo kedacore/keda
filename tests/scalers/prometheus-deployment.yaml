@@ -13,10 +13,10 @@ metadata:
 data:
   alerting_rules.yml: |
     {}
-    
+
   alerts: |
     {}
-    
+
   prometheus.yml: |
     global:
       evaluation_interval: 1m
@@ -262,13 +262,13 @@ data:
         target_label: kubernetes_pod_name
       scrape_interval: 5m
       scrape_timeout: 30s
-    
+
   recording_rules.yml: |
     {}
-    
+
   rules: |
     {}
-    
+
 ---
 # Source: prometheus/templates/server-serviceaccount.yaml
 
@@ -284,7 +284,7 @@ metadata:
   name: prometheus-server
   annotations:
     {}
-    
+
 
 ---
 # Source: prometheus/templates/server-clusterrole.yaml
@@ -411,7 +411,7 @@ spec:
             - --webhook-url=http://127.0.0.1:9090/-/reload
           resources:
             {}
-            
+
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config
@@ -447,7 +447,7 @@ spec:
             successThreshold: 1
           resources:
             {}
-            
+
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config
@@ -459,7 +459,7 @@ spec:
         runAsGroup: 65534
         runAsNonRoot: true
         runAsUser: 65534
-        
+
       terminationGracePeriodSeconds: 300
       volumes:
         - name: config-volume
@@ -595,5 +595,3 @@ spec:
 
 ---
 # Source: prometheus/templates/server-vpa.yaml
-
-

@@ -11,7 +11,7 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -205,16 +205,19 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetricSpecForScaling returns metric spec
-func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         thresholdMetricName,
-				TargetAverageValue: resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI),
-			},
-			Type: eventHubMetricType,
+func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricVal,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub

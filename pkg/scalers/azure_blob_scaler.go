@@ -6,7 +6,7 @@ import (
 	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -151,11 +151,19 @@ func (s *azureBlobScaler) Close() error {
 	return nil
 }
 
-func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: blobCountMetricName, TargetAverageValue: targetBlobCount}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "azure-blob", s.metadata.blobContainerName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetBlobCount,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

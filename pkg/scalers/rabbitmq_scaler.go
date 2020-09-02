@@ -2,16 +2,19 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/streadway/amqp"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,6 +28,7 @@ const (
 	rabbitMetricType            = "External"
 	rabbitIncludeUnacked        = "includeUnacked"
 	defaultIncludeUnacked       = false
+	amqps                       = "amqps"
 )
 
 type rabbitMQScaler struct {
@@ -38,7 +42,10 @@ type rabbitMQMetadata struct {
 	host           string // connection string for AMQP protocol
 	apiHost        string // connection string for management API requests
 	queueLength    int
-	includeUnacked bool // if true uses HTTP API and requires apiHost, if false uses AMQP and requires host
+	includeUnacked bool   // if true uses HTTP API and requires apiHost, if false uses AMQP and requires host
+	ca             string //Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
+	cert           string //Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
+	key            string //Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
 }
 
 type queueInfo struct {
@@ -59,7 +66,7 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 	if meta.includeUnacked {
 		return &rabbitMQScaler{metadata: meta}, nil
 	} else {
-		conn, ch, err := getConnectionAndChannel(meta.host)
+		conn, ch, err := getConnectionAndChannel(meta.host, meta.ca, meta.cert, meta.key)
 		if err != nil {
 			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
 		}
@@ -114,6 +121,24 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 		}
 	}
 
+	if strings.HasPrefix(meta.host, amqps) {
+		if val, ok := authParams["ca"]; ok {
+			meta.ca = val
+		} else {
+			return nil, fmt.Errorf("no ca given")
+		}
+		if val, ok := authParams["cert"]; ok {
+			meta.cert = val
+		} else {
+			return nil, fmt.Errorf("no cert given")
+		}
+		if val, ok := authParams["key"]; ok {
+			meta.key = val
+		} else {
+			return nil, fmt.Errorf("no key given")
+		}
+	}
+
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
 	} else {
@@ -134,8 +159,27 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 	return &meta, nil
 }
 
-func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial(host)
+func getConnectionAndChannel(host string, caFile string, certFile string, keyFile string) (*amqp.Connection, *amqp.Channel, error) {
+	var conn *amqp.Connection
+	var err error
+
+	if strings.HasPrefix(host, amqps) {
+		cfg := new(tls.Config)
+
+		cfg.RootCAs = x509.NewCertPool()
+
+		if ca, err := ioutil.ReadFile(caFile); err == nil {
+			cfg.RootCAs.AppendCertsFromPEM(ca)
+		}
+
+		if cert, err := tls.LoadX509KeyPair(certFile, keyFile); err == nil {
+			cfg.Certificates = append(cfg.Certificates, cert)
+		}
+		conn, err = amqp.DialTLS(host, cfg)
+	} else {
+		conn, err = amqp.Dial(host)
+	}
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,16 +277,21 @@ func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         rabbitQueueLengthMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
-			},
-			Type: rabbitMetricType,
+func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: rabbitMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -253,7 +302,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: rabbitQueueLengthMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

@@ -9,7 +9,7 @@ import (
 	liiklus_service "github.com/kedacore/keda/pkg/scalers/liiklus"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -77,16 +77,19 @@ func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string, metri
 
 }
 
-func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         liiklusLagThresholdMetricName,
-				TargetAverageValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
-			},
-			Type: liiklusMetricType,
+func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "liiklus", s.metadata.topic, s.metadata.group),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: liiklusMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 func (s *liiklusScaler) Close() error {

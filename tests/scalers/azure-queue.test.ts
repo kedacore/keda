@@ -78,7 +78,7 @@ test.after.always.cb('clean up azure-queue deployment', t => {
   const resources = [
     'secret/test-secrets',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.k8s.io/test-scaledobject',
+    'scaledobject.keda.sh/test-scaledobject',
   ]
 
   for (const resource of resources) {
@@ -134,15 +134,13 @@ spec:
               name: test-secrets
               key: AzureWebJobsStorage
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
-  labels:
-    deploymentName: test-deployment
 spec:
   scaleTargetRef:
-    deploymentName: test-deployment
+    name: test-deployment
   pollingInterval: 5
   maxReplicaCount: 4
   cooldownPeriod: 10

@@ -14,6 +14,11 @@ type parseArtemisMetadataTestData struct {
 	isError  bool
 }
 
+type artemisMetricIdentifier struct {
+	metadataTestData *parseArtemisMetadataTestData
+	name             string
+}
+
 var sampleArtemisResolvedEnv = map[string]string{
 	username: "artemis",
 	password: "artemis",
@@ -47,6 +52,10 @@ var testArtemisMetadata = []parseArtemisMetadataTestData{
 	// Missing password, should fail
 	{map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": ""}, true},
 	{map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}, false},
+}
+
+var artemisMetricIdentifiers = []artemisMetricIdentifier{
+	{&testArtemisMetadata[7], "artemis-broker-activemq-queue1"},
 }
 
 var testArtemisMetadataWithEmptyAuthParams = []parseArtemisMetadataTestData{
@@ -98,6 +107,22 @@ func TestArtemisParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestArtemisGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range artemisMetricIdentifiers {
+		meta, err := parseArtemisMetadata(sampleArtemisResolvedEnv, testData.metadataTestData.metadata, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockArtemisScaler := artemisScaler{meta}
+
+		metricSpec := mockArtemisScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

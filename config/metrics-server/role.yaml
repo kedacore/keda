@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: keda-external-metrics-reader
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/part-of: keda-operator
+  name: keda-external-metrics-reader
+rules:
+- apiGroups:
+  - "external.metrics.k8s.io"
+  resources:
+  - '*'
+  verbs:
+  - '*'

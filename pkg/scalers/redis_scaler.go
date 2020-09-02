@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	listLengthMetricName    = "RedisListLength"
 	defaultTargetListLength = 5
 	defaultRedisAddress     = "redis-master.default.svc.cluster.local:6379"
 	defaultRedisPassword    = ""
@@ -158,11 +157,21 @@ func (s *redisScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: listLengthMetricName, TargetAverageValue: targetListLengthQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "redis", s.metadata.listName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetListLengthQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: externalMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Redis and finds the length of the list
@@ -197,9 +206,30 @@ func getRedisListLength(ctx context.Context, address string, password string, li
 	}
 
 	client := redis.NewClient(options)
+	var listType *redis.StatusCmd
 
-	cmd := client.LLen(listName)
+	listType = client.Type(listName)
+	if listType.Err() != nil {
+		return -1, listType.Err()
+	}
 
+	var cmd *redis.IntCmd
+	switch listType.Val() {
+	case "list":
+		cmd = client.LLen(listName)
+	case "set":
+		cmd = client.SCard(listName)
+	case "hash":
+		cmd = client.HLen(listName)
+	case "zset":
+		cmd = client.ZCard(listName)
+	default:
+		cmd = nil
+	}
+
+	if cmd == nil {
+		return -1, fmt.Errorf("list must be of type:list,set,hash,zset but was %s", listType.Val())
+	}
 	if cmd.Err() != nil {
 		return -1, cmd.Err()
 	}

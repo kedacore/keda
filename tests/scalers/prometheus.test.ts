@@ -24,7 +24,7 @@ test.before(t => {
 
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
-  // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics 
+  // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
   // even when the KEDA deployment is at zero - the service points to both deployments
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
@@ -102,7 +102,7 @@ test.after.always.cb('clean up prometheus deployment', t => {
     'deployment.apps/test-app',
     'deployment.apps/keda-test-app',
     'service/test-app',
-    'scaledobject.keda.k8s.io/prometheus-scaledobject',
+    'scaledobject.keda.sh/prometheus-scaledobject',
     'job/generate-requests',
   ]
 
@@ -179,13 +179,13 @@ spec:
   selector:
     type: keda-testing
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: prometheus-scaledobject
 spec:
   scaleTargetRef:
-    deploymentName: keda-test-app
+    name: keda-test-app
   minReplicaCount: 0
   maxReplicaCount: 5
   pollingInterval: 5

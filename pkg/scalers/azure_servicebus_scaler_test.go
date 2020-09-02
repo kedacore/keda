@@ -22,6 +22,11 @@ type parseServiceBusMetadataTestData struct {
 	podIdentity string
 }
 
+type azServiceBusMetricIdentifier struct {
+	metadataTestData *parseServiceBusMetadataTestData
+	name             string
+}
+
 // not testing connections so it doesn't matter what the resolved env value is for this
 var sampleResolvedEnv = map[string]string{
 	connectionSetting: "none",
@@ -49,6 +54,11 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}, "azure"},
 	// correct pod identity
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, Queue, map[string]string{}, "azure"},
+}
+
+var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
+	{&parseServiceBusMetadataDataset[1], "azure-servicebus-testqueue"},
+	{&parseServiceBusMetadataDataset[2], "azure-servicebus-testtopic-testsubscription"},
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
@@ -93,12 +103,12 @@ func TestGetServiceBusLength(t *testing.T) {
 	t.Logf("\tQueue '%s' has 1 message\n", queueName)
 	t.Logf("\tTopic '%s' with subscription '%s' has 1 message\n", topicName, subscriptionName)
 
-	connection_string := os.Getenv("SERVICEBUS_CONNECTION_STRING")
+	connectionString := os.Getenv("SERVICEBUS_CONNECTION_STRING")
 
 	for _, scaler := range getServiceBusLengthTestScalers {
-		if connection_string != "" {
+		if connectionString != "" {
 			// Can actually test that numbers return
-			scaler.metadata.connection = connection_string
+			scaler.metadata.connection = connectionString
 			length, err := scaler.GetAzureServiceBusLength(context.TODO())
 
 			if err != nil {
@@ -116,6 +126,22 @@ func TestGetServiceBusLength(t *testing.T) {
 			if length != -1 || err == nil {
 				t.Errorf("Expected error but got success")
 			}
+		}
+	}
+}
+
+func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range azServiceBusMetricIdentifiers {
+		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadataTestData.metadata, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAzServiceBusScalerScaler := azureServiceBusScaler{meta, testData.metadataTestData.podIdentity}
+
+		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

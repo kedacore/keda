@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-operator
+  namespace: keda
+  labels:
+    app: keda-operator
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/part-of: keda-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-operator
+  template:
+    metadata:
+      labels:
+        app: keda-operator
+        name: keda-operator
+      name: keda-operator
+    spec:
+      serviceAccountName: keda-operator
+      containers:
+        - name: keda-operator
+          image: docker.io/kedacore/keda:latest
+          command:
+            - /keda
+          args:
+            - --enable-leader-election
+            - --zap-log-level=info
+            - --zap-encoder=console
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 25
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 20
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        beta.kubernetes.io/os: linux
