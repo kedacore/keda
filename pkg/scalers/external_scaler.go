@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mitchellh/hashstructure"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,8 +46,8 @@ var externalLog = logf.Log.WithName("external_scaler")
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
-func NewExternalScaler(name, namespace string, metadata map[string]string) (Scaler, error) {
-	meta, err := parseExternalScalerMetadata(metadata)
+func NewExternalScaler(name, namespace string, metadata, resolvedEnv map[string]string) (Scaler, error) {
+	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
@@ -60,8 +61,8 @@ func NewExternalScaler(name, namespace string, metadata map[string]string) (Scal
 	}, nil
 }
 
-func NewExternalPushScaler(name, namespace string, metadata map[string]string) (PushScaler, error) {
-	meta, err := parseExternalScalerMetadata(metadata)
+func NewExternalPushScaler(name, namespace string, metadata, resolvedEnv map[string]string) (PushScaler, error) {
+	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
@@ -78,7 +79,7 @@ func NewExternalPushScaler(name, namespace string, metadata map[string]string) (
 	}, nil
 }
 
-func parseExternalScalerMetadata(metadata map[string]string) (externalScalerMetadata, error) {
+func parseExternalScalerMetadata(metadata, resolvedEnv map[string]string) (externalScalerMetadata, error) {
 	meta := externalScalerMetadata{
 		originalMetadata: metadata,
 	}
@@ -92,6 +93,20 @@ func parseExternalScalerMetadata(metadata map[string]string) (externalScalerMeta
 
 	if val, ok := metadata["tlsCertFile"]; ok && val != "" {
 		meta.tlsCertFile = val
+	}
+
+	meta.originalMetadata = make(map[string]string)
+
+	// Add elements to metadata
+	for key, value := range metadata {
+		// Check if key is in resolved environment and resolve
+		if strings.HasSuffix(key, "FromEnv") {
+			if val, ok := resolvedEnv[value]; ok && val != "" {
+				meta.originalMetadata[key] = val
+			}
+		} else {
+			meta.originalMetadata[key] = value
+		}
 	}
 
 	return meta, nil

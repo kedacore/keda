@@ -18,7 +18,6 @@ const (
 	queueLengthMetricName    = "queueLength"
 	defaultTargetQueueLength = 5
 	externalMetricType       = "External"
-	defaultConnectionSetting = "AzureWebJobsStorage"
 )
 
 type azureQueueScaler struct {
@@ -80,21 +79,17 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 	if podAuth == "" || podAuth == "none" {
 		// Azure Queue Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
-		connection := authParams["connection"]
-		if connection != "" {
+		if authParams["connection"] != "" {
 			// Found the connection in a parameter from TriggerAuthentication
-			meta.connection = connection
-		} else {
-			connectionSetting := defaultConnectionSetting
-			if val, ok := metadata["connection"]; ok && val != "" {
-				connectionSetting = val
-			}
+			meta.connection = authParams["connection"]
+		} else if metadata["connection"] != "" {
+			meta.connection = metadata["connection"]
+		} else if metadata["connectionFromEnv"] != "" {
+			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+		}
 
-			if val, ok := resolvedEnv[connectionSetting]; ok {
-				meta.connection = val
-			} else {
-				return nil, "", fmt.Errorf("no connection setting given")
-			}
+		if len(meta.connection) == 0 {
+			return nil, "", fmt.Errorf("no connection setting given")
 		}
 	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name

@@ -17,10 +17,8 @@ import (
 )
 
 const (
-	azureMonitorMetricName       = "metricName"
-	targetValueName              = "targetValue"
-	defaultClientIDSetting       = ""
-	defaultClientPasswordSetting = ""
+	azureMonitorMetricName = "metricName"
+	targetValueName        = "targetValue"
 )
 
 type azureMonitorScaler struct {
@@ -119,34 +117,28 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	}
 
 	if podIdentity == "" || podIdentity == "none" {
-		if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
-			meta.azureMonitorInfo.ClientID = val
-		} else {
-			clientIDSetting := defaultClientIDSetting
-			if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
-				clientIDSetting = val
-			}
-
-			if val, ok := resolvedEnv[clientIDSetting]; ok {
-				meta.azureMonitorInfo.ClientID = val
-			} else {
-				return nil, fmt.Errorf("no activeDirectoryClientId given")
-			}
+		if authParams["activeDirectoryClientId"] != "" {
+			meta.azureMonitorInfo.ClientID = authParams["activeDirectoryClientId"]
+		} else if metadata["activeDirectoryClientId"] != "" {
+			meta.azureMonitorInfo.ClientID = metadata["activeDirectoryClientId"]
+		} else if metadata["activeDirectoryClientIdFromEnv"] != "" {
+			meta.azureMonitorInfo.ClientID = resolvedEnv[metadata["activeDirectoryClientIdFromEnv"]]
 		}
 
-		if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
-			meta.azureMonitorInfo.ClientPassword = val
-		} else {
-			clientPasswordSetting := defaultClientPasswordSetting
-			if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
-				clientPasswordSetting = val
-			}
+		if len(meta.azureMonitorInfo.ClientID) == 0 {
+			return nil, fmt.Errorf("no activeDirectoryClientId given")
+		}
 
-			if val, ok := resolvedEnv[clientPasswordSetting]; ok {
-				meta.azureMonitorInfo.ClientPassword = val
-			} else {
-				return nil, fmt.Errorf("no activeDirectoryClientPassword given")
-			}
+		if authParams["activeDirectoryClientPassword"] != "" {
+			meta.azureMonitorInfo.ClientPassword = authParams["activeDirectoryClientPassword"]
+		} else if metadata["activeDirectoryClientPassword"] != "" {
+			meta.azureMonitorInfo.ClientPassword = metadata["activeDirectoryClientPassword"]
+		} else if metadata["activeDirectoryClientPasswordFromEnv"] != "" {
+			meta.azureMonitorInfo.ClientPassword = resolvedEnv[metadata["activeDirectoryClientPasswordFromEnv"]]
+		}
+
+		if len(meta.azureMonitorInfo.ClientPassword) == 0 {
+			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
 		}
 	} else if podIdentity != "azure" {
 		return nil, fmt.Errorf("Azure Monitor doesn't support pod identity %s", podIdentity)

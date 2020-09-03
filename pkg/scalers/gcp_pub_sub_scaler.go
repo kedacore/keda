@@ -65,13 +65,13 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	if val, ok := metadata["credentials"]; ok && val != "" {
-		if creds, ok := resolvedEnv[val]; ok {
-			meta.credentials = creds
-		} else {
-			return nil, fmt.Errorf("could not resolve environment variable for credentials")
-		}
-	} else {
+	if metadata["credentials"] != "" {
+		meta.credentials = metadata["credentials"]
+	} else if metadata["credentialsFromEnv"] != "" {
+		meta.credentials = resolvedEnv[metadata["credentialsFromEnv"]]
+	}
+
+	if len(meta.credentials) == 0 {
 		return nil, fmt.Errorf("no credentials given. Need GCP service account credentials in json format")
 	}
 

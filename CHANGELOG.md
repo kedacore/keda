@@ -44,6 +44,7 @@
 - Introduce a separate ScaledObject and ScaledJob([#653](https://github.com/kedacore/keda/issues/653))
 - Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
 - Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
+- All scalers metadata that is resolved from the scaleTarget environment have suffix `FromEnv` added. e.g: `connection` -> `connectionFromEnv`
 
 ### Other
 - Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870))

@@ -85,28 +85,24 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 	}
 
 	if meta.includeUnacked {
-		if val, ok := authParams["apiHost"]; ok {
-			meta.apiHost = val
-		} else if val, ok := metadata["apiHost"]; ok {
-			hostSetting := val
-
-			if val, ok := resolvedEnv[hostSetting]; ok {
-				meta.apiHost = val
-			}
+		if authParams["apiHost"] != "" {
+			meta.apiHost = authParams["apiHost"]
+		} else if metadata["apiHost"] != "" {
+			meta.apiHost = metadata["apiHost"]
+		} else if metadata["apiHostFromEnv"] != "" {
+			meta.apiHost = resolvedEnv[metadata["apiHostFromEnv"]]
 		}
 
 		if meta.apiHost == "" {
 			return nil, fmt.Errorf("no apiHost setting given")
 		}
 	} else {
-		if val, ok := authParams["host"]; ok {
-			meta.host = val
-		} else if val, ok := metadata["host"]; ok {
-			hostSetting := val
-
-			if val, ok := resolvedEnv[hostSetting]; ok {
-				meta.host = val
-			}
+		if authParams["host"] != "" {
+			meta.host = authParams["host"]
+		} else if metadata["host"] != "" {
+			meta.host = metadata["host"]
+		} else if metadata["hostFromEnv"] != "" {
+			meta.host = resolvedEnv[metadata["hostFromEnv"]]
 		}
 
 		if meta.host == "" {

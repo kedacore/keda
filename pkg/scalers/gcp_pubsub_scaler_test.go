@@ -27,7 +27,7 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// missing credentials
 	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentials": ""}, true},
 	// incorrect credentials
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentials": "WRONG_CREDS"}, true},
+	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "WRONG_CREDS"}, true},
 	// malformed subscriptionSize
 	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentials": "SAMPLE_CREDS"}, true},
 }

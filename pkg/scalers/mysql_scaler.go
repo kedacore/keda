@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	mySQLMetricName      = "MySQLQueryValue"
-	defaultMySQLPassword = ""
+	mySQLMetricName = "MySQLQueryValue"
 )
 
 type mySQLScaler struct {
@@ -74,13 +73,12 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
-	if val, ok := authParams["connectionString"]; ok {
-		meta.connectionString = val
-	} else if val, ok := metadata["connectionString"]; ok {
-		hostSetting := val
-		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.connectionString = val
-		}
+	if authParams["connectionString"] != "" {
+		meta.connectionString = authParams["connectionString"]
+	} else if metadata["connectionString"] != "" {
+		meta.connectionString = metadata["connectionString"]
+	} else if metadata["connectionStringFromEnv"] != "" {
+		meta.connectionString = resolvedEnv[metadata["connectionStringFromEnv"]]
 	} else {
 		meta.connectionString = ""
 		if val, ok := metadata["host"]; ok {
@@ -104,13 +102,17 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		} else {
 			return nil, fmt.Errorf("no dbName given")
 		}
-		meta.password = defaultMySQLPassword
-		if val, ok := authParams["password"]; ok {
-			meta.password = val
-		} else if val, ok := metadata["password"]; ok && val != "" {
-			if pass, ok := resolvedEnv[val]; ok {
-				meta.password = pass
-			}
+
+		if authParams["password"] != "" {
+			meta.password = authParams["password"]
+		} else if metadata["password"] != "" {
+			meta.password = metadata["password"]
+		} else if metadata["passwordFromEnv"] != "" {
+			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
+		}
+
+		if len(meta.password) == 0 {
+			return nil, fmt.Errorf("no password given")
 		}
 	}
 

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultPostgreSQLPassword = ""
+	pgMetricName = "num"
 )
 
 type postgreSQLScaler struct {
@@ -73,14 +73,12 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 		return nil, fmt.Errorf("no targetQueryValue given")
 	}
 
-	if val, ok := authParams["connection"]; ok {
-		meta.connection = val
-	} else if val, ok := metadata["connection"]; ok {
-		hostSetting := val
-
-		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.connection = val
-		}
+	if authParams["connection"] != "" {
+		meta.connection = authParams["connection"]
+	} else if metadata["connection"] != "" {
+		meta.connection = metadata["connection"]
+	} else if metadata["connectionFromEnv"] != "" {
+		meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 	} else {
 		meta.connection = ""
 		if val, ok := metadata["host"]; ok {
@@ -109,13 +107,13 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 		} else {
 			return nil, fmt.Errorf("no sslmode name given")
 		}
-		meta.password = defaultPostgreSQLPassword
-		if val, ok := authParams["password"]; ok {
-			meta.password = val
-		} else if val, ok := metadata["password"]; ok && val != "" {
-			if passd, ok := resolvedEnv[val]; ok {
-				meta.password = passd
-			}
+
+		if authParams["password"] != "" {
+			meta.password = authParams["password"]
+		} else if metadata["password"] != "" {
+			meta.password = metadata["password"]
+		} else if metadata["passwordFromEnv"] != "" {
+			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
 		}
 	}
 
