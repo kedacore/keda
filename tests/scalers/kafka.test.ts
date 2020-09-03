@@ -185,7 +185,7 @@ test.serial('Latest Scale object should scale with new messages', t => {
 
     t.is(r.toString(), sh.exec(commandToCheckReplicas).stdout, `Replica count should be ${r}.`)
   }
-})  
+})
 
 test.after.always('Clean up, delete created resources.', t => {
   const resources = [
@@ -197,7 +197,7 @@ test.after.always('Clean up, delete created resources.', t => {
     `${kafkaClusterYamlFile.name}`,
     `${strimziOperatroYamlFile}`
   ]
-  
+
   for (const resource of resources) {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
   }
