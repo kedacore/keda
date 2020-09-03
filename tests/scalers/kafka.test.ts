@@ -150,6 +150,10 @@ test.serial('cleanup after earliest policy test', t=> {
 })
 
 test.serial('Applying ScaledObject latest policy should not scale up pods', t => {
+
+  //Make the consumer commit the first offset for each partition.
+  sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'kafka-console-consumer --bootstrap-server ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic} --group latest --from-beginning --consumer-property enable.auto.commit=true --timeout-ms 15000'`)
+
   fs.writeFileSync(kafkaApplicationLatestYamlFile.name, kafkaApplicationLatestYaml)
 	t.is(
 		0,
@@ -165,26 +169,23 @@ test.serial('Applying ScaledObject latest policy should not scale up pods', t =>
   )
   sh.exec(`sleep 5s`)
   waitForReplicaCount(1, commandToCheckReplicas)
-  t.is('1', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 1.')
-  //Make the consumer commit the first offset.
-  sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+  t.is('0', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 0.')
 
 })
 
 
-// This test should check if the scaling works, but is not currently feasible if consumer commits offsets regularly.
-// test.serial('Latest Scale object should scale with new messages', t => {
+test.serial('Latest Scale object should scale with new messages', t => {
 
-//   for (let r = 1; r <= 3; r++) {
+  for (let r = 1; r <= 3; r++) {
 
-//     sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
-//     sh.exec(`sleep 5s`)
+    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -c 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+    sh.exec(`sleep 5s`)
 
-//     waitForReplicaCount(r, commandToCheckReplicas)
+    waitForReplicaCount(r, commandToCheckReplicas)
 
-//     t.is(r.toString(), sh.exec(commandToCheckReplicas).stdout, `Replica count should be ${r}.`)
-//   }
-// })  
+    t.is(r.toString(), sh.exec(commandToCheckReplicas).stdout, `Replica count should be ${r}.`)
+  }
+})  
 
 test.after.always('Clean up, delete created resources.', t => {
   const resources = [
@@ -281,7 +282,7 @@ spec:
         command:
           - sh
           - -c
-          - "kafka-console-consumer --bootstrap-server ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic} --group latest "`
+          - "kafka-console-consumer --bootstrap-server ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic} --group latest --consumer-property enable.auto.commit=false"`
 
 
 const kafkaApplicationEarliestYaml = `
