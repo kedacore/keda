@@ -78,7 +78,8 @@ release: manifests kustomize
 
 .PHONY: set-version
 set-version:
-	@sed -i".out" -e 's@Version[ ]*=.*@Version   = "$(VERSION)"@g' ./version/version.go;
+	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
+	rm -rf ./version/version.go.out
 
 ##################################################
 # RUN / (UN)INSTALL / DEPLOY                     #
@@ -223,6 +224,7 @@ clientset-generate: clientset-prepare
 	./hack/update-codegen.sh
 	find ./pkg/generated -type f -name "*.go" |\
 	xargs sed -i".out" -e "s#github.com/kedacore/keda/api/keda/v1alpha1#github.com/kedacore/keda/api/v1alpha1#g"
+	find ./pkg/generated -type f -name "*.go.out" | xargs rm -rf
 	rm -rf api/keda
 
 ##################################################
