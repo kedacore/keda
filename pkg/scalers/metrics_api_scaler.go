@@ -81,6 +81,12 @@ func (s *metricsAPIScaler) getMetricValue() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	if r.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("api returned %d", r.StatusCode)
+		return 0, errors.New(msg)
+	}
+
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
