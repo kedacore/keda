@@ -398,6 +398,8 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
+	case "metrics-api":
+		return scalers.NewMetricsAPIScaler(resolvedEnv, triggerMetadata, authParams)
 	case "mysql":
 		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
 	case "postgresql":
