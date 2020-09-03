@@ -215,7 +215,7 @@ func getRedisListLength(ctx context.Context, address string, password string, li
 
 	var cmd *redis.IntCmd
 	switch listType.Val() {
-	case "list":
+	case "list", "none":
 		cmd = client.LLen(listName)
 	case "set":
 		cmd = client.SCard(listName)
@@ -228,7 +228,7 @@ func getRedisListLength(ctx context.Context, address string, password string, li
 	}
 
 	if cmd == nil {
-		return -1, fmt.Errorf("list must be of type:list,set,hash,zset but was %s", listType.Val())
+		return -1, fmt.Errorf("list must be of type: list, none, set, hash or zset but was %s", listType.Val())
 	}
 	if cmd.Err() != nil {
 		return -1, cmd.Err()
