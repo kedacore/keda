@@ -86,7 +86,7 @@ If interested in contributing or participating in the direction of KEDA, you can
 * **Meeting time:** Bi-weekly Thurs 16:00 UTC (does follow US daylight savings).
 ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
  [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
-* **Zoom link:** [https://zoom.us/j/150360492 ](https://zoom.us/j/150360492 )
+* **Zoom link:** [https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09](https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09)  (Password: keda)
 * **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
 
 Just want to learn or chat about KEDA? Feel free to join the conversation in
