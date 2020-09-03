@@ -78,7 +78,8 @@ release: manifests kustomize
 
 .PHONY: set-version
 set-version:
-	@sed -i".out" -e 's@Version[ ]*=.*@Version   = "$(VERSION)"@g' ./version/version.go;
+	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
+	rm -rf ./version/version.go.out
 
 ##################################################
 # RUN / (UN)INSTALL / DEPLOY                     #
