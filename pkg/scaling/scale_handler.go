@@ -377,7 +377,7 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-queue":
@@ -387,9 +387,9 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 	case "cron":
 		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
 	case "external":
-		return scalers.NewExternalScaler(name, namespace, triggerMetadata)
+		return scalers.NewExternalScaler(name, namespace, triggerMetadata, resolvedEnv)
 	case "external-push":
-		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata)
+		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata, authParams)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":

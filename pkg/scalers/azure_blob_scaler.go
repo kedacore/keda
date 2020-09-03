@@ -15,11 +15,10 @@ import (
 )
 
 const (
-	blobCountMetricName          = "blobCount"
-	defaultTargetBlobCount       = 5
-	defaultBlobDelimiter         = "/"
-	defaultBlobPrefix            = ""
-	defaultBlobConnectionSetting = "AzureWebJobsStorage"
+	blobCountMetricName    = "blobCount"
+	defaultTargetBlobCount = 5
+	defaultBlobDelimiter   = "/"
+	defaultBlobPrefix      = ""
 )
 
 type azureBlobScaler struct {
@@ -74,22 +73,17 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		return nil, "", fmt.Errorf("no blobContainerName given")
 	}
 
-	if val, ok := metadata["blobDelimiter"]; ok {
-		if val != "" {
-			meta.blobDelimiter = val
-		}
+	if val, ok := metadata["blobDelimiter"]; ok && val != "" {
+		meta.blobDelimiter = val
 	}
 
-	if val, ok := metadata["blobPrefix"]; ok {
-		if val != "" {
-			meta.blobPrefix = val + meta.blobDelimiter
-		}
+	if val, ok := metadata["blobPrefix"]; ok && val != "" {
+		meta.blobPrefix = val + meta.blobDelimiter
 	}
+
 	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" {
-		if val == "true" {
-			podAuth = "azure"
-		}
+	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" && val == "true" {
+		podAuth = "azure"
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
@@ -97,21 +91,16 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 	if podAuth == "" || podAuth == "none" {
 		// Azure Blob Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
-		connection := authParams["connection"]
-		if connection != "" {
-			// Found the connection in a parameter from TriggerAuthentication
-			meta.connection = connection
-		} else {
-			connectionSetting := defaultBlobConnectionSetting
-			if val, ok := metadata["connection"]; ok && val != "" {
-				connectionSetting = val
-			}
+		if authParams["connection"] != "" {
+			meta.connection = authParams["connection"]
+		} else if metadata["connection"] != "" {
+			meta.connection = metadata["connection"]
+		} else if metadata["connectionFromEnv"] != "" {
+			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+		}
 
-			if val, ok := resolvedEnv[connectionSetting]; ok {
-				meta.connection = val
-			} else {
-				return nil, "", fmt.Errorf("no connection setting given")
-			}
+		if len(meta.connection) == 0 {
+			return nil, "", fmt.Errorf("no connection setting given")
 		}
 	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name
