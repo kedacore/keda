@@ -125,17 +125,17 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 		if val, ok := authParams["ca"]; ok {
 			meta.ca = val
 		} else {
-			return nil, fmt.Errorf("no ca given")
+			return nil, fmt.Errorf("rabbitmq host is using amqps://, but no ca given")
 		}
 		if val, ok := authParams["cert"]; ok {
 			meta.cert = val
 		} else {
-			return nil, fmt.Errorf("no cert given")
+			return nil, fmt.Errorf("rabbitmq host is using amqps://, no cert given")
 		}
 		if val, ok := authParams["key"]; ok {
 			meta.key = val
 		} else {
-			return nil, fmt.Errorf("no key given")
+			return nil, fmt.Errorf("rabbitmq host is using amqps://, no key given")
 		}
 	}
 
