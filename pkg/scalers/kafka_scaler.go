@@ -32,10 +32,9 @@ type kafkaMetadata struct {
 	offsetResetPolicy offsetResetPolicy
 
 	// SASL
-	enableSASL bool
-	saslType   kafkaSaslType
-	username   string
-	password   string
+	saslType kafkaSaslType
+	username string
+	password string
 
 	// TLS
 	enableTLS bool
@@ -55,6 +54,7 @@ type kafkaSaslType string
 
 // supported SASL types
 const (
+	KafkaSASLTypeNone        kafkaSaslType = "none"
 	KafkaSASLTypePlaintext   kafkaSaslType = "plaintext"
 	KafkaSASLTypeSCRAMSHA256 kafkaSaslType = "scram_sha256"
 	KafkaSASLTypeSCRAMSHA512 kafkaSaslType = "scram_sha512"
@@ -129,14 +129,12 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		meta.lagThreshold = t
 	}
 
-	meta.enableSASL = false
+	meta.saslType = KafkaSASLTypeNone
 	if val, ok := authParams["sasl"]; ok {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
-			meta.saslType = mode
-
 			if authParams["username"] == "" {
 				return meta, errors.New("no username given")
 			}
@@ -146,7 +144,7 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 				return meta, errors.New("no password given")
 			}
 			meta.password = strings.TrimSpace(authParams["password"])
-			meta.enableSASL = true
+			meta.saslType = mode
 		} else {
 			return meta, fmt.Errorf("err SASL mode %s given", mode)
 		}
@@ -212,7 +210,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 
-	if metadata.enableSASL {
+	if metadata.saslType != KafkaSASLTypeNone {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
 		config.Net.SASL.Password = metadata.password

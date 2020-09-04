@@ -18,7 +18,6 @@ type parseKafkaMetadataTestData struct {
 type parseKafkaAuthParamsTestData struct {
 	authParams map[string]string
 	isError    bool
-	enableSASL bool
 	enableTLS  bool
 }
 
@@ -65,43 +64,43 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL only
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, true, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, false},
 	// success, SASL only
-	{map[string]string{"sasl": "scram_sha256", "username": "admin", "password": "admin"}, false, true, false},
+	{map[string]string{"sasl": "scram_sha256", "username": "admin", "password": "admin"}, false, false},
 	// success, SASL only
-	{map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, false, true, false},
+	{map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, false, false},
 	// success, TLS only
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, false, true},
+	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, SASL + TLS
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true, true},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// failure, SASL incorrect type
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false, false},
+	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false},
 	// failure, SASL missing username
-	{map[string]string{"sasl": "plaintext", "password": "admin"}, true, false, false},
+	{map[string]string{"sasl": "plaintext", "password": "admin"}, true, false},
 	// failure, SASL missing password
-	{map[string]string{"sasl": "plaintext", "username": "admin"}, true, false, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin"}, true, false},
 	// failure, TLS incorrect
-	{map[string]string{"tls": "yes", "cert": "ceert", "key": "keey"}, true, false, false},
+	{map[string]string{"tls": "yes", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, TLS missing ca
-	{map[string]string{"tls": "yes", "ca": "caaa", "key": "keey"}, true, false, false},
+	{map[string]string{"tls": "yes", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, TLS missing cert
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false, false},
+	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, TLS missing key
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert"}, true, false, false},
+	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert"}, true, false},
 	// failure, SASL + TLS, incorrect sasl
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false, false},
+	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, incorrect tls
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "foo", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "foo", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing username
-	{map[string]string{"sasl": "plaintext", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false, false},
+	{map[string]string{"sasl": "plaintext", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing password
-	{map[string]string{"sasl": "plaintext", "username": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing ca
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "cert": "ceert", "key": "keey"}, true, true, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing cert
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "key": "keey"}, true, true, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing key
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, true, false},
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -169,9 +168,6 @@ func TestKafkaAuthParams(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
-		}
-		if meta.enableSASL != testData.enableSASL {
-			t.Errorf("Expected enableSASL to be set to %v but got %v\n", testData.enableSASL, meta.enableSASL)
 		}
 		if meta.enableTLS != testData.enableTLS {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
