@@ -66,6 +66,7 @@ const (
 	kafkaMetricType          = "External"
 	defaultKafkaLagThreshold = 10
 	defaultOffsetResetPolicy = latest
+	invalidOffset            = -1
 )
 
 var kafkaLog = logf.Log.WithName("kafka_scaler")
@@ -186,11 +187,14 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	for _, partition := range partitions {
-		lag := s.getLagForPartition(partition, offsets)
+		lag, err := s.getLagForPartition(partition, offsets)
+		if err != nil {
+			return true, nil
+		}
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
 		// Return as soon as a lag was detected for any partition
-		if s.metadata.offsetResetPolicy == earliest && lag > 0 || s.metadata.offsetResetPolicy == latest && lag != 0 {
+		if lag > 0 {
 			return true, nil
 		}
 	}
@@ -300,32 +304,29 @@ func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchRespons
 	return offsets, nil
 }
 
-func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) int64 {
+func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) (int64, error) {
 	block := offsets.GetBlock(s.metadata.topic, partition)
 	if block == nil {
 		kafkaLog.Error(fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition), "")
-		return 0
+		return 0, fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition)
 	}
 	consumerOffset := block.Offset
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
 		kafkaLog.Error(err, fmt.Sprintf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition))
-		return 0
+		return 0, fmt.Errorf("error finding latest offset for topic %s and partition %d", s.metadata.topic, partition)
 	}
 
-	var lag int64
-
-	if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
+	if consumerOffset == invalidOffset {
 		if s.metadata.offsetResetPolicy == latest {
-			lag = sarama.OffsetNewest
-		} else {
-			lag = latestOffset
+			kafkaLog.V(0).Info(fmt.Sprintf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition))
+			return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
 		}
-	} else {
-		lag = latestOffset - consumerOffset
-	}
+		return latestOffset, nil
 
-	return lag
+	}
+	return (latestOffset - consumerOffset), nil
+
 }
 
 // Close closes the kafka admin and client
@@ -368,7 +369,8 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	totalLag := int64(0)
 	for _, partition := range partitions {
-		lag := s.getLagForPartition(partition, offsets)
+		lag, _ := s.getLagForPartition(partition, offsets)
+
 		totalLag += lag
 	}
 
