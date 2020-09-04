@@ -29,7 +29,7 @@ type artemisMetadata struct {
 	brokerAddress      string
 	username           string
 	password           string
-	restApiTemplate    string
+	restAPITemplate    string
 	queueLength        int
 }
 
@@ -43,7 +43,7 @@ type artemisMonitoring struct {
 const (
 	artemisMetricType         = "External"
 	defaultArtemisQueueLength = 10
-	defaultRestApiTemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -66,10 +66,10 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 
 	meta.queueLength = defaultArtemisQueueLength
 
-	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
-		meta.restApiTemplate = metadata["restApiTemplate"]
+	if val, ok := metadata["restAPITemplate"]; ok && val != "" {
+		meta.restAPITemplate = metadata["restAPITemplate"]
 	} else {
-		meta.restApiTemplate = defaultRestApiTemplate
+		meta.restAPITemplate = defaultRestAPITemplate
 	}
 
 	if metadata["managementEndpoint"] == "" {
@@ -153,7 +153,7 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 		"<<brokerName>>", s.metadata.brokerName,
 		"<<brokerAddress>>", s.metadata.brokerAddress)
 
-	monitoringEndpoint := replacer.Replace(s.metadata.restApiTemplate)
+	monitoringEndpoint := replacer.Replace(s.metadata.restAPITemplate)
 
 	return monitoringEndpoint
 }
