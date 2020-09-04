@@ -65,7 +65,7 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	// Missing threshold, should fail
 	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
 	//All parameters set, should succeed
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
+	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
 var LogAnalyticsMetricIdentifiers = []LogAnalyticsMetricIdentifier{
@@ -84,7 +84,7 @@ var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTes
 }
 
 var testLogAnalyticsMetadataWithAuthParams = []parseLogAnalyticsMetadataTestData{
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
+	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
 func TestLogAnalyticsParseMetadata(t *testing.T) {
