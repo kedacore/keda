@@ -188,7 +188,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 
 	for _, partition := range partitions {
 		lag, err := s.getLagForPartition(partition, offsets)
-		if err != nil {
+		if err != nil && lag == invalidOffset {
 			return true, nil
 		}
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
