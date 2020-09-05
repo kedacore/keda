@@ -14,6 +14,7 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
 - [Code Quality](#code-quality)
+- [Project governance](#project-governance)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -106,4 +107,9 @@ pre-commit run
 To run all checks on all files, run:
 ```bash
 pre-commit run --all-files
+
 ```
+## Project governance
+
+KEDA project is an open source project governed according to rules described in [`GOVERNANCE`](GOVERNANCE.md). If you
+would love to become a maintainer to support our project please create an issue as described in [`GOVERNANCE`](GOVERNANCE.md).
