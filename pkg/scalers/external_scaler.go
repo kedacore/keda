@@ -61,7 +61,7 @@ func NewExternalScaler(name, namespace string, metadata, resolvedEnv map[string]
 	}, nil
 }
 
-// NewExternalPushScaler creates a new externalPushScaler push scaler 
+// NewExternalPushScaler creates a new externalPushScaler push scaler
 func NewExternalPushScaler(name, namespace string, metadata, resolvedEnv map[string]string) (PushScaler, error) {
 	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
 	if err != nil {

@@ -59,7 +59,7 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 	if meta.includeUnacked {
 		return &rabbitMQScaler{metadata: meta}, nil
 	}
-	
+
 	conn, ch, err := getConnectionAndChannel(meta.host)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)

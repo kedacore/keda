@@ -31,7 +31,7 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 	if visibleMessageCount == 32 {
 		return approximateMessageCount, nil
 	}
-	
+
 	return visibleMessageCount, nil
 }
 
