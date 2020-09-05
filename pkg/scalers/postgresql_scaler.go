@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/lib/pq"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
