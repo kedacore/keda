@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
