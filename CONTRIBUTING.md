@@ -8,6 +8,7 @@ There are many areas we can use contributions - ranging from code, documentation
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of contents**
 
+- [Project governance](#project-governance)
 - [Getting Help](#getting-help)
 - [Contributing Scalers](#contributing-scalers)
 - [Including Documentation Changes](#including-documentation-changes)
@@ -16,6 +17,11 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Code Quality](#code-quality)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Project governance
+
+KEDA project is an open source project governed according to rules described in [`GOVERNANCE`](GOVERNANCE.md). If you
+would love to become a maintainer to support our project please create an issue as described in [`GOVERNANCE`](GOVERNANCE.md).
 
 ## Getting Help
 
