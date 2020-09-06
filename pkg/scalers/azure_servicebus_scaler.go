@@ -101,17 +101,15 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 
 	if podIdentity == "" || podIdentity == "none" {
 		// get servicebus connection string
-		if val, ok := authParams["connection"]; ok {
-			meta.connection = val
-		} else if val, ok := metadata["connection"]; ok {
-			connectionSetting := val
-
-			if val, ok := resolvedEnv[connectionSetting]; ok {
-				meta.connection = val
-			}
+		if authParams["connection"] != "" {
+			meta.connection = authParams["connection"]
+		} else if metadata["connection"] != "" {
+			meta.connection = metadata["connection"]
+		} else if metadata["connectionFromEnv"] != "" {
+			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 		}
 
-		if meta.connection == "" {
+		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
 	} else if podIdentity == "azure" {

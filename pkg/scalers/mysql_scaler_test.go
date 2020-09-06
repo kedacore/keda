@@ -47,7 +47,7 @@ func TestParseMySQLMetadata(t *testing.T) {
 
 func TestMetadataToConnectionStrUseConnStr(t *testing.T) {
 	// Use existing ConnStr
-	testMeta := map[string]string{"query": "query", "queryValue": "12", "connectionString": "MYSQL_CONN_STR"}
+	testMeta := map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}
 	meta, _ := parseMySQLMetadata(testMySQLResolvedEnv, testMeta, map[string]string{})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != testMySQLResolvedEnv["MYSQL_CONN_STR"] {
@@ -58,7 +58,7 @@ func TestMetadataToConnectionStrUseConnStr(t *testing.T) {
 func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 	// Build new ConnStr
 	expected := "test_username:pass@tcp(test_host:test_port)/test_dbname"
-	testMeta := map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"}
+	testMeta := map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"}
 	meta, _ := parseMySQLMetadata(testMySQLResolvedEnv, testMeta, map[string]string{})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != expected {

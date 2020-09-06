@@ -43,17 +43,17 @@ var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: "no
 var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{}, true},
 	// properly formed event hub metadata
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing event hub connection setting
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"}, true},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"}, true},
 	// missing storage connection setting
-	{map[string]string{"consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	{map[string]string{"consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
 	// missing event hub consumer group - should replace with default
-	{map[string]string{"storageConnection": storageConnectionSetting, "connection": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing unprocessed event threshold - should replace with default
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting}, false},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting}, false},
 	// added blob container details
-	{map[string]string{"storageConnection": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connection": eventHubConnectionSetting, "blobContainer": testContainerName}, false},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName}, false},
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
@@ -72,7 +72,7 @@ var testEventHubScaler = AzureEventHubScaler{
 func TestParseEventHubMetadata(t *testing.T) {
 	// Test first with valid resolved environment
 	for _, testData := range parseEventHubMetadataDataset {
-		_, err := parseAzureEventHubMetadata(testData.metadata, sampleEventHubResolvedEnv)
+		_, err := parseAzureEventHubMetadata(testData.metadata, sampleEventHubResolvedEnv, map[string]string{})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -419,7 +419,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(testData.metadataTestData.metadata, sampleEventHubResolvedEnv)
+		meta, err := parseAzureEventHubMetadata(testData.metadataTestData.metadata, sampleEventHubResolvedEnv, map[string]string{})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
