@@ -45,6 +45,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
 	// properly formed metadata with includeUnacked
 	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHostFromEnv": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	// properly formed metadata with amqps but no cert/ca/key
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{"host": "amqps://user:sercet@somehost.com:5236/vhost"}},
+	// properly formed metadata with amqps
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{"host": "amqps://user:sercet@somehost.com:5236/vhost", "ca": "ca", "cert": "cert", "key": "key"}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
