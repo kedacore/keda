@@ -112,5 +112,4 @@ pre-commit run
 To run all checks on all files, run:
 ```bash
 pre-commit run --all-files
-
 ```
