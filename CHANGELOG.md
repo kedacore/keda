@@ -37,6 +37,7 @@
 - kubectl get triggerauthentication should show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
 - Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 - Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
+- Added SSL support to RabbitMQ Scaler ([#1073](https://github.com/kedacore/keda/pull/1073))
 
 ### Breaking Changes
 
