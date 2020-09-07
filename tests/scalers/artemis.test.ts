@@ -66,6 +66,8 @@ test.serial(`Deployment should scale to 5 with 1000 messages on the queue then b
   })
 
 test.after.always.cb('clean up artemis deployment', t => {
+    sh.exec(`kubectl -n ${testNamespace} delete scaledobject.keda.sh/kedartemis-consumer-scaled-object`)
+    sh.exec(`kubectl -n ${testNamespace} delete triggerauthentications.sh/trigger-auth-kedartemis`)
     ArtemisHelper.uninstallArtemis(t, artemisNamespace)
     sh.exec(`kubectl delete namespace ${artemisNamespace}`)
     ArtemisHelper.uninstallWorkloads(t, testNamespace)
