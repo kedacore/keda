@@ -41,8 +41,6 @@ jobs:
       - uses: actions/setup-go@v2-beta
         with:
           go-version: 1.15
-      - name: install go-lint
-        run: |
-          go get -u golang.org/x/lint/golint
-          export PATH=$PATH:$(go list -f {{.Target}} golang.org/x/lint/golint)
       - uses: pre-commit/action@v1.0.1
+      - name: Run go vet
+        run: make govet
