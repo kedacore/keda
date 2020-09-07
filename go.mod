@@ -13,7 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.1
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.0
-	github.com/aws/aws-sdk-go v1.34.11
+	github.com/aws/aws-sdk-go v1.34.18
 	github.com/go-logr/logr v0.1.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
@@ -27,8 +27,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mgechev/revive v1.0.2 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
-	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron/v3 v3.0.1
