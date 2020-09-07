@@ -37,6 +37,7 @@
 - Improve `kubectl get triggerauthentication` to show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
 - Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 - Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
+- Improved GCP PubSub Scaler performance by closing the client correctly ([#1087](https://github.com/kedacore/keda/pull/1087))
 
 ### Breaking Changes
 
