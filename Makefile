@@ -55,6 +55,12 @@ e2e-test:
 
 	./tests/run-all.sh
 
+# Run e2e tests against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: e2e-test-local
+e2e-test-local:
+	npm install --prefix tests
+	./tests/run-all.sh
+
 ##################################################
 # PUBLISH                                        #
 ##################################################
@@ -86,7 +92,7 @@ set-version:
 ##################################################
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
-run: generate gofmt govet manifests
+run: generate
 	go run \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	./main.go $(ARGS)
