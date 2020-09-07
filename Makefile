@@ -130,14 +130,14 @@ docker-build: build
 
 # Build KEDA Operator binary
 .PHONY: manager
-manager: generate gofmt govet pkg/scalers/liiklus/LiiklusService.pb.go
+manager: generate gofmt govet
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	-o bin/keda main.go
 
 # Build KEDA Metrics Server Adapter binary
 .PHONY: adapter
-adapter: generate gofmt govet pkg/scalers/liiklus/LiiklusService.pb.go
+adapter: generate gofmt govet
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	-o bin/keda-adapter adapter/main.go
