@@ -189,9 +189,9 @@ test.serial('Latest Scale object should scale with new messages', t => {
 
 test.after.always('Clean up, delete created resources.', t => {
   const resources = [
-    `${kafkaApplicationLatestYamlFile.name}`,
     `${scaledObjectEarliestYamlFile.name}`,
     `${scaledObjectLatestYamlFile.name}`,
+    `${kafkaApplicationLatestYamlFile.name}`,
     `${kafkaClientYamlFile.name}`,
     `${kafkaTopicYamlFile.name}`,
     `${kafkaClusterYamlFile.name}`,

@@ -62,9 +62,9 @@ test.serial.cb('Deployment should scale to 2 with 150 blobs on the blob containe
 
 test.after.always('clean up azure-blob deployment', t => {
     const resources = [
+        'scaledobject.keda.sh/test-scaledobject',
         'secret/test-secrets',
         'deployment.apps/test-deployment',
-        'scaledobject.keda.sh/test-scaledobject'
     ]
 
     for (const resource of resources) {
@@ -139,4 +139,4 @@ spec:
     metadata:
       blobContainerName: container-name
       blobPrefix: blobsubpath
-      connection: AzureWebJobsStorage`
+      connectionFromEnv: AzureWebJobsStorage`
