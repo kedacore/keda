@@ -78,9 +78,9 @@ test.serial.cb(
 
 test.after.always.cb('clean up azure-queue deployment', t => {
   const resources = [
+    'scaledobject.keda.sh/test-scaledobject',
     'secret/test-secrets',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.sh/test-scaledobject',
   ]
 
   for (const resource of resources) {
