@@ -41,6 +41,8 @@ jobs:
       - uses: actions/setup-go@v2-beta
         with:
           go-version: 1.15
+      - name: Get revive
+        run: go get -u github.com/mgechev/revive
       - uses: pre-commit/action@v1.0.1
       - name: Run go vet
         run: make govet
