@@ -2,6 +2,7 @@
 FROM golang:1.15 as builder
 
 WORKDIR /workspace
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -10,15 +11,17 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY Makefile Makefile
-COPY .git/ .git/
 
 # Copy the go source
 COPY hack/ hack/
 COPY version/ version/
 COPY main.go main.go
+COPY adapter/ adapter/
 COPY api/ api/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
+
+COPY .git/ .git/
 
 # Build
 RUN make manager
