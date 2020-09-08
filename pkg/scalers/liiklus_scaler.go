@@ -112,7 +112,7 @@ func (s *liiklusScaler) IsActive(ctx context.Context) (bool, error) {
 // getLag returns the total lag, as well as per-partition lag for this scaler. That is, the difference between the
 // latest offset available on this scaler topic, and the position of the consumer group this scaler is configured for.
 func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, error) {
-	var totalLag uint64 = 0
+	var totalLag uint64
 	ctx1, cancel1 := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel1()
 	gor, err := s.client.GetOffsets(ctx1, &liiklus_service.GetOffsetsRequest{
