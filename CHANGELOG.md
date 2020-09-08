@@ -29,6 +29,8 @@
 - Add option to restore to original replica count after ScaledObject's deletion ([#219](https://github.com/kedacore/keda-docs/pull/219))
 - Add Prometheus metrics for KEDA Metrics API Server ([#823](https://github.com/kedacore/keda/issues/823) | [docs](https://keda.sh/docs/2.0/operate/#prometheus-exporter-metrics))
 - Add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
+- Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
+
 ### Improvements
 
 - Move from autoscaling `v2beta1` to `v2beta2` for HPA ([#721](https://github.com/kedacore/keda/issues/721))
@@ -42,12 +44,13 @@
 
 - Change `apiGroup` from `keda.k8s.io` to `keda.sh` ([#552](https://github.com/kedacore/keda/issues/552))
 - Introduce a separate ScaledObject and ScaledJob([#653](https://github.com/kedacore/keda/issues/653))
-- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
+- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto` ([#865](https://github.com/kedacore/keda/pull/865))
 - Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
-- All scalers metadata that is resolved from the scaleTarget environment have suffix `FromEnv` added. e.g: `connection` -> `connectionFromEnv`
+- All scalers metadata that is resolved from the scaleTarget environment have suffix `FromEnv` added. e.g: `connection` -> `connectionFromEnv` ([#1072](https://github.com/kedacore/keda/pull/1072))
 
 ### Other
 - Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870))
+- Change Metrics Server image name from `keda-metrics-adapter` to `keda-metrics-apiserver` ([#1105](https://github.com/kedacore/keda/issues/1105))
 
 ## v1.5.0
 
