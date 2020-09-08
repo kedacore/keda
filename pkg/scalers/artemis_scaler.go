@@ -22,6 +22,7 @@ type artemisScaler struct {
 	metadata *artemisMetadata
 }
 
+//revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
 	managementEndpoint string
 	queueName          string
@@ -29,11 +30,11 @@ type artemisMetadata struct {
 	brokerAddress      string
 	username           string
 	password           string
-	//revive:disable:var-naming breaking change, wouldn't bring any benefit to users
 	restApiTemplate    string
-	//revive:enable:var-naming
 	queueLength        int
 }
+
+//revive:enable:var-naming
 
 type artemisMonitoring struct {
 	Request   string `json:"request"`
