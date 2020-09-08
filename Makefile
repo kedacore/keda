@@ -206,6 +206,41 @@ gofmt:
 govet:
 	go vet ./...
 
+# Run revive against code
+.PHONY: revive
+revive:
+	revive -config revive.toml -formatter friendly \
+		-exclude api/v1alpha1/condition_types.go \
+		-exclude api/v1alpha1/groupversion_info.go \
+		-exclude api/v1alpha1/gvkr_types.go \
+		-exclude api/v1alpha1/scaledjob_types.go \
+		-exclude api/v1alpha1/scaledobject_types.go \
+		-exclude api/v1alpha1/triggerauthentication_types.go \
+		-exclude controllers/scaledjob_controller.go \
+		-exclude pkg/scalers/artemis_scaler.go \
+		-exclude pkg/scalers/azure/azure_aad_podidentity.go \
+		-exclude pkg/scalers/azure/azure_eventhub.go \
+		-exclude pkg/scalers/azure/azure_monitor.go \
+		-exclude pkg/scalers/azure/azure_queue.go \
+		-exclude pkg/scalers/azure/azure_storage.go \
+		-exclude pkg/scalers/azure_eventhub_scaler.go \
+		-exclude pkg/scalers/azure_queue_scaler.go \
+		-exclude pkg/scalers/azure_servicebus_scaler.go \
+		-exclude pkg/scalers/cron_scaler.go \
+		-exclude pkg/scalers/external_scaler.go \
+		-exclude pkg/scalers/kafka_scram_client.go \
+		-exclude pkg/scalers/liiklus_scaler.go \
+		-exclude pkg/scalers/postgresql_scaler.go \
+		-exclude pkg/scalers/rabbitmq_scaler.go \
+		-exclude pkg/scalers/rabbitmq_scaler_test.go \
+		-exclude pkg/scalers/redis_scaler_test.go \
+		-exclude pkg/scalers/scaler.go \
+		-exclude pkg/scaling/executor/scale_executor.go \
+		-exclude pkg/scaling/resolver/hashicorpvault_handler.go \
+		-exclude pkg/scaling/resolver/scale_resolvers.go \
+		-exclude pkg/scaling/resolver/scale_resolvers_test.go \
+		./...
+
 ##################################################
 # Clientset                                      #
 ##################################################
