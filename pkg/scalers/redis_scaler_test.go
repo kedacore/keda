@@ -1,7 +1,6 @@
 package scalers
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -57,7 +56,7 @@ func TestRedisParseMetadata(t *testing.T) {
 	for _, testData := range testRedisMetadata {
 		_, err := parseRedisMetadata(testData.metadata, testRedisResolvedEnv, testData.authParams)
 		if err != nil && !testData.isError {
-			t.Errorf("Expected success but got error for unit test # %v", testCaseNum, err)
+			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success for unit test #%v", testCaseNum)
