@@ -5,38 +5,7 @@ repos:
     rev: master
     hooks:
       - id: go-fmt
-      - id: go-lint
-        exclude: |
-          (?x)(
-            .*zz_generated.*|
-            ^api/v1alpha1/condition_types\.go$|
-            ^api/v1alpha1/groupversion_info\.go$|
-            ^api/v1alpha1/gvkr_types\.go$|
-            ^api/v1alpha1/scaledjob_types\.go$|
-            ^api/v1alpha1/scaledobject_types\.go$|
-            ^api/v1alpha1/triggerauthentication_types\.go$|
-            ^hack/tools\.go$|
-            ^pkg/scalers/artemis_scaler\.go$|
-            ^pkg/scalers/azure/azure_aad_podidentity\.go$|
-            ^pkg/scalers/azure/azure_eventhub\.go$|
-            ^pkg/scalers/azure/azure_monitor\.go$|
-            ^pkg/scalers/azure/azure_queue\.go$|
-            ^pkg/scalers/azure/azure_storage\.go$|
-            ^pkg/scalers/azure_eventhub_scaler\.go$|
-            ^pkg/scalers/azure_queue_scaler\.go$|
-            ^pkg/scalers/azure_servicebus_scaler\.go$|
-            ^pkg/scalers/cron_scaler\.go$|
-            ^pkg/scalers/external_scaler\.go$|
-            ^pkg/scalers/kafka_scram_client\.go$|
-            ^pkg/scalers/liiklus_scaler\.go$|
-            ^pkg/scalers/postgresql_scaler\.go$|
-            ^pkg/scalers/rabbitmq_scaler\.go$|
-            ^pkg/scalers/rabbitmq_scaler_test\.go$|
-            ^pkg/scalers/scaler\.go$|
-            ^pkg/scaling/executor/scale_executor\.go$|
-            ^pkg/scaling/resolver/hashicorpvault_handler\.go$|
-            ^pkg/scaling/resolver/scale_resolvers\.go$
-          )
+        name: Run go fmt against the code
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
@@ -67,3 +36,8 @@ repos:
       language: system
       entry: "bash tools/sort_scalers.sh"
       files: .*scale_handler\.go$
+    - id: revive
+      language: system
+      name: Run revive against the code
+      entry: make revive
+      files: .*\.go$
