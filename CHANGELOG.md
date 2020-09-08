@@ -29,7 +29,7 @@
 - Add option to restore to original replica count after ScaledObject's deletion ([#219](https://github.com/kedacore/keda-docs/pull/219))
 - Add Prometheus metrics for KEDA Metrics API Server ([#823](https://github.com/kedacore/keda/issues/823) | [docs](https://keda.sh/docs/2.0/operate/#prometheus-exporter-metrics))
 - Add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
-- Add MetricsAPI Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
+- Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
 
 ### Improvements
 
