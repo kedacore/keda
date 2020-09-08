@@ -6,7 +6,7 @@ IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
-IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
+IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
 
 IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:v2
 
@@ -77,7 +77,7 @@ release: manifests kustomize
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
@@ -113,7 +113,7 @@ deploy: manifests kustomize
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
