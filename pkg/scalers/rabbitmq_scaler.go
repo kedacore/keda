@@ -39,8 +39,8 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName   string
-	host        string // connection string for either HTTP or AMQP protocol
 	queueLength int
+	host        string // connection string for either HTTP or AMQP protocol
 	protocol    string // either http or amqp protocol
 }
 
