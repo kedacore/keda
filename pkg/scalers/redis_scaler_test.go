@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"github.com/go-redis/redis"
 	"testing"
 )
 
@@ -71,7 +72,7 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockRedisScaler := redisScaler{meta}
+		mockRedisScaler := redisScaler{meta, &redis.Client{}}
 
 		metricSpec := mockRedisScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
