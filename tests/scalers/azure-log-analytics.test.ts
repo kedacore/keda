@@ -181,5 +181,4 @@ spec:
         query: "let x = 10; let y = 1; print MetricValue = x, Threshold = y;"
         threshold: "1"
       authenticationRef:
-        name: test-scaledobject-trigger-auth
-`
+        name: test-scaledobject-trigger-auth`

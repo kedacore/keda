@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	tenantId     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
-	clientId     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
+	tenantID     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
+	clientID     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
 	clientSecret = "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs"
-	workspaceId  = "074dd9f8-c368-4220-9400-acb6e80fc325"
+	workspaceID  = "074dd9f8-c368-4220-9400-acb6e80fc325"
 )
 
 type parseLogAnalyticsMetadataTestData struct {
@@ -27,10 +27,10 @@ var (
 
 //Faked parameters
 var sampleLogAnalyticsResolvedEnv = map[string]string{
-	tenantId:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
-	clientId:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
+	tenantID:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
+	clientID:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
 	clientSecret: "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs",
-	workspaceId:  "074dd9f8-c368-4220-9400-acb6e80fc325",
+	workspaceID:  "074dd9f8-c368-4220-9400-acb6e80fc325",
 }
 
 // A complete valid authParams with username and passwd (Faked)
