@@ -11,7 +11,7 @@ const sp_tenant = process.env['AZURE_SP_TENANT']
 
 test.before(t => {
   if (!la_workspace_id || !sp_id || !sp_key || !sp_tenant) {
-    t.fail('Connection parameter for LA scaler was not resolved')
+    t.fail('A required parameters LA scaler was not resolved')
   }
 
   sh.config.silent = true

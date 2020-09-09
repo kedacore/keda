@@ -22,7 +22,7 @@ type LogAnalyticsMetricIdentifier struct {
 }
 
 var (
-	query = "Perf | where InstanceName contains \"web\" | where CounterName == \"cpuUsageNanoCores\" | summarize arg_max(TimeGenerated, *) by InstanceName, CounterName | project CounterValue | limit 1"
+	query = "let x = 10; let y = 1; print MetricValue = x, Threshold = y;"
 )
 
 //Faked parameters
