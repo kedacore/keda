@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -58,18 +58,18 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 
 	if meta.includeUnacked {
 		return &rabbitMQScaler{metadata: meta}, nil
-	} else {
-		conn, ch, err := getConnectionAndChannel(meta.host)
-		if err != nil {
-			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
-		}
-
-		return &rabbitMQScaler{
-			metadata:   meta,
-			connection: conn,
-			channel:    ch,
-		}, nil
 	}
+
+	conn, ch, err := getConnectionAndChannel(meta.host)
+	if err != nil {
+		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+	}
+
+	return &rabbitMQScaler{
+		metadata:   meta,
+		connection: conn,
+		channel:    ch,
+	}, nil
 }
 
 func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) (*rabbitMQMetadata, error) {
@@ -85,28 +85,24 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 	}
 
 	if meta.includeUnacked {
-		if val, ok := authParams["apiHost"]; ok {
-			meta.apiHost = val
-		} else if val, ok := metadata["apiHost"]; ok {
-			hostSetting := val
-
-			if val, ok := resolvedEnv[hostSetting]; ok {
-				meta.apiHost = val
-			}
+		if authParams["apiHost"] != "" {
+			meta.apiHost = authParams["apiHost"]
+		} else if metadata["apiHost"] != "" {
+			meta.apiHost = metadata["apiHost"]
+		} else if metadata["apiHostFromEnv"] != "" {
+			meta.apiHost = resolvedEnv[metadata["apiHostFromEnv"]]
 		}
 
 		if meta.apiHost == "" {
 			return nil, fmt.Errorf("no apiHost setting given")
 		}
 	} else {
-		if val, ok := authParams["host"]; ok {
-			meta.host = val
-		} else if val, ok := metadata["host"]; ok {
-			hostSetting := val
-
-			if val, ok := resolvedEnv[hostSetting]; ok {
-				meta.host = val
-			}
+		if authParams["host"] != "" {
+			meta.host = authParams["host"]
+		} else if metadata["host"] != "" {
+			meta.host = metadata["host"]
+		} else if metadata["hostFromEnv"] != "" {
+			meta.host = resolvedEnv[metadata["hostFromEnv"]]
 		}
 
 		if meta.host == "" {
@@ -172,24 +168,24 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *rabbitMQScaler) getQueueMessages() (int, error) {
 	if s.metadata.includeUnacked {
-		info, err := s.getQueueInfoViaHttp()
+		info, err := s.getQueueInfoViaHTTP()
 		if err != nil {
 			return -1, err
-		} else {
-			// messages count includes count of ready and unack-ed
-			return info.Messages, nil
 		}
-	} else {
-		items, err := s.channel.QueueInspect(s.metadata.queueName)
-		if err != nil {
-			return -1, err
-		} else {
-			return items.Messages, nil
-		}
+
+		// messages count includes count of ready and unack-ed
+		return info.Messages, nil
 	}
+
+	items, err := s.channel.QueueInspect(s.metadata.queueName)
+	if err != nil {
+		return -1, err
+	}
+
+	return items.Messages, nil
 }
 
-func getJson(url string, target interface{}) error {
+func getJSON(url string, target interface{}) error {
 	var client = &http.Client{Timeout: 5 * time.Second}
 	r, err := client.Get(url)
 	if err != nil {
@@ -199,50 +195,55 @@ func getJson(url string, target interface{}) error {
 
 	if r.StatusCode == 200 {
 		return json.NewDecoder(r.Body).Decode(target)
-	} else {
-		body, _ := ioutil.ReadAll(r.Body)
-		return fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 	}
+
+	body, _ := ioutil.ReadAll(r.Body)
+	return fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
-func (s *rabbitMQScaler) getQueueInfoViaHttp() (*queueInfo, error) {
-	parsedUrl, err := url.Parse(s.metadata.apiHost)
+func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
+	parsedURL, err := url.Parse(s.metadata.apiHost)
 
 	if err != nil {
 		return nil, err
 	}
 
-	vhost := parsedUrl.Path
+	vhost := parsedURL.Path
 
 	if vhost == "" || vhost == "/" || vhost == "//" {
 		vhost = "/%2F"
 	}
 
-	parsedUrl.Path = ""
+	parsedURL.Path = ""
 
-	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedUrl.String(), "api/queues", vhost, s.metadata.queueName)
+	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, s.metadata.queueName)
 
 	info := queueInfo{}
-	err = getJson(getQueueInfoManagementURI, &info)
+	err = getJSON(getQueueInfoManagementURI, &info)
 
 	if err != nil {
 		return nil, err
-	} else {
-		return &info, nil
 	}
+
+	return &info, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         rabbitQueueLengthMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
-			},
-			Type: rabbitMetricType,
+func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: rabbitMetricType,
+	}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -253,7 +254,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: rabbitQueueLengthMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

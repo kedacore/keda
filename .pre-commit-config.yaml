@@ -1,0 +1,43 @@
+default_stages: [commit, push]
+minimum_pre_commit_version: "1.20.0"
+repos:
+  - repo: git://github.com/dnephin/pre-commit-golang
+    rev: master
+    hooks:
+      - id: go-fmt
+        name: Run go fmt against the code
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+  - repo: https://github.com/thlorenz/doctoc.git
+    rev: v1.4.0
+    hooks:
+      - id: doctoc
+        name: Add TOC for md files
+        files: ^README\.md$|^CONTRIBUTING\.md$
+        args:
+          - "--maxlevel"
+          - "2"
+  - repo: local
+    hooks:
+    - id: language-matters
+      language: pygrep
+      name: Check for language that we do not accept as community
+      description: Please use "deny_list" or "allow_list"  instead.
+      entry: "(?i)(black|white)[_-]?(list|List)"
+      pass_filenames: true
+    - id: sort-scalers
+      name: Check if scalers are sorted in scaler_handler.go
+      language: system
+      entry: "bash tools/sort_scalers.sh"
+      files: .*scale_handler\.go$
+    - id: revive
+      language: system
+      name: Run revive against the code
+      entry: make revive
+      files: .*\.go$

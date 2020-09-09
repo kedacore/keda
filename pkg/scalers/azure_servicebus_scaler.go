@@ -8,8 +8,8 @@ import (
 
 	servicebus "github.com/Azure/azure-service-bus-go"
 
-	"github.com/Azure/azure-amqp-common-go/v2/auth"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,12 +17,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type EntityType int
+type entityType int
 
 const (
-	None         EntityType = 0
-	Queue        EntityType = 1
-	Subscription EntityType = 2
+	none         entityType = 0
+	queue        entityType = 1
+	subscription entityType = 2
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
@@ -38,7 +38,7 @@ type azureServiceBusMetadata struct {
 	topicName        string
 	subscriptionName string
 	connection       string
-	entityType       EntityType
+	entityType       entityType
 	namespace        string
 }
 
@@ -58,7 +58,7 @@ func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]strin
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
 func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
-	meta.entityType = None
+	meta.entityType = none
 	meta.targetLength = defaultTargetQueueLength
 
 	// get target metric value
@@ -74,19 +74,19 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	// get queue name OR topic and subscription name & set entity type accordingly
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
-		meta.entityType = Queue
+		meta.entityType = queue
 
 		if _, ok := metadata["subscriptionName"]; ok {
-			return nil, fmt.Errorf("No subscription name provided with topic name")
+			return nil, fmt.Errorf("Subscription name provided with queue name")
 		}
 	}
 
 	if val, ok := metadata["topicName"]; ok {
-		if meta.entityType == Queue {
+		if meta.entityType == queue {
 			return nil, fmt.Errorf("Both topic and queue name metadata provided")
 		}
 		meta.topicName = val
-		meta.entityType = Subscription
+		meta.entityType = subscription
 
 		if val, ok := metadata["subscriptionName"]; ok {
 			meta.subscriptionName = val
@@ -95,23 +95,21 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		}
 	}
 
-	if meta.entityType == None {
+	if meta.entityType == none {
 		return nil, fmt.Errorf("No service bus entity type set")
 	}
 
 	if podIdentity == "" || podIdentity == "none" {
 		// get servicebus connection string
-		if val, ok := authParams["connection"]; ok {
-			meta.connection = val
-		} else if val, ok := metadata["connection"]; ok {
-			connectionSetting := val
-
-			if val, ok := resolvedEnv[connectionSetting]; ok {
-				meta.connection = val
-			}
+		if authParams["connection"] != "" {
+			meta.connection = authParams["connection"]
+		} else if metadata["connection"] != "" {
+			meta.connection = metadata["connection"]
+		} else if metadata["connectionFromEnv"] != "" {
+			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 		}
 
-		if meta.connection == "" {
+		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
 	} else if podIdentity == "azure" {
@@ -144,11 +142,25 @@ func (s *azureServiceBusScaler) Close() error {
 }
 
 // Returns the metric spec to be used by the HPA
-func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetLengthQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	metricName := "azure-servicebus"
+	if s.metadata.entityType == queue {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.queueName)
+	} else {
+		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName)
+	}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: metricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetLengthQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // Returns the current metrics to be served to the HPA
@@ -207,16 +219,16 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 
 	// switch case for queue vs topic here
 	switch s.metadata.entityType {
-	case Queue:
-		return GetQueueEntityFromNamespace(ctx, namespace, s.metadata.queueName)
-	case Subscription:
-		return GetSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
+	case queue:
+		return getQueueEntityFromNamespace(ctx, namespace, s.metadata.queueName)
+	case subscription:
+		return getSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
 	default:
 		return -1, fmt.Errorf("No entity type")
 	}
 }
 
-func GetQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
+func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
 	// get queue manager from namespace
 	queueManager := ns.NewQueueManager()
 
@@ -229,7 +241,7 @@ func GetQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, 
 	return *queueEntity.CountDetails.ActiveMessageCount, nil
 }
 
-func GetSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int32, error) {
+func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int32, error) {
 	// get subscription manager from namespace
 	subscriptionManager, err := ns.NewSubscriptionManager(topicName)
 	if err != nil {

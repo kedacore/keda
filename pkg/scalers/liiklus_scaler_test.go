@@ -19,12 +19,21 @@ type parseLiiklusMetadataTestData struct {
 	threshold      int64
 }
 
+type liiklusMetricIdentifier struct {
+	metadataTestData *parseLiiklusMetadataTestData
+	name             string
+}
+
 var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 	{map[string]string{}, errors.New("no topic provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo"}, errors.New("no liiklus API address provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565"}, errors.New("no consumer group provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup"}, nil, "bar:6565", "mygroup", "foo", 10},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "lagThreshold": "15"}, nil, "bar:6565", "mygroup", "foo", 15},
+}
+
+var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
+	{&parseLiiklusMetadataTestDataset[4], "liiklus-foo-mygroup"},
 }
 
 func TestLiiklusParseMetadata(t *testing.T) {
@@ -155,4 +164,20 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 		t.Errorf("got wrong metric values: %v", values)
 	}
 
+}
+
+func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range liiklusMetricIdentifiers {
+		meta, err := parseLiiklusMetadata(testData.metadataTestData.metadata)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockLiiklusScaler := liiklusScaler{meta, nil, nil}
+
+		metricSpec := mockLiiklusScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
 }

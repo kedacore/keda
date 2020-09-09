@@ -126,7 +126,7 @@ test.serial('Deployment for redis host and port env vars should have 0 replica o
 
 
 test.serial(`Deployment using redis host port env vars should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-    
+
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
@@ -166,7 +166,7 @@ test.serial('Deployment for redis address env var should have 0 replica on start
 
 
 test.serial(`Deployment using redis address env var should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-    
+
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
@@ -206,7 +206,7 @@ test.serial('Deployment for redis host and port in the trigger auth should have 
 
 
 test.serial(`Deployment using redis host port in triggerAuth should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-    
+
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
@@ -241,11 +241,11 @@ test.after.always.cb('clean up deployment', t => {
         `job/${writeJobNameForHostPortRef}`,
         `job/${writeJobNameForAddressRef}`,
         `job/${writeJobNameForHostPortInTriggerAuth}`,
-        `scaledobject.keda.k8s.io/${redisWorkerHostPortRefDeploymentName}`,
-        `scaledobject.keda.k8s.io/${redisWorkerAddressRefDeploymentName}`,
-        `scaledobject.keda.k8s.io/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
-        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth',
-        'triggerauthentications.keda.k8s.io/keda-redis-list-triggerauth-host-port',
+        `scaledobject.keda.sh/${redisWorkerHostPortRefDeploymentName}`,
+        `scaledobject.keda.sh/${redisWorkerAddressRefDeploymentName}`,
+        `scaledobject.keda.sh/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
+        'triggerauthentication.keda.sh/keda-redis-list-triggerauth',
+        'triggerauthentication.keda.sh/keda-redis-list-triggerauth-host-port',
         `deployment/${redisWorkerAddressRefDeploymentName}`,
         `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         `deployment/${redisWorkerHostPortRefDeploymentName}`,
@@ -357,25 +357,23 @@ spec:
         - name: READ_PROCESS_TIME
           value: "200"
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{DEPLOYMENT_NAME}}
-  labels:
-    deploymentName: {{DEPLOYMENT_NAME}}
 spec:
   scaleTargetRef:
-    deploymentName: {{DEPLOYMENT_NAME}}
-  pollingInterval: 5 
+    name: {{DEPLOYMENT_NAME}}
+  pollingInterval: 5
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
   - type: redis
     metadata:
-      host: REDIS_HOST
-      port: REDIS_PORT
-      listName: {{LIST_NAME}} 
+      hostFromEnv: REDIS_HOST
+      portFromEnv: REDIS_PORT
+      listName: {{LIST_NAME}}
       listLength: "5"
     authenticationRef:
       name: keda-redis-list-triggerauth
@@ -413,24 +411,22 @@ spec:
         - name: READ_PROCESS_TIME
           value: "500"
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{DEPLOYMENT_NAME}}
-  labels:
-    deploymentName: {{DEPLOYMENT_NAME}}
 spec:
   scaleTargetRef:
-    deploymentName: {{DEPLOYMENT_NAME}}
-  pollingInterval: 5 
+    name: {{DEPLOYMENT_NAME}}
+  pollingInterval: 5
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
   - type: redis
     metadata:
-      address: REDIS_ADDRESS
-      listName: {{LIST_NAME}} 
+      addressFromEnv: REDIS_ADDRESS
+      listName: {{LIST_NAME}}
       listLength: "5"
     authenticationRef:
       name: keda-redis-list-triggerauth
@@ -469,23 +465,21 @@ spec:
         - name: READ_PROCESS_TIME
           value: "200"
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{DEPLOYMENT_NAME}}
-  labels:
-    deploymentName: {{DEPLOYMENT_NAME}}
 spec:
   scaleTargetRef:
-    deploymentName: {{DEPLOYMENT_NAME}}
-  pollingInterval: 5 
+    name: {{DEPLOYMENT_NAME}}
+  pollingInterval: 5
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
   - type: redis
     metadata:
-      listName: {{LIST_NAME}} 
+      listName: {{LIST_NAME}}
       listLength: "5"
     authenticationRef:
       name: keda-redis-list-triggerauth-host-port
@@ -501,7 +495,7 @@ data:
   redisHost: {{REDIS_HOST}}
   redisPort: {{REDIS_PORT}}
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-redis-list-triggerauth-host-port
@@ -526,7 +520,7 @@ type: Opaque
 data:
   password: {{REDIS_PASSWORD}}
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-redis-list-triggerauth
@@ -549,7 +543,7 @@ spec:
       - name: redis
         image: {{CONTAINER_IMAGE}}
         imagePullPolicy: IfNotPresent
-        env: 
+        env:
         - name: REDIS_ADDRESS
           value: {{REDIS_ADDRESS}}
         - name: REDIS_PASSWORD

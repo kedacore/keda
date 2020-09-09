@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	pubSubSubscriptionSizeMetricName = "GCPPubSubSubscriptionSize"
-	defaultTargetSubscriptionSize    = 5
-	pubSubStackDriverMetricName      = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+	defaultTargetSubscriptionSize = 5
+	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
 )
 
 type pubsubScaler struct {
@@ -66,13 +65,13 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	if val, ok := metadata["credentials"]; ok && val != "" {
-		if creds, ok := resolvedEnv[val]; ok {
-			meta.credentials = creds
-		} else {
-			return nil, fmt.Errorf("could not resolve environment variable for credentials")
-		}
-	} else {
+	if metadata["credentials"] != "" {
+		meta.credentials = metadata["credentials"]
+	} else if metadata["credentialsFromEnv"] != "" {
+		meta.credentials = resolvedEnv[metadata["credentialsFromEnv"]]
+	}
+
+	if len(meta.credentials) == 0 {
 		return nil, fmt.Errorf("no credentials given. Need GCP service account credentials in json format")
 	}
 
@@ -97,23 +96,28 @@ func (s *pubsubScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	// Construct the target subscription size as a quantity
 	targetSubscriptionSizeQty := resource.NewQuantity(int64(s.metadata.targetSubscriptionSize), resource.DecimalSI)
 
-	externalMetric := &v2beta1.ExternalMetricSource{
-		MetricName:         pubSubSubscriptionSizeMetricName,
-		TargetAverageValue: targetSubscriptionSizeQty,
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "gcp", s.metadata.subscriptionName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetSubscriptionSizeQty,
+		},
 	}
 
 	// Create the metric spec for the HPA
-	metricSpec := v2beta1.MetricSpec{
+	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric,
 		Type:     externalMetricType,
 	}
 
-	return []v2beta1.MetricSpec{metricSpec}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription

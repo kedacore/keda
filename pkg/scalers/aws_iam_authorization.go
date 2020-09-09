@@ -5,7 +5,6 @@ import "fmt"
 const (
 	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
-	awsSessionTokenEnvVar    = "AWS_SESSION_TOKEN"
 )
 
 type awsAuthorizationMetadata struct {
@@ -34,23 +33,24 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 			}
 			meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
 		} else {
-			var keyName string
-			if keyName = metadata["awsAccessKeyID"]; keyName == "" {
-				keyName = awsAccessKeyIDEnvVar
-			}
-			if val, ok := resolvedEnv[keyName]; ok && val != "" {
-				meta.awsAccessKeyID = val
-			} else {
-				return meta, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
+			if metadata["awsAccessKeyID"] != "" {
+				meta.awsAccessKeyID = metadata["awsAccessKeyID"]
+			} else if metadata["awsAccessKeyIDFromEnv"] != "" {
+				meta.awsAccessKeyID = resolvedEnv[metadata["awsAccessKeyID"]]
 			}
 
-			if keyName = metadata["awsSecretAccessKey"]; keyName == "" {
-				keyName = awsSecretAccessKeyEnvVar
+			if len(meta.awsAccessKeyID) == 0 {
+				return meta, fmt.Errorf("awsAccessKeyID not found")
 			}
-			if val, ok := resolvedEnv[keyName]; ok && val != "" {
-				meta.awsSecretAccessKey = val
-			} else {
-				return meta, fmt.Errorf("'%s' doesn't exist in the deployment environment", keyName)
+
+			if metadata["awsSecretAccessKey"] != "" {
+				meta.awsSecretAccessKey = metadata["awsSecretAccessKey"]
+			} else if metadata["awsSecretAccessKeyFromEnv"] != "" {
+				meta.awsSecretAccessKey = resolvedEnv[metadata["awsSecretAccessKeyFromEnv"]]
+			}
+
+			if len(meta.awsSecretAccessKey) == 0 {
+				return meta, fmt.Errorf("awsSecretAccessKey not found")
 			}
 		}
 	}

@@ -9,6 +9,11 @@ type parsePrometheusMetadataTestData struct {
 	isError  bool
 }
 
+type prometheusMetricIdentifier struct {
+	metadataTestData *parsePrometheusMetadataTestData
+	name             string
+}
+
 var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
@@ -25,6 +30,10 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 }
 
+var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
+	{&testPromMetadata[1], "prometheus-http---localhost-9090-http_requests_total"},
+}
+
 func TestPrometheusParseMetadata(t *testing.T) {
 	for _, testData := range testPromMetadata {
 		_, err := parsePrometheusMetadata(testData.metadata, map[string]string{})
@@ -33,6 +42,22 @@ func TestPrometheusParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range prometheusMetricIdentifiers {
+		meta, err := parsePrometheusMetadata(testData.metadataTestData.metadata, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockPrometheusScaler := prometheusScaler{meta}
+
+		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

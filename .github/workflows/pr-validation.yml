@@ -1,11 +1,14 @@
-name: pull request validation
-on: [pull_request]
+name: CI
+on:
+  - push
+  - pull_request
+
 jobs:
   validate:
-    name: Validate
+    name: Validate PR
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:v2
     steps:
       - name: Check out code
         uses: actions/checkout@v1
@@ -20,8 +23,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Test
-        run: make test
+      - name: Verify Generated clientset is up to date
+        run: make clientset-verify
 
       - name: Build
         run: make build
+
+      - name: Test
+        run: make test
+
+  statics:
+    name: Static Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+      - uses: actions/setup-go@v2-beta
+        with:
+          go-version: 1.15
+      - name: Get revive
+        run: go get -u github.com/mgechev/revive
+      - uses: pre-commit/action@v1.0.1
+      - name: Run go vet
+        run: make govet

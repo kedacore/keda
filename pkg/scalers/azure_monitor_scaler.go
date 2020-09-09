@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	kedautil "github.com/kedacore/keda/pkg/util"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,10 +17,8 @@ import (
 )
 
 const (
-	azureMonitorMetricName       = "metricName"
-	targetValueName              = "targetValue"
-	defaultClientIDSetting       = ""
-	defaultClientPasswordSetting = ""
+	azureMonitorMetricName = "metricName"
+	targetValueName        = "targetValue"
 )
 
 type azureMonitorScaler struct {
@@ -28,7 +27,7 @@ type azureMonitorScaler struct {
 }
 
 type azureMonitorMetadata struct {
-	azureMonitorInfo azure.AzureMonitorInfo
+	azureMonitorInfo azure.MonitorInfo
 	targetValue      int
 }
 
@@ -49,7 +48,7 @@ func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string, 
 
 func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string, podIdentity string) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
-		azureMonitorInfo: azure.AzureMonitorInfo{},
+		azureMonitorInfo: azure.MonitorInfo{},
 	}
 
 	if val, ok := metadata[targetValueName]; ok && val != "" {
@@ -118,34 +117,28 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 	}
 
 	if podIdentity == "" || podIdentity == "none" {
-		if val, ok := authParams["activeDirectoryClientId"]; ok && val != "" {
-			meta.azureMonitorInfo.ClientID = val
-		} else {
-			clientIDSetting := defaultClientIDSetting
-			if val, ok := metadata["activeDirectoryClientId"]; ok && val != "" {
-				clientIDSetting = val
-			}
-
-			if val, ok := resolvedEnv[clientIDSetting]; ok {
-				meta.azureMonitorInfo.ClientID = val
-			} else {
-				return nil, fmt.Errorf("no activeDirectoryClientId given")
-			}
+		if authParams["activeDirectoryClientId"] != "" {
+			meta.azureMonitorInfo.ClientID = authParams["activeDirectoryClientId"]
+		} else if metadata["activeDirectoryClientId"] != "" {
+			meta.azureMonitorInfo.ClientID = metadata["activeDirectoryClientId"]
+		} else if metadata["activeDirectoryClientIdFromEnv"] != "" {
+			meta.azureMonitorInfo.ClientID = resolvedEnv[metadata["activeDirectoryClientIdFromEnv"]]
 		}
 
-		if val, ok := authParams["activeDirectoryClientPassword"]; ok && val != "" {
-			meta.azureMonitorInfo.ClientPassword = val
-		} else {
-			clientPasswordSetting := defaultClientPasswordSetting
-			if val, ok := metadata["activeDirectoryClientPassword"]; ok && val != "" {
-				clientPasswordSetting = val
-			}
+		if len(meta.azureMonitorInfo.ClientID) == 0 {
+			return nil, fmt.Errorf("no activeDirectoryClientId given")
+		}
 
-			if val, ok := resolvedEnv[clientPasswordSetting]; ok {
-				meta.azureMonitorInfo.ClientPassword = val
-			} else {
-				return nil, fmt.Errorf("no activeDirectoryClientPassword given")
-			}
+		if authParams["activeDirectoryClientPassword"] != "" {
+			meta.azureMonitorInfo.ClientPassword = authParams["activeDirectoryClientPassword"]
+		} else if metadata["activeDirectoryClientPassword"] != "" {
+			meta.azureMonitorInfo.ClientPassword = metadata["activeDirectoryClientPassword"]
+		} else if metadata["activeDirectoryClientPasswordFromEnv"] != "" {
+			meta.azureMonitorInfo.ClientPassword = resolvedEnv[metadata["activeDirectoryClientPasswordFromEnv"]]
+		}
+
+		if len(meta.azureMonitorInfo.ClientPassword) == 0 {
+			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
 		}
 	} else if podIdentity != "azure" {
 		return nil, fmt.Errorf("Azure Monitor doesn't support pod identity %s", podIdentity)
@@ -169,11 +162,19 @@ func (s *azureMonitorScaler) Close() error {
 	return nil
 }
 
-func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: azureMonitorMetricName, TargetAverageValue: targetMetricVal}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", kedautil.NormalizeString(s.metadata.azureMonitorInfo.ResourceURI), s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricVal,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

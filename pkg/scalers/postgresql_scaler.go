@@ -4,19 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
+
+	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
 )
 
 const (
-	pgMetricName              = "num"
-	defaultPostgreSQLPassword = ""
+	pgMetricName = "num"
 )
 
 type postgreSQLScaler struct {
@@ -74,14 +75,12 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 		return nil, fmt.Errorf("no targetQueryValue given")
 	}
 
-	if val, ok := authParams["connection"]; ok {
-		meta.connection = val
-	} else if val, ok := metadata["connection"]; ok {
-		hostSetting := val
-
-		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.connection = val
-		}
+	if authParams["connection"] != "" {
+		meta.connection = authParams["connection"]
+	} else if metadata["connection"] != "" {
+		meta.connection = metadata["connection"]
+	} else if metadata["connectionFromEnv"] != "" {
+		meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 	} else {
 		meta.connection = ""
 		if val, ok := metadata["host"]; ok {
@@ -110,13 +109,13 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 		} else {
 			return nil, fmt.Errorf("no sslmode name given")
 		}
-		meta.password = defaultPostgreSQLPassword
-		if val, ok := authParams["password"]; ok {
-			meta.password = val
-		} else if val, ok := metadata["password"]; ok && val != "" {
-			if passd, ok := resolvedEnv[val]; ok {
-				meta.password = passd
-			}
+
+		if authParams["password"] != "" {
+			meta.password = authParams["password"]
+		} else if metadata["password"] != "" {
+			meta.password = metadata["password"]
+		} else if metadata["passwordFromEnv"] != "" {
+			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
 		}
 	}
 
@@ -182,16 +181,27 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{
-		MetricName:         pgMetricName,
-		TargetAverageValue: targetQueryValue,
+	metricName := "postgresql"
+	if s.metadata.connection != "" {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.connection)
+	} else {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
 	}
-	metricSpec := v2beta1.MetricSpec{
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: metricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetQueryValue,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta1.MetricSpec{metricSpec}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -202,7 +212,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: pgMetricName,
+		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

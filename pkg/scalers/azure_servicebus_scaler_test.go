@@ -17,9 +17,14 @@ const (
 type parseServiceBusMetadataTestData struct {
 	metadata    map[string]string
 	isError     bool
-	entityType  EntityType
+	entityType  entityType
 	authParams  map[string]string
 	podIdentity string
+}
+
+type azServiceBusMetricIdentifier struct {
+	metadataTestData *parseServiceBusMetadataTestData
+	name             string
 }
 
 // not testing connections so it doesn't matter what the resolved env value is for this
@@ -28,41 +33,46 @@ var sampleResolvedEnv = map[string]string{
 }
 
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
-	{map[string]string{}, true, None, map[string]string{}, ""},
+	{map[string]string{}, true, none, map[string]string{}, ""},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, Queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, queue, map[string]string{}, ""},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, Subscription, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, subscription, map[string]string{}, ""},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// connection not set
-	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, ""},
 	// connection set in auth params
-	{map[string]string{"queueName": queueName}, false, Queue, map[string]string{"connection": connectionSetting}, ""},
+	{map[string]string{"queueName": queueName}, false, queue, map[string]string{"connection": connectionSetting}, ""},
 	// pod identity but missing namespace
-	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, "azure"},
 	// correct pod identity
-	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, Queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, map[string]string{}, "azure"},
+}
+
+var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
+	{&parseServiceBusMetadataDataset[1], "azure-servicebus-testqueue"},
+	{&parseServiceBusMetadataDataset[2], "azure-servicebus-testtopic-testsubscription"},
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 	{metadata: &azureServiceBusMetadata{
-		entityType: Queue,
+		entityType: queue,
 		queueName:  queueName,
 	}},
 	{metadata: &azureServiceBusMetadata{
-		entityType:       Subscription,
+		entityType:       subscription,
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	}},
 	{metadata: &azureServiceBusMetadata{
-		entityType:       Subscription,
+		entityType:       subscription,
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	},
@@ -93,12 +103,12 @@ func TestGetServiceBusLength(t *testing.T) {
 	t.Logf("\tQueue '%s' has 1 message\n", queueName)
 	t.Logf("\tTopic '%s' with subscription '%s' has 1 message\n", topicName, subscriptionName)
 
-	connection_string := os.Getenv("SERVICEBUS_CONNECTION_STRING")
+	connectionString := os.Getenv("SERVICEBUS_CONNECTION_STRING")
 
 	for _, scaler := range getServiceBusLengthTestScalers {
-		if connection_string != "" {
+		if connectionString != "" {
 			// Can actually test that numbers return
-			scaler.metadata.connection = connection_string
+			scaler.metadata.connection = connectionString
 			length, err := scaler.GetAzureServiceBusLength(context.TODO())
 
 			if err != nil {
@@ -116,6 +126,22 @@ func TestGetServiceBusLength(t *testing.T) {
 			if length != -1 || err == nil {
 				t.Errorf("Expected error but got success")
 			}
+		}
+	}
+}
+
+func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range azServiceBusMetricIdentifiers {
+		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadataTestData.metadata, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockAzServiceBusScalerScaler := azureServiceBusScaler{meta, testData.metadataTestData.podIdentity}
+
+		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

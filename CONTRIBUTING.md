@@ -2,7 +2,26 @@
 
 Thanks for helping make KEDA better 😍.
 
-There are many areas we can use contributions - ranging from code, documentation, feature proposals, issue triage, samples, and content creation.  
+There are many areas we can use contributions - ranging from code, documentation, feature proposals, issue triage, samples, and content creation.
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of contents**
+
+- [Project governance](#project-governance)
+- [Getting Help](#getting-help)
+- [Contributing Scalers](#contributing-scalers)
+- [Including Documentation Changes](#including-documentation-changes)
+- [Creating and building a local environment](#creating-and-building-a-local-environment)
+- [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
+- [Code Quality](#code-quality)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Project governance
+
+KEDA project is an open source project governed according to rules described in [`GOVERNANCE`](GOVERNANCE.md). If you
+would love to become a maintainer to support our project please create an issue as described in [`GOVERNANCE`](GOVERNANCE.md).
 
 ## Getting Help
 
@@ -24,7 +43,7 @@ For any contribution you make that impacts the behavior or experience of KEDA, p
 
 ## Creating and building a local environment
 
-[Details on setup of a development environment are found on the README](https://github.com/kedacore/keda#building-quick-start-with-visual-studio-code-remote---containers)
+[Details on setup of a development environment are found on the README](https://github.com/kedacore/keda/BUILD.md)
 
 ## Developer Certificate of Origin: Signing your work
 
@@ -67,4 +86,30 @@ git reset $(git merge-base master <branch-name>)
 git add -A
 git commit -sm "one commit on <branch-name>"
 git push --force
+```
+
+## Code Quality
+
+This project is using [pre-commits](https://pre-commit.com) to ensure the quality of the code.
+We encourage you to use pre-commits, but it's not a required to contribute. Every change is checked
+on CI and if it does not pass the tests it cannot be accepted. If you want to check locally then
+you should install Python3.6 or newer together and run:
+```bash
+pip install pre-commit
+# or
+brew install pre-commit
+```
+For more installation options visit the [pre-commits](https://pre-commit.com).
+
+To turn on pre-commit checks for commit operations in git, run:
+```bash
+pre-commit install
+```
+To run all checks on your staged files, run:
+```bash
+pre-commit run
+```
+To run all checks on all files, run:
+```bash
+pre-commit run --all-files
 ```

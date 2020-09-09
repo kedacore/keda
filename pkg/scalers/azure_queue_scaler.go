@@ -6,7 +6,7 @@ import (
 	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -18,7 +18,6 @@ const (
 	queueLengthMetricName    = "queueLength"
 	defaultTargetQueueLength = 5
 	externalMetricType       = "External"
-	defaultConnectionSetting = "AzureWebJobsStorage"
 )
 
 type azureQueueScaler struct {
@@ -36,6 +35,7 @@ type azureQueueMetadata struct {
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
+// NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
 	meta, podIdentity, err := parseAzureQueueMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {
@@ -80,21 +80,17 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 	if podAuth == "" || podAuth == "none" {
 		// Azure Queue Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
-		connection := authParams["connection"]
-		if connection != "" {
+		if authParams["connection"] != "" {
 			// Found the connection in a parameter from TriggerAuthentication
-			meta.connection = connection
-		} else {
-			connectionSetting := defaultConnectionSetting
-			if val, ok := metadata["connection"]; ok && val != "" {
-				connectionSetting = val
-			}
+			meta.connection = authParams["connection"]
+		} else if metadata["connection"] != "" {
+			meta.connection = metadata["connection"]
+		} else if metadata["connectionFromEnv"] != "" {
+			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+		}
 
-			if val, ok := resolvedEnv[connectionSetting]; ok {
-				meta.connection = val
-			} else {
-				return nil, "", fmt.Errorf("no connection setting given")
-			}
+		if len(meta.connection) == 0 {
+			return nil, "", fmt.Errorf("no connection setting given")
 		}
 	} else if podAuth == "azure" {
 		// If the Use AAD Pod Identity is present then check account name
@@ -132,11 +128,19 @@ func (s *azureQueueScaler) Close() error {
 	return nil
 }
 
-func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: queueLengthMetricName, TargetAverageValue: targetQueueLengthQty}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s", "azure-queue", s.metadata.queueName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetQueueLengthQty,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

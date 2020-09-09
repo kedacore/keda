@@ -13,17 +13,17 @@ export class ArtemisHelper {
             sh.exec(`kubectl -n ${artemisNamespace} apply -f ${tmpFile.name}`).code, 'creating artemis deployment should work.'
         )
         t.is(
-            0, 
+            0,
             sh.exec(`kubectl -n ${artemisNamespace} wait --for=condition=available --timeout=600s deployment/artemis-activemq`).code, 'Artemis should be available.'
         )
-          
+
     }
 
     static installArtemisSecret(t, testNamespace: string) {
         const tmpFile = tmp.fileSync()
         fs.writeFileSync(tmpFile.name, artemisSecretYaml)
         sh.exec(`kubectl -n ${testNamespace} apply -f ${tmpFile.name}`).code, 'creating secrets should work.'
-          
+
     }
 
     static publishMessages(t, testNamespace: string) {
@@ -32,7 +32,7 @@ export class ArtemisHelper {
         t.is(
             0,
             sh.exec(`kubectl -n ${testNamespace} apply -f ${tmpFile.name}`).code, 'creating artemis producer deployment should work.'
-        )             
+        )
     }
 
     static installConsumer(t, testNamespace: string) {
@@ -41,7 +41,7 @@ export class ArtemisHelper {
         t.is(
             0,
             sh.exec(`kubectl -n ${testNamespace} apply -f ${tmpFile.name}`).code, 'creating artemis consumer deployment should work.'
-        )  
+        )
     }
 
     static uninstallArtemis(t, artemisNamespace: string){
@@ -56,7 +56,7 @@ export class ArtemisHelper {
         fs.writeFileSync(tmpFile.name, consumerYaml)
         sh.exec(`kubectl -n ${testNamespace} delete -f ${tmpFile.name}`)
         fs.writeFileSync(tmpFile.name, producerYaml)
-        sh.exec(`kubectl -n ${testNamespace} delete -f ${tmpFile.name}`)    
+        sh.exec(`kubectl -n ${testNamespace} delete -f ${tmpFile.name}`)
     }
 }
 

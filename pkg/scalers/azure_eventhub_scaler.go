@@ -11,7 +11,7 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -20,30 +20,28 @@ import (
 )
 
 const (
-	defaultEventHubMessageThreshold  = 64
-	eventHubMetricType               = "External"
-	thresholdMetricName              = "unprocessedEventThreshold"
-	defaultEventHubConsumerGroup     = "$Default"
-	defaultEventHubConnectionSetting = "EventHub"
-	defaultStorageConnectionSetting  = "AzureWebJobsStorage"
-	defaultBlobContainer             = ""
+	defaultEventHubMessageThreshold = 64
+	eventHubMetricType              = "External"
+	thresholdMetricName             = "unprocessedEventThreshold"
+	defaultEventHubConsumerGroup    = "$Default"
+	defaultBlobContainer            = ""
 )
 
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
-type AzureEventHubScaler struct {
-	metadata *EventHubMetadata
+type azureEventHubScaler struct {
+	metadata *eventHubMetadata
 	client   *eventhub.Hub
 }
 
-type EventHubMetadata struct {
+type eventHubMetadata struct {
 	eventHubInfo azure.EventHubInfo
 	threshold    int64
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	parsedMetadata, err := parseAzureEventHubMetadata(metadata, resolvedEnv)
+func NewAzureEventHubScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
+	parsedMetadata, err := parseAzureEventHubMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
@@ -53,15 +51,15 @@ func NewAzureEventHubScaler(resolvedEnv, metadata map[string]string) (Scaler, er
 		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
 
-	return &AzureEventHubScaler{
+	return &azureEventHubScaler{
 		metadata: parsedMetadata,
 		client:   hub,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*EventHubMetadata, error) {
-	meta := EventHubMetadata{
+func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]string) (*eventHubMetadata, error) {
+	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
 	meta.threshold = defaultEventHubMessageThreshold
@@ -75,25 +73,27 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 		meta.threshold = threshold
 	}
 
-	storageConnectionSetting := defaultStorageConnectionSetting
-	if val, ok := metadata["storageConnection"]; ok && val != "" {
-		storageConnectionSetting = val
+	if authParams["storageConnection"] != "" {
+		meta.eventHubInfo.StorageConnection = authParams["storageConnection"]
+	} else if metadata["storageConnection"] != "" {
+		meta.eventHubInfo.StorageConnection = metadata["storageConnection"]
+	} else if metadata["storageConnectionFromEnv"] != "" {
+		meta.eventHubInfo.StorageConnection = resolvedEnv[metadata["storageConnectionFromEnv"]]
 	}
 
-	if val, ok := resolvedEnv[storageConnectionSetting]; ok {
-		meta.eventHubInfo.StorageConnection = val
-	} else {
+	if len(meta.eventHubInfo.StorageConnection) == 0 {
 		return nil, fmt.Errorf("no storage connection string given")
 	}
 
-	eventHubConnectionSetting := defaultEventHubConnectionSetting
-	if val, ok := metadata["connection"]; ok && val != "" {
-		eventHubConnectionSetting = val
+	if authParams["connection"] != "" {
+		meta.eventHubInfo.EventHubConnection = authParams["connection"]
+	} else if metadata["connection"] != "" {
+		meta.eventHubInfo.EventHubConnection = metadata["connection"]
+	} else if metadata["connectionFromEnv"] != "" {
+		meta.eventHubInfo.EventHubConnection = resolvedEnv[metadata["connectionFromEnv"]]
 	}
 
-	if val, ok := resolvedEnv[eventHubConnectionSetting]; ok {
-		meta.eventHubInfo.EventHubConnection = val
-	} else {
+	if len(meta.eventHubInfo.EventHubConnection) == 0 {
 		return nil, fmt.Errorf("no event hub connection string given")
 	}
 
@@ -111,7 +111,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv map[string]string) (*Event
 }
 
 //GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
-func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
+func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
 
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
@@ -173,7 +173,7 @@ func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartit
 }
 
 // IsActive determines if eventhub is active based on number of unprocessed events
-func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
+func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
 		eventhubLog.Error(err, "unable to get runtimeInfo for isActive")
@@ -205,20 +205,23 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetricSpecForScaling returns metric spec
-func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         thresholdMetricName,
-				TargetAverageValue: resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI),
-			},
-			Type: eventHubMetricType,
+func (scaler *azureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricVal,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub
-func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (scaler *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
@@ -270,6 +273,6 @@ func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partition
 }
 
 // Close closes Azure Event Hub Scaler
-func (scaler *AzureEventHubScaler) Close() error {
+func (scaler *azureEventHubScaler) Close() error {
 	return nil
 }

@@ -6,6 +6,8 @@ RUN apt-get update && \
 
 # Install azure-cli
 RUN apt-get install apt-transport-https lsb-release software-properties-common dirmngr -y && \
+    curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
+        tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null && \
     AZ_REPO=$(lsb_release -cs) && \
     echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | \
         tee /etc/apt/sources.list.d/azure-cli.list && \
@@ -16,7 +18,7 @@ RUN apt-get install apt-transport-https lsb-release software-properties-common d
     apt-get install -y azure-cli
 
 # Install docker client
-RUN wget https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.tgz && \
+RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.tgz && \
     docker_sha256=865038730c79ab48dfed1365ee7627606405c037f46c9ae17c5ec1f487da1375 && \
     echo "$docker_sha256 docker-19.03.2.tgz" | sha256sum -c - && \
     tar xvzf docker-19.03.2.tgz && \
@@ -24,16 +26,16 @@ RUN wget https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.t
     rm -rf docker docker-19.03.2.tgz
 
 # Install golang
-RUN GO_VERSION=1.13.3 && \
-    wget https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=0804bf02020dceaa8a7d7275ee79f7a142f1996bfd0c39216ccb405f93f994c0 && \
+RUN GO_VERSION=1.15 && \
+    curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    go_sha256=2d75848ac606061efe52a8068d0e647b35ce487a15bb52272c427df485193602 && \
     echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
 
 # Install helm/tiller
 RUN HELM_VERSION=v2.16.1 && \
-    wget https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
+    curl -LO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     helm_sha256=7eebaaa2da4734242bbcdced62cc32ba8c7164a18792c8acdf16c77abffce202 && \
     echo "$helm_sha256 helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c - && \
     tar xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
@@ -53,10 +55,10 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get install -y nodejs
 
 # Install operator-sdk
-RUN RELEASE_VERSION=v0.12.0 && \
+RUN RELEASE_VERSION=v1.0.0 && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
-    gpg --keyserver keyserver.ubuntu.com --recv-key 0CF50BEE7E4DF6445E08C0EA9AFDE59E90D2B445 && \
+    gpg --keyserver keyserver.ubuntu.com --recv-key BF6F6F18846753754CBB1DDFBC9679ED89ED8983 && \
     gpg --verify operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu.asc && \
     chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
     mkdir -p /usr/local/bin/ && \
@@ -68,4 +70,4 @@ ENV PATH=${PATH}:/usr/local/go/bin \
     GOPATH=/go
 
 # Install FOSSA tooling
-RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash 
+RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash

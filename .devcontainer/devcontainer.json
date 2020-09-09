@@ -13,16 +13,16 @@
 		"-v", "keda-gomodcache:/go/pkg",
 		// Cache vscode exentsions installs and homedir
 		"-v", "keda-vscodecache:/root/.vscode-server",
-		
+
 		// Mount docker socket for docker builds
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 
 		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"
 	],
 
-	// Use 'settings' to set *default* container specific settings.json values on container create. 
+	// Use 'settings' to set *default* container specific settings.json values on container create.
 	// You can edit these settings after create using File > Preferences > Settings > Remote.
-	"settings": { 
+	"settings": {
 		"terminal.integrated.shell.linux": "/bin/bash",
 		"go.gopath": "/go"
 	},

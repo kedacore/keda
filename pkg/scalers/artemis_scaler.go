@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,6 +22,7 @@ type artemisScaler struct {
 	metadata *artemisMetadata
 }
 
+//revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
 	managementEndpoint string
 	queueName          string
@@ -28,8 +30,11 @@ type artemisMetadata struct {
 	brokerAddress      string
 	username           string
 	password           string
+	restApiTemplate    string
 	queueLength        int
 }
+
+//revive:enable:var-naming
 
 type artemisMonitoring struct {
 	Request   string `json:"request"`
@@ -39,9 +44,9 @@ type artemisMonitoring struct {
 }
 
 const (
-	artemisQueueLengthMetricName = "queueLength"
-	artemisMetricType            = "External"
-	defaultArtemisQueueLength    = 10
+	artemisMetricType         = "External"
+	defaultArtemisQueueLength = 10
+	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -63,6 +68,12 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
+
+	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
+		meta.restApiTemplate = metadata["restApiTemplate"]
+	} else {
+		meta.restApiTemplate = defaultRestAPITemplate
+	}
 
 	if metadata["managementEndpoint"] == "" {
 		return nil, errors.New("no management endpoint given")
@@ -93,13 +104,15 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		meta.queueLength = queueLength
 	}
 
-	if val, ok := authParams["username"]; ok {
+	if val, ok := authParams["username"]; ok && val != "" {
 		meta.username = val
-	} else if val, ok := metadata["username"]; ok {
+	} else if val, ok := metadata["username"]; ok && val != "" {
 		username := val
 
-		if val, ok := resolvedEnv[username]; ok {
+		if val, ok := resolvedEnv[username]; ok && val != "" {
 			meta.username = val
+		} else {
+			meta.username = username
 		}
 	}
 
@@ -107,13 +120,15 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		return nil, fmt.Errorf("username cannot be empty")
 	}
 
-	if val, ok := authParams["password"]; ok {
+	if val, ok := authParams["password"]; ok && val != "" {
 		meta.password = val
-	} else if val, ok := metadata["password"]; ok {
+	} else if val, ok := metadata["password"]; ok && val != "" {
 		password := val
 
-		if val, ok := resolvedEnv[password]; ok {
+		if val, ok := resolvedEnv[password]; ok && val != "" {
 			meta.password = val
+		} else {
+			meta.password = password
 		}
 	}
 
@@ -134,13 +149,15 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *artemisScaler) getArtemisManagementEndpoint() string {
-	return "http://" + s.metadata.managementEndpoint
-}
-
 func (s *artemisScaler) getMonitoringEndpoint() string {
-	monitoringEndpoint := fmt.Sprintf("%s/console/jolokia/read/org.apache.activemq.artemis:broker=\"%s\",component=addresses,address=\"%s\",subcomponent=queues,routing-type=\"anycast\",queue=\"%s\"/MessageCount",
-		s.getArtemisManagementEndpoint(), s.metadata.brokerName, s.metadata.brokerAddress, s.metadata.queueName)
+
+	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.managementEndpoint,
+		"<<queueName>>", s.metadata.queueName,
+		"<<brokerName>>", s.metadata.brokerName,
+		"<<brokerAddress>>", s.metadata.brokerAddress)
+
+	monitoringEndpoint := replacer.Replace(s.metadata.restApiTemplate)
+
 	return monitoringEndpoint
 }
 
@@ -175,21 +192,24 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 		return -1, fmt.Errorf("Artemis management endpoint response error code : %d", resp.StatusCode)
 	}
 
-	artemisLog.V(1).Info("Artemis scaler: Providing metrics based on current queue length ", messageCount, "queue length limit", s.metadata.queueLength)
+	artemisLog.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
 
 	return messageCount, nil
 }
 
-func (s *artemisScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         artemisQueueLengthMetricName,
-				TargetAverageValue: resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI),
-			},
-			Type: artemisMetricType,
+func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

@@ -78,9 +78,9 @@ test.serial.cb(
 
 test.after.always.cb('clean up azure-queue deployment', t => {
   const resources = [
+    'scaledobject.keda.sh/test-scaledobject',
     'secret/test-secrets',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.k8s.io/test-scaledobject',
   ]
 
   for (const resource of resources) {
@@ -131,15 +131,13 @@ spec:
         - name: FUNCTIONS_WORKER_RUNTIME
           value: node
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
-  labels:
-    deploymentName: test-deployment
 spec:
   scaleTargetRef:
-    deploymentName: test-deployment
+    name: test-deployment
   pollingInterval: 5
   maxReplicaCount: 1
   cooldownPeriod: 10
@@ -150,7 +148,7 @@ spec:
     metadata:
       queueName: ${queueName}
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: azure-queue-auth

@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,30 +16,18 @@ import (
 )
 
 const (
-	pendingEntriesCountMetricName = "RedisStreamPendingEntriesCount"
-
 	// defaults
 	defaultTargetPendingEntriesCount = 5
-	defaultAddress                   = "redis-master.default.svc.cluster.local:6379"
-	defaultPassword                  = ""
 	defaultDbIndex                   = 0
 	defaultTLS                       = false
-	defaultRedisHost                 = ""
-	defaultRedisPort                 = ""
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
 	streamNameMetadata          = "stream"
 	consumerGroupNameMetadata   = "consumerGroup"
-	addressMetadata             = "address"
-	hostMetadata                = "host"
-	portMetadata                = "port"
 	passwordMetadata            = "password"
 	databaseIndexMetadata       = "databaseIndex"
 	enableTLSMetadata           = "enableTLS"
-
-	// error
-	missingRedisAddressOrHostPortInfo = "address or host missing. please provide redis address should in host:port format or set the host/port values"
 )
 
 type redisStreamsScaler struct {
@@ -51,12 +39,8 @@ type redisStreamsMetadata struct {
 	targetPendingEntriesCount int
 	streamName                string
 	consumerGroupName         string
-	address                   string
-	password                  string
-	host                      string
-	port                      string
 	databaseIndex             int
-	enableTLS                 bool
+	connectionInfo            redisConnectionInfo
 }
 
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
@@ -81,12 +65,12 @@ func NewRedisStreamsScaler(resolvedEnv, metadata, authParams map[string]string) 
 
 func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 	options := &redis.Options{
-		Addr:     metadata.address,
-		Password: metadata.password,
+		Addr:     metadata.connectionInfo.address,
+		Password: metadata.connectionInfo.password,
 		DB:       metadata.databaseIndex,
 	}
 
-	if metadata.enableTLS == true {
+	if metadata.connectionInfo.enableTLS == true {
 		options.TLSConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
@@ -104,7 +88,13 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 }
 
 func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]string) (*redisStreamsMetadata, error) {
-	meta := redisStreamsMetadata{}
+	connInfo, err := parseRedisAddress(metadata, resolvedEnv, authParams)
+	if err != nil {
+		return nil, err
+	}
+	meta := redisStreamsMetadata{
+		connectionInfo: connInfo,
+	}
 	meta.targetPendingEntriesCount = defaultTargetPendingEntriesCount
 
 	if val, ok := metadata[pendingEntriesCountMetadata]; ok {
@@ -129,50 +119,6 @@ func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("missing redis stream consumer group name")
 	}
 
-	address := defaultAddress
-	host := defaultRedisHost
-	port := defaultRedisPort
-	if val, ok := metadata[addressMetadata]; ok && val != "" {
-		address = val
-	} else {
-		if val, ok := metadata[hostMetadata]; ok && val != "" {
-			host = val
-		} else {
-			return nil, fmt.Errorf(missingRedisAddressOrHostPortInfo)
-		}
-		if val, ok := metadata[portMetadata]; ok && val != "" {
-			port = val
-		} else {
-			return nil, fmt.Errorf(missingRedisAddressOrHostPortInfo)
-		}
-	}
-
-	if val, ok := resolvedEnv[address]; ok {
-		meta.address = val
-	} else {
-		if val, ok := resolvedEnv[host]; ok {
-			meta.host = val
-		} else {
-			return nil, fmt.Errorf(missingRedisAddressOrHostPortInfo)
-		}
-
-		if val, ok := resolvedEnv[port]; ok {
-			meta.port = val
-		} else {
-			return nil, fmt.Errorf(missingRedisAddressOrHostPortInfo)
-		}
-		meta.address = fmt.Sprintf("%s:%s", meta.host, meta.port)
-	}
-
-	meta.password = defaultPassword
-	if val, ok := authParams[passwordMetadata]; ok {
-		meta.password = val
-	} else if val, ok := metadata[passwordMetadata]; ok && val != "" {
-		if passd, ok := resolvedEnv[val]; ok {
-			meta.password = passd
-		}
-	}
-
 	meta.databaseIndex = defaultDbIndex
 	if val, ok := metadata[databaseIndexMetadata]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
@@ -182,14 +128,6 @@ func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]stri
 		meta.databaseIndex = int(dbIndex)
 	}
 
-	meta.enableTLS = defaultTLS
-	if val, ok := metadata[enableTLSMetadata]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing enableTLS %v", err)
-		}
-		meta.enableTLS = tls
-	}
 	return &meta, nil
 }
 
@@ -210,12 +148,19 @@ func (s *redisStreamsScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-
+func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPendingEntriesCount := resource.NewQuantity(int64(s.metadata.targetPendingEntriesCount), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{MetricName: pendingEntriesCountMetricName, TargetAverageValue: targetPendingEntriesCount}
-	metricSpec := v2beta1.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta1.MetricSpec{metricSpec}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetPendingEntriesCount,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics fetches the number of pending entries for a consumer group in a stream

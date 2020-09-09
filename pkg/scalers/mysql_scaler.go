@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
-	"k8s.io/api/autoscaling/v2beta1"
+	kedautil "github.com/kedacore/keda/pkg/util"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -15,8 +16,7 @@ import (
 )
 
 const (
-	mySQLMetricName      = "MySQLQueryValue"
-	defaultMySQLPassword = ""
+	mySQLMetricName = "MySQLQueryValue"
 )
 
 type mySQLScaler struct {
@@ -73,13 +73,12 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
-	if val, ok := authParams["connectionString"]; ok {
-		meta.connectionString = val
-	} else if val, ok := metadata["connectionString"]; ok {
-		hostSetting := val
-		if val, ok := resolvedEnv[hostSetting]; ok {
-			meta.connectionString = val
-		}
+	if authParams["connectionString"] != "" {
+		meta.connectionString = authParams["connectionString"]
+	} else if metadata["connectionString"] != "" {
+		meta.connectionString = metadata["connectionString"]
+	} else if metadata["connectionStringFromEnv"] != "" {
+		meta.connectionString = resolvedEnv[metadata["connectionStringFromEnv"]]
 	} else {
 		meta.connectionString = ""
 		if val, ok := metadata["host"]; ok {
@@ -103,13 +102,17 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		} else {
 			return nil, fmt.Errorf("no dbName given")
 		}
-		meta.password = defaultMySQLPassword
-		if val, ok := authParams["password"]; ok {
-			meta.password = val
-		} else if val, ok := metadata["password"]; ok && val != "" {
-			if pass, ok := resolvedEnv[val]; ok {
-				meta.password = pass
-			}
+
+		if authParams["password"] != "" {
+			meta.password = authParams["password"]
+		} else if metadata["password"] != "" {
+			meta.password = metadata["password"]
+		} else if metadata["passwordFromEnv"] != "" {
+			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
+		}
+
+		if len(meta.password) == 0 {
+			return nil, fmt.Errorf("no password given")
 		}
 	}
 
@@ -183,16 +186,27 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
+func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-	externalMetric := &v2beta1.ExternalMetricSource{
-		MetricName:         mySQLMetricName,
-		TargetAverageValue: targetQueryValue,
+	metricName := "mysql"
+	if s.metadata.connectionString != "" {
+		metricName = fmt.Sprintf("%s-%s", metricName, kedautil.NormalizeString(s.metadata.connectionString))
+	} else {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
 	}
-	metricSpec := v2beta1.MetricSpec{
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: metricName,
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetQueryValue,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta1.MetricSpec{metricSpec}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

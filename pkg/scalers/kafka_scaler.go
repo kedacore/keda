@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,10 +26,11 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	bootstrapServers []string
-	group            string
-	topic            string
-	lagThreshold     int64
+	bootstrapServers  []string
+	group             string
+	topic             string
+	lagThreshold      int64
+	offsetResetPolicy offsetResetPolicy
 
 	// auth
 	authMode kafkaAuthMode
@@ -41,6 +42,13 @@ type kafkaMetadata struct {
 	key  string
 	ca   string
 }
+
+type offsetResetPolicy string
+
+const (
+	latest   offsetResetPolicy = "latest"
+	earliest offsetResetPolicy = "earliest"
+)
 
 type kafkaAuthMode string
 
@@ -57,6 +65,8 @@ const (
 	lagThresholdMetricName   = "lagThreshold"
 	kafkaMetricType          = "External"
 	defaultKafkaLagThreshold = 10
+	defaultOffsetResetPolicy = latest
+	invalidOffset            = -1
 )
 
 var kafkaLog = logf.Log.WithName("kafka_scaler")
@@ -83,19 +93,11 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	// brokerList marked as deprecated, bootstrapServers is the new one to use
-	if metadata["brokerList"] != "" && metadata["bootstrapServers"] != "" {
-		return meta, errors.New("cannot specify both bootstrapServers and brokerList (deprecated)")
-	}
-	if metadata["brokerList"] == "" && metadata["bootstrapServers"] == "" {
-		return meta, errors.New("no bootstrapServers or brokerList (deprecated) given")
+	if metadata["bootstrapServers"] == "" {
+		return meta, errors.New("no bootstrapServers given")
 	}
 	if metadata["bootstrapServers"] != "" {
 		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
-	}
-	if metadata["brokerList"] != "" {
-		kafkaLog.V(0).Info("WARNING: usage of brokerList is deprecated. use bootstrapServers instead.")
-		meta.bootstrapServers = strings.Split(metadata["brokerList"], ",")
 	}
 
 	if metadata["consumerGroup"] == "" {
@@ -107,6 +109,16 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 		return meta, errors.New("no topic given")
 	}
 	meta.topic = metadata["topic"]
+
+	meta.offsetResetPolicy = defaultOffsetResetPolicy
+
+	if metadata["offsetResetPolicy"] != "" {
+		policy := offsetResetPolicy(metadata["offsetResetPolicy"])
+		if policy != earliest && policy != latest {
+			return meta, fmt.Errorf("err offsetResetPolicy policy %s given", policy)
+		}
+		meta.offsetResetPolicy = policy
+	}
 
 	meta.lagThreshold = defaultKafkaLagThreshold
 
@@ -175,7 +187,10 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	for _, partition := range partitions {
-		lag := s.getLagForPartition(partition, offsets)
+		lag, err := s.getLagForPartition(partition, offsets)
+		if err != nil && lag == invalidOffset {
+			return true, nil
+		}
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
 		// Return as soon as a lag was detected for any partition
@@ -248,8 +263,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
 	}
 
-	admin, err := sarama.NewClusterAdmin(metadata.bootstrapServers, config)
+	admin, err := sarama.NewClusterAdminFromClient(client)
 	if err != nil {
+		if !client.Closed() {
+			client.Close()
+		}
 		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
 	}
 
@@ -286,39 +304,35 @@ func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchRespons
 	return offsets, nil
 }
 
-func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) int64 {
+func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.OffsetFetchResponse) (int64, error) {
 	block := offsets.GetBlock(s.metadata.topic, partition)
 	if block == nil {
 		kafkaLog.Error(fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition), "")
-		return 0
+		return 0, fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition)
 	}
 	consumerOffset := block.Offset
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
 		kafkaLog.Error(err, fmt.Sprintf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition))
-		return 0
+		return 0, fmt.Errorf("error finding latest offset for topic %s and partition %d", s.metadata.topic, partition)
 	}
 
-	var lag int64
-	// For now, assume a consumer group that has no committed
-	// offset will read all messages from the topic. This may be
-	// something we want to allow users to configure.
-	if consumerOffset == sarama.OffsetNewest || consumerOffset == sarama.OffsetOldest {
-		lag = latestOffset
-	} else {
-		lag = latestOffset - consumerOffset
-	}
+	if consumerOffset == invalidOffset {
+		if s.metadata.offsetResetPolicy == latest {
+			kafkaLog.V(0).Info(fmt.Sprintf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition))
+			return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
+		}
+		return latestOffset, nil
 
-	return lag
+	}
+	return (latestOffset - consumerOffset), nil
+
 }
 
 // Close closes the kafka admin and client
 func (s *kafkaScaler) Close() error {
-	err := s.client.Close()
-	if err != nil {
-		return err
-	}
-	err = s.admin.Close()
+	// underlying client will also be closed on admin's Close() call
+	err := s.admin.Close()
 	if err != nil {
 		return err
 	}
@@ -326,16 +340,19 @@ func (s *kafkaScaler) Close() error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta1.MetricSpec {
-	return []v2beta1.MetricSpec{
-		{
-			External: &v2beta1.ExternalMetricSource{
-				MetricName:         lagThresholdMetricName,
-				TargetAverageValue: resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI),
-			},
-			Type: kafkaMetricType,
+func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: fmt.Sprintf("%s-%s-%s", "kafka", s.metadata.topic, s.metadata.group),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -352,7 +369,8 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	totalLag := int64(0)
 	for _, partition := range partitions {
-		lag := s.getLagForPartition(partition, offsets)
+		lag, _ := s.getLagForPartition(partition, offsets)
+
 		totalLag += lag
 	}
 

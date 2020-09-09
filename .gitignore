@@ -331,11 +331,10 @@ ASALocalRun/
 
 # Keda artifacts
 dist/
-build/_output
+bin
 .DS_Store
 
 apiserver.local.config/
-config
 *.cert
 *.key
 
@@ -345,3 +344,6 @@ config
 # GO Vendor
 vendor
 cover.out
+
+# GO debug binary
+cmd/manager/debug.test

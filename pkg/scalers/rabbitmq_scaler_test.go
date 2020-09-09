@@ -20,6 +20,11 @@ type parseRabbitMQMetadataTestData struct {
 	authParams map[string]string
 }
 
+type rabbitMQMetricIdentifier struct {
+	metadataTestData *parseRabbitMQMetadataTestData
+	name             string
+}
+
 var sampleRabbitMqResolvedEnv = map[string]string{
 	host:    "amqp://user:sercet@somehost.com:5236/vhost",
 	apiHost: "https://user:secret@somehost.com/vhost",
@@ -29,17 +34,21 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// properly formed metadata
-	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
 	// malformed queueLength
-	{map[string]string{"queueLength": "AA", "queueName": "sample", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "AA", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 	// missing host
 	{map[string]string{"queueLength": "AA", "queueName": "sample"}, true, map[string]string{}},
 	// missing queueName
-	{map[string]string{"queueLength": "10", "host": host}, true, map[string]string{}},
+	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{}},
 	// host defined in authParams
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
 	// properly formed metadata with includeUnacked
-	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHostFromEnv": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+}
+
+var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
+	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
@@ -88,33 +97,33 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 	{`Password is incorrect`, http.StatusUnauthorized, false},
 }
 
-var vhost_pathes = []string{"/myhost", "", "/", "//", "/%2F"}
+var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
-		for _, vhost_path := range vhost_pathes {
-			expeced_vhost := "myhost"
+		for _, vhostPath := range vhostPathes {
+			expecedVhost := "myhost"
 
-			if vhost_path != "/myhost" {
-				expeced_vhost = "%2F"
+			if vhostPath != "/myhost" {
+				expecedVhost = "%2F"
 			}
 
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expeced_path := "/api/queues/" + expeced_vhost + "/evaluate_trials"
-				if r.RequestURI != expeced_path {
-					t.Error("Expect request path to =", expeced_path, "but it is", r.RequestURI)
+				expecedPath := "/api/queues/" + expecedVhost + "/evaluate_trials"
+				if r.RequestURI != expecedPath {
+					t.Error("Expect request path to =", expecedPath, "but it is", r.RequestURI)
 				}
 
 				w.WriteHeader(testData.responseStatus)
 				w.Write([]byte(testData.response))
 			}))
 
-			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhost_path)}
+			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
 
 			metadata := map[string]string{
 				"queueLength":    "10",
 				"queueName":      "evaluate_trials",
-				"apiHost":        apiHost,
+				"apiHostFromEnv": apiHost,
 				"includeUnacked": "true",
 			}
 
@@ -144,6 +153,22 @@ func TestGetQueueInfo(t *testing.T) {
 					t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 				}
 			}
+		}
+	}
+}
+
+func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range rabbitMQMetricIdentifiers {
+		meta, err := parseRabbitMQMetadata(map[string]string{"myHostSecret": "myHostSecret"}, testData.metadataTestData.metadata, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockRabbitMQScaler := rabbitMQScaler{meta, nil, nil}
+
+		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

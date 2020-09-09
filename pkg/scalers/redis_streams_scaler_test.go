@@ -19,12 +19,12 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	authParams := map[string]string{"password": "foobarred"}
 
 	testCases := []testCase{
-		{"with address", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "address": "REDIS_SERVICE", "password": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, map[string]string{
+		{"with address", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, map[string]string{
 			"REDIS_SERVICE":  "myredis:6379",
 			"REDIS_PASSWORD": "foobarred",
 		}, nil},
 
-		{"with host and port", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "host": "REDIS_HOST", "port": "REDIS_PORT", "databaseIndex": "0", "enableTLS": "false"}, map[string]string{
+		{"with host and port", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"}, map[string]string{
 			"REDIS_HOST":     "myredis",
 			"REDIS_PORT":     "6379",
 			"REDIS_PASSWORD": "foobarred",
@@ -41,15 +41,15 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 			assert.Equal(t, strconv.Itoa(m.targetPendingEntriesCount), tc.metadata[pendingEntriesCountMetadata])
 			if authParams != nil {
 				//if authParam is used
-				assert.Equal(t, m.password, authParams[passwordMetadata])
+				assert.Equal(t, m.connectionInfo.password, authParams[passwordMetadata])
 			} else {
 				//if metadata is used to pass password env var name
-				assert.Equal(t, m.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
+				assert.Equal(t, m.connectionInfo.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
 			}
 			assert.Equal(t, strconv.Itoa(m.databaseIndex), tc.metadata[databaseIndexMetadata])
 			b, err := strconv.ParseBool(tc.metadata[enableTLSMetadata])
 			assert.Nil(t, err)
-			assert.Equal(t, m.enableTLS, b)
+			assert.Equal(t, m.connectionInfo.enableTLS, b)
 		})
 	}
 }
@@ -102,4 +102,34 @@ type redisStreamsTestMetadata struct {
 	metadata   map[string]string
 	isError    bool
 	authParams map[string]string
+}
+
+func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
+
+	type redisStreamsMetricIdentifier struct {
+		metadataTestData *redisStreamsTestMetadata
+		name             string
+	}
+
+	var redisStreamsTestData = []redisStreamsTestMetadata{
+		{map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "address": "REDIS_SERVICE", "password": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, false, nil},
+	}
+
+	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
+		{&redisStreamsTestData[0], "redis-streams-my-stream-my-stream-consumer-group"},
+	}
+
+	for _, testData := range redisStreamMetricIdentifiers {
+		meta, err := parseRedisStreamsMetadata(testData.metadataTestData.metadata, map[string]string{"REDIS_SERVICE": "my-address"}, nil)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockRedisStreamsScaler := redisStreamsScaler{meta, nil}
+
+		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
 }
