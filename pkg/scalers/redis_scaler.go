@@ -23,6 +23,7 @@ const (
 
 type redisScaler struct {
 	metadata *redisMetadata
+	client   *redis.Client
 }
 
 type redisConnectionInfo struct {
@@ -48,9 +49,21 @@ func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
+	options := &redis.Options{
+		Addr:     meta.connectionInfo.address,
+		Password: meta.connectionInfo.password,
+		DB:       meta.databaseIndex,
+	}
+
+	if meta.connectionInfo.enableTLS == true {
+		options.TLSConfig = &tls.Config{
+			InsecureSkipVerify: meta.connectionInfo.enableTLS,
+		}
+	}
 
 	return &redisScaler{
 		metadata: meta,
+		client:   redis.NewClient(options),
 	}, nil
 }
 
@@ -93,8 +106,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 
-	length, err := getRedisListLength(
-		ctx, s.metadata.connectionInfo.address, s.metadata.connectionInfo.password, s.metadata.listName, s.metadata.databaseIndex, s.metadata.connectionInfo.enableTLS)
+	length, err := getRedisListLength(ctx, s.client, s.metadata.listName)
 
 	if err != nil {
 		redisLog.Error(err, "error")
@@ -105,6 +117,14 @@ func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *redisScaler) Close() error {
+	if s.client != nil {
+		err := s.client.Close()
+		if err != nil {
+			redisLog.Error(err, "error closing redis client")
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -128,7 +148,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics connects to Redis and finds the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	listLen, err := getRedisListLength(ctx, s.metadata.connectionInfo.address, s.metadata.connectionInfo.password, s.metadata.listName, s.metadata.databaseIndex, s.metadata.connectionInfo.enableTLS)
+	listLen, err := getRedisListLength(ctx, s.client, s.metadata.listName)
 
 	if err != nil {
 		redisLog.Error(err, "error getting list length")
@@ -144,20 +164,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func getRedisListLength(ctx context.Context, address string, password string, listName string, dbIndex int, enableTLS bool) (int64, error) {
-	options := &redis.Options{
-		Addr:     address,
-		Password: password,
-		DB:       dbIndex,
-	}
-
-	if enableTLS == true {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: enableTLS,
-		}
-	}
-
-	client := redis.NewClient(options)
+func getRedisListLength(ctx context.Context, client *redis.Client, listName string) (int64, error) {
 	var listType *redis.StatusCmd
 
 	listType = client.Type(listName)
