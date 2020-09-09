@@ -30,11 +30,6 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(logger logr.Logger, scale
 		return err
 	}
 
-	// Set ScaledObject instance as the owner and controller
-	if err := controllerutil.SetControllerReference(scaledObject, hpa, r.Scheme); err != nil {
-		return err
-	}
-
 	err = r.Client.Create(context.TODO(), hpa)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA in cluster", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)
@@ -73,7 +68,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 		labels[key] = value
 	}
 
-	return &autoscalingv2beta2.HorizontalPodAutoscaler{
+	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{
 		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
 			MinReplicas: getHPAMinReplicas(scaledObject),
 			MaxReplicas: getHPAMaxReplicas(scaledObject),
@@ -92,7 +87,14 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v2beta2",
 		},
-	}, nil
+	}
+
+	// Set ScaledObject instance as the owner and controller
+	if err := controllerutil.SetControllerReference(scaledObject, hpa, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return hpa, nil
 }
 
 // updateHPAIfNeeded checks whether update of HPA is needed
