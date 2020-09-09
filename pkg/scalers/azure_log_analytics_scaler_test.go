@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	tenantID     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
-	clientID     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
+	tenantId     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
+	clientId     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
 	clientSecret = "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs"
-	workspaceID  = "074dd9f8-c368-4220-9400-acb6e80fc325"
+	workspaceId  = "074dd9f8-c368-4220-9400-acb6e80fc325"
 )
 
 type parseLogAnalyticsMetadataTestData struct {
@@ -27,45 +27,47 @@ var (
 
 //Faked parameters
 var sampleLogAnalyticsResolvedEnv = map[string]string{
-	tenantID:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
-	clientID:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
+	tenantId:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
+	clientId:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
 	clientSecret: "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs",
-	workspaceID:  "074dd9f8-c368-4220-9400-acb6e80fc325",
+	workspaceId:  "074dd9f8-c368-4220-9400-acb6e80fc325",
 }
 
 // A complete valid authParams with username and passwd (Faked)
 var LogAnalyticsAuthParams = map[string]string{
-	"tenantID":     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
-	"clientID":     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
+	"tenantId":     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
+	"clientId":     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
 	"clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs",
-	"workspaceID":  "074dd9f8-c368-4220-9400-acb6e80fc325",
+	"workspaceId":  "074dd9f8-c368-4220-9400-acb6e80fc325",
 }
 
 // An invalid authParams without username and passwd
 var emptyLogAnalyticsAuthParams = map[string]string{
-	"tenantID":     "",
-	"clientID":     "",
+	"tenantId":     "",
+	"clientId":     "",
 	"clientSecret": "",
-	"workspaceID":  "",
+	"workspaceId":  "",
 }
 
 var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
-	// Missing tenantID should fail
-	{map[string]string{"tenantID": "", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
-	// Missing clientID, should fail
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
+	// Missing tenantId should fail
+	{map[string]string{"tenantId": "", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
+	// Missing clientId, should fail
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
 	// Missing clientSecret, should fail
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
-	// Missing workspaceID, should fail
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "", "query": query, "threshold": "1900000000"}, true},
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, true},
+	// Missing workspaceId, should fail
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "", "query": query, "threshold": "1900000000"}, true},
 	// Missing query, should fail
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": "", "threshold": "1900000000"}, true},
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": "", "threshold": "1900000000"}, true},
 	// Missing threshold, should fail
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
 	//All parameters set, should succeed
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
+	//All parameters set, should succeed
+	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
 var LogAnalyticsMetricIdentifiers = []LogAnalyticsMetricIdentifier{
@@ -84,7 +86,7 @@ var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTes
 }
 
 var testLogAnalyticsMetadataWithAuthParams = []parseLogAnalyticsMetadataTestData{
-	{map[string]string{"tenantID": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientID": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceID": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
 func TestLogAnalyticsParseMetadata(t *testing.T) {

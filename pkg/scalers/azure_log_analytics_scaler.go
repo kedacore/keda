@@ -85,75 +85,55 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 
 	meta := azureLogAnalyticsMetadata{}
 
-	//Getting tenantID
-	if val, ok := authParams["tenantID"]; ok && val != "" {
+	//Getting tenantId
+	if val, ok := authParams["tenantId"]; ok && val != "" {
 		meta.tenantID = val
-	} else if val, ok := metadata["tenantID"]; ok && val != "" {
-		tenantID := val
-
-		if val, ok := resolvedEnv[tenantID]; ok && val != "" {
-			meta.tenantID = val
-		} else {
-			meta.tenantID = tenantID
-		}
+	} else if val, ok := metadata["tenantId"]; ok && val != "" {
+		meta.tenantID = val
+	} else if val, ok := metadata["tenantIdFromEnv"]; ok && val != "" {
+		meta.tenantID = resolvedEnv[metadata["tenantIdFromEnv"]]
 	} else {
-		return nil, fmt.Errorf("tenantID was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("tenantId was not found in metadata. Check your ScaledObject configuration")
 	}
 
-	//Getting clientID
-	if val, ok := authParams["clientID"]; ok && val != "" {
+	//Getting clientId
+	if val, ok := authParams["clientId"]; ok && val != "" {
 		meta.clientID = val
-	} else if val, ok := metadata["clientID"]; ok && val != "" {
-		clientID := val
-
-		if val, ok := resolvedEnv[clientID]; ok && val != "" {
-			meta.clientID = val
-		} else {
-			meta.clientID = clientID
-		}
+	} else if val, ok := metadata["clientId"]; ok && val != "" {
+		meta.clientID = val
+	} else if val, ok := metadata["clientIdFromEnv"]; ok && val != "" {
+		meta.clientID = resolvedEnv[metadata["clientIdFromEnv"]]
 	} else {
-		return nil, fmt.Errorf("clientID was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("clientId was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting clientSecret
 	if val, ok := authParams["clientSecret"]; ok && val != "" {
 		meta.clientSecret = val
 	} else if val, ok := metadata["clientSecret"]; ok && val != "" {
-		clientSecret := val
-
-		if val, ok := resolvedEnv[clientSecret]; ok && val != "" {
-			meta.clientSecret = val
-		} else {
-			meta.clientSecret = clientSecret
-		}
+		meta.clientSecret = val
+	} else if val, ok := metadata["clientSecretFromEnv"]; ok && val != "" {
+		meta.clientSecret = resolvedEnv[metadata["clientSecretFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("clientSecret was not found in metadata. Check your ScaledObject configuration")
 	}
 
-	//Getting workspaceID
-	if val, ok := authParams["workspaceID"]; ok && val != "" {
+	//Getting workspaceId
+	if val, ok := authParams["workspaceId"]; ok && val != "" {
 		meta.workspaceID = val
-	} else if val, ok := metadata["workspaceID"]; ok && val != "" {
-		workspaceID := val
-
-		if val, ok := resolvedEnv[workspaceID]; ok && val != "" {
-			meta.workspaceID = val
-		} else {
-			meta.workspaceID = workspaceID
-		}
+	} else if val, ok := metadata["workspaceId"]; ok && val != "" {
+		meta.workspaceID = val
+	} else if val, ok := metadata["workspaceIdFromEnv"]; ok && val != "" {
+		meta.workspaceID = resolvedEnv[metadata["workspaceIdFromEnv"]]
 	} else {
-		return nil, fmt.Errorf("workspaceID was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("workspaceId was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting query
 	if val, ok := metadata["query"]; ok && val != "" {
-		query := val
-
-		if val, ok := resolvedEnv[query]; ok && val != "" {
-			meta.query = val
-		} else {
-			meta.query = query
-		}
+		meta.query = val
+	} else if val, ok := metadata["queryFromEnv"]; ok && val != "" {
+		meta.query = resolvedEnv[metadata["queryFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("query was not found in metadata. Check your ScaledObject configuration")
 	}
@@ -161,6 +141,12 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 	//Getting threshold
 	if val, ok := metadata["threshold"]; ok && val != "" {
 		threshold, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse threshold: %s", err)
+		}
+		meta.threshold = threshold
+	} else if val, ok := metadata["thresholdFromEnv"]; ok && val != "" {
+		threshold, err := strconv.ParseInt(resolvedEnv[metadata["thresholdFromEnv"]], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse threshold: %s", err)
 		}
