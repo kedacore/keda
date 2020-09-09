@@ -46,7 +46,7 @@ jobs:
       - uses: pre-commit/action@v1.0.1
       - name: Run go vet
         run: make govet
-  
+
   codeScanning:
     name: Code Scanning
     runs-on: ubuntu-latest
@@ -83,4 +83,3 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
-
