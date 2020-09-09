@@ -35,6 +35,7 @@ type azureQueueMetadata struct {
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
+// NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
 	meta, podIdentity, err := parseAzureQueueMetadata(metadata, resolvedEnv, authParams, podIdentity)
 	if err != nil {

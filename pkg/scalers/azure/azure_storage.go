@@ -14,23 +14,31 @@ import (
    DefaultEndpointsProtocol=https;AccountName=yourStorageAccountName;AccountKey=yourStorageAccountKey;EndpointSuffix=core.windows.net
 */
 
-type AzureStorageEndpointType int
+// StorageEndpointType for different types of storage provided by Azure
+type StorageEndpointType int
 
 const (
-	BlobEndpoint AzureStorageEndpointType = iota
+	// BlobEndpoint storage type
+	BlobEndpoint StorageEndpointType = iota
+	// QueueEndpoint storage type
 	QueueEndpoint
+	// TableEndpoint storage type
 	TableEndpoint
+	// FileEndpoint storage type
 	FileEndpoint
 )
 
-func (e AzureStorageEndpointType) Prefix() string {
+// Prefix returns prefix for a StorageEndpointType
+func (e StorageEndpointType) Prefix() string {
 	return [...]string{"BlobEndpoint", "QueueEndpoint", "TableEndpoint", "FileEndpoint"}[e]
 }
 
-func (e AzureStorageEndpointType) Name() string {
+// Name returns resource name for StorageEndpointType
+func (e StorageEndpointType) Name() string {
 	return [...]string{"blob", "queue", "table", "file"}[e]
 }
 
+// ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
 func ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity {
 	case "azure":
@@ -63,6 +71,7 @@ func ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName
 	}
 }
 
+// ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
 func ParseAzureStorageBlobConnection(podIdentity, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity {
 	case "azure":
@@ -95,7 +104,7 @@ func ParseAzureStorageBlobConnection(podIdentity, connectionString, accountName 
 	}
 }
 
-func parseAzureStorageConnectionString(connectionString string, endpointType AzureStorageEndpointType) (*url.URL, string, string, error) {
+func parseAzureStorageConnectionString(connectionString string, endpointType StorageEndpointType) (*url.URL, string, string, error) {
 	parts := strings.Split(connectionString, ";")
 
 	getValue := func(pair string) string {
