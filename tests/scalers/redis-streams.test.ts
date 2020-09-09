@@ -101,10 +101,10 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
 
 test.after.always.cb('clean up deployment', t => {
   const resources = [
+    'scaledobject.keda.sh/redis-streams-scaledobject',
+    'triggerauthentications.keda.sh/keda-redis-stream-triggerauth',
     'secret/redis-password',
     'deployment/redis-streams-consumer',
-    'scaledobject.keda.sh/redis-streams-scaledobject',
-    'triggerauthentications.keda.sh/keda-redis-stream-triggerauth'
   ]
 
   for (const resource of resources) {
@@ -214,7 +214,7 @@ spec:
   triggers:
     - type: redis-streams
       metadata:
-        address: REDIS_HOST
+        addressFromEnv: REDIS_HOST
         stream: my-stream
         consumerGroup: consumer-group-1
         pendingEntriesCount: "10"

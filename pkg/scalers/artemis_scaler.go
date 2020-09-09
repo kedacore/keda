@@ -22,6 +22,7 @@ type artemisScaler struct {
 	metadata *artemisMetadata
 }
 
+//revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
 	managementEndpoint string
 	queueName          string
@@ -33,6 +34,8 @@ type artemisMetadata struct {
 	queueLength        int
 }
 
+//revive:enable:var-naming
+
 type artemisMonitoring struct {
 	Request   string `json:"request"`
 	MsgCount  int    `json:"value"`
@@ -43,7 +46,7 @@ type artemisMonitoring struct {
 const (
 	artemisMetricType         = "External"
 	defaultArtemisQueueLength = 10
-	defaultRestApiTemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -69,7 +72,7 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
 		meta.restApiTemplate = metadata["restApiTemplate"]
 	} else {
-		meta.restApiTemplate = defaultRestApiTemplate
+		meta.restApiTemplate = defaultRestAPITemplate
 	}
 
 	if metadata["managementEndpoint"] == "" {

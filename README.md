@@ -9,7 +9,7 @@ Make sure to remove previous KEDA (including CRD) from the cluster. Switch to th
 ```
 
 
-<p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
+<p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
 <a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/master%20build/badge.svg" alt="master build"></a>

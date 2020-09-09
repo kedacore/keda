@@ -30,26 +30,29 @@
 - Add Prometheus metrics for KEDA Metrics API Server ([#823](https://github.com/kedacore/keda/issues/823) | [docs](https://keda.sh/docs/2.0/operate/#prometheus-exporter-metrics))
 - Add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
 - Introduce Azure Log Analytics scaler ([#1061](https://github.com/kedacore/keda/issues/1061)) | [docs](https://keda.sh/docs/2.0/scalers/azure-log-analytics/))
+- Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
+
 
 ### Improvements
 
-- HPA: move from autoscaling v2beta1 to v2beta2 ([#721](https://github.com/kedacore/keda/issues/721))
+- Move from autoscaling `v2beta1` to `v2beta2` for HPA ([#721](https://github.com/kedacore/keda/issues/721))
 - Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
-- kubectl get scaledobject should show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
-- kubectl get triggerauthentication should show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
+- Improve `kubectl get scaledobject` to show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
+- Improve `kubectl get triggerauthentication` to show information about configured parameters ([#778](https://github.com/kedacore/keda/issues/778))
 - Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 - Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
 
 ### Breaking Changes
 
-- Change apiGroup from keda.k8s.io to keda.sh ([#552](https://github.com/kedacore/keda/issues/552))
+- Change `apiGroup` from `keda.k8s.io` to `keda.sh` ([#552](https://github.com/kedacore/keda/issues/552))
 - Introduce a separate ScaledObject and ScaledJob([#653](https://github.com/kedacore/keda/issues/653))
-- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto`.
+- Remove `New()` and `Close()` from the interface of `service ExternalScaler` in `externalscaler.proto` ([#865](https://github.com/kedacore/keda/pull/865))
 - Removed deprecated brokerList for Kafka scaler ([#882](https://github.com/kedacore/keda/pull/882))
-- All scalers metadata that is resolved from the scaleTarget environment have suffix `FromEnv` added. e.g: `connection` -> `connectionFromEnv`
+- All scalers metadata that is resolved from the scaleTarget environment have suffix `FromEnv` added. e.g: `connection` -> `connectionFromEnv` ([#1072](https://github.com/kedacore/keda/pull/1072))
 
 ### Other
 - Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870))
+- Change Metrics Server image name from `keda-metrics-adapter` to `keda-metrics-apiserver` ([#1105](https://github.com/kedacore/keda/issues/1105))
 
 ## v1.5.0
 

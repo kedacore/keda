@@ -87,9 +87,9 @@ func parseCronMetadata(metadata, resolvedEnv map[string]string) (*cronMetadata, 
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing desiredReplicas metadata. %s", metadata)
-		} else {
-			meta.desiredReplicas = int64(metadataDesiredReplicas)
 		}
+
+		meta.desiredReplicas = int64(metadataDesiredReplicas)
 	} else {
 		return nil, fmt.Errorf("No DesiredReplicas specified. %s", metadata)
 	}

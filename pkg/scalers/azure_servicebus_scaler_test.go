@@ -17,7 +17,7 @@ const (
 type parseServiceBusMetadataTestData struct {
 	metadata    map[string]string
 	isError     bool
-	entityType  EntityType
+	entityType  entityType
 	authParams  map[string]string
 	podIdentity string
 }
@@ -33,27 +33,27 @@ var sampleResolvedEnv = map[string]string{
 }
 
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
-	{map[string]string{}, true, None, map[string]string{}, ""},
+	{map[string]string{}, true, none, map[string]string{}, ""},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, Queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, queue, map[string]string{}, ""},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, Subscription, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, subscription, map[string]string{}, ""},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, None, map[string]string{}, ""},
+	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
 	// connection not set
-	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, ""},
 	// connection set in auth params
-	{map[string]string{"queueName": queueName}, false, Queue, map[string]string{"connection": connectionSetting}, ""},
+	{map[string]string{"queueName": queueName}, false, queue, map[string]string{"connection": connectionSetting}, ""},
 	// pod identity but missing namespace
-	{map[string]string{"queueName": queueName}, true, Queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, "azure"},
 	// correct pod identity
-	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, Queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, map[string]string{}, "azure"},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
@@ -63,16 +63,16 @@ var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 	{metadata: &azureServiceBusMetadata{
-		entityType: Queue,
+		entityType: queue,
 		queueName:  queueName,
 	}},
 	{metadata: &azureServiceBusMetadata{
-		entityType:       Subscription,
+		entityType:       subscription,
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	}},
 	{metadata: &azureServiceBusMetadata{
-		entityType:       Subscription,
+		entityType:       subscription,
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	},

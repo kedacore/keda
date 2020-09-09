@@ -8,6 +8,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
+// Scaler interface
 type Scaler interface {
 
 	// The scaler returns the metric values for a metric Name and criteria matching the selector
@@ -23,6 +24,7 @@ type Scaler interface {
 	Close() error
 }
 
+// PushScaler interface
 type PushScaler interface {
 	Scaler
 
