@@ -25,7 +25,7 @@ KEDA can run on both the cloud and the edge, integrates natively with Kubernetes
 Pod Autoscaler, and has no external dependencies.
 
 We are a Cloud Native Computing Foundation (CNCF) sandbox project.
-<img src="https://raw.githubusercontent.com/kedacore/keda/master/images/logo-cncf.svg" height="75px">
+<p align="center"><img src="https://raw.githubusercontent.com/kedacore/keda/master/images/logo-cncf.svg" height="75px"></p>
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
