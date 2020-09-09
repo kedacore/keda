@@ -221,6 +221,7 @@ revive:
 		-exclude pkg/scaling/resolver/hashicorpvault_handler.go \
 		-exclude pkg/scaling/resolver/scale_resolvers.go \
 		-exclude pkg/scaling/resolver/scale_resolvers_test.go \
+		-exclude vendor/... \
 		./...
 
 ##################################################
