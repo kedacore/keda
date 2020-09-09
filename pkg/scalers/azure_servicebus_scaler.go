@@ -17,12 +17,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type EntityType int
+type entityType int
 
 const (
-	None         EntityType = 0
-	Queue        EntityType = 1
-	Subscription EntityType = 2
+	none         entityType = 0
+	queue        entityType = 1
+	subscription entityType = 2
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
@@ -38,7 +38,7 @@ type azureServiceBusMetadata struct {
 	topicName        string
 	subscriptionName string
 	connection       string
-	entityType       EntityType
+	entityType       entityType
 	namespace        string
 }
 
@@ -58,7 +58,7 @@ func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]strin
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
 func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
-	meta.entityType = None
+	meta.entityType = none
 	meta.targetLength = defaultTargetQueueLength
 
 	// get target metric value
@@ -74,7 +74,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	// get queue name OR topic and subscription name & set entity type accordingly
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
-		meta.entityType = Queue
+		meta.entityType = queue
 
 		if _, ok := metadata["subscriptionName"]; ok {
 			return nil, fmt.Errorf("Subscription name provided with queue name")
@@ -82,11 +82,11 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	}
 
 	if val, ok := metadata["topicName"]; ok {
-		if meta.entityType == Queue {
+		if meta.entityType == queue {
 			return nil, fmt.Errorf("Both topic and queue name metadata provided")
 		}
 		meta.topicName = val
-		meta.entityType = Subscription
+		meta.entityType = subscription
 
 		if val, ok := metadata["subscriptionName"]; ok {
 			meta.subscriptionName = val
@@ -95,7 +95,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		}
 	}
 
-	if meta.entityType == None {
+	if meta.entityType == none {
 		return nil, fmt.Errorf("No service bus entity type set")
 	}
 
@@ -145,7 +145,7 @@ func (s *azureServiceBusScaler) Close() error {
 func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	metricName := "azure-servicebus"
-	if s.metadata.entityType == Queue {
+	if s.metadata.entityType == queue {
 		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.queueName)
 	} else {
 		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName)
@@ -219,16 +219,16 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 
 	// switch case for queue vs topic here
 	switch s.metadata.entityType {
-	case Queue:
-		return GetQueueEntityFromNamespace(ctx, namespace, s.metadata.queueName)
-	case Subscription:
-		return GetSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
+	case queue:
+		return getQueueEntityFromNamespace(ctx, namespace, s.metadata.queueName)
+	case subscription:
+		return getSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
 	default:
 		return -1, fmt.Errorf("No entity type")
 	}
 }
 
-func GetQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
+func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
 	// get queue manager from namespace
 	queueManager := ns.NewQueueManager()
 
@@ -241,7 +241,7 @@ func GetQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, 
 	return *queueEntity.CountDetails.ActiveMessageCount, nil
 }
 
-func GetSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int32, error) {
+func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int32, error) {
 	// get subscription manager from namespace
 	subscriptionManager, err := ns.NewSubscriptionManager(topicName)
 	if err != nil {

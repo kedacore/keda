@@ -38,6 +38,7 @@ type pythonCheckpoint struct {
 	SequenceNumber int64  `json:"sequence_number"`
 }
 
+// EventHubInfo to keep event hub connection and resources
 type EventHubInfo struct {
 	EventHubConnection    string
 	EventHubConsumerGroup string

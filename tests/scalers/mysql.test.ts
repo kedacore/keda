@@ -101,10 +101,10 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
 
 test.after.always.cb('clean up mysql deployment', t => {
     const resources = [
-        `deployment.apps/${deploymentName}`,
-        'triggerauthentication.keda.sh/keda-trigger-auth-mysql-secret',
-        'secret/mysql-secrets',
         'scaledobject.keda.sh/mysql-scaledobject',
+        'triggerauthentication.keda.sh/keda-trigger-auth-mysql-secret',
+        `deployment.apps/${deploymentName}`,
+        'secret/mysql-secrets',
         'job/mysql-insert-job',
     ]
 

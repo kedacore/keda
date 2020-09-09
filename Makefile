@@ -6,7 +6,7 @@ IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
-IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
+IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
 
 IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:v2
 
@@ -55,6 +55,12 @@ e2e-test:
 
 	./tests/run-all.sh
 
+# Run e2e tests against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: e2e-test-local
+e2e-test-local:
+	npm install --prefix tests
+	./tests/run-all.sh
+
 ##################################################
 # PUBLISH                                        #
 ##################################################
@@ -71,7 +77,7 @@ release: manifests kustomize
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
@@ -86,7 +92,7 @@ set-version:
 ##################################################
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
-run: generate gofmt govet manifests
+run: generate
 	go run \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	./main.go $(ARGS)
@@ -107,7 +113,7 @@ deploy: manifests kustomize
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
@@ -199,6 +205,23 @@ gofmt:
 .PHONY: govet
 govet:
 	go vet ./...
+
+# Run revive against code
+.PHONY: revive
+revive:
+	revive -config revive.toml -formatter friendly \
+		-exclude api/v1alpha1/condition_types.go \
+		-exclude api/v1alpha1/groupversion_info.go \
+		-exclude api/v1alpha1/gvkr_types.go \
+		-exclude api/v1alpha1/scaledjob_types.go \
+		-exclude api/v1alpha1/scaledobject_types.go \
+		-exclude api/v1alpha1/triggerauthentication_types.go \
+		-exclude controllers/scaledjob_controller.go \
+		-exclude pkg/scaling/executor/scale_executor.go \
+		-exclude pkg/scaling/resolver/hashicorpvault_handler.go \
+		-exclude pkg/scaling/resolver/scale_resolvers.go \
+		-exclude pkg/scaling/resolver/scale_resolvers_test.go \
+		./...
 
 ##################################################
 # Clientset                                      #

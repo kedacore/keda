@@ -62,9 +62,9 @@ test.serial(`Deployment should scale to 4 with ${messageCount} messages on the q
 
 test.after.always.cb('clean up rabbitmq-queue deployment', t => {
   const resources = [
+    'scaledobject.keda.sh/test-scaledobject',
     'secret/test-secrets-api',
     'deployment.apps/test-deployment',
-    'scaledobject.keda.sh/test-scaledobject',
   ]
 
   for (const resource of resources) {
@@ -126,6 +126,6 @@ spec:
   - type: rabbitmq
     metadata:
       queueName: {{QUEUE_NAME}}
-      apiHost: RabbitApiHost
+      apiHostFromEnv: RabbitApiHost
       includeUnacked: "true"
       queueLength: '50'`

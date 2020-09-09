@@ -29,12 +29,12 @@ const (
 
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
-type AzureEventHubScaler struct {
-	metadata *EventHubMetadata
+type azureEventHubScaler struct {
+	metadata *eventHubMetadata
 	client   *eventhub.Hub
 }
 
-type EventHubMetadata struct {
+type eventHubMetadata struct {
 	eventHubInfo azure.EventHubInfo
 	threshold    int64
 }
@@ -51,15 +51,15 @@ func NewAzureEventHubScaler(resolvedEnv, metadata, authParams map[string]string)
 		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
 
-	return &AzureEventHubScaler{
+	return &azureEventHubScaler{
 		metadata: parsedMetadata,
 		client:   hub,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]string) (*EventHubMetadata, error) {
-	meta := EventHubMetadata{
+func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]string) (*eventHubMetadata, error) {
+	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
 	meta.threshold = defaultEventHubMessageThreshold
@@ -111,7 +111,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 }
 
 //GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
-func (scaler *AzureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
+func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
 
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
@@ -173,7 +173,7 @@ func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartit
 }
 
 // IsActive determines if eventhub is active based on number of unprocessed events
-func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
+func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
 		eventhubLog.Error(err, "unable to get runtimeInfo for isActive")
@@ -205,7 +205,7 @@ func (scaler *AzureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetricSpecForScaling returns metric spec
-func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (scaler *azureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -221,7 +221,7 @@ func (scaler *AzureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub
-func (scaler *AzureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (scaler *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := scaler.client.GetRuntimeInformation(ctx)
 	if err != nil {
@@ -273,6 +273,6 @@ func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partition
 }
 
 // Close closes Azure Event Hub Scaler
-func (scaler *AzureEventHubScaler) Close() error {
+func (scaler *azureEventHubScaler) Close() error {
 	return nil
 }

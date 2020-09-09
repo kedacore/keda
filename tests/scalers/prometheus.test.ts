@@ -99,10 +99,10 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
 
 test.after.always.cb('clean up prometheus deployment', t => {
   const resources = [
+    'scaledobject.keda.sh/prometheus-scaledobject',
     'deployment.apps/test-app',
     'deployment.apps/keda-test-app',
     'service/test-app',
-    'scaledobject.keda.sh/prometheus-scaledobject',
     'job/generate-requests',
   ]
 

@@ -244,8 +244,8 @@ test.after.always.cb('clean up deployment', t => {
         `scaledobject.keda.sh/${redisWorkerHostPortRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerAddressRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
-        'triggerauthentications.sh/keda-redis-list-triggerauth',
-        'triggerauthentications.sh/keda-redis-list-triggerauth-host-port',
+        'triggerauthentication.keda.sh/keda-redis-list-triggerauth',
+        'triggerauthentication.keda.sh/keda-redis-list-triggerauth-host-port',
         `deployment/${redisWorkerAddressRefDeploymentName}`,
         `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         `deployment/${redisWorkerHostPortRefDeploymentName}`,
@@ -371,8 +371,8 @@ spec:
   triggers:
   - type: redis
     metadata:
-      host: REDIS_HOST
-      port: REDIS_PORT
+      hostFromEnv: REDIS_HOST
+      portFromEnv: REDIS_PORT
       listName: {{LIST_NAME}}
       listLength: "5"
     authenticationRef:
@@ -425,7 +425,7 @@ spec:
   triggers:
   - type: redis
     metadata:
-      address: REDIS_ADDRESS
+      addressFromEnv: REDIS_ADDRESS
       listName: {{LIST_NAME}}
       listLength: "5"
     authenticationRef:
