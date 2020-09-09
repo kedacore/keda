@@ -3,12 +3,15 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/version"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
@@ -127,6 +130,29 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObj
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
+	return nil
+}
+
+func (r *ScaledObjectReconciler) deleteHPA(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	hpa := getHPAName(scaledObject)
+	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+	// Check if HPA for this ScaledObject already exists
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: hpa, Namespace: scaledObject.Namespace}, foundHpa)
+	if err != nil && (errors.IsNotFound(err) || strings.Contains(err.Error(), "not found")) {
+		logger.Info("HPA for ScaledObject not found", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpa)
+		return nil
+	} else if err != nil {
+		logger.Error(err, "Failed to get HPA for ScaledObject from cluster", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpa)
+		return err
+	}
+
+	err = r.Client.Delete(context.TODO(), foundHpa)
+	if err != nil {
+		logger.Error(err, "Failed to delete HPA for ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+		return err
+	}
+
+	logger.Info("HPA for ScaledObject has been deleted", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	return nil
 }
 

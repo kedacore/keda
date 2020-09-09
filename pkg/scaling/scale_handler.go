@@ -378,8 +378,6 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata, authParams)
-	case "azure-log-analytics":
-		return scalers.NewAzureLogAnalyticsScaler(resolvedEnv, triggerMetadata, authParams)
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
 	case "azure-queue":

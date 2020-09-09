@@ -52,6 +52,12 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}
+
+		//Delete HPA after ScaledObject
+		err := r.deleteHPA(logger, scaledObject)
+		if err != nil {
+			return err
+		}
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
