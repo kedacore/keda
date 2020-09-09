@@ -44,7 +44,7 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile performs reconciliation on the identified ScaledJob resource based on the request information passed, returns the result and an error (if any).
 func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	reqLogger := r.Log.WithValues("ScaledJob.Namespace", req.Namespace, "ScaledJob.Name", req.Name)
 
 	// Fetch the ScaledJob instance
 	scaledJob := &kedav1alpha1.ScaledJob{}
