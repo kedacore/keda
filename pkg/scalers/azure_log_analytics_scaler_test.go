@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	tenantId     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
-	clientId     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
+	tenantID     = "d248da64-0e1e-4f79-b8c6-72ab7aa055eb"
+	clientID     = "41826dd4-9e0a-4357-a5bd-a88ad771ea7d"
 	clientSecret = "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs"
-	workspaceId  = "074dd9f8-c368-4220-9400-acb6e80fc325"
+	workspaceID  = "074dd9f8-c368-4220-9400-acb6e80fc325"
 )
 
 type parseLogAnalyticsMetadataTestData struct {
@@ -22,15 +22,15 @@ type LogAnalyticsMetricIdentifier struct {
 }
 
 var (
-	query = "Perf | where InstanceName contains \"web\" | where CounterName == \"cpuUsageNanoCores\" | summarize arg_max(TimeGenerated, *) by InstanceName, CounterName | project CounterValue | limit 1"
+	query = "let x = 10; let y = 1; print MetricValue = x, Threshold = y;"
 )
 
 //Faked parameters
 var sampleLogAnalyticsResolvedEnv = map[string]string{
-	tenantId:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
-	clientId:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
+	tenantID:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
+	clientID:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
 	clientSecret: "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs",
-	workspaceId:  "074dd9f8-c368-4220-9400-acb6e80fc325",
+	workspaceID:  "074dd9f8-c368-4220-9400-acb6e80fc325",
 }
 
 // A complete valid authParams with username and passwd (Faked)
