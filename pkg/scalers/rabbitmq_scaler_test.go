@@ -100,16 +100,16 @@ var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
 		for _, vhostPath := range vhostPathes {
-			expecedVhost := "myhost"
+			expectedVhost := "myhost"
 
 			if vhostPath != "/myhost" {
-				expecedVhost = "%2F"
+				expectedVhost = "%2F"
 			}
 
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expecedPath := "/api/queues/" + expecedVhost + "/evaluate_trials"
-				if r.RequestURI != expecedPath {
-					t.Error("Expect request path to =", expecedPath, "but it is", r.RequestURI)
+				expectedPath := "/api/queues/" + expectedVhost + "/evaluate_trials"
+				if r.RequestURI != expectedPath {
+					t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 				}
 
 				w.WriteHeader(testData.responseStatus)
@@ -119,10 +119,10 @@ func TestGetQueueInfo(t *testing.T) {
 			resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
 
 			metadata := map[string]string{
-				"queueLength":    "10",
-				"queueName":      "evaluate_trials",
-				"hostFromEnv":    host,
-				"includeUnacked": "true",
+				"queueLength": "10",
+				"queueName":   "evaluate_trials",
+				"hostFromEnv": host,
+				"protocol":    "http",
 			}
 
 			s, err := NewRabbitMQScaler(resolvedEnv, metadata, map[string]string{})
