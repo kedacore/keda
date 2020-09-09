@@ -245,7 +245,7 @@ func (s *azureLogAnalyticsScaler) getMetricData() (metricsData, error) {
 		return metricsData{}, err
 	}
 
-	logAnalyticsLog.Info(fmt.Sprintf("Providing metric value: %d", metricsInfo.value))
+	logAnalyticsLog.V(1).Info("Getting metrics value", "metrics value", metricsInfo.value)
 	return metricsInfo, nil
 }
 
@@ -261,8 +261,6 @@ func (s *azureLogAnalyticsScaler) getAccessToken() (tokenData, error) {
 		s.cache.accessToken = tokenInfo
 		return tokenInfo, nil
 	}
-
-	logAnalyticsLog.Info(fmt.Sprintf("Reuse existing access token..."))
 	return s.cache.accessToken, nil
 }
 
@@ -277,7 +275,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	//Handle expired token
 	if statusCode == 403 || strings.Contains(string(body), "TokenExpired") {
-		logAnalyticsLog.Info(fmt.Sprintf("Token expired, refreshing token..."))
+		logAnalyticsLog.Info("Token expired, refreshing token...")
 
 		tokenInfo, err := s.refreshAccessToken()
 
@@ -382,7 +380,7 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 	if currentTimeSec < tokenInfo.NotBefore {
 		if currentTimeSec < tokenInfo.NotBefore+10 {
 			sleepDurationSec := int(tokenInfo.NotBefore - currentTimeSec + 1)
-			logAnalyticsLog.Info(fmt.Sprintf("AAD token not ready, waiting %d seconds before continue...", sleepDurationSec))
+			logAnalyticsLog.V(1).Info("AAD token not ready", "delay (seconds)", sleepDurationSec)
 			time.Sleep(time.Duration(sleepDurationSec) * time.Second)
 		} else {
 			return tokenData{}, fmt.Errorf("AAD token has been received, but start date begins in %d seconds. Current operation will be skipped", tokenInfo.NotBefore-currentTimeSec)
