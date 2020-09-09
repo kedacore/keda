@@ -19,6 +19,7 @@ const (
 )
 
 type pubsubScaler struct {
+	client   *StackDriverClient
 	metadata *pubsubMetadata
 }
 
@@ -92,6 +93,14 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *pubsubScaler) Close() error {
+
+	if s.client != nil {
+		err := s.client.metricsClient.Close()
+		if err != nil {
+			gcpPubSubLog.Error(err, "error closing StackDriver client")
+		}
+	}
+
 	return nil
 }
 
@@ -142,10 +151,10 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 // Stackdriver api
 func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	client, err := NewStackDriverClient(ctx, s.metadata.credentials)
-
 	if err != nil {
 		return -1, err
 	}
+	s.client = client
 
 	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
 
