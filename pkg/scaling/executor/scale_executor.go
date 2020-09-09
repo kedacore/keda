@@ -19,6 +19,7 @@ const (
 	defaultCooldownPeriod = 5 * 60 // 5 minutes
 )
 
+// ScaleExecutor contains methods RequestJobScale and RequestScale
 type ScaleExecutor interface {
 	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64)
 	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool)
@@ -31,6 +32,7 @@ type scaleExecutor struct {
 	logger           logr.Logger
 }
 
+//NewScaleExecutor creates a ScaleExecutor object
 func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,

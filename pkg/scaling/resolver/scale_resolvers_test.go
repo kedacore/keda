@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	namespace  string = "test-namespace"
-	trueValue  bool   = true
-	falseValue bool   = false
+	namespace  = "test-namespace"
+	trueValue  = true
+	falseValue = false
 )
 
 type testMetadata struct {

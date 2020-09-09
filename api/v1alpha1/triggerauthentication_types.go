@@ -46,6 +46,8 @@ type TriggerAuthenticationList struct {
 // PodIdentityProvider contains the list of providers
 type PodIdentityProvider string
 
+// PodIdentityProviderNone specifies the default state when there is no Identity Provider
+//PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
 	PodIdentityProviderNone    PodIdentityProvider = "none"
 	PodIdentityProviderAzure                       = "azure"
@@ -55,6 +57,8 @@ const (
 	PodIdentityProviderAwsKiam                     = "aws-kiam"
 )
 
+// PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
+// PodIdentityAnnotationKiam specifies aws role arn for aws-iam Identity Provider
 const (
 	PodIdentityAnnotationEKS  = "eks.amazonaws.com/role-arn"
 	PodIdentityAnnotationKiam = "iam.amazonaws.com/role"
