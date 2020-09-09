@@ -35,7 +35,6 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
 - [Guidelines](#guidelines)
-  - [Branding](#branding)
 - [FAQ](#faq)
 - [Samples](#samples)
 - [Releases](#releases)
@@ -46,8 +45,6 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Deploying: Custom KEDA locally outside cluster](#deploying-custom-keda-locally-outside-cluster)
 - [Deploying: Custom KEDA as an image](#deploying-custom-keda-as-an-image)
 - [Setting log levels](#setting-log-levels)
-  - [KEDA Operator logging](#keda-operator-logging)
-  - [Metrics Server logging](#metrics-server-logging)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
