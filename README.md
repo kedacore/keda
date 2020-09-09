@@ -70,7 +70,7 @@ Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ### Branding
 
-We provide guidelines around branding of KEDA and related logos, learn more in our [guidelines](BRANDING).
+We provide guidelines around branding of KEDA and related logos, learn more in our [guidelines](./BRANDING.md).
 
 ## FAQ
 
