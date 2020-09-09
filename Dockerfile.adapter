@@ -3,8 +3,6 @@ FROM golang:1.15 as builder
 
 WORKDIR /workspace
 
-RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
-
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -13,14 +11,19 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY Makefile Makefile
-COPY .git/ .git/
 
 # Copy the go source
 COPY hack/ hack/
 COPY version/ version/
-COPY api/ api/
+COPY main.go main.go
 COPY adapter/ adapter/
+COPY api/ api/
+COPY controllers/ controllers/
 COPY pkg/ pkg/
+
+COPY .git/ .git/
+
+RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
 
 # Build
 RUN make adapter
