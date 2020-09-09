@@ -245,7 +245,7 @@ func (s *azureLogAnalyticsScaler) getMetricData() (metricsData, error) {
 		return metricsData{}, err
 	}
 
-	logAnalyticsLog.Info(fmt.Sprintf("Providing metric value: %d", metricsInfo.value))
+	logAnalyticsLog.Info(fmt.Sprintf("Log Analytics scaler: Providing metric value: %d", metricsInfo.value))
 	return metricsInfo, nil
 }
 
@@ -352,6 +352,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 							return metricsData{}, fmt.Errorf("Threshold value should be >=0. Received value: %f", thresholdValue)
 						}
 						metricsInfo.threshold = int64(thresholdValue)
+						//logAnalyticsLog.Info(fmt.Sprintf("Log Analytics scaler: Providing metric value: %d, threshold: %d", metricsInfo.value, metricsInfo.threshold))
 					} else {
 						return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", thresholdDataType)
 					}
