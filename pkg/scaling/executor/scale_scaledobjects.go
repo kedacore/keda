@@ -18,7 +18,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 	currentScale, err := e.getScaleTargetScale(ctx, scaledObject)
 	if err != nil {
-		logger.Error(err, "Error getting Scale")
+		logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
+		return
 	}
 
 	if currentScale.Spec.Replicas == 0 && isActive {
