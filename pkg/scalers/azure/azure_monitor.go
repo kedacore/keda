@@ -28,7 +28,8 @@ type azureExternalMetricRequest struct {
 	ResourceGroup             string
 }
 
-type AzureMonitorInfo struct {
+// MonitorInfo to create metric request
+type MonitorInfo struct {
 	ResourceURI         string
 	TenantID            string
 	SubscriptionID      string
@@ -42,7 +43,7 @@ type AzureMonitorInfo struct {
 }
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo, podIdentity string) (int32, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity string) (int32, error) {
 	var podIdentityEnabled = true
 
 	if podIdentity == "" || podIdentity == "none" {
@@ -58,7 +59,7 @@ func GetAzureMetricValue(ctx context.Context, info AzureMonitorInfo, podIdentity
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(info AzureMonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
+func createMetricsClient(info MonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
 	client := insights.NewMetricsClient(info.SubscriptionID)
 	var config auth.AuthorizerConfig
 	if podIdentityEnabled {
@@ -72,7 +73,7 @@ func createMetricsClient(info AzureMonitorInfo, podIdentityEnabled bool) insight
 	return client
 }
 
-func createMetricsRequest(info AzureMonitorInfo) (*azureExternalMetricRequest, error) {
+func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error) {
 	metricRequest := azureExternalMetricRequest{
 		MetricName:     info.Name,
 		SubscriptionID: info.SubscriptionID,

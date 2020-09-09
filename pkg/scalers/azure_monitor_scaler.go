@@ -27,7 +27,7 @@ type azureMonitorScaler struct {
 }
 
 type azureMonitorMetadata struct {
-	azureMonitorInfo azure.AzureMonitorInfo
+	azureMonitorInfo azure.MonitorInfo
 	targetValue      int
 }
 
@@ -48,7 +48,7 @@ func NewAzureMonitorScaler(resolvedEnv, metadata, authParams map[string]string, 
 
 func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]string, podIdentity string) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
-		azureMonitorInfo: azure.AzureMonitorInfo{},
+		azureMonitorInfo: azure.MonitorInfo{},
 	}
 
 	if val, ok := metadata[targetValueName]; ok && val != "" {

@@ -97,11 +97,11 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 	{`Password is incorrect`, http.StatusUnauthorized, false},
 }
 
-var vhost_pathes = []string{"/myhost", "", "/", "//", "/%2F"}
+var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
-		for _, vhostPath := range vhost_pathes {
+		for _, vhostPath := range vhostPathes {
 			expecedVhost := "myhost"
 
 			if vhostPath != "/myhost" {

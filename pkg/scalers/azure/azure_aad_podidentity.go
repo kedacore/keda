@@ -13,6 +13,7 @@ const (
 	msiURL = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
 )
 
+// GetAzureADPodIdentityToken returns the AADToken for resource
 func GetAzureADPodIdentityToken(audience string) (AADToken, error) {
 
 	var token AADToken

@@ -60,8 +60,8 @@ var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
 	{&parseEventHubMetadataDataset[1], "azure-eventhub-none-testEventHubConsumerGroup"},
 }
 
-var testEventHubScaler = AzureEventHubScaler{
-	metadata: &EventHubMetadata{
+var testEventHubScaler = azureEventHubScaler{
+	metadata: &eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{
 			EventHubConnection: "none",
 			StorageConnection:  "none",
@@ -423,7 +423,7 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockEventHubScaler := AzureEventHubScaler{meta, nil}
+		mockEventHubScaler := azureEventHubScaler{meta, nil}
 
 		metricSpec := mockEventHubScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

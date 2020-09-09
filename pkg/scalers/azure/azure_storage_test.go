@@ -7,7 +7,7 @@ type parseConnectionStringTestData struct {
 	accountName      string
 	accountKey       string
 	endpoint         string
-	endpointType     AzureStorageEndpointType
+	endpointType     StorageEndpointType
 	isError          bool
 }
 

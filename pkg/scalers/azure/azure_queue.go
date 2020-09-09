@@ -30,9 +30,9 @@ func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionStri
 
 	if visibleMessageCount == 32 {
 		return approximateMessageCount, nil
-	} else {
-		return visibleMessageCount, nil
 	}
+
+	return visibleMessageCount, nil
 }
 
 func getVisibleCount(queueURL *azqueue.QueueURL, maxCount int32) (int32, error) {
