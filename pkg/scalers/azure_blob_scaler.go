@@ -93,8 +93,6 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		// of the scaler or in a TriggerAuthentication object
 		if authParams["connection"] != "" {
 			meta.connection = authParams["connection"]
-		} else if metadata["connection"] != "" {
-			meta.connection = metadata["connection"]
 		} else if metadata["connectionFromEnv"] != "" {
 			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 		}

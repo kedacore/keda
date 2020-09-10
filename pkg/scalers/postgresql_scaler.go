@@ -77,8 +77,6 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 
 	if authParams["connection"] != "" {
 		meta.connection = authParams["connection"]
-	} else if metadata["connection"] != "" {
-		meta.connection = metadata["connection"]
 	} else if metadata["connectionFromEnv"] != "" {
 		meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 	} else {
@@ -112,8 +110,6 @@ func parsePostgreSQLMetadata(resolvedEnv, metadata, authParams map[string]string
 
 		if authParams["password"] != "" {
 			meta.password = authParams["password"]
-		} else if metadata["password"] != "" {
-			meta.password = metadata["password"]
 		} else if metadata["passwordFromEnv"] != "" {
 			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
 		}

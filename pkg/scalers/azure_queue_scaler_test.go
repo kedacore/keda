@@ -23,11 +23,11 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// properly formed
-	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
+	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Empty queueName
-	{map[string]string{"connection": "CONNECTION", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// improperly formed queueLength
-	{map[string]string{"connection": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity with account name
 	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity without account name
