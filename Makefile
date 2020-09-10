@@ -210,17 +210,6 @@ govet:
 .PHONY: revive
 revive:
 	revive -config revive.toml -formatter friendly \
-		-exclude api/v1alpha1/condition_types.go \
-		-exclude api/v1alpha1/groupversion_info.go \
-		-exclude api/v1alpha1/gvkr_types.go \
-		-exclude api/v1alpha1/scaledjob_types.go \
-		-exclude api/v1alpha1/scaledobject_types.go \
-		-exclude api/v1alpha1/triggerauthentication_types.go \
-		-exclude controllers/scaledjob_controller.go \
-		-exclude pkg/scaling/executor/scale_executor.go \
-		-exclude pkg/scaling/resolver/hashicorpvault_handler.go \
-		-exclude pkg/scaling/resolver/scale_resolvers.go \
-		-exclude pkg/scaling/resolver/scale_resolvers_test.go \
 		-exclude vendor/... \
 		./...
 

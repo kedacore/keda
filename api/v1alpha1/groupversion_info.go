@@ -28,8 +28,8 @@ var (
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: "keda.sh", Version: "v1alpha1"}
 
-	// added for generated clientset
 	// SchemeGroupVersion is group version used to register these objects
+	// added for generated clientset
 	SchemeGroupVersion = GroupVersion
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
@@ -39,14 +39,14 @@ var (
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
-// added for generated clientset
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
+// added for generated clientset
 func Kind(kind string) schema.GroupKind {
 	return GroupVersion.WithKind(kind).GroupKind()
 }
 
-// added for generated clientset
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
+// added for generated clientset
 func Resource(resource string) schema.GroupResource {
 	return GroupVersion.WithResource(resource).GroupResource()
 }

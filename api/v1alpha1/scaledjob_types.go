@@ -49,8 +49,8 @@ type ScaledJobStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 }
 
-// +kubebuilder:object:root=true
 // ScaledJobList contains a list of ScaledJob
+// +kubebuilder:object:root=true
 type ScaledJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

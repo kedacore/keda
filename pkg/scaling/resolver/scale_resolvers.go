@@ -12,6 +12,8 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
+// ResolveContainerEnv resolves all environment variables in a container.
+// It returns either map of env variable key and value or error if there is any.
 func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
 
 	if len(podSpec.Containers) < 1 {
@@ -37,6 +39,8 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 	return resolveEnv(client, logger, &container, namespace)
 }
 
+// ResolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
+// based on authentication method define in TriggerAuthentication, authParams and podIdentity is returned
 func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, string) {
 	result := make(map[string]string)
 	podIdentity := ""

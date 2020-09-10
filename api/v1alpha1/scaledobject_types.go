@@ -44,6 +44,7 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 }
 
+// AdvancedConfig specifies advance scaling options
 type AdvancedConfig struct {
 	// +optional
 	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
@@ -51,6 +52,7 @@ type AdvancedConfig struct {
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
 }
 
+// HorizontalPodAutoscalerConfig specifies horizontal scale config
 type HorizontalPodAutoscalerConfig struct {
 	ResourceMetrics []*autoscalingv2beta2.ResourceMetricSource `json:"resourceMetrics,omitempty"`
 	// +optional
@@ -61,7 +63,7 @@ type HorizontalPodAutoscalerConfig struct {
 type ScaleTarget struct {
 	Name string `json:"name"`
 	// +optional
-	ApiVersion string `json:"apiVersion,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
 	// +optional
 	Kind string `json:"kind,omitempty"`
 	// +optional

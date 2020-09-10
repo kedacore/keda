@@ -11,12 +11,14 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
+// HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
 	vault  *kedav1alpha1.HashiCorpVault
 	client *vaultApi.Client
 	stopCh chan struct{}
 }
 
+// NewHashicorpVaultHandler creates a HashicorpVaultHandler object
 func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
 		vault: v,
