@@ -286,15 +286,16 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		}
 	}
 
+	if statusCode != 200 && statusCode != 0 {
+		return metricsData{}, fmt.Errorf("Error processing Log Analytics REST API request: %d, details: %v", statusCode, err)
+	}
+
 	if err != nil {
 		return metricsData{}, err
 	}
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&queryData)
 	if err != nil {
-		if statusCode != 200 {
-			return metricsData{}, fmt.Errorf("Error processing Log Analytics REST API request: %d", statusCode)
-		}
 		return metricsData{}, fmt.Errorf("Can't decode JSON from Log Analytics REST API result: %v", err)
 	}
 
@@ -313,52 +314,50 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 			return metricsData{}, fmt.Errorf("Too many rows in query result: %d. Expected: 1", len(queryData.Tables[0].Rows))
 		}
 
-		if len(queryData.Tables[0].Rows) == 1 {
-			if len(queryData.Tables[0].Rows[0]) > 0 {
-				metricDataType := queryData.Tables[0].Columns[0].Type
-				metricVal := queryData.Tables[0].Rows[0][0]
+		if len(queryData.Tables[0].Rows[0]) > 0 {
+			metricDataType := queryData.Tables[0].Columns[0].Type
+			metricVal := queryData.Tables[0].Rows[0][0]
 
-				if metricVal != nil {
-					//type can be: real, int, long
-					if metricDataType == "real" || metricDataType == "int" || metricDataType == "long" {
-						metricValue, isConverted := metricVal.(float64)
-						if !isConverted {
-							return metricsData{}, fmt.Errorf("Cannot convert result to type float64")
-						}
-						if metricValue < 0 {
-							return metricsData{}, fmt.Errorf("Metric value should be >=0. Received value: %f", metricValue)
-						}
-						metricsInfo.value = int64(metricValue)
-					} else {
-						return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", metricDataType)
+			if metricVal != nil {
+				//type can be: real, int, long
+				if metricDataType == "real" || metricDataType == "int" || metricDataType == "long" {
+					metricValue, isConverted := metricVal.(float64)
+					if !isConverted {
+						return metricsData{}, fmt.Errorf("Cannot convert result to type float64")
 					}
+					if metricValue < 0 {
+						return metricsData{}, fmt.Errorf("Metric value should be >=0. Received value: %f", metricValue)
+					}
+					metricsInfo.value = int64(metricValue)
+				} else {
+					return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", metricDataType)
 				}
 			}
+		}
 
-			if len(queryData.Tables[0].Rows[0]) > 1 {
-				thresholdDataType := queryData.Tables[0].Columns[1].Type
-				thresholdVal := queryData.Tables[0].Rows[0][1]
+		if len(queryData.Tables[0].Rows[0]) > 1 {
+			thresholdDataType := queryData.Tables[0].Columns[1].Type
+			thresholdVal := queryData.Tables[0].Rows[0][1]
 
-				if thresholdVal != nil {
-					//type can be: real, int, long
-					if thresholdDataType == "real" || thresholdDataType == "int" || thresholdDataType == "long" {
-						thresholdValue, isConverted := thresholdVal.(float64)
-						if !isConverted {
-							return metricsData{}, fmt.Errorf("Cannot convert threshold result to type float64")
-						}
-						if thresholdValue < 0 {
-							return metricsData{}, fmt.Errorf("Threshold value should be >=0. Received value: %f", thresholdValue)
-						}
-						metricsInfo.threshold = int64(thresholdValue)
-					} else {
-						return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", thresholdDataType)
+			if thresholdVal != nil {
+				//type can be: real, int, long
+				if thresholdDataType == "real" || thresholdDataType == "int" || thresholdDataType == "long" {
+					thresholdValue, isConverted := thresholdVal.(float64)
+					if !isConverted {
+						return metricsData{}, fmt.Errorf("Cannot convert threshold result to type float64")
 					}
+					if thresholdValue < 0 {
+						return metricsData{}, fmt.Errorf("Threshold value should be >=0. Received value: %f", thresholdValue)
+					}
+					metricsInfo.threshold = int64(thresholdValue)
 				} else {
-					return metricsData{}, fmt.Errorf("Threshold value is empty. Check your query")
+					return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", thresholdDataType)
 				}
 			} else {
-				metricsInfo.threshold = -1
+				return metricsData{}, fmt.Errorf("Threshold value is empty. Check your query")
 			}
+		} else {
+			metricsInfo.threshold = -1
 		}
 
 		return metricsInfo, nil
