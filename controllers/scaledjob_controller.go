@@ -133,9 +133,5 @@ func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *ke
 
 	logger.V(1).Info("Starting a new ScaleLoop")
 
-	if err := r.scaleHandler.HandleScalableObject(scaledJob); err != nil {
-		return err
-	}
-
-	return nil
+	return r.scaleHandler.HandleScalableObject(scaledJob)
 }

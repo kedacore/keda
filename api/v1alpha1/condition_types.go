@@ -4,6 +4,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ConditionType specifies the available conditions for the resource
 type ConditionType string
 
 const (
@@ -15,6 +16,7 @@ const (
 	ConditionActive ConditionType = "Active"
 )
 
+// Condition to store the condition state
 type Condition struct {
 	// Type of condition
 	// +required
@@ -33,6 +35,7 @@ type Condition struct {
 	Message string `json:"message,omitempty" description:"human-readable message indicating details about last transition"`
 }
 
+// Conditions an array representation to store multiple Conditions
 type Conditions []Condition
 
 // AreInitialized performs check all Conditions are initialized
