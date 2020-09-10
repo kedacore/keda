@@ -40,7 +40,8 @@ Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW
 ### Testing
 
 It is highly recommended adding scaler together with end to end test (e2e). For more information on e2e testing in KEDA
-check the [test documentation](./tests/README.md).
+check the [test documentation](./tests/README.md). Those tests are run nightly on our
+[CI system](https://github.com/kedacore/keda/actions?query=workflow%3A%22nightly+e2e+test%22).
 
 ## Including Documentation Changes
 
