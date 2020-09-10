@@ -37,6 +37,11 @@ One of the easiest ways to contribute is adding scalers.  Scalers are the logic 
 
 Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW-SCALER.md).
 
+### Testing
+
+It is highly recommended adding scaler together with end to end test (e2e). For more information on e2e testing in KEDA
+check the [test documentation](./tests/README.md).
+
 ## Including Documentation Changes
 
 For any contribution you make that impacts the behavior or experience of KEDA, please open a corresponding docs request for [keda.sh](https://keda.sh) through [https://github.com/kedacore/keda-docs](https://github.com/kedacore/keda-docs).  Contributions that do not include documentation or samples will be rejected.
