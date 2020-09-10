@@ -32,7 +32,7 @@ type scaleExecutor struct {
 	logger           logr.Logger
 }
 
-//NewScaleExecutor creates a ScaleExecutor object
+// NewScaleExecutor creates a ScaleExecutor object
 func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,

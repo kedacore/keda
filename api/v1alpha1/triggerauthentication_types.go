@@ -47,7 +47,7 @@ type TriggerAuthenticationList struct {
 type PodIdentityProvider string
 
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
-//PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
+// PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
 	PodIdentityProviderNone    PodIdentityProvider = "none"
 	PodIdentityProviderAzure                       = "azure"

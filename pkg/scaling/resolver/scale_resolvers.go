@@ -13,7 +13,7 @@ import (
 )
 
 // ResolveContainerEnv resolves all environment variables in a container.
-//It returns either map of env variable key and value or error if there is any.
+// It returns either map of env variable key and value or error if there is any.
 func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
 
 	if len(podSpec.Containers) < 1 {
