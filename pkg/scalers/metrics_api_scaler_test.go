@@ -9,6 +9,8 @@ type metricsAPIMetadataTestData struct {
 	raisesError bool
 }
 
+var validMetricAPIMetadata = map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42"}
+
 var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	// No metadata
 	{metadata: map[string]string{}, raisesError: true},
@@ -22,6 +24,36 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	{metadata: map[string]string{"valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
 	// Missing targetValue
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric"}, raisesError: true},
+}
+
+type metricAPIAuthMetadataTestData struct {
+	authParams map[string]string
+	isError    bool
+}
+
+var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
+	// success TLS
+	{map[string]string{"authMode": "tlsAuth", "ca": "caaa", "cert": "ceert", "key": "keey"}, false},
+	// fail TLS, ca not given
+	{map[string]string{"authMode": "tlsAuth", "cert": "ceert", "key": "keey"}, true},
+	// fail TLS, key not given
+	{map[string]string{"authMode": "tlsAuth", "ca": "caaa", "cert": "ceert"}, true},
+	// fail TLS, cert not given
+	{map[string]string{"authMode": "tlsAuth", "ca": "caaa", "key": "keey"}, true},
+	// success apiKeyAuth default
+	{map[string]string{"authMode": "apiKeyAuth", "apiKey": "apiikey"}, false},
+	// success apiKeyAuth as query param
+	{map[string]string{"authMode": "apiKeyAuth", "apiKey": "apiikey", "method": "query"}, false},
+	// success apiKeyAuth with headers and custom key name
+	{map[string]string{"authMode": "apiKeyAuth", "apiKey": "apiikey", "method": "header", "keyParamName": "custom"}, false},
+	// success apiKeyAuth with query param and custom key name
+	{map[string]string{"authMode": "apiKeyAuth", "apiKey": "apiikey", "method": "query", "keyParamName": "custom"}, false},
+	// fail apiKeyAuth with no api key
+	{map[string]string{"authMode": "apiKeyAuth"}, true},
+	// success basicAuth
+	{map[string]string{"authMode": "basicAuth", "username": "user", "password": "pass"}, false},
+	// fail basicAuth with no username
+	{map[string]string{"authMode": "basicAuth"}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -52,5 +84,26 @@ func TestGetValueFromResponse(t *testing.T) {
 	}
 	if v != 2 {
 		t.Errorf("Expected %d got %d", 2, v)
+	}
+}
+
+func TestMetricAPIScalerAuthParams(t *testing.T) {
+	for _, testData := range testMetricsAPIAuthMetadata {
+		meta, err := metricsAPIMetadata(nil, validMetricAPIMetadata, testData.authParams)
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+
+		if err == nil {
+			if (meta.enableAPIKeyAuth && !(testData.authParams["authMode"] == "apiKeyAuth")) ||
+				(meta.enableBaseAuth && !(testData.authParams["authMode"] == "basicAuth")) ||
+				(meta.enableTLS && !(testData.authParams["authMode"] == "tlsAuth")) {
+				t.Error("wrong auth mode detected")
+			}
+		}
 	}
 }
