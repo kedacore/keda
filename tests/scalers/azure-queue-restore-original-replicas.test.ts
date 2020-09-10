@@ -146,4 +146,4 @@ spec:
   - type: azure-queue
     metadata:
       queueName: queue-name
-      connection: AzureWebJobsStorage`
+      connectionFromEnv: AzureWebJobsStorage`
