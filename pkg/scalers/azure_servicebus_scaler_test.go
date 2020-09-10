@@ -39,14 +39,10 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, map[string]string{}, ""},
 	// properly formed queue with message count
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, queue, map[string]string{}, ""},
-	// properly formed queue with message count as nil
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": nil}, true, queue, map[string]string{}, ""},
 	// properly formed topic & subscription
 	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, map[string]string{}, ""},
 	// properly formed topic & subscription with message count
 	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, subscription, map[string]string{}, ""},
-	// properly formed topic & subscription with message count
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": nil}, true, subscription, map[string]string{}, ""},
 	// queue and topic specified
 	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
 	// queue and subscription specified
