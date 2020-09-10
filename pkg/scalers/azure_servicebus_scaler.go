@@ -3,8 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
+
+	"github.com/kedacore/keda/pkg/scalers/azure"
 
 	servicebus "github.com/Azure/azure-service-bus-go"
 
@@ -20,11 +21,11 @@ import (
 type entityType int
 
 const (
-	none           entityType = 0
-	queue          entityType = 1
-	subscription   entityType = 2
-	messageCountMetricName    = "messageCount"
-	defaultTargetMessageCount = 5
+	none                      entityType = 0
+	queue                     entityType = 1
+	subscription              entityType = 2
+	messageCountMetricName               = "messageCount"
+	defaultTargetMessageCount            = 5
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
