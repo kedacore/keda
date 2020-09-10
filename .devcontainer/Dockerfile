@@ -81,7 +81,7 @@ RUN apt-get update \
 # Enable go modules
 ENV GO111MODULE=on
 
-ENV OPERATOR_RELEASE_VERSION=v0.12.0
+ENV OPERATOR_RELEASE_VERSION=v1.0.0
 RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION}/operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && chmod +x operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && mkdir -p /usr/local/bin/ \
