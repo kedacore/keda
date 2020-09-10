@@ -83,8 +83,6 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		if authParams["connection"] != "" {
 			// Found the connection in a parameter from TriggerAuthentication
 			meta.connection = authParams["connection"]
-		} else if metadata["connection"] != "" {
-			meta.connection = metadata["connection"]
 		} else if metadata["connectionFromEnv"] != "" {
 			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 		}

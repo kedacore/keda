@@ -75,8 +75,6 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 
 	if authParams["storageConnection"] != "" {
 		meta.eventHubInfo.StorageConnection = authParams["storageConnection"]
-	} else if metadata["storageConnection"] != "" {
-		meta.eventHubInfo.StorageConnection = metadata["storageConnection"]
 	} else if metadata["storageConnectionFromEnv"] != "" {
 		meta.eventHubInfo.StorageConnection = resolvedEnv[metadata["storageConnectionFromEnv"]]
 	}
@@ -87,8 +85,6 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 
 	if authParams["connection"] != "" {
 		meta.eventHubInfo.EventHubConnection = authParams["connection"]
-	} else if metadata["connection"] != "" {
-		meta.eventHubInfo.EventHubConnection = metadata["connection"]
 	} else if metadata["connectionFromEnv"] != "" {
 		meta.eventHubInfo.EventHubConnection = resolvedEnv[metadata["connectionFromEnv"]]
 	}

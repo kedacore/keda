@@ -21,15 +21,15 @@ type gcpPubSubMetricIdentifier struct {
 var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentials": "SAMPLE_CREDS"}, false},
+	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing subscriptionName
-	{map[string]string{"subscriptionName": "", "subscriptionSize": "7", "credentials": "SAMPLE_CREDS"}, true},
+	{map[string]string{"subscriptionName": "", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentials": ""}, true},
+	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": ""}, true},
 	// incorrect credentials
 	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "WRONG_CREDS"}, true},
 	// malformed subscriptionSize
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentials": "SAMPLE_CREDS"}, true},
+	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{

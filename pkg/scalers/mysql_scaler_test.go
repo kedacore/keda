@@ -11,6 +11,7 @@ var testMySQLResolvedEnv = map[string]string{
 
 type parseMySQLMetadataTestData struct {
 	metadata    map[string]string
+	resolvedEnv map[string]string
 	raisesError bool
 }
 
@@ -21,15 +22,15 @@ type mySQLMetricIdentifier struct {
 
 var testMySQLMetadata = []parseMySQLMetadataTestData{
 	// No metadata
-	{map[string]string{}, true},
+	{map[string]string{}, testMySQLResolvedEnv, true},
 	// connectionString
-	{map[string]string{"query": "query", "queryValue": "12", "connectionString": "test_value"}, false},
+	{map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}, testMySQLResolvedEnv, false},
 	// Params instead of conn str
-	{map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "password": "test_password", "dbName": "test_dbname"}, false},
+	{map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"}, testMySQLResolvedEnv, false},
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{&testMySQLMetadata[1], "mysql-test_value"},
+	{&testMySQLMetadata[1], "mysql-test_conn_str"},
 	{&testMySQLMetadata[2], "mysql-test_dbname"},
 }
 
@@ -68,7 +69,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(map[string]string{"test_value": "test_value"}, testData.metadataTestData.metadata, nil)
+		meta, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metadataTestData.metadata, nil)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

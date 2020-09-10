@@ -103,8 +103,6 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		// get servicebus connection string
 		if authParams["connection"] != "" {
 			meta.connection = authParams["connection"]
-		} else if metadata["connection"] != "" {
-			meta.connection = metadata["connection"]
 		} else if metadata["connectionFromEnv"] != "" {
 			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
 		}

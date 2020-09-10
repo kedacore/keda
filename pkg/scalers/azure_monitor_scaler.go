@@ -131,8 +131,6 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 
 		if authParams["activeDirectoryClientPassword"] != "" {
 			meta.azureMonitorInfo.ClientPassword = authParams["activeDirectoryClientPassword"]
-		} else if metadata["activeDirectoryClientPassword"] != "" {
-			meta.azureMonitorInfo.ClientPassword = metadata["activeDirectoryClientPassword"]
 		} else if metadata["activeDirectoryClientPasswordFromEnv"] != "" {
 			meta.azureMonitorInfo.ClientPassword = resolvedEnv[metadata["activeDirectoryClientPasswordFromEnv"]]
 		}

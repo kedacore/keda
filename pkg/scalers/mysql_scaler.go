@@ -75,8 +75,6 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 
 	if authParams["connectionString"] != "" {
 		meta.connectionString = authParams["connectionString"]
-	} else if metadata["connectionString"] != "" {
-		meta.connectionString = metadata["connectionString"]
 	} else if metadata["connectionStringFromEnv"] != "" {
 		meta.connectionString = resolvedEnv[metadata["connectionStringFromEnv"]]
 	} else {
@@ -105,8 +103,6 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 
 		if authParams["password"] != "" {
 			meta.password = authParams["password"]
-		} else if metadata["password"] != "" {
-			meta.password = metadata["password"]
 		} else if metadata["passwordFromEnv"] != "" {
 			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
 		}

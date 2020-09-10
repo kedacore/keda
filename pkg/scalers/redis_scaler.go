@@ -231,8 +231,6 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 
 	if authParams["password"] != "" {
 		info.password = authParams["password"]
-	} else if metadata["password"] != "" {
-		info.password = metadata["password"]
 	} else if metadata["passwordFromEnv"] != "" {
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
 	}

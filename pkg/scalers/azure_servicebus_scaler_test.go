@@ -35,17 +35,17 @@ var sampleResolvedEnv = map[string]string{
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{}, true, none, map[string]string{}, ""},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connection": connectionSetting}, false, queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, map[string]string{}, ""},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connection": connectionSetting}, false, subscription, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, map[string]string{}, ""},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connection": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
 	// connection not set
 	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, ""},
 	// connection set in auth params

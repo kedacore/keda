@@ -43,9 +43,7 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 				return meta, fmt.Errorf("awsAccessKeyID not found")
 			}
 
-			if metadata["awsSecretAccessKey"] != "" {
-				meta.awsSecretAccessKey = metadata["awsSecretAccessKey"]
-			} else if metadata["awsSecretAccessKeyFromEnv"] != "" {
+			if metadata["awsSecretAccessKeyFromEnv"] != "" {
 				meta.awsSecretAccessKey = resolvedEnv[metadata["awsSecretAccessKeyFromEnv"]]
 			}
 

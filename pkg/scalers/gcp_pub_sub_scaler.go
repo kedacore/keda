@@ -66,9 +66,7 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	if metadata["credentials"] != "" {
-		meta.credentials = metadata["credentials"]
-	} else if metadata["credentialsFromEnv"] != "" {
+	if metadata["credentialsFromEnv"] != "" {
 		meta.credentials = resolvedEnv[metadata["credentialsFromEnv"]]
 	}
 
