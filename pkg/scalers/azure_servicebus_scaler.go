@@ -20,9 +20,9 @@ import (
 type entityType int
 
 const (
-	none         entityType = 0
-	queue        entityType = 1
-	subscription entityType = 2
+	none           entityType = 0
+	queue          entityType = 1
+	subscription   entityType = 2
 	messageCountMetricName    = "messageCount"
 	defaultTargetMessageCount = 5
 )
