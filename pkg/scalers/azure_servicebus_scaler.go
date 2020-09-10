@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kedacore/keda/pkg/scalers/azure"
-
-	servicebus "github.com/Azure/azure-service-bus-go"
-
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
