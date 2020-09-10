@@ -43,7 +43,7 @@ For any contribution you make that impacts the behavior or experience of KEDA, p
 
 ## Creating and building a local environment
 
-[Details on setup of a development environment are found on the README](https://github.com/kedacore/keda#building-quick-start-with-visual-studio-code-remote---containers)
+[Details on setup of a development environment are found on the README](https://github.com/kedacore/keda/BUILD.md)
 
 ## Developer Certificate of Origin: Signing your work
 
