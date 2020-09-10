@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.13-stretch
+FROM golang:1.15.1
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -68,6 +68,10 @@ RUN apt-get update \
     && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" \
     && apt-get update \
     && apt-get install -y docker-ce-cli \
+    #
+    # Install pip & pre-commit
+    && apt-get -y install python-pip \
+    && pip install --no-cache-dir pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \
