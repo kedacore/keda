@@ -11,9 +11,12 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Project governance](#project-governance)
 - [Getting Help](#getting-help)
 - [Contributing Scalers](#contributing-scalers)
+  - [Testing](#testing)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
+  - [Every commit needs to be signed](#every-commit-needs-to-be-signed)
+  - [I didn't sign my commit, now what?!](#i-didnt-sign-my-commit-now-what)
 - [Code Quality](#code-quality)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
