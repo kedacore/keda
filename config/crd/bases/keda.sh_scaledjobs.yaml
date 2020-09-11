@@ -6218,7 +6218,9 @@ spec:
           description: ScaledJobStatus defines the observed state of ScaledJob
           properties:
             conditions:
+              description: Conditions an array representation to store multiple Conditions
               items:
+                description: Condition to store the condition state
                 properties:
                   message:
                     description: A human readable message indicating details about

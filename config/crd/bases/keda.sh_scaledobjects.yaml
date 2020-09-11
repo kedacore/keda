@@ -61,8 +61,11 @@ spec:
           description: ScaledObjectSpec is the spec for a ScaledObject resource
           properties:
             advanced:
+              description: AdvancedConfig specifies advance scaling options
               properties:
                 horizontalPodAutoscalerConfig:
+                  description: HorizontalPodAutoscalerConfig specifies horizontal
+                    scale config
                   properties:
                     behavior:
                       description: HorizontalPodAutoscalerBehavior configures the
@@ -300,7 +303,9 @@ spec:
           description: ScaledObjectStatus is the status for a ScaledObject resource
           properties:
             conditions:
+              description: Conditions an array representation to store multiple Conditions
               items:
+                description: Condition to store the condition state
                 properties:
                   message:
                     description: A human readable message indicating details about
