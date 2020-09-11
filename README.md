@@ -35,6 +35,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
 - [Guidelines](#guidelines)
+  - [Branding](#branding)
 - [FAQ](#faq)
 - [Community](#community)
 - [Become a listed KEDA user!](#become-a-listed-keda-user)

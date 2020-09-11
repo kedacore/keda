@@ -210,6 +210,7 @@ govet:
 .PHONY: revive
 revive:
 	revive -config revive.toml -formatter friendly \
+		-exclude pkg/scalers/liiklus/mocks/mock_liiklus.go \
 		-exclude vendor/... \
 		./...
 
