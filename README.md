@@ -1,13 +1,14 @@
-<p style="font-size: 30px" align="center"><b>This branch contains unstable KEDA v2.0.0-alpha1, currently under development</b></p>
+<p style="font-size: 30px" align="center"><b>This branch contains KEDA v2.0.0 Beta, currently under development</b></p>
 
-## How can I try KEDA v2 alpha version?
-Make sure to remove previous KEDA (including CRD) from the cluster. Switch to the `v2` branch and deploy yaml files:
+## How can I try KEDA v2 Beta version?
+Make sure to remove previous KEDA (including CRD) from the cluster. You can use KEDA Helm chart (include `--devel` when listing) or deploy directly this yaml file:
 ```bash
-   git fetch --all
-   git checkout v2
-   make deploy
+kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.0.0-beta/keda-2.0.0-beta.yaml
 ```
-
+To uninstall run:
+```bash
+kubectl delete -f https://github.com/kedacore/keda/releases/download/v2.0.0-beta/keda-2.0.0-beta.yaml
+```
 
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
