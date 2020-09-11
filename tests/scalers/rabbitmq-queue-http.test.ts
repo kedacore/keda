@@ -126,6 +126,6 @@ spec:
   - type: rabbitmq
     metadata:
       queueName: {{QUEUE_NAME}}
-      apiHostFromEnv: RabbitApiHost
-      includeUnacked: "true"
+      hostFromEnv: RabbitApiHost
+      protocol: http
       queueLength: '50'`
