@@ -63,7 +63,7 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
 	{&parseServiceBusMetadataDataset[1], "azure-servicebus-testqueue"},
-	{&parseServiceBusMetadataDataset[2], "azure-servicebus-testtopic-testsubscription"},
+	{&parseServiceBusMetadataDataset[3], "azure-servicebus-testtopic-testsubscription"},
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
