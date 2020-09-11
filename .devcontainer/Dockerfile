@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.13-stretch
+FROM golang:1.15.1
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -69,6 +69,10 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y docker-ce-cli \
     #
+    # Install pip & pre-commit
+    && apt-get -y install python-pip \
+    && pip install --no-cache-dir pre-commit \
+    #
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
@@ -77,7 +81,7 @@ RUN apt-get update \
 # Enable go modules
 ENV GO111MODULE=on
 
-ENV OPERATOR_RELEASE_VERSION=v0.12.0
+ENV OPERATOR_RELEASE_VERSION=v1.0.0
 RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION}/operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && chmod +x operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && mkdir -p /usr/local/bin/ \
