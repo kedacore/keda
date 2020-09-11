@@ -22,7 +22,7 @@ repos:
         files: ^README\.md$|^CONTRIBUTING\.md$
         args:
           - "--maxlevel"
-          - "2"
+          - "3"
   - repo: local
     hooks:
     - id: language-matters
