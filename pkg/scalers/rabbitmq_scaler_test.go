@@ -10,8 +10,7 @@ import (
 )
 
 const (
-	host    = "myHostSecret"
-	apiHost = "myApiHostSecret"
+	host = "myHostSecret"
 )
 
 type parseRabbitMQMetadataTestData struct {
@@ -26,8 +25,7 @@ type rabbitMQMetricIdentifier struct {
 }
 
 var sampleRabbitMqResolvedEnv = map[string]string{
-	host:    "amqp://user:sercet@somehost.com:5236/vhost",
-	apiHost: "https://user:secret@somehost.com/vhost",
+	host: "amqp://user:sercet@somehost.com:5236/vhost",
 }
 
 var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
@@ -43,8 +41,8 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{}},
 	// host defined in authParams
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
-	// properly formed metadata with includeUnacked
-	{map[string]string{"queueLength": "10", "queueName": "sample", "apiHostFromEnv": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	// properly formed metadata with http protocol
+	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -67,7 +65,7 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 	// use default queueLength
 	{map[string]string{"queueName": "sample", "host": host}, false, map[string]string{}},
 	// use default queueLength with includeUnacked
-	{map[string]string{"queueName": "sample", "apiHost": apiHost, "includeUnacked": "true"}, false, map[string]string{}},
+	{map[string]string{"queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 }
 
 func TestParseDefaultQueueLength(t *testing.T) {
@@ -102,29 +100,29 @@ var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
 		for _, vhostPath := range vhostPathes {
-			expecedVhost := "myhost"
+			expectedVhost := "myhost"
 
 			if vhostPath != "/myhost" {
-				expecedVhost = "%2F"
+				expectedVhost = "%2F"
 			}
 
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expecedPath := "/api/queues/" + expecedVhost + "/evaluate_trials"
-				if r.RequestURI != expecedPath {
-					t.Error("Expect request path to =", expecedPath, "but it is", r.RequestURI)
+				expectedPath := "/api/queues/" + expectedVhost + "/evaluate_trials"
+				if r.RequestURI != expectedPath {
+					t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 				}
 
 				w.WriteHeader(testData.responseStatus)
 				w.Write([]byte(testData.response))
 			}))
 
-			resolvedEnv := map[string]string{apiHost: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
+			resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
 
 			metadata := map[string]string{
-				"queueLength":    "10",
-				"queueName":      "evaluate_trials",
-				"apiHostFromEnv": apiHost,
-				"includeUnacked": "true",
+				"queueLength": "10",
+				"queueName":   "evaluate_trials",
+				"hostFromEnv": host,
+				"protocol":    "http",
 			}
 
 			s, err := NewRabbitMQScaler(resolvedEnv, metadata, map[string]string{})
