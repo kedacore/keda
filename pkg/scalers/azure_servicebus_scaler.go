@@ -3,12 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
 
-	servicebus "github.com/Azure/azure-service-bus-go"
-
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/kedacore/keda/pkg/scalers/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,9 +19,11 @@ import (
 type entityType int
 
 const (
-	none         entityType = 0
-	queue        entityType = 1
-	subscription entityType = 2
+	none                      entityType = 0
+	queue                     entityType = 1
+	subscription              entityType = 2
+	messageCountMetricName               = "messageCount"
+	defaultTargetMessageCount            = 5
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
@@ -59,15 +60,15 @@ func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]strin
 func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
-	meta.targetLength = defaultTargetQueueLength
+	meta.targetLength = defaultTargetMessageCount
 
 	// get target metric value
-	if val, ok := metadata[queueLengthMetricName]; ok {
-		queueLength, err := strconv.Atoi(val)
+	if val, ok := metadata[messageCountMetricName]; ok {
+		messageCount, err := strconv.Atoi(val)
 		if err != nil {
-			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
+			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
 		} else {
-			meta.targetLength = queueLength
+			meta.targetLength = messageCount
 		}
 	}
 
