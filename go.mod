@@ -44,7 +44,7 @@ require (
 	k8s.io/code-generator v0.18.8
 	k8s.io/klog v1.0.0
 	k8s.io/metrics v0.18.8
-	knative.dev/pkg v0.0.0-20200810223505-473bba04ee7f
+	knative.dev/pkg v0.0.0-20200911145400-2d4efecc6bc1
 	sigs.k8s.io/controller-runtime v0.6.2
 )
 
@@ -62,5 +62,5 @@ replace (
 	google.golang.org/grpc => google.golang.org/grpc v1.26.0
 )
 
-// WORKAROUND - we can remove this once k8s v1.18+ is present in knative/pkg
-replace knative.dev/pkg => github.com/zroubalik/pkg v0.0.0-20200714090639-88ee0a9b8a22
+// Required for k8s.io/apiserver, using k8s.io/kube-openapi branch release-1.18
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
