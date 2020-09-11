@@ -34,6 +34,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Getting started](#getting-started)
 - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
+- [Guidelines](#guidelines)
 - [FAQ](#faq)
 - [Community](#community)
 - [Become a listed KEDA user!](#become-a-listed-keda-user)
@@ -58,6 +59,12 @@ There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files]
 ## Documentation
 
 Interested to learn more? Head over to [keda.sh](https://keda.sh).
+
+## Guidelines
+
+### Branding
+
+We provide guidelines around branding of KEDA and related logos, learn more in our [guidelines](./BRANDING.md).
 
 ## FAQ
 
