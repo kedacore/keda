@@ -34,17 +34,16 @@ type metricsAPIScalerMetadata struct {
 
 	//apiKeyAuth
 	enableAPIKeyAuth bool
-	// +default is header
-	method method
-	// +option default header key is X-API-KEY and default query key is api_key
+	method string // +default is header
+	// +optional default header key is X-API-KEY
+	// default query key is api_key
 	keyParamName string
 	apiKey       string
 
 	//base auth
 	enableBaseAuth bool
 	username       string
-	// +optional
-	password string
+	password       string // +optional
 
 	//client certification
 	enableTLS bool
@@ -59,13 +58,6 @@ const (
 	apiKeyAuth authenticationType = "apiKeyAuth"
 	basicAuth                     = "basicAuth"
 	tlsAuth                       = "tlsAuth"
-)
-
-type method string
-
-const (
-	header     method = "header"
-	queryParam        = "query"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -126,32 +118,33 @@ func metricsAPIMetadata(metadata map[string]string) (*metricsAPIScalerMetadata, 
 		return nil, fmt.Errorf("no valueLocation given in metadata")
 	}
 
+	authMode, ok := authParams["authMode"]
 	// no authMode specified
-	if _, ok := authParams["authMode"]; !ok {
+	if !ok {
 		return &meta, nil
 	}
 
-	val, _ := authParams["authMode"]
-	authType := authenticationType(strings.TrimSpace(val))
-	if authType == apiKeyAuth {
+	authType := authenticationType(strings.TrimSpace(authMode))
+	switch authType {
+	case apiKeyAuth:
 		if len(authParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
 
 		meta.apiKey = authParams["apiKey"]
 		// default behaviour is header. only change if query param requested
-		meta.method = header
+		meta.method = "header"
 		meta.enableAPIKeyAuth = true
 
-		if authParams["method"] == queryParam {
-			meta.method = queryParam
+		if authParams["method"] == "query" {
+			meta.method = "query"
 		}
 
 		if len(authParams["keyParamName"]) > 0 {
 			meta.keyParamName = authParams["keyParamName"]
 		}
-	} else if authType == basicAuth {
-		if authParams["username"] == "" {
+	case basicAuth:
+		if len(authParams["username"]) == 0 {
 			return nil, errors.New("no username given")
 		}
 
@@ -160,25 +153,25 @@ func metricsAPIMetadata(metadata map[string]string) (*metricsAPIScalerMetadata, 
 		// username as apikey and password as empty
 		meta.password = authParams["password"]
 		meta.enableBaseAuth = true
-
-	} else if authType == tlsAuth {
-		if authParams["ca"] == "" {
+	case tlsAuth:
+		if len(authParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}
 		meta.ca = authParams["ca"]
 
-		if authParams["cert"] == "" {
+		if len(authParams["cert"]) == 0 {
 			return nil, errors.New("no cert given")
 		}
 		meta.cert = authParams["cert"]
 
-		if authParams["key"] == "" {
+		if len(authParams["key"]) == 0 {
 			return nil, errors.New("no key given")
 		}
+
 		meta.key = authParams["key"]
 		meta.enableTLS = true
-	} else {
-		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", val)
+	default:
+		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
 	}
 
 	return &meta, nil
@@ -278,19 +271,7 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 	var err error
 
 	if meta.enableAPIKeyAuth {
-		if header == meta.method {
-			req, err = http.NewRequest("GET", meta.url, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(meta.keyParamName) == 0 {
-				req.Header.Add("X-API-KEY", meta.apiKey)
-			} else {
-				req.Header.Add(meta.keyParamName, meta.apiKey)
-			}
-
-		} else if queryParam == meta.method {
+		if meta.method == "query" {
 			url, _ := neturl.Parse(meta.url)
 			queryString := url.Query()
 			if len(meta.keyParamName) == 0 {
@@ -303,6 +284,18 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 			req, err = http.NewRequest("GET", url.String(), nil)
 			if err != nil {
 				return nil, err
+			}
+		} else {
+			// default behaviour is to use header method
+			req, err = http.NewRequest("GET", meta.url, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(meta.keyParamName) == 0 {
+				req.Header.Add("X-API-KEY", meta.apiKey)
+			} else {
+				req.Header.Add(meta.keyParamName, meta.apiKey)
 			}
 		}
 	} else if meta.enableBaseAuth {
