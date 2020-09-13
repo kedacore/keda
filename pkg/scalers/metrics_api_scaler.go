@@ -34,9 +34,9 @@ type metricsAPIScalerMetadata struct {
 
 	//apiKeyAuth
 	enableAPIKeyAuth bool
-	method string // +default is header
-	// +optional default header key is X-API-KEY
-	// default query key is api_key
+	method           string // +default is header
+	// keyParamName  is either header key or query param used for passing apikey
+	// default header is "X-API-KEY", defaul query param is "api_key"
 	keyParamName string
 	apiKey       string
 
@@ -51,6 +51,8 @@ type metricsAPIScalerMetadata struct {
 	key       string
 	ca        string
 }
+
+const defaultTimeOut = 3 * time.Second
 
 type authenticationType string
 
@@ -79,7 +81,7 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 		return &metricsAPIScaler{
 			metadata: meta,
 			client: &http.Client{
-				Timeout:   3 * time.Second,
+				Timeout:   defaultTimeOut,
 				Transport: transport,
 			},
 		}, nil
@@ -88,7 +90,7 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 	return &metricsAPIScaler{
 		metadata: meta,
 		client: &http.Client{
-			Timeout: 3 * time.Second,
+			Timeout: defaultTimeOut,
 		},
 	}, nil
 }
