@@ -34,7 +34,7 @@ type metricsAPIScalerMetadata struct {
 
 	//apiKeyAuth
 	enableAPIKeyAuth bool
-	method           string // +default is header
+	method           string // way of providing auth key, either "header" (default) or "query"
 	// keyParamName  is either header key or query param used for passing apikey
 	// default header is "X-API-KEY", defaul query param is "api_key"
 	keyParamName string
@@ -58,8 +58,8 @@ type authenticationType string
 
 const (
 	apiKeyAuth authenticationType = "apiKeyAuth"
-	basicAuth                     = "basicAuth"
-	tlsAuth                       = "tlsAuth"
+	basicAuth  authenticationType = "basicAuth"
+	tlsAuth    authenticationType = "tlsAuth"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -71,27 +71,22 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 
+	client := &http.Client{
+		Timeout: defaultTimeOut,
+	}
+
 	if meta.enableTLS {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil {
 			return nil, err
 		}
 
-		transport := &http.Transport{TLSClientConfig: config}
-		return &metricsAPIScaler{
-			metadata: meta,
-			client: &http.Client{
-				Timeout:   defaultTimeOut,
-				Transport: transport,
-			},
-		}, nil
+		client.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
 	return &metricsAPIScaler{
 		metadata: meta,
-		client: &http.Client{
-			Timeout: defaultTimeOut,
-		},
+		client:   client,
 	}, nil
 }
 
