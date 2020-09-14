@@ -64,4 +64,3 @@ linters-settings:
   funlen:
     lines: 80
     statements: 40
-
