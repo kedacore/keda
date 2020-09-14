@@ -36,8 +36,9 @@ repos:
       language: system
       entry: "bash tools/sort_scalers.sh"
       files: .*scale_handler\.go$
-    - id: golangci
-      language: system
+    - id: golangci-lint
+      language: golang
       name: Run golangci against the code
       entry: golangci-lint run
-      files: .*\.go$
+      types: [go]
+      pass_filenames: false
