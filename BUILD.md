@@ -121,7 +121,7 @@ to deploy it as part of KEDA. Do the following:
     kubectl logs -l app=keda-operator -n keda -f
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
     ```
-    
+
 ## Miscellaneous
 
 ### Setting log levels
