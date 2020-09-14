@@ -36,8 +36,3 @@ repos:
       language: system
       entry: "bash tools/sort_scalers.sh"
       files: .*scale_handler\.go$
-    - id: revive
-      language: system
-      name: Run revive against the code
-      entry: make revive
-      files: .*\.go$
