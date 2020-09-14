@@ -10,37 +10,37 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
+    - typecheck
     - dupl
-    - errcheck
-    - funlen
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - golint
     - goprintffuncname
-    - gosimple
     - govet
-    - ineffassign
-    - interfacer
-    - misspell
     - nolintlint
     - rowserrcheck
-    - scopelint
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
+    #- gofmt
+    #- interfacer
+    #- golint
+    #- goimports
+    #- ineffassign
+    #- misspell
+    #- scopelint
+    #- structcheck
+    #- bodyclose
+    #- deadcode
+    #- depguard
+    #- dogsled
+    #- errcheck
+    #- funlen
+    #- goconst
+    #- gocritic
+    #- gocyclo
+    #- gosimple
+    #- staticcheck
+    #- stylecheck
+    #- unused
+    #- varcheck
+    #- unparam
+    #- unconvert
+    #- whitespace
 
 issues:
   include:
