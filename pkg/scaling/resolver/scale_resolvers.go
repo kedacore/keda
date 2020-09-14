@@ -22,14 +22,16 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 
 	var container corev1.Container
 	if containerName != "" {
+		containerWithNameFound := false
 		for _, c := range podSpec.Containers {
 			if c.Name == containerName {
 				container = c
+				containerWithNameFound = true
 				break
 			}
 		}
 
-		if &container == nil {
+		if !containerWithNameFound {
 			return nil, fmt.Errorf("Couldn't find container with name %s on Target object", containerName)
 		}
 	} else {
