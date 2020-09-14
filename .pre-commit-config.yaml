@@ -40,3 +40,4 @@ repos:
       language: system
       name: Run golangci against the code
       entry: golangci-lint run
+      files: .*\.go$
