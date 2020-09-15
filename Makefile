@@ -73,7 +73,7 @@ publish: docker-build
 # Release                                        #
 ##################################################
 .PHONY: release
-release: manifests kustomize
+release: manifests kustomize set-version
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
