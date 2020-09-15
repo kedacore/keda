@@ -16,9 +16,9 @@ linters:
     - govet
     - nolintlint
     - rowserrcheck
-    #- gofmt
+    - gofmt
+    - golint
     #- interfacer
-    #- golint
     #- goimports
     #- ineffassign
     #- misspell
