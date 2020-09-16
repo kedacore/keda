@@ -16,15 +16,15 @@ type testExtractAzMonitorTestData struct {
 
 var testExtractAzMonitordata = []testExtractAzMonitorTestData{
 	{"nothing returned", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{}}},
-	{"timeseries null", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: nil}}}},
-	{"timeseries empty", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{}}}}},
-	{"data nil", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: nil}}}}}},
-	{"data empty", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{}}}}}}},
-	{"Total Aggregation requested", false, 40, azureExternalMetricRequest{Aggregation: "Total"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Total: returnFloat64Ptr(40)}}}}}}}},
-	{"Average Aggregation requested", false, 41, azureExternalMetricRequest{Aggregation: "Average"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Average: returnFloat64Ptr(41)}}}}}}}},
-	{"Maximum Aggregation requested", false, 42, azureExternalMetricRequest{Aggregation: "Maximum"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Maximum: returnFloat64Ptr(42)}}}}}}}},
-	{"Minimum Aggregation requested", false, 43, azureExternalMetricRequest{Aggregation: "Minimum"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Minimum: returnFloat64Ptr(43)}}}}}}}},
-	{"Count Aggregation requested", false, 44, azureExternalMetricRequest{Aggregation: "Count"}, insights.Response{Value: &[]insights.Metric{insights.Metric{Timeseries: &[]insights.TimeSeriesElement{insights.TimeSeriesElement{Data: &[]insights.MetricValue{insights.MetricValue{Count: returnFloat64Ptr(44)}}}}}}}},
+	{"timeseries null", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{{Timeseries: nil}}}},
+	{"timeseries empty", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{}}}}},
+	{"data nil", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: nil}}}}}},
+	{"data empty", true, -1, azureExternalMetricRequest{}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{}}}}}}},
+	{"Total Aggregation requested", false, 40, azureExternalMetricRequest{Aggregation: "Total"}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{{Total: returnFloat64Ptr(40)}}}}}}}},
+	{"Average Aggregation requested", false, 41, azureExternalMetricRequest{Aggregation: "Average"}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{{Average: returnFloat64Ptr(41)}}}}}}}},
+	{"Maximum Aggregation requested", false, 42, azureExternalMetricRequest{Aggregation: "Maximum"}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{{Maximum: returnFloat64Ptr(42)}}}}}}}},
+	{"Minimum Aggregation requested", false, 43, azureExternalMetricRequest{Aggregation: "Minimum"}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{{Minimum: returnFloat64Ptr(43)}}}}}}}},
+	{"Count Aggregation requested", false, 44, azureExternalMetricRequest{Aggregation: "Count"}, insights.Response{Value: &[]insights.Metric{{Timeseries: &[]insights.TimeSeriesElement{{Data: &[]insights.MetricValue{{Count: returnFloat64Ptr(44)}}}}}}}},
 }
 
 func returnFloat64Ptr(x float64) *float64 {
