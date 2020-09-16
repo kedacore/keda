@@ -199,20 +199,17 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb
 # Run go fmt against code
 .PHONY: gofmt
 gofmt:
-	go fmt ./...
+	gofmt -l -w -s .
 
 # Run go vet against code
 .PHONY: govet
 govet:
 	go vet ./...
 
-# Run revive against code
-.PHONY: revive
-revive:
-	revive -config revive.toml -formatter friendly \
-		-exclude pkg/scalers/liiklus/mocks/mock_liiklus.go \
-		-exclude vendor/... \
-		./...
+# Run golangci against code
+.PHONY: golangci
+golangci:
+	golangci-lint run
 
 ##################################################
 # Clientset                                      #
