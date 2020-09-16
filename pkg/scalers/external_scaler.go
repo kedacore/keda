@@ -55,8 +55,9 @@ func NewExternalScaler(name, namespace string, metadata, resolvedEnv map[string]
 	return &externalScaler{
 		metadata: meta,
 		scaledObjectRef: pb.ScaledObjectRef{
-			Name:      name,
-			Namespace: namespace,
+			Name:           name,
+			Namespace:      namespace,
+			ScalerMetadata: meta.originalMetadata,
 		},
 	}, nil
 }
