@@ -30,7 +30,7 @@ type artemisMetadata struct {
 	brokerAddress      string
 	username           string
 	password           string
-	restApiTemplate    string
+	restAPITemplate    string
 	queueLength        int
 }
 
@@ -70,9 +70,9 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 	meta.queueLength = defaultArtemisQueueLength
 
 	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
-		meta.restApiTemplate = metadata["restApiTemplate"]
+		meta.restAPITemplate = metadata["restApiTemplate"]
 	} else {
-		meta.restApiTemplate = defaultRestAPITemplate
+		meta.restAPITemplate = defaultRestAPITemplate
 	}
 
 	if metadata["managementEndpoint"] == "" {
@@ -156,7 +156,7 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 		"<<brokerName>>", s.metadata.brokerName,
 		"<<brokerAddress>>", s.metadata.brokerAddress)
 
-	monitoringEndpoint := replacer.Replace(s.metadata.restApiTemplate)
+	monitoringEndpoint := replacer.Replace(s.metadata.restAPITemplate)
 
 	return monitoringEndpoint
 }
