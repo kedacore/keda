@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	kedautil "github.com/kedacore/keda/pkg/util"
-	"github.com/tidwall/gjson"
 	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+
+	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"net/http"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
 )
 
 type metricsAPIScaler struct {
@@ -118,7 +119,7 @@ func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	metricName := fmt.Sprintf("%s-%s-%s", "http", kedautil.NormalizeString(s.metadata.url), s.metadata.valueLocation)
+	metricName := url.QueryEscape(fmt.Sprintf("%s-%s-%s", "http", s.metadata.url, s.metadata.valueLocation))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: metricName,

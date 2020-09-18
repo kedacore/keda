@@ -60,7 +60,7 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
-	{&testParseAzMonitorMetadata[1], "azure-monitor-test-resource-uri-test-metric"},
+	{&testParseAzMonitorMetadata[1], "azure-monitor-test%2Fresource%2Furi-test-metric"},
 }
 
 func TestAzMonitorParseMetadata(t *testing.T) {

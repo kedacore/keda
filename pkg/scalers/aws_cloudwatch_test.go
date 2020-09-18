@@ -167,7 +167,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
-	{&testAWSCloudwatchMetadata[1], "aws-cloudwatch-AWS-SQS-QueueName-keda"},
+	{&testAWSCloudwatchMetadata[1], "aws-cloudwatch-AWS%2FSQS-QueueName-keda"},
 }
 
 func TestCloudwatchParseMetadata(t *testing.T) {

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	url_pkg "net/url"
 	"strconv"
 	"time"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -114,7 +114,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "prometheus", kedautil.NormalizeString(s.metadata.serverAddress), s.metadata.metricName),
+			Name: url.QueryEscape(fmt.Sprintf("%s-%s-%s", "prometheus", s.metadata.serverAddress, s.metadata.metricName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
