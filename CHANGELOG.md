@@ -35,6 +35,7 @@
 
 ### Improvements
 
+- Change API optional structs to pointers to conform with k8s guide ([#1170](https://github.com/kedacore/keda/issues/1170))
 - Escape queue names properly so they work with HPA ([#1168](https://github.com/kedacore/keda/issues/1168))
 - Move from autoscaling `v2beta1` to `v2beta2` for HPA ([#721](https://github.com/kedacore/keda/issues/721))
 - Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
