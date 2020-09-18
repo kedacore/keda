@@ -31,7 +31,7 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
-	{&testPromMetadata[1], "prometheus-http---localhost-9090-http_requests_total"},
+	{&testPromMetadata[1], "prometheus-http%3A%2F%2Flocalhost%3A9090-http_requests_total"},
 }
 
 func TestPrometheusParseMetadata(t *testing.T) {

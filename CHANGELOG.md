@@ -35,6 +35,7 @@
 
 ### Improvements
 
+- Escape queue names properly so they work with HPA ([#1168](https://github.com/kedacore/keda/issues/1168))
 - Move from autoscaling `v2beta1` to `v2beta2` for HPA ([#721](https://github.com/kedacore/keda/issues/721))
 - Introduce shortnames for CRDs ([#774](https://github.com/kedacore/keda/issues/774))
 - Improve `kubectl get scaledobject` to show related trigger authentication ([#777](https://github.com/kedacore/keda/issues/777))
