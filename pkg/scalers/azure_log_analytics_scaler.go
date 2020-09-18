@@ -30,6 +30,7 @@ type azureLogAnalyticsMetadata struct {
 	clientID     string
 	clientSecret string
 	workspaceID  string
+	podIdentity  string
 	query        string
 	threshold    int64
 }
@@ -69,8 +70,8 @@ type queryResult struct {
 var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
-func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string]string) (Scaler, error) {
-	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(resolvedSecrets, metadata, authParams)
+func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(resolvedSecrets, metadata, authParams, podIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
@@ -81,41 +82,49 @@ func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string
 	}, nil
 }
 
-func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string]string) (*azureLogAnalyticsMetadata, error) {
+func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureLogAnalyticsMetadata, error) {
 
 	meta := azureLogAnalyticsMetadata{}
 
-	//Getting tenantId
-	if val, ok := authParams["tenantId"]; ok && val != "" {
-		meta.tenantID = val
-	} else if val, ok := metadata["tenantId"]; ok && val != "" {
-		meta.tenantID = val
-	} else if val, ok := metadata["tenantIdFromEnv"]; ok && val != "" {
-		meta.tenantID = resolvedEnv[metadata["tenantIdFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("tenantId was not found in metadata. Check your ScaledObject configuration")
-	}
+	if podIdentity == "" || podIdentity == "none" {
+		//Getting tenantId
+		if val, ok := authParams["tenantId"]; ok && val != "" {
+			meta.tenantID = val
+		} else if val, ok := metadata["tenantId"]; ok && val != "" {
+			meta.tenantID = val
+		} else if val, ok := metadata["tenantIdFromEnv"]; ok && val != "" {
+			meta.tenantID = resolvedEnv[metadata["tenantIdFromEnv"]]
+		} else {
+			return nil, fmt.Errorf("tenantId was not found in metadata. Check your ScaledObject configuration")
+		}
 
-	//Getting clientId
-	if val, ok := authParams["clientId"]; ok && val != "" {
-		meta.clientID = val
-	} else if val, ok := metadata["clientId"]; ok && val != "" {
-		meta.clientID = val
-	} else if val, ok := metadata["clientIdFromEnv"]; ok && val != "" {
-		meta.clientID = resolvedEnv[metadata["clientIdFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("clientId was not found in metadata. Check your ScaledObject configuration")
-	}
+		//Getting clientId
+		if val, ok := authParams["clientId"]; ok && val != "" {
+			meta.clientID = val
+		} else if val, ok := metadata["clientId"]; ok && val != "" {
+			meta.clientID = val
+		} else if val, ok := metadata["clientIdFromEnv"]; ok && val != "" {
+			meta.clientID = resolvedEnv[metadata["clientIdFromEnv"]]
+		} else {
+			return nil, fmt.Errorf("clientId was not found in metadata. Check your ScaledObject configuration")
+		}
 
-	//Getting clientSecret
-	if val, ok := authParams["clientSecret"]; ok && val != "" {
-		meta.clientSecret = val
-	} else if val, ok := metadata["clientSecret"]; ok && val != "" {
-		meta.clientSecret = val
-	} else if val, ok := metadata["clientSecretFromEnv"]; ok && val != "" {
-		meta.clientSecret = resolvedEnv[metadata["clientSecretFromEnv"]]
+		//Getting clientSecret
+		if val, ok := authParams["clientSecret"]; ok && val != "" {
+			meta.clientSecret = val
+		} else if val, ok := metadata["clientSecret"]; ok && val != "" {
+			meta.clientSecret = val
+		} else if val, ok := metadata["clientSecretFromEnv"]; ok && val != "" {
+			meta.clientSecret = resolvedEnv[metadata["clientSecretFromEnv"]]
+		} else {
+			return nil, fmt.Errorf("clientSecret was not found in metadata. Check your ScaledObject configuration")
+		}
+
+		meta.podIdentity = ""
+	} else if podIdentity == "azure" {
+		meta.podIdentity = podIdentity
 	} else {
-		return nil, fmt.Errorf("clientSecret was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("Log Analytics Scaler doesn't support pod identity %s", podIdentity)
 	}
 
 	//Getting workspaceId
@@ -269,12 +278,8 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	body, statusCode, err := s.executeLogAnalyticsREST(query, tokenInfo)
 
-	if body == nil || len(body) == 0 {
-		return metricsData{}, fmt.Errorf("Error executing Log Analytics REST API request: empty body")
-	}
-
 	//Handle expired token
-	if statusCode == 403 || strings.Contains(string(body), "TokenExpired") {
+	if statusCode == 403 || (body != nil && len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
 		logAnalyticsLog.Info("Token expired, refreshing token...")
 
 		tokenInfo, err := s.refreshAccessToken()
@@ -292,6 +297,10 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	if err != nil {
 		return metricsData{}, err
+	}
+
+	if body == nil || len(body) == 0 {
+		return metricsData{}, fmt.Errorf("Error executing Log Analytics REST API request: empty body")
 	}
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&queryData)
@@ -390,27 +399,31 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 }
 
 func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
-	body, statusCode, err := s.executeAADApicall()
-	if err != nil {
-		return tokenData{}, fmt.Errorf("Error executing AAD request: %v", err)
-	} else if body == nil || len(body) == 0 {
-		return tokenData{}, fmt.Errorf("Error executing AAD request: empty body")
+
+	body, statusCode, err, tokenInfo := []byte{}, 0, *new(error), tokenData{}
+
+	if s.metadata.podIdentity == "" {
+		body, statusCode, err = s.executeAADApicall()
+	} else {
+		body, statusCode, err = s.executeIMDSApicall()
 	}
 
-	tokenInfo := tokenData{}
+	if err != nil {
+		return tokenData{}, err
+	} else if body == nil || len(body) == 0 {
+		return tokenData{}, fmt.Errorf("Error getting access token: empty body")
+	}
+
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&tokenInfo)
 	if err != nil {
-		if statusCode != 200 {
-			return tokenData{}, fmt.Errorf("Error processing AAD request: %d", statusCode)
-		}
-		return tokenData{}, fmt.Errorf("Can't decode JSON from AAD result: %v", err)
+		return tokenData{}, fmt.Errorf(`Can't decode responce body to JSON after getting access token. Received body: "%s". Error: "%v"`, string(body), err)
 	}
 
 	if statusCode == 200 {
 		return tokenInfo, nil
 	}
 
-	return tokenData{}, fmt.Errorf("Error processing AAD request. HTTP code: %d. Details: %s", statusCode, string(body))
+	return tokenData{}, fmt.Errorf("Error getting access token. HTTP code: %d. Details: %s", statusCode, string(body))
 }
 
 func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(query string, tokenInfo tokenData) ([]byte, int, error) {
@@ -426,29 +439,11 @@ func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(query string, tokenInf
 		return nil, 0, fmt.Errorf("Can't construct HTTP request to Log Analytics query API: %v", err)
 	}
 
-	request.Header.Add("Cache-Control", "no-cache")
-	request.Header.Add("User-Agent", "keda/2.0.0")
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", tokenInfo.AccessToken))
 	request.Header.Add("Content-Length", fmt.Sprintf("%d", len(jsonBytes)))
 
-	httpClient := &http.Client{}
-
-	resp, err := httpClient.Do(request)
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error calling Log Analytics query API: %v", err)
-	}
-
-	defer resp.Body.Close()
-	httpClient.CloseIdleConnections()
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error reading Log Analytics responce body: %v", err)
-	}
-
-	return body, resp.StatusCode, nil
+	return s.runHTTP(request, "Log Analytics REST api")
 }
 
 func (s *azureLogAnalyticsScaler) executeAADApicall() ([]byte, int, error) {
@@ -464,25 +459,41 @@ func (s *azureLogAnalyticsScaler) executeAADApicall() ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Active Directory: %v", err)
 	}
-	request.Header.Add("Cache-Control", "no-cache")
-	request.Header.Add("User-Agent", "keda/2.0.0")
+
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Add("Content-Length", fmt.Sprintf("%d", len(data.Encode())))
+
+	return s.runHTTP(request, "AAD")
+}
+
+func (s *azureLogAnalyticsScaler) executeIMDSApicall() ([]byte, int, error) {
+	request, err := http.NewRequest(http.MethodGet, "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fapi.loganalytics.io%2F", nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Instance Metadata service: %v", err)
+	}
+
+	request.Header.Add("Metadata", "true")
+
+	return s.runHTTP(request, "IMDS")
+}
+
+func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) ([]byte, int, error) {
+	request.Header.Add("Cache-Control", "no-cache")
+	request.Header.Add("User-Agent", "keda/2.0.0")
 
 	httpClient := &http.Client{}
 
 	resp, err := httpClient.Do(request)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error calling AAD: %v", err)
+		return nil, resp.StatusCode, fmt.Errorf("Error calling %s: %v", caller, err)
 	}
 
 	defer resp.Body.Close()
 	httpClient.CloseIdleConnections()
 
 	body, err := ioutil.ReadAll(resp.Body)
-
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error reading AAD responce body: %v", err)
+		return nil, resp.StatusCode, fmt.Errorf("Error reading %s responce body: %v", caller, err)
 	}
 
 	return body, resp.StatusCode, nil
