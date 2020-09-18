@@ -43,10 +43,13 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
 	// properly formed metadata with http protocol
 	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
+	// queue name with slashes
+	{map[string]string{"queueLength": "10", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
+	{&testRabbitMQMetadata[7], "rabbitmq-namespace%2Fname"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
@@ -166,7 +169,7 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Error("Wrong External metric source name:", metricName, "wanted:", testData.name)
 		}
 	}
 }
