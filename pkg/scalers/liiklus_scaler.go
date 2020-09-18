@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	liiklus_service "github.com/kedacore/keda/pkg/scalers/liiklus"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -14,6 +13,9 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	liiklus_service "github.com/kedacore/keda/pkg/scalers/liiklus"
+	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
 type liiklusScaler struct {
@@ -81,7 +83,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: fmt.Sprintf("%s-%s-%s", "liiklus", s.metadata.topic, s.metadata.group),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "liiklus", s.metadata.topic, s.metadata.group)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
 type entityType int
@@ -145,9 +147,9 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	metricName := "azure-servicebus"
 	if s.metadata.entityType == queue {
-		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.queueName)
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.queueName))
 	} else {
-		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName)
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName))
 	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
