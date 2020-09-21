@@ -64,7 +64,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	version, err := clientset.ServerVersion()
 	if err == nil {
 		r.kubeVersion = kedautil.NewK8sVersion(version)
-		r.Log.Info("Running on Kubernetes " + r.kubeVersion.PrettyVersion)
+		r.Log.Info("Running on Kubernetes "+r.kubeVersion.PrettyVersion, "version", version)
 	} else {
 		r.Log.Error(err, "Not able to get Kubernetes version")
 	}
