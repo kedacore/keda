@@ -89,9 +89,13 @@ var testLogAnalyticsMetadataWithAuthParams = []parseLogAnalyticsMetadataTestData
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
+var testLogAnalyticsMetadataWithPodIdentity = []parseLogAnalyticsMetadataTestData{
+	{map[string]string{"workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
+}
+
 func TestLogAnalyticsParseMetadata(t *testing.T) {
 	for _, testData := range testLogAnalyticsMetadata {
-		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, nil)
+		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, nil, "")
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -102,7 +106,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with missing auth params should all fail
 	for _, testData := range testLogAnalyticsMetadataWithEmptyAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, emptyLogAnalyticsAuthParams)
+		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, emptyLogAnalyticsAuthParams, "")
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -113,7 +117,18 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with complete auth params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, LogAnalyticsAuthParams)
+		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, LogAnalyticsAuthParams, "")
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
+
+	// test with podIdentity params should not fail
+	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
+		_, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadata, LogAnalyticsAuthParams, "azure")
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -125,7 +140,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range LogAnalyticsMetricIdentifiers {
-		meta, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadataTestData.metadata, nil)
+		meta, err := parseAzureLogAnalyticsMetadata(sampleLogAnalyticsResolvedEnv, testData.metadataTestData.metadata, nil, "")
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
