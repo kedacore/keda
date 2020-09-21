@@ -18,7 +18,7 @@ import (
 	"github.com/kedacore/keda/pkg/scaling"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/status,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
 // +kubebuilder:rbac:groups=keda.sh,resources=triggerauthentications;triggerauthentications/status,verbs="*"
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
 

@@ -53,6 +53,7 @@ rules:
   - keda.sh
   resources:
   - scaledjobs
+  - scaledjobs/finalizers
   - scaledjobs/status
   verbs:
   - '*'
