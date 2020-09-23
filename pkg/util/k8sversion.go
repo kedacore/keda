@@ -17,8 +17,10 @@ type K8sVersion struct {
 // NewK8sVersion will parse a version info and return a struct
 func NewK8sVersion(version *version.Info) K8sVersion {
 	minorTrimmed := ""
-	if len(version.Minor) > 2 {
+	if len(version.Minor) >= 2 {
 		minorTrimmed = version.Minor[:2]
+	} else {
+		minorTrimmed = version.Minor
 	}
 
 	parsed := false
