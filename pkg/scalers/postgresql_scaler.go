@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
 const (
@@ -181,9 +183,9 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 	metricName := "postgresql"
 	if s.metadata.connection != "" {
-		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.connection)
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.connection))
 	} else {
-		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.dbName)
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.dbName))
 	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
