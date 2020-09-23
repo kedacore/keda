@@ -47,13 +47,15 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 	result := make(map[string]string)
 	podIdentity := ""
 
-	if triggerAuthRef != nil && triggerAuthRef.Name != "" {
+	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
-			podIdentity = string(triggerAuth.Spec.PodIdentity.Provider)
+			if triggerAuth.Spec.PodIdentity != nil {
+				podIdentity = string(triggerAuth.Spec.PodIdentity.Provider)
+			}
 			if triggerAuth.Spec.Env != nil {
 				for _, e := range triggerAuth.Spec.Env {
 					env, err := ResolveContainerEnv(client, logger, podSpec, e.ContainerName, namespace)
@@ -69,8 +71,8 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 					result[e.Parameter] = resolveAuthSecret(client, logger, e.Name, namespace, e.Key)
 				}
 			}
-			if triggerAuth.Spec.HashiCorpVault.Secrets != nil {
-				vault := NewHashicorpVaultHandler(&triggerAuth.Spec.HashiCorpVault)
+			if triggerAuth.Spec.HashiCorpVault != nil && len(triggerAuth.Spec.HashiCorpVault.Secrets) > 0 {
+				vault := NewHashicorpVaultHandler(triggerAuth.Spec.HashiCorpVault)
 				err := vault.Initialize(logger)
 				if err != nil {
 					logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
