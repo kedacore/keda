@@ -34,7 +34,7 @@ var testCronMetadata = []parseCronMetadataTestData{
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
-	{&testCronMetadata[1], "cron-Etc%2FUTC-00xxThu-5923xxThu"},
+	{&testCronMetadata[1], "cron-Etc-UTC-00xxThu-5923xxThu"},
 }
 
 var tz, _ = time.LoadLocation(validCronMetadata["timezone"])
