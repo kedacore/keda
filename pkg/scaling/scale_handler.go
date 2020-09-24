@@ -296,15 +296,21 @@ func min(x, y int64) int64 {
 func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var scalersRes []scalers.Scaler
-
-	resolvedEnv, err := resolver.ResolveContainerEnv(h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
-	if err != nil {
-		return scalersRes, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+	var err error
+	resolvedEnv := make(map[string]string)
+	if podTemplateSpec != nil {
+		resolvedEnv, err = resolver.ResolveContainerEnv(h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
+		if err != nil {
+			return scalersRes, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+		}
 	}
 
 	for i, trigger := range withTriggers.Spec.Triggers {
-		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
-
+		var authParams map[string]string
+		var podIdentity string
+		if podTemplateSpec != nil {
+			authParams, podIdentity = resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
+		}
 		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
@@ -348,7 +354,8 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 
 		if withPods.Spec.Template.Spec.Containers == nil {
 			h.logger.Info("There aren't any containers in the ScaleTarget", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
-			return nil, "", fmt.Errorf("no containers found")
+			h.logger.Info("You may not be able to use all scaler types")
+			return nil, "", nil
 		}
 
 		podTemplateSpec := corev1.PodTemplateSpec{
