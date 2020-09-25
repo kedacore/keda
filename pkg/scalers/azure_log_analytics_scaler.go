@@ -3,6 +3,8 @@ package scalers
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -22,9 +25,17 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
+const (
+	miEndpoint       = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fapi.loganalytics.io%2F"
+	aadTokenEndpoint = "https://login.microsoftonline.com/%s/oauth2/token"
+	laQueryEndpoint  = "https://api.loganalytics.io/v1/workspaces/%s/query"
+)
+
 type azureLogAnalyticsScaler struct {
-	metadata *azureLogAnalyticsMetadata
-	cache    *sessionCache
+	metadata  *azureLogAnalyticsMetadata
+	cache     *sessionCache
+	name      string
+	namespace string
 }
 
 type azureLogAnalyticsMetadata struct {
@@ -38,7 +49,6 @@ type azureLogAnalyticsMetadata struct {
 }
 
 type sessionCache struct {
-	accessToken     tokenData
 	metricValue     int64
 	metricThreshold int64
 }
@@ -69,18 +79,25 @@ type queryResult struct {
 	} `json:"tables"`
 }
 
+var tokenCache = struct {
+	sync.RWMutex
+	m map[string]tokenData
+}{m: make(map[string]tokenData)}
+
 var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
-func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
+func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string]string, podIdentity string, name string, namespace string) (Scaler, error) {
 	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(resolvedSecrets, metadata, authParams, podIdentity)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
+		return nil, fmt.Errorf("Failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", name, namespace, err)
 	}
 
 	return &azureLogAnalyticsScaler{
-		metadata: azureLogAnalyticsMetadata,
-		cache:    &sessionCache{metricValue: -1, metricThreshold: -1},
+		metadata:  azureLogAnalyticsMetadata,
+		cache:     &sessionCache{metricValue: -1, metricThreshold: -1},
+		name:      name,
+		namespace: namespace,
 	}, nil
 }
 
@@ -97,7 +114,7 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 		} else if val, ok := metadata["tenantIdFromEnv"]; ok && val != "" {
 			meta.tenantID = resolvedEnv[metadata["tenantIdFromEnv"]]
 		} else {
-			return nil, fmt.Errorf("tenantId was not found in metadata. Check your ScaledObject configuration")
+			return nil, fmt.Errorf("Error parsing metadata. Details: tenantId was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		//Getting clientId
@@ -108,7 +125,7 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 		} else if val, ok := metadata["clientIdFromEnv"]; ok && val != "" {
 			meta.clientID = resolvedEnv[metadata["clientIdFromEnv"]]
 		} else {
-			return nil, fmt.Errorf("clientId was not found in metadata. Check your ScaledObject configuration")
+			return nil, fmt.Errorf("Error parsing metadata. Details: clientId was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		//Getting clientSecret
@@ -119,14 +136,14 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 		} else if val, ok := metadata["clientSecretFromEnv"]; ok && val != "" {
 			meta.clientSecret = resolvedEnv[metadata["clientSecretFromEnv"]]
 		} else {
-			return nil, fmt.Errorf("clientSecret was not found in metadata. Check your ScaledObject configuration")
+			return nil, fmt.Errorf("Error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		meta.podIdentity = ""
 	} else if podIdentity == "azure" {
 		meta.podIdentity = podIdentity
 	} else {
-		return nil, fmt.Errorf("Log Analytics Scaler doesn't support pod identity %s", podIdentity)
+		return nil, fmt.Errorf("Error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", podIdentity)
 	}
 
 	//Getting workspaceId
@@ -137,7 +154,7 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 	} else if val, ok := metadata["workspaceIdFromEnv"]; ok && val != "" {
 		meta.workspaceID = resolvedEnv[metadata["workspaceIdFromEnv"]]
 	} else {
-		return nil, fmt.Errorf("workspaceId was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("Error parsing metadata. Details: workspaceId was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting query
@@ -146,24 +163,24 @@ func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string
 	} else if val, ok := metadata["queryFromEnv"]; ok && val != "" {
 		meta.query = resolvedEnv[metadata["queryFromEnv"]]
 	} else {
-		return nil, fmt.Errorf("query was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("Error parsing metadata. Details: query was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting threshold
 	if val, ok := metadata["threshold"]; ok && val != "" {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse threshold: %s", err)
+			return nil, fmt.Errorf("Error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 		}
 		meta.threshold = threshold
 	} else if val, ok := metadata["thresholdFromEnv"]; ok && val != "" {
 		threshold, err := strconv.ParseInt(resolvedEnv[metadata["thresholdFromEnv"]], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse threshold: %s", err)
+			return nil, fmt.Errorf("Error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 		}
 		meta.threshold = threshold
 	} else {
-		return nil, fmt.Errorf("threshold was not found in metadata. Check your ScaledObject configuration")
+		return nil, fmt.Errorf("Error parsing metadata. Details: threshold was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	return &meta, nil
@@ -174,8 +191,7 @@ func (s *azureLogAnalyticsScaler) IsActive(ctx context.Context) (bool, error) {
 	err := s.updateCache()
 
 	if err != nil {
-		logAnalyticsLog.Error(err, "Error processing Log Analytics query")
-		return false, err
+		return false, fmt.Errorf("Failed to execute IsActive function. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
 	}
 
 	return s.cache.metricValue > 0, nil
@@ -185,7 +201,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec
 	err := s.updateCache()
 
 	if err != nil {
-		logAnalyticsLog.Error(err, "Error processing Log Analytics query")
+		logAnalyticsLog.V(1).Info("Failed to get metric spec.", "Scaled object", s.name, "Namespace", s.namespace, "Inner Error", err)
 		return nil
 	}
 
@@ -207,8 +223,7 @@ func (s *azureLogAnalyticsScaler) GetMetrics(ctx context.Context, metricName str
 	receivedMetric, err := s.getMetricData()
 
 	if err != nil {
-		logAnalyticsLog.Error(err, "Failed to get metrics.")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("Failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
@@ -229,7 +244,6 @@ func (s *azureLogAnalyticsScaler) updateCache() error {
 		receivedMetric, err := s.getMetricData()
 
 		if err != nil {
-			logAnalyticsLog.Error(err, "Error processing Log Analytics query")
 			return err
 		}
 
@@ -256,23 +270,39 @@ func (s *azureLogAnalyticsScaler) getMetricData() (metricsData, error) {
 		return metricsData{}, err
 	}
 
-	logAnalyticsLog.V(1).Info("Getting metrics value", "metrics value", metricsInfo.value)
+	logAnalyticsLog.V(1).Info("Providing metric value", "metrics value", metricsInfo.value, "scaler name", s.name, "namespace", s.namespace)
+
 	return metricsInfo, nil
 }
 
 func (s *azureLogAnalyticsScaler) getAccessToken() (tokenData, error) {
 	//if there is no token yet or it will be expired in less, that 30 secs
 	currentTimeSec := time.Now().Unix()
-	if currentTimeSec+30 > s.cache.accessToken.ExpiresOn {
-		tokenInfo, err := s.refreshAccessToken()
+	tokenInfo := tokenData{}
+
+	if s.metadata.podIdentity == "" {
+		tokenInfo, _ = getTokenFromCache(s.metadata.clientID, s.metadata.clientSecret)
+	} else {
+		tokenInfo, _ = getTokenFromCache(s.metadata.podIdentity, s.metadata.podIdentity)
+	}
+
+	if currentTimeSec+30 > tokenInfo.ExpiresOn {
+		newTokenInfo, err := s.refreshAccessToken()
 		if err != nil {
 			return tokenData{}, err
 		}
 
-		s.cache.accessToken = tokenInfo
-		return tokenInfo, nil
+		if s.metadata.podIdentity == "" {
+			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
+			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, newTokenInfo)
+		} else {
+			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
+			_ = setTokenInCache(s.metadata.podIdentity, s.metadata.podIdentity, newTokenInfo)
+		}
+
+		return newTokenInfo, nil
 	}
-	return s.cache.accessToken, nil
+	return tokenInfo, nil
 }
 
 func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData) (metricsData, error) {
@@ -282,9 +312,15 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	//Handle expired token
 	if statusCode == 403 || (body != nil && len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
-		logAnalyticsLog.Info("Token expired, refreshing token...")
-
 		tokenInfo, err := s.refreshAccessToken()
+
+		if s.metadata.podIdentity == "" {
+			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
+			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, tokenInfo)
+		} else {
+			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
+			_ = setTokenInCache(s.metadata.podIdentity, s.metadata.podIdentity, tokenInfo)
+		}
 
 		if err == nil {
 			body, statusCode, err = s.executeLogAnalyticsREST(query, tokenInfo)
@@ -294,7 +330,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	}
 
 	if statusCode != 200 && statusCode != 0 {
-		return metricsData{}, fmt.Errorf("Error processing Log Analytics REST API request: %d, details: %v", statusCode, err)
+		return metricsData{}, fmt.Errorf("Error processing Log Analytics request. HTTP code %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	}
 
 	if err != nil {
@@ -302,12 +338,12 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	}
 
 	if body == nil || len(body) == 0 {
-		return metricsData{}, fmt.Errorf("Error executing Log Analytics REST API request: empty body")
+		return metricsData{}, fmt.Errorf("Error processing Log Analytics request. Details: empty body. HTTP code: %d", statusCode)
 	}
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&queryData)
 	if err != nil {
-		return metricsData{}, fmt.Errorf("Can't decode JSON from Log Analytics REST API result: %v", err)
+		return metricsData{}, fmt.Errorf("Error processing Log Analytics request. Details: can't decode responce body to JSON from REST API result. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	}
 
 	if statusCode == 200 {
@@ -318,11 +354,11 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 		//Pre-validation of query result:
 		if len(queryData.Tables) == 0 || len(queryData.Tables[0].Columns) == 0 || len(queryData.Tables[0].Rows) == 0 {
-			return metricsData{}, fmt.Errorf("There is no results after running your query")
+			return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: there is no results after running your query. HTTP code: %d. Body: %s", statusCode, string(body))
 		} else if len(queryData.Tables) > 1 {
-			return metricsData{}, fmt.Errorf("Too many tables in query result: %d. Expected: 1", len(queryData.Tables))
+			return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: too many tables in query result: %d, expected: 1. HTTP code: %d. Body: %s", len(queryData.Tables), statusCode, string(body))
 		} else if len(queryData.Tables[0].Rows) > 1 {
-			return metricsData{}, fmt.Errorf("Too many rows in query result: %d. Expected: 1", len(queryData.Tables[0].Rows))
+			return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: too many rows in query result: %d, expected: 1. HTTP code: %d. Body: %s", len(queryData.Tables[0].Rows), statusCode, string(body))
 		}
 
 		if len(queryData.Tables[0].Rows[0]) > 0 {
@@ -334,14 +370,14 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 				if metricDataType == "real" || metricDataType == "int" || metricDataType == "long" {
 					metricValue, isConverted := metricVal.(float64)
 					if !isConverted {
-						return metricsData{}, fmt.Errorf("Cannot convert result to type float64")
+						return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: can not convert result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
 					}
 					if metricValue < 0 {
-						return metricsData{}, fmt.Errorf("Metric value should be >=0. Received value: %f", metricValue)
+						return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: metric value should be >=0, but received %f. HTTP code: %d. Body: %s", metricValue, statusCode, string(body))
 					}
 					metricsInfo.value = int64(metricValue)
 				} else {
-					return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", metricDataType)
+					return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: metric value data type should be real, int or long, but received %s. HTTP code: %d Body: %s", metricDataType, statusCode, string(body))
 				}
 			}
 		}
@@ -355,17 +391,17 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 				if thresholdDataType == "real" || thresholdDataType == "int" || thresholdDataType == "long" {
 					thresholdValue, isConverted := thresholdVal.(float64)
 					if !isConverted {
-						return metricsData{}, fmt.Errorf("Cannot convert threshold result to type float64")
+						return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: cannot convert threshold result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
 					}
 					if thresholdValue < 0 {
-						return metricsData{}, fmt.Errorf("Threshold value should be >=0. Received value: %f", thresholdValue)
+						return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: threshold value should be >=0, but received %f. HTTP code: %d. Body: %s", thresholdValue, statusCode, string(body))
 					}
 					metricsInfo.threshold = int64(thresholdValue)
 				} else {
-					return metricsData{}, fmt.Errorf("Invalid data type in query result: \"%s\". Allowed data types: real, int, long", thresholdDataType)
+					return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: threshold value data type should be real, int or long, but received %s. HTTP code: %d. Body: %s", thresholdDataType, statusCode, string(body))
 				}
 			} else {
-				return metricsData{}, fmt.Errorf("Threshold value is empty. Check your query")
+				return metricsData{}, fmt.Errorf("Error validating Log Analytics request. Details: threshold value is empty, check your query. HTTP code: %d. Body: %s", statusCode, string(body))
 			}
 		} else {
 			metricsInfo.threshold = -1
@@ -374,7 +410,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		return metricsInfo, nil
 	}
 
-	return metricsData{}, fmt.Errorf("Error processing request. HTTP code:  %d, details: %s", statusCode, string(body))
+	return metricsData{}, fmt.Errorf("Error processing Log Analytics request. Details: unknown error. HTTP code: %d. Body: %s", statusCode, string(body))
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
@@ -390,10 +426,10 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 	if currentTimeSec < tokenInfo.NotBefore {
 		if currentTimeSec < tokenInfo.NotBefore+10 {
 			sleepDurationSec := int(tokenInfo.NotBefore - currentTimeSec + 1)
-			logAnalyticsLog.V(1).Info("AAD token not ready", "delay (seconds)", sleepDurationSec)
+			logAnalyticsLog.V(1).Info("AAD token not ready", "delay (seconds)", sleepDurationSec, "scaler name", s.name, "namespace", s.namespace)
 			time.Sleep(time.Duration(sleepDurationSec) * time.Second)
 		} else {
-			return tokenData{}, fmt.Errorf("AAD token has been received, but start date begins in %d seconds. Current operation will be skipped", tokenInfo.NotBefore-currentTimeSec)
+			return tokenData{}, fmt.Errorf("Error getting access token. Details: AAD token has been received, but start date begins in %d seconds, so current operation will be skipped", tokenInfo.NotBefore-currentTimeSec)
 		}
 	}
 
@@ -411,21 +447,21 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
 	}
 
 	if err != nil {
-		return tokenData{}, err
+		return tokenData{}, fmt.Errorf("Error getting access token. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	} else if body == nil || len(body) == 0 {
-		return tokenData{}, fmt.Errorf("Error getting access token: empty body")
+		return tokenData{}, fmt.Errorf("Error getting access token. Details: empty body. HTTP code: %d", statusCode)
 	}
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&tokenInfo)
 	if err != nil {
-		return tokenData{}, fmt.Errorf(`Can't decode responce body to JSON after getting access token. Received body: "%s". Error: "%v"`, string(body), err)
+		return tokenData{}, fmt.Errorf("Error getting access token. Details: can't decode responce body to JSON after getting access token. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	}
 
 	if statusCode == 200 {
 		return tokenInfo, nil
 	}
 
-	return tokenData{}, fmt.Errorf("Error getting access token. HTTP code: %d. Details: %s", statusCode, string(body))
+	return tokenData{}, fmt.Errorf("Error getting access token. Details: unknown error. HTTP code: %d. Body: %s", statusCode, string(body))
 }
 
 func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(query string, tokenInfo tokenData) ([]byte, int, error) {
@@ -433,12 +469,12 @@ func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(query string, tokenInf
 
 	jsonBytes, err := json.Marshal(m)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Can't construct JSON for request to Log Analytics query API: %v", err)
+		return nil, 0, fmt.Errorf("Can't construct JSON for request to Log Analytics API. Inner Error: %v", err)
 	}
 
-	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.loganalytics.io/v1/workspaces/%s/query", s.metadata.workspaceID), bytes.NewBuffer(jsonBytes)) // URL-encoded payload
+	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf(laQueryEndpoint, s.metadata.workspaceID), bytes.NewBuffer(jsonBytes)) // URL-encoded payload
 	if err != nil {
-		return nil, 0, fmt.Errorf("Can't construct HTTP request to Log Analytics query API: %v", err)
+		return nil, 0, fmt.Errorf("Can't construct HTTP request to Log Analytics API. Inner Error: %v", err)
 	}
 
 	request.Header.Add("Content-Type", "application/json")
@@ -457,9 +493,9 @@ func (s *azureLogAnalyticsScaler) executeAADApicall() ([]byte, int, error) {
 		"client_secret": {s.metadata.clientSecret},
 	}
 
-	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", s.metadata.tenantID), strings.NewReader(data.Encode())) // URL-encoded payload
+	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf(aadTokenEndpoint, s.metadata.tenantID), strings.NewReader(data.Encode())) // URL-encoded payload
 	if err != nil {
-		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Active Directory: %v", err)
+		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Active Directory. Inner Error: %v", err)
 	}
 
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -469,9 +505,9 @@ func (s *azureLogAnalyticsScaler) executeAADApicall() ([]byte, int, error) {
 }
 
 func (s *azureLogAnalyticsScaler) executeIMDSApicall() ([]byte, int, error) {
-	request, err := http.NewRequest(http.MethodGet, "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fapi.loganalytics.io%2F", nil)
+	request, err := http.NewRequest(http.MethodGet, miEndpoint, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Instance Metadata service: %v", err)
+		return nil, 0, fmt.Errorf("Can't construct HTTP request to Azure Instance Metadata service. Inner Error: %v", err)
 	}
 
 	request.Header.Add("Metadata", "true")
@@ -487,7 +523,7 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	resp, err := httpClient.Do(request)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error calling %s: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("Error calling %s. Inner Error: %v", caller, err)
 	}
 
 	defer resp.Body.Close()
@@ -495,8 +531,51 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error reading %s responce body: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("Error reading %s responce body: Inner Error: %v", caller, err)
 	}
 
 	return body, resp.StatusCode, nil
+}
+
+func getTokenFromCache(clientID string, clientSecret string) (tokenData, error) {
+
+	key, err := getHash(clientID, clientSecret)
+	if err != nil {
+		return tokenData{}, fmt.Errorf("Error calculating sha1 hash. Inner Error: %v", err)
+	}
+
+	tokenCache.RLock()
+
+	if val, ok := tokenCache.m[key]; ok && val.AccessToken != "" {
+		tokenCache.RUnlock()
+		return val, nil
+	}
+
+	tokenCache.RUnlock()
+	return tokenData{}, fmt.Errorf("Error getting value from token cache. Details: unknown error")
+}
+
+func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) error {
+
+	key, err := getHash(clientID, clientSecret)
+	if err != nil {
+		return err
+	}
+
+	tokenCache.Lock()
+	tokenCache.m[key] = tokenInfo
+	tokenCache.Unlock()
+
+	return nil
+}
+
+func getHash(clientID string, clientSecret string) (string, error) {
+	sha1Hash := sha1.New()
+	_, err := sha1Hash.Write([]byte(fmt.Sprintf("%s|%s", clientID, clientSecret)))
+
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(sha1Hash.Sum(nil)), nil
 }
