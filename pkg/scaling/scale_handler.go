@@ -306,11 +306,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	}
 
 	for i, trigger := range withTriggers.Spec.Triggers {
-		var authParams map[string]string
-		var podIdentity string
-		if podTemplateSpec != nil {
-			authParams, podIdentity = resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
-		}
+		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
 		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
@@ -353,8 +349,7 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 		}
 
 		if withPods.Spec.Template.Spec.Containers == nil {
-			h.logger.Info("There aren't any containers in the ScaleTarget", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
-			h.logger.Info("You may not be able to use all scaler types")
+			h.logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
 			return nil, "", nil
 		}
 
