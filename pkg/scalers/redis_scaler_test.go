@@ -1,8 +1,9 @@
 package scalers
 
 import (
-	"github.com/go-redis/redis"
 	"testing"
+
+	"github.com/go-redis/redis"
 )
 
 var testRedisResolvedEnv = map[string]string{
