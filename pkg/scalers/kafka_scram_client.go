@@ -11,7 +11,7 @@ import (
 // SHA256 hash generator function for SCRAM conversation
 var SHA256 scram.HashGeneratorFcn = func() hash.Hash { return sha256.New() }
 
-// SHA512 hash generator function for SCRAM converstaion
+// SHA512 hash generator function for SCRAM conversation
 var SHA512 scram.HashGeneratorFcn = func() hash.Hash { return sha512.New() }
 
 // XDGSCRAMClient struct to perform SCRAM conversation

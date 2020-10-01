@@ -418,7 +418,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&tokenInfo)
 	if err != nil {
-		return tokenData{}, fmt.Errorf(`Can't decode responce body to JSON after getting access token. Received body: "%s". Error: "%v"`, string(body), err)
+		return tokenData{}, fmt.Errorf(`Can't decode response body to JSON after getting access token. Received body: "%s". Error: "%v"`, string(body), err)
 	}
 
 	if statusCode == 200 {
@@ -495,7 +495,7 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error reading %s responce body: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("Error reading %s response body: %v", caller, err)
 	}
 
 	return body, resp.StatusCode, nil

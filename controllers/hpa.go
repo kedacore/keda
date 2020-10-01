@@ -20,7 +20,7 @@ const (
 	defaultHPAMaxReplicas int32 = 100
 )
 
-// createAndDeployNewHPA creates and deploy HPA in the cluster for specifed ScaledObject
+// createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
 func (r *ScaledObjectReconciler) createAndDeployNewHPA(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
 	logger.Info("Creating a new HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)

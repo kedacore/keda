@@ -78,7 +78,7 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 		}
 	}
 
-	// this does not guarentee successful connection
+	// this does not guarantee successful connection
 	c := redis.NewClient(options)
 
 	// confirm if connected
