@@ -9,7 +9,7 @@ resources:
 
 patchesJson6902:
 - target:
-    version: v1beta1
+    version: v1
     group: apiextensions.k8s.io
     kind: CustomResourceDefinition
     name: scaledjobs.keda.sh
