@@ -1,12 +1,12 @@
 ---
 - op: add
-  path: /spec/validation/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/containers/items/properties/ports/items/required/-
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/containers/items/properties/ports/items/required/-
   value: protocol
 
 - op: add
-  path: /spec/validation/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/ephemeralContainers/items/properties/ports/items/required/-
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/ephemeralContainers/items/properties/ports/items/required/-
   value: protocol
 
 - op: add
-  path: /spec/validation/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/initContainers/items/properties/ports/items/required/-
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/initContainers/items/properties/ports/items/required/-
   value: protocol

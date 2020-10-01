@@ -7,9 +7,11 @@ resources:
 - bases/keda.sh_triggerauthentications.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
+## ScaledJob CRD needs to be patched because of an issue with required properties
+## https://github.com/kedacore/keda/issues/927
 patchesJson6902:
 - target:
-    version: v1beta1
+    version: v1
     group: apiextensions.k8s.io
     kind: CustomResourceDefinition
     name: scaledjobs.keda.sh
