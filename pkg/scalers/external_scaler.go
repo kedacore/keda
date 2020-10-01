@@ -3,10 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/mitchellh/hashstructure"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mitchellh/hashstructure"
 
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"

@@ -2,6 +2,7 @@ package azure
 
 import (
 	"context"
+
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
