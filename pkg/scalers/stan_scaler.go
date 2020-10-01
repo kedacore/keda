@@ -119,8 +119,11 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if resp.StatusCode == 404 {
-		baseResp, _ := http.Get(s.getSTANChannelsEndpoint())
-
+		baseResp, err := http.Get(s.getSTANChannelsEndpoint())
+		if err != nil {
+			return false, err
+		}
+		defer baseResp.Body.Close()
 		if baseResp.StatusCode == 404 {
 			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
 

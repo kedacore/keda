@@ -19,12 +19,12 @@ linters:
     - gofmt
     - golint
     - goimports
+    - misspell
+    - bodyclose
     #- interfacer
     #- ineffassign
-    #- misspell
     #- scopelint
     #- structcheck
-    #- bodyclose
     #- deadcode
     #- depguard
     #- dogsled

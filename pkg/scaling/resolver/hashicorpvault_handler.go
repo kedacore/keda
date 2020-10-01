@@ -146,7 +146,7 @@ func (vh *HashicorpVaultHandler) Read(path string) (*vaultApi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
-// Stop is responsible for stoping the renew token proccess
+// Stop is responsible for stoping the renew token process
 func (vh *HashicorpVaultHandler) Stop() {
 	if vh.stopCh != nil {
 		vh.stopCh <- struct{}{}
