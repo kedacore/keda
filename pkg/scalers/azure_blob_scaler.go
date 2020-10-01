@@ -3,8 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/pkg/scalers/azure"
 	"strconv"
+
+	"github.com/kedacore/keda/pkg/scalers/azure"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"

@@ -18,8 +18,8 @@ linters:
     - rowserrcheck
     - gofmt
     - golint
+    - goimports
     #- interfacer
-    #- goimports
     #- ineffassign
     #- misspell
     #- scopelint

@@ -3,10 +3,11 @@ package azure
 import (
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/Azure/azure-storage-queue-go/azqueue"
 	"net/url"
 	"strings"
+
+	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-storage-queue-go/azqueue"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
