@@ -6365,6 +6365,7 @@ spec:
                       type: object
                     name:
                       type: string
+<<<<<<< HEAD
                     type:
                       type: string
                   required:
@@ -6408,6 +6409,56 @@ spec:
                 type: string
             type: object
         type: object
+=======
+                    type: object
+                  name:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - metadata
+                - type
+                type: object
+              type: array
+          required:
+          - jobTargetRef
+          - triggers
+          type: object
+        status:
+          description: ScaledJobStatus defines the observed state of ScaledJob
+          properties:
+            conditions:
+              description: Conditions an array representation to store multiple Conditions
+              items:
+                description: Condition to store the condition state
+                properties:
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  reason:
+                    description: The reason for the condition's last transition.
+                    type: string
+                  status:
+                    description: Status of the condition, one of True, False, Unknown.
+                    type: string
+                  type:
+                    description: Type of condition
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
+            lastActiveTime:
+              format: date-time
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+>>>>>>> Introduce new scaling logic with fix orphan pod issue
     served: true
     storage: true
     subresources:

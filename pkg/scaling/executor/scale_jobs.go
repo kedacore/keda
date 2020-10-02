@@ -28,7 +28,12 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 
 	var effectiveMaxScale int64
-	effectiveMaxScale = maxScale - runningJobCount
+	if (maxScale + runningJobCount) > scaledJob.MaxReplicaCount() {
+		effectiveMaxScale = scaledJob.MaxReplicaCount() - runningJobCount
+	} else {
+		effectiveMaxScale = maxScale
+	}
+
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
 	}
@@ -198,7 +203,11 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(logger logr.Logger, jobs []ba
 
 	deleteJobLength := len(jobs) - int(historyLimit)
 	for _, j := range (jobs)[0:deleteJobLength] {
-		err := e.client.Delete(context.TODO(), j.DeepCopyObject())
+		deletePolicy := metav1.DeletePropagationBackground
+		deleteOptions := &client.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		}
+		err := e.client.Delete(context.TODO(), j.DeepCopyObject(), deleteOptions)
 		if err != nil {
 			return err
 		}

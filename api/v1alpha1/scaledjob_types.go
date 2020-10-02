@@ -60,3 +60,12 @@ type ScaledJobList struct {
 func init() {
 	SchemeBuilder.Register(&ScaledJob{}, &ScaledJobList{})
 }
+
+// MaxReplicaCount returns MaxReplicaCount
+func (s ScaledJob) MaxReplicaCount() int64 {
+	if s.Spec.MaxReplicaCount != nil {
+		return int64(*s.Spec.MaxReplicaCount)
+	} else {
+		return 100
+	}
+}
