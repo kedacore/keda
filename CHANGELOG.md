@@ -31,7 +31,7 @@
 - Add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
 - Introduce Azure Log Analytics scaler ([#1061](https://github.com/kedacore/keda/issues/1061)) | [docs](https://keda.sh/docs/2.0/scalers/azure-log-analytics/))
 - Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
-
+- Add cpu/memory Scaler ([#1215](https://github.com/kedacore/keda/pull/1215))
 
 ### Improvements
 
