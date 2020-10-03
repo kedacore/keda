@@ -65,7 +65,7 @@ func init() {
 func (s ScaledJob) MaxReplicaCount() int64 {
 	if s.Spec.MaxReplicaCount != nil {
 		return int64(*s.Spec.MaxReplicaCount)
-	} else {
-		return 100
 	}
+
+	return 100
 }
