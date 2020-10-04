@@ -22,8 +22,8 @@ linters:
     - misspell
     - bodyclose
     - unconvert
+    - ineffassign
     #- interfacer
-    #- ineffassign
     #- scopelint
     #- structcheck
     - deadcode
