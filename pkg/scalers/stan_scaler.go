@@ -52,9 +52,8 @@ type stanMetadata struct {
 }
 
 const (
-	stanLagThresholdMetricName = "lagThreshold"
-	stanMetricType             = "External"
-	defaultStanLagThreshold    = 10
+	stanMetricType          = "External"
+	defaultStanLagThreshold = 10
 )
 
 var stanLog = logf.Log.WithName("stan_scaler")
