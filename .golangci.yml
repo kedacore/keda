@@ -21,6 +21,7 @@ linters:
     - goimports
     - misspell
     - bodyclose
+    - unconvert
     #- interfacer
     #- ineffassign
     #- scopelint

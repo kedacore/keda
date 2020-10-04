@@ -214,7 +214,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
+		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

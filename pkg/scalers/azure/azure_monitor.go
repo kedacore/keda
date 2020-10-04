@@ -214,8 +214,7 @@ func verifyAggregationTypeIsSupported(aggregationType string, data []insights.Me
 	} else if strings.EqualFold(string(insights.Minimum), aggregationType) && data[len(data)-1].Minimum != nil {
 		valuePtr = data[len(data)-1].Minimum
 	} else if strings.EqualFold(string(insights.Count), aggregationType) && data[len(data)-1].Count != nil {
-		fValue := float64(*data[len(data)-1].Count)
-		valuePtr = &fValue
+		valuePtr = data[len(data)-1].Count
 	} else {
 		err := fmt.Errorf("Unsupported aggregation type %s", insights.AggregationType(strings.ToTitle(aggregationType)))
 		return nil, err

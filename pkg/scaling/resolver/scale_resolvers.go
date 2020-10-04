@@ -204,7 +204,7 @@ func resolveConfigValue(client client.Client, configKeyRef *corev1.ConfigMapKeyS
 	if err != nil {
 		return "", err
 	}
-	return string(configMap.Data[keyName]), nil
+	return configMap.Data[keyName], nil
 }
 
 func resolveAuthSecret(client client.Client, logger logr.Logger, name, namespace, key string) string {

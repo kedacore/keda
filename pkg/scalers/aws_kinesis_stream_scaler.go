@@ -127,7 +127,7 @@ func (s *awsKinesisStreamScaler) GetMetrics(ctx context.Context, metricName stri
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(shardCount), resource.DecimalSI),
+		Value:      *resource.NewQuantity(shardCount, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
