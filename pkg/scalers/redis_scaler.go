@@ -108,7 +108,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 
-	length, err := getRedisListLength(ctx, s.client, s.metadata.listName)
+	length, err := getRedisListLength(s.client, s.metadata.listName)
 
 	if err != nil {
 		redisLog.Error(err, "error")
@@ -150,7 +150,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics connects to Redis and finds the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	listLen, err := getRedisListLength(ctx, s.client, s.metadata.listName)
+	listLen, err := getRedisListLength(s.client, s.metadata.listName)
 
 	if err != nil {
 		redisLog.Error(err, "error getting list length")
@@ -166,7 +166,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func getRedisListLength(ctx context.Context, client *redis.Client, listName string) (int64, error) {
+func getRedisListLength(client *redis.Client, listName string) (int64, error) {
 	var listType *redis.StatusCmd
 
 	listType = client.Type(listName)

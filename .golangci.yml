@@ -37,8 +37,8 @@ linters:
     #- staticcheck
     #- stylecheck
     #- unused
-    #- varcheck
-    #- unparam
+    - varcheck
+    - unparam
     #- unconvert
     #- whitespace
 

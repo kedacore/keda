@@ -14,11 +14,6 @@ const (
 	testAWSSQSImproperQueueURL2 = "https://sqs.eu-west-1.amazonaws.com"
 )
 
-var testAWSSQSResolvedEnv = map[string]string{
-	"AWS_ACCESS_KEY":        "none",
-	"AWS_SECRET_ACCESS_KEY": "none",
-}
-
 var testAWSSQSAuthentication = map[string]string{
 	"awsAccessKeyId":     testAWSSQSAccessKeyID,
 	"awsSecretAccessKey": testAWSSQSSecretAccessKey,

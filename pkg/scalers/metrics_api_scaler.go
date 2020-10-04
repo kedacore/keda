@@ -33,14 +33,14 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := metricsAPIMetadata(resolvedEnv, metadata, authParams)
+	meta, err := metricsAPIMetadata(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 	return &metricsAPIScaler{metadata: meta}, nil
 }
 
-func metricsAPIMetadata(resolvedEnv, metadata, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
+func metricsAPIMetadata(metadata map[string]string) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 
 	if val, ok := metadata["targetValue"]; ok {

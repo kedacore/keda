@@ -74,7 +74,7 @@ var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	kafkaMetadata, err := parseKafkaMetadata(resolvedEnv, metadata, authParams)
+	kafkaMetadata, err := parseKafkaMetadata(metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -91,7 +91,7 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	}, nil
 }
 
-func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
+func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
 	if metadata["bootstrapServers"] == "" {

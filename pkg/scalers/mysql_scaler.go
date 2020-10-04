@@ -17,10 +17,6 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
-const (
-	mySQLMetricName = "MySQLQueryValue"
-)
-
 type mySQLScaler struct {
 	metadata   *mySQLMetadata
 	connection *sql.DB
