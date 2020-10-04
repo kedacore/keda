@@ -23,6 +23,7 @@ linters:
     - bodyclose
     - unconvert
     - ineffassign
+    - staticcheck
     #- interfacer
     #- scopelint
     #- structcheck
