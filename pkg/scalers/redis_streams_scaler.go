@@ -72,7 +72,7 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 		DB:       metadata.databaseIndex,
 	}
 
-	if metadata.connectionInfo.enableTLS == true {
+	if metadata.connectionInfo.enableTLS {
 		options.TLSConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}

@@ -58,6 +58,5 @@ func TestParseStorageConnectionString(t *testing.T) {
 					"but got", endpoint)
 			}
 		}
-
 	}
 }

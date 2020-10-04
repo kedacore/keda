@@ -343,5 +343,4 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 	}
 
 	return metricValue, nil
-
 }

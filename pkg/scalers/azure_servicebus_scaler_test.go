@@ -86,7 +86,6 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 
 func TestParseServiceBusMetadata(t *testing.T) {
 	for _, testData := range parseServiceBusMetadataDataset {
-
 		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadata, testData.authParams, testData.podIdentity)
 
 		if err != nil && !testData.isError {
@@ -102,7 +101,6 @@ func TestParseServiceBusMetadata(t *testing.T) {
 }
 
 func TestGetServiceBusLength(t *testing.T) {
-
 	t.Log("This test will use the environment variable SERVICEBUS_CONNECTION_STRING if it is set")
 	t.Log("If set, it will connect to the servicebus namespace specified by the connection string & check:")
 	t.Logf("\tQueue '%s' has 1 message\n", queueName)
@@ -123,7 +121,6 @@ func TestGetServiceBusLength(t *testing.T) {
 			if length != 1 {
 				t.Errorf("Expected 1 message, got %d", length)
 			}
-
 		} else {
 			// Just test error message
 			length, err := scaler.GetAzureServiceBusLength(context.TODO())

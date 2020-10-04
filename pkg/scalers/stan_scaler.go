@@ -126,7 +126,6 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 		defer baseResp.Body.Close()
 		if baseResp.StatusCode == 404 {
 			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
-
 		} else {
 			stanLog.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		}

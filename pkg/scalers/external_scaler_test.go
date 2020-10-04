@@ -81,18 +81,16 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	retries := 0
 	defer cancel()
 	for {
-		select {
-		case <-time.After(time.Second * 1):
-			if resultCount == serverCount*iterationCount {
-				t.Logf("resultCount == %d", resultCount)
-				return
-			}
+		<-time.After(time.Second * 1)
+		if resultCount == serverCount*iterationCount {
+			t.Logf("resultCount == %d", resultCount)
+			return
+		}
 
-			retries++
-			if retries > 10 {
-				t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
-				return
-			}
+		retries++
+		if retries > 10 {
+			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
+			return
 		}
 	}
 }

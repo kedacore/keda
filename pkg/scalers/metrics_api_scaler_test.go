@@ -56,5 +56,4 @@ func TestGetValueFromResponse(t *testing.T) {
 	if v != 2 {
 		t.Errorf("Expected %d got %d", 2, v)
 	}
-
 }

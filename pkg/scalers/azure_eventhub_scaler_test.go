@@ -239,7 +239,6 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 }
 
 func TestGetUnprocessedEventCountWithoutCheckpointReturning1Message(t *testing.T) {
-
 	//After the first message the lastsequencenumber init to 0
 	partitionInfo := eventhub.HubPartitionRuntimeInformation{
 		PartitionID:             "0",
@@ -255,7 +254,6 @@ func TestGetUnprocessedEventCountWithoutCheckpointReturning1Message(t *testing.T
 }
 
 func TestGetUnprocessedEventCountWithoutCheckpointReturning0Message(t *testing.T) {
-
 	//An empty partition starts with an equal value on last-/beginning-sequencenumber other than 0
 	partitionInfo := eventhub.HubPartitionRuntimeInformation{
 		PartitionID:             "0",
@@ -271,7 +269,6 @@ func TestGetUnprocessedEventCountWithoutCheckpointReturning0Message(t *testing.T
 }
 
 func TestGetUnprocessedEventCountWithoutCheckpointReturning2Messages(t *testing.T) {
-
 	partitionInfo := eventhub.HubPartitionRuntimeInformation{
 		PartitionID:             "0",
 		LastSequenceNumber:      1,
