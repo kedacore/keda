@@ -115,7 +115,6 @@ var testMetadatas = []testMetadata{
 }
 
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
-
 	for _, testData := range testMetadatas {
 		_, err := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), testData.container, namespace)
 

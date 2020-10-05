@@ -74,7 +74,6 @@ func TestLiiklusParseMetadata(t *testing.T) {
 }
 
 func TestLiiklusScalerActiveBehavior(t *testing.T) {
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -119,7 +118,6 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 }
 
 func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -163,7 +161,6 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 	if values[0].Value.Value() != 10+10 {
 		t.Errorf("got wrong metric values: %v", values)
 	}
-
 }
 
 func TestLiiklusGetMetricSpecForScaling(t *testing.T) {

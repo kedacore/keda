@@ -66,7 +66,6 @@ func NewArtemisQueueScaler(resolvedSecrets, metadata, authParams map[string]stri
 }
 
 func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (*artemisMetadata, error) {
-
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
@@ -152,7 +151,6 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *artemisScaler) getMonitoringEndpoint() string {
-
 	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.managementEndpoint,
 		"<<queueName>>", s.metadata.queueName,
 		"<<brokerName>>", s.metadata.brokerName,

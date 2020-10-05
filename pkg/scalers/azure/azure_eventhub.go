@@ -58,7 +58,6 @@ func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
 
 // GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
 func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
-
 	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection("none", info.StorageConnection, "")
 	if err != nil {
 		return Checkpoint{}, err

@@ -99,7 +99,6 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 
 // updateHPAIfNeeded checks whether update of HPA is needed
 func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
-
 	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", getHPAName(scaledObject))

@@ -32,7 +32,6 @@ type ScaledJobReconciler struct {
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme())
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -88,7 +87,6 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 // reconcileJobType implemets reconciler logic for K8s Jobs based ScaleObject
 func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-
 	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
 	if err != nil {
 		return msg, err
@@ -130,7 +128,6 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
-
 	logger.V(1).Info("Starting a new ScaleLoop")
 
 	return r.scaleHandler.HandleScalableObject(scaledJob)

@@ -117,12 +117,10 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
-
 }
 
 // ListAllExternalMetrics returns the supported external metrics for this provider
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-
 	externalMetricsInfo := []provider.ExternalMetricInfo{}
 
 	//get all ScaledObjects in namespace(s) watched by the operator

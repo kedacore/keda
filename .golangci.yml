@@ -33,14 +33,14 @@ linters:
     #- goconst
     #- gocritic
     #- gocyclo
-    #- gosimple
+    - gosimple
     #- staticcheck
     #- stylecheck
     #- unused
     #- varcheck
     #- unparam
     #- unconvert
-    #- whitespace
+    - whitespace
 
 issues:
   include:

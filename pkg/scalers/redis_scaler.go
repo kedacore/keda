@@ -57,7 +57,7 @@ func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 		DB:       meta.databaseIndex,
 	}
 
-	if meta.connectionInfo.enableTLS == true {
+	if meta.connectionInfo.enableTLS {
 		options.TLSConfig = &tls.Config{
 			InsecureSkipVerify: meta.connectionInfo.enableTLS,
 		}
@@ -107,7 +107,6 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
-
 	length, err := getRedisListLength(ctx, s.client, s.metadata.listName)
 
 	if err != nil {
@@ -167,9 +166,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 }
 
 func getRedisListLength(ctx context.Context, client *redis.Client, listName string) (int64, error) {
-	var listType *redis.StatusCmd
-
-	listType = client.Type(listName)
+	listType := client.Type(listName)
 	if listType.Err() != nil {
 		return -1, listType.Err()
 	}
