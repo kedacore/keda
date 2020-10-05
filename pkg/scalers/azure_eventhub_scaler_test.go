@@ -33,11 +33,6 @@ type eventHubMetricIdentifier struct {
 	name             string
 }
 
-type resolvedEnvTestData struct {
-	resolvedEnv map[string]string
-	isError     bool
-}
-
 var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: "none", storageConnectionSetting: "none"}
 
 var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{

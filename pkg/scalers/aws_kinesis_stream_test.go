@@ -13,11 +13,6 @@ const (
 	testAWSRegion                 = "eu-west-1"
 )
 
-var testAWSKinesisResolvedEnv = map[string]string{
-	"AWS_ACCESS_KEY":        "none",
-	"AWS_SECRET_ACCESS_KEY": "none",
-}
-
 var testAWSKinesisAuthentication = map[string]string{
 	"awsAccessKeyID":     testAWSKinesisAccessKeyID,
 	"awsSecretAccessKey": testAWSKinesisSecretAccessKey,

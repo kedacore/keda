@@ -25,7 +25,7 @@ linters:
     #- ineffassign
     #- scopelint
     #- structcheck
-    #- deadcode
+    - deadcode
     #- depguard
     #- dogsled
     #- errcheck

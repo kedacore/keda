@@ -18,10 +18,6 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
-const (
-	pgMetricName = "num"
-)
-
 type postgreSQLScaler struct {
 	metadata   *postgreSQLMetadata
 	connection *sql.DB

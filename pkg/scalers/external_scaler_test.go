@@ -14,8 +14,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var testExternalScalerResolvedEnv map[string]string
-
 type parseExternalScalerMetadataTestData struct {
 	metadata map[string]string
 	isError  bool

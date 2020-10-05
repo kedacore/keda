@@ -21,7 +21,6 @@ const (
 	// defaults
 	defaultTargetPendingEntriesCount = 5
 	defaultDbIndex                   = 0
-	defaultTLS                       = false
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
