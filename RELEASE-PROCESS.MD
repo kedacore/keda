@@ -14,7 +14,13 @@ Provide a new section in `CHANGELOG.md` for the new version that is being releas
 
 It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
 
-## 2. Create KEDA release on GitHub
+## 2. Publish documentation for new version
+
+Publish documentation for new version on https://keda.sh.
+
+See [docs](https://github.com/kedacore/keda-docs#publishing-a-new-version).
+
+## 3. Create KEDA release on GitHub
 
 Creating a new release in the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0).
 
@@ -22,11 +28,39 @@ KEDA Deployment YAML file (eg. keda-1.2.0.yaml) is also automatically created an
 
 > Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda/tags
 
-## 3. Publish documentation for new version
+### Release template
 
-Publish documentation for new version on https://keda.sh.
+Every release should use the following template to create the GitHub release.
 
-See [docs](https://github.com/kedacore/keda-docs#publishing-a-new-version).
+> 💡 Don't forget to update the version in the template
+
+Here's the template:
+
+```markdown
+We are happy to release KEDA <INSERT-CORRECT-VERSION> 🎉
+
+Here are some highlights:
+
+- <list highlights>
+
+Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INSERT-CORRECT-VERSION/deploy/).
+
+### New
+
+- <list items>
+
+### Improvements
+
+- <list items>
+
+### Breaking Changes
+
+- <list items>
+
+### Other
+
+- <list items>
+```
 
 ## 4. Update Helm Charts
 
