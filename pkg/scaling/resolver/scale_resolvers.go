@@ -57,6 +57,10 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 			}
 			if triggerAuth.Spec.Env != nil {
 				for _, e := range triggerAuth.Spec.Env {
+					if podSpec == nil {
+						result[e.Parameter] = ""
+						continue
+					}
 					env, err := ResolveContainerEnv(client, logger, podSpec, e.ContainerName, namespace)
 					if err != nil {
 						result[e.Parameter] = ""
