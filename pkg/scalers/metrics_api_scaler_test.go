@@ -4,8 +4,6 @@ import (
 	"testing"
 )
 
-var authParams = map[string]string{}
-
 type metricsAPIMetadataTestData struct {
 	metadata    map[string]string
 	raisesError bool

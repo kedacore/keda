@@ -166,9 +166,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 }
 
 func getRedisListLength(client *redis.Client, listName string) (int64, error) {
-	var listType *redis.StatusCmd
-
-	listType = client.Type(listName)
+	listType := client.Type(listName)
 
 	if listType.Err() != nil {
 		return -1, listType.Err()
