@@ -337,10 +337,8 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 			return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
 		}
 		return latestOffset, nil
-
 	}
 	return (latestOffset - consumerOffset), nil
-
 }
 
 // Close closes the kafka admin and client

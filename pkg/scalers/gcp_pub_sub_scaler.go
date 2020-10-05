@@ -81,7 +81,6 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 
 // IsActive checks if there are any messages in the subscription
 func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
-
 	size, err := s.GetSubscriptionSize(ctx)
 
 	if err != nil {
@@ -93,7 +92,6 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *pubsubScaler) Close() error {
-
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
 		if err != nil {
@@ -106,7 +104,6 @@ func (s *pubsubScaler) Close() error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-
 	// Construct the target subscription size as a quantity
 	targetSubscriptionSizeQty := resource.NewQuantity(int64(s.metadata.targetSubscriptionSize), resource.DecimalSI)
 

@@ -60,7 +60,6 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 	c.Stop()
 
 	return cronTime, nil
-
 }
 
 func parseCronMetadata(metadata, resolvedEnv map[string]string) (*cronMetadata, error) {
@@ -157,7 +156,6 @@ func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics finds the current value of the metric
 func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-
 	var currentReplicas = int64(defaultDesiredReplicas)
 	isActive, err := s.IsActive(ctx)
 	if err != nil {

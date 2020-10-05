@@ -110,7 +110,6 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 
 //GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
 func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
-
 	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
 		return 0, azure.Checkpoint{}, nil
@@ -161,7 +160,6 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 
 // GetUnprocessedEventCountWithoutCheckpoint returns the number of messages on the without a checkoutpoint info
 func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartitionRuntimeInformation) int64 {
-
 	// if both values are 0 then there is exactly one message inside the hub. First message after init
 	if (partitionInfo.BeginningSequenceNumber == 0 && partitionInfo.LastSequenceNumber == 0) || (partitionInfo.BeginningSequenceNumber != partitionInfo.LastSequenceNumber) {
 		return (partitionInfo.LastSequenceNumber - partitionInfo.BeginningSequenceNumber) + 1
