@@ -69,11 +69,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Create Scale Client
-	scaleClient, err := initScaleClient(mgr, clientset)
-	if err != nil {
-		r.Log.Error(err, "Not able to init Scale Client")
-		return err
-	}
+	scaleClient := initScaleClient(mgr, clientset)
 	r.scaleClient = &scaleClient
 
 	// Init the rest of ScaledObjectReconciler
@@ -91,13 +87,13 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) (scale.ScalesGetter, error) {
+func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) scale.ScalesGetter {
 	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(clientset)
 	return scale.New(
 		clientset.RESTClient(), mgr.GetRESTMapper(),
 		dynamic.LegacyAPIPathResolverFunc,
 		scaleKindResolver,
-	), nil
+	)
 }
 
 // Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).

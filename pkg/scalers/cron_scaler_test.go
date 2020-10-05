@@ -42,7 +42,7 @@ var currentDay = time.Now().In(tz).Weekday().String()
 
 func TestCronParseMetadata(t *testing.T) {
 	for _, testData := range testCronMetadata {
-		_, err := parseCronMetadata(testData.metadata, map[string]string{})
+		_, err := parseCronMetadata(testData.metadata)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -75,7 +75,7 @@ func TestGetMetrics(t *testing.T) {
 
 func TestCronGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMetricIdentifiers {
-		meta, err := parseCronMetadata(testData.metadataTestData.metadata, nil)
+		meta, err := parseCronMetadata(testData.metadataTestData.metadata)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

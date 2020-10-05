@@ -58,7 +58,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 
 	// scaler consumer
 	for i, ch := range replyCh {
-		go func(c chan bool, id int) {
+		go func(c chan bool, _ int) {
 			for msg := range c {
 				if msg {
 					atomic.AddInt64(&resultCount, 1)
