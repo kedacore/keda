@@ -85,7 +85,6 @@ func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string
 }
 
 func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureLogAnalyticsMetadata, error) {
-
 	meta := azureLogAnalyticsMetadata{}
 
 	if podIdentity == "" || podIdentity == "none" {
@@ -281,7 +280,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	body, statusCode, err := s.executeLogAnalyticsREST(query, tokenInfo)
 
 	//Handle expired token
-	if statusCode == 403 || (body != nil && len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
+	if statusCode == 403 || (len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
 		logAnalyticsLog.Info("Token expired, refreshing token...")
 
 		tokenInfo, err := s.refreshAccessToken()
@@ -301,7 +300,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		return metricsData{}, err
 	}
 
-	if body == nil || len(body) == 0 {
+	if len(body) == 0 {
 		return metricsData{}, fmt.Errorf("Error executing Log Analytics REST API request: empty body")
 	}
 
@@ -311,7 +310,6 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	}
 
 	if statusCode == 200 {
-
 		metricsInfo := metricsData{}
 		metricsInfo.threshold = s.metadata.threshold
 		metricsInfo.value = 0
@@ -378,7 +376,6 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
-
 	tokenInfo, err := s.getAuthorizationToken()
 
 	if err != nil {
@@ -401,9 +398,7 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 }
 
 func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
-
 	body, statusCode, err, tokenInfo := []byte{}, 0, *new(error), tokenData{}
-
 	if s.metadata.podIdentity == "" {
 		body, statusCode, err = s.executeAADApicall()
 	} else {
@@ -412,7 +407,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
 
 	if err != nil {
 		return tokenData{}, err
-	} else if body == nil || len(body) == 0 {
+	} else if len(body) == 0 {
 		return tokenData{}, fmt.Errorf("Error getting access token: empty body")
 	}
 

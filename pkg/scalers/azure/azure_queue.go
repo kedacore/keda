@@ -8,7 +8,6 @@ import (
 
 // GetAzureQueueLength returns the length of a queue in int
 func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
-
 	credential, endpoint, err := ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName)
 	if err != nil {
 		return -1, err

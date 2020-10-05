@@ -31,10 +31,6 @@ func returnFloat64Ptr(x float64) *float64 {
 	return &x
 }
 
-func returnint64Ptr(x int64) *int64 {
-	return &x
-}
-
 func TestAzMonitorextractValue(t *testing.T) {
 	for _, testData := range testExtractAzMonitordata {
 		value, err := extractValue(testData.metricRequest, testData.metricResult)

@@ -264,13 +264,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 			scalerLogger.Info("Scaler is active")
 		}
 	}
-	var maxReplicaCount int64
-	if scaledJob.Spec.MaxReplicaCount != nil {
-		maxReplicaCount = int64(*scaledJob.Spec.MaxReplicaCount)
-	} else {
-		maxReplicaCount = 100
-	}
-	maxValue = min(maxReplicaCount, devideWithCeil(queueLength, targetAverageValue))
+	maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
 	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
 }

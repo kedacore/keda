@@ -28,7 +28,12 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 
 	var effectiveMaxScale int64
-	effectiveMaxScale = maxScale - runningJobCount
+	if (maxScale + runningJobCount) > scaledJob.MaxReplicaCount() {
+		effectiveMaxScale = scaledJob.MaxReplicaCount() - runningJobCount
+	} else {
+		effectiveMaxScale = maxScale
+	}
+
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
 	}
@@ -47,8 +52,6 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
 	}
-
-	return
 }
 
 func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
@@ -66,7 +69,6 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	for i := 0; i < int(scaleTo); i++ {
-
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: scaledJob.GetName() + "-",
@@ -98,11 +100,9 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 		err = e.client.Create(context.TODO(), job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
-
 		}
 	}
 	logger.Info("Created jobs", "Number of jobs", scaleTo)
-
 }
 
 func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {
@@ -198,7 +198,11 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(logger logr.Logger, jobs []ba
 
 	deleteJobLength := len(jobs) - int(historyLimit)
 	for _, j := range (jobs)[0:deleteJobLength] {
-		err := e.client.Delete(context.TODO(), j.DeepCopyObject())
+		deletePolicy := metav1.DeletePropagationBackground
+		deleteOptions := &client.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		}
+		err := e.client.Delete(context.TODO(), j.DeepCopyObject(), deleteOptions)
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,6 @@ const (
 
 // GetAzureADPodIdentityToken returns the AADToken for resource
 func GetAzureADPodIdentityToken(audience string) (AADToken, error) {
-
 	var token AADToken
 
 	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(audience)))

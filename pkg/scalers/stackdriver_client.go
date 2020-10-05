@@ -22,7 +22,6 @@ type StackDriverClient struct {
 
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
 func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriverClient, error) {
-
 	var gcpCredentials GoogleApplicationCredentials
 
 	if err := json.Unmarshal([]byte(credentials), &gcpCredentials); err != nil {
@@ -44,7 +43,6 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
 func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64, error) {
-
 	// Set the start time to 1 minute ago
 	startTime := time.Now().UTC().Add(time.Minute * -2)
 

@@ -40,7 +40,6 @@ const (
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
 func NewLiiklusScaler(resolvedEnv map[string]string, metadata map[string]string) (Scaler, error) {
-
 	lm, err := parseLiiklusMetadata(metadata)
 	if err != nil {
 		return nil, err
@@ -143,11 +142,9 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 		totalLag += diff
 	}
 	return totalLag, lags, nil
-
 }
 
 func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) {
-
 	lagThreshold := defaultLiiklusLagThreshold
 
 	if val, ok := metadata[liiklusLagThresholdMetricName]; ok {

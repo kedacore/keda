@@ -65,7 +65,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		}
 	}
-
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
