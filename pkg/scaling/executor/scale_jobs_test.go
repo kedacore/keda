@@ -165,10 +165,13 @@ func getMockClient(t *testing.T, ctrl *gomock.Controller, jobs *[]mockJobParamet
 		Return(nil)
 
 	client.EXPECT().
-		Delete(gomock.Any(), gomock.Any()).Do(func(_ context.Context, obj runtime.Object) {
+		Delete(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, obj runtime.Object, opt *runtimeclient.DeleteOptions) {
 		j, ok := obj.(*batchv1.Job)
 		if !ok {
 			t.Error("Cast failed on batchv1.Job at mocking client.Delete()")
+		}
+		if *opt.PropagationPolicy != metav1.DeletePropagationBackground {
+			t.Error("Job Delete PropagationPolicy is not DeletePropagationForeground")
 		}
 		(*deletedJobName)[j.GetName()] = j.GetName()
 	}).
