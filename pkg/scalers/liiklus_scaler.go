@@ -152,7 +152,7 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
 		}
-		lagThreshold = int64(t)
+		lagThreshold = t
 	}
 
 	groupVersion := uint32(0)
