@@ -166,8 +166,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					case *kedav1alpha1.ScaledObject:
 						h.scaleExecutor.RequestScale(ctx, obj, active)
 					case *kedav1alpha1.ScaledJob:
-						// TODO: revisit when implementing ScaledJob
-						h.scaleExecutor.RequestJobScale(ctx, obj, active, 1, 1)
+						h.logger.Info("Warning: External Push Scaler does not support ScaledJob", "object", scalableObject)
 					}
 					scalingMutex.Unlock()
 				}
