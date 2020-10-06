@@ -342,7 +342,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&queryData)
 	if err != nil {
-		return metricsData{}, fmt.Errorf("Error processing Log Analytics request. Details: can't decode responce body to JSON from REST API result. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
+		return metricsData{}, fmt.Errorf("Error processing Log Analytics request. Details: can't decode response body to JSON from REST API result. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	}
 
 	if statusCode == 200 {
@@ -449,7 +449,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
 
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(&tokenInfo)
 	if err != nil {
-		return tokenData{}, fmt.Errorf("Error getting access token. Details: can't decode responce body to JSON after getting access token. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
+		return tokenData{}, fmt.Errorf("Error getting access token. Details: can't decode response body to JSON after getting access token. HTTP code: %d. Inner Error: %v. Body: %s", statusCode, err, string(body))
 	}
 
 	if statusCode == 200 {
@@ -526,14 +526,13 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("Error reading %s responce body: Inner Error: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("Error reading %s response body: Inner Error: %v", caller, err)
 	}
 
 	return body, resp.StatusCode, nil
 }
 
 func getTokenFromCache(clientID string, clientSecret string) (tokenData, error) {
-
 	key, err := getHash(clientID, clientSecret)
 	if err != nil {
 		return tokenData{}, fmt.Errorf("Error calculating sha1 hash. Inner Error: %v", err)
@@ -551,7 +550,6 @@ func getTokenFromCache(clientID string, clientSecret string) (tokenData, error) 
 }
 
 func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) error {
-
 	key, err := getHash(clientID, clientSecret)
 	if err != nil {
 		return err
