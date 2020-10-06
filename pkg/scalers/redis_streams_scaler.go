@@ -21,7 +21,6 @@ const (
 	// defaults
 	defaultTargetPendingEntriesCount = 5
 	defaultDbIndex                   = 0
-	defaultTLS                       = false
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
@@ -72,13 +71,13 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 		DB:       metadata.databaseIndex,
 	}
 
-	if metadata.connectionInfo.enableTLS == true {
+	if metadata.connectionInfo.enableTLS {
 		options.TLSConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
 	}
 
-	// this does not guarentee successful connection
+	// this does not guarantee successful connection
 	c := redis.NewClient(options)
 
 	// confirm if connected

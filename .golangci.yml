@@ -18,14 +18,15 @@ linters:
     - rowserrcheck
     - gofmt
     - golint
+    - goimports
+    - misspell
+    - bodyclose
+    - unconvert
     #- interfacer
-    #- goimports
     #- ineffassign
-    #- misspell
     #- scopelint
     #- structcheck
-    #- bodyclose
-    #- deadcode
+    - deadcode
     #- depguard
     #- dogsled
     #- errcheck
@@ -33,14 +34,14 @@ linters:
     #- goconst
     #- gocritic
     #- gocyclo
-    #- gosimple
+    - gosimple
     #- staticcheck
     #- stylecheck
     #- unused
-    #- varcheck
-    #- unparam
+    - varcheck
+    - unparam
     #- unconvert
-    #- whitespace
+    - whitespace
 
 issues:
   include:

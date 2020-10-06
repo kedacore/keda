@@ -2,11 +2,6 @@ package scalers
 
 import "fmt"
 
-const (
-	awsAccessKeyIDEnvVar     = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKeyEnvVar = "AWS_SECRET_ACCESS_KEY"
-)
-
 type awsAuthorizationMetadata struct {
 	awsRoleArn string
 

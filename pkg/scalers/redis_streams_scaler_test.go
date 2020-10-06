@@ -8,7 +8,6 @@ import (
 )
 
 func TestParseRedisStreamsMetadata(t *testing.T) {
-
 	type testCase struct {
 		name        string
 		metadata    map[string]string
@@ -105,7 +104,6 @@ type redisStreamsTestMetadata struct {
 }
 
 func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
-
 	type redisStreamsMetricIdentifier struct {
 		metadataTestData *redisStreamsTestMetadata
 		name             string

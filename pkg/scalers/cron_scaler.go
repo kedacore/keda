@@ -38,7 +38,7 @@ var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
 func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, parseErr := parseCronMetadata(metadata, resolvedEnv)
+	meta, parseErr := parseCronMetadata(metadata)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
 	}
@@ -60,10 +60,9 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 	c.Stop()
 
 	return cronTime, nil
-
 }
 
-func parseCronMetadata(metadata, resolvedEnv map[string]string) (*cronMetadata, error) {
+func parseCronMetadata(metadata map[string]string) (*cronMetadata, error) {
 	if len(metadata) == 0 {
 		return nil, fmt.Errorf("Invalid Input Metadata. %s", metadata)
 	}
@@ -157,7 +156,6 @@ func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics finds the current value of the metric
 func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-
 	var currentReplicas = int64(defaultDesiredReplicas)
 	isActive, err := s.IsActive(ctx)
 	if err != nil {

@@ -54,7 +54,6 @@ func TestAzBlobParseMetadata(t *testing.T) {
 		}
 		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
 			t.Error("Expected success but got error: podIdentity value is not returned as expected")
-
 		}
 	}
 }

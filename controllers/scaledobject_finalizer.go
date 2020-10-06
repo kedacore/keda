@@ -17,7 +17,6 @@ const (
 
 // finalizeScaledObject runs finalization logic on ScaledObject if there's finalizer
 func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-
 	if util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		// Run finalization logic for scaledObjectFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
@@ -27,7 +26,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 		}
 
 		// if enabled, scale scaleTarget back to the original replica count (to the state it was before scaling with KEDA)
-		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.RestoreToOriginalReplicaCount == true {
+		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.RestoreToOriginalReplicaCount {
 			scale, err := (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
@@ -60,7 +59,6 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 
 // ensureFinalizer check there is finalizer present on the ScaledObject, if not it adds one
 func (r *ScaledObjectReconciler) ensureFinalizer(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-
 	if !util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		logger.Info("Adding Finalizer for the ScaledObject")
 		scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))

@@ -3,10 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/mitchellh/hashstructure"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mitchellh/hashstructure"
 
 	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
@@ -154,7 +155,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	for _, spec := range response.MetricSpecs {
 		// Construct the target subscription size as a quantity
-		qty := resource.NewQuantity(int64(spec.TargetSize), resource.DecimalSI)
+		qty := resource.NewQuantity(spec.TargetSize, resource.DecimalSI)
 
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{

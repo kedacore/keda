@@ -52,7 +52,6 @@ type ScaledObjectReconciler struct {
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// create Discovery clientset
 	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
@@ -70,11 +69,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Create Scale Client
-	scaleClient, err := initScaleClient(mgr, clientset)
-	if err != nil {
-		r.Log.Error(err, "Not able to init Scale Client")
-		return err
-	}
+	scaleClient := initScaleClient(mgr, clientset)
 	r.scaleClient = &scaleClient
 
 	// Init the rest of ScaledObjectReconciler
@@ -92,13 +87,13 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) (scale.ScalesGetter, error) {
+func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) scale.ScalesGetter {
 	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(clientset)
 	return scale.New(
 		clientset.RESTClient(), mgr.GetRESTMapper(),
 		dynamic.LegacyAPIPathResolverFunc,
 		scaleKindResolver,
-	), nil
+	)
 }
 
 // Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
@@ -156,7 +151,6 @@ func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 // reconcileScaledObject implements reconciler logic for ScaleObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
-
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
 		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")

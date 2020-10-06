@@ -74,7 +74,7 @@ var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	kafkaMetadata, err := parseKafkaMetadata(resolvedEnv, metadata, authParams)
+	kafkaMetadata, err := parseKafkaMetadata(metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -91,7 +91,7 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	}, nil
 }
 
-func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (kafkaMetadata, error) {
+func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
 	if metadata["bootstrapServers"] == "" {
@@ -337,10 +337,8 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 			return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
 		}
 		return latestOffset, nil
-
 	}
 	return (latestOffset - consumerOffset), nil
-
 }
 
 // Close closes the kafka admin and client
@@ -397,7 +395,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
+		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

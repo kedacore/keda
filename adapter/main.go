@@ -28,7 +28,7 @@ import (
 type Adapter struct {
 	basecmd.AdapterBase
 
-	// Message is printed on succesful startup
+	// Message is printed on successful startup
 	Message string
 }
 
@@ -40,7 +40,6 @@ var (
 )
 
 func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
-
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {

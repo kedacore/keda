@@ -3,17 +3,16 @@ package scalers
 import (
 	"context"
 	"fmt"
-	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"net"
 	"sync/atomic"
 	"testing"
 	"time"
-)
 
-var testExternalScalerResolvedEnv map[string]string
+	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
 
 type parseExternalScalerMetadataTestData struct {
 	metadata map[string]string
@@ -59,7 +58,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 
 	// scaler consumer
 	for i, ch := range replyCh {
-		go func(c chan bool, id int) {
+		go func(c chan bool, _ int) {
 			for msg := range c {
 				if msg {
 					atomic.AddInt64(&resultCount, 1)
@@ -80,18 +79,16 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	retries := 0
 	defer cancel()
 	for {
-		select {
-		case <-time.After(time.Second * 1):
-			if resultCount == serverCount*iterationCount {
-				t.Logf("resultCount == %d", resultCount)
-				return
-			}
+		<-time.After(time.Second * 1)
+		if resultCount == serverCount*iterationCount {
+			t.Logf("resultCount == %d", resultCount)
+			return
+		}
 
-			retries++
-			if retries > 10 {
-				t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
-				return
-			}
+		retries++
+		if retries > 10 {
+			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
+			return
 		}
 	}
 }

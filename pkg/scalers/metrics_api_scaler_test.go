@@ -4,9 +4,6 @@ import (
 	"testing"
 )
 
-var metricsAPIResolvedEnv = map[string]string{}
-var authParams = map[string]string{}
-
 type metricsAPIMetadataTestData struct {
 	metadata    map[string]string
 	raisesError bool
@@ -29,7 +26,7 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
 	for _, testData := range testMetricsAPIMetadata {
-		_, err := metricsAPIMetadata(metricsAPIResolvedEnv, testData.metadata, authParams)
+		_, err := metricsAPIMetadata(testData.metadata)
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -56,5 +53,4 @@ func TestGetValueFromResponse(t *testing.T) {
 	if v != 2 {
 		t.Errorf("Expected %d got %d", 2, v)
 	}
-
 }

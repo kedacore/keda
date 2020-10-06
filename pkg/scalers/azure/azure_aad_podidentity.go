@@ -15,13 +15,13 @@ const (
 
 // GetAzureADPodIdentityToken returns the AADToken for resource
 func GetAzureADPodIdentityToken(audience string) (AADToken, error) {
-
 	var token AADToken
 
 	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(audience)))
 	if err != nil {
 		return token, err
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

@@ -52,9 +52,8 @@ type stanMetadata struct {
 }
 
 const (
-	stanLagThresholdMetricName = "lagThreshold"
-	stanMetricType             = "External"
-	defaultStanLagThreshold    = 10
+	stanMetricType          = "External"
+	defaultStanLagThreshold = 10
 )
 
 var stanLog = logf.Log.WithName("stan_scaler")
@@ -119,11 +118,13 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if resp.StatusCode == 404 {
-		baseResp, _ := http.Get(s.getSTANChannelsEndpoint())
-
+		baseResp, err := http.Get(s.getSTANChannelsEndpoint())
+		if err != nil {
+			return false, err
+		}
+		defer baseResp.Body.Close()
 		if baseResp.StatusCode == 404 {
 			stanLog.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
-
 		} else {
 			stanLog.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		}
@@ -213,7 +214,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
+		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

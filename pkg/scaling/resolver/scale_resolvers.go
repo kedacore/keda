@@ -15,7 +15,6 @@ import (
 // ResolveContainerEnv resolves all environment variables in a container.
 // It returns either map of env variable key and value or error if there is any.
 func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
-
 	if len(podSpec.Containers) < 1 {
 		return nil, fmt.Errorf("Target object doesn't have containers")
 	}
@@ -58,6 +57,10 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 			}
 			if triggerAuth.Spec.Env != nil {
 				for _, e := range triggerAuth.Spec.Env {
+					if podSpec == nil {
+						result[e.Parameter] = ""
+						continue
+					}
 					env, err := ResolveContainerEnv(client, logger, podSpec, e.ContainerName, namespace)
 					if err != nil {
 						result[e.Parameter] = ""
@@ -126,7 +129,6 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 				}
 			}
 		}
-
 	}
 
 	if container.Env != nil {
@@ -161,13 +163,10 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 					logger.V(1).Info("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
 					continue
 				}
-
 			}
 			resolved[envVar.Name] = value
 		}
-
 	}
-
 	return resolved, nil
 }
 
@@ -201,7 +200,6 @@ func resolveSecretValue(client client.Client, secretKeyRef *corev1.SecretKeySele
 		return "", err
 	}
 	return string(secret.Data[keyName]), nil
-
 }
 
 func resolveConfigValue(client client.Client, configKeyRef *corev1.ConfigMapKeySelector, keyName, namespace string) (string, error) {
@@ -210,7 +208,7 @@ func resolveConfigValue(client client.Client, configKeyRef *corev1.ConfigMapKeyS
 	if err != nil {
 		return "", err
 	}
-	return string(configMap.Data[keyName]), nil
+	return configMap.Data[keyName], nil
 }
 
 func resolveAuthSecret(client client.Client, logger logr.Logger, name, namespace, key string) string {
