@@ -145,7 +145,7 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		cache := &sessionCache{metricValue: 1, metricThreshold: 2}
-		mockLogAnalyticsScaler := azureLogAnalyticsScaler{meta, cache}
+		mockLogAnalyticsScaler := azureLogAnalyticsScaler{meta, cache, "test-so", "test-ns"}
 
 		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
