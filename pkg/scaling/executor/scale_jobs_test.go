@@ -45,6 +45,67 @@ func TestCleanUpNormalCase(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestNewNewScalingStrategy(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", int32(10), "0"))
+	assert.Equal(t, "executor.customScalingStrategy", fmt.Sprintf("%T", strategy))
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", int32(0), "0"))
+	assert.Equal(t, "executor.accurateScalingStrategy", fmt.Sprintf("%T", strategy))
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithDefaultStrategy("default"))
+	assert.Equal(t, "executor.defaultScalingStrategy", fmt.Sprintf("%T", strategy))
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("default", "default", int32(0), "0"))
+	assert.Equal(t, "executor.defaultScalingStrategy", fmt.Sprintf("%T", strategy))
+}
+
+func TestDefaultScalingStrategy(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+	strategy := NewScalingStrategy(logger, getMockScaledJobWithDefaultStrategy("default"))
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
+	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 5))
+}
+
+func TestCustomScalingStrategy(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+	customScalingQueueLengthDeduction := int32(1)
+	customScalingRunningJobPercentage := "0.5"
+	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
+	assert.Equal(t, int64(9), strategy.GetEffectiveMaxScale(10, 0, 10))
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithCustomStrategyWithNilParameter("custom", "custom"))
+
+	// If you don't set the two parameters is the same behavior as DefaultStrategy
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
+	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 5))
+
+	// Empty String will be DefaultStrategy
+	customScalingQueueLengthDeduction = int32(1)
+	customScalingRunningJobPercentage = ""
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
+	assert.Equal(t, "executor.defaultScalingStrategy", fmt.Sprintf("%T", strategy))
+
+	// Set 0 as customScalingRunningJobPercentage
+	customScalingQueueLengthDeduction = int32(2)
+	customScalingRunningJobPercentage = "0"
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
+
+	// Exceed the MaxReplicaCount
+	customScalingQueueLengthDeduction = int32(-2)
+	customScalingRunningJobPercentage = "0"
+	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
+	assert.Equal(t, int64(4), strategy.GetEffectiveMaxScale(3, 2, 4))
+}
+
+func TestAccurateScalingStrategy(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", 0, "0"))
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
+	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(3, 2, 5))
+	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(5, 2, 5))
+}
+
 func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -148,6 +209,36 @@ func getMockScaledJobWithDefault() *kedav1alpha1.ScaledJob {
 		Spec: kedav1alpha1.ScaledJobSpec{},
 	}
 	scaledJob.ObjectMeta.Name = "azure-storage-queue-consumer"
+	return scaledJob
+}
+
+func getMockScaledJobWithStrategy(name, scalingStrategy string, customScalingQueueLengthDeduction int32, customScalingRunningJobPercentage string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy:                   scalingStrategy,
+			CustomScalingQueueLengthDeduction: &customScalingQueueLengthDeduction,
+			CustomScalingRunningJobPercentage: customScalingRunningJobPercentage,
+		},
+	}
+	scaledJob.ObjectMeta.Name = name
+	return scaledJob
+}
+
+func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy: scalingStrategy,
+		},
+	}
+	scaledJob.ObjectMeta.Name = name
+	return scaledJob
+}
+
+func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{},
+	}
+	scaledJob.ObjectMeta.Name = name
 	return scaledJob
 }
 

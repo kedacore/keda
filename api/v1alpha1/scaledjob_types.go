@@ -36,8 +36,14 @@ type ScaledJobSpec struct {
 	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
-	MaxReplicaCount *int32          `json:"maxReplicaCount,omitempty"`
-	Triggers        []ScaleTriggers `json:"triggers"`
+	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
+	// +optional
+	ScalingStrategy string `json:"scalingStrategy,omitempty"`
+	// +optional
+	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
+	// +optional
+	CustomScalingRunningJobPercentage string          `json:"customScalingRunningJobPercentage,omitempty"`
+	Triggers                          []ScaleTriggers `json:"triggers"`
 }
 
 // ScaledJobStatus defines the observed state of ScaledJob

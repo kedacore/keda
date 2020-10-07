@@ -340,6 +340,11 @@ func (in *ScaledJobSpec) DeepCopyInto(out *ScaledJobSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.CustomScalingQueueLengthDeduction != nil {
+		in, out := &in.CustomScalingQueueLengthDeduction, &out.CustomScalingQueueLengthDeduction
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Triggers != nil {
 		in, out := &in.Triggers, &out.Triggers
 		*out = make([]ScaleTriggers, len(*in))
