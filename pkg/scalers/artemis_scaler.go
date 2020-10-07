@@ -189,7 +189,7 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 	if resp.StatusCode == 200 && monitoringInfo.Status == 200 {
 		messageCount = monitoringInfo.MsgCount
 	} else {
-		return -1, fmt.Errorf("Artemis management endpoint response error code : %d", resp.StatusCode)
+		return -1, fmt.Errorf("artemis management endpoint response error code : %d", resp.StatusCode)
 	}
 
 	artemisLog.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))

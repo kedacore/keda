@@ -16,7 +16,7 @@ import (
 // It returns either map of env variable key and value or error if there is any.
 func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
 	if len(podSpec.Containers) < 1 {
-		return nil, fmt.Errorf("Target object doesn't have containers")
+		return nil, fmt.Errorf("target object doesn't have containers")
 	}
 
 	var container corev1.Container
@@ -31,7 +31,7 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 		}
 
 		if !containerWithNameFound {
-			return nil, fmt.Errorf("Couldn't find container with name %s on Target object", containerName)
+			return nil, fmt.Errorf("couldn't find container with name %s on Target object", containerName)
 		}
 	} else {
 		container = podSpec.Containers[0]

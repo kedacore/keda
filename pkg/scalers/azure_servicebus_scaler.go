@@ -80,13 +80,13 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		meta.entityType = queue
 
 		if _, ok := metadata["subscriptionName"]; ok {
-			return nil, fmt.Errorf("Subscription name provided with queue name")
+			return nil, fmt.Errorf("subscription name provided with queue name")
 		}
 	}
 
 	if val, ok := metadata["topicName"]; ok {
 		if meta.entityType == queue {
-			return nil, fmt.Errorf("Both topic and queue name metadata provided")
+			return nil, fmt.Errorf("both topic and queue name metadata provided")
 		}
 		meta.topicName = val
 		meta.entityType = subscription
@@ -94,12 +94,12 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		if val, ok := metadata["subscriptionName"]; ok {
 			meta.subscriptionName = val
 		} else {
-			return nil, fmt.Errorf("No subscription name provided with topic name")
+			return nil, fmt.Errorf("no subscription name provided with topic name")
 		}
 	}
 
 	if meta.entityType == none {
-		return nil, fmt.Errorf("No service bus entity type set")
+		return nil, fmt.Errorf("no service bus entity type set")
 	}
 
 	if podIdentity == "" || podIdentity == "none" {
@@ -120,7 +120,7 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 			return nil, fmt.Errorf("namespace is required when using pod identity")
 		}
 	} else {
-		return nil, fmt.Errorf("Azure service bus doesn't support pod identity %s", podIdentity)
+		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", podIdentity)
 	}
 
 	return &meta, nil
@@ -225,7 +225,7 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 	case subscription:
 		return getSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
 	default:
-		return -1, fmt.Errorf("No entity type")
+		return -1, fmt.Errorf("no entity type")
 	}
 }
 

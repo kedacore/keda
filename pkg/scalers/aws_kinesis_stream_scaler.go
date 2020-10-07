@@ -42,7 +42,7 @@ var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
 func NewAwsKinesisStreamScaler(resolvedEnv, metadata map[string]string, authParams map[string]string) (Scaler, error) {
 	meta, err := parseAwsKinesisStreamMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing Kinesis stream metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
 
 	return &awsKinesisStreamScaler{

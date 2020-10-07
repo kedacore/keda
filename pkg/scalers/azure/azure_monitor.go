@@ -136,25 +136,25 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 	metricVals := *metricResult.Value
 
 	if len(metricVals) == 0 {
-		err := fmt.Errorf("Got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return -1, err
 	}
 
 	timeseriesPtr := metricVals[0].Timeseries
 	if timeseriesPtr == nil || len(*timeseriesPtr) == 0 {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return -1, err
 	}
 
 	dataPtr := (*timeseriesPtr)[0].Data
 	if dataPtr == nil || len(*dataPtr) == 0 {
-		err := fmt.Errorf("Got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
 		return -1, err
 	}
 
 	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, *dataPtr)
 	if err != nil {
-		return -1, fmt.Errorf("Unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
+		return -1, fmt.Errorf("unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 	}
 
 	klog.V(2).Infof("metric type: %s %f", azMetricRequest.Aggregation, *valuePtr)
@@ -195,7 +195,7 @@ func formatTimeSpan(timeSpan string) (string, error) {
 		seconds, serr := strconv.Atoi(aggregationInterval[2])
 
 		if herr != nil || merr != nil || serr != nil {
-			return "", fmt.Errorf("Errors parsing metricAggregationInterval: %v, %v, %v", herr, merr, serr)
+			return "", fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %v", herr, merr, serr)
 		}
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC().Format(time.RFC3339)
@@ -216,7 +216,7 @@ func verifyAggregationTypeIsSupported(aggregationType string, data []insights.Me
 	} else if strings.EqualFold(string(insights.Count), aggregationType) && data[len(data)-1].Count != nil {
 		valuePtr = data[len(data)-1].Count
 	} else {
-		err := fmt.Errorf("Unsupported aggregation type %s", insights.AggregationType(strings.ToTitle(aggregationType)))
+		err := fmt.Errorf("unsupported aggregation type %s", insights.AggregationType(strings.ToTitle(aggregationType)))
 		return nil, err
 	}
 	return valuePtr, nil

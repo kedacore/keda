@@ -155,7 +155,7 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	if len(result.Data.Result) == 0 {
 		return 0, nil
 	} else if len(result.Data.Result) > 1 {
-		return -1, fmt.Errorf("Prometheus query %s returned multiple elements", s.metadata.query)
+		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
 
 	val := result.Data.Result[0].Value[1]

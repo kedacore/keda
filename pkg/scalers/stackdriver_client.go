@@ -72,7 +72,7 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64
 	resp, err := it.Next()
 
 	if err == iterator.Done {
-		return value, fmt.Errorf("Could not find stackdriver metric with filter %s", filter)
+		return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
 	}
 
 	if err != nil {

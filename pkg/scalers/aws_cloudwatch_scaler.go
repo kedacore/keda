@@ -48,8 +48,6 @@ type awsCloudwatchMetadata struct {
 	awsRegion string
 
 	awsAuthorization awsAuthorizationMetadata
-
-	authParams map[string]string
 }
 
 var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
@@ -58,7 +56,7 @@ var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
 func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
 	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing Cloudwatch metadata: %s", err)
+		return nil, fmt.Errorf("error parsing cloudwatch metadata: %s", err)
 	}
 
 	return &awsCloudwatchScaler{
@@ -75,25 +73,25 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata["namespace"]; ok && val != "" {
 		meta.namespace = val
 	} else {
-		return nil, fmt.Errorf("Namespace not given")
+		return nil, fmt.Errorf("namespace not given")
 	}
 
 	if val, ok := metadata["metricName"]; ok && val != "" {
 		meta.metricsName = val
 	} else {
-		return nil, fmt.Errorf("Metric Name not given")
+		return nil, fmt.Errorf("metric name not given")
 	}
 
 	if val, ok := metadata["dimensionName"]; ok && val != "" {
 		meta.dimensionName = val
 	} else {
-		return nil, fmt.Errorf("Dimension Name not given")
+		return nil, fmt.Errorf("dimension name not given")
 	}
 
 	if val, ok := metadata["dimensionValue"]; ok && val != "" {
 		meta.dimensionValue = val
 	} else {
-		return nil, fmt.Errorf("Dimension Value not given")
+		return nil, fmt.Errorf("dimension value not given")
 	}
 
 	if val, ok := metadata["targetMetricValue"]; ok && val != "" {
@@ -115,7 +113,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 			meta.minMetricValue = minMetricValue
 		}
 	} else {
-		return nil, fmt.Errorf("Min Metric Value not given")
+		return nil, fmt.Errorf("min metric value not given")
 	}
 
 	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
@@ -262,7 +260,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	if output.MetricDataResults[0].Values != nil {
 		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
-		return -1, fmt.Errorf("Metric Data not received")
+		return -1, fmt.Errorf("metric data not received")
 	}
 
 	return metricValue, nil

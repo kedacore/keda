@@ -36,11 +36,11 @@ linters:
     #- gocyclo
     - gosimple
     #- staticcheck
-    #- stylecheck
-    #- unused
+    - stylecheck
+    - unused
     - varcheck
     - unparam
-    #- unconvert
+    - unconvert
     - whitespace
 
 issues:

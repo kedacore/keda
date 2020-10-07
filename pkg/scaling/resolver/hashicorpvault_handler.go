@@ -72,19 +72,19 @@ func (vh *HashicorpVaultHandler) token(client *vaultApi.Client) (string, error) 
 		} else if len(vh.vault.Credential.Token) > 0 {
 			token = vh.vault.Credential.Token
 		} else {
-			return token, errors.New("Could not get Vault token")
+			return token, errors.New("could not get Vault token")
 		}
 	case kedav1alpha1.VaultAuthenticationKubernetes:
 		if len(vh.vault.Mount) == 0 {
-			return token, errors.New("Auth mount not in config")
+			return token, errors.New("auth mount not in config")
 		}
 
 		if len(vh.vault.Role) == 0 {
-			return token, errors.New("K8s role not in config")
+			return token, errors.New("k8s role not in config")
 		}
 
 		if len(vh.vault.Credential.ServiceAccount) == 0 {
-			return token, errors.New("K8s SA file not in config")
+			return token, errors.New("k8s SA file not in config")
 		}
 
 		//Get the JWT from POD
@@ -101,7 +101,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultApi.Client) (string, error) 
 
 		token = secret.Auth.ClientToken
 	default:
-		return token, fmt.Errorf("Vault auth method %s is not supported", vh.vault.Authentication)
+		return token, fmt.Errorf("vault auth method %s is not supported", vh.vault.Authentication)
 	}
 
 	return token, nil

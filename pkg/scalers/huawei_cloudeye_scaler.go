@@ -75,7 +75,7 @@ var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")
 func NewHuaweiCloudeyeScaler(metadata, authParams map[string]string) (Scaler, error) {
 	meta, err := parseHuaweiCloudeyeMetadata(metadata, authParams)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing Cloudeye metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
 	}
 
 	return &huaweiCloudeyeScaler{
@@ -93,25 +93,25 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 	if val, ok := metadata["namespace"]; ok && val != "" {
 		meta.namespace = val
 	} else {
-		return nil, fmt.Errorf("Namespace not given")
+		return nil, fmt.Errorf("namespace not given")
 	}
 
 	if val, ok := metadata["metricName"]; ok && val != "" {
 		meta.metricsName = val
 	} else {
-		return nil, fmt.Errorf("Metric Name not given")
+		return nil, fmt.Errorf("metric Name not given")
 	}
 
 	if val, ok := metadata["dimensionName"]; ok && val != "" {
 		meta.dimensionName = val
 	} else {
-		return nil, fmt.Errorf("Dimension Name not given")
+		return nil, fmt.Errorf("dimension Name not given")
 	}
 
 	if val, ok := metadata["dimensionValue"]; ok && val != "" {
 		meta.dimensionValue = val
 	} else {
-		return nil, fmt.Errorf("Dimension Value not given")
+		return nil, fmt.Errorf("dimension Value not given")
 	}
 
 	if val, ok := metadata["targetMetricValue"]; ok && val != "" {
@@ -133,7 +133,7 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 			meta.minMetricValue = minMetricValue
 		}
 	} else {
-		return nil, fmt.Errorf("Min Metric Value not given")
+		return nil, fmt.Errorf("min Metric Value not given")
 	}
 
 	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
@@ -174,31 +174,31 @@ func gethuaweiAuthorization(authParams map[string]string) (huaweiAuthorizationMe
 	if authParams["IdentityEndpoint"] != "" {
 		meta.IdentityEndpoint = authParams["IdentityEndpoint"]
 	} else {
-		return meta, fmt.Errorf("IdentityEndpoint doesn't exist in the authParams")
+		return meta, fmt.Errorf("identityEndpoint doesn't exist in the authParams")
 	}
 
 	if authParams["ProjectID"] != "" {
 		meta.ProjectID = authParams["ProjectID"]
 	} else {
-		return meta, fmt.Errorf("ProjectID doesn't exist in the authParams")
+		return meta, fmt.Errorf("projectID doesn't exist in the authParams")
 	}
 
 	if authParams["DomainID"] != "" {
 		meta.DomainID = authParams["DomainID"]
 	} else {
-		return meta, fmt.Errorf("DomainID doesn't exist in the authParams")
+		return meta, fmt.Errorf("domainID doesn't exist in the authParams")
 	}
 
 	if authParams["Region"] != "" {
 		meta.Region = authParams["Region"]
 	} else {
-		return meta, fmt.Errorf("Region doesn't exist in the authParams")
+		return meta, fmt.Errorf("region doesn't exist in the authParams")
 	}
 
 	if authParams["Domain"] != "" {
 		meta.Domain = authParams["Domain"]
 	} else {
-		return meta, fmt.Errorf("Domain doesn't exist in the authParams")
+		return meta, fmt.Errorf("domain doesn't exist in the authParams")
 	}
 
 	if authParams["Cloud"] != "" {
@@ -210,13 +210,13 @@ func gethuaweiAuthorization(authParams map[string]string) (huaweiAuthorizationMe
 	if authParams["AccessKey"] != "" {
 		meta.AccessKey = authParams["AccessKey"]
 	} else {
-		return meta, fmt.Errorf("AccessKey doesn't exist in the authParams")
+		return meta, fmt.Errorf("accessKey doesn't exist in the authParams")
 	}
 
 	if authParams["SecretKey"] != "" {
 		meta.SecretKey = authParams["SecretKey"]
 	} else {
-		return meta, fmt.Errorf("SecretKey doesn't exist in the authParams")
+		return meta, fmt.Errorf("secretKey doesn't exist in the authParams")
 	}
 
 	return meta, nil
@@ -336,10 +336,10 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 		if ok {
 			metricValue = v
 		} else {
-			return -1, fmt.Errorf("Metric Data not float64")
+			return -1, fmt.Errorf("metric Data not float64")
 		}
 	} else {
-		return -1, fmt.Errorf("Metric Data not received")
+		return -1, fmt.Errorf("metric Data not received")
 	}
 
 	return metricValue, nil

@@ -27,11 +27,8 @@ type KedaProvider struct {
 	scaleHandler     scaling.ScaleHandler
 	watchedNamespace string
 }
-type externalMetric struct {
-	info   provider.ExternalMetricInfo
-	labels map[string]string
-	value  external_metrics.ExternalMetricValue
-}
+
+type externalMetric struct{}
 
 var logger logr.Logger
 var metricsServer prommetrics.PrometheusMetricServer
@@ -75,7 +72,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	if err != nil {
 		return nil, err
 	} else if len(scaledObjects.Items) != 1 {
-		return nil, fmt.Errorf("Exactly one scaled object should match label %s", metricSelector.String())
+		return nil, fmt.Errorf("exactly one scaled object should match label %s", metricSelector.String())
 	}
 
 	scaledObject := &scaledObjects.Items[0]
@@ -83,7 +80,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	scalers, err := p.scaleHandler.GetScalers(scaledObject)
 	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
-		return nil, fmt.Errorf("Error when getting scalers %s", err)
+		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
 
 	for scalerIndex, scaler := range scalers {
