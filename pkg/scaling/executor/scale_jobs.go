@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"sort"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -12,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/kedacore/keda/api/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	version "github.com/kedacore/keda/version"
 )
@@ -27,12 +29,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	runningJobCount := e.getRunningJobCount(scaledJob)
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 
-	var effectiveMaxScale int64
-	if (maxScale + runningJobCount) > scaledJob.MaxReplicaCount() {
-		effectiveMaxScale = scaledJob.MaxReplicaCount() - runningJobCount
-	} else {
-		effectiveMaxScale = maxScale
-	}
+	effectiveMaxScale := NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount, scaledJob.MaxReplicaCount())
 
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
@@ -226,4 +223,68 @@ func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobC
 		}
 	}
 	return ""
+}
+
+// NewScalingStrategy returns ScalingStrategy instance
+func NewScalingStrategy(logger logr.Logger, scaledJob *v1alpha1.ScaledJob) ScalingStrategy {
+	switch scaledJob.Spec.ScalingStrategy.Strategy {
+	case "custom":
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected:", "custom", "customScalingQueueLength", scaledJob.Spec.ScalingStrategy.CustomScalingQueueLengthDeduction, "customScallingRunningJobPercentage", scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage)
+		var err error
+		if percentage, err := strconv.ParseFloat(scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage, 64); err == nil {
+			return customScalingStrategy{
+				CustomScalingQueueLengthDeduction: scaledJob.Spec.ScalingStrategy.CustomScalingQueueLengthDeduction,
+				CustomScalingRunningJobPercentage: &percentage,
+			}
+		}
+
+		logger.V(1).Info("Fail to convert CustomScalingRunningJobPercentage into float", "error", err, "CustomScalingRunningJobPercentage", scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage)
+		logger.V(1).Info("Selecting Scale has been changed", "selected", "default")
+		return defaultScalingStrategy{}
+
+	case "accurate":
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "accurate")
+		return accurateScalingStrategy{}
+	default:
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "default")
+		return defaultScalingStrategy{}
+	}
+}
+
+// ScalingStrategy is an interface for switching scaling algorithm
+type ScalingStrategy interface {
+	GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64
+}
+
+type defaultScalingStrategy struct {
+}
+
+func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+	return maxScale - runningJobCount
+}
+
+type customScalingStrategy struct {
+	CustomScalingQueueLengthDeduction *int32
+	CustomScalingRunningJobPercentage *float64
+}
+
+func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount)
+}
+
+type accurateScalingStrategy struct {
+}
+
+func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+	if (maxScale + runningJobCount) > maxReplicaCount {
+		return maxReplicaCount - runningJobCount
+	}
+	return maxScale
+}
+
+func min(x, y int64) int64 {
+	if x > y {
+		return y
+	}
+	return x
 }
