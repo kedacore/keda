@@ -215,9 +215,11 @@ func getMockScaledJobWithDefault() *kedav1alpha1.ScaledJob {
 func getMockScaledJobWithStrategy(name, scalingStrategy string, customScalingQueueLengthDeduction int32, customScalingRunningJobPercentage string) *kedav1alpha1.ScaledJob {
 	scaledJob := &kedav1alpha1.ScaledJob{
 		Spec: kedav1alpha1.ScaledJobSpec{
-			ScalingStrategy:                   scalingStrategy,
-			CustomScalingQueueLengthDeduction: &customScalingQueueLengthDeduction,
-			CustomScalingRunningJobPercentage: customScalingRunningJobPercentage,
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				Strategy:                          scalingStrategy,
+				CustomScalingQueueLengthDeduction: &customScalingQueueLengthDeduction,
+				CustomScalingRunningJobPercentage: customScalingRunningJobPercentage,
+			},
 		},
 	}
 	scaledJob.ObjectMeta.Name = name
@@ -227,7 +229,9 @@ func getMockScaledJobWithStrategy(name, scalingStrategy string, customScalingQue
 func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy string) *kedav1alpha1.ScaledJob {
 	scaledJob := &kedav1alpha1.ScaledJob{
 		Spec: kedav1alpha1.ScaledJobSpec{
-			ScalingStrategy: scalingStrategy,
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				Strategy: scalingStrategy,
+			},
 		},
 	}
 	scaledJob.ObjectMeta.Name = name

@@ -227,26 +227,26 @@ func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobC
 
 // NewScalingStrategy returns ScalingStrategy instance
 func NewScalingStrategy(logger logr.Logger, scaledJob *v1alpha1.ScaledJob) ScalingStrategy {
-	switch scaledJob.Spec.ScalingStrategy {
+	switch scaledJob.Spec.ScalingStrategy.Strategy {
 	case "custom":
-		logger.Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy, "selected:", "custom", "customScalingQueueLength", scaledJob.Spec.CustomScalingQueueLengthDeduction, "customScallingRunningJobPercentage", scaledJob.Spec.CustomScalingRunningJobPercentage)
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected:", "custom", "customScalingQueueLength", scaledJob.Spec.ScalingStrategy.CustomScalingQueueLengthDeduction, "customScallingRunningJobPercentage", scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage)
 		var err error
-		if percentage, err := strconv.ParseFloat(scaledJob.Spec.CustomScalingRunningJobPercentage, 64); err == nil {
+		if percentage, err := strconv.ParseFloat(scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage, 64); err == nil {
 			return customScalingStrategy{
-				CustomScalingQueueLengthDeduction: scaledJob.Spec.CustomScalingQueueLengthDeduction,
+				CustomScalingQueueLengthDeduction: scaledJob.Spec.ScalingStrategy.CustomScalingQueueLengthDeduction,
 				CustomScalingRunningJobPercentage: &percentage,
 			}
 		}
 
-		logger.Error(err, "Fail to convert CustomScalingRunningJobPercentage into float", scaledJob.Spec.CustomScalingRunningJobPercentage)
-		logger.Info("Selecting Scale has been changed", "selected", "default")
+		logger.V(1).Info("Fail to convert CustomScalingRunningJobPercentage into float", "error", err, "CustomScalingRunningJobPercentage", scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage)
+		logger.V(1).Info("Selecting Scale has been changed", "selected", "default")
 		return defaultScalingStrategy{}
 
 	case "accurate":
-		logger.Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy, "selected", "accurate")
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "accurate")
 		return accurateScalingStrategy{}
 	default:
-		logger.Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy, "selected", "default")
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "default")
 		return defaultScalingStrategy{}
 	}
 }

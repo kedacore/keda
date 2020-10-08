@@ -54,11 +54,6 @@ spec:
           spec:
             description: ScaledJobSpec defines the desired state of ScaledJob
             properties:
-              customScalingQueueLengthDeduction:
-                format: int32
-                type: integer
-              customScalingRunningJobPercentage:
-                type: string
               envSourceContainerName:
                 type: string
               failedJobsHistoryLimit:
@@ -6349,7 +6344,16 @@ spec:
                 format: int32
                 type: integer
               scalingStrategy:
-                type: string
+                description: ScalingStrategy defines the strategy of Scaling
+                properties:
+                  customScalingQueueLengthDeduction:
+                    format: int32
+                    type: integer
+                  customScalingRunningJobPercentage:
+                    type: string
+                  strategy:
+                    type: string
+                type: object
               successfulJobsHistoryLimit:
                 format: int32
                 type: integer

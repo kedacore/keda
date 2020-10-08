@@ -38,12 +38,8 @@ type ScaledJobSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
-	ScalingStrategy string `json:"scalingStrategy,omitempty"`
-	// +optional
-	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
-	// +optional
-	CustomScalingRunningJobPercentage string          `json:"customScalingRunningJobPercentage,omitempty"`
-	Triggers                          []ScaleTriggers `json:"triggers"`
+	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
+	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
 // ScaledJobStatus defines the observed state of ScaledJob
@@ -61,6 +57,17 @@ type ScaledJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ScaledJob `json:"items"`
+}
+
+// ScalingStrategy defines the strategy of Scaling
+// +optional
+type ScalingStrategy struct {
+	// +optional
+	Strategy string `json:"strategy,omitempty"`
+	// +optional
+	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
+	// +optional
+	CustomScalingRunningJobPercentage string `json:"customScalingRunningJobPercentage,omitempty"`
 }
 
 func init() {
