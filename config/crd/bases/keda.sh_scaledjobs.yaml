@@ -6343,6 +6343,17 @@ spec:
               pollingInterval:
                 format: int32
                 type: integer
+              scalingStrategy:
+                description: ScalingStrategy defines the strategy of Scaling
+                properties:
+                  customScalingQueueLengthDeduction:
+                    format: int32
+                    type: integer
+                  customScalingRunningJobPercentage:
+                    type: string
+                  strategy:
+                    type: string
+                type: object
               successfulJobsHistoryLimit:
                 format: int32
                 type: integer
