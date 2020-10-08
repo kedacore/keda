@@ -7,6 +7,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
+
+	neturl "net/url"
 
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -14,10 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	neturl "net/url"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-	"time"
 
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
@@ -66,7 +67,7 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := metricsAPIMetadata(metadata)
+	meta, err := metricsAPIMetadata(metadata, authParams)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
@@ -90,7 +91,7 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 	}, nil
 }
 
-func metricsAPIMetadata(metadata map[string]string) (*metricsAPIScalerMetadata, error) {
+func metricsAPIMetadata(metadata map[string]string, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 
 	if val, ok := metadata["targetValue"]; ok {

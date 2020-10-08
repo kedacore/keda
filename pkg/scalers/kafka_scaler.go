@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kedacore/keda/pkg/util"
 	"strconv"
 	"strings"
 
@@ -219,7 +218,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := util.NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
+		tlsConfig, err := kedautil.NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
 		if err != nil {
 			return nil, nil, err
 		}
