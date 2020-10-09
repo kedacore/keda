@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultTargetListLength = 5
-	defaultDbIdx            = 0
+	defaultDBIdx            = 0
 	defaultEnableTLS        = false
 )
 
@@ -82,7 +82,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 	if val, ok := metadata["listLength"]; ok {
 		listLength, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("List length parsing error %s", err.Error())
+			return nil, fmt.Errorf("list length parsing error %s", err.Error())
 		}
 		meta.targetListLength = listLength
 	}
@@ -93,7 +93,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		return nil, fmt.Errorf("no list name given")
 	}
 
-	meta.databaseIndex = defaultDbIdx
+	meta.databaseIndex = defaultDBIdx
 	if val, ok := metadata["databaseIndex"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {

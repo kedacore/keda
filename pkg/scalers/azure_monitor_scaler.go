@@ -57,7 +57,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 		targetValue, err := strconv.Atoi(val)
 		if err != nil {
 			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
-			return nil, fmt.Errorf("Error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
+			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
 		}
 		meta.targetValue = targetValue
 	} else {
@@ -141,7 +141,7 @@ func parseAzureMonitorMetadata(metadata, resolvedEnv, authParams map[string]stri
 			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
 		}
 	} else if podIdentity != "azure" {
-		return nil, fmt.Errorf("Azure Monitor doesn't support pod identity %s", podIdentity)
+		return nil, fmt.Errorf("qzure Monitor doesn't support pod identity %s", podIdentity)
 	}
 
 	return &meta, nil

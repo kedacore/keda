@@ -35,7 +35,6 @@ type azureBlobMetadata struct {
 	blobDelimiter     string
 	blobPrefix        string
 	connection        string
-	useAAdPodIdentity bool
 	accountName       string
 }
 
@@ -64,7 +63,7 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		blobCount, err := strconv.Atoi(val)
 		if err != nil {
 			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
+			return nil, "", fmt.Errorf("error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
 		}
 
 		meta.targetBlobCount = blobCount

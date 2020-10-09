@@ -24,7 +24,7 @@ func SetStatusConditions(client runtimeclient.Client, logger logr.Logger, object
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		obj.Status.Conditions = *conditions
 	default:
-		err := fmt.Errorf("Unknown scalable object type %v", obj)
+		err := fmt.Errorf("unknown scalable object type %v", obj)
 		logger.Error(err, "Failed to patch Objects Status with Conditions")
 		return err
 	}
