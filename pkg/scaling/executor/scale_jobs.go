@@ -8,12 +8,10 @@ import (
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/kedacore/keda/api/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	version "github.com/kedacore/keda/version"
 )
@@ -104,7 +102,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 
 func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {
 	for _, c := range j.Status.Conditions {
-		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == v1.ConditionTrue {
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
@@ -218,7 +216,7 @@ func (c byCompletedTime) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 
 func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobConditionType {
 	for _, c := range j.Status.Conditions {
-		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == v1.ConditionTrue {
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
 			return c.Type
 		}
 	}
@@ -226,7 +224,7 @@ func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobC
 }
 
 // NewScalingStrategy returns ScalingStrategy instance
-func NewScalingStrategy(logger logr.Logger, scaledJob *v1alpha1.ScaledJob) ScalingStrategy {
+func NewScalingStrategy(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) ScalingStrategy {
 	switch scaledJob.Spec.ScalingStrategy.Strategy {
 	case "custom":
 		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected:", "custom", "customScalingQueueLength", scaledJob.Spec.ScalingStrategy.CustomScalingQueueLengthDeduction, "customScallingRunningJobPercentage", scaledJob.Spec.ScalingStrategy.CustomScalingRunningJobPercentage)

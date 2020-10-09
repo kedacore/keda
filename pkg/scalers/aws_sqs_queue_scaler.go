@@ -46,7 +46,7 @@ var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams map[string]string) (Scaler, error) {
 	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing SQS queue metadata: %s", err)
+		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
 	}
 
 	return &awsSqsQueueScaler{

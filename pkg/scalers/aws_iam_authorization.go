@@ -7,7 +7,6 @@ type awsAuthorizationMetadata struct {
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
-	awsSessionToken    string
 
 	podIdentityOwner bool
 }

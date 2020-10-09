@@ -32,7 +32,6 @@ type azureQueueMetadata struct {
 	targetQueueLength int
 	queueName         string
 	connection        string
-	useAAdPodIdentity bool
 	accountName       string
 }
 
@@ -59,7 +58,7 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
-			return nil, "", fmt.Errorf("Error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			return nil, "", fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
 
 		meta.targetQueueLength = queueLength

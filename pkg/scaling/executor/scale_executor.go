@@ -55,7 +55,7 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Lo
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Status.LastActiveTime = &now
 	default:
-		err := fmt.Errorf("Unknown scalable object type %v", obj)
+		err := fmt.Errorf("unknown scalable object type %v", obj)
 		logger.Error(err, "Failed to patch Objects Status")
 		return err
 	}
@@ -79,7 +79,7 @@ func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logg
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Status.Conditions.SetActiveCondition(status, reason, mesage)
 	default:
-		err := fmt.Errorf("Unknown scalable object type %v", obj)
+		err := fmt.Errorf("unknown scalable object type %v", obj)
 		logger.Error(err, "Failed to patch Objects Status")
 		return err
 	}

@@ -52,7 +52,7 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 	if val, ok := metadata["subscriptionSize"]; ok {
 		subscriptionSize, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("Subscription Size parsing error %s", err.Error())
+			return nil, fmt.Errorf("subscription Size parsing error %s", err.Error())
 		}
 
 		meta.targetSubscriptionSize = subscriptionSize

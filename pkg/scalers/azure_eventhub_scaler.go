@@ -69,7 +69,7 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 	if val, ok := metadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
 		}
 
 		meta.threshold = threshold

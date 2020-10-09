@@ -20,7 +20,7 @@ import (
 const (
 	// defaults
 	defaultTargetPendingEntriesCount = 5
-	defaultDbIndex                   = 0
+	defaultDBIndex                   = 0
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
@@ -120,7 +120,7 @@ func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("missing redis stream consumer group name")
 	}
 
-	meta.databaseIndex = defaultDbIndex
+	meta.databaseIndex = defaultDBIndex
 	if val, ok := metadata[databaseIndexMetadata]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {

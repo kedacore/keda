@@ -64,34 +64,34 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 
 func parseCronMetadata(metadata map[string]string) (*cronMetadata, error) {
 	if len(metadata) == 0 {
-		return nil, fmt.Errorf("Invalid Input Metadata. %s", metadata)
+		return nil, fmt.Errorf("invalid Input Metadata. %s", metadata)
 	}
 
 	meta := cronMetadata{}
 	if val, ok := metadata["timezone"]; ok && val != "" {
 		meta.timezone = val
 	} else {
-		return nil, fmt.Errorf("No timezone specified. %s", metadata)
+		return nil, fmt.Errorf("no timezone specified. %s", metadata)
 	}
 	if val, ok := metadata["start"]; ok && val != "" {
 		meta.start = val
 	} else {
-		return nil, fmt.Errorf("No start schedule specified. %s", metadata)
+		return nil, fmt.Errorf("no start schedule specified. %s", metadata)
 	}
 	if val, ok := metadata["end"]; ok && val != "" {
 		meta.end = val
 	} else {
-		return nil, fmt.Errorf("No end schedule specified. %s", metadata)
+		return nil, fmt.Errorf("no end schedule specified. %s", metadata)
 	}
 	if val, ok := metadata["desiredReplicas"]; ok && val != "" {
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing desiredReplicas metadata. %s", metadata)
+			return nil, fmt.Errorf("error parsing desiredReplicas metadata. %s", metadata)
 		}
 
 		meta.desiredReplicas = int64(metadataDesiredReplicas)
 	} else {
-		return nil, fmt.Errorf("No DesiredReplicas specified. %s", metadata)
+		return nil, fmt.Errorf("no DesiredReplicas specified. %s", metadata)
 	}
 
 	return &meta, nil
@@ -101,7 +101,7 @@ func parseCronMetadata(metadata map[string]string) (*cronMetadata, error) {
 func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 	location, err := time.LoadLocation(s.metadata.timezone)
 	if err != nil {
-		return false, fmt.Errorf("Unable to load timezone. Error: %s", err)
+		return false, fmt.Errorf("unable to load timezone. Error: %s", err)
 	}
 
 	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
