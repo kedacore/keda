@@ -2,8 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"strconv"
@@ -220,7 +218,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := newTLSConfig(metadata.cert, metadata.key, metadata.ca)
+		tlsConfig, err := kedautil.NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -255,37 +253,6 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	}
 
 	return client, admin, nil
-}
-
-// newTLSConfig returns a *tls.Config using the given ceClient cert, ceClient key,
-// and CA certificate. If none are appropriate, a nil *tls.Config is returned.
-func newTLSConfig(clientCert, clientKey, caCert string) (*tls.Config, error) {
-	valid := false
-
-	config := &tls.Config{}
-
-	if clientCert != "" && clientKey != "" {
-		cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
-		if err != nil {
-			return nil, fmt.Errorf("error parse X509KeyPair: %s", err)
-		}
-		config.Certificates = []tls.Certificate{cert}
-		valid = true
-	}
-
-	if caCert != "" {
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(caCert))
-		config.RootCAs = caCertPool
-		config.InsecureSkipVerify = true
-		valid = true
-	}
-
-	if !valid {
-		config = nil
-	}
-
-	return config, nil
 }
 
 func (s *kafkaScaler) getPartitions() ([]int32, error) {
