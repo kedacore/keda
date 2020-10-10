@@ -28,7 +28,7 @@ type cpuMemoryMetadata struct {
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Scaler, error) {
 	meta, parseErr := parseResourceMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing %s metadata: %s", resourceName, parseErr)
 	}
 
 	return &cpuMemoryScaler{
