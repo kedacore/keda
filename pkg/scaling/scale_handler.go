@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -228,23 +229,13 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
-		var metricValue int64
-		var flag bool
-		for _, metric := range metricSpecs {
-			if metric.External.Target.AverageValue == nil {
-				metricValue = 0
-			} else {
-				metricValue, flag = metric.External.Target.AverageValue.AsInt64()
-				if !flag {
-					metricValue = 0
-				}
-			}
+		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-			targetAverageValue += metricValue
-		}
 		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
 
 		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
+
+		var metricValue int64
 
 		for _, m := range metrics {
 			if m.MetricName == "queueLength" {
@@ -266,6 +257,29 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 	maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
 	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
+}
+
+func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {
+	var targetAverageValue int64
+	var metricValue int64
+	var flag bool
+	for _, metric := range metricSpecs {
+		if metric.External.Target.AverageValue == nil {
+			metricValue = 0
+		} else {
+			metricValue, flag = metric.External.Target.AverageValue.AsInt64()
+			if !flag {
+				metricValue = 0
+			}
+		}
+
+		targetAverageValue += metricValue
+	}
+	count := int64(len(metricSpecs))
+	if count != 0 {
+		return targetAverageValue / count
+	}
+	return 0
 }
 
 func devideWithCeil(x, y int64) int64 {
