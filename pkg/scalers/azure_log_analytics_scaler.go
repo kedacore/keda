@@ -314,7 +314,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	//Handle expired token
 	if statusCode == 403 || (len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
-		tokenInfo, err := s.refreshAccessToken()
+		tokenInfo, err = s.refreshAccessToken()
 		if err != nil {
 			return metricsData{}, err
 		}
