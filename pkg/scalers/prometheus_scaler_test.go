@@ -36,7 +36,7 @@ var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
 
 func TestPrometheusParseMetadata(t *testing.T) {
 	for _, testData := range testPromMetadata {
-		_, err := parsePrometheusMetadata(testData.metadata)
+		_, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -48,7 +48,7 @@ func TestPrometheusParseMetadata(t *testing.T) {
 
 func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range prometheusMetricIdentifiers {
-		meta, err := parsePrometheusMetadata(testData.metadataTestData.metadata)
+		meta, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

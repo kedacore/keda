@@ -33,7 +33,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			m, err := parseRedisStreamsMetadata(tc.metadata, tc.resolvedEnv, tc.authParams)
+			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
@@ -91,7 +91,7 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			_, err := parseRedisStreamsMetadata(tc.metadata, tc.resolvedEnv, map[string]string{})
+			_, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}})
 			assert.NotNil(t, err)
 		})
 	}
@@ -118,7 +118,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(testData.metadataTestData.metadata, map[string]string{"REDIS_SERVICE": "my-address"}, nil)
+		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

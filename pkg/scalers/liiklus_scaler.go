@@ -39,8 +39,8 @@ const (
 )
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
-func NewLiiklusScaler(resolvedEnv map[string]string, metadata map[string]string) (Scaler, error) {
-	lm, err := parseLiiklusMetadata(metadata)
+func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
+	lm, err := parseLiiklusMetadata(config)
 	if err != nil {
 		return nil, err
 	}
@@ -144,10 +144,10 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 	return totalLag, lags, nil
 }
 
-func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) {
+func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
 
-	if val, ok := metadata[liiklusLagThresholdMetricName]; ok {
+	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
@@ -156,7 +156,7 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 	}
 
 	groupVersion := uint32(0)
-	if val, ok := metadata["groupVersion"]; ok {
+	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
 		t, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
@@ -164,18 +164,18 @@ func parseLiiklusMetadata(metadata map[string]string) (*liiklusMetadata, error) 
 		groupVersion = uint32(t)
 	}
 
-	if metadata["topic"] == "" {
+	if config.TriggerMetadata["topic"] == "" {
 		return nil, errors.New("no topic provided")
-	} else if metadata["address"] == "" {
+	} else if config.TriggerMetadata["address"] == "" {
 		return nil, errors.New("no liiklus API address provided")
-	} else if metadata["group"] == "" {
+	} else if config.TriggerMetadata["group"] == "" {
 		return nil, errors.New("no consumer group provided")
 	}
 
 	return &liiklusMetadata{
-		topic:        metadata["topic"],
-		address:      metadata["address"],
-		group:        metadata["group"],
+		topic:        config.TriggerMetadata["topic"],
+		address:      config.TriggerMetadata["address"],
+		group:        config.TriggerMetadata["group"],
 		groupVersion: groupVersion,
 		lagThreshold: lagThreshold,
 	}, nil

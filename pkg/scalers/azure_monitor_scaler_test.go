@@ -69,7 +69,7 @@ var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
 
 func TestAzMonitorParseMetadata(t *testing.T) {
 	for _, testData := range testParseAzMonitorMetadata {
-		_, err := parseAzureMonitorMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
+		_, err := parseAzureMonitorMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -81,7 +81,7 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azMonitorMetricIdentifiers {
-		meta, err := parseAzureMonitorMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		meta, err := parseAzureMonitorMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

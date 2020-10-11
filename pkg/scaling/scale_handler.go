@@ -327,7 +327,16 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
-		scaler, err := buildScaler(withTriggers.Name, withTriggers.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
+		config := &scalers.ScalerConfig{
+			Name:            withTriggers.Name,
+			Namespace:       withTriggers.Namespace,
+			TriggerMetadata: trigger.Metadata,
+			ResolvedEnv:     resolvedEnv,
+			AuthParams:      authParams,
+			PodIdentity:     podIdentity,
+		}
+
+		scaler, err := buildScaler(trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
@@ -372,59 +381,59 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 	}
 }
 
-func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
+func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
-		return scalers.NewArtemisQueueScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
-		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsCloudwatchScaler(config)
 	case "aws-kinesis-stream":
-		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsSqsQueueScaler(config)
 	case "azure-blob":
-		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureBlobScaler(config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":
-		return scalers.NewAzureLogAnalyticsScaler(resolvedEnv, triggerMetadata, authParams, podIdentity, name, namespace)
+		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
-		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureMonitorScaler(config)
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureServiceBusScaler(config)
 	case "cron":
-		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewCronScaler(config)
 	case "external":
-		return scalers.NewExternalScaler(name, namespace, triggerMetadata, resolvedEnv)
+		return scalers.NewExternalScaler(config)
 	case "external-push":
-		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata, authParams)
+		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
-		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewPubSubScaler(config)
 	case "huawei-cloudeye":
-		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewKafkaScaler(config)
 	case "liiklus":
-		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewLiiklusScaler(config)
 	case "metrics-api":
-		return scalers.NewMetricsAPIScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewMetricsAPIScaler(config)
 	case "mysql":
-		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewMySQLScaler(config)
 	case "postgresql":
-		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewPostgreSQLScaler(config)
 	case "prometheus":
-		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewPrometheusScaler(config)
 	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRedisScaler(config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRedisStreamsScaler(config)
 	case "stan":
-		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewStanScaler(config)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}

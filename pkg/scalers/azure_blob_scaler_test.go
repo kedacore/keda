@@ -49,7 +49,7 @@ var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
 
 func TestAzBlobParseMetadata(t *testing.T) {
 	for _, testData := range testAzBlobMetadata {
-		_, podIdentity, err := parseAzureBlobMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
+		_, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -64,7 +64,7 @@ func TestAzBlobParseMetadata(t *testing.T) {
 
 func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azBlobMetricIdentifiers {
-		meta, podIdentity, err := parseAzureBlobMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

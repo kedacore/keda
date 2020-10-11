@@ -136,7 +136,7 @@ var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(testData.metadata, testAWSSQSAuthentication, testData.authParams)
+		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -148,7 +148,7 @@ func TestSQSParseMetadata(t *testing.T) {
 
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
-		meta, err := parseAwsSqsQueueMetadata(testData.metadataTestData.metadata, testAWSSQSAuthentication, testData.metadataTestData.authParams)
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

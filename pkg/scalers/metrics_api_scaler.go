@@ -66,8 +66,8 @@ const (
 var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
-func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := metricsAPIMetadata(metadata, authParams)
+func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseMetricsAPIMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
@@ -91,10 +91,10 @@ func NewMetricsAPIScaler(resolvedEnv, metadata, authParams map[string]string) (S
 	}, nil
 }
 
-func metricsAPIMetadata(metadata map[string]string, authParams map[string]string) (*metricsAPIScalerMetadata, error) {
+func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 
-	if val, ok := metadata["targetValue"]; ok {
+	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
@@ -104,19 +104,19 @@ func metricsAPIMetadata(metadata map[string]string, authParams map[string]string
 		return nil, fmt.Errorf("no targetValue given in metadata")
 	}
 
-	if val, ok := metadata["url"]; ok {
+	if val, ok := config.TriggerMetadata["url"]; ok {
 		meta.url = val
 	} else {
 		return nil, fmt.Errorf("no url given in metadata")
 	}
 
-	if val, ok := metadata["valueLocation"]; ok {
+	if val, ok := config.TriggerMetadata["valueLocation"]; ok {
 		meta.valueLocation = val
 	} else {
 		return nil, fmt.Errorf("no valueLocation given in metadata")
 	}
 
-	authMode, ok := authParams["authMode"]
+	authMode, ok := config.AuthParams["authMode"]
 	// no authMode specified
 	if !ok {
 		return &meta, nil
@@ -125,48 +125,48 @@ func metricsAPIMetadata(metadata map[string]string, authParams map[string]string
 	authType := authenticationType(strings.TrimSpace(authMode))
 	switch authType {
 	case apiKeyAuth:
-		if len(authParams["apiKey"]) == 0 {
+		if len(config.AuthParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
 
-		meta.apiKey = authParams["apiKey"]
+		meta.apiKey = config.AuthParams["apiKey"]
 		// default behaviour is header. only change if query param requested
 		meta.method = "header"
 		meta.enableAPIKeyAuth = true
 
-		if authParams["method"] == "query" {
+		if config.AuthParams["method"] == "query" {
 			meta.method = "query"
 		}
 
-		if len(authParams["keyParamName"]) > 0 {
-			meta.keyParamName = authParams["keyParamName"]
+		if len(config.AuthParams["keyParamName"]) > 0 {
+			meta.keyParamName = config.AuthParams["keyParamName"]
 		}
 	case basicAuth:
-		if len(authParams["username"]) == 0 {
+		if len(config.AuthParams["username"]) == 0 {
 			return nil, errors.New("no username given")
 		}
 
-		meta.username = authParams["username"]
+		meta.username = config.AuthParams["username"]
 		// password is optional. For convenience, many application implements basic auth with
 		// username as apikey and password as empty
-		meta.password = authParams["password"]
+		meta.password = config.AuthParams["password"]
 		meta.enableBaseAuth = true
 	case tlsAuth:
-		if len(authParams["ca"]) == 0 {
+		if len(config.AuthParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}
-		meta.ca = authParams["ca"]
+		meta.ca = config.AuthParams["ca"]
 
-		if len(authParams["cert"]) == 0 {
+		if len(config.AuthParams["cert"]) == 0 {
 			return nil, errors.New("no cert given")
 		}
-		meta.cert = authParams["cert"]
+		meta.cert = config.AuthParams["cert"]
 
-		if len(authParams["key"]) == 0 {
+		if len(config.AuthParams["key"]) == 0 {
 			return nil, errors.New("no key given")
 		}
 
-		meta.key = authParams["key"]
+		meta.key = config.AuthParams["key"]
 		meta.enableTLS = true
 	default:
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)

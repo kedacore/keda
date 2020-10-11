@@ -55,7 +55,7 @@ var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
 
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
-		_, podIdentity, err := parseAzureQueueMetadata(testData.metadata, testData.resolvedEnv, testData.authParams, testData.podIdentity)
+		_, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -70,7 +70,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(testData.metadataTestData.metadata, testData.metadataTestData.resolvedEnv, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

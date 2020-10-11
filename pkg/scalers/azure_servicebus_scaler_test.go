@@ -88,7 +88,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 
 func TestParseServiceBusMetadata(t *testing.T) {
 	for _, testData := range parseServiceBusMetadataDataset {
-		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadata, testData.authParams, testData.podIdentity)
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -136,7 +136,7 @@ func TestGetServiceBusLength(t *testing.T) {
 
 func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
-		meta, err := parseAzureServiceBusMetadata(sampleResolvedEnv, testData.metadataTestData.metadata, testData.metadataTestData.authParams, testData.metadataTestData.podIdentity)
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
