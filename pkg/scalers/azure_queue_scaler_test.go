@@ -1,6 +1,10 @@
 package scalers
 
-import "testing"
+import (
+	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+)
 
 var testAzQueueResolvedEnv = map[string]string{
 	"CONNECTION": "SAMPLE",
@@ -11,7 +15,7 @@ type parseAzQueueMetadataTestData struct {
 	isError     bool
 	resolvedEnv map[string]string
 	authParams  map[string]string
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azQueueMetricIdentifier struct {
@@ -35,13 +39,13 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	// Deprecated useAAdPodIdentity without queue name
 	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// podIdentity = azure with account name
-	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without account name
-	{map[string]string{"accountName": "", "queueName": "sample_queue"}, true, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "", "queueName": "sample_queue"}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without queue name
-	{map[string]string{"accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// connection from authParams
-	{map[string]string{"queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{"connection": "value"}, "none"},
+	{map[string]string{"queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{"connection": "value"}, kedav1alpha1.PodIdentityProviderNone},
 }
 
 var azQueueMetricIdentifiers = []azQueueMetricIdentifier{

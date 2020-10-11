@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 const (
@@ -20,7 +22,7 @@ type parseServiceBusMetadataTestData struct {
 	isError     bool
 	entityType  entityType
 	authParams  map[string]string
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azServiceBusMetricIdentifier struct {
@@ -56,9 +58,9 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	// connection set in auth params
 	{map[string]string{"queueName": queueName}, false, queue, map[string]string{"connection": connectionSetting}, ""},
 	// pod identity but missing namespace
-	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// correct pod identity
-	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, map[string]string{}, "azure"},
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
@@ -81,7 +83,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 		topicName:        topicName,
 		subscriptionName: subscriptionName,
 	},
-		podIdentity: "azure"},
+		podIdentity: kedav1alpha1.PodIdentityProviderAzure},
 }
 
 func TestParseServiceBusMetadata(t *testing.T) {

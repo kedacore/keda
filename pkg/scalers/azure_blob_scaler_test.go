@@ -1,6 +1,10 @@
 package scalers
 
-import "testing"
+import (
+	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+)
 
 var testAzBlobResolvedEnv = map[string]string{
 	"CONNECTION": "SAMPLE",
@@ -11,7 +15,7 @@ type parseAzBlobMetadataTestData struct {
 	isError     bool
 	resolvedEnv map[string]string
 	authParams  map[string]string
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azBlobMetricIdentifier struct {
@@ -29,13 +33,13 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	// improperly formed blobCount
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "AA"}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// podIdentity = azure with account name
-	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container"}, false, testAzBlobResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without account name
-	{map[string]string{"accountName": "", "blobContainerName": "sample_container"}, true, testAzBlobResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "", "blobContainerName": "sample_container"}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without blob container name
-	{map[string]string{"accountName": "sample_acc", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, "azure"},
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// connection from authParams
-	{map[string]string{"blobContainerName": "sample_container", "blobCount": "5"}, false, testAzBlobResolvedEnv, map[string]string{"connection": "value"}, "none"},
+	{map[string]string{"blobContainerName": "sample_container", "blobCount": "5"}, false, testAzBlobResolvedEnv, map[string]string{"connection": "value"}, kedav1alpha1.PodIdentityProviderNone},
 }
 
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{

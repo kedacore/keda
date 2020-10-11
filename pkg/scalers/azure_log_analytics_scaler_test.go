@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 const (
