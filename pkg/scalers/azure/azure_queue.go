@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 // GetAzureQueueLength returns the length of a queue in int
-func GetAzureQueueLength(ctx context.Context, podIdentity string, connectionString, queueName string, accountName string) (int32, error) {
+func GetAzureQueueLength(ctx context.Context, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, queueName string, accountName string) (int32, error) {
 	credential, endpoint, err := ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName)
 	if err != nil {
 		return -1, err

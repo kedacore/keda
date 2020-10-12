@@ -42,8 +42,8 @@ type eventHubMetadata struct {
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	parsedMetadata, err := parseAzureEventHubMetadata(metadata, resolvedEnv, authParams)
+func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
+	parsedMetadata, err := parseAzureEventHubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
@@ -60,13 +60,13 @@ func NewAzureEventHubScaler(resolvedEnv, metadata, authParams map[string]string)
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]string) (*eventHubMetadata, error) {
+func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error) {
 	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
 	meta.threshold = defaultEventHubMessageThreshold
 
-	if val, ok := metadata[thresholdMetricName]; ok {
+	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
@@ -75,20 +75,20 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 		meta.threshold = threshold
 	}
 
-	if authParams["storageConnection"] != "" {
-		meta.eventHubInfo.StorageConnection = authParams["storageConnection"]
-	} else if metadata["storageConnectionFromEnv"] != "" {
-		meta.eventHubInfo.StorageConnection = resolvedEnv[metadata["storageConnectionFromEnv"]]
+	if config.AuthParams["storageConnection"] != "" {
+		meta.eventHubInfo.StorageConnection = config.AuthParams["storageConnection"]
+	} else if config.TriggerMetadata["storageConnectionFromEnv"] != "" {
+		meta.eventHubInfo.StorageConnection = config.ResolvedEnv[config.TriggerMetadata["storageConnectionFromEnv"]]
 	}
 
 	if len(meta.eventHubInfo.StorageConnection) == 0 {
 		return nil, fmt.Errorf("no storage connection string given")
 	}
 
-	if authParams["connection"] != "" {
-		meta.eventHubInfo.EventHubConnection = authParams["connection"]
-	} else if metadata["connectionFromEnv"] != "" {
-		meta.eventHubInfo.EventHubConnection = resolvedEnv[metadata["connectionFromEnv"]]
+	if config.AuthParams["connection"] != "" {
+		meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
+	} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+		meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 	}
 
 	if len(meta.eventHubInfo.EventHubConnection) == 0 {
@@ -96,12 +96,12 @@ func parseAzureEventHubMetadata(metadata, resolvedEnv, authParams map[string]str
 	}
 
 	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
-	if val, ok := metadata["consumerGroup"]; ok {
+	if val, ok := config.TriggerMetadata["consumerGroup"]; ok {
 		meta.eventHubInfo.EventHubConsumerGroup = val
 	}
 
 	meta.eventHubInfo.BlobContainer = defaultBlobContainer
-	if val, ok := metadata["blobContainer"]; ok {
+	if val, ok := config.TriggerMetadata["blobContainer"]; ok {
 		meta.eventHubInfo.BlobContainer = val
 	}
 

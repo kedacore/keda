@@ -6,6 +6,8 @@ import (
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 // Scaler interface
@@ -30,4 +32,25 @@ type PushScaler interface {
 
 	// Run is the only writer to the active channel and must close it once done.
 	Run(ctx context.Context, active chan<- bool)
+}
+
+// ScalerConfig contains config fields common for all scalers
+type ScalerConfig struct {
+	// Name used for external scalers
+	Name string
+
+	// Namespace used for external scalers
+	Namespace string
+
+	// TriggerMetadata
+	TriggerMetadata map[string]string
+
+	// ResolvedEnv
+	ResolvedEnv map[string]string
+
+	// AuthParams
+	AuthParams map[string]string
+
+	// PodIdentity
+	PodIdentity kedav1alpha1.PodIdentityProvider
 }

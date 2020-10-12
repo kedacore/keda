@@ -42,9 +42,9 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 
 // ResolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method define in TriggerAuthentication, authParams and podIdentity is returned
-func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, string) {
+func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
 	result := make(map[string]string)
-	podIdentity := ""
+	var podIdentity kedav1alpha1.PodIdentityProvider
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
@@ -53,7 +53,7 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
 			if triggerAuth.Spec.PodIdentity != nil {
-				podIdentity = string(triggerAuth.Spec.PodIdentity.Provider)
+				podIdentity = triggerAuth.Spec.PodIdentity.Provider
 			}
 			if triggerAuth.Spec.Env != nil {
 				for _, e := range triggerAuth.Spec.Env {

@@ -42,7 +42,7 @@ var currentDay = time.Now().In(tz).Weekday().String()
 
 func TestCronParseMetadata(t *testing.T) {
 	for _, testData := range testCronMetadata {
-		_, err := parseCronMetadata(testData.metadata)
+		_, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -53,7 +53,7 @@ func TestCronParseMetadata(t *testing.T) {
 }
 
 func TestIsActive(t *testing.T) {
-	scaler, _ := NewCronScaler(map[string]string{}, validCronMetadata)
+	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
 	isActive, _ := scaler.IsActive(context.TODO())
 	if currentDay == "Thursday" {
 		assert.Equal(t, isActive, true)
@@ -63,7 +63,7 @@ func TestIsActive(t *testing.T) {
 }
 
 func TestGetMetrics(t *testing.T) {
-	scaler, _ := NewCronScaler(map[string]string{}, validCronMetadata)
+	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
 	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentDay == "Thursday" {
@@ -75,7 +75,7 @@ func TestGetMetrics(t *testing.T) {
 
 func TestCronGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMetricIdentifiers {
-		meta, err := parseCronMetadata(testData.metadataTestData.metadata)
+		meta, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

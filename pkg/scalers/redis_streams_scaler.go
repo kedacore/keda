@@ -47,8 +47,8 @@ type redisStreamsMetadata struct {
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseRedisStreamsMetadata(metadata, resolvedEnv, authParams)
+func NewRedisStreamsScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseRedisStreamsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
@@ -88,8 +88,8 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 	return c, nil
 }
 
-func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]string) (*redisStreamsMetadata, error) {
-	connInfo, err := parseRedisAddress(metadata, resolvedEnv, authParams)
+func parseRedisStreamsMetadata(config *ScalerConfig) (*redisStreamsMetadata, error) {
+	connInfo, err := parseRedisAddress(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]stri
 	}
 	meta.targetPendingEntriesCount = defaultTargetPendingEntriesCount
 
-	if val, ok := metadata[pendingEntriesCountMetadata]; ok {
+	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
 		pendingEntriesCount, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing pending entries count %v", err)
@@ -108,20 +108,20 @@ func parseRedisStreamsMetadata(metadata, resolvedEnv, authParams map[string]stri
 		return nil, fmt.Errorf("missing pending entries count")
 	}
 
-	if val, ok := metadata[streamNameMetadata]; ok {
+	if val, ok := config.TriggerMetadata[streamNameMetadata]; ok {
 		meta.streamName = val
 	} else {
 		return nil, fmt.Errorf("missing redis stream name")
 	}
 
-	if val, ok := metadata[consumerGroupNameMetadata]; ok {
+	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
 		meta.consumerGroupName = val
 	} else {
 		return nil, fmt.Errorf("missing redis stream consumer group name")
 	}
 
 	meta.databaseIndex = defaultDBIndex
-	if val, ok := metadata[databaseIndexMetadata]; ok {
+	if val, ok := config.TriggerMetadata[databaseIndexMetadata]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis database index %v", err)

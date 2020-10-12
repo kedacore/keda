@@ -67,7 +67,7 @@ var testEventHubScaler = azureEventHubScaler{
 func TestParseEventHubMetadata(t *testing.T) {
 	// Test first with valid resolved environment
 	for _, testData := range parseEventHubMetadataDataset {
-		_, err := parseAzureEventHubMetadata(testData.metadata, sampleEventHubResolvedEnv, map[string]string{})
+		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -411,7 +411,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(testData.metadataTestData.metadata, sampleEventHubResolvedEnv, map[string]string{})
+		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
