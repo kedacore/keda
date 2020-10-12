@@ -306,12 +306,18 @@ func (s *azureLogAnalyticsScaler) getAccessToken() (tokenData, error) {
 
 func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData) (metricsData, error) {
 	queryData := queryResult{}
+	var body []byte
+	var statusCode int
+	var err error
 
-	body, statusCode, err := s.executeLogAnalyticsREST(query, tokenInfo)
+	body, statusCode, err = s.executeLogAnalyticsREST(query, tokenInfo)
 
 	//Handle expired token
 	if statusCode == 403 || (len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
-		tokenInfo, err := s.refreshAccessToken()
+		tokenInfo, err = s.refreshAccessToken()
+		if err != nil {
+			return metricsData{}, err
+		}
 
 		if s.metadata.podIdentity == "" {
 			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
@@ -434,7 +440,11 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 }
 
 func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
-	body, statusCode, err, tokenInfo := []byte{}, 0, *new(error), tokenData{}
+	var body []byte
+	var statusCode int
+	var err error
+	var tokenInfo tokenData
+
 	if s.metadata.podIdentity == "" {
 		body, statusCode, err = s.executeAADApicall()
 	} else {

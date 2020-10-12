@@ -29,6 +29,9 @@ func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHan
 func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	config := vaultApi.DefaultConfig()
 	client, err := vaultApi.NewClient(config)
+	if err != nil {
+		return err
+	}
 
 	err = client.SetAddress(vh.vault.Address)
 	if err != nil {

@@ -314,7 +314,8 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 
 	for i, trigger := range withTriggers.Spec.Triggers {
 		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
-		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+
+		if kedav1alpha1.PodIdentityProvider(podIdentity) == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
 			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
@@ -323,7 +324,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 				return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+		} else if kedav1alpha1.PodIdentityProvider(podIdentity) == kedav1alpha1.PodIdentityProviderAwsKiam {
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
@@ -432,31 +433,29 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 }
 
 func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers, error) {
-	withTriggers := &kedav1alpha1.WithTriggers{}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		withTriggers = &kedav1alpha1.WithTriggers{
+		return &kedav1alpha1.WithTriggers{
 			TypeMeta:   obj.TypeMeta,
 			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
 			},
-		}
+		}, nil
 	case *kedav1alpha1.ScaledJob:
-		withTriggers = &kedav1alpha1.WithTriggers{
+		return &kedav1alpha1.WithTriggers{
 			TypeMeta:   obj.TypeMeta,
 			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
 			},
-		}
+		}, nil
 	default:
 		// here could be the conversion from unknown Duck type potentially in the future
 		return nil, fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
-	return withTriggers, nil
 }
 
 func closeScalers(scalers []scalers.Scaler) {

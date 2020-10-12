@@ -162,9 +162,8 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 }
 
 func (s *artemisScaler) getQueueMessageCount() (int, error) {
-	var messageCount int
 	var monitoringInfo *artemisMonitoring
-	messageCount = 0
+	messageCount := 0
 
 	client := &http.Client{
 		Timeout: time.Second * 3,
