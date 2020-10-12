@@ -391,6 +391,8 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+	case "ibmmq":
+		return scalers.NewIBMMQScaler(triggerMetadata, authParams)
 	case "kafka":
 		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
 	case "liiklus":
