@@ -33,9 +33,12 @@ type liiklusMetadata struct {
 }
 
 const (
-	defaultLiiklusLagThreshold    int64 = 10
-	liiklusLagThresholdMetricName       = "lagThreshold"
-	liiklusMetricType                   = "External"
+	defaultLiiklusLagThreshold int64 = 10
+)
+
+const (
+	liiklusLagThresholdMetricName = "lagThreshold"
+	liiklusMetricType             = "External"
 )
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
