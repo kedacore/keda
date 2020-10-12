@@ -211,6 +211,9 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			if scaler.GetMetricSpecForScaling()[0].External != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
 			}
+			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
+			}
 			break
 		}
 	}
