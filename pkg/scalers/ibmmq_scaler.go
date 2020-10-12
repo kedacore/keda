@@ -39,6 +39,7 @@ import (
 const (
 	IBMMQQueueDepthMetricName = "currentQueueDepth"
 	defaultTargetQueueDepth   = 20
+	defaultTlsDisabled        = false
 	IBMMQMetricType           = "External"
 )
 
@@ -47,11 +48,12 @@ type IBMMQScaler struct {
 }
 
 type IBMMQMetadata struct {
-	host              string
-	queueName         string
-	username          string
-	password          string
-	targetQueueLength int
+	host             string
+	queueName        string
+	username         string
+	password         string
+	targetQueueDepth int
+	tlsDisabled      bool
 }
 
 // Structured response from MQ admin REST query
@@ -101,16 +103,27 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	if val, ok := metadata["queueLength"]; ok && val != "" {
-		queueLength, err := strconv.Atoi(val)
+	if val, ok := metadata["queueDepth"]; ok && val != "" {
+		queueDepth, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("invalid targetQueueLength - must be an integer")
+			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
 		} else {
-			meta.targetQueueLength = queueLength
+			meta.targetQueueDepth = queueDepth
 		}
 	} else {
 		fmt.Println("No target length defined - setting default")
-		meta.targetQueueLength = defaultTargetQueueDepth
+		meta.targetQueueDepth = defaultTargetQueueDepth
+	}
+
+	if val, ok := metadata["tls"]; ok {
+		tlsDisabled, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("invalid tls setting: %s", err)
+		}
+		meta.tlsDisabled = tlsDisabled
+	} else {
+		fmt.Println("No tls setting defined - setting default")
+		meta.tlsDisabled = defaultTlsDisabled
 	}
 
 	if val, ok := authParams["username"]; ok {
@@ -151,7 +164,7 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
 	}
 	client := &http.Client{Transport: tr}
 
@@ -172,7 +185,7 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *IBMMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
+	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "IBMMQ", s.metadata.queueName)),
