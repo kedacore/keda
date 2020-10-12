@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	IBMMQQueueDepthMetricName = "currQueueDepth"
+	IBMMQQueueDepthMetricName = "currentQueueDepth"
 	defaultTargetQueueDepth   = 20
 	IBMMQMetricType           = "External"
 )
@@ -47,13 +47,14 @@ type IBMMQScaler struct {
 }
 
 type IBMMQMetadata struct {
-	host              string // MQ Host URI
-	queueName         string // Queue Manager Name
-	username          string // Username
-	password          string // Password
+	host              string
+	queueName         string
+	username          string
+	password          string
 	targetQueueLength int
 }
 
+// Structured response from MQ admin REST query
 type CommandResponse struct {
 	CommandResponse []Response `json:"commandResponse"`
 }
@@ -87,29 +88,27 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 	if val, ok := metadata["host"]; ok {
 		_, err := url.ParseRequestURI(val)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid URL: %s", err)
+			return nil, fmt.Errorf("invalid URL: %s", err)
 		}
 		meta.host = val
 	} else {
-		return nil, fmt.Errorf("No host URI given")
+		return nil, fmt.Errorf("no host URI given")
 	}
 
 	if val, ok := metadata["queueName"]; ok {
 		meta.queueName = val
 	} else {
-		return nil, fmt.Errorf("No queue name given")
+		return nil, fmt.Errorf("no queue name given")
 	}
 
 	if val, ok := metadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid targetQueueLength - must be an integer")
+			return nil, fmt.Errorf("invalid targetQueueLength - must be an integer")
 		} else {
 			meta.targetQueueLength = queueLength
 		}
-
 	} else {
-		//If no target queue length is passed, use the default value
 		fmt.Println("No target length defined - setting default")
 		meta.targetQueueLength = defaultTargetQueueDepth
 	}
@@ -117,13 +116,13 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 	if val, ok := authParams["username"]; ok {
 		meta.username = val
 	} else {
-		return nil, fmt.Errorf("No username given")
+		return nil, fmt.Errorf("no username given")
 	}
 
 	if val, ok := authParams["password"]; ok {
 		meta.password = val
 	} else {
-		return nil, fmt.Errorf("No password given")
+		return nil, fmt.Errorf("no password given")
 	}
 
 	return &meta, nil
@@ -133,7 +132,7 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 	queueDepth, err := s.getQueueDepthViaHttp()
 	if err != nil {
-		return false, fmt.Errorf("Error inspecting IBM MQ queue depth: %s", err)
+		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
 
 	return queueDepth > 0, nil
@@ -152,7 +151,7 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
 	client := &http.Client{Transport: tr}
 
