@@ -38,7 +38,7 @@ var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
 
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
-		_, err := parsePubSubMetadata(testData.metadata, testPubSubResolvedEnv)
+		_, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -50,7 +50,7 @@ func TestPubSubParseMetadata(t *testing.T) {
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(testData.metadataTestData.metadata, testPubSubResolvedEnv)
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

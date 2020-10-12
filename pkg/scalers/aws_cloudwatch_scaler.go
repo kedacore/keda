@@ -53,8 +53,8 @@ type awsCloudwatchMetadata struct {
 var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams)
+func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseAwsCloudwatchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cloudwatch metadata: %s", err)
 	}
@@ -64,37 +64,37 @@ func NewAwsCloudwatchScaler(resolvedEnv, metadata, authParams map[string]string)
 	}, nil
 }
 
-func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]string) (*awsCloudwatchMetadata, error) {
+func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
 	meta := awsCloudwatchMetadata{}
 	meta.metricCollectionTime = defaultMetricCollectionTime
 	meta.metricStat = defaultMetricStat
 	meta.metricStatPeriod = defaultMetricStatPeriod
 
-	if val, ok := metadata["namespace"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
 		meta.namespace = val
 	} else {
 		return nil, fmt.Errorf("namespace not given")
 	}
 
-	if val, ok := metadata["metricName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
 		meta.metricsName = val
 	} else {
 		return nil, fmt.Errorf("metric name not given")
 	}
 
-	if val, ok := metadata["dimensionName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["dimensionName"]; ok && val != "" {
 		meta.dimensionName = val
 	} else {
 		return nil, fmt.Errorf("dimension name not given")
 	}
 
-	if val, ok := metadata["dimensionValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["dimensionValue"]; ok && val != "" {
 		meta.dimensionValue = val
 	} else {
 		return nil, fmt.Errorf("dimension value not given")
 	}
 
-	if val, ok := metadata["targetMetricValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
 		targetMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudwatchLog.Error(err, "Error parsing targetMetricValue metadata")
@@ -105,7 +105,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
-	if val, ok := metadata["minMetricValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudwatchLog.Error(err, "Error parsing minMetricValue metadata")
@@ -116,7 +116,7 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		return nil, fmt.Errorf("min metric value not given")
 	}
 
-	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
 		metricCollectionTime, err := strconv.Atoi(val)
 		if err != nil {
 			cloudwatchLog.Error(err, "Error parsing metricCollectionTime metadata")
@@ -125,11 +125,11 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		}
 	}
 
-	if val, ok := metadata["metricStat"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
 		meta.metricStat = val
 	}
 
-	if val, ok := metadata["metricStatPeriod"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
 		metricStatPeriod, err := strconv.Atoi(val)
 		if err != nil {
 			cloudwatchLog.Error(err, "Error parsing metricStatPeriod metadata")
@@ -138,13 +138,13 @@ func parseAwsCloudwatchMetadata(metadata, resolvedEnv, authParams map[string]str
 		}
 	}
 
-	if val, ok := metadata["awsRegion"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
+	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}

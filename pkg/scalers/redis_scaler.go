@@ -46,8 +46,8 @@ type redisMetadata struct {
 var redisLog = logf.Log.WithName("redis_scaler")
 
 // NewRedisScaler creates a new redisScaler
-func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseRedisMetadata(metadata, resolvedEnv, authParams)
+func NewRedisScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseRedisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
@@ -69,8 +69,8 @@ func NewRedisScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	}, nil
 }
 
-func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*redisMetadata, error) {
-	connInfo, err := parseRedisAddress(metadata, resolvedEnv, authParams)
+func parseRedisMetadata(config *ScalerConfig) (*redisMetadata, error) {
+	connInfo, err := parseRedisAddress(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 	}
 	meta.targetListLength = defaultTargetListLength
 
-	if val, ok := metadata["listLength"]; ok {
+	if val, ok := config.TriggerMetadata["listLength"]; ok {
 		listLength, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("list length parsing error %s", err.Error())
@@ -87,14 +87,14 @@ func parseRedisMetadata(metadata, resolvedEnv, authParams map[string]string) (*r
 		meta.targetListLength = listLength
 	}
 
-	if val, ok := metadata["listName"]; ok {
+	if val, ok := config.TriggerMetadata["listName"]; ok {
 		meta.listName = val
 	} else {
 		return nil, fmt.Errorf("no list name given")
 	}
 
 	meta.databaseIndex = defaultDBIdx
-	if val, ok := metadata["databaseIndex"]; ok {
+	if val, ok := config.TriggerMetadata["databaseIndex"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())

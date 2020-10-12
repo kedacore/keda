@@ -15,6 +15,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
@@ -32,7 +33,7 @@ var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 
 type azureServiceBusScaler struct {
 	metadata    *azureServiceBusMetadata
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azureServiceBusMetadata struct {
@@ -46,26 +47,26 @@ type azureServiceBusMetadata struct {
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
-	meta, err := parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams, podIdentity)
+func NewAzureServiceBusScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
 	}
 
 	return &azureServiceBusScaler{
 		metadata:    meta,
-		podIdentity: podIdentity,
+		podIdentity: config.PodIdentity,
 	}, nil
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
 	meta.targetLength = defaultTargetMessageCount
 
 	// get target metric value
-	if val, ok := metadata[messageCountMetricName]; ok {
+	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
 		messageCount, err := strconv.Atoi(val)
 		if err != nil {
 			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
@@ -75,23 +76,23 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 	}
 
 	// get queue name OR topic and subscription name & set entity type accordingly
-	if val, ok := metadata["queueName"]; ok {
+	if val, ok := config.TriggerMetadata["queueName"]; ok {
 		meta.queueName = val
 		meta.entityType = queue
 
-		if _, ok := metadata["subscriptionName"]; ok {
+		if _, ok := config.TriggerMetadata["subscriptionName"]; ok {
 			return nil, fmt.Errorf("subscription name provided with queue name")
 		}
 	}
 
-	if val, ok := metadata["topicName"]; ok {
+	if val, ok := config.TriggerMetadata["topicName"]; ok {
 		if meta.entityType == queue {
 			return nil, fmt.Errorf("both topic and queue name metadata provided")
 		}
 		meta.topicName = val
 		meta.entityType = subscription
 
-		if val, ok := metadata["subscriptionName"]; ok {
+		if val, ok := config.TriggerMetadata["subscriptionName"]; ok {
 			meta.subscriptionName = val
 		} else {
 			return nil, fmt.Errorf("no subscription name provided with topic name")
@@ -102,25 +103,25 @@ func parseAzureServiceBusMetadata(resolvedEnv, metadata, authParams map[string]s
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
 
-	if podIdentity == "" || podIdentity == "none" {
+	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
 		// get servicebus connection string
-		if authParams["connection"] != "" {
-			meta.connection = authParams["connection"]
-		} else if metadata["connectionFromEnv"] != "" {
-			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+		if config.AuthParams["connection"] != "" {
+			meta.connection = config.AuthParams["connection"]
+		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+			meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 		}
 
 		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
-	} else if podIdentity == "azure" {
-		if val, ok := metadata["namespace"]; ok {
+	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+		if val, ok := config.TriggerMetadata["namespace"]; ok {
 			meta.namespace = val
 		} else {
 			return nil, fmt.Errorf("namespace is required when using pod identity")
 		}
 	} else {
-		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", podIdentity)
+		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity)
 	}
 
 	return &meta, nil
@@ -204,12 +205,12 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 	// get namespace
 	var namespace *servicebus.Namespace
 	var err error
-	if s.podIdentity == "" || s.podIdentity == "none" {
+	if s.podIdentity == "" || s.podIdentity == kedav1alpha1.PodIdentityProviderNone {
 		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
 		if err != nil {
 			return -1, err
 		}
-	} else if s.podIdentity == "azure" {
+	} else if s.podIdentity == kedav1alpha1.PodIdentityProviderAzure {
 		namespace, err = servicebus.NewNamespace()
 		if err != nil {
 			return -1, err

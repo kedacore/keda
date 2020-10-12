@@ -54,7 +54,7 @@ var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 
 func TestRabbitMQParseMetadata(t *testing.T) {
 	for _, testData := range testRabbitMQMetadata {
-		_, err := parseRabbitMQMetadata(sampleRabbitMqResolvedEnv, testData.metadata, testData.authParams)
+		_, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -73,7 +73,7 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 
 func TestParseDefaultQueueLength(t *testing.T) {
 	for _, testData := range testDefaultQueueLength {
-		metadata, err := parseRabbitMQMetadata(sampleRabbitMqResolvedEnv, testData.metadata, testData.authParams)
+		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
@@ -128,7 +128,7 @@ func TestGetQueueInfo(t *testing.T) {
 				"protocol":    "http",
 			}
 
-			s, err := NewRabbitMQScaler(resolvedEnv, metadata, map[string]string{})
+			s, err := NewRabbitMQScaler(&ScalerConfig{ResolvedEnv: resolvedEnv, TriggerMetadata: metadata, AuthParams: map[string]string{}})
 
 			if err != nil {
 				t.Error("Expect success", err)
@@ -160,7 +160,7 @@ func TestGetQueueInfo(t *testing.T) {
 
 func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range rabbitMQMetricIdentifiers {
-		meta, err := parseRabbitMQMetadata(map[string]string{"myHostSecret": "myHostSecret"}, testData.metadataTestData.metadata, nil)
+		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: map[string]string{"myHostSecret": "myHostSecret"}, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

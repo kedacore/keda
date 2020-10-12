@@ -137,7 +137,7 @@ func TestResolveAuthRef(t *testing.T) {
 		soar                *kedav1alpha1.ScaledObjectAuthRef
 		podSpec             *corev1.PodSpec
 		expected            map[string]string
-		expectedPodIdentity string
+		expectedPodIdentity kedav1alpha1.PodIdentityProvider
 	}{
 		{
 			name:     "foo",
@@ -205,7 +205,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: "none",
+			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
 		},
 	}
 	for _, test := range tests {

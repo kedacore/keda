@@ -36,7 +36,7 @@ var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
 
 func TestParseMySQLMetadata(t *testing.T) {
 	for _, testData := range testMySQLMetadata {
-		_, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metadata, map[string]string{})
+		_, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -49,7 +49,7 @@ func TestParseMySQLMetadata(t *testing.T) {
 func TestMetadataToConnectionStrUseConnStr(t *testing.T) {
 	// Use existing ConnStr
 	testMeta := map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}
-	meta, _ := parseMySQLMetadata(testMySQLResolvedEnv, testMeta, map[string]string{})
+	meta, _ := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != testMySQLResolvedEnv["MYSQL_CONN_STR"] {
 		t.Error("Expected success")
@@ -60,7 +60,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 	// Build new ConnStr
 	expected := "test_username:pass@tcp(test_host:test_port)/test_dbname"
 	testMeta := map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"}
-	meta, _ := parseMySQLMetadata(testMySQLResolvedEnv, testMeta, map[string]string{})
+	meta, _ := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != expected {
 		t.Errorf("%s != %s", expected, connStr)
@@ -69,7 +69,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(testMySQLResolvedEnv, testData.metadataTestData.metadata, nil)
+		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -71,8 +71,8 @@ const (
 var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
-func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	kafkaMetadata, err := parseKafkaMetadata(metadata, authParams)
+func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
+	kafkaMetadata, err := parseKafkaMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -89,30 +89,30 @@ func NewKafkaScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	}, nil
 }
 
-func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, error) {
+func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if metadata["bootstrapServers"] == "" {
+	if config.TriggerMetadata["bootstrapServers"] == "" {
 		return meta, errors.New("no bootstrapServers given")
 	}
-	if metadata["bootstrapServers"] != "" {
-		meta.bootstrapServers = strings.Split(metadata["bootstrapServers"], ",")
+	if config.TriggerMetadata["bootstrapServers"] != "" {
+		meta.bootstrapServers = strings.Split(config.TriggerMetadata["bootstrapServers"], ",")
 	}
 
-	if metadata["consumerGroup"] == "" {
+	if config.TriggerMetadata["consumerGroup"] == "" {
 		return meta, errors.New("no consumer group given")
 	}
-	meta.group = metadata["consumerGroup"]
+	meta.group = config.TriggerMetadata["consumerGroup"]
 
-	if metadata["topic"] == "" {
+	if config.TriggerMetadata["topic"] == "" {
 		return meta, errors.New("no topic given")
 	}
-	meta.topic = metadata["topic"]
+	meta.topic = config.TriggerMetadata["topic"]
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
-	if metadata["offsetResetPolicy"] != "" {
-		policy := offsetResetPolicy(metadata["offsetResetPolicy"])
+	if config.TriggerMetadata["offsetResetPolicy"] != "" {
+		policy := offsetResetPolicy(config.TriggerMetadata["offsetResetPolicy"])
 		if policy != earliest && policy != latest {
 			return meta, fmt.Errorf("err offsetResetPolicy policy %s given", policy)
 		}
@@ -121,7 +121,7 @@ func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, 
 
 	meta.lagThreshold = defaultKafkaLagThreshold
 
-	if val, ok := metadata[lagThresholdMetricName]; ok {
+	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
@@ -130,20 +130,20 @@ func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, 
 	}
 
 	meta.saslType = KafkaSASLTypeNone
-	if val, ok := authParams["sasl"]; ok {
+	if val, ok := config.AuthParams["sasl"]; ok {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
-			if authParams["username"] == "" {
+			if config.AuthParams["username"] == "" {
 				return meta, errors.New("no username given")
 			}
-			meta.username = strings.TrimSpace(authParams["username"])
+			meta.username = strings.TrimSpace(config.AuthParams["username"])
 
-			if authParams["password"] == "" {
+			if config.AuthParams["password"] == "" {
 				return meta, errors.New("no password given")
 			}
-			meta.password = strings.TrimSpace(authParams["password"])
+			meta.password = strings.TrimSpace(config.AuthParams["password"])
 			meta.saslType = mode
 		} else {
 			return meta, fmt.Errorf("err SASL mode %s given", mode)
@@ -151,24 +151,24 @@ func parseKafkaMetadata(metadata, authParams map[string]string) (kafkaMetadata, 
 	}
 
 	meta.enableTLS = false
-	if val, ok := authParams["tls"]; ok {
+	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
 
 		if val == "enable" {
-			if authParams["ca"] == "" {
+			if config.AuthParams["ca"] == "" {
 				return meta, errors.New("no ca given")
 			}
-			meta.ca = authParams["ca"]
+			meta.ca = config.AuthParams["ca"]
 
-			if authParams["cert"] == "" {
+			if config.AuthParams["cert"] == "" {
 				return meta, errors.New("no cert given")
 			}
-			meta.cert = authParams["cert"]
+			meta.cert = config.AuthParams["cert"]
 
-			if authParams["key"] == "" {
+			if config.AuthParams["key"] == "" {
 				return meta, errors.New("no key given")
 			}
-			meta.key = authParams["key"]
+			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)

@@ -172,7 +172,7 @@ var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
 
 func TestCloudwatchParseMetadata(t *testing.T) {
 	for _, testData := range testAWSCloudwatchMetadata {
-		_, err := parseAwsCloudwatchMetadata(testData.metadata, testAWSCloudwatchResolvedEnv, testData.authParams)
+		_, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}
@@ -184,7 +184,7 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 
 func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsCloudwatchMetricIdentifiers {
-		meta, err := parseAwsCloudwatchMetadata(testData.metadataTestData.metadata, testAWSCloudwatchResolvedEnv, testData.metadataTestData.authParams)
+		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
