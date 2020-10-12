@@ -88,8 +88,8 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
-		} else if metadata.targetQueueLength != defaultTargetQueueDepth {
-			t.Error("Expected default queueLength =", defaultTargetQueueDepth, "but got", metadata.targetQueueLength)
+		} else if metadata.targetQueueDepth != defaultTargetQueueDepth {
+			t.Error("Expected default queueLength =", defaultTargetQueueDepth, "but got", metadata.targetQueueDepth)
 		}
 	}
 }

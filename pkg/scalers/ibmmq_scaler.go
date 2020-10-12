@@ -48,12 +48,12 @@ type IBMMQScaler struct {
 }
 
 type IBMMQMetadata struct {
-	host              string
-	queueName         string
-	username          string
-	password          string
-	targetQueueDepth  int
-	tlsDisabled       bool
+	host             string
+	queueName        string
+	username         string
+	password         string
+	targetQueueDepth int
+	tlsDisabled      bool
 }
 
 // Structured response from MQ admin REST query
@@ -103,12 +103,12 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	if val, ok := metadata["queueLength"]; ok && val != "" {
-		queueLength, err := strconv.Atoi(val)
+	if val, ok := metadata["queueDepth"]; ok && val != "" {
+		queueDepth, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("invalid targetQueueLength - must be an integer")
+			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
 		} else {
-			meta.targetQueueDepth = queueLength
+			meta.targetQueueDepth = queueDepth
 		}
 	} else {
 		fmt.Println("No target length defined - setting default")
