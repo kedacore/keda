@@ -315,7 +315,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	for i, trigger := range withTriggers.Spec.Triggers {
 		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
 
-		if kedav1alpha1.PodIdentityProvider(podIdentity) == kedav1alpha1.PodIdentityProviderAwsEKS {
+		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
 			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
@@ -324,7 +324,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 				return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if kedav1alpha1.PodIdentityProvider(podIdentity) == kedav1alpha1.PodIdentityProviderAwsKiam {
+		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
