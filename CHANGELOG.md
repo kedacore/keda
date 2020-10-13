@@ -31,6 +31,7 @@
 - Introduce Azure Log Analytics scaler ([#1061](https://github.com/kedacore/keda/issues/1061)) | [docs](https://keda.sh/docs/2.0/scalers/azure-log-analytics/))
 - Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
 - Add cpu/memory Scaler ([#1215](https://github.com/kedacore/keda/pull/1215))
+- Add Scaling Strategy for ScaledJob ([#1227](https://github.com/kedacore/keda/pull/1227))
 
 ### Improvements
 
