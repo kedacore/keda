@@ -22,7 +22,6 @@
 - Define KEDA readiness and liveness probes ([#788](https://github.com/kedacore/keda/issues/788))
 - KEDA Support for configurable scaling behavior in HPA v2beta2 ([#802](https://github.com/kedacore/keda/issues/802))
 - Add External Push scaler ([#820](https://github.com/kedacore/keda/issues/820) | [docs](https://keda.sh/docs/2.0/scalers/external-push/))
-- Add Standard Resource metrics to KEDA ([#874](https://github.com/kedacore/keda/pull/874))
 - Managed Identity support for Azure Monitor scaler ([#936](https://github.com/kedacore/keda/issues/936))
 - Add support for multiple triggers on ScaledObject ([#476](https://github.com/kedacore/keda/issues/476))
 - Add consumer offset reset policy option to Kafka scaler ([#925](https://github.com/kedacore/keda/pull/925))
@@ -31,7 +30,7 @@
 - Add support for multiple redis list types in redis list scaler ([#1006](https://github.com/kedacore/keda/pull/1006)) | [docs](https://keda.sh/docs/2.0/scalers/redis-lists/))
 - Introduce Azure Log Analytics scaler ([#1061](https://github.com/kedacore/keda/issues/1061)) | [docs](https://keda.sh/docs/2.0/scalers/azure-log-analytics/))
 - Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
-
+- Add cpu/memory Scaler ([#1215](https://github.com/kedacore/keda/pull/1215))
 
 ### Improvements
 
