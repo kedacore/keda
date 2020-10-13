@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 
-	"github.com/kedacore/keda/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
 const (
@@ -32,8 +33,9 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type azureEventHubScaler struct {
-	metadata *eventHubMetadata
-	client   *eventhub.Hub
+	metadata   *eventHubMetadata
+	client     *eventhub.Hub
+	httpClient *http.Client
 }
 
 type eventHubMetadata struct {
@@ -54,8 +56,9 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureEventHubScaler{
-		metadata: parsedMetadata,
-		client:   hub,
+		metadata:   parsedMetadata,
+		client:     hub,
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -85,16 +88,6 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		return nil, fmt.Errorf("no storage connection string given")
 	}
 
-	if config.AuthParams["connection"] != "" {
-		meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
-	} else if config.TriggerMetadata["connectionFromEnv"] != "" {
-		meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
-	}
-
-	if len(meta.eventHubInfo.EventHubConnection) == 0 {
-		return nil, fmt.Errorf("no event hub connection string given")
-	}
-
 	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := config.TriggerMetadata["consumerGroup"]; ok {
 		meta.eventHubInfo.EventHubConsumerGroup = val
@@ -103,6 +96,38 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.eventHubInfo.BlobContainer = defaultBlobContainer
 	if val, ok := config.TriggerMetadata["blobContainer"]; ok {
 		meta.eventHubInfo.BlobContainer = val
+	}
+
+	if config.PodIdentity == "" || config.PodIdentity == v1alpha1.PodIdentityProviderNone {
+		if config.AuthParams["connection"] != "" {
+			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
+		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+			meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.EventHubConnection) == 0 {
+			return nil, fmt.Errorf("no event hub connection string given")
+		}
+	} else {
+		if config.TriggerMetadata["eventHubNamespace"] != "" {
+			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]
+		} else if config.TriggerMetadata["eventHubNamespaceFromEnv"] != "" {
+			meta.eventHubInfo.Namespace = config.ResolvedEnv[config.TriggerMetadata["eventHubNamespaceFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.Namespace) == 0 {
+			return nil, fmt.Errorf("no event hub namespace string given")
+		}
+
+		if config.TriggerMetadata["eventHubName"] != "" {
+			meta.eventHubInfo.EventHubName = config.TriggerMetadata["eventHubName"]
+		} else if config.TriggerMetadata["eventHubNameFromEnv"] != "" {
+			meta.eventHubInfo.EventHubName = config.ResolvedEnv[config.TriggerMetadata["eventHubNameFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.EventHubName) == 0 {
+			return nil, fmt.Errorf("no event hub name string given")
+		}
 	}
 
 	return &meta, nil
@@ -115,7 +140,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.httpClient, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)

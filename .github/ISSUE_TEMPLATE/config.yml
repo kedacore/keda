@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Ask a question or get support
+  - name: Ask a question about KEDA or get support
     url: https://github.com/kedacore/keda/discussions/new
     about: Ask a question or request support for using KEDA
+  - name: Ask a question related to governance
+    url: https://github.com/kedacore/governance/discussions/new
+    about: Ask a question about the governance of KEDA

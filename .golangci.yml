@@ -28,13 +28,13 @@ linters:
     - scopelint
     - structcheck
     - deadcode
-    #- depguard
-    #- dogsled
+    - depguard
+    - dogsled
     #- errcheck
     #- funlen
-    #- goconst
+    - goconst
     #- gocritic
-    #- gocyclo
+    - gocyclo
     - gosimple
     - stylecheck
     - unused

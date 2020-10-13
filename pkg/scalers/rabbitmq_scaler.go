@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/streadway/amqp"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -18,7 +17,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -37,6 +36,7 @@ type rabbitMQScaler struct {
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
 	channel    *amqp.Channel
+	httpClient *http.Client
 }
 
 type rabbitMQMetadata struct {
@@ -56,13 +56,17 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
 
 	if meta.protocol == httpProtocol {
-		return &rabbitMQScaler{metadata: meta}, nil
+		return &rabbitMQScaler{
+			metadata:   meta,
+			httpClient: httpClient,
+		}, nil
 	}
 
 	conn, ch, err := getConnectionAndChannel(meta.host)
@@ -74,6 +78,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		metadata:   meta,
 		connection: conn,
 		channel:    ch,
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -178,9 +183,8 @@ func (s *rabbitMQScaler) getQueueMessages() (int, error) {
 	return items.Messages, nil
 }
 
-func getJSON(url string, target interface{}) error {
-	var client = &http.Client{Timeout: 5 * time.Second}
-	r, err := client.Get(url)
+func getJSON(httpClient *http.Client, url string, target interface{}) error {
+	r, err := httpClient.Get(url)
 	if err != nil {
 		return err
 	}
@@ -212,7 +216,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, s.metadata.queueName)
 
 	info := queueInfo{}
-	err = getJSON(getQueueInfoManagementURI, &info)
+	err = getJSON(s.httpClient, getQueueInfoManagementURI, &info)
 
 	if err != nil {
 		return nil, err

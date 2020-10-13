@@ -19,8 +19,8 @@ limitations under the License.
 package keda
 
 import (
-	internalinterfaces "github.com/kedacore/keda/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kedacore/keda/pkg/generated/informers/externalversions/keda/v1alpha1"
+	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/keda/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

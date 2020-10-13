@@ -3,13 +3,14 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"testing"
 
-	"github.com/kedacore/keda/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
@@ -51,6 +52,18 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName}, false},
 }
 
+var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestData{
+	{map[string]string{}, true},
+	// Even though connection string is provided, this should fail because the eventhub Namespace is not provided explicitly when using Pod Identity
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	// properly formed event hub metadata with Pod Identity
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace}, false},
+	// missing eventHubname
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubNamespace": testEventHubNamespace}, true},
+	// missing eventHubNamespace
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName}, true},
+}
+
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
 	{&parseEventHubMetadataDataset[1], "azure-eventhub-none-testEventHubConsumerGroup"},
 }
@@ -76,6 +89,17 @@ func TestParseEventHubMetadata(t *testing.T) {
 			t.Error("Expected error and got success")
 		}
 	}
+
+	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
+		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: "Azure"})
+
+		if err != nil && !testData.isError {
+			t.Errorf("Expected success but got error: %s", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error and got success")
+		}
+	}
 }
 
 func TestGetUnprocessedEventCountInPartition(t *testing.T) {
@@ -88,7 +112,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection("none", storageConnectionString, "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(http.DefaultClient, "none", storageConnectionString, "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -415,7 +439,11 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockEventHubScaler := azureEventHubScaler{meta, nil}
+		mockEventHubScaler := azureEventHubScaler{
+			metadata:   meta,
+			client:     nil,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockEventHubScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

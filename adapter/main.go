@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -17,11 +19,11 @@ import (
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	prommetrics "github.com/kedacore/keda/pkg/metrics"
-	kedaprovider "github.com/kedacore/keda/pkg/provider"
-	"github.com/kedacore/keda/pkg/scaling"
-	"github.com/kedacore/keda/version"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider
@@ -39,7 +41,7 @@ var (
 	prometheusMetricsPath string
 )
 
-func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
+func (a *Adapter) makeProviderOrDie(globalHTTPTimeout time.Duration) provider.MetricsProvider {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -65,7 +67,7 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 		os.Exit(1)
 	}
 
-	handler := scaling.NewScaleHandler(kubeclient, nil, scheme)
+	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout)
 
 	namespace, err := getWatchNamespace()
 	if err != nil {
@@ -106,9 +108,22 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
+
 	cmd.Flags().Parse(os.Args)
 
-	kedaProvider := cmd.makeProviderOrDie()
+	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
+	if globalHTTPTimeoutStr == "" {
+		// default to 3 seconds if they don't pass the env var
+		globalHTTPTimeoutStr = "3000"
+	}
+
+	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	if err != nil {
+		logger.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
+		os.Exit(1)
+	}
+
+	kedaProvider := cmd.makeProviderOrDie(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)

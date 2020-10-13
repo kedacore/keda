@@ -1,9 +1,10 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 const (
@@ -147,7 +148,13 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		cache := &sessionCache{metricValue: 1, metricThreshold: 2}
-		mockLogAnalyticsScaler := azureLogAnalyticsScaler{meta, cache, "test-so", "test-ns"}
+		mockLogAnalyticsScaler := azureLogAnalyticsScaler{
+			metadata:   meta,
+			cache:      cache,
+			name:       "test-so",
+			namespace:  "test-ns",
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

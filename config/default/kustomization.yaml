@@ -19,7 +19,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 commonLabels:
   app.kubernetes.io/part-of: keda-operator
-  app.kubernetes.io/version: v2
+  app.kubernetes.io/version: main
 
 
 resources:

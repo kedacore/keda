@@ -17,7 +17,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -28,7 +28,8 @@ const (
 )
 
 type prometheusScaler struct {
-	metadata *prometheusMetadata
+	metadata   *prometheusMetadata
+	httpClient *http.Client
 }
 
 type prometheusMetadata struct {
@@ -60,7 +61,8 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
-		metadata: meta,
+		metadata:   meta,
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -132,7 +134,11 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
-	r, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return -1, err
+	}
+	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
 	}

@@ -1,14 +1,14 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= v2
+VERSION		   ?= main
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
 
-IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:v2
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:main
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -130,9 +130,9 @@ undeploy:
 build: manifests set-version manager adapter
 
 # Build the docker image
-docker-build: build
-	docker build . -t ${IMAGE_CONTROLLER}
-	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} .
+docker-build:
+	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
+	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION}
 
 # Build KEDA Operator binary
 .PHONY: manager
@@ -233,9 +233,6 @@ clientset-verify: clientset-prepare
 .PHONY: clientset-generate
 clientset-generate: clientset-prepare
 	./hack/update-codegen.sh
-	find ./pkg/generated -type f -name "*.go" |\
-	xargs sed -i".out" -e "s#github.com/kedacore/keda/api/keda/v1alpha1#github.com/kedacore/keda/api/v1alpha1#g"
-	find ./pkg/generated -type f -name "*.go.out" | xargs rm -rf
 	rm -rf api/keda
 
 ##################################################

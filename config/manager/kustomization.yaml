@@ -6,4 +6,4 @@ kind: Kustomization
 images:
 - name: docker.io/kedacore/keda
   newName: docker.io/kedacore/keda
-  newTag: v2
+  newTag: main

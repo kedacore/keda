@@ -3,9 +3,10 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
-	"github.com/kedacore/keda/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,8 +15,8 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 type azureQueueScaler struct {
 	metadata    *azureQueueMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
+	httpClient  *http.Client
 }
 
 type azureQueueMetadata struct {
@@ -48,6 +50,7 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureQueueScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -107,10 +110,11 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	return &meta, config.PodIdentity, nil
 }
 
-// GetScaleDecision is a func
+// IsActive determines whether this scaler is currently active
 func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := azure.GetAzureQueueLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,
@@ -148,6 +152,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := azure.GetAzureQueueLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,

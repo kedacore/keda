@@ -2,10 +2,12 @@ package scalers
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 const (
@@ -68,22 +70,35 @@ var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
 	{&parseServiceBusMetadataDataset[3], "azure-servicebus-testtopic-testsubscription"},
 }
 
+var commonHTTPClient = &http.Client{
+	Timeout: 300 * time.Millisecond,
+}
+
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
-	{metadata: &azureServiceBusMetadata{
-		entityType: queue,
-		queueName:  queueName,
-	}},
-	{metadata: &azureServiceBusMetadata{
-		entityType:       subscription,
-		topicName:        topicName,
-		subscriptionName: subscriptionName,
-	}},
-	{metadata: &azureServiceBusMetadata{
-		entityType:       subscription,
-		topicName:        topicName,
-		subscriptionName: subscriptionName,
+	{
+		metadata: &azureServiceBusMetadata{
+			entityType: queue,
+			queueName:  queueName,
+		},
+		httpClient: commonHTTPClient,
 	},
-		podIdentity: kedav1alpha1.PodIdentityProviderAzure},
+	{
+		metadata: &azureServiceBusMetadata{
+			entityType:       subscription,
+			topicName:        topicName,
+			subscriptionName: subscriptionName,
+		},
+		httpClient: commonHTTPClient,
+	},
+	{
+		metadata: &azureServiceBusMetadata{
+			entityType:       subscription,
+			topicName:        topicName,
+			subscriptionName: subscriptionName,
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+		httpClient:  commonHTTPClient,
+	},
 }
 
 func TestParseServiceBusMetadata(t *testing.T) {
@@ -140,7 +155,11 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAzServiceBusScalerScaler := azureServiceBusScaler{meta, testData.metadataTestData.podIdentity}
+		mockAzServiceBusScalerScaler := azureServiceBusScaler{
+			metadata:    meta,
+			podIdentity: testData.metadataTestData.podIdentity,
+			httpClient:  http.DefaultClient,
+		}
 
 		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

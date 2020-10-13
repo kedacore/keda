@@ -1,4 +1,4 @@
-name: release build
+name: release-build
 on:
   push:
     tags:
@@ -8,7 +8,7 @@ jobs:
     name: Push Release
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:main
     steps:
       - name: Check out code
         uses: actions/checkout@v1
@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 1
 
       - name: Go modules cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2.1.3
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -33,20 +33,20 @@ jobs:
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
 
-      - name: Publish KEDA images to Docker Hub
-        run: make publish
+      - name: Release Deployment YAML file
+        run: make release
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Release Deployment YAML file
-        run: make release
+      - name: Publish KEDA images to Docker Hub
+        run: make publish
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
         # Get release information to determine id of the current release
       - name: Get Release
         id: get-release-info
-        uses: bruceadams/get-release@v1.2.0
+        uses: bruceadams/get-release@v1.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

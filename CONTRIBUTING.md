@@ -23,18 +23,17 @@ There are many areas we can use contributions - ranging from code, documentation
 
 ## Project governance
 
-KEDA project is an open source project governed according to rules described in [`GOVERNANCE`](GOVERNANCE.md). If you
-would love to become a maintainer to support our project please create an issue as described in [`GOVERNANCE`](GOVERNANCE.md).
+You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
 
 ## Getting Help
 
-If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community-standup) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
+If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
 
 ## Contributing Scalers
 
-One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/master/pkg/scalers).  When writing a scaler, please consider:
+One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/main/pkg/scalers).  When writing a scaler, please consider:
 
-1. Is this an event source that many others will access from Kubernetes? If not, potentially consider [creating an external scaler](https://github.com/kedacore/keda/blob/master/pkg/scalers/externalscaler/externalscaler.proto).
+1. Is this an event source that many others will access from Kubernetes? If not, potentially consider [creating an external scaler](https://github.com/kedacore/keda/blob/main/pkg/scalers/externalscaler/externalscaler.proto).
 1. Provide tests
 1. Provide [documentation and examples](https://github.com/kedacore/keda-docs#adding-scaler-documentation) for [keda.sh](https://keda.sh)
 
@@ -91,7 +90,7 @@ No worries - You can easily replay your changes, sign them and force push them!
 
 ```
 git checkout <branch-name>
-git reset $(git merge-base master <branch-name>)
+git reset $(git merge-base main <branch-name>)
 git add -A
 git commit -sm "one commit on <branch-name>"
 git push --force

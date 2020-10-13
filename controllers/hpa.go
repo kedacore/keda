@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	version "github.com/kedacore/keda/version"
+	version "github.com/kedacore/keda/v2/version"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/controllers/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
 )
 
 const (

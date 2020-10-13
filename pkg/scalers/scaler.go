@@ -2,12 +2,13 @@ package scalers
 
 import (
 	"context"
+	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 // Scaler interface
@@ -38,6 +39,9 @@ type PushScaler interface {
 type ScalerConfig struct {
 	// Name used for external scalers
 	Name string
+
+	// The timeout to be used on all HTTP requests from the controller
+	GlobalHTTPTimeout time.Duration
 
 	// Namespace used for external scalers
 	Namespace string

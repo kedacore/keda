@@ -1,9 +1,10 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 var testAzBlobResolvedEnv = map[string]string{
@@ -68,7 +69,11 @@ func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAzBlobScaler := azureBlobScaler{meta, podIdentity}
+		mockAzBlobScaler := azureBlobScaler{
+			metadata:    meta,
+			podIdentity: podIdentity,
+			httpClient:  http.DefaultClient,
+		}
 
 		metricSpec := mockAzBlobScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

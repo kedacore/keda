@@ -30,9 +30,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/controllers"
-	"github.com/kedacore/keda/version"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/controllers"
+	"github.com/kedacore/keda/v2/version"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -111,7 +111,7 @@ func main() {
 
 	setupLog.Info("Starting manager")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	setupLog.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))
+	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
 	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 

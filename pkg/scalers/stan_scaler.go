@@ -15,7 +15,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type monitorChannelInfo struct {
@@ -41,6 +41,7 @@ type monitorSubscriberInfo struct {
 type stanScaler struct {
 	channelInfo *monitorChannelInfo
 	metadata    stanMetadata
+	httpClient  *http.Client
 }
 
 type stanMetadata struct {
@@ -68,6 +69,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
 		metadata:    stanMetadata,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -111,14 +113,22 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	monitoringEndpoint := s.getMonitoringEndpoint()
 
-	resp, err := http.Get(monitoringEndpoint)
+	req, err := http.NewRequest("GET", monitoringEndpoint, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		stanLog.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
 		return false, err
 	}
 
 	if resp.StatusCode == 404 {
-		baseResp, err := http.Get(s.getSTANChannelsEndpoint())
+		req, err := http.NewRequest("GET", s.getSTANChannelsEndpoint(), nil)
+		if err != nil {
+			return false, err
+		}
+		baseResp, err := s.httpClient.Do(req)
 		if err != nil {
 			return false, err
 		}
@@ -201,7 +211,11 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 //GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	resp, err := http.Get(s.getMonitoringEndpoint())
+	req, err := http.NewRequest("GET", s.getMonitoringEndpoint(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
 
 	if err != nil {
 		stanLog.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)

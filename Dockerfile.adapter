@@ -1,5 +1,7 @@
 # Build the manager binary
-FROM golang:1.15.1 as builder
+FROM golang:1.15.5 as builder
+
+ARG BUILD_VERSION
 
 WORKDIR /workspace
 
@@ -26,7 +28,7 @@ COPY .git/ .git/
 RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
 
 # Build
-RUN make adapter
+RUN VERSION=${BUILD_VERSION} make adapter
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kedacore/keda/pkg/scalers/liiklus"
-	mock_liiklus "github.com/kedacore/keda/pkg/scalers/liiklus/mocks"
+	"github.com/kedacore/keda/v2/pkg/scalers/liiklus"
+	mock_liiklus "github.com/kedacore/keda/v2/pkg/scalers/liiklus/mocks"
 	"github.com/pkg/errors"
 )
 

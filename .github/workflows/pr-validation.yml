@@ -8,7 +8,7 @@ jobs:
     name: Validate PR
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:v2
+    container: kedacore/build-tools:main
     steps:
       - name: Check out code
         uses: actions/checkout@v1
@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 1
 
       - name: Go modules cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2.1.3
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -36,14 +36,14 @@ jobs:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v1
-      - uses: actions/setup-go@v2-beta
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v2.1.4
+      - uses: actions/setup-go@v2
         with:
-          go-version: 1.15.1
+          go-version: 1.15.5
       - name: Get golangci
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.31.0
-      - uses: pre-commit/action@v1.0.1
+      - uses: pre-commit/action@v2.0.0
 
   codeScanning:
     name: Code Scanning
@@ -57,7 +57,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v1
       with:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.

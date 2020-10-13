@@ -4,6 +4,7 @@
 
 ## History
 
+- [Unreleased](#unreleased)
 - [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
@@ -13,10 +14,25 @@
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
+## Unreleased
+
+### New
+- Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
+
+### Improvements
+- Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
+- Bug fix in aws_iam_authorization to utilize correct secret from env key name ([PR #1332](https://github.com/kedacore/keda/pull/1332))
+
+### Breaking Changes
+
+### Other
+- Bump go module version to v2 ([#1324](https://github.com/kedacore/keda/pull/1324))
+
 ## v2.0.0
 
 ### New
 
+- KEDA uses a dedicated [HTTP client](https://pkg.go.dev/net/http#Client), connection pool, and (optional) TLS certificate for each configured scaler
 - KEDA scales any CustomResource that implements Scale subresource ([#703](https://github.com/kedacore/keda/issues/703))
 - Provide KEDA go-client ([#494](https://github.com/kedacore/keda/issues/494))
 - Define KEDA readiness and liveness probes ([#788](https://github.com/kedacore/keda/issues/788))
@@ -43,6 +59,7 @@
 - Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 - Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
 - Improved GCP PubSub Scaler performance by closing the client correctly ([#1087](https://github.com/kedacore/keda/pull/1087))
+- Added support for Trigger Authentication for GCP PubSub scaler ([#1291](https://github.com/kedacore/keda/pull/1291))
 
 ### Breaking Changes
 

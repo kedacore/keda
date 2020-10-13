@@ -18,10 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/pkg/scalers"
-	"github.com/kedacore/keda/pkg/scaling/executor"
-	"github.com/kedacore/keda/pkg/scaling/resolver"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scaling/executor"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
 
 const (
@@ -42,15 +42,17 @@ type scaleHandler struct {
 	logger            logr.Logger
 	scaleLoopContexts *sync.Map
 	scaleExecutor     executor.ScaleExecutor
+	globalHTTPTimeout time.Duration
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
 		scaleLoopContexts: &sync.Map{},
 		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme),
+		globalHTTPTimeout: globalHTTPTimeout,
 	}
 }
 
@@ -325,30 +327,31 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	}
 
 	for i, trigger := range withTriggers.Spec.Triggers {
-		config := &scalers.ScalerConfig{
-			Name:            withTriggers.Name,
-			Namespace:       withTriggers.Namespace,
-			TriggerMetadata: trigger.Metadata,
-			ResolvedEnv:     resolvedEnv,
-			AuthParams:      make(map[string]string),
-		}
-		if podTemplateSpec != nil {
-			authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
+		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
 
-			if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
-				serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
-				serviceAccount := &corev1.ServiceAccount{}
-				err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
-				if err != nil {
-					closeScalers(scalersRes)
-					return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
-				}
-				authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-			} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
-				authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+			serviceAccount := &corev1.ServiceAccount{}
+			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
+			if err != nil {
+				closeScalers(scalersRes)
+				return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
 			}
-			config.AuthParams = authParams
-			config.PodIdentity = podIdentity
+			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		} else {
+			authParams, _ = resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, nil, withTriggers.Namespace)
+		}
+
+		config := &scalers.ScalerConfig{
+			Name:              withTriggers.Name,
+			Namespace:         withTriggers.Namespace,
+			TriggerMetadata:   trigger.Metadata,
+			ResolvedEnv:       resolvedEnv,
+			AuthParams:        authParams,
+			PodIdentity:       podIdentity,
+			GlobalHTTPTimeout: h.globalHTTPTimeout,
 		}
 
 		scaler, err := buildScaler(trigger.Type, config)
@@ -400,6 +403,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
+		// currently, the Artemis Scaler defines its own HTTP client, with a hard-coded 3 second
+		// timeout. not sure why that is?
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(config)
