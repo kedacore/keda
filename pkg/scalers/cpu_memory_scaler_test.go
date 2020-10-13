@@ -31,7 +31,10 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 
 func TestCPUMemoryParseMetadata(t *testing.T) {
 	for _, testData := range testCPUMemoryMetadata {
-		_, err := parseResourceMetadata(testData.metadata)
+		config := &ScalerConfig{
+			TriggerMetadata: testData.metadata,
+		}
+		_, err := parseResourceMetadata(config)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -42,7 +45,10 @@ func TestCPUMemoryParseMetadata(t *testing.T) {
 }
 
 func TestGetMetricSpecForScaling(t *testing.T) {
-	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, validCPUMemoryMetadata)
+	config := &ScalerConfig{
+		TriggerMetadata: validCPUMemoryMetadata,
+	}
+	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
 	metricSpec := scaler.GetMetricSpecForScaling()
 
 	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
