@@ -187,63 +187,6 @@ spec:
                                 type: integer
                             type: object
                         type: object
-                      resourceMetrics:
-                        items:
-                          description: ResourceMetricSource indicates how to scale
-                            on a resource metric known to Kubernetes, as specified
-                            in requests and limits, describing each pod in the current
-                            scale target (e.g. CPU or memory).  The values will be
-                            averaged together before being compared to the target.  Such
-                            metrics are built in to Kubernetes, and have special scaling
-                            options on top of those available to normal per-pod metrics
-                            using the "pods" source.  Only one "target" type should
-                            be set.
-                          properties:
-                            name:
-                              description: name is the name of the resource in question.
-                              type: string
-                            target:
-                              description: target specifies the target value for the
-                                given metric
-                              properties:
-                                averageUtilization:
-                                  description: averageUtilization is the target value
-                                    of the average of the resource metric across all
-                                    relevant pods, represented as a percentage of
-                                    the requested value of the resource for the pods.
-                                    Currently only valid for Resource metric source
-                                    type
-                                  format: int32
-                                  type: integer
-                                averageValue:
-                                  anyOf:
-                                  - type: integer
-                                  - type: string
-                                  description: averageValue is the target value of
-                                    the average of the metric across all relevant
-                                    pods (as a quantity)
-                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                  x-kubernetes-int-or-string: true
-                                type:
-                                  description: type represents whether the metric
-                                    type is Utilization, Value, or AverageValue
-                                  type: string
-                                value:
-                                  anyOf:
-                                  - type: integer
-                                  - type: string
-                                  description: value is the target value of the metric
-                                    (as a quantity).
-                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                  x-kubernetes-int-or-string: true
-                              required:
-                              - type
-                              type: object
-                          required:
-                          - name
-                          - target
-                          type: object
-                        type: array
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
@@ -342,6 +285,10 @@ spec:
               originalReplicaCount:
                 format: int32
                 type: integer
+              resourceMetricNames:
+                items:
+                  type: string
+                type: array
               scaleTargetGVKR:
                 description: GroupVersionKindResource provides unified structure for
                   schema.GroupVersionKind and Resource

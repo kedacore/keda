@@ -208,7 +208,12 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			if scaler.GetMetricSpecForScaling()[0].External != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			}
+			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
+			}
 			break
 		}
 	}
@@ -224,10 +229,15 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 	for _, scaler := range scalers {
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
+		metricSpecs := scaler.GetMetricSpecForScaling()
+		//skip cpu/memory resource scaler
+		if metricSpecs[0].External == nil {
+			continue
+		}
+
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-		metricSpecs := scaler.GetMetricSpecForScaling()
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
@@ -254,7 +264,9 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 			scalerLogger.Info("Scaler is active")
 		}
 	}
-	maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
+	if targetAverageValue != 0 {
+		maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
+	}
 	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
 }
@@ -405,6 +417,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
 		return scalers.NewAzureServiceBusScaler(config)
+	case "cpu":
+		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "external":
@@ -419,6 +433,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewKafkaScaler(config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
+	case "memory":
+		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
 	case "mysql":
