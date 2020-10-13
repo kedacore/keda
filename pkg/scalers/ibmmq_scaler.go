@@ -36,17 +36,19 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
+// Default variables and settings
 const (
-	IBMMQQueueDepthMetricName = "currentQueueDepth"
+	ibmMqQueueDepthMetricName = "currentQueueDepth"
 	defaultTargetQueueDepth   = 20
 	defaultTlsDisabled        = false
-	IBMMQMetricType           = "External"
 )
 
+// Assigns IBMMQMetadata struct data pointer to metadata variable
 type IBMMQScaler struct {
 	metadata *IBMMQMetadata
 }
 
+// Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
 	host             string
 	queueName        string
@@ -56,15 +58,17 @@ type IBMMQMetadata struct {
 	tlsDisabled      bool
 }
 
-// Structured response from MQ admin REST query
+// Full structured response from MQ admin REST query
 type CommandResponse struct {
 	CommandResponse []Response `json:"commandResponse"`
 }
 
+// The body of the response returned from the MQ admin query
 type Response struct {
 	Parameters Parameters `json:"parameters"`
 }
 
+// Current depth of the IBM MQ Queue
 type Parameters struct {
 	Curdepth int `json:"curdepth"`
 }
@@ -80,10 +84,10 @@ func NewIBMMQScaler(metadata, authParams map[string]string) (Scaler, error) {
 }
 
 func (s *IBMMQScaler) Close() error {
-
 	return nil
 }
 
+// parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
 func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
@@ -111,7 +115,7 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 			meta.targetQueueDepth = queueDepth
 		}
 	} else {
-		fmt.Println("No target length defined - setting default")
+		fmt.Println("No target depth defined - setting default")
 		meta.targetQueueDepth = defaultTargetQueueDepth
 	}
 
@@ -141,20 +145,19 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 	return &meta, nil
 }
 
-// IsActive returns true if there are pending messages to be processed
+// IsActive returns true if there are messages to be processed/if we need to scale from zero
 func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 	queueDepth, err := s.getQueueDepthViaHttp()
 	if err != nil {
 		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
-
 	return queueDepth > 0, nil
 }
 
+// getQueueDepthViaHttp returns the depth of the MQ Queue from the Admin endpoint
 func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 
 	queue := s.metadata.queueName
-
 	url := s.metadata.host
 
 	var requestJson = []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queue + `", "responseParameters" : ["CURDEPTH"]}`)
@@ -177,7 +180,6 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	var response CommandResponse
-
 	json.Unmarshal(body, &response)
 
 	return response.CommandResponse[0].Parameters.Curdepth, nil
@@ -207,7 +209,7 @@ func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: IBMMQQueueDepthMetricName,
+		MetricName: ibmMqQueueDepthMetricName,
 		Value:      *resource.NewQuantity(int64(queueDepth), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
