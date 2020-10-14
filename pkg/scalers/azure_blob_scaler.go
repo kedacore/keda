@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
@@ -26,7 +27,7 @@ const (
 
 type azureBlobScaler struct {
 	metadata    *azureBlobMetadata
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azureBlobMetadata struct {
@@ -41,8 +42,8 @@ type azureBlobMetadata struct {
 var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
 
 // NewAzureBlobScaler creates a new azureBlobScaler
-func NewAzureBlobScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
-	meta, podIdentity, err := parseAzureBlobMetadata(metadata, resolvedEnv, authParams, podIdentity)
+func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
+	meta, podIdentity, err := parseAzureBlobMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure blob metadata: %s", err)
 	}
@@ -53,13 +54,13 @@ func NewAzureBlobScaler(resolvedEnv, metadata, authParams map[string]string, pod
 	}, nil
 }
 
-func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string, podAuth string) (*azureBlobMetadata, string, error) {
+func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alpha1.PodIdentityProvider, error) {
 	meta := azureBlobMetadata{}
 	meta.targetBlobCount = defaultTargetBlobCount
 	meta.blobDelimiter = defaultBlobDelimiter
 	meta.blobPrefix = defaultBlobPrefix
 
-	if val, ok := metadata[blobCountMetricName]; ok {
+	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
 		blobCount, err := strconv.Atoi(val)
 		if err != nil {
 			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
@@ -69,51 +70,51 @@ func parseAzureBlobMetadata(metadata, resolvedEnv, authParams map[string]string,
 		meta.targetBlobCount = blobCount
 	}
 
-	if val, ok := metadata["blobContainerName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["blobContainerName"]; ok && val != "" {
 		meta.blobContainerName = val
 	} else {
 		return nil, "", fmt.Errorf("no blobContainerName given")
 	}
 
-	if val, ok := metadata["blobDelimiter"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok && val != "" {
 		meta.blobDelimiter = val
 	}
 
-	if val, ok := metadata["blobPrefix"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
 		meta.blobPrefix = val + meta.blobDelimiter
 	}
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" && val == "true" {
-		podAuth = "azure"
+	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" && val == "true" {
+		config.PodIdentity = kedav1alpha1.PodIdentityProviderAzure
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	if podAuth == "" || podAuth == "none" {
+	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
 		// Azure Blob Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
-		if authParams["connection"] != "" {
-			meta.connection = authParams["connection"]
-		} else if metadata["connectionFromEnv"] != "" {
-			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+		if config.AuthParams["connection"] != "" {
+			meta.connection = config.AuthParams["connection"]
+		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+			meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 		}
 
 		if len(meta.connection) == 0 {
 			return nil, "", fmt.Errorf("no connection setting given")
 		}
-	} else if podAuth == "azure" {
+	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
 		// If the Use AAD Pod Identity is present then check account name
-		if val, ok := metadata["accountName"]; ok && val != "" {
+		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
 			return nil, "", fmt.Errorf("no accountName given")
 		}
 	} else {
-		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", podAuth)
+		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
 	}
 
-	return &meta, podAuth, nil
+	return &meta, config.PodIdentity, nil
 }
 
 // GetScaleDecision is a func

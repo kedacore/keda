@@ -28,7 +28,7 @@ var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, err := parsePostgreSQLMetadata(map[string]string{"test_connection_string": "test_connection_string"}, testData.metadataTestData.metdadata, nil)
+		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: map[string]string{"test_connection_string": "test_connection_string"}, TriggerMetadata: testData.metadataTestData.metdadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

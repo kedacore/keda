@@ -72,8 +72,8 @@ type huaweiAuthorizationMetadata struct {
 var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
-func NewHuaweiCloudeyeScaler(metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseHuaweiCloudeyeMetadata(metadata, authParams)
+func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseHuaweiCloudeyeMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
 	}
@@ -83,38 +83,38 @@ func NewHuaweiCloudeyeScaler(metadata, authParams map[string]string) (Scaler, er
 	}, nil
 }
 
-func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huaweiCloudeyeMetadata, error) {
+func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata, error) {
 	meta := huaweiCloudeyeMetadata{}
 
 	meta.metricCollectionTime = defaultCloudeyeMetricCollectionTime
 	meta.metricFilter = defaultCloudeyeMetricFilter
 	meta.metricPeriod = defaultCloudeyeMetricPeriod
 
-	if val, ok := metadata["namespace"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
 		meta.namespace = val
 	} else {
 		return nil, fmt.Errorf("namespace not given")
 	}
 
-	if val, ok := metadata["metricName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
 		meta.metricsName = val
 	} else {
 		return nil, fmt.Errorf("metric Name not given")
 	}
 
-	if val, ok := metadata["dimensionName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["dimensionName"]; ok && val != "" {
 		meta.dimensionName = val
 	} else {
 		return nil, fmt.Errorf("dimension Name not given")
 	}
 
-	if val, ok := metadata["dimensionValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["dimensionValue"]; ok && val != "" {
 		meta.dimensionValue = val
 	} else {
 		return nil, fmt.Errorf("dimension Value not given")
 	}
 
-	if val, ok := metadata["targetMetricValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
 		targetMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing targetMetricValue metadata")
@@ -125,7 +125,7 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
-	if val, ok := metadata["minMetricValue"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
@@ -136,7 +136,7 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 		return nil, fmt.Errorf("min Metric Value not given")
 	}
 
-	if val, ok := metadata["metricCollectionTime"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
 		metricCollectionTime, err := strconv.Atoi(val)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing metricCollectionTime metadata")
@@ -145,11 +145,11 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 		}
 	}
 
-	if val, ok := metadata["metricFilter"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricFilter"]; ok && val != "" {
 		meta.metricFilter = val
 	}
 
-	if val, ok := metadata["metricPeriod"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["metricPeriod"]; ok && val != "" {
 		_, err := strconv.Atoi(val)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing metricPeriod metadata")
@@ -158,7 +158,7 @@ func parseHuaweiCloudeyeMetadata(metadata, authParams map[string]string) (*huawe
 		}
 	}
 
-	auth, err := gethuaweiAuthorization(authParams)
+	auth, err := gethuaweiAuthorization(config.AuthParams)
 	if err != nil {
 		return nil, err
 	}

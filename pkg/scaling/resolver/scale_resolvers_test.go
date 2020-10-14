@@ -21,6 +21,18 @@ var (
 	secretData                = "secretDataHere"
 	trueValue                 = true
 	falseValue                = false
+	envKey                    = "test-env-key"
+	envValue                  = "test-env-value"
+	dependentEnvKey           = "dependent-env-key"
+	dependentEnvValue         = "$(test-env-key)-dependent-env-value"
+	dependentEnvKey2          = "dependent-env-key2"
+	dependentEnvValue2        = "dependent-env-value2-$(test-env-key)"
+	escapedEnvKey             = "escaped-env-key"
+	escapedEnvValue           = "$$(test-env-key)-escaped-env-value"
+	emptyEnvKey               = "empty-env-key"
+	emptyEnvValue             = "$()-empty-env-value"
+	incompleteEnvKey          = "incomplete-env-key"
+	incompleteValue           = "$(test-env-key-incomplete-env-value"
 )
 
 type testMetadata struct {
@@ -137,7 +149,7 @@ func TestResolveAuthRef(t *testing.T) {
 		soar                *kedav1alpha1.ScaledObjectAuthRef
 		podSpec             *corev1.PodSpec
 		expected            map[string]string
-		expectedPodIdentity string
+		expectedPodIdentity kedav1alpha1.PodIdentityProvider
 	}{
 		{
 			name:     "foo",
@@ -205,7 +217,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: "none",
+			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
 		},
 	}
 	for _, test := range tests {
@@ -216,6 +228,119 @@ func TestResolveAuthRef(t *testing.T) {
 			}
 			if gotPodIdentity != test.expectedPodIdentity {
 				t.Errorf("Unexpected podidentity, wanted: %q got: %q", test.expectedPodIdentity, gotPodIdentity)
+			}
+		})
+	}
+}
+
+func TestResolveDependentEnv(t *testing.T) {
+	tests := []struct {
+		name      string
+		expected  map[string]string
+		container *corev1.Container
+	}{
+		{
+			name:     "dependent reference env",
+			expected: map[string]string{"test-env-key": "test-env-value", "dependent-env-key": "test-env-value-dependent-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+					{
+						Name:  dependentEnvKey,
+						Value: dependentEnvValue,
+					},
+				},
+			},
+		},
+		{
+			name:     "dependent reference env2",
+			expected: map[string]string{"test-env-key": "test-env-value", "dependent-env-key2": "dependent-env-value2-test-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+					{
+						Name:  dependentEnvKey2,
+						Value: dependentEnvValue2,
+					},
+				},
+			},
+		},
+		{
+			name:     "unchanged reference env",
+			expected: map[string]string{"dependent-env-key": "$(test-env-key)-dependent-env-value", "test-env-key": "test-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  dependentEnvKey,
+						Value: dependentEnvValue,
+					},
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+				},
+			},
+		},
+		{
+			name:     "escaped reference env",
+			expected: map[string]string{"test-env-key": "test-env-value", "escaped-env-key": "$(test-env-key)-escaped-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+					{
+						Name:  escapedEnvKey,
+						Value: escapedEnvValue,
+					},
+				},
+			},
+		},
+		{
+			name:     "empty reference env",
+			expected: map[string]string{"test-env-key": "test-env-value", "empty-env-key": "$()-empty-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+					{
+						Name:  emptyEnvKey,
+						Value: emptyEnvValue,
+					},
+				},
+			},
+		},
+		{
+			name:     "incomplete reference env",
+			expected: map[string]string{"test-env-key": "test-env-value", "incomplete-env-key": "$(test-env-key-incomplete-env-value"},
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{
+					{
+						Name:  envKey,
+						Value: envValue,
+					},
+					{
+						Name:  incompleteEnvKey,
+						Value: incompleteValue,
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			envMap, _ := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), test.container, namespace)
+			if diff := cmp.Diff(envMap, test.expected); diff != "" {
+				t.Errorf("Returned authParams are different: %s", diff)
 			}
 		})
 	}

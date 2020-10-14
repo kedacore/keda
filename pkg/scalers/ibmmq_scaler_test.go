@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// Test host URLs for validation 
+// Test host URLs for validation
 const (
 	testValidMQQueueURL   = "https://qmtest.qm2.eu-gb.mq.appdomain.cloud/ibmmq/rest/v2/admin/action/qmgr/QM1/mqsc"
 	testInvalidMQQueueURL = "testInvalidURL.com"
@@ -71,7 +71,7 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 // should error on missing required field
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		_, err := parseIBMMQMetadata(testData.metadata, testData.authParams)
+		_, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -91,7 +91,7 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 // Test that DefaultQueueDepth is set when targetQueueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
-		metadata, err := parseIBMMQMetadata(testData.metadata, testData.authParams)
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
@@ -105,11 +105,12 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 // Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		meta, err := parseIBMMQMetadata(testData.metadataTestData.metadata, testData.metadataTestData.authParams)
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockIBMMQScaler := IBMMQScaler{meta}
+		mockIBMMQScaler := IBMMQScaler{metadata}
 		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 

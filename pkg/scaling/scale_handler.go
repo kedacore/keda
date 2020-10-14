@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -207,7 +208,12 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			if scaler.GetMetricSpecForScaling()[0].External != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			}
+			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
+			}
 			break
 		}
 	}
@@ -223,28 +229,23 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 	for _, scaler := range scalers {
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
+		metricSpecs := scaler.GetMetricSpecForScaling()
+		//skip cpu/memory resource scaler
+		if metricSpecs[0].External == nil {
+			continue
+		}
+
 		isTriggerActive, err := scaler.IsActive(ctx)
 
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-		metricSpecs := scaler.GetMetricSpecForScaling()
 
-		var metricValue int64
-		var flag bool
-		for _, metric := range metricSpecs {
-			if metric.External.Target.AverageValue == nil {
-				metricValue = 0
-			} else {
-				metricValue, flag = metric.External.Target.AverageValue.AsInt64()
-				if !flag {
-					metricValue = 0
-				}
-			}
+		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-			targetAverageValue += metricValue
-		}
 		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
 
 		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
+
+		var metricValue int64
 
 		for _, m := range metrics {
 			if m.MetricName == "queueLength" {
@@ -263,9 +264,34 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 			scalerLogger.Info("Scaler is active")
 		}
 	}
-	maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
+	if targetAverageValue != 0 {
+		maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
+	}
 	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
+}
+
+func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {
+	var targetAverageValue int64
+	var metricValue int64
+	var flag bool
+	for _, metric := range metricSpecs {
+		if metric.External.Target.AverageValue == nil {
+			metricValue = 0
+		} else {
+			metricValue, flag = metric.External.Target.AverageValue.AsInt64()
+			if !flag {
+				metricValue = 0
+			}
+		}
+
+		targetAverageValue += metricValue
+	}
+	count := int64(len(metricSpecs))
+	if count != 0 {
+		return targetAverageValue / count
+	}
+	return 0
 }
 
 func devideWithCeil(x, y int64) int64 {
@@ -300,6 +326,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 
 	for i, trigger := range withTriggers.Spec.Triggers {
 		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
+
 		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
@@ -313,7 +340,16 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 
-		scaler, err := buildScaler(withTriggers.Name, withTriggers.Namespace, trigger.Type, resolvedEnv, trigger.Metadata, authParams, podIdentity)
+		config := &scalers.ScalerConfig{
+			Name:            withTriggers.Name,
+			Namespace:       withTriggers.Namespace,
+			TriggerMetadata: trigger.Metadata,
+			ResolvedEnv:     resolvedEnv,
+			AuthParams:      authParams,
+			PodIdentity:     podIdentity,
+		}
+
+		scaler, err := buildScaler(trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
@@ -358,61 +394,65 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 	}
 }
 
-func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetadata, authParams map[string]string, podIdentity string) (scalers.Scaler, error) {
+func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
-		return scalers.NewArtemisQueueScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
-		return scalers.NewAwsCloudwatchScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsCloudwatchScaler(config)
 	case "aws-kinesis-stream":
-		return scalers.NewAwsKinesisStreamScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAwsSqsQueueScaler(config)
 	case "azure-blob":
-		return scalers.NewAzureBlobScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureBlobScaler(config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":
-		return scalers.NewAzureLogAnalyticsScaler(resolvedEnv, triggerMetadata, authParams, podIdentity, name, namespace)
+		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
-		return scalers.NewAzureMonitorScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureMonitorScaler(config)
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(resolvedEnv, triggerMetadata, authParams, podIdentity)
+		return scalers.NewAzureServiceBusScaler(config)
+	case "cpu":
+		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
-		return scalers.NewCronScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewCronScaler(config)
 	case "external":
-		return scalers.NewExternalScaler(name, namespace, triggerMetadata, resolvedEnv)
+		return scalers.NewExternalScaler(config)
 	case "external-push":
-		return scalers.NewExternalPushScaler(name, namespace, triggerMetadata, authParams)
+		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
-		return scalers.NewPubSubScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewPubSubScaler(config)
 	case "huawei-cloudeye":
-		return scalers.NewHuaweiCloudeyeScaler(triggerMetadata, authParams)
+		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":
-		return scalers.NewIBMMQScaler(triggerMetadata, authParams)
+		return scalers.NewIBMMQScaler(config)
 	case "kafka":
-		return scalers.NewKafkaScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewKafkaScaler(config)
 	case "liiklus":
-		return scalers.NewLiiklusScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewLiiklusScaler(config)
+	case "memory":
+		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
-		return scalers.NewMetricsAPIScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewMetricsAPIScaler(config)
 	case "mysql":
-		return scalers.NewMySQLScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewMySQLScaler(config)
 	case "postgresql":
-		return scalers.NewPostgreSQLScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewPostgreSQLScaler(config)
 	case "prometheus":
-		return scalers.NewPrometheusScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewPrometheusScaler(config)
 	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRedisScaler(config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(resolvedEnv, triggerMetadata, authParams)
+		return scalers.NewRedisStreamsScaler(config)
 	case "stan":
-		return scalers.NewStanScaler(resolvedEnv, triggerMetadata)
+		return scalers.NewStanScaler(config)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
@@ -420,31 +460,29 @@ func buildScaler(name, namespace, triggerType string, resolvedEnv, triggerMetada
 }
 
 func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers, error) {
-	withTriggers := &kedav1alpha1.WithTriggers{}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		withTriggers = &kedav1alpha1.WithTriggers{
+		return &kedav1alpha1.WithTriggers{
 			TypeMeta:   obj.TypeMeta,
 			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
 			},
-		}
+		}, nil
 	case *kedav1alpha1.ScaledJob:
-		withTriggers = &kedav1alpha1.WithTriggers{
+		return &kedav1alpha1.WithTriggers{
 			TypeMeta:   obj.TypeMeta,
 			ObjectMeta: obj.ObjectMeta,
 			Spec: kedav1alpha1.WithTriggersSpec{
 				PollingInterval: obj.Spec.PollingInterval,
 				Triggers:        obj.Spec.Triggers,
 			},
-		}
+		}, nil
 	default:
 		// here could be the conversion from unknown Duck type potentially in the future
 		return nil, fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
-	return withTriggers, nil
 }
 
 func closeScalers(scalers []scalers.Scaler) {

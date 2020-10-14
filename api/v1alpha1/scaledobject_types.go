@@ -54,7 +54,6 @@ type AdvancedConfig struct {
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
 type HorizontalPodAutoscalerConfig struct {
-	ResourceMetrics []*autoscalingv2beta2.ResourceMetricSource `json:"resourceMetrics,omitempty"`
 	// +optional
 	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
@@ -93,6 +92,8 @@ type ScaledObjectStatus struct {
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
+	// +optional
+	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
 }

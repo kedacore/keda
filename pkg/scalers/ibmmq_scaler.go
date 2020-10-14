@@ -74,8 +74,8 @@ type Parameters struct {
 }
 
 // NewIBMMQScaler creates a new IBM MQ scaler
-func NewIBMMQScaler(metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseIBMMQMetadata(metadata, authParams)
+func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
 	}
@@ -88,10 +88,10 @@ func (s *IBMMQScaler) Close() error {
 }
 
 // parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
-func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata, error) {
+func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
-	if val, ok := metadata["host"]; ok {
+	if val, ok := config.TriggerMetadata["host"]; ok {
 		_, err := url.ParseRequestURI(val)
 		if err != nil {
 			return nil, fmt.Errorf("invalid URL: %s", err)
@@ -101,13 +101,13 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 		return nil, fmt.Errorf("no host URI given")
 	}
 
-	if val, ok := metadata["queueName"]; ok {
+	if val, ok := config.TriggerMetadata["queueName"]; ok {
 		meta.queueName = val
 	} else {
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	if val, ok := metadata["queueDepth"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["queueDepth"]; ok && val != "" {
 		queueDepth, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
@@ -119,7 +119,7 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 		meta.targetQueueDepth = defaultTargetQueueDepth
 	}
 
-	if val, ok := metadata["tls"]; ok {
+	if val, ok := config.TriggerMetadata["tls"]; ok {
 		tlsDisabled, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tls setting: %s", err)
@@ -130,13 +130,13 @@ func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata,
 		meta.tlsDisabled = defaultTlsDisabled
 	}
 
-	if val, ok := authParams["username"]; ok {
+	if val, ok := config.AuthParams["username"]; ok {
 		meta.username = val
 	} else {
 		return nil, fmt.Errorf("no username given")
 	}
 
-	if val, ok := authParams["password"]; ok {
+	if val, ok := config.AuthParams["password"]; ok {
 		meta.password = val
 	} else {
 		return nil, fmt.Errorf("no password given")

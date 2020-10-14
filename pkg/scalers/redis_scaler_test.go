@@ -56,7 +56,7 @@ var redisMetricIdentifiers = []redisMetricIdentifier{
 func TestRedisParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testRedisMetadata {
-		_, err := parseRedisMetadata(testData.metadata, testRedisResolvedEnv, testData.authParams)
+		_, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
@@ -69,7 +69,7 @@ func TestRedisParseMetadata(t *testing.T) {
 
 func TestRedisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range redisMetricIdentifiers {
-		meta, err := parseRedisMetadata(testData.metadataTestData.metadata, testRedisResolvedEnv, testData.metadataTestData.authParams)
+		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

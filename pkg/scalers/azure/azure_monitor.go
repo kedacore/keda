@@ -11,6 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"k8s.io/klog"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 // Much of the code in this file is taken from the Azure Kubernetes Metrics Adapter
@@ -43,10 +45,10 @@ type MonitorInfo struct {
 }
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity string) (int32, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
 	var podIdentityEnabled = true
 
-	if podIdentity == "" || podIdentity == "none" {
+	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
 		podIdentityEnabled = false
 	}
 

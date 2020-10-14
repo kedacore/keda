@@ -55,8 +55,8 @@ type queueInfo struct {
 var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
-func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseRabbitMQMetadata(resolvedEnv, metadata, authParams)
+func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
@@ -77,12 +77,12 @@ func NewRabbitMQScaler(resolvedEnv, metadata, authParams map[string]string) (Sca
 	}, nil
 }
 
-func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) (*rabbitMQMetadata, error) {
+func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
 	// Resolve protocol type
 	meta.protocol = defaultProtocol
-	if val, ok := metadata["protocol"]; ok {
+	if val, ok := config.TriggerMetadata["protocol"]; ok {
 		if val == amqpProtocol || val == httpProtocol {
 			meta.protocol = val
 		} else {
@@ -91,25 +91,25 @@ func parseRabbitMQMetadata(resolvedEnv, metadata, authParams map[string]string) 
 	}
 
 	// Resolve host value
-	if authParams["host"] != "" {
-		meta.host = authParams["host"]
-	} else if metadata["host"] != "" {
-		meta.host = metadata["host"]
-	} else if metadata["hostFromEnv"] != "" {
-		meta.host = resolvedEnv[metadata["hostFromEnv"]]
+	if config.AuthParams["host"] != "" {
+		meta.host = config.AuthParams["host"]
+	} else if config.TriggerMetadata["host"] != "" {
+		meta.host = config.TriggerMetadata["host"]
+	} else if config.TriggerMetadata["hostFromEnv"] != "" {
+		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("no host setting given")
 	}
 
 	// Resolve queueName
-	if val, ok := metadata["queueName"]; ok {
+	if val, ok := config.TriggerMetadata["queueName"]; ok {
 		meta.queueName = val
 	} else {
 		return nil, fmt.Errorf("no queue name given")
 	}
 
 	// Resolve queueLength
-	if val, ok := metadata[rabbitQueueLengthMetricName]; ok {
+	if val, ok := config.TriggerMetadata[rabbitQueueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
