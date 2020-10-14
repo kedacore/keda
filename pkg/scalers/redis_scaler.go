@@ -166,33 +166,26 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 }
 
 func getRedisListLength(client *redis.Client, listName string) (int64, error) {
-	listType := client.Type(listName)
+	luaScript := `
+		local listName = KEYS[1]
+		local listType = redis.call('type', listName).ok
+		local cmd = {
+			zset = 'zcard',
+			set = 'scard',
+			list = 'llen',
+			hash = 'hlen',
+			none = 'llen'
+		}
 
-	if listType.Err() != nil {
-		return -1, listType.Err()
-	}
+		return redis.call(cmd[listType], listName)
+	`
 
-	var cmd *redis.IntCmd
-	switch listType.Val() {
-	case "list", "none":
-		cmd = client.LLen(listName)
-	case "set":
-		cmd = client.SCard(listName)
-	case "hash":
-		cmd = client.HLen(listName)
-	case "zset":
-		cmd = client.ZCard(listName)
-	default:
-		cmd = nil
-	}
-
-	if cmd == nil {
-		return -1, fmt.Errorf("list must be of type: list, none, set, hash or zset but was %s", listType.Val())
-	}
+	cmd := client.Eval(luaScript, []string{listName})
 	if cmd.Err() != nil {
 		return -1, cmd.Err()
 	}
-	return cmd.Result()
+
+	return cmd.Int64()
 }
 
 func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
