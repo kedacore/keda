@@ -8,6 +8,8 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/azure-storage-queue-go/azqueue"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
@@ -40,9 +42,9 @@ func (e StorageEndpointType) Name() string {
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
+func ParseAzureStorageQueueConnection(podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity {
-	case "azure":
+	case kedav1alpha1.PodIdentityProviderAzure:
 		token, err := GetAzureADPodIdentityToken("https://storage.azure.com/")
 		if err != nil {
 			return nil, nil, err
@@ -55,7 +57,7 @@ func ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName
 		credential := azqueue.NewTokenCredential(token.AccessToken, nil)
 		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.queue.core.windows.net", accountName))
 		return credential, endpoint, nil
-	case "", "none":
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, QueueEndpoint)
 		if err != nil {
 			return nil, nil, err
@@ -73,9 +75,9 @@ func ParseAzureStorageQueueConnection(podIdentity, connectionString, accountName
 }
 
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(podIdentity, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
+func ParseAzureStorageBlobConnection(podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity {
-	case "azure":
+	case kedav1alpha1.PodIdentityProviderAzure:
 		token, err := GetAzureADPodIdentityToken("https://storage.azure.com/")
 		if err != nil {
 			return nil, nil, err
@@ -88,7 +90,7 @@ func ParseAzureStorageBlobConnection(podIdentity, connectionString, accountName 
 		credential := azblob.NewTokenCredential(token.AccessToken, nil)
 		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", accountName))
 		return credential, endpoint, nil
-	case "", "none":
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, BlobEndpoint)
 		if err != nil {
 			return nil, nil, err

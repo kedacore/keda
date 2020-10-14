@@ -36,39 +36,46 @@ import (
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
+// Default variables and settings
 const (
-	IBMMQQueueDepthMetricName = "currQueueDepth"
+	ibmMqQueueDepthMetricName = "currentQueueDepth"
 	defaultTargetQueueDepth   = 20
-	IBMMQMetricType           = "External"
+	defaultTlsDisabled        = false
 )
 
+// Assigns IBMMQMetadata struct data pointer to metadata variable
 type IBMMQScaler struct {
 	metadata *IBMMQMetadata
 }
 
+// Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
-	host              string // MQ Host URI
-	queueName         string // Queue Manager Name
-	username          string // Username
-	password          string // Password
-	targetQueueLength int
+	host             string
+	queueName        string
+	username         string
+	password         string
+	targetQueueDepth int
+	tlsDisabled      bool
 }
 
+// Full structured response from MQ admin REST query
 type CommandResponse struct {
 	CommandResponse []Response `json:"commandResponse"`
 }
 
+// The body of the response returned from the MQ admin query
 type Response struct {
 	Parameters Parameters `json:"parameters"`
 }
 
+// Current depth of the IBM MQ Queue
 type Parameters struct {
 	Curdepth int `json:"curdepth"`
 }
 
 // NewIBMMQScaler creates a new IBM MQ scaler
-func NewIBMMQScaler(metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseIBMMQMetadata(metadata, authParams)
+func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
 	}
@@ -77,72 +84,80 @@ func NewIBMMQScaler(metadata, authParams map[string]string) (Scaler, error) {
 }
 
 func (s *IBMMQScaler) Close() error {
-
 	return nil
 }
 
-func parseIBMMQMetadata(metadata, authParams map[string]string) (*IBMMQMetadata, error) {
+// parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
+func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
-	if val, ok := metadata["host"]; ok {
+	if val, ok := config.TriggerMetadata["host"]; ok {
 		_, err := url.ParseRequestURI(val)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid URL: %s", err)
+			return nil, fmt.Errorf("invalid URL: %s", err)
 		}
 		meta.host = val
 	} else {
-		return nil, fmt.Errorf("No host URI given")
+		return nil, fmt.Errorf("no host URI given")
 	}
 
-	if val, ok := metadata["queueName"]; ok {
+	if val, ok := config.TriggerMetadata["queueName"]; ok {
 		meta.queueName = val
 	} else {
-		return nil, fmt.Errorf("No queue name given")
+		return nil, fmt.Errorf("no queue name given")
 	}
 
-	if val, ok := metadata["queueLength"]; ok && val != "" {
-		queueLength, err := strconv.Atoi(val)
+	if val, ok := config.TriggerMetadata["queueDepth"]; ok && val != "" {
+		queueDepth, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid targetQueueLength - must be an integer")
+			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
 		} else {
-			meta.targetQueueLength = queueLength
+			meta.targetQueueDepth = queueDepth
 		}
-
 	} else {
-		//If no target queue length is passed, use the default value
-		fmt.Println("No target length defined - setting default")
-		meta.targetQueueLength = defaultTargetQueueDepth
+		fmt.Println("No target depth defined - setting default")
+		meta.targetQueueDepth = defaultTargetQueueDepth
 	}
 
-	if val, ok := authParams["username"]; ok {
+	if val, ok := config.TriggerMetadata["tls"]; ok {
+		tlsDisabled, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("invalid tls setting: %s", err)
+		}
+		meta.tlsDisabled = tlsDisabled
+	} else {
+		fmt.Println("No tls setting defined - setting default")
+		meta.tlsDisabled = defaultTlsDisabled
+	}
+
+	if val, ok := config.AuthParams["username"]; ok {
 		meta.username = val
 	} else {
-		return nil, fmt.Errorf("No username given")
+		return nil, fmt.Errorf("no username given")
 	}
 
-	if val, ok := authParams["password"]; ok {
+	if val, ok := config.AuthParams["password"]; ok {
 		meta.password = val
 	} else {
-		return nil, fmt.Errorf("No password given")
+		return nil, fmt.Errorf("no password given")
 	}
 
 	return &meta, nil
 }
 
-// IsActive returns true if there are pending messages to be processed
+// IsActive returns true if there are messages to be processed/if we need to scale from zero
 func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 	queueDepth, err := s.getQueueDepthViaHttp()
 	if err != nil {
-		return false, fmt.Errorf("Error inspecting IBM MQ queue depth: %s", err)
+		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
-
 	return queueDepth > 0, nil
 }
 
+// getQueueDepthViaHttp returns the depth of the MQ Queue from the Admin endpoint
 func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 
 	queue := s.metadata.queueName
-
 	url := s.metadata.host
 
 	var requestJson = []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queue + `", "responseParameters" : ["CURDEPTH"]}`)
@@ -152,7 +167,7 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
 	}
 	client := &http.Client{Transport: tr}
 
@@ -165,7 +180,6 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	var response CommandResponse
-
 	json.Unmarshal(body, &response)
 
 	return response.CommandResponse[0].Parameters.Curdepth, nil
@@ -173,7 +187,7 @@ func (s *IBMMQScaler) getQueueDepthViaHttp() (int, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *IBMMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
+	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "IBMMQ", s.metadata.queueName)),
@@ -195,7 +209,7 @@ func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	metric := external_metrics.ExternalMetricValue{
-		MetricName: IBMMQQueueDepthMetricName,
+		MetricName: ibmMqQueueDepthMetricName,
 		Value:      *resource.NewQuantity(int64(queueDepth), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}

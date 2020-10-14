@@ -135,6 +135,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObj
 func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
 	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
 	var externalMetricNames []string
+	var resourceMetricNames []string
 
 	scalers, err := r.scaleHandler.GetScalers(scaledObject)
 	if err != nil {
@@ -142,28 +143,28 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 		return nil, err
 	}
 
-	// Handling the Resource metrics through KEDA
-	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
-		metrics := getResourceMetrics(scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.ResourceMetrics)
-		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metrics...)
-	}
-
 	for _, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
-		// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 		for _, metricSpec := range metricSpecs {
-			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.Metric.Selector.MatchLabels["scaledObjectName"] = scaledObject.Name
-			externalMetricNames = append(externalMetricNames, metricSpec.External.Metric.Name)
+			if metricSpec.Resource != nil {
+				resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
+			}
+			if metricSpec.External != nil {
+				// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
+				metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
+				metricSpec.External.Metric.Selector.MatchLabels["scaledObjectName"] = scaledObject.Name
+				externalMetricNames = append(externalMetricNames, metricSpec.External.Metric.Name)
+			}
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 		scaler.Close()
 	}
 
-	// store External.MetricNames used by scalers defined in the ScaledObject
+	// store External.MetricNames,Resource.MetricsNames used by scalers defined in the ScaledObject
 	status := scaledObject.Status.DeepCopy()
 	status.ExternalMetricNames = externalMetricNames
+	status.ResourceMetricNames = resourceMetricNames
 	err = kedacontrollerutil.UpdateScaledObjectStatus(r.Client, logger, scaledObject, status)
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
@@ -171,18 +172,6 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 	}
 
 	return scaledObjectMetricSpecs, nil
-}
-
-func getResourceMetrics(resourceMetrics []*autoscalingv2beta2.ResourceMetricSource) []autoscalingv2beta2.MetricSpec {
-	metrics := make([]autoscalingv2beta2.MetricSpec, 0, len(resourceMetrics))
-	for _, resourceMetric := range resourceMetrics {
-		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
-			Type:     "Resource",
-			Resource: resourceMetric,
-		})
-	}
-
-	return metrics
 }
 
 // checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior

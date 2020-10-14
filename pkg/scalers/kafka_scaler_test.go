@@ -109,7 +109,7 @@ var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(testData.metadata, validWithAuthParams)
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -133,7 +133,7 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
-		meta, err = parseKafkaMetadata(testData.metadata, validWithoutAuthParams)
+		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -161,7 +161,7 @@ func TestGetBrokers(t *testing.T) {
 
 func TestKafkaAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(validKafkaMetadata, testData.authParams)
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -176,7 +176,7 @@ func TestKafkaAuthParams(t *testing.T) {
 }
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
-		meta, err := parseKafkaMetadata(testData.metadataTestData.metadata, validWithAuthParams)
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

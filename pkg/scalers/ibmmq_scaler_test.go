@@ -21,51 +21,57 @@ import (
 	"testing"
 )
 
+// Test host URLs for validation
 const (
 	testValidMQQueueURL   = "https://qmtest.qm2.eu-gb.mq.appdomain.cloud/ibmmq/rest/v2/admin/action/qmgr/QM1/mqsc"
 	testInvalidMQQueueURL = "testInvalidURL.com"
 )
 
+// Test data struct used for TestIBMMQParseMetadata
 type parseIBMMQMetadataTestData struct {
 	metadata   map[string]string
 	isError    bool
 	authParams map[string]string
 }
 
+// Test metric identifier with test MQ data and it's name
 type IBMMQMetricIdentifier struct {
 	metadataTestData *parseIBMMQMetadataTestData
-	name             string //
+	name             string
 }
 
-var testIBMMQMetadata = []parseIBMMQMetadataTestData{
-	// nothing passed
-	{map[string]string{}, true, map[string]string{}},
-	// properly formed metadata
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueLength": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Invalid queueLength using a string
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueLength": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// no host provided
-	{map[string]string{"queueName": "testQueue", "queueLength": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// missing queueName
-	{map[string]string{"host": testValidMQQueueURL, "queueLength": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Invalid URL
-	{map[string]string{"host": testInvalidMQQueueURL, "queueName": "testQueue", "queueLength": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// properly formed authParams
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueLength": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// no username provided
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueLength": "10"}, true, map[string]string{"password": "Pass123"}},
-	// no password provided
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueLength": "10"}, true, map[string]string{"username": "testUsername"}},
-}
-
+// Setting metric identifier mock name
 var IBMMQMetricIdentifiers = []IBMMQMetricIdentifier{
 	{&testIBMMQMetadata[1], "IBMMQ-testQueue"},
 }
 
-//testing if metadata is parsed correctly
+// Test cases for TestIBMMQParseMetadata test
+var testIBMMQMetadata = []parseIBMMQMetadataTestData{
+	// Nothing passed
+	{map[string]string{}, true, map[string]string{}},
+	// Properly formed metadata
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Invalid queueDepth using a string
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// No host provided
+	{map[string]string{"queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Missing queueName
+	{map[string]string{"host": testValidMQQueueURL, "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Invalid URL
+	{map[string]string{"host": testInvalidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Properly formed authParams
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// No username provided
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
+	// No password provided
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
+}
+
+// Test MQ Connection metadata is parsed correctly
+// should error on missing required field
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		_, err := parseIBMMQMetadata(testData.metadata, testData.authParams)
+		_, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -77,31 +83,34 @@ func TestIBMMQParseMetadata(t *testing.T) {
 	}
 }
 
+// Test case for TestParseDefaultQueueDepth test
 var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
+// Test that DefaultQueueDepth is set when targetQueueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
-		metadata, err := parseIBMMQMetadata(testData.metadata, testData.authParams)
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
-		} else if metadata.targetQueueLength != defaultTargetQueueDepth {
-			t.Error("Expected default queueLength =", defaultTargetQueueDepth, "but got", metadata.targetQueueLength)
+		} else if metadata.targetQueueDepth != defaultTargetQueueDepth {
+			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.targetQueueDepth)
 		}
 	}
 }
 
-//create a scaler and check if method is available
+// Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		meta, err := parseIBMMQMetadata(testData.metadataTestData.metadata, testData.metadataTestData.authParams)
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockIBMMQScaler := IBMMQScaler{meta}
+		mockIBMMQScaler := IBMMQScaler{metadata}
 		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 

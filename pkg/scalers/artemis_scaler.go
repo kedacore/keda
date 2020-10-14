@@ -54,8 +54,8 @@ const (
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
-func NewArtemisQueueScaler(resolvedSecrets, metadata, authParams map[string]string) (Scaler, error) {
-	artemisMetadata, err := parseArtemisMetadata(resolvedSecrets, metadata, authParams)
+func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
+	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
@@ -65,38 +65,38 @@ func NewArtemisQueueScaler(resolvedSecrets, metadata, authParams map[string]stri
 	}, nil
 }
 
-func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (*artemisMetadata, error) {
+func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
 
-	if val, ok := metadata["restApiTemplate"]; ok && val != "" {
-		meta.restAPITemplate = metadata["restApiTemplate"]
+	if val, ok := config.TriggerMetadata["restApiTemplate"]; ok && val != "" {
+		meta.restAPITemplate = config.TriggerMetadata["restApiTemplate"]
 	} else {
 		meta.restAPITemplate = defaultRestAPITemplate
 	}
 
-	if metadata["managementEndpoint"] == "" {
+	if config.TriggerMetadata["managementEndpoint"] == "" {
 		return nil, errors.New("no management endpoint given")
 	}
-	meta.managementEndpoint = metadata["managementEndpoint"]
+	meta.managementEndpoint = config.TriggerMetadata["managementEndpoint"]
 
-	if metadata["queueName"] == "" {
+	if config.TriggerMetadata["queueName"] == "" {
 		return nil, errors.New("no queue name given")
 	}
-	meta.queueName = metadata["queueName"]
+	meta.queueName = config.TriggerMetadata["queueName"]
 
-	if metadata["brokerName"] == "" {
+	if config.TriggerMetadata["brokerName"] == "" {
 		return nil, errors.New("no broker name given")
 	}
-	meta.brokerName = metadata["brokerName"]
+	meta.brokerName = config.TriggerMetadata["brokerName"]
 
-	if metadata["brokerAddress"] == "" {
+	if config.TriggerMetadata["brokerAddress"] == "" {
 		return nil, errors.New("no broker address given")
 	}
-	meta.brokerAddress = metadata["brokerAddress"]
+	meta.brokerAddress = config.TriggerMetadata["brokerAddress"]
 
-	if val, ok := metadata["queueLength"]; ok {
+	if val, ok := config.TriggerMetadata["queueLength"]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse queueLength: %s", err)
@@ -105,12 +105,12 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		meta.queueLength = queueLength
 	}
 
-	if val, ok := authParams["username"]; ok && val != "" {
+	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
-	} else if val, ok := metadata["username"]; ok && val != "" {
+	} else if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
 		username := val
 
-		if val, ok := resolvedEnv[username]; ok && val != "" {
+		if val, ok := config.ResolvedEnv[username]; ok && val != "" {
 			meta.username = val
 		} else {
 			meta.username = username
@@ -121,12 +121,12 @@ func parseArtemisMetadata(resolvedEnv, metadata, authParams map[string]string) (
 		return nil, fmt.Errorf("username cannot be empty")
 	}
 
-	if val, ok := authParams["password"]; ok && val != "" {
+	if val, ok := config.AuthParams["password"]; ok && val != "" {
 		meta.password = val
-	} else if val, ok := metadata["password"]; ok && val != "" {
+	} else if val, ok := config.TriggerMetadata["password"]; ok && val != "" {
 		password := val
 
-		if val, ok := resolvedEnv[password]; ok && val != "" {
+		if val, ok := config.ResolvedEnv[password]; ok && val != "" {
 			meta.password = val
 		} else {
 			meta.password = password
@@ -162,9 +162,8 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 }
 
 func (s *artemisScaler) getQueueMessageCount() (int, error) {
-	var messageCount int
 	var monitoringInfo *artemisMonitoring
-	messageCount = 0
+	messageCount := 0
 
 	client := &http.Client{
 		Timeout: time.Second * 3,

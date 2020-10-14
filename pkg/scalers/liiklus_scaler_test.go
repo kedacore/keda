@@ -38,7 +38,7 @@ var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
 
 func TestLiiklusParseMetadata(t *testing.T) {
 	for _, testData := range parseLiiklusMetadataTestDataset {
-		meta, err := parseLiiklusMetadata(testData.metadata)
+		meta, err := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && testData.err == nil {
 			t.Error("Expected success but got error", err)
 			continue
@@ -77,7 +77,7 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	lm, _ := parseLiiklusMetadata(map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"})
+	lm, _ := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"}})
 	mockClient := mock_liiklus.NewMockLiiklusServiceClient(ctrl)
 	scaler := &liiklusScaler{
 		metadata: lm,
@@ -121,7 +121,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	lm, _ := parseLiiklusMetadata(map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"})
+	lm, _ := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"}})
 	mockClient := mock_liiklus.NewMockLiiklusServiceClient(ctrl)
 	scaler := &liiklusScaler{
 		metadata: lm,
@@ -165,7 +165,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 
 func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range liiklusMetricIdentifiers {
-		meta, err := parseLiiklusMetadata(testData.metadataTestData.metadata)
+		meta, err := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

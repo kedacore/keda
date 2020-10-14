@@ -36,8 +36,8 @@ type mySQLMetadata struct {
 var mySQLLog = logf.Log.WithName("mysql_scaler")
 
 // NewMySQLScaler creates a new MySQL scaler
-func NewMySQLScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler, error) {
-	meta, err := parseMySQLMetadata(resolvedEnv, metadata, authParams)
+func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseMySQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing MySQL metadata: %s", err)
 	}
@@ -52,16 +52,16 @@ func NewMySQLScaler(resolvedEnv, metadata, authParams map[string]string) (Scaler
 	}, nil
 }
 
-func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*mySQLMetadata, error) {
+func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	meta := mySQLMetadata{}
 
-	if val, ok := metadata["query"]; ok {
+	if val, ok := config.TriggerMetadata["query"]; ok {
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no query given")
 	}
 
-	if val, ok := metadata["queryValue"]; ok {
+	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
@@ -71,38 +71,38 @@ func parseMySQLMetadata(resolvedEnv, metadata, authParams map[string]string) (*m
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
-	if authParams["connectionString"] != "" {
-		meta.connectionString = authParams["connectionString"]
-	} else if metadata["connectionStringFromEnv"] != "" {
-		meta.connectionString = resolvedEnv[metadata["connectionStringFromEnv"]]
+	if config.AuthParams["connectionString"] != "" {
+		meta.connectionString = config.AuthParams["connectionString"]
+	} else if config.TriggerMetadata["connectionStringFromEnv"] != "" {
+		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	} else {
 		meta.connectionString = ""
-		if val, ok := metadata["host"]; ok {
+		if val, ok := config.TriggerMetadata["host"]; ok {
 			meta.host = val
 		} else {
 			return nil, fmt.Errorf("no host given")
 		}
-		if val, ok := metadata["port"]; ok {
+		if val, ok := config.TriggerMetadata["port"]; ok {
 			meta.port = val
 		} else {
 			return nil, fmt.Errorf("no port given")
 		}
 
-		if val, ok := metadata["username"]; ok {
+		if val, ok := config.TriggerMetadata["username"]; ok {
 			meta.username = val
 		} else {
 			return nil, fmt.Errorf("no username given")
 		}
-		if val, ok := metadata["dbName"]; ok {
+		if val, ok := config.TriggerMetadata["dbName"]; ok {
 			meta.dbName = val
 		} else {
 			return nil, fmt.Errorf("no dbName given")
 		}
 
-		if authParams["password"] != "" {
-			meta.password = authParams["password"]
-		} else if metadata["passwordFromEnv"] != "" {
-			meta.password = resolvedEnv[metadata["passwordFromEnv"]]
+		if config.AuthParams["password"] != "" {
+			meta.password = config.AuthParams["password"]
+		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
+			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 
 		if len(meta.password) == 0 {

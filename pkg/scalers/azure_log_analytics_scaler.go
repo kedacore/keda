@@ -22,6 +22,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
@@ -87,93 +88,93 @@ var tokenCache = struct {
 var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
-func NewAzureLogAnalyticsScaler(resolvedSecrets, metadata, authParams map[string]string, podIdentity string, name string, namespace string) (Scaler, error) {
-	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(resolvedSecrets, metadata, authParams, podIdentity)
+func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
+	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", name, namespace, err)
+		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.Name, config.Namespace, err)
 	}
 
 	return &azureLogAnalyticsScaler{
 		metadata:  azureLogAnalyticsMetadata,
 		cache:     &sessionCache{metricValue: -1, metricThreshold: -1},
-		name:      name,
-		namespace: namespace,
+		name:      config.Name,
+		namespace: config.Namespace,
 	}, nil
 }
 
-func parseAzureLogAnalyticsMetadata(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (*azureLogAnalyticsMetadata, error) {
+func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMetadata, error) {
 	meta := azureLogAnalyticsMetadata{}
 
-	if podIdentity == "" || podIdentity == "none" {
+	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
 		//Getting tenantId
-		if val, ok := authParams["tenantId"]; ok && val != "" {
+		if val, ok := config.AuthParams["tenantId"]; ok && val != "" {
 			meta.tenantID = val
-		} else if val, ok := metadata["tenantId"]; ok && val != "" {
+		} else if val, ok := config.TriggerMetadata["tenantId"]; ok && val != "" {
 			meta.tenantID = val
-		} else if val, ok := metadata["tenantIdFromEnv"]; ok && val != "" {
-			meta.tenantID = resolvedEnv[metadata["tenantIdFromEnv"]]
+		} else if val, ok := config.TriggerMetadata["tenantIdFromEnv"]; ok && val != "" {
+			meta.tenantID = config.ResolvedEnv[config.TriggerMetadata["tenantIdFromEnv"]]
 		} else {
 			return nil, fmt.Errorf("error parsing metadata. Details: tenantId was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		//Getting clientId
-		if val, ok := authParams["clientId"]; ok && val != "" {
+		if val, ok := config.AuthParams["clientId"]; ok && val != "" {
 			meta.clientID = val
-		} else if val, ok := metadata["clientId"]; ok && val != "" {
+		} else if val, ok := config.TriggerMetadata["clientId"]; ok && val != "" {
 			meta.clientID = val
-		} else if val, ok := metadata["clientIdFromEnv"]; ok && val != "" {
-			meta.clientID = resolvedEnv[metadata["clientIdFromEnv"]]
+		} else if val, ok := config.TriggerMetadata["clientIdFromEnv"]; ok && val != "" {
+			meta.clientID = config.ResolvedEnv[config.TriggerMetadata["clientIdFromEnv"]]
 		} else {
 			return nil, fmt.Errorf("error parsing metadata. Details: clientId was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		//Getting clientSecret
-		if val, ok := authParams["clientSecret"]; ok && val != "" {
+		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
 			meta.clientSecret = val
-		} else if val, ok := metadata["clientSecret"]; ok && val != "" {
+		} else if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
 			meta.clientSecret = val
-		} else if val, ok := metadata["clientSecretFromEnv"]; ok && val != "" {
-			meta.clientSecret = resolvedEnv[metadata["clientSecretFromEnv"]]
+		} else if val, ok := config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
+			meta.clientSecret = config.ResolvedEnv[config.TriggerMetadata["clientSecretFromEnv"]]
 		} else {
 			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
 		}
 
 		meta.podIdentity = ""
-	} else if podIdentity == "azure" {
-		meta.podIdentity = podIdentity
+	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+		meta.podIdentity = string(config.PodIdentity)
 	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", podIdentity)
+		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}
 
 	//Getting workspaceId
-	if val, ok := authParams["workspaceId"]; ok && val != "" {
+	if val, ok := config.AuthParams["workspaceId"]; ok && val != "" {
 		meta.workspaceID = val
-	} else if val, ok := metadata["workspaceId"]; ok && val != "" {
+	} else if val, ok := config.TriggerMetadata["workspaceId"]; ok && val != "" {
 		meta.workspaceID = val
-	} else if val, ok := metadata["workspaceIdFromEnv"]; ok && val != "" {
-		meta.workspaceID = resolvedEnv[metadata["workspaceIdFromEnv"]]
+	} else if val, ok := config.TriggerMetadata["workspaceIdFromEnv"]; ok && val != "" {
+		meta.workspaceID = config.ResolvedEnv[config.TriggerMetadata["workspaceIdFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("error parsing metadata. Details: workspaceId was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting query
-	if val, ok := metadata["query"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["query"]; ok && val != "" {
 		meta.query = val
-	} else if val, ok := metadata["queryFromEnv"]; ok && val != "" {
-		meta.query = resolvedEnv[metadata["queryFromEnv"]]
+	} else if val, ok := config.TriggerMetadata["queryFromEnv"]; ok && val != "" {
+		meta.query = config.ResolvedEnv[config.TriggerMetadata["queryFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("error parsing metadata. Details: query was not found in metadata. Check your ScaledObject configuration")
 	}
 
 	//Getting threshold
-	if val, ok := metadata["threshold"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["threshold"]; ok && val != "" {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 		}
 		meta.threshold = threshold
-	} else if val, ok := metadata["thresholdFromEnv"]; ok && val != "" {
-		threshold, err := strconv.ParseInt(resolvedEnv[metadata["thresholdFromEnv"]], 10, 64)
+	} else if val, ok := config.TriggerMetadata["thresholdFromEnv"]; ok && val != "" {
+		threshold, err := strconv.ParseInt(config.ResolvedEnv[config.TriggerMetadata["thresholdFromEnv"]], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 		}
@@ -306,12 +307,18 @@ func (s *azureLogAnalyticsScaler) getAccessToken() (tokenData, error) {
 
 func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData) (metricsData, error) {
 	queryData := queryResult{}
+	var body []byte
+	var statusCode int
+	var err error
 
-	body, statusCode, err := s.executeLogAnalyticsREST(query, tokenInfo)
+	body, statusCode, err = s.executeLogAnalyticsREST(query, tokenInfo)
 
 	//Handle expired token
 	if statusCode == 403 || (len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
-		tokenInfo, err := s.refreshAccessToken()
+		tokenInfo, err = s.refreshAccessToken()
+		if err != nil {
+			return metricsData{}, err
+		}
 
 		if s.metadata.podIdentity == "" {
 			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
@@ -434,7 +441,11 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 }
 
 func (s *azureLogAnalyticsScaler) getAuthorizationToken() (tokenData, error) {
-	body, statusCode, err, tokenInfo := []byte{}, 0, *new(error), tokenData{}
+	var body []byte
+	var statusCode int
+	var err error
+	var tokenInfo tokenData
+
 	if s.metadata.podIdentity == "" {
 		body, statusCode, err = s.executeAADApicall()
 	} else {
