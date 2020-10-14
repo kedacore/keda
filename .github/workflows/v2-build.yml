@@ -1,4 +1,4 @@
-name: master build
+name: v2 build
 on:
   push:
     branches:
