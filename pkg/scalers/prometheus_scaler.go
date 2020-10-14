@@ -53,8 +53,8 @@ type promQueryResult struct {
 var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
-func NewPrometheusScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parsePrometheusMetadata(metadata)
+func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
@@ -64,28 +64,28 @@ func NewPrometheusScaler(resolvedEnv, metadata map[string]string) (Scaler, error
 	}, nil
 }
 
-func parsePrometheusMetadata(metadata map[string]string) (*prometheusMetadata, error) {
+func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) {
 	meta := prometheusMetadata{}
 
-	if val, ok := metadata[promServerAddress]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[promServerAddress]; ok && val != "" {
 		meta.serverAddress = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promServerAddress)
 	}
 
-	if val, ok := metadata[promQuery]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[promQuery]; ok && val != "" {
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
-	if val, ok := metadata[promMetricName]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
 		meta.metricName = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promMetricName)
 	}
 
-	if val, ok := metadata[promThreshold]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)

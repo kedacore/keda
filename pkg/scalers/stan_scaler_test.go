@@ -33,7 +33,7 @@ var stanMetricIdentifiers = []stanMetricIdentifier{
 
 func TestStanParseMetadata(t *testing.T) {
 	for _, testData := range testStanMetadata {
-		_, err := parseStanMetadata(testData.metadata)
+		_, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -45,7 +45,7 @@ func TestStanParseMetadata(t *testing.T) {
 
 func TestStanGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range stanMetricIdentifiers {
-		meta, err := parseStanMetadata(testData.metadataTestData.metadata)
+		meta, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

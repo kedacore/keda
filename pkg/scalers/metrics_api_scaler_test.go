@@ -58,7 +58,7 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
 	for _, testData := range testMetricsAPIMetadata {
-		_, err := metricsAPIMetadata(testData.metadata, map[string]string{})
+		_, err := parseMetricsAPIMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -89,7 +89,7 @@ func TestGetValueFromResponse(t *testing.T) {
 
 func TestMetricAPIScalerAuthParams(t *testing.T) {
 	for _, testData := range testMetricsAPIAuthMetadata {
-		meta, err := metricsAPIMetadata(validMetricAPIMetadata, testData.authParams)
+		meta, err := parseMetricsAPIMetadata(&ScalerConfig{TriggerMetadata: validMetricAPIMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -10,6 +11,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+)
+
+const (
+	referenceOperator = '$'
+	referenceOpener   = '('
+	referenceCloser   = ')'
 )
 
 // ResolveContainerEnv resolves all environment variables in a container.
@@ -42,9 +49,9 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 
 // ResolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method define in TriggerAuthentication, authParams and podIdentity is returned
-func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, string) {
+func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
 	result := make(map[string]string)
-	podIdentity := ""
+	var podIdentity kedav1alpha1.PodIdentityProvider
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
@@ -53,7 +60,7 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
 			if triggerAuth.Spec.PodIdentity != nil {
-				podIdentity = string(triggerAuth.Spec.PodIdentity.Provider)
+				podIdentity = triggerAuth.Spec.PodIdentity.Provider
 			}
 			if triggerAuth.Spec.Env != nil {
 				for _, e := range triggerAuth.Spec.Env {
@@ -138,7 +145,8 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 
 			// env is either a name/value pair or an EnvVarSource
 			if envVar.Value != "" {
-				value = envVar.Value
+				// resolve syntax if environment variables have dependent variables
+				value = resolveEnvValue(envVar.Value, resolved)
 			} else if envVar.ValueFrom != nil {
 				// env is an EnvVarSource, that can be on of the 4 below
 				if envVar.ValueFrom.SecretKeyRef != nil {
@@ -168,6 +176,54 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 		}
 	}
 	return resolved, nil
+}
+
+func resolveEnvValue(value string, env map[string]string) string {
+	var buf bytes.Buffer
+	checkpoint := 0
+
+	for cursor := 0; cursor < len(value); cursor++ {
+		if value[cursor] == referenceOperator && cursor+3 < len(value) {
+			// append value contents since the last checkpoint into the buffer
+			buf.WriteString(value[checkpoint:cursor])
+
+			var content string
+			length := 1
+
+		OperatorSwitch:
+			switch value[cursor+1] {
+			case referenceOperator:
+				// escaped reference
+				content = string(referenceOperator)
+			case referenceOpener:
+				// read dependent reference;2 indicates operator and opener length
+				for i := 2; i < len(value)-cursor; i++ {
+					if value[cursor+i] == referenceCloser {
+						dependentEnvKey := value[cursor+2 : cursor+i]
+						dependentEnvValue, ok := env[dependentEnvKey]
+						if ok {
+							content = dependentEnvValue
+						} else {
+							content = string(referenceOperator) + string(referenceOpener) + dependentEnvKey + string(referenceCloser)
+						}
+						length = i
+						break OperatorSwitch
+					}
+				}
+				// not match reference closer
+				content = string(referenceOperator) + string(referenceOpener)
+			default:
+				content = string(referenceOperator) + string(value[cursor+1])
+			}
+
+			// append resolved env value into the buffer
+			buf.WriteString(content)
+			// make cursor continue scan
+			cursor = cursor + length
+			checkpoint = cursor + 1
+		}
+	}
+	return buf.String() + value[checkpoint:]
 }
 
 func resolveConfigMap(client client.Client, configMapRef *corev1.ConfigMapEnvSource, namespace string) (map[string]string, error) {

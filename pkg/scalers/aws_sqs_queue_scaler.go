@@ -43,8 +43,8 @@ type awsSqsQueueMetadata struct {
 var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams map[string]string) (Scaler, error) {
-	meta, err := parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams)
+func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseAwsSqsQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
 	}
@@ -54,11 +54,11 @@ func NewAwsSqsQueueScaler(resolvedEnv, metadata map[string]string, authParams ma
 	}, nil
 }
 
-func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]string) (*awsSqsQueueMetadata, error) {
+func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
-	if val, ok := metadata["queueLength"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			meta.targetQueueLength = targetQueueLengthDefault
@@ -68,7 +68,7 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]strin
 		}
 	}
 
-	if val, ok := metadata["queueURL"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
 		meta.queueURL = val
 	} else {
 		return nil, fmt.Errorf("no queueURL given")
@@ -87,13 +87,13 @@ func parseAwsSqsQueueMetadata(metadata, resolvedEnv, authParams map[string]strin
 
 	meta.queueName = queueURLPathParts[2]
 
-	if val, ok := metadata["awsRegion"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
+	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}

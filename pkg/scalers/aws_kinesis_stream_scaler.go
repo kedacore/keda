@@ -39,8 +39,8 @@ type awsKinesisStreamMetadata struct {
 var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
-func NewAwsKinesisStreamScaler(resolvedEnv, metadata map[string]string, authParams map[string]string) (Scaler, error) {
-	meta, err := parseAwsKinesisStreamMetadata(metadata, resolvedEnv, authParams)
+func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseAwsKinesisStreamMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
@@ -50,11 +50,11 @@ func NewAwsKinesisStreamScaler(resolvedEnv, metadata map[string]string, authPara
 	}, nil
 }
 
-func parseAwsKinesisStreamMetadata(metadata, resolvedEnv, authParams map[string]string) (*awsKinesisStreamMetadata, error) {
+func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetadata, error) {
 	meta := awsKinesisStreamMetadata{}
 	meta.targetShardCount = targetShardCountDefault
 
-	if val, ok := metadata["shardCount"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
 		shardCount, err := strconv.Atoi(val)
 		if err != nil {
 			meta.targetShardCount = targetShardCountDefault
@@ -64,19 +64,19 @@ func parseAwsKinesisStreamMetadata(metadata, resolvedEnv, authParams map[string]
 		}
 	}
 
-	if val, ok := metadata["streamName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["streamName"]; ok && val != "" {
 		meta.streamName = val
 	} else {
 		return nil, fmt.Errorf("no streamName given")
 	}
 
-	if val, ok := metadata["awsRegion"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	auth, err := getAwsAuthorization(authParams, metadata, resolvedEnv)
+	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
