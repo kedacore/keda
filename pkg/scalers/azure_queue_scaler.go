@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
@@ -25,7 +26,7 @@ const (
 
 type azureQueueScaler struct {
 	metadata    *azureQueueMetadata
-	podIdentity string
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azureQueueMetadata struct {
@@ -38,8 +39,8 @@ type azureQueueMetadata struct {
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
 // NewAzureQueueScaler creates a new scaler for queue
-func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, podIdentity string) (Scaler, error) {
-	meta, podIdentity, err := parseAzureQueueMetadata(metadata, resolvedEnv, authParams, podIdentity)
+func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
+	meta, podIdentity, err := parseAzureQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
 	}
@@ -50,11 +51,11 @@ func NewAzureQueueScaler(resolvedEnv, metadata, authParams map[string]string, po
 	}, nil
 }
 
-func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string, podAuth string) (*azureQueueMetadata, string, error) {
+func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1alpha1.PodIdentityProvider, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
-	if val, ok := metadata[queueLengthMetricName]; ok {
+	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
@@ -64,46 +65,46 @@ func parseAzureQueueMetadata(metadata, resolvedEnv, authParams map[string]string
 		meta.targetQueueLength = queueLength
 	}
 
-	if val, ok := metadata["queueName"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["queueName"]; ok && val != "" {
 		meta.queueName = val
 	} else {
 		return nil, "", fmt.Errorf("no queueName given")
 	}
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := metadata["useAAdPodIdentity"]; ok && podAuth == "" {
+	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" {
 		if val == "true" {
-			podAuth = "azure"
+			config.PodIdentity = kedav1alpha1.PodIdentityProviderAzure
 		}
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	if podAuth == "" || podAuth == "none" {
+	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
 		// Azure Queue Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
-		if authParams["connection"] != "" {
+		if config.AuthParams["connection"] != "" {
 			// Found the connection in a parameter from TriggerAuthentication
-			meta.connection = authParams["connection"]
-		} else if metadata["connectionFromEnv"] != "" {
-			meta.connection = resolvedEnv[metadata["connectionFromEnv"]]
+			meta.connection = config.AuthParams["connection"]
+		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+			meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 		}
 
 		if len(meta.connection) == 0 {
 			return nil, "", fmt.Errorf("no connection setting given")
 		}
-	} else if podAuth == "azure" {
+	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
 		// If the Use AAD Pod Identity is present then check account name
-		if val, ok := metadata["accountName"]; ok && val != "" {
+		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
 			return nil, "", fmt.Errorf("no accountName given")
 		}
 	} else {
-		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", podAuth)
+		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
 	}
 
-	return &meta, podAuth, nil
+	return &meta, config.PodIdentity, nil
 }
 
 // GetScaleDecision is a func

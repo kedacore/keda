@@ -79,7 +79,7 @@ var testArtemisMetadataWithAuthParams = []parseArtemisMetadataTestData{
 
 func TestArtemisParseMetadata(t *testing.T) {
 	for _, testData := range testArtemisMetadata {
-		_, err := parseArtemisMetadata(sampleArtemisResolvedEnv, testData.metadata, nil)
+		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -90,7 +90,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 	// test with missing auth params should all fail
 	for _, testData := range testArtemisMetadataWithEmptyAuthParams {
-		_, err := parseArtemisMetadata(sampleArtemisResolvedEnv, testData.metadata, emptyArtemisAuthParams)
+		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyArtemisAuthParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -101,7 +101,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 	// test with complete auth params should not fail
 	for _, testData := range testArtemisMetadataWithAuthParams {
-		_, err := parseArtemisMetadata(sampleArtemisResolvedEnv, testData.metadata, artemisAuthParams)
+		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: artemisAuthParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -113,7 +113,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range artemisMetricIdentifiers {
-		meta, err := parseArtemisMetadata(sampleArtemisResolvedEnv, testData.metadataTestData.metadata, nil)
+		meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -37,8 +37,8 @@ type cronMetadata struct {
 var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
-func NewCronScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, parseErr := parseCronMetadata(metadata)
+func NewCronScaler(config *ScalerConfig) (Scaler, error) {
+	meta, parseErr := parseCronMetadata(config)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
 	}
@@ -62,36 +62,36 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 	return cronTime, nil
 }
 
-func parseCronMetadata(metadata map[string]string) (*cronMetadata, error) {
-	if len(metadata) == 0 {
-		return nil, fmt.Errorf("invalid Input Metadata. %s", metadata)
+func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
+	if len(config.TriggerMetadata) == 0 {
+		return nil, fmt.Errorf("invalid Input Metadata. %s", config.TriggerMetadata)
 	}
 
 	meta := cronMetadata{}
-	if val, ok := metadata["timezone"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["timezone"]; ok && val != "" {
 		meta.timezone = val
 	} else {
-		return nil, fmt.Errorf("no timezone specified. %s", metadata)
+		return nil, fmt.Errorf("no timezone specified. %s", config.TriggerMetadata)
 	}
-	if val, ok := metadata["start"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
 		meta.start = val
 	} else {
-		return nil, fmt.Errorf("no start schedule specified. %s", metadata)
+		return nil, fmt.Errorf("no start schedule specified. %s", config.TriggerMetadata)
 	}
-	if val, ok := metadata["end"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["end"]; ok && val != "" {
 		meta.end = val
 	} else {
-		return nil, fmt.Errorf("no end schedule specified. %s", metadata)
+		return nil, fmt.Errorf("no end schedule specified. %s", config.TriggerMetadata)
 	}
-	if val, ok := metadata["desiredReplicas"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["desiredReplicas"]; ok && val != "" {
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing desiredReplicas metadata. %s", metadata)
+			return nil, fmt.Errorf("error parsing desiredReplicas metadata. %s", config.TriggerMetadata)
 		}
 
 		meta.desiredReplicas = int64(metadataDesiredReplicas)
 	} else {
-		return nil, fmt.Errorf("no DesiredReplicas specified. %s", metadata)
+		return nil, fmt.Errorf("no DesiredReplicas specified. %s", config.TriggerMetadata)
 	}
 
 	return &meta, nil

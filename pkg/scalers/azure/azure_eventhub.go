@@ -13,6 +13,8 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+
+	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
 type baseCheckpoint struct {
@@ -58,7 +60,7 @@ func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
 
 // GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
 func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
-	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection("none", info.StorageConnection, "")
+	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(kedav1alpha1.PodIdentityProviderNone, info.StorageConnection, "")
 	if err != nil {
 		return Checkpoint{}, err
 	}

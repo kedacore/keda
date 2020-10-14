@@ -47,8 +47,8 @@ var externalLog = logf.Log.WithName("external_scaler")
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
-func NewExternalScaler(name, namespace string, metadata, resolvedEnv map[string]string) (Scaler, error) {
-	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
+func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
@@ -56,16 +56,16 @@ func NewExternalScaler(name, namespace string, metadata, resolvedEnv map[string]
 	return &externalScaler{
 		metadata: meta,
 		scaledObjectRef: pb.ScaledObjectRef{
-			Name:           name,
-			Namespace:      namespace,
+			Name:           config.Name,
+			Namespace:      config.Namespace,
 			ScalerMetadata: meta.originalMetadata,
 		},
 	}, nil
 }
 
 // NewExternalPushScaler creates a new externalPushScaler push scaler
-func NewExternalPushScaler(name, namespace string, metadata, resolvedEnv map[string]string) (PushScaler, error) {
-	meta, err := parseExternalScalerMetadata(metadata, resolvedEnv)
+func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
+	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
@@ -74,37 +74,37 @@ func NewExternalPushScaler(name, namespace string, metadata, resolvedEnv map[str
 		externalScaler{
 			metadata: meta,
 			scaledObjectRef: pb.ScaledObjectRef{
-				Name:           name,
-				Namespace:      namespace,
+				Name:           config.Name,
+				Namespace:      config.Namespace,
 				ScalerMetadata: meta.originalMetadata,
 			},
 		},
 	}, nil
 }
 
-func parseExternalScalerMetadata(metadata, resolvedEnv map[string]string) (externalScalerMetadata, error) {
+func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, error) {
 	meta := externalScalerMetadata{
-		originalMetadata: metadata,
+		originalMetadata: config.TriggerMetadata,
 	}
 
 	// Check if scalerAddress is present
-	if val, ok := metadata["scalerAddress"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["scalerAddress"]; ok && val != "" {
 		meta.scalerAddress = val
 	} else {
 		return meta, fmt.Errorf("scaler Address is a required field")
 	}
 
-	if val, ok := metadata["tlsCertFile"]; ok && val != "" {
+	if val, ok := config.TriggerMetadata["tlsCertFile"]; ok && val != "" {
 		meta.tlsCertFile = val
 	}
 
 	meta.originalMetadata = make(map[string]string)
 
 	// Add elements to metadata
-	for key, value := range metadata {
+	for key, value := range config.TriggerMetadata {
 		// Check if key is in resolved environment and resolve
 		if strings.HasSuffix(key, "FromEnv") {
-			if val, ok := resolvedEnv[value]; ok && val != "" {
+			if val, ok := config.ResolvedEnv[value]; ok && val != "" {
 				meta.originalMetadata[key] = val
 			}
 		} else {

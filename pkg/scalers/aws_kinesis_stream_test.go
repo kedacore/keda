@@ -176,7 +176,7 @@ var awsKinesisMetricIdentifiers = []awsKinesisMetricIdentifier{
 
 func TestKinesisParseMetadata(t *testing.T) {
 	for _, testData := range testAWSKinesisMetadata {
-		result, err := parseAwsKinesisStreamMetadata(testData.metadata, testAWSKinesisAuthentication, testData.authParams)
+		result, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -192,7 +192,7 @@ func TestKinesisParseMetadata(t *testing.T) {
 
 func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsKinesisMetricIdentifiers {
-		meta, err := parseAwsKinesisStreamMetadata(testData.metadataTestData.metadata, testAWSKinesisAuthentication, testData.metadataTestData.authParams)
+		meta, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

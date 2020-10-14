@@ -59,8 +59,8 @@ const (
 var stanLog = logf.Log.WithName("stan_scaler")
 
 // NewStanScaler creates a new stanScaler
-func NewStanScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) {
-	stanMetadata, err := parseStanMetadata(metadata)
+func NewStanScaler(config *ScalerConfig) (Scaler, error) {
+	stanMetadata, err := parseStanMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -71,32 +71,32 @@ func NewStanScaler(resolvedSecrets, metadata map[string]string) (Scaler, error) 
 	}, nil
 }
 
-func parseStanMetadata(metadata map[string]string) (stanMetadata, error) {
+func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
 
-	if metadata["natsServerMonitoringEndpoint"] == "" {
+	if config.TriggerMetadata["natsServerMonitoringEndpoint"] == "" {
 		return meta, errors.New("no monitoring endpoint given")
 	}
-	meta.natsServerMonitoringEndpoint = metadata["natsServerMonitoringEndpoint"]
+	meta.natsServerMonitoringEndpoint = config.TriggerMetadata["natsServerMonitoringEndpoint"]
 
-	if metadata["queueGroup"] == "" {
+	if config.TriggerMetadata["queueGroup"] == "" {
 		return meta, errors.New("no queue group given")
 	}
-	meta.queueGroup = metadata["queueGroup"]
+	meta.queueGroup = config.TriggerMetadata["queueGroup"]
 
-	if metadata["durableName"] == "" {
+	if config.TriggerMetadata["durableName"] == "" {
 		return meta, errors.New("no durable name group given")
 	}
-	meta.durableName = metadata["durableName"]
+	meta.durableName = config.TriggerMetadata["durableName"]
 
-	if metadata["subject"] == "" {
+	if config.TriggerMetadata["subject"] == "" {
 		return meta, errors.New("no subject given")
 	}
-	meta.subject = metadata["subject"]
+	meta.subject = config.TriggerMetadata["subject"]
 
 	meta.lagThreshold = defaultStanLagThreshold
 
-	if val, ok := metadata[lagThresholdMetricName]; ok {
+	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)

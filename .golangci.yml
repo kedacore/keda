@@ -22,8 +22,9 @@ linters:
     - misspell
     - bodyclose
     - unconvert
+    - ineffassign
+    - staticcheck
     #- interfacer
-    #- ineffassign
     #- scopelint
     #- structcheck
     - deadcode

@@ -34,8 +34,8 @@ type pubsubMetadata struct {
 var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
 
 // NewPubSubScaler creates a new pubsubScaler
-func NewPubSubScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
-	meta, err := parsePubSubMetadata(metadata, resolvedEnv)
+func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
+	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
 	}
@@ -45,11 +45,11 @@ func NewPubSubScaler(resolvedEnv, metadata map[string]string) (Scaler, error) {
 	}, nil
 }
 
-func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetadata, error) {
+func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{}
 	meta.targetSubscriptionSize = defaultTargetSubscriptionSize
 
-	if val, ok := metadata["subscriptionSize"]; ok {
+	if val, ok := config.TriggerMetadata["subscriptionSize"]; ok {
 		subscriptionSize, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("subscription Size parsing error %s", err.Error())
@@ -58,7 +58,7 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 		meta.targetSubscriptionSize = subscriptionSize
 	}
 
-	if val, ok := metadata["subscriptionName"]; ok {
+	if val, ok := config.TriggerMetadata["subscriptionName"]; ok {
 		if val == "" {
 			return nil, fmt.Errorf("no subscription name given")
 		}
@@ -68,8 +68,8 @@ func parsePubSubMetadata(metadata, resolvedEnv map[string]string) (*pubsubMetada
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	if metadata["credentialsFromEnv"] != "" {
-		meta.credentials = resolvedEnv[metadata["credentialsFromEnv"]]
+	if config.TriggerMetadata["credentialsFromEnv"] != "" {
+		meta.credentials = config.ResolvedEnv[config.TriggerMetadata["credentialsFromEnv"]]
 	}
 
 	if len(meta.credentials) == 0 {

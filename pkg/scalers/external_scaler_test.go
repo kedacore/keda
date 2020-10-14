@@ -29,7 +29,7 @@ var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 
 func TestExternalScalerParseMetadata(t *testing.T) {
 	for _, testData := range testExternalScalerMetadata {
-		_, err := parseExternalScalerMetadata(testData.metadata, map[string]string{})
+		_, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -52,7 +52,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	for i := 0; i < serverCount*iterationCount; i++ {
 		id := i % serverCount
-		pushScaler, _ := NewExternalPushScaler("app", "namespace", map[string]string{"scalerAddress": servers[id].address}, map[string]string{})
+		pushScaler, _ := NewExternalPushScaler(&ScalerConfig{Name: "app", Namespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
 		go pushScaler.Run(ctx, replyCh[i])
 	}
 
