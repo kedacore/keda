@@ -11,7 +11,7 @@ npm install
 npm test --verbose
 ```
 
-### Run on test file:
+### Run one test file:
 
 ```
 npx ava scalers/prometheus.test.ts
