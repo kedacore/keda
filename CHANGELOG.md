@@ -32,7 +32,6 @@
 - Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
 - Add cpu/memory Scaler ([#1215](https://github.com/kedacore/keda/pull/1215))
 - Add Scaling Strategy for ScaledJob ([#1227](https://github.com/kedacore/keda/pull/1227))
-- Add Argo Rollouts e2e test ([#1234](https://github.com/kedacore/keda/issues/1234))
 
 ### Improvements
 
@@ -60,6 +59,7 @@
 - Change API optional structs to pointers to conform with k8s guide ([#1170](https://github.com/kedacore/keda/issues/1170))
 - Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870),[#1180](https://github.com/kedacore/keda/pull/1180))
 - Change Metrics Server image name from `keda-metrics-adapter` to `keda-metrics-apiserver` ([#1105](https://github.com/kedacore/keda/issues/1105))
+- Add Argo Rollouts e2e test ([#1234](https://github.com/kedacore/keda/issues/1234))
 
 ## v1.5.0
 
