@@ -62,6 +62,17 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	reqLogger.Info("Reconciling ScaledJob")
 
+	// Check if the ScaledJob instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	if scaledJob.GetDeletionTimestamp() != nil {
+		return ctrl.Result{}, r.finalizeScaledJob(reqLogger, scaledJob)
+	}
+
+	// ensure finalizer is set on this CR
+	if err := r.ensureFinalizer(reqLogger, scaledJob); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	var errMsg string
 	if scaledJob.Spec.JobTargetRef != nil {
 		reqLogger.Info("Detected ScaleType = Job")
@@ -131,4 +142,13 @@ func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *ke
 	logger.V(1).Info("Starting a new ScaleLoop")
 
 	return r.scaleHandler.HandleScalableObject(scaledJob)
+}
+
+// stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
+func (r *ScaledJobReconciler) stopScaleLoop(scaledJob *kedav1alpha1.ScaledJob) error {
+	if err := r.scaleHandler.DeleteScalableObject(scaledJob); err != nil {
+		return err
+	}
+
+	return nil
 }
