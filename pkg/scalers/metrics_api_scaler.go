@@ -58,9 +58,9 @@ const defaultTimeOut = 3 * time.Second
 type authenticationType string
 
 const (
-	apiKeyAuth authenticationType = "apiKeyAuth"
-	basicAuth  authenticationType = "basicAuth"
-	tlsAuth    authenticationType = "tlsAuth"
+	apiKeyAuth authenticationType = "apiKey"
+	basicAuth  authenticationType = "basic"
+	tlsAuth    authenticationType = "tls"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -116,7 +116,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		return nil, fmt.Errorf("no valueLocation given in metadata")
 	}
 
-	authMode, ok := config.AuthParams["authMode"]
+	authMode, ok := config.TriggerMetadata["authMode"]
 	// no authMode specified
 	if !ok {
 		return &meta, nil
@@ -134,12 +134,12 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		meta.method = "header"
 		meta.enableAPIKeyAuth = true
 
-		if config.AuthParams["method"] == "query" {
+		if config.TriggerMetadata["method"] == "query" {
 			meta.method = "query"
 		}
 
-		if len(config.AuthParams["keyParamName"]) > 0 {
-			meta.keyParamName = config.AuthParams["keyParamName"]
+		if len(config.TriggerMetadata["keyParamName"]) > 0 {
+			meta.keyParamName = config.TriggerMetadata["keyParamName"]
 		}
 	case basicAuth:
 		if len(config.AuthParams["username"]) == 0 {
