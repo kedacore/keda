@@ -32,6 +32,7 @@
 - Add Metrics API Scaler ([#1026](https://github.com/kedacore/keda/pull/1026))
 - Add cpu/memory Scaler ([#1215](https://github.com/kedacore/keda/pull/1215))
 - Add Scaling Strategy for ScaledJob ([#1227](https://github.com/kedacore/keda/pull/1227))
+- Add Argo Rollouts e2e test ([#1234](https://github.com/kedacore/keda/issues/1234))
 
 ### Improvements
 
