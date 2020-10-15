@@ -11,6 +11,12 @@ npm install
 npm test --verbose
 ```
 
+### Run one test file:
+
+```
+npx ava scalers/prometheus.test.ts
+```
+
 ## E2E test setup
 
 The test script will run 3 phases:
