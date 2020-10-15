@@ -35,6 +35,7 @@ type IBMMQScaler struct {
 // IBMMQMetadata Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
 	host             string
+	queueManager     string
 	queueName        string
 	username         string
 	password         string
@@ -84,6 +85,12 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 		meta.host = val
 	} else {
 		return nil, fmt.Errorf("no host URI given")
+	}
+
+	if val, ok := config.TriggerMetadata["queueManager"]; ok {
+		meta.queueManager = val
+	} else {
+		return nil, fmt.Errorf("no queue manager given")
 	}
 
 	if val, ok := config.TriggerMetadata["queueName"]; ok {
@@ -175,7 +182,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP() (int, error) {
 	}
 
 	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
-		return 0, fmt.Errorf("failed to parseresponse from REST call: %s", err)
+		return 0, fmt.Errorf("failed to parse response from REST call: %s", err)
 	}
 	return response.CommandResponse[0].Parameters.Curdepth, nil
 }
@@ -185,7 +192,7 @@ func (s *IBMMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "IBMMQ", s.metadata.queueName)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "IBMMQ", s.metadata.queueManager, s.metadata.queueName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
