@@ -22,16 +22,28 @@ type mySQLMetricIdentifier struct {
 
 var testMySQLMetadata = []parseMySQLMetadataTestData{
 	// No metadata
-	{map[string]string{}, testMySQLResolvedEnv, true},
+	{
+		metadata:    map[string]string{},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: true,
+	},
 	// connectionString
-	{map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}, testMySQLResolvedEnv, false},
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
 	// Params instead of conn str
-	{map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"}, testMySQLResolvedEnv, false},
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{&testMySQLMetadata[1], "mysql-test_conn_str"},
-	{&testMySQLMetadata[2], "mysql-test_dbname"},
+	{metadataTestData: &testMySQLMetadata[1], name: "mysql-test_conn_str"},
+	{metadataTestData: &testMySQLMetadata[2], name: "mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
@@ -69,7 +81,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
+		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

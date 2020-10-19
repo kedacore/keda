@@ -63,6 +63,8 @@ var testMetadatas = []testMetadata{
 
 func TestResolveK8sVersion(t *testing.T) {
 	for _, testData := range testMetadatas {
+		t.Log(testData.comment)
+
 		version := NewK8sVersion(testData.version)
 
 		if version.MinorVersion != testData.expectedMinor {
