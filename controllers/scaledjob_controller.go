@@ -128,6 +128,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 		logger.Info("Deleting jobs owned by the previous version of the scaledJob", "Number of jobs to delete", jobs.Size())
 	}
 	for _, job := range jobs.Items {
+		job := job
 		err = r.Client.Delete(context.TODO(), &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			return "Not able to delete job: " + job.Name, err

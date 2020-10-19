@@ -18,16 +18,26 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	authParams := map[string]string{"password": "foobarred"}
 
 	testCases := []testCase{
-		{"with address", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, map[string]string{
-			"REDIS_SERVICE":  "myredis:6379",
-			"REDIS_PASSWORD": "foobarred",
-		}, nil},
+		{
+			name:     "with address",
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
+			resolvedEnv: map[string]string{
+				"REDIS_SERVICE":  "myredis:6379",
+				"REDIS_PASSWORD": "foobarred",
+			},
+			authParams: nil,
+		},
 
-		{"with host and port", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"}, map[string]string{
-			"REDIS_HOST":     "myredis",
-			"REDIS_PORT":     "6379",
-			"REDIS_PASSWORD": "foobarred",
-		}, authParams},
+		{
+			name:     "with host and port",
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
+			resolvedEnv: map[string]string{
+				"REDIS_HOST":     "myredis",
+				"REDIS_PORT":     "6379",
+				"REDIS_PASSWORD": "foobarred",
+			},
+			authParams: authParams,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -99,7 +109,6 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 
 type redisStreamsTestMetadata struct {
 	metadata   map[string]string
-	isError    bool
 	authParams map[string]string
 }
 
@@ -110,7 +119,10 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	var redisStreamsTestData = []redisStreamsTestMetadata{
-		{map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "address": "REDIS_SERVICE", "password": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"}, false, nil},
+		{
+			metadata:   map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "address": "REDIS_SERVICE", "password": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
+			authParams: nil,
+		},
 	}
 
 	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
@@ -118,7 +130,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: nil})
+		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

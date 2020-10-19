@@ -125,6 +125,7 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 	}
 
 	for _, job := range jobs.Items {
+		job := job
 		if !e.isJobFinished(&job) {
 			runningJobs++
 		}
@@ -152,6 +153,7 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 	completedJobs := []batchv1.Job{}
 	failedJobs := []batchv1.Job{}
 	for _, job := range jobs.Items {
+		job := job
 		finishedJobConditionType := e.getFinishedJobConditionType(&job)
 		switch finishedJobConditionType {
 		case batchv1.JobComplete:
