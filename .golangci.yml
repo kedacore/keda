@@ -24,7 +24,7 @@ linters:
     - unconvert
     - ineffassign
     - staticcheck
-    #- interfacer
+    - interfacer
     - scopelint
     - structcheck
     - deadcode
@@ -36,7 +36,6 @@ linters:
     #- gocritic
     #- gocyclo
     - gosimple
-    #- staticcheck
     - stylecheck
     - unused
     - varcheck
@@ -53,6 +52,7 @@ issues:
       linters:
         - gomnd
         - dupl
+        - interfacer
 
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
