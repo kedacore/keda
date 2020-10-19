@@ -12,7 +12,7 @@ import (
 )
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
-func SetStatusConditions(client runtimeclient.Client, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+func SetStatusConditions(client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
 	var patch runtimeclient.Patch
 
 	runtimeObj := object.(runtime.Object)
@@ -37,7 +37,7 @@ func SetStatusConditions(client runtimeclient.Client, logger logr.Logger, object
 }
 
 // UpdateScaledObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
-func UpdateScaledObjectStatus(client runtimeclient.Client, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
+func UpdateScaledObjectStatus(client runtimeclient.StatusClient, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 	scaledObject.Status = *status
 	err := client.Status().Patch(context.TODO(), scaledObject, patch)

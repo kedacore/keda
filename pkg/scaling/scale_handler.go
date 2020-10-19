@@ -120,7 +120,7 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 }
 
 // startScaleLoop blocks forever and checks the scaledObject based on its pollingInterval
-func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex *sync.Mutex) {
+func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	// kick off one check to the scalers now
@@ -140,7 +140,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	}
 }
 
-func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex *sync.Mutex) {
+func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	ss, err := h.GetScalers(scalableObject)
 	if err != nil {
@@ -178,7 +178,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
-func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}, scalingMutex *sync.Mutex) {
+func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}, scalingMutex sync.Locker) {
 	scalers, err := h.GetScalers(scalableObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers", "object", scalableObject)
