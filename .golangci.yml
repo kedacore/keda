@@ -36,7 +36,6 @@ linters:
     #- gocritic
     #- gocyclo
     - gosimple
-    - staticcheck
     - stylecheck
     - unused
     - varcheck
