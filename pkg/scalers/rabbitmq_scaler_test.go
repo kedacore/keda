@@ -102,6 +102,7 @@ var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range testQueueInfoTestData {
+		testData := testData
 		for _, vhostPath := range vhostPathes {
 			expectedVhost := "myhost"
 

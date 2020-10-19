@@ -221,6 +221,7 @@ func TestResolveAuthRef(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			gotMap, gotPodIdentity := ResolveAuthRef(fake.NewFakeClientWithScheme(scheme.Scheme, test.existing...), logf.Log.WithName("test"), test.soar, test.podSpec, namespace)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
@@ -337,6 +338,7 @@ func TestResolveDependentEnv(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			envMap, _ := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), test.container, namespace)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
