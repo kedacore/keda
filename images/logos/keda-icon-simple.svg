@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Warstwa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 625 625" style="enable-background:new 0 0 625 625;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:url(#Shape_1_);stroke-width:30;}
+	.st1{fill:#326DE6;}
+	.st2{fill:#FFFFFF;stroke:#326DE6;stroke-miterlimit:10;}
+	.st3{fill:#FFFFFF;}
+</style>
+<title>Icon</title>
+<desc>Created with Sketch.</desc>
+<g id="Icon">
+	<g transform="translate(20.000000, 34.000000)">
+		<g id="k8s-icon-1" transform="translate(16.000000, 18.000000)">
+			<g id="Kubernetes_Logo_Hrz_lockup_REV">
+
+					<linearGradient id="Shape_1_" gradientUnits="userSpaceOnUse" x1="-43.5539" y1="251.817" x2="-43.5539" y2="252.817" gradientTransform="matrix(518.534 0 0 494.8732 22858.6484 -124602.3906)">
+					<stop  offset="0" style="stop-color:#719BEA"/>
+					<stop  offset="1" style="stop-color:#5478E0"/>
+				</linearGradient>
+				<path id="Shape" class="st0" d="M486.2,120.9c-1.9-5.4-6.3-10.3-12.4-13.6l-191-90.6l-0.1-0.1c-2.1-1-5.1-1.5-9-1.5
+					c-3.6,0-5.1,0-7,0.1c-1.5,0.1-2.8,0.2-3.8,0.4L73.1,106.2l-0.2,0.1c-5.4,2.5-9.1,6.9-10.5,12.8L15.5,322.8
+					c-1,6.2,0.4,12.4,4.1,17.7l131.5,161c4.9,4.6,11.8,7.7,18.3,8.2h211.1l0.8,0.1c5.8,0.6,11.3-1.9,15.2-7.1l0.2-0.3l132.3-162
+					c3.6-5.2,5.3-11.6,4.6-18.2C533.6,322.4,486.2,120.9,486.2,120.9z"/>
+			</g>
+		</g>
+		<g id="nodes">
+			<circle id="Oval-2" class="st1" cx="418" cy="519" r="39"/>
+			<circle id="Oval-2_1_" class="st1" cx="176" cy="519" r="39"/>
+			<circle id="Oval-2_2_" class="st1" cx="287" cy="39" r="39"/>
+			<circle id="Oval-2_3_" class="st1" cx="498" cy="131" r="39"/>
+			<circle id="Oval-2_4_" class="st1" cx="80" cy="131" r="39"/>
+			<circle id="Oval-2_5_" class="st1" cx="547" cy="350" r="39"/>
+			<circle id="Oval-2_6_" class="st1" cx="39" cy="350" r="39"/>
+		</g>
+		<g>
+			<g id="Warstwa_1_1_">
+				<g id="Wordmark">
+					<path id="KEDA_1_" class="st1" d="M175.8,333l-23-41.1l-6.9,7.1v34h-18v-89.9h18v29l26.3-29h24.3L165,278.3l32.2,54.7H175.8z
+						 M275.7,243.1v18h-60v-18H275.7z M215.7,295.7v-18h49.7v18H215.7z M215.7,333.1v-18h59.6v18H215.7z M294.1,243.1h25.4
+						c11.9-0.1,23.3,4.6,31.7,13.1c4.2,4.1,7.4,9,9.6,14.4c4.8,11.2,4.8,23.9,0,35c-2.2,5.4-5.4,10.2-9.6,14.2
+						c-8.4,8.4-19.8,13.2-31.7,13.2h-18.1v0h-7.3V243.1z M312.1,315.1h7.5c14.9-0.2,26.9-12.5,26.7-27.4
+						c-0.2-14.6-12-26.5-26.7-26.7h-7.5V315.1z M414.7,243.1h5.3l42.5,90h-19.9l-25.7-54.7L389,333.1h-20.2L414.7,243.1z"/>
+					<polygon class="st2" points="426.7,329.3 431.6,320.6 412.8,320.6 418.4,281.6 418.1,281 388.3,335 388.3,335 387.4,336.6
+						406.5,336.4 401.5,374.9 401.6,375.4 424.7,333.1 424.7,333.1 424.7,333.1 					"/>
+					<path id="Combined-Shape_1_" class="st1" d="M424.7,333.1l6.9-12.5h-18.8l5.9-40.5l-29.3,53H383l34-63.7l33.9,63.7H424.7z"/>
+				</g>
+				<path class="st3" d="M388,329.5"/>
+			</g>
+		</g>
+	</g>
+</g>
+</svg>
