@@ -94,6 +94,7 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 func (s *pubsubScaler) Close() error {
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
+		s.client = nil
 		if err != nil {
 			gcpPubSubLog.Error(err, "error closing StackDriver client")
 		}
@@ -147,13 +148,15 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 // GetSubscriptionSize gets the number of messages in a subscription by calling the
 // Stackdriver api
 func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
-	client, err := NewStackDriverClient(ctx, s.metadata.credentials)
-	if err != nil {
-		return -1, err
+	if s.client == nil {
+		client, err := NewStackDriverClient(ctx, s.metadata.credentials)
+		if err != nil {
+			return -1, err
+		}
+		s.client = client
 	}
-	s.client = client
 
 	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
 
-	return client.GetMetrics(ctx, filter)
+	return s.client.GetMetrics(ctx, filter)
 }
