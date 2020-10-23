@@ -71,6 +71,10 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, false, false},
 	// success, TLS only
 	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key and assumed public CA
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS CA only
+	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// failure, SASL incorrect type
@@ -79,14 +83,12 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "password": "admin"}, true, false},
 	// failure, SASL missing password
 	{map[string]string{"sasl": "plaintext", "username": "admin"}, true, false},
-	// failure, TLS incorrect
-	{map[string]string{"tls": "yes", "cert": "ceert", "key": "keey"}, true, false},
-	// failure, TLS missing ca
-	{map[string]string{"tls": "yes", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, TLS missing cert
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, TLS missing key
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert"}, true, false},
+	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
+	// failure, TLS invalid
+	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, incorrect sasl
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, incorrect tls
@@ -95,8 +97,6 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing password
 	{map[string]string{"sasl": "plaintext", "username": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
-	// failure, SASL + TLS, missing ca
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing cert
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing key
