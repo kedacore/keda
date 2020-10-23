@@ -130,12 +130,6 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 		meta.tlsDisabled = defaultTLSDisabled
 	}
 
-	if val, ok := config.AuthParams["username"]; ok {
-		meta.username = val
-	} else {
-		return nil, fmt.Errorf("no username given")
-	}
-
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
 	} else if val, ok := config.ResolvedEnv["usernameFromEnv"]; ok && val != "" {
