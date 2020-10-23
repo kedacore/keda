@@ -155,19 +155,16 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		val = strings.TrimSpace(val)
 
 		if val == "enable" {
-			if config.AuthParams["ca"] == "" {
-				return meta, errors.New("no ca given")
+			certGiven := config.AuthParams["cert"] != ""
+			keyGiven := config.AuthParams["key"] != ""
+			if certGiven && !keyGiven {
+				return meta, errors.New("key must be provided with cert")
+			}
+			if keyGiven && !certGiven {
+				return meta, errors.New("cert must be provided with key")
 			}
 			meta.ca = config.AuthParams["ca"]
-
-			if config.AuthParams["cert"] == "" {
-				return meta, errors.New("no cert given")
-			}
 			meta.cert = config.AuthParams["cert"]
-
-			if config.AuthParams["key"] == "" {
-				return meta, errors.New("no key given")
-			}
 			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
 		} else {
