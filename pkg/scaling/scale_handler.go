@@ -429,6 +429,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewPubSubScaler(config)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(config)
+	case "ibmmq":
+		return scalers.NewIBMMQScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
 	case "liiklus":
