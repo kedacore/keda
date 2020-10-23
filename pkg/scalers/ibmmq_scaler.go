@@ -133,7 +133,7 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
 	} else if val, ok := config.ResolvedEnv["usernameFromEnv"]; ok && val != "" {
-		meta.password = val
+		meta.username = val
 	} else {
 		return nil, fmt.Errorf("no username given")
 	}
