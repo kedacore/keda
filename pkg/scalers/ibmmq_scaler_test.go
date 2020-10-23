@@ -18,6 +18,11 @@ type parseIBMMQMetadataTestData struct {
 	authParams map[string]string
 }
 
+var sampleIBMMQResolvedEnv = map[string]string{
+	username: "ibmmquser",
+	password: "ibmmqpass",
+}
+
 // Test metric identifier with test MQ data and it's name
 type IBMMQMetricIdentifier struct {
 	metadataTestData *parseIBMMQMetadataTestData
@@ -57,7 +62,7 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 // should error on missing required field
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		_, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -77,7 +82,7 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 // Test that DefaultQueueDepth is set when targetQueueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
@@ -91,7 +96,7 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 // Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
 
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
