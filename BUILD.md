@@ -152,3 +152,7 @@ Find `--v=0` argument in Operator Deployment section in `config/metrics-server/d
 Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
 
 Default value: `"0"`
+
+### CPU/Memory Profiling
+
+Refer to [Enabling Memory Profiling on KEDA v2](https://dev.to/tsuyoshiushio/enabling-memory-profiling-on-keda-v2-157g).
