@@ -23,17 +23,15 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
 	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
-	// // missing subscriptionName
+	// missing subscriptionName
 	{nil, map[string]string{"subscriptionName": "", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
-	// // missing credentials
+	// missing credentials
 	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": ""}, true},
-	// incorrect credentials
-	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "WRONG_CREDS"}, false},
 	// malformed subscriptionSize
 	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
-	// // Credentials from AuthParams
+	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, false},
-	// // Credentials from AuthParams with empty creds
+	// Credentials from AuthParams with empty creds
 	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
 }
 
