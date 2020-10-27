@@ -13,12 +13,12 @@ In order to develop a scaler, a developer should do the following:
 
 If you want to deploy locally
 1. Open the terminal and go to the root of the source code
-2. Run `IMAGE_REPO=johndoe make publish`, where `johndoe ` is your Docker Hub repo, this will create and publis images with your build of KEDA into your repo. Please refer [the guide for local deployment](Readme.md#deploying-custom-keda-locally-outside-cluster) for more details.
+2. Run `IMAGE_REPO=johndoe make publish`, where `johndoe` is your Docker Hub repo, this will create and publish images with your build of KEDA into your repo. Please refer [the guide for local deployment](Readme.md#deploying-custom-keda-locally-outside-cluster) for more details.
 3. Run `IMAGE_REPO=johndoe make deploy`, this will deploy KEDA to your cluster.
 
 ## Scaler interface
 
-The scalers in KEDA are implementations of a KEDA `Scaler` Go interface declared in `pkg/scalers/scaler.go`.  This documentation describes how scalers works and is targeted towards contributors and maintainers.
+The scalers in KEDA are implementations of a KEDA `Scaler` Go interface declared in `pkg/scalers/scaler.go`. This documentation describes how scalers work and is targeted towards contributors and maintainers.
 
 ### GetMetrics
 
@@ -28,7 +28,7 @@ This is the key function of a scaler; it returns a value that represents a curre
 - `WindowSeconds`: //TODO
 - `Value`: A numerical value that represents the state of the metric. It could be the length of a queue, or it can be the amount of lag in a stream, but it can also be a simple representation of the state.
 
-Kubernetes HPA (Horizontal Pod Autoscaler) will poll `GetMetrics` reulgarly through KEDA's metric server (as long as there is at least one pod), and compare the returned value to a configured value in the ScaledObject configuration. Kubernetes will use the following formula to decide whether to scale the pods up and down:
+Kubernetes HPA (Horizontal Pod Autoscaler) will poll `GetMetrics` regularly through KEDA's metric server (as long as there is at least one pod), and compare the returned value to a configured value in the ScaledObject configuration. Kubernetes will use the following formula to decide whether to scale the pods up and down:
 
 `desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]`.
 
@@ -48,12 +48,14 @@ The return type of this function is `MetricSpec`, but in KEDA's case we will mos
 
 For some reason, the scaler might need to declare itself as in-active, and the way it can do this is through implementing the function `IsActive`.
 
-KEDA polls ScaledObject object according to the `pollingInterval` confiugred in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
+KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
 
 ### Close
+
 After each poll on the scaler to retrieve the metrics, KEDA calls this function for each scaler to give the scaler the opportunity to close any resources, like http clients for example.
 
 ### Constructor
+
 What is missing from the `scaler` interface is a function that constructs the scaler itself. Up until the moment of writing this document, KEDA does not have a dynamic way to load scalers (at least not officially)[***]; instead scalers are part of KEDA's code-base, and they are shipped with KEDA's binary.
 
 Thus, each scaler should have a constructing function, KEDA will [explicitly invoke](https://github.com/kedacore/keda/blob/4d0cf5ef09ef348cf3a158634910f00741ae5258/pkg/handler/scale_handler.go#L565) the construction function based on the `trigger` property configured in the ScaledObject.
