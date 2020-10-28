@@ -134,8 +134,8 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		meta.method = "header"
 		meta.enableAPIKeyAuth = true
 
-		if config.TriggerMetadata["method"] == "query" {
-			meta.method = "query"
+		if config.TriggerMetadata["method"] == promQuery {
+			meta.method = promQuery
 		}
 
 		if len(config.TriggerMetadata["keyParamName"]) > 0 {
@@ -269,7 +269,7 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 	var err error
 
 	if meta.enableAPIKeyAuth {
-		if meta.method == "query" {
+		if meta.method == promQuery {
 			url, _ := neturl.Parse(meta.url)
 			queryString := url.Query()
 			if len(meta.keyParamName) == 0 {

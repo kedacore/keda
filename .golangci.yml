@@ -32,7 +32,7 @@ linters:
     #- dogsled
     #- errcheck
     #- funlen
-    #- goconst
+    - goconst
     #- gocritic
     #- gocyclo
     - gosimple
