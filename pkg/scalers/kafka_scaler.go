@@ -61,6 +61,11 @@ const (
 	defaultKafkaLagThreshold = 10
 )
 
+const (
+	minumumThresholdMetricName   = "minimumThreshold"
+	defaultKafkaMinThreshold = 10
+)
+
 var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 var statusDict = struct{
@@ -116,6 +121,7 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 	meta.topic = metadata["topic"]
 
 	meta.lagThreshold = defaultKafkaLagThreshold
+	meta.minimumThreshold = defaultKafkaMinThreshold
 
 	if val, ok := metadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
@@ -123,6 +129,14 @@ func parseKafkaMetadata(resolvedEnv, metadata, authParams map[string]string) (ka
 			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
 		}
 		meta.lagThreshold = t
+	}
+
+	if val, ok := metadata[minumumThresholdMetricName]; ok {
+		q, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing %s: %s", minumumThresholdMetricName, err)
+		}
+		meta.minimumThreshold = q
 	}
 
 	meta.authMode = kafkaAuthModeForNone
@@ -190,12 +204,6 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		lag := s.getLagForPartition(partition, offsets)
 		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
 
-		if minimumThreshold == 0 {
-			// Return as soon as a lag was detected for any partition
-			if lag > 0 {
-				return true, nil
-			}
-		}
 		// Sum lag across all Kafka partitions.
 		lagTotal += lag
 	}
@@ -206,7 +214,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 	statusDict.RLock()
 	isRunning := statusDict.isRunningMap[topicPlusGroup]
 	statusDict.RUnlock()
-	kafkaLog.V(1).Info(fmt.Sprintf("Topic+Group Key = %s; current state isRunning = %t; totalLag = %d\n", topicPlusGroup, isRunning, totalLag))
+	kafkaLog.V(1).Info(fmt.Sprintf("Topic+Group Key = %s; current state isRunning = %t; totalLag = %d\n", topicPlusGroup, isRunning, lagTotal))
 	if isRunning == true && lagTotal > 0 {
 		kafkaLog.V(1).Info(fmt.Sprintf("%s isActive, lagTotal > 0.\n", topicPlusGroup))
 		return true, nil
@@ -396,11 +404,11 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		totalLag += lag
 	}
 
-	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.lagThreshold))
+	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.minimumThreshold))
 
 	// don't scale out beyond the number of partitions
-	if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
-		totalLag = int64(len(partitions)) * s.metadata.lagThreshold
+	if (totalLag / s.metadata.minimumThreshold) > int64(len(partitions)) {
+		totalLag = int64(len(partitions)) * s.metadata.minimumThreshold
 	}
 
 	metric := external_metrics.ExternalMetricValue{
