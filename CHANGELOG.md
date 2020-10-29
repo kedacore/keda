@@ -43,6 +43,7 @@
 - Added ScaledObject Status Conditions to display status of scaling ([#750](https://github.com/kedacore/keda/pull/750))
 - Added optional authentication parameters for the Redis Scaler ([#962](https://github.com/kedacore/keda/pull/962))
 - Improved GCP PubSub Scaler performance by closing the client correctly ([#1087](https://github.com/kedacore/keda/pull/1087))
+- Added support for Trigger Authentication for GCP PubSub scaler ([#1291](https://github.com/kedacore/keda/pull/1291))
 
 ### Breaking Changes
 

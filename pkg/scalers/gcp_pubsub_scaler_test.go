@@ -9,8 +9,9 @@ var testPubSubResolvedEnv = map[string]string{
 }
 
 type parsePubSubMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	authParams map[string]string
+	metadata   map[string]string
+	isError    bool
 }
 
 type gcpPubSubMetricIdentifier struct {
@@ -19,17 +20,19 @@ type gcpPubSubMetricIdentifier struct {
 }
 
 var testPubSubMetadata = []parsePubSubMetadataTestData{
-	{map[string]string{}, true},
+	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing subscriptionName
-	{map[string]string{"subscriptionName": "", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"subscriptionName": "", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": ""}, true},
-	// incorrect credentials
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "WRONG_CREDS"}, true},
+	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": ""}, true},
 	// malformed subscriptionSize
-	{map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// Credentials from AuthParams
+	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, false},
+	// Credentials from AuthParams with empty creds
+	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
@@ -38,7 +41,7 @@ var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
 
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
-		_, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
+		_, err := parsePubSubMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
