@@ -20,6 +20,11 @@ const (
 	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
 )
 
+type gcpAuthorizationMetadata struct {
+	GoogleApplicationCredentials string
+	podIdentityOwner             bool
+}
+
 type pubsubScaler struct {
 	client   *StackDriverClient
 	metadata *pubsubMetadata
@@ -28,7 +33,7 @@ type pubsubScaler struct {
 type pubsubMetadata struct {
 	targetSubscriptionSize int
 	subscriptionName       string
-	credentials            string
+	gcpAuthorization       gcpAuthorizationMetadata
 }
 
 var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
@@ -68,14 +73,11 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	if config.TriggerMetadata["credentialsFromEnv"] != "" {
-		meta.credentials = config.ResolvedEnv[config.TriggerMetadata["credentialsFromEnv"]]
+	auth, err := getGcpAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(meta.credentials) == 0 {
-		return nil, fmt.Errorf("no credentials given. Need GCP service account credentials in json format")
-	}
-
+	meta.gcpAuthorization = *auth
 	return &meta, nil
 }
 
@@ -149,7 +151,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 // Stackdriver api
 func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	if s.client == nil {
-		client, err := NewStackDriverClient(ctx, s.metadata.credentials)
+		client, err := NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 		if err != nil {
 			return -1, err
 		}
@@ -159,4 +161,23 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
 
 	return s.client.GetMetrics(ctx, filter)
+}
+
+func getGcpAuthorization(authParams, metadata, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
+	meta := gcpAuthorizationMetadata{}
+	if metadata["identityOwner"] == "operator" {
+		meta.podIdentityOwner = false
+	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
+		meta.podIdentityOwner = true
+		if authParams["GoogleApplicationCredentials"] != "" {
+			meta.GoogleApplicationCredentials = authParams["GoogleApplicationCredentials"]
+		} else {
+			if metadata["credentialsFromEnv"] != "" {
+				meta.GoogleApplicationCredentials = resolvedEnv[metadata["credentialsFromEnv"]]
+			} else {
+				return nil, fmt.Errorf("GoogleApplicationCredentials not found")
+			}
+		}
+	}
+	return &meta, nil
 }
