@@ -1,4 +1,4 @@
-name: build-tools CI
+name: build-tools-CI
 on:
   push:
     branches:
