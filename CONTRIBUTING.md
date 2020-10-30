@@ -10,9 +10,9 @@ If you have a question about KEDA or how best to contribute, the [#KEDA](https:/
 
 ## Contributing Scalers
 
-One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/master/pkg/scalers).  When writing a scaler, please consider:
+One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/v1/pkg/scalers).  When writing a scaler, please consider:
 
-1. Is this an event source that many others will access from Kubernetes? If not, potentially consider [creating an external scaler](https://github.com/kedacore/keda/blob/master/pkg/scalers/externalscaler/externalscaler.proto).
+1. Is this an event source that many others will access from Kubernetes? If not, potentially consider [creating an external scaler](https://github.com/kedacore/keda/blob/v1/pkg/scalers/externalscaler/externalscaler.proto).
 1. Provide tests
 1. Provide [documentation and examples](https://github.com/kedacore/keda-docs#adding-scaler-documentation) for [keda.sh](https://keda.sh)
 
@@ -63,7 +63,7 @@ No worries - You can easily replay your changes, sign them and force push them!
 
 ```
 git checkout <branch-name>
-git reset $(git merge-base master <branch-name>)
+git reset $(git merge-base v1 <branch-name>)
 git add -A
 git commit -sm "one commit on <branch-name>"
 git push --force

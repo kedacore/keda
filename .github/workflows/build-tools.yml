@@ -1,9 +1,9 @@
-name: build-tools CI
+name: build-tools-CI
 on:
   push:
     branches:
-      - master
-      - v2
+      - main
+      - v1
     paths:
       - 'tools/**'
 jobs:

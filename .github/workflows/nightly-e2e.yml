@@ -1,4 +1,4 @@
-name: nightly e2e test
+name: nightly-e2e-test
 on:
   schedule:
     - cron: "0 0 * * *"

@@ -1,14 +1,14 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= master
+VERSION		   ?= v1
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-adapter:$(VERSION)
 
-IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:latest
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:v1
 
 ARCH       ?=amd64
 CGO        ?=0
