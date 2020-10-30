@@ -1,7 +1,7 @@
 <p align="center"><img src="images/keda-logo-transparent.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
-<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/v1-build/badge.svg" alt="master build"></a>
+<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/v1-build/badge.svg" alt="v1 build"></a>
 <a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/nightly-e2e-test/badge.svg" alt="nightly e2e"></a>
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
@@ -14,7 +14,7 @@ KEDA can run on both the cloud and the edge, integrates natively with Kubernetes
 Pod Autoscaler, and has no external dependencies.
 
 We are a Cloud Native Computing Foundation (CNCF) sandbox project.
-<img src="https://raw.githubusercontent.com/kedacore/keda/master/images/logo-cncf.svg" height="75px">
+<img src="https://raw.githubusercontent.com/kedacore/keda/v1/images/logo-cncf.svg" height="75px">
   
 ## Getting started
 
@@ -88,7 +88,7 @@ make build
 ## Building: Locally directly
 This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you
 have installed the right version. To check the current version used for KEDA check the `RELEASE_VERSION` in file
-[tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/master/tools/build-tools.Dockerfile).
+[tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/v1/tools/build-tools.Dockerfile).
 
 ```bash
 git clone git@github.com:kedacore/keda.git
