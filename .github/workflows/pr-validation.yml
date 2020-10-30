@@ -1,4 +1,4 @@
-name: pull request validation
+name: pull-request-validation
 on: [pull_request]
 jobs:
   validate:
