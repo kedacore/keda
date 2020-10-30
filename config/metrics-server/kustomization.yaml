@@ -11,4 +11,4 @@ kind: Kustomization
 images:
 - name: docker.io/kedacore/keda-metrics-apiserver
   newName: docker.io/kedacore/keda-metrics-apiserver
-  newTag: v2
+  newTag: main

@@ -2,7 +2,7 @@ package version
 
 var (
 	// Version defines the current version of keda
-	Version = "v2"
+	Version = "main"
 	// GitCommit stores the current commit hash
 	GitCommit string
 )

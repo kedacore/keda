@@ -1,14 +1,14 @@
-name: master build
+name: v1-build
 on:
   push:
     branches:
-      - master
+      - v1
 jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:v1
     steps:
       - name: Check out code
         uses: actions/checkout@v1
