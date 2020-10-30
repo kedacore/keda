@@ -1,4 +1,4 @@
-name: release build
+name: release-build
 on:
   push:
     tags:
@@ -8,7 +8,7 @@ jobs:
     name: Push Release
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:main
     steps:
       - name: Check out code
         uses: actions/checkout@v1

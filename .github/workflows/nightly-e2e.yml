@@ -1,4 +1,4 @@
-name: nightly e2e test
+name: nightly-e2e-test
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -7,7 +7,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:main
     steps:
       - name: Check out code
         uses: actions/checkout@v1

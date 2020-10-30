@@ -1,20 +1,20 @@
 name: FOSSA
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: kedacore/build-tools:latest
+    container: kedacore/build-tools:main
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: "^1.13.1"
+          go-version: "^1.15.3"
       - run: go version
       # Runs a set of commands to initialize and analyze with FOSSA
       - name: run FOSSA analysis
