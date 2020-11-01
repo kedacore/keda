@@ -74,7 +74,7 @@ test.after.always.cb('clean up stan deployment', t => {
 
 
 const scaledObjectYaml = `
-apiVersion: keda.sh/v1alpha1 
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: stan-scaledobject
