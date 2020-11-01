@@ -79,10 +79,10 @@ kind: ScaledObject
 metadata:
   name: stan-scaledobject
 spec:
-  pollingInterval: 3 
-  cooldownPeriod: 10 
-  minReplicaCount: 0 
-  maxReplicaCount: 5 
+  pollingInterval: 3
+  cooldownPeriod: 10
+  minReplicaCount: 0
+  maxReplicaCount: 5
   scaleTargetRef:
     name: sub
   triggers:
