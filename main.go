@@ -111,7 +111,7 @@ func main() {
 
 	setupLog.Info("Starting manager")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	setupLog.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))
+	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
 	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 
