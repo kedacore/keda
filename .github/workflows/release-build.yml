@@ -33,13 +33,13 @@ jobs:
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
 
-      - name: Publish KEDA images to Docker Hub
-        run: make publish
+      - name: Release Deployment YAML file
+        run: make release
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Release Deployment YAML file
-        run: make release
+      - name: Publish KEDA images to Docker Hub
+        run: make publish
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
