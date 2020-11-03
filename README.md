@@ -42,6 +42,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Become a listed KEDA user!](#become-a-listed-keda-user)
 - [Releases](#releases)
 - [Contributing](#contributing)
+- [Building & deploying locally](#building--deploying-locally)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -95,4 +96,7 @@ You can find the latest releases [here](https://github.com/kedacore/keda/release
 
 ## Contributing
 
-You can find contributing guide [here](./CONTRIBUTING.md) or learn how to build & deploy KEDA locally [here](./BUILD.md).
+You can find contributing guide [here](./CONTRIBUTING.md).
+
+## Building & deploying locally
+Learn how to build & deploy KEDA locally [here](./BUILD.md).
