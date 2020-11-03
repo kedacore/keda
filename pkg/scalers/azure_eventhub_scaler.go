@@ -10,7 +10,7 @@ import (
 	"github.com/kedacore/keda/api/v1alpha1"
 	"github.com/kedacore/keda/pkg/scalers/azure"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"

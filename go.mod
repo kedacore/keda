@@ -4,14 +4,14 @@ go 1.15
 
 require (
 	cloud.google.com/go v0.65.0
-	github.com/Azure/azure-amqp-common-go v1.1.4
-	github.com/Azure/azure-amqp-common-go/v3 v3.0.1
-	github.com/Azure/azure-event-hubs-go v1.3.1
-	github.com/Azure/azure-sdk-for-go v47.0.0+incompatible
+	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
+	github.com/Azure/azure-event-hubs-go v1.3.1 // indirect
+	github.com/Azure/azure-event-hubs-go/v3 v3.3.2
+	github.com/Azure/azure-sdk-for-go v48.0.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.6
 	github.com/Azure/azure-storage-blob-go v0.10.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
-	github.com/Azure/go-autorest/autorest v0.11.9
+	github.com/Azure/go-autorest/autorest v0.11.10
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.1
@@ -36,6 +36,8 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/gjson v1.6.1
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102 // indirect
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d
 	google.golang.org/grpc v1.31.1

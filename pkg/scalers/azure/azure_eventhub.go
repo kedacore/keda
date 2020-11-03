@@ -11,8 +11,8 @@ import (
 
 	"github.com/imdario/mergo"
 
-	"github.com/Azure/azure-amqp-common-go/aad"
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	"github.com/Azure/azure-amqp-common-go/v3/aad"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest/azure"
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"

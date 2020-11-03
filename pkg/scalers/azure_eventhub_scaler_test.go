@@ -9,7 +9,7 @@ import (
 
 	"github.com/kedacore/keda/pkg/scalers/azure"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
