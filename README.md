@@ -88,7 +88,7 @@ Just want to learn or chat about KEDA? Feel free to join the conversation in
 
 ## Become a listed KEDA user!
 
-We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](./README.md#become-a-listed-keda-user).
+We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](https://github.com/kedacore/keda-docs#become-a-listed-keda-user).
 
 ## Releases
 
