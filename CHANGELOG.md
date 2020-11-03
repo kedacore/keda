@@ -4,6 +4,7 @@
 
 ## History
 
+- [v2.1.0](#v210)
 - [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
@@ -12,6 +13,13 @@
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## v2.1.0
+
+### New
+
+- Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
+
 
 ## v2.0.0
 
