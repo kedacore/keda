@@ -130,9 +130,9 @@ undeploy:
 build: manifests set-version manager adapter
 
 # Build the docker image
-docker-build: build
-	docker build . -t ${IMAGE_CONTROLLER}
-	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} .
+docker-build:
+	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
+	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION}
 
 # Build KEDA Operator binary
 .PHONY: manager
