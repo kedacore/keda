@@ -1,15 +1,3 @@
-<p style="font-size: 30px" align="center"><b>This branch contains KEDA v2.0.0 Release Candidate 2, currently under development</b></p>
-
-## How can I try KEDA v2 Release Candidate 2 version?
-Make sure to remove previous KEDA (including CRD) from the cluster. You can use KEDA Helm chart (include `--devel` when listing) or deploy directly this yaml file:
-```bash
-kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.0.0-rc2/keda-2.0.0-rc2.yaml
-```
-To uninstall run:
-```bash
-kubectl delete -f https://github.com/kedacore/keda/releases/download/v2.0.0-rc2/keda-2.0.0-rc2.yaml
-```
-
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
