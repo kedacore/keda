@@ -1,6 +1,8 @@
 # Build the manager binary
 FROM golang:1.15.3 as builder
 
+ARG BUILD_VERSION
+
 WORKDIR /workspace
 
 # Copy the Go Modules manifests
@@ -24,7 +26,7 @@ COPY pkg/ pkg/
 COPY .git/ .git/
 
 # Build
-RUN make manager
+RUN VERSION=${BUILD_VERSION} make manager
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
