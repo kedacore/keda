@@ -99,7 +99,6 @@ func TestParseEventHubMetadata(t *testing.T) {
 			t.Error("Expected error and got success")
 		}
 	}
-
 }
 
 func TestGetUnprocessedEventCountInPartition(t *testing.T) {
