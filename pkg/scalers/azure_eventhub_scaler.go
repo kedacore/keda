@@ -106,7 +106,6 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		if len(meta.eventHubInfo.EventHubConnection) == 0 {
 			return nil, fmt.Errorf("no event hub connection string given")
 		}
-
 	} else {
 		if config.TriggerMetadata["eventHubNamespace"] != "" {
 			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]

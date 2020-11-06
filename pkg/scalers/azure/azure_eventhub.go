@@ -53,7 +53,6 @@ type EventHubInfo struct {
 
 // GetEventHubClient returns eventhub client
 func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
-
 	// The user wants to use a connectionstring, not a pod identity
 	if info.EventHubConnection != "" {
 		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
@@ -86,8 +85,8 @@ func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partit
 		return Checkpoint{}, err
 	}
 
-	var eventHubNamespace = ""
-	var eventHubName = ""
+	var eventHubNamespace string
+	var eventHubName string
 	if info.EventHubConnection != "" {
 		eventHubNamespace, eventHubName, err = ParseAzureEventHubConnectionString(info.EventHubConnection)
 		if err != nil {
