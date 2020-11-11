@@ -7,7 +7,7 @@ import (
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	servicebus "github.com/Azure/azure-service-bus-go"
-	"github.com/kedacore/keda/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +15,8 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type entityType int

@@ -3,7 +3,7 @@ package scalers
 import (
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 type parseAzMonitorMetadataTestData struct {

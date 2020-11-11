@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/pkg/generated/clientset/versioned/scheme"
+	v1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
