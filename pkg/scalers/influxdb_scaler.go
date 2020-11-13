@@ -95,7 +95,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		if err != nil {
 			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %s", err.Error())
 		}
-		thresholdValue = float64(value)
+		thresholdValue = value
 	} else {
 		return nil, fmt.Errorf("no threshold value given")
 	}
@@ -118,7 +118,7 @@ func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return value > s.metadata.thresholdValue, nil
+	return value > 0, nil
 }
 
 // Close closes the connection of the client to the server
@@ -131,6 +131,8 @@ func (s *influxDBScaler) Close() error {
 // there is an implicit assumption here that the first value returned from the iterator
 // will be the value of interest
 func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
+	var isParsingIssue bool
+
 	result, err := queryAPI.Query(context.Background(), query)
 	if err != nil {
 		return 0, err
@@ -143,6 +145,11 @@ func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
 			influxDBLog.Info("the value was this")
 			return assertedVal, nil
 		}
+		isParsingIssue = true
+		break
+	}
+
+	if isParsingIssue {
 		return 0, fmt.Errorf("error parsing queried value to float")
 	}
 
