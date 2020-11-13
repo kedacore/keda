@@ -1,15 +1,3 @@
-<p style="font-size: 30px" align="center"><b>This branch contains KEDA v2.0.0 Release Candidate 2, currently under development</b></p>
-
-## How can I try KEDA v2 Release Candidate 2 version?
-Make sure to remove previous KEDA (including CRD) from the cluster. You can use KEDA Helm chart (include `--devel` when listing) or deploy directly this yaml file:
-```bash
-kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.0.0-rc2/keda-2.0.0-rc2.yaml
-```
-To uninstall run:
-```bash
-kubectl delete -f https://github.com/kedacore/keda/releases/download/v2.0.0-rc2/keda-2.0.0-rc2.yaml
-```
-
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
@@ -42,6 +30,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 - [Become a listed KEDA user!](#become-a-listed-keda-user)
 - [Releases](#releases)
 - [Contributing](#contributing)
+- [Building & deploying locally](#building--deploying-locally)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -87,7 +76,7 @@ Just want to learn or chat about KEDA? Feel free to join the conversation in
 
 ## Become a listed KEDA user!
 
-We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](./README.md#become-a-listed-keda-user).
+We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](https://github.com/kedacore/keda-docs#become-a-listed-keda-user).
 
 ## Releases
 
@@ -95,4 +84,7 @@ You can find the latest releases [here](https://github.com/kedacore/keda/release
 
 ## Contributing
 
-You can find contributing guide [here](./CONTRIBUTING.md) or learn how to build & deploy KEDA locally [here](./BUILD.md).
+You can find contributing guide [here](./CONTRIBUTING.md).
+
+## Building & deploying locally
+Learn how to build & deploy KEDA locally [here](./BUILD.md).
