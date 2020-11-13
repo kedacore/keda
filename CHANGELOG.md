@@ -4,6 +4,7 @@
 
 ## History
 
+- [Unreleased](#unreleased)
 - [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
@@ -12,6 +13,16 @@
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## Unreleased
+
+### New
+
+### Improvements
+
+### Breaking Changes
+
+### Other
 
 ## v2.0.0
 
