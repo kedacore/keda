@@ -30,7 +30,7 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 			if metadata["awsAccessKeyID"] != "" {
 				meta.awsAccessKeyID = metadata["awsAccessKeyID"]
 			} else if metadata["awsAccessKeyIDFromEnv"] != "" {
-				meta.awsAccessKeyID = resolvedEnv[metadata["awsAccessKeyID"]]
+				meta.awsAccessKeyID = resolvedEnv[metadata["awsAccessKeyIDFromEnv"]]
 			}
 
 			if len(meta.awsAccessKeyID) == 0 {
