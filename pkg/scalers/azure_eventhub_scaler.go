@@ -7,9 +7,10 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/kedacore/keda/api/v1alpha1"
 	"github.com/kedacore/keda/pkg/scalers/azure"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -85,16 +86,6 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		return nil, fmt.Errorf("no storage connection string given")
 	}
 
-	if config.AuthParams["connection"] != "" {
-		meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
-	} else if config.TriggerMetadata["connectionFromEnv"] != "" {
-		meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
-	}
-
-	if len(meta.eventHubInfo.EventHubConnection) == 0 {
-		return nil, fmt.Errorf("no event hub connection string given")
-	}
-
 	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := config.TriggerMetadata["consumerGroup"]; ok {
 		meta.eventHubInfo.EventHubConsumerGroup = val
@@ -103,6 +94,38 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.eventHubInfo.BlobContainer = defaultBlobContainer
 	if val, ok := config.TriggerMetadata["blobContainer"]; ok {
 		meta.eventHubInfo.BlobContainer = val
+	}
+
+	if config.PodIdentity == "" || config.PodIdentity == v1alpha1.PodIdentityProviderNone {
+		if config.AuthParams["connection"] != "" {
+			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
+		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+			meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.EventHubConnection) == 0 {
+			return nil, fmt.Errorf("no event hub connection string given")
+		}
+	} else {
+		if config.TriggerMetadata["eventHubNamespace"] != "" {
+			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]
+		} else if config.TriggerMetadata["eventHubNamespaceFromEnv"] != "" {
+			meta.eventHubInfo.Namespace = config.ResolvedEnv[config.TriggerMetadata["eventHubNamespaceFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.Namespace) == 0 {
+			return nil, fmt.Errorf("no event hub namespace string given")
+		}
+
+		if config.TriggerMetadata["eventHubName"] != "" {
+			meta.eventHubInfo.EventHubName = config.TriggerMetadata["eventHubName"]
+		} else if config.TriggerMetadata["eventHubNameFromEnv"] != "" {
+			meta.eventHubInfo.EventHubName = config.ResolvedEnv[config.TriggerMetadata["eventHubNameFromEnv"]]
+		}
+
+		if len(meta.eventHubInfo.EventHubName) == 0 {
+			return nil, fmt.Errorf("no event hub name string given")
+		}
 	}
 
 	return &meta, nil
