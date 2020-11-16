@@ -63,18 +63,23 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 	}
 	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
+	labels := map[string]string{
+		"app.kubernetes.io/name":       scaledJob.GetName(),
+		"app.kubernetes.io/version":    version.Version,
+		"app.kubernetes.io/part-of":    scaledJob.GetName(),
+		"app.kubernetes.io/managed-by": "keda-operator",
+		"scaledjob":                    scaledJob.GetName(),
+	}
+	for key, value := range scaledJob.ObjectMeta.Labels {
+		labels[key] = value
+	}
+
 	for i := 0; i < int(scaleTo); i++ {
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: scaledJob.GetName() + "-",
 				Namespace:    scaledJob.GetNamespace(),
-				Labels: map[string]string{
-					"app.kubernetes.io/name":       scaledJob.GetName(),
-					"app.kubernetes.io/version":    version.Version,
-					"app.kubernetes.io/part-of":    scaledJob.GetName(),
-					"app.kubernetes.io/managed-by": "keda-operator",
-					"scaledjob":                    scaledJob.GetName(),
-				},
+				Labels:       labels,
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}
