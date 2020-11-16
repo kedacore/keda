@@ -11,9 +11,10 @@ import (
 
 	"github.com/imdario/mergo"
 
-	eventhub "github.com/Azure/azure-event-hubs-go"
+	"github.com/Azure/azure-amqp-common-go/v3/aad"
+	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-
+	"github.com/Azure/go-autorest/autorest/azure"
 	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
 )
 
@@ -46,16 +47,35 @@ type EventHubInfo struct {
 	EventHubConsumerGroup string
 	StorageConnection     string
 	BlobContainer         string
+	Namespace             string
+	EventHubName          string
 }
 
 // GetEventHubClient returns eventhub client
 func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
-	hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create hub client: %s", err)
+	// The user wants to use a connectionstring, not a pod identity
+	if info.EventHubConnection != "" {
+		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create hub client: %s", err)
+		}
+		return hub, nil
 	}
 
-	return hub, nil
+	// Since there is no connectionstring, then user wants to use pod identity
+	// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
+	provider, aadErr := aad.NewJWTProvider(func(config *aad.TokenProviderConfiguration) error {
+		if config.Env == nil {
+			config.Env = &azure.PublicCloud
+		}
+		return nil
+	})
+
+	if aadErr == nil {
+		return eventhub.NewHub(info.Namespace, info.EventHubName, provider)
+	}
+
+	return nil, aadErr
 }
 
 // GetCheckpointFromBlobStorage accesses Blob storage and gets checkpoint information of a partition
@@ -65,9 +85,16 @@ func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partit
 		return Checkpoint{}, err
 	}
 
-	eventHubNamespace, eventHubName, err := ParseAzureEventHubConnectionString(info.EventHubConnection)
-	if err != nil {
-		return Checkpoint{}, err
+	var eventHubNamespace string
+	var eventHubName string
+	if info.EventHubConnection != "" {
+		eventHubNamespace, eventHubName, err = ParseAzureEventHubConnectionString(info.EventHubConnection)
+		if err != nil {
+			return Checkpoint{}, err
+		}
+	} else {
+		eventHubNamespace = info.Namespace
+		eventHubName = info.EventHubName
 	}
 
 	// TODO: add more ways to read from different types of storage and read checkpoints/leases written in different JSON formats
