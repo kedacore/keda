@@ -20,6 +20,8 @@
 
 ### Improvements
 
+- Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
+
 ### Breaking Changes
 
 ### Other
