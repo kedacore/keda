@@ -369,45 +369,21 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		if len(queryData.Tables[0].Rows[0]) > 0 {
 			metricDataType := queryData.Tables[0].Columns[0].Type
 			metricVal := queryData.Tables[0].Rows[0][0]
-
-			if metricVal != nil {
-				//type can be: real, int, long
-				if metricDataType == "real" || metricDataType == "int" || metricDataType == "long" {
-					metricValue, isConverted := metricVal.(float64)
-					if !isConverted {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: can not convert result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
-					}
-					if metricValue < 0 {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: metric value should be >=0, but received %f. HTTP code: %d. Body: %s", metricValue, statusCode, string(body))
-					}
-					metricsInfo.value = int64(metricValue)
-				} else {
-					return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: metric value data type should be real, int or long, but received %s. HTTP code: %d Body: %s", metricDataType, statusCode, string(body))
-				}
+			parsedMetricVal, err := parseTableValueToInt64(metricVal, metricDataType)
+			if err != nil {
+				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
+			metricsInfo.value = parsedMetricVal
 		}
 
 		if len(queryData.Tables[0].Rows[0]) > 1 {
 			thresholdDataType := queryData.Tables[0].Columns[1].Type
 			thresholdVal := queryData.Tables[0].Rows[0][1]
-
-			if thresholdVal != nil {
-				//type can be: real, int, long
-				if thresholdDataType == "real" || thresholdDataType == "int" || thresholdDataType == "long" {
-					thresholdValue, isConverted := thresholdVal.(float64)
-					if !isConverted {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: cannot convert threshold result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
-					}
-					if thresholdValue < 0 {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value should be >=0, but received %f. HTTP code: %d. Body: %s", thresholdValue, statusCode, string(body))
-					}
-					metricsInfo.threshold = int64(thresholdValue)
-				} else {
-					return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value data type should be real, int or long, but received %s. HTTP code: %d. Body: %s", thresholdDataType, statusCode, string(body))
-				}
-			} else {
-				return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value is empty, check your query. HTTP code: %d. Body: %s", statusCode, string(body))
+			parsedThresholdVal, err := parseTableValueToInt64(thresholdVal, thresholdDataType)
+			if err != nil {
+				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
+			metricsInfo.threshold = parsedThresholdVal
 		} else {
 			metricsInfo.threshold = -1
 		}
@@ -416,6 +392,24 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	}
 
 	return metricsData{}, fmt.Errorf("error processing Log Analytics request. Details: unknown error. HTTP code: %d. Body: %s", statusCode, string(body))
+}
+
+func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
+	if value != nil {
+		//type can be: real, int, long
+		if dataType == "real" || dataType == "int" || dataType == "long" {
+			convertedValue, isConverted := value.(float64)
+			if !isConverted {
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: cannot convert threshold result to type float64")
+			}
+			if convertedValue < 0 {
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value should be >=0, but received %f", value)
+			}
+			return int64(convertedValue), nil
+		}
+		return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value data type should be real, int or long, but received %s", dataType)
+	}
+	return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value is empty, check your query")
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
