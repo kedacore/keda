@@ -106,38 +106,26 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	meta := azureLogAnalyticsMetadata{}
 
 	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
-		//Getting tenantId
-		if val, ok := config.AuthParams["tenantId"]; ok && val != "" {
-			meta.tenantID = val
-		} else if val, ok := config.TriggerMetadata["tenantId"]; ok && val != "" {
-			meta.tenantID = val
-		} else if val, ok := config.TriggerMetadata["tenantIdFromEnv"]; ok && val != "" {
-			meta.tenantID = config.ResolvedEnv[config.TriggerMetadata["tenantIdFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: tenantId was not found in metadata. Check your ScaledObject configuration")
+		// Getting tenantId
+		tenantID, err := getParameterFromConfig(config, "tenantId", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.tenantID = tenantID
 
-		//Getting clientId
-		if val, ok := config.AuthParams["clientId"]; ok && val != "" {
-			meta.clientID = val
-		} else if val, ok := config.TriggerMetadata["clientId"]; ok && val != "" {
-			meta.clientID = val
-		} else if val, ok := config.TriggerMetadata["clientIdFromEnv"]; ok && val != "" {
-			meta.clientID = config.ResolvedEnv[config.TriggerMetadata["clientIdFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: clientId was not found in metadata. Check your ScaledObject configuration")
+		// Getting clientId
+		clientID, err := getParameterFromConfig(config, "clientId", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.clientID = clientID
 
-		//Getting clientSecret
-		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
-			meta.clientSecret = val
-		} else if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
-			meta.clientSecret = val
-		} else if val, ok := config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
-			meta.clientSecret = config.ResolvedEnv[config.TriggerMetadata["clientSecretFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
+		// Getting clientSecret
+		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
 	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
@@ -146,44 +134,45 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}
 
-	//Getting workspaceId
-	if val, ok := config.AuthParams["workspaceId"]; ok && val != "" {
-		meta.workspaceID = val
-	} else if val, ok := config.TriggerMetadata["workspaceId"]; ok && val != "" {
-		meta.workspaceID = val
-	} else if val, ok := config.TriggerMetadata["workspaceIdFromEnv"]; ok && val != "" {
-		meta.workspaceID = config.ResolvedEnv[config.TriggerMetadata["workspaceIdFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: workspaceId was not found in metadata. Check your ScaledObject configuration")
+	// Getting workspaceId
+	workspaceID, err := getParameterFromConfig(config, "workspaceId", true)
+	if err != nil {
+		return nil, err
 	}
+	meta.workspaceID = workspaceID
 
-	//Getting query
-	if val, ok := config.TriggerMetadata["query"]; ok && val != "" {
-		meta.query = val
-	} else if val, ok := config.TriggerMetadata["queryFromEnv"]; ok && val != "" {
-		meta.query = config.ResolvedEnv[config.TriggerMetadata["queryFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: query was not found in metadata. Check your ScaledObject configuration")
+	// Getting query, observe that we dont check AuthParams for query
+	query, err := getParameterFromConfig(config, "query", false)
+	if err != nil {
+		return nil, err
 	}
+	meta.query = query
 
-	//Getting threshold
-	if val, ok := config.TriggerMetadata["threshold"]; ok && val != "" {
-		threshold, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
-		}
-		meta.threshold = threshold
-	} else if val, ok := config.TriggerMetadata["thresholdFromEnv"]; ok && val != "" {
-		threshold, err := strconv.ParseInt(config.ResolvedEnv[config.TriggerMetadata["thresholdFromEnv"]], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
-		}
-		meta.threshold = threshold
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: threshold was not found in metadata. Check your ScaledObject configuration")
+	// Getting threshold, observe that we dont check AuthParams for threshold
+	val, err := getParameterFromConfig(config, "threshold", false)
+	if err != nil {
+		return nil, err
 	}
+	threshold, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+	}
+	meta.threshold = threshold
 
 	return &meta, nil
+}
+
+// getParameterFromConfig gets the parameter from the configs, if checkAuthParams is true
+// then AuthParams is also check for the parameter
+func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthParams bool) (string, error) {
+	if val, ok := config.AuthParams[parameter]; checkAuthParams && ok && val != "" {
+		return val, nil
+	} else if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
+		return val, nil
+	} else if val, ok := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; ok && val != "" {
+		return config.ResolvedEnv[config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]], nil
+	}
+	return "", fmt.Errorf("error parsing metadata. Details: %s was not found in metadata. Check your ScaledObject configuration", parameter)
 }
 
 // IsActive determines if we need to scale from zero
