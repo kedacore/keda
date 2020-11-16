@@ -34,7 +34,7 @@ linters:
     #- funlen
     #- goconst
     #- gocritic
-    #- gocyclo
+    - gocyclo
     - gosimple
     - stylecheck
     - unused
