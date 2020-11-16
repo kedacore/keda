@@ -20,6 +20,8 @@
 
 ### Improvements
 
+- Bug fix in aws_iam_authorization to utilize correct secret from env key name ([PR #1332](https://github.com/kedacore/keda/pull/1332))
+
 ### Breaking Changes
 
 ### Other
