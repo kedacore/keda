@@ -389,16 +389,16 @@ func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
 		if dataType == "real" || dataType == "int" || dataType == "long" {
 			convertedValue, isConverted := value.(float64)
 			if !isConverted {
-				return 0, fmt.Errorf("error validating Log Analytics request. Details: cannot convert threshold result to type float64")
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: cannot convert result to type float64")
 			}
 			if convertedValue < 0 {
-				return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value should be >=0, but received %f", value)
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: value should be >=0, but received %f", value)
 			}
 			return int64(convertedValue), nil
 		}
-		return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value data type should be real, int or long, but received %s", dataType)
+		return 0, fmt.Errorf("error validating Log Analytics request. Details: value data type should be real, int or long, but received %s", dataType)
 	}
-	return 0, fmt.Errorf("error validating Log Analytics request. Details: threshold value is empty, check your query")
+	return 0, fmt.Errorf("error validating Log Analytics request. Details: value is empty, check your query")
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
