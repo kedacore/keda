@@ -106,38 +106,26 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	meta := azureLogAnalyticsMetadata{}
 
 	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
-		//Getting tenantId
-		if val, ok := config.AuthParams["tenantId"]; ok && val != "" {
-			meta.tenantID = val
-		} else if val, ok := config.TriggerMetadata["tenantId"]; ok && val != "" {
-			meta.tenantID = val
-		} else if val, ok := config.TriggerMetadata["tenantIdFromEnv"]; ok && val != "" {
-			meta.tenantID = config.ResolvedEnv[config.TriggerMetadata["tenantIdFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: tenantId was not found in metadata. Check your ScaledObject configuration")
+		// Getting tenantId
+		tenantID, err := getParameterFromConfig(config, "tenantId", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.tenantID = tenantID
 
-		//Getting clientId
-		if val, ok := config.AuthParams["clientId"]; ok && val != "" {
-			meta.clientID = val
-		} else if val, ok := config.TriggerMetadata["clientId"]; ok && val != "" {
-			meta.clientID = val
-		} else if val, ok := config.TriggerMetadata["clientIdFromEnv"]; ok && val != "" {
-			meta.clientID = config.ResolvedEnv[config.TriggerMetadata["clientIdFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: clientId was not found in metadata. Check your ScaledObject configuration")
+		// Getting clientId
+		clientID, err := getParameterFromConfig(config, "clientId", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.clientID = clientID
 
-		//Getting clientSecret
-		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
-			meta.clientSecret = val
-		} else if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
-			meta.clientSecret = val
-		} else if val, ok := config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
-			meta.clientSecret = config.ResolvedEnv[config.TriggerMetadata["clientSecretFromEnv"]]
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
+		// Getting clientSecret
+		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
+		if err != nil {
+			return nil, err
 		}
+		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
 	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
@@ -146,44 +134,45 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}
 
-	//Getting workspaceId
-	if val, ok := config.AuthParams["workspaceId"]; ok && val != "" {
-		meta.workspaceID = val
-	} else if val, ok := config.TriggerMetadata["workspaceId"]; ok && val != "" {
-		meta.workspaceID = val
-	} else if val, ok := config.TriggerMetadata["workspaceIdFromEnv"]; ok && val != "" {
-		meta.workspaceID = config.ResolvedEnv[config.TriggerMetadata["workspaceIdFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: workspaceId was not found in metadata. Check your ScaledObject configuration")
+	// Getting workspaceId
+	workspaceID, err := getParameterFromConfig(config, "workspaceId", true)
+	if err != nil {
+		return nil, err
 	}
+	meta.workspaceID = workspaceID
 
-	//Getting query
-	if val, ok := config.TriggerMetadata["query"]; ok && val != "" {
-		meta.query = val
-	} else if val, ok := config.TriggerMetadata["queryFromEnv"]; ok && val != "" {
-		meta.query = config.ResolvedEnv[config.TriggerMetadata["queryFromEnv"]]
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: query was not found in metadata. Check your ScaledObject configuration")
+	// Getting query, observe that we dont check AuthParams for query
+	query, err := getParameterFromConfig(config, "query", false)
+	if err != nil {
+		return nil, err
 	}
+	meta.query = query
 
-	//Getting threshold
-	if val, ok := config.TriggerMetadata["threshold"]; ok && val != "" {
-		threshold, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
-		}
-		meta.threshold = threshold
-	} else if val, ok := config.TriggerMetadata["thresholdFromEnv"]; ok && val != "" {
-		threshold, err := strconv.ParseInt(config.ResolvedEnv[config.TriggerMetadata["thresholdFromEnv"]], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
-		}
-		meta.threshold = threshold
-	} else {
-		return nil, fmt.Errorf("error parsing metadata. Details: threshold was not found in metadata. Check your ScaledObject configuration")
+	// Getting threshold, observe that we dont check AuthParams for threshold
+	val, err := getParameterFromConfig(config, "threshold", false)
+	if err != nil {
+		return nil, err
 	}
+	threshold, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+	}
+	meta.threshold = threshold
 
 	return &meta, nil
+}
+
+// getParameterFromConfig gets the parameter from the configs, if checkAuthParams is true
+// then AuthParams is also check for the parameter
+func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthParams bool) (string, error) {
+	if val, ok := config.AuthParams[parameter]; checkAuthParams && ok && val != "" {
+		return val, nil
+	} else if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
+		return val, nil
+	} else if val, ok := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; ok && val != "" {
+		return config.ResolvedEnv[config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]], nil
+	}
+	return "", fmt.Errorf("error parsing metadata. Details: %s was not found in metadata. Check your ScaledObject configuration", parameter)
 }
 
 // IsActive determines if we need to scale from zero
@@ -369,45 +358,21 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		if len(queryData.Tables[0].Rows[0]) > 0 {
 			metricDataType := queryData.Tables[0].Columns[0].Type
 			metricVal := queryData.Tables[0].Rows[0][0]
-
-			if metricVal != nil {
-				//type can be: real, int, long
-				if metricDataType == "real" || metricDataType == "int" || metricDataType == "long" {
-					metricValue, isConverted := metricVal.(float64)
-					if !isConverted {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: can not convert result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
-					}
-					if metricValue < 0 {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: metric value should be >=0, but received %f. HTTP code: %d. Body: %s", metricValue, statusCode, string(body))
-					}
-					metricsInfo.value = int64(metricValue)
-				} else {
-					return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: metric value data type should be real, int or long, but received %s. HTTP code: %d Body: %s", metricDataType, statusCode, string(body))
-				}
+			parsedMetricVal, err := parseTableValueToInt64(metricVal, metricDataType)
+			if err != nil {
+				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
+			metricsInfo.value = parsedMetricVal
 		}
 
 		if len(queryData.Tables[0].Rows[0]) > 1 {
 			thresholdDataType := queryData.Tables[0].Columns[1].Type
 			thresholdVal := queryData.Tables[0].Rows[0][1]
-
-			if thresholdVal != nil {
-				//type can be: real, int, long
-				if thresholdDataType == "real" || thresholdDataType == "int" || thresholdDataType == "long" {
-					thresholdValue, isConverted := thresholdVal.(float64)
-					if !isConverted {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: cannot convert threshold result to type float64. HTTP code: %d. Body: %s", statusCode, string(body))
-					}
-					if thresholdValue < 0 {
-						return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value should be >=0, but received %f. HTTP code: %d. Body: %s", thresholdValue, statusCode, string(body))
-					}
-					metricsInfo.threshold = int64(thresholdValue)
-				} else {
-					return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value data type should be real, int or long, but received %s. HTTP code: %d. Body: %s", thresholdDataType, statusCode, string(body))
-				}
-			} else {
-				return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: threshold value is empty, check your query. HTTP code: %d. Body: %s", statusCode, string(body))
+			parsedThresholdVal, err := parseTableValueToInt64(thresholdVal, thresholdDataType)
+			if err != nil {
+				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
+			metricsInfo.threshold = parsedThresholdVal
 		} else {
 			metricsInfo.threshold = -1
 		}
@@ -416,6 +381,24 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 	}
 
 	return metricsData{}, fmt.Errorf("error processing Log Analytics request. Details: unknown error. HTTP code: %d. Body: %s", statusCode, string(body))
+}
+
+func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
+	if value != nil {
+		//type can be: real, int, long
+		if dataType == "real" || dataType == "int" || dataType == "long" {
+			convertedValue, isConverted := value.(float64)
+			if !isConverted {
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: cannot convert result to type float64")
+			}
+			if convertedValue < 0 {
+				return 0, fmt.Errorf("error validating Log Analytics request. Details: value should be >=0, but received %f", value)
+			}
+			return int64(convertedValue), nil
+		}
+		return 0, fmt.Errorf("error validating Log Analytics request. Details: value data type should be real, int or long, but received %s", dataType)
+	}
+	return 0, fmt.Errorf("error validating Log Analytics request. Details: value is empty, check your query")
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
