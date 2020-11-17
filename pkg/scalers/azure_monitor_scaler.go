@@ -119,33 +119,38 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 		return nil, fmt.Errorf("no tenantId given")
 	}
 
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
-		if config.AuthParams["activeDirectoryClientId"] != "" {
-			meta.azureMonitorInfo.ClientID = config.AuthParams["activeDirectoryClientId"]
-		} else if config.TriggerMetadata["activeDirectoryClientId"] != "" {
-			meta.azureMonitorInfo.ClientID = config.TriggerMetadata["activeDirectoryClientId"]
-		} else if config.TriggerMetadata["activeDirectoryClientIdFromEnv"] != "" {
-			meta.azureMonitorInfo.ClientID = config.ResolvedEnv[config.TriggerMetadata["activeDirectoryClientIdFromEnv"]]
-		}
+	clientID, clientPassword, err := parseAzurePodIdentityParams(config)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.ClientID = clientID
+	meta.azureMonitorInfo.ClientPassword = clientPassword
 
-		if len(meta.azureMonitorInfo.ClientID) == 0 {
-			return nil, fmt.Errorf("no activeDirectoryClientId given")
+	return &meta, nil
+}
+
+// parseAzurePodIdentityParams gets the activeDirectory clientID and password
+func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientPassword string, err error) {
+	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+		clientID, err = getParameterFromConfig(config, "activeDirectoryClientId", true)
+		if err != nil || clientID == "" {
+			return "", "", fmt.Errorf("no activeDirectoryClientId given")
 		}
 
 		if config.AuthParams["activeDirectoryClientPassword"] != "" {
-			meta.azureMonitorInfo.ClientPassword = config.AuthParams["activeDirectoryClientPassword"]
+			clientPassword = config.AuthParams["activeDirectoryClientPassword"]
 		} else if config.TriggerMetadata["activeDirectoryClientPasswordFromEnv"] != "" {
-			meta.azureMonitorInfo.ClientPassword = config.ResolvedEnv[config.TriggerMetadata["activeDirectoryClientPasswordFromEnv"]]
+			clientPassword = config.ResolvedEnv[config.TriggerMetadata["activeDirectoryClientPasswordFromEnv"]]
 		}
 
-		if len(meta.azureMonitorInfo.ClientPassword) == 0 {
-			return nil, fmt.Errorf("no activeDirectoryClientPassword given")
+		if len(clientPassword) == 0 {
+			return "", "", fmt.Errorf("no activeDirectoryClientPassword given")
 		}
 	} else if config.PodIdentity != kedav1alpha1.PodIdentityProviderAzure {
-		return nil, fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity)
+		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity)
 	}
 
-	return &meta, nil
+	return clientID, clientPassword, nil
 }
 
 // Returns true if the Azure Monitor metric value is greater than zero
