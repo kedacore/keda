@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	liiklus_service "github.com/kedacore/keda/pkg/scalers/liiklus"
-	kedautil "github.com/kedacore/keda/pkg/util"
+	liiklus_service "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type liiklusScaler struct {

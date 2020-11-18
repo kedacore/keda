@@ -5,7 +5,7 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int

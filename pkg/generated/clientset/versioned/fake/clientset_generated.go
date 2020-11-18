@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/kedacore/keda/pkg/generated/clientset/versioned"
-	kedav1alpha1 "github.com/kedacore/keda/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
-	fakekedav1alpha1 "github.com/kedacore/keda/pkg/generated/clientset/versioned/typed/keda/v1alpha1/fake"
+	clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	fakekedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

@@ -22,11 +22,12 @@ cp -a "${DIFFROOT}"/* "${TMP_DIFFROOT}"
 
 "${SCRIPT_ROOT}/hack/update-codegen.sh"
 
-# Kubebuilder project layout has api under 'api/v1alpha1'
+# (Zbynek): Kubebuilder project layout has api under 'api/v1alpha1'
 # client-go codegen expects group name in the path ie. 'api/keda/v1alpha'
 # Because there's no way how to modify any of these settings,
 # we need to hack things a little bit (replace the name of package)
-find "${DIFFROOT}/generated" -type f -name "*.go" | xargs sed -i "s#github.com/kedacore/keda/api/keda/v1alpha1#github.com/kedacore/keda/api/v1alpha1#g"
+find "${DIFFROOT}/generated" -type f -name "*.go" |\
+xargs sed -i "s#github.com/kedacore/keda/v2/api/keda/v1alpha1#github.com/kedacore/keda/v2/api/v1alpha1#g"
 
 echo "diffing ${DIFFROOT} against freshly generated codegen"
 ret=0

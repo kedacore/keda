@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // Default variables and settings

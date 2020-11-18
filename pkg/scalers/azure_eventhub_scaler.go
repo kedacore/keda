@@ -7,9 +7,6 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/pkg/scalers/azure"
-
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -19,7 +16,9 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedautil "github.com/kedacore/keda/pkg/util"
+	"github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (

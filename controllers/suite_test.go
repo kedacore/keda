@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	//kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 

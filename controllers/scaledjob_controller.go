@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/pkg/scaling"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"

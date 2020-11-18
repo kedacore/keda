@@ -26,6 +26,7 @@
 ### Breaking Changes
 
 ### Other
+- Bump go module version to v2 ([#1324](https://github.com/kedacore/keda/pull/1324))
 
 ## v2.0.0
 

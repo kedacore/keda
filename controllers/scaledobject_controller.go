@@ -23,10 +23,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/controllers/util"
-	"github.com/kedacore/keda/pkg/scaling"
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"

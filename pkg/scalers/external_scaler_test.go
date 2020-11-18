@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 // GetAzureQueueLength returns the length of a queue in int
