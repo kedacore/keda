@@ -349,6 +349,9 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			}
 			config.AuthParams = authParams
 			config.PodIdentity = podIdentity
+		} else {
+			authParams, _ := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, nil, withTriggers.Namespace)
+			config.AuthParams = authParams
 		}
 
 		scaler, err := buildScaler(trigger.Type, config)
