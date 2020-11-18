@@ -15,7 +15,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedautil "github.com/kedacore/keda/pkg/util"
 )
 
 type kafkaScaler struct {
@@ -92,22 +92,29 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 
-	if config.TriggerMetadata["bootstrapServers"] == "" {
+	if config.TriggerMetadata["bootstrapServersFromEnv"] != "" {
+		meta.bootstrapServers = strings.Split(config.ResolvedEnv[config.TriggerMetadata["bootstrapServersFromEnv"]], ",")
+	} else if config.TriggerMetadata["bootstrapServers"] != "" {
+		meta.bootstrapServers = strings.Split(config.TriggerMetadata["bootstrapServers"], ",")
+	} else {
 		return meta, errors.New("no bootstrapServers given")
 	}
-	if config.TriggerMetadata["bootstrapServers"] != "" {
-		meta.bootstrapServers = strings.Split(config.TriggerMetadata["bootstrapServers"], ",")
-	}
 
-	if config.TriggerMetadata["consumerGroup"] == "" {
+	if config.TriggerMetadata["consumerGroupFromEnv"] != "" {
+		meta.group = config.ResolvedEnv[config.TriggerMetadata["consumerGroupFromEnv"]]
+	} else if config.TriggerMetadata["consumerGroup"] != "" {
+		meta.group = config.TriggerMetadata["consumerGroup"]
+	} else {
 		return meta, errors.New("no consumer group given")
 	}
-	meta.group = config.TriggerMetadata["consumerGroup"]
 
-	if config.TriggerMetadata["topic"] == "" {
+	if config.TriggerMetadata["topicFromEnv"] != "" {
+		meta.topic = config.ResolvedEnv[config.TriggerMetadata["topicFromEnv"]]
+	} else if config.TriggerMetadata["topic"] != "" {
+		meta.topic = config.TriggerMetadata["topic"]
+	} else {
 		return meta, errors.New("no topic given")
 	}
-	meta.topic = config.TriggerMetadata["topic"]
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
@@ -364,4 +371,5 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+
 }
