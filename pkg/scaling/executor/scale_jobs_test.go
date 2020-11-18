@@ -15,8 +15,8 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	"github.com/kedacore/keda/pkg/mock/mock_client"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 )
 
 func TestCleanUpNormalCase(t *testing.T) {

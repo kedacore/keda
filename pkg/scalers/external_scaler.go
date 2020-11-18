@@ -9,7 +9,7 @@ import (
 
 	"github.com/mitchellh/hashstructure"
 
-	pb "github.com/kedacore/keda/pkg/scalers/externalscaler"
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"

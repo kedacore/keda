@@ -12,8 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	version "github.com/kedacore/keda/version"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	version "github.com/kedacore/keda/v2/version"
 )
 
 const (

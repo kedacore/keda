@@ -17,11 +17,11 @@ import (
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	prommetrics "github.com/kedacore/keda/pkg/metrics"
-	kedaprovider "github.com/kedacore/keda/pkg/provider"
-	"github.com/kedacore/keda/pkg/scaling"
-	"github.com/kedacore/keda/version"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider

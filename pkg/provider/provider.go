@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	prommetrics "github.com/kedacore/keda/pkg/metrics"
-	"github.com/kedacore/keda/pkg/scaling"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/scaling"
 
 	"github.com/go-logr/logr"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"

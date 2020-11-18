@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"k8s.io/klog"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
 // Much of the code in this file is taken from the Azure Kubernetes Metrics Adapter

@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/kedacore/keda/pkg/generated/clientset/versioned"
-	internalinterfaces "github.com/kedacore/keda/pkg/generated/informers/externalversions/internalinterfaces"
-	keda "github.com/kedacore/keda/pkg/generated/informers/externalversions/keda"
+	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
+	keda "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/keda"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

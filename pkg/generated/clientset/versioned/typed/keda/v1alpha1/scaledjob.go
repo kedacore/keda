@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	scheme "github.com/kedacore/keda/pkg/generated/clientset/versioned/scheme"
+	v1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

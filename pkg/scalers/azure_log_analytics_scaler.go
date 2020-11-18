@@ -22,8 +22,8 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/api/v1alpha1"
-	kedautil "github.com/kedacore/keda/pkg/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
