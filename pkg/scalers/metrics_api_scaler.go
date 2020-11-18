@@ -58,9 +58,10 @@ const defaultTimeOut = 3 * time.Second
 type authenticationType string
 
 const (
-	apiKeyAuth authenticationType = "apiKey"
-	basicAuth  authenticationType = "basic"
-	tlsAuth    authenticationType = "tls"
+	apiKeyAuth       authenticationType = "apiKey"
+	basicAuth        authenticationType = "basic"
+	tlsAuth          authenticationType = "tls"
+	methodValueQuery                    = "query"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -134,8 +135,8 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		meta.method = "header"
 		meta.enableAPIKeyAuth = true
 
-		if config.TriggerMetadata["method"] == "query" {
-			meta.method = "query"
+		if config.TriggerMetadata["method"] == methodValueQuery {
+			meta.method = methodValueQuery
 		}
 
 		if len(config.TriggerMetadata["keyParamName"]) > 0 {
@@ -269,7 +270,7 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 	var err error
 
 	if meta.enableAPIKeyAuth {
-		if meta.method == "query" {
+		if meta.method == methodValueQuery {
 			url, _ := neturl.Parse(meta.url)
 			queryString := url.Query()
 			if len(meta.keyParamName) == 0 {
