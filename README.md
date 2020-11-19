@@ -21,16 +21,16 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 **Table of contents**
 
 - [Getting started](#getting-started)
-- [Deploying KEDA](#deploying-keda)
+  - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
-- [Guidelines](#guidelines)
+- [Governance & Policies](#governance--policies)
+- [Support](#support)
   - [Branding](#branding)
-- [FAQ](#faq)
 - [Community](#community)
-- [Become a listed KEDA user!](#become-a-listed-keda-user)
+  - [Become a listed KEDA user!](#become-a-listed-keda-user)
 - [Releases](#releases)
 - [Contributing](#contributing)
-- [Building & deploying locally](#building--deploying-locally)
+  - [Building & deploying locally](#building--deploying-locally)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -43,7 +43,7 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
 
 You can find several samples for various event sources [here](https://github.com/kedacore/samples).
 
-## Deploying KEDA
+### Deploying KEDA
 
 There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files](https://keda.sh/docs/latest/deploy/).
 
@@ -51,15 +51,15 @@ There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files]
 
 Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
-## Guidelines
+## Governance & Policies
+
+## Support
+
+You can learn more about our docs, getting support and Kubernetes support policy in [our support policy](./SUPPORT.md).
 
 ### Branding
 
 We provide guidelines around branding of KEDA and related logos, learn more in our [guidelines](./BRANDING.md).
-
-## FAQ
-
-You can find a [FAQ here](https://keda.sh/docs/latest/faq/) with some common questions.
 
 ## Community
 
@@ -74,7 +74,7 @@ If interested in contributing or participating in the direction of KEDA, you can
 Just want to learn or chat about KEDA? Feel free to join the conversation in
 **[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
-## Become a listed KEDA user!
+### Become a listed KEDA user!
 
 We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](https://github.com/kedacore/keda-docs#become-a-listed-keda-user).
 
@@ -86,5 +86,5 @@ You can find the latest releases [here](https://github.com/kedacore/keda/release
 
 You can find contributing guide [here](./CONTRIBUTING.md).
 
-## Building & deploying locally
+### Building & deploying locally
 Learn how to build & deploy KEDA locally [here](./BUILD.md).
