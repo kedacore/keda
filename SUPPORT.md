@@ -1,6 +1,10 @@
 # Support for deploying and using KEDA
 
-Welcome to KEDA! We use GitHub for tracking bugs and feature requests but here are some pointers to get help.
+Thank you for using KEDA!
+
+KEDA is an open-source project under CNCF Foundation and provides best-effort support and use GitHub for tracking bugs and feature requests.
+
+Want to contribute a feature or fix? We are more than happy to review requests and contributions, but recommend going through our [contribution guide](./CONTRIBUTING.md).
 
 ## Documentation
 
@@ -8,10 +12,13 @@ Welcome to KEDA! We use GitHub for tracking bugs and feature requests but here a
 * [Troubleshooting Guide](https://keda.sh/docs/2.0/troubleshooting/)
 * [FAQ](https://keda.sh/docs/latest/faq/)
 
-## Slack
+## Community
+
+We have a nice community that is always happy to help each other:
 
 * [Slack](https://kubernetes.slack.com) ([registration](http://slack.k8s.io)):
 The `#keda` channel is usually the place where people offer support.
+* [Stack Overflow](https://stackoverflow.com/questions/tagged/keda)
 
 ## Kubernetes Support
 
