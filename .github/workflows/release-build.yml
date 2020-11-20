@@ -46,7 +46,7 @@ jobs:
         # Get release information to determine id of the current release
       - name: Get Release
         id: get-release-info
-        uses: bruceadams/get-release@v1.2.0
+        uses: bruceadams/get-release@v1.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
