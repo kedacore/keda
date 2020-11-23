@@ -46,7 +46,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/metrics v0.18.8
 	knative.dev/pkg v0.0.0-20201019114258-95e9532f0457
-	sigs.k8s.io/controller-runtime v0.6.3
+	sigs.k8s.io/controller-runtime v0.6.4
 )
 
 replace (
