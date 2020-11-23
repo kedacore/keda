@@ -13,7 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.10
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/Shopify/sarama v1.27.1
+	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.35.31
 	github.com/go-logr/logr v0.1.0
 	github.com/go-redis/redis v6.15.9+incompatible
