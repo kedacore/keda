@@ -28,8 +28,8 @@ linters:
     - scopelint
     - structcheck
     - deadcode
-    #- depguard
-    #- dogsled
+    - depguard
+    - dogsled
     #- errcheck
     #- funlen
     - goconst
