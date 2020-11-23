@@ -11,7 +11,7 @@ jobs:
     container: kedacore/build-tools:main
     steps:
       - name: Check out code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 1
 
@@ -36,7 +36,7 @@ jobs:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2.3.4
       - uses: actions/setup-python@v2.1.4
       - uses: actions/setup-go@v2
         with:
@@ -57,7 +57,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2.3.4
       with:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.
