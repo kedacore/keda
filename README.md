@@ -24,8 +24,6 @@ We are a Cloud Native Computing Foundation (CNCF) sandbox project.
   - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
 - [Governance & Policies](#governance--policies)
-- [Support](#support)
-  - [Branding](#branding)
 - [Community](#community)
   - [Become a listed KEDA user!](#become-a-listed-keda-user)
 - [Releases](#releases)
@@ -53,13 +51,7 @@ Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ## Governance & Policies
 
-## Support
-
-You can learn more about our docs, getting support and Kubernetes support policy in [our support policy](./SUPPORT.md).
-
-### Branding
-
-We provide guidelines around branding of KEDA and related logos, learn more in our [guidelines](./BRANDING.md).
+You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
 
 ## Community
 
