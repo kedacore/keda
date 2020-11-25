@@ -23,8 +23,7 @@ There are many areas we can use contributions - ranging from code, documentation
 
 ## Project governance
 
-KEDA project is an open source project governed according to rules described in [`GOVERNANCE`](GOVERNANCE.md). If you
-would love to become a maintainer to support our project please create an issue as described in [`GOVERNANCE`](GOVERNANCE.md).
+You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
 
 ## Getting Help
 
