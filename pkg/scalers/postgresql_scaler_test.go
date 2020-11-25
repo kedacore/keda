@@ -43,7 +43,7 @@ func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
 		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam})
 		if err != nil {
-			t.Fatal("Could not parse n:", err)
+			t.Fatal("Could not parse metadata:", err)
 		}
 		mockPostgresSQLScaler := postgreSQLScaler{meta, nil}
 
