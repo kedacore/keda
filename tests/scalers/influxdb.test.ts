@@ -30,7 +30,6 @@ function runWriteJob(t) {
     }
 
     t.is('1', influxdbJobStatus, 'Job did not complete')
-    
     // get stdout from logs in running job
     const podName = sh.exec(`kubectl get pods --namespace influxdb --template '{{range .items}}{{.metadata.name}}{{"\\n"}}{{end}}' | grep ${influxdbJobName} | head -1`).stdout
     console.log('This is the pod', podName)
@@ -72,7 +71,6 @@ test.before((t) => {
 
 test.serial('Should start off deployment with 0 replicas and scale to 2 replicas when scaled object is applied', (t) => {
     const { authToken, orgName } = runWriteJob(t)
-    
     const basicDeploymentTmpFile = tmp.fileSync()
     fs.writeFileSync(basicDeploymentTmpFile.name, basicDeploymentYaml)
 
