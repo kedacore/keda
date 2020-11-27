@@ -102,8 +102,8 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
-
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch config.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
 		if config.AuthParams["connection"] != "" {
 			meta.connection = config.AuthParams["connection"]
@@ -114,13 +114,13 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
-	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure:
 		if val, ok := config.TriggerMetadata["namespace"]; ok {
 			meta.namespace = val
 		} else {
 			return nil, fmt.Errorf("namespace is required when using pod identity")
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity)
 	}
 

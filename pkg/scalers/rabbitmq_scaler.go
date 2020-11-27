@@ -91,13 +91,14 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve host value
-	if config.AuthParams["host"] != "" {
+	switch {
+	case config.AuthParams["host"] != "":
 		meta.host = config.AuthParams["host"]
-	} else if config.TriggerMetadata["host"] != "" {
+	case config.TriggerMetadata["host"] != "":
 		meta.host = config.TriggerMetadata["host"]
-	} else if config.TriggerMetadata["hostFromEnv"] != "" {
+	case config.TriggerMetadata["hostFromEnv"] != "":
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
-	} else {
+	default:
 		return nil, fmt.Errorf("no host setting given")
 	}
 

@@ -21,23 +21,23 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
 		return
 	}
-
-	if currentScale.Spec.Replicas == 0 && isActive {
+	switch {
+	case currentScale.Spec.Replicas == 0 && isActive:
 		// current replica count is 0, but there is an active trigger.
 		// scale the ScaleTarget up
 		e.scaleFromZero(ctx, logger, scaledObject, currentScale)
-	} else if !isActive &&
+	case !isActive &&
 		currentScale.Spec.Replicas > 0 &&
-		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0) {
+		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0):
 		// there are no active triggers, but the ScaleTarget has replicas.
 		// AND
 		// There is no minimum configured or minimum is set to ZERO. HPA will handles other scale down operations
 
 		// Try to scale it down.
 		e.scaleToZero(ctx, logger, scaledObject, currentScale)
-	} else if !isActive &&
+	case !isActive &&
 		scaledObject.Spec.MinReplicaCount != nil &&
-		currentScale.Spec.Replicas < *scaledObject.Spec.MinReplicaCount {
+		currentScale.Spec.Replicas < *scaledObject.Spec.MinReplicaCount:
 		// there are no active triggers
 		// AND
 		// ScaleTarget replicas count is less than minimum replica count specified in ScaledObject
@@ -49,11 +49,11 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
 				"ScaleTarget.Replicas", currentScale.Spec.Replicas)
 		}
-	} else if isActive {
+	case isActive:
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.
 		e.updateLastActiveTime(ctx, logger, scaledObject)
-	} else {
+	default:
 		logger.V(1).Info("ScaleTarget no change")
 	}
 

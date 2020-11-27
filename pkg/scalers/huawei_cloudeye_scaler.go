@@ -59,14 +59,14 @@ type huaweiAuthorizationMetadata struct {
 	// region
 	Region string
 
-	//Cloud name
+	// Cloud name
 	Domain string
 
-	//Cloud name
+	// Cloud name
 	Cloud string
 
-	AccessKey string //Access Key
-	SecretKey string //Secret key
+	AccessKey string // Access Key
+	SecretKey string // Secret key
 }
 
 var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")

@@ -49,10 +49,10 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
 			assert.Equal(t, strconv.Itoa(m.targetPendingEntriesCount), tc.metadata[pendingEntriesCountMetadata])
 			if authParams != nil {
-				//if authParam is used
+				// if authParam is used
 				assert.Equal(t, m.connectionInfo.password, authParams[passwordMetadata])
 			} else {
-				//if metadata is used to pass password env var name
+				// if metadata is used to pass password env var name
 				assert.Equal(t, m.connectionInfo.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
 			}
 			assert.Equal(t, strconv.Itoa(m.databaseIndex), tc.metadata[databaseIndexMetadata])
@@ -77,7 +77,7 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	}
 
 	testCases := []testCase{
-		//missing mandatory metadata
+		// missing mandatory metadata
 		{"missing address as well as host/port", map[string]string{"stream": "my-stream", "pendingEntriesCount": "5", "consumerGroup": "my-stream-consumer-group"}, resolvedEnvMap},
 
 		{"host present but missing port", map[string]string{"stream": "my-stream", "pendingEntriesCount": "5", "consumerGroup": "my-stream-consumer-group", "host": "REDIS_HOST"}, resolvedEnvMap},
@@ -90,7 +90,7 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 
 		{"missing pendingEntriesCount", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "address": "REDIS_HOST"}, resolvedEnvMap},
 
-		//invalid value for respective fields
+		// invalid value for respective fields
 		{"invalid pendingEntriesCount", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "junk", "host": "REDIS_HOST", "port": "REDIS_PORT", "databaseIndex": "0", "enableTLS": "false"}, resolvedEnvMap},
 
 		{"invalid databaseIndex", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "address": "REDIS_SERVER", "databaseIndex": "junk", "enableTLS": "false"}, resolvedEnvMap},
