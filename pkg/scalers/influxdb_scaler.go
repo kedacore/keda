@@ -131,29 +131,22 @@ func (s *influxDBScaler) Close() error {
 // there is an implicit assumption here that the first value returned from the iterator
 // will be the value of interest
 func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
-	var isParsingIssue bool
-
 	result, err := queryAPI.Query(context.Background(), query)
 	if err != nil {
 		return 0, err
 	}
 
-	for result.Next() {
-		// Do one iteration to get the value
-		val := result.Record().Value()
-		if assertedVal, ok := val.(float64); ok {
-			influxDBLog.Info("the value was this")
-			return assertedVal, nil
-		}
-		isParsingIssue = true
-		break
+	valueExists := result.Next()
+	if !valueExists {
+		return 0, fmt.Errorf("no results found from query")
 	}
 
-	if isParsingIssue {
-		return 0, fmt.Errorf("error parsing queried value to float")
+	val, ok := result.Record().Value().(float64)
+	if !ok {
+		return 0, fmt.Errorf("value could not be parsed into a float")
 	}
 
-	return 0, fmt.Errorf("no results")
+	return val, nil
 }
 
 // GetMetrics connects to influxdb via the client and returns a value based on the query
