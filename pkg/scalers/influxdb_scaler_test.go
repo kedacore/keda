@@ -25,13 +25,13 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
 	// everything is passed in verbatim
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false},
 	// everything is passed in (environment variables)
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationNameFromEnv": "INFLUX_ORG", "query": "from(bucket: hello)", "thresholdValue": "10", "authTokenFromEnv": "INFLUX_TOKEN"}, false},
 	// no serverURL passed
-	{map[string]string{"organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
+	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
 	// no organization name passed
-	{map[string]string{"serverURL": "https://influxdata.com", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
 	// no query passed
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "authToken": "myToken"}, true},
 	// no threshold value passed
@@ -40,7 +40,7 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, true}}
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
-	{&testInfluxDBMetadata[1], "influxdb-influx_org"},
+	{&testInfluxDBMetadata[1], "influxdb-influx_org-influx_metric"},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {

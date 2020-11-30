@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
@@ -23,6 +24,7 @@ type influxDBScaler struct {
 
 type influxDBMetadata struct {
 	authToken        string
+	metricName       string
 	organizationName string
 	query            string
 	serverURL        string
@@ -49,6 +51,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 // parseInfluxDBMetadata parses the metadata passed in from the ScaledObject config
 func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var authToken string
+	var metricName string
 	var organizationName string
 	var query string
 	var serverURL string
@@ -64,6 +67,12 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		}
 	} else {
 		return nil, fmt.Errorf("no auth token given")
+	}
+
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		metricName = val
+	} else {
+		metricName = strconv.FormatInt(time.Now().UTC().Unix(), 10)
 	}
 
 	if val, ok := config.TriggerMetadata["organizationName"]; ok {
@@ -102,6 +111,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 
 	return &influxDBMetadata{
 		authToken:        authToken,
+		metricName:       metricName,
 		organizationName: organizationName,
 		query:            query,
 		serverURL:        serverURL,
@@ -173,7 +183,7 @@ func (s *influxDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "influxdb", s.metadata.organizationName)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "influxdb", s.metadata.organizationName, s.metadata.metricName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
