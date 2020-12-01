@@ -57,15 +57,16 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var serverURL string
 	var thresholdValue float64
 
-	if val, ok := config.TriggerMetadata["authToken"]; ok {
+	switch val, ok := config.TriggerMetadata["authToken"]; {
+	case ok:
 		authToken = val
-	} else if config.TriggerMetadata["authTokenFromEnv"] != "" {
+	case config.TriggerMetadata["authTokenFromEnv"] != "":
 		if val, ok := config.ResolvedEnv[config.TriggerMetadata["authTokenFromEnv"]]; ok {
 			authToken = val
 		} else {
 			return nil, fmt.Errorf("no auth token given")
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("no auth token given")
 	}
 
@@ -75,15 +76,16 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		metricName = strconv.FormatInt(time.Now().UTC().Unix(), 10)
 	}
 
-	if val, ok := config.TriggerMetadata["organizationName"]; ok {
+	switch val, ok := config.TriggerMetadata["organizationName"]; {
+	case ok:
 		organizationName = val
-	} else if config.TriggerMetadata["organizationNameFromEnv"] != "" {
+	case config.TriggerMetadata["organizationNameFromEnv"] != "":
 		if val, ok := config.ResolvedEnv[config.TriggerMetadata["organizationNameFromEnv"]]; ok {
 			organizationName = val
 		} else {
 			return nil, fmt.Errorf("no organization name given")
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("no organization name given")
 	}
 
