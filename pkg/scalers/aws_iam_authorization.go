@@ -18,15 +18,16 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 		meta.podIdentityOwner = false
 	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
 		meta.podIdentityOwner = true
-		if authParams["awsRoleArn"] != "" {
+		switch {
+		case authParams["awsRoleArn"] != "":
 			meta.awsRoleArn = authParams["awsRoleArn"]
-		} else if (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "" {
+		case (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "":
 			meta.awsAccessKeyID = authParams["awsAccessKeyID"]
 			if meta.awsAccessKeyID == "" {
 				meta.awsAccessKeyID = authParams["awsAccessKeyId"]
 			}
 			meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
-		} else {
+		default:
 			if metadata["awsAccessKeyID"] != "" {
 				meta.awsAccessKeyID = metadata["awsAccessKeyID"]
 			} else if metadata["awsAccessKeyIDFromEnv"] != "" {

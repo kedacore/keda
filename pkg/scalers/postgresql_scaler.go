@@ -74,11 +74,12 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		return nil, fmt.Errorf("no targetQueryValue given")
 	}
 
-	if config.AuthParams["connection"] != "" {
+	switch {
+	case config.AuthParams["connection"] != "":
 		meta.connection = config.AuthParams["connection"]
-	} else if config.TriggerMetadata["connectionFromEnv"] != "" {
+	case config.TriggerMetadata["connectionFromEnv"] != "":
 		meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
-	} else {
+	default:
 		meta.connection = ""
 		if val, ok := config.TriggerMetadata["host"]; ok {
 			meta.host = val

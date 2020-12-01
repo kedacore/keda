@@ -33,7 +33,7 @@ linters:
     #- errcheck
     #- funlen
     - goconst
-    #- gocritic
+    - gocritic
     - gocyclo
     - gosimple
     - stylecheck
