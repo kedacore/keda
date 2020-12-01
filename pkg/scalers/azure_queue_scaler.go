@@ -80,7 +80,8 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch config.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		// Azure Queue Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
 		if config.AuthParams["connection"] != "" {
@@ -93,14 +94,14 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		if len(meta.connection) == 0 {
 			return nil, "", fmt.Errorf("no connection setting given")
 		}
-	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure:
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
 			return nil, "", fmt.Errorf("no accountName given")
 		}
-	} else {
+	default:
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
 	}
 
@@ -144,7 +145,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := azure.GetAzureQueueLength(
 		ctx,

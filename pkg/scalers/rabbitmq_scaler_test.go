@@ -74,11 +74,12 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 func TestParseDefaultQueueLength(t *testing.T) {
 	for _, testData := range testDefaultQueueLength {
 		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
-		if err != nil && !testData.isError {
+		switch {
+		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
-		} else if testData.isError && err == nil {
+		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		} else if metadata.queueLength != defaultRabbitMQQueueLength {
+		case metadata.queueLength != defaultRabbitMQQueueLength:
 			t.Error("Expected default queueLength =", defaultRabbitMQQueueLength, "but got", metadata.queueLength)
 		}
 	}
@@ -150,10 +151,8 @@ func TestGetQueueInfo(t *testing.T) {
 						t.Error("Expect to not be active")
 					}
 				}
-			} else {
-				if !strings.Contains(err.Error(), testData.response) {
-					t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
-				}
+			} else if !strings.Contains(err.Error(), testData.response) {
+				t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 			}
 		}
 	}

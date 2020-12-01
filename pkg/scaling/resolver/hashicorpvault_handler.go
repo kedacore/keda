@@ -48,7 +48,7 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	}
 
 	lookup, err := client.Auth().Token().LookupSelf()
-	//If token is not valid so get out of here early
+	// If token is not valid so get out of here early
 	if err != nil {
 		return err
 	}
@@ -70,11 +70,12 @@ func (vh *HashicorpVaultHandler) token(client *vaultApi.Client) (string, error) 
 	switch vh.vault.Authentication {
 	case kedav1alpha1.VaultAuthenticationToken:
 		// Got token from VAULT_TOKEN env variable
-		if len(client.Token()) > 0 {
+		switch {
+		case len(client.Token()) > 0:
 			break
-		} else if len(vh.vault.Credential.Token) > 0 {
+		case len(vh.vault.Credential.Token) > 0:
 			token = vh.vault.Credential.Token
-		} else {
+		default:
 			return token, errors.New("could not get Vault token")
 		}
 	case kedav1alpha1.VaultAuthenticationKubernetes:
@@ -90,7 +91,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultApi.Client) (string, error) 
 			return token, errors.New("k8s SA file not in config")
 		}
 
-		//Get the JWT from POD
+		// Get the JWT from POD
 		jwt, err := ioutil.ReadFile(vh.vault.Credential.ServiceAccount)
 		if err != nil {
 			return token, err

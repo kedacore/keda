@@ -44,7 +44,7 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// No host provided
 	{map[string]string{"queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	//Missing queueManager
+	// Missing queueManager
 	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Missing queueName
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
@@ -83,11 +83,12 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
 		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
-		if err != nil && !testData.isError {
+		switch {
+		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
-		} else if testData.isError && err == nil {
+		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		} else if metadata.targetQueueDepth != defaultTargetQueueDepth {
+		case metadata.targetQueueDepth != defaultTargetQueueDepth:
 			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.targetQueueDepth)
 		}
 	}

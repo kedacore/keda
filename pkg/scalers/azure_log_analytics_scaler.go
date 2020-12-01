@@ -104,8 +104,8 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMetadata, error) {
 	meta := azureLogAnalyticsMetadata{}
-
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch config.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		// Getting tenantId
 		tenantID, err := getParameterFromConfig(config, "tenantId", true)
 		if err != nil {
@@ -128,9 +128,9 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
-	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure:
 		meta.podIdentity = string(config.PodIdentity)
-	} else {
+	default:
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}
 
@@ -207,7 +207,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureLogAnalyticsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	receivedMetric, err := s.getMetricData()
 
@@ -265,7 +265,7 @@ func (s *azureLogAnalyticsScaler) getMetricData() (metricsData, error) {
 }
 
 func (s *azureLogAnalyticsScaler) getAccessToken() (tokenData, error) {
-	//if there is no token yet or it will be expired in less, that 30 secs
+	// if there is no token yet or it will be expired in less, that 30 secs
 	currentTimeSec := time.Now().Unix()
 	tokenInfo := tokenData{}
 
@@ -302,7 +302,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 	body, statusCode, err = s.executeLogAnalyticsREST(query, tokenInfo)
 
-	//Handle expired token
+	// Handle expired token
 	if statusCode == 403 || (len(body) > 0 && strings.Contains(string(body), "TokenExpired")) {
 		tokenInfo, err = s.refreshAccessToken()
 		if err != nil {
@@ -346,12 +346,13 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 		metricsInfo.threshold = s.metadata.threshold
 		metricsInfo.value = 0
 
-		//Pre-validation of query result:
-		if len(queryData.Tables) == 0 || len(queryData.Tables[0].Columns) == 0 || len(queryData.Tables[0].Rows) == 0 {
+		// Pre-validation of query result:
+		switch {
+		case len(queryData.Tables) == 0 || len(queryData.Tables[0].Columns) == 0 || len(queryData.Tables[0].Rows) == 0:
 			return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: there is no results after running your query. HTTP code: %d. Body: %s", statusCode, string(body))
-		} else if len(queryData.Tables) > 1 {
+		case len(queryData.Tables) > 1:
 			return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: too many tables in query result: %d, expected: 1. HTTP code: %d. Body: %s", len(queryData.Tables), statusCode, string(body))
-		} else if len(queryData.Tables[0].Rows) > 1 {
+		case len(queryData.Tables[0].Rows) > 1:
 			return metricsData{}, fmt.Errorf("error validating Log Analytics request. Details: too many rows in query result: %d, expected: 1. HTTP code: %d. Body: %s", len(queryData.Tables[0].Rows), statusCode, string(body))
 		}
 
@@ -385,7 +386,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(query string, tokenInfo tokenData
 
 func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
 	if value != nil {
-		//type can be: real, int, long
+		// type can be: real, int, long
 		if dataType == "real" || dataType == "int" || dataType == "long" {
 			convertedValue, isConverted := value.(float64)
 			if !isConverted {
@@ -408,7 +409,7 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken() (tokenData, error) {
 		return tokenData{}, err
 	}
 
-	//Now, let's check we can use this token. If no, wait until we can use it
+	// Now, let's check we can use this token. If no, wait until we can use it
 	currentTimeSec := time.Now().Unix()
 	if currentTimeSec < tokenInfo.NotBefore {
 		if currentTimeSec < tokenInfo.NotBefore+10 {

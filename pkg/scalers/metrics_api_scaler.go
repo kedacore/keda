@@ -33,7 +33,7 @@ type metricsAPIScalerMetadata struct {
 	url           string
 	valueLocation string
 
-	//apiKeyAuth
+	// apiKeyAuth
 	enableAPIKeyAuth bool
 	method           string // way of providing auth key, either "header" (default) or "query"
 	// keyParamName  is either header key or query param used for passing apikey
@@ -41,12 +41,12 @@ type metricsAPIScalerMetadata struct {
 	keyParamName string
 	apiKey       string
 
-	//base auth
+	// base auth
 	enableBaseAuth bool
 	username       string
 	password       string // +optional
 
-	//client certification
+	// client certification
 	enableTLS bool
 	cert      string
 	key       string
@@ -269,7 +269,8 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 	var req *http.Request
 	var err error
 
-	if meta.enableAPIKeyAuth {
+	switch {
+	case meta.enableAPIKeyAuth:
 		if meta.method == methodValueQuery {
 			url, _ := neturl.Parse(meta.url)
 			queryString := url.Query()
@@ -297,14 +298,14 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 				req.Header.Add(meta.keyParamName, meta.apiKey)
 			}
 		}
-	} else if meta.enableBaseAuth {
+	case meta.enableBaseAuth:
 		req, err = http.NewRequest("GET", meta.url, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		req.SetBasicAuth(meta.username, meta.password)
-	} else {
+	default:
 		req, err = http.NewRequest("GET", meta.url, nil)
 		if err != nil {
 			return nil, err

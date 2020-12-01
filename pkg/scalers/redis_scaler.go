@@ -190,26 +190,29 @@ func getRedisListLength(client *redis.Client, listName string) (int64, error) {
 
 func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info := redisConnectionInfo{}
-	if authParams["address"] != "" {
+	switch {
+	case authParams["address"] != "":
 		info.address = authParams["address"]
-	} else if metadata["address"] != "" {
+	case metadata["address"] != "":
 		info.address = metadata["address"]
-	} else if metadata["addressFromEnv"] != "" {
+	case metadata["addressFromEnv"] != "":
 		info.address = resolvedEnv[metadata["addressFromEnv"]]
-	} else {
-		if authParams["host"] != "" {
+	default:
+		switch {
+		case authParams["host"] != "":
 			info.host = authParams["host"]
-		} else if metadata["host"] != "" {
+		case metadata["host"] != "":
 			info.host = metadata["host"]
-		} else if metadata["hostFromEnv"] != "" {
+		case metadata["hostFromEnv"] != "":
 			info.host = resolvedEnv[metadata["hostFromEnv"]]
 		}
 
-		if authParams["port"] != "" {
+		switch {
+		case authParams["port"] != "":
 			info.port = authParams["port"]
-		} else if metadata["port"] != "" {
+		case metadata["port"] != "":
 			info.port = metadata["port"]
-		} else if metadata["portFromEnv"] != "" {
+		case metadata["portFromEnv"] != "":
 			info.port = resolvedEnv[metadata["portFromEnv"]]
 		}
 

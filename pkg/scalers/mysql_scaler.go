@@ -71,11 +71,12 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
-	if config.AuthParams["connectionString"] != "" {
+	switch {
+	case config.AuthParams["connectionString"] != "":
 		meta.connectionString = config.AuthParams["connectionString"]
-	} else if config.TriggerMetadata["connectionStringFromEnv"] != "" {
+	case config.TriggerMetadata["connectionStringFromEnv"] != "":
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
-	} else {
+	default:
 		meta.connectionString = ""
 		if val, ok := config.TriggerMetadata["host"]; ok {
 			meta.host = val
