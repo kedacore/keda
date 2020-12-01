@@ -22,6 +22,8 @@
 ### Improvements
 - Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
 - Bug fix in aws_iam_authorization to utilize correct secret from env key name ([PR #1332](https://github.com/kedacore/keda/pull/1332))
+- Add metricName field to postgres scaler and auto generate if not defined. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
+- Mask password in postgres scaler auto generated metricName. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
 
 ### Breaking Changes
 

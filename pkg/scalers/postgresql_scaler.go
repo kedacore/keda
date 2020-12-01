@@ -33,6 +33,7 @@ type postgreSQLMetadata struct {
 	query            string
 	dbName           string
 	sslmode          string
+	metricName       string
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
@@ -113,6 +114,21 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		}
 	}
 
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", val))
+	} else {
+		if meta.connection != "" {
+			maskedConnectionString, err := kedautil.MaskPassword(meta.connection)
+			if err != nil {
+				return nil, fmt.Errorf("url parsing error %s", err.Error())
+			}
+
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", maskedConnectionString))
+		} else {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", meta.dbName))
+		}
+	}
+
 	return &meta, nil
 }
 
@@ -177,15 +193,10 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
-	metricName := "postgresql"
-	if s.metadata.connection != "" {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.connection))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.dbName))
-	}
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
