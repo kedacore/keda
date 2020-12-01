@@ -57,8 +57,9 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var serverURL string
 	var thresholdValue float64
 
-	switch val, ok := config.TriggerMetadata["authToken"]; {
-	case ok:
+	val, ok := config.TriggerMetadata["authToken"]
+	switch {
+	case ok && val != "":
 		authToken = val
 	case config.TriggerMetadata["authTokenFromEnv"] != "":
 		if val, ok := config.ResolvedEnv[config.TriggerMetadata["authTokenFromEnv"]]; ok {
@@ -76,8 +77,9 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		metricName = strconv.FormatInt(time.Now().UTC().Unix(), 10)
 	}
 
-	switch val, ok := config.TriggerMetadata["organizationName"]; {
-	case ok:
+	val, ok = config.TriggerMetadata["organizationName"]
+	switch {
+	case ok && val != "":
 		organizationName = val
 	case config.TriggerMetadata["organizationNameFromEnv"] != "":
 		if val, ok := config.ResolvedEnv[config.TriggerMetadata["organizationNameFromEnv"]]; ok {
