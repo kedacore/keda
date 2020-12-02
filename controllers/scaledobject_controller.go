@@ -246,13 +246,13 @@ func (r *ScaledObjectReconciler) validateMetricNameUniqueness(logger logr.Logger
 		return err
 	}
 
-	observedMetricNames := make(map[string]struct{}, 0)
+	observedMetricNames := make(map[string]struct{})
 	for _, scaler := range scalers {
 		for _, metric := range scaler.GetMetricSpecForScaling() {
 			metricName := metric.External.Metric.Name
 
 			if _, ok := observedMetricNames[metricName]; ok {
-				return fmt.Errorf("metricName %s defined mutliple times in ScaledObject %s, please refer the documentation how to define metircName manually", metricName, scaledObject.Name)
+				return fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metircName manually", metricName, scaledObject.Name)
 			}
 
 			observedMetricNames[metricName] = struct{}{}
