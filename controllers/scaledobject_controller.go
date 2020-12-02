@@ -246,7 +246,7 @@ func (r *ScaledObjectReconciler) validateMetricNameUniqueness(logger logr.Logger
 		return err
 	}
 
-	var observedMetricNames map[string]struct{}
+	observedMetricNames := make(map[string]struct{}, 0)
 	for _, scaler := range scalers {
 		for _, metric := range scaler.GetMetricSpecForScaling() {
 			metricName := metric.External.Metric.Name
