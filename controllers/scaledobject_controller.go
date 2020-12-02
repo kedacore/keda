@@ -192,7 +192,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 
 	err = r.validateMetricNameUniqueness(logger, scaledObject)
 	if err != nil {
-		return "Error checking metric name uniquenesss", err
+		return "Error checking metric name uniqueness", err
 	}
 
 	// Create a new HPA or update existing one according to ScaledObject
