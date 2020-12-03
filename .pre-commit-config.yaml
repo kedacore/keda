@@ -6,8 +6,6 @@ repos:
     hooks:
       - id: go-fmt
         name: Run go fmt against the code
-      - id: go-vet
-        name: Run go vet against the code
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
