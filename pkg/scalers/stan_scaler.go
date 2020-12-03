@@ -133,8 +133,10 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
-
+	if err := json.NewDecoder(resp.Body).Decode(&s.channelInfo); err != nil {
+		stanLog.Error(err, "Unable to decode channel info as %v", err)
+		return false, err
+	}
 	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
 }
 
@@ -209,7 +211,10 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	}
 
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&s.channelInfo)
+	if err := json.NewDecoder(resp.Body).Decode(&s.channelInfo); err != nil {
+		stanLog.Error(err, "Unable to decode channel info as %v", err)
+		return []external_metrics.ExternalMetricValue{}, err
+	}
 	totalLag := s.getMaxMsgLag()
 	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 	metric := external_metrics.ExternalMetricValue{

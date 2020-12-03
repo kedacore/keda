@@ -222,7 +222,10 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 			externalLog.Error(err, "error running internalRun")
 			return
 		}
-		handleIsActiveStream(ctx, s.scaledObjectRef, grpcClient, active)
+		if err := handleIsActiveStream(ctx, s.scaledObjectRef, grpcClient, active); err != nil {
+			externalLog.Error(err, "error running internalRun")
+			return
+		}
 		done()
 	}
 
