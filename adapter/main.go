@@ -99,6 +99,13 @@ func getWatchNamespace() (string, error) {
 }
 
 func main() {
+	var err error
+	defer func() {
+		if err != nil {
+			logger.Error(err, "unable to run external metrics adapter")
+		}
+	}()
+
 	defer klog.Flush()
 
 	printVersion()
@@ -127,8 +134,7 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
-	if err := cmd.Run(wait.NeverStop); err != nil {
-		logger.Error(err, "unable to run external metrics adapter")
-		os.Exit(1)
+	if err = cmd.Run(wait.NeverStop); err != nil {
+		return
 	}
 }

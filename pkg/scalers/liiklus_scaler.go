@@ -167,11 +167,12 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 		groupVersion = uint32(t)
 	}
 
-	if config.TriggerMetadata["topic"] == "" {
+	switch {
+	case config.TriggerMetadata["topic"] == "":
 		return nil, errors.New("no topic provided")
-	} else if config.TriggerMetadata["address"] == "" {
+	case config.TriggerMetadata["address"] == "":
 		return nil, errors.New("no liiklus API address provided")
-	} else if config.TriggerMetadata["group"] == "" {
+	case config.TriggerMetadata["group"] == "":
 		return nil, errors.New("no consumer group provided")
 	}
 

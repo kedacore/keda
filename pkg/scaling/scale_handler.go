@@ -232,7 +232,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
-		//skip cpu/memory resource scaler
+		// skip cpu/memory resource scaler
 		if metricSpecs[0].External == nil {
 			continue
 		}
@@ -337,7 +337,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 				closeScalers(scalersRes)
 				return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
 			}
-			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+      authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		} else {
@@ -438,6 +438,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":
 		return scalers.NewIBMMQScaler(config)
+	case "influxdb":
+		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
 	case "liiklus":

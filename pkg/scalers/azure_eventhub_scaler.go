@@ -8,10 +8,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/kedacore/keda/v2/api/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
-
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -20,6 +16,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -133,9 +133,9 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	return &meta, nil
 }
 
-//GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
+// GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
 func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
-	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
+	// if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
 		return 0, azure.Checkpoint{}, nil
 	}
@@ -154,7 +154,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 
 	unprocessedEventCountInPartition := int64(0)
 
-	//If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
+	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
 	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
 	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
 	if checkpoint.Offset == "" {
