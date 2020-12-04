@@ -114,7 +114,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = config.ResolvedEnv[config.TriggerMetadata["topicFromEnv"]]
 	case config.TriggerMetadata["topic"] != "":
 		meta.topic = config.TriggerMetadata["topic"]
-	default:-
+	default:
 		return meta, errors.New("no topic given")
 	}
 
