@@ -327,31 +327,34 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	}
 
 	for i, trigger := range withTriggers.Spec.Triggers {
-		authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
-
-		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
-			serviceAccount := &corev1.ServiceAccount{}
-			err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
-			if err != nil {
-				closeScalers(scalersRes)
-				return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
-			}
-      authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
-			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-		} else {
-			authParams, _ = resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, nil, withTriggers.Namespace)
-		}
-
 		config := &scalers.ScalerConfig{
 			Name:              withTriggers.Name,
 			Namespace:         withTriggers.Namespace,
 			TriggerMetadata:   trigger.Metadata,
 			ResolvedEnv:       resolvedEnv,
-			AuthParams:        authParams,
-			PodIdentity:       podIdentity,
+			AuthParams:        make(map[string]string),
 			GlobalHTTPTimeout: h.globalHTTPTimeout,
+		}
+		if podTemplateSpec != nil {
+			authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
+
+			if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+				serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+				serviceAccount := &corev1.ServiceAccount{}
+				err = h.client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: withTriggers.Namespace}, serviceAccount)
+				if err != nil {
+					closeScalers(scalersRes)
+					return []scalers.Scaler{}, fmt.Errorf("error getting service account: %s", err)
+				}
+				authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+			} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+				authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+			}
+			config.AuthParams = authParams
+			config.PodIdentity = podIdentity
+		} else {
+			authParams, _ := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, nil, withTriggers.Namespace)
+			config.AuthParams = authParams
 		}
 
 		scaler, err := buildScaler(trigger.Type, config)
