@@ -406,8 +406,6 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
-		// currently, the Artemis Scaler defines its own HTTP client, with a hard-coded 3 second
-		// timeout. not sure why that is?
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(config)
