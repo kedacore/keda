@@ -243,14 +243,19 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, sca
 func (r *ScaledObjectReconciler) validateMetricNameUniqueness(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	scalers, err := r.scaleHandler.GetScalers(scaledObject)
 	if err != nil {
+		logger.Error(err, "Unable to fetch scalers in metric name uniqueness check")
 		return err
 	}
 
 	observedMetricNames := make(map[string]struct{})
 	for _, scaler := range scalers {
 		for _, metric := range scaler.GetMetricSpecForScaling() {
-			metricName := metric.External.Metric.Name
+			// Only validate external metricNames
+			if metric.External == nil {
+				continue
+			}
 
+			metricName := metric.External.Metric.Name
 			if _, ok := observedMetricNames[metricName]; ok {
 				return fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metircName manually", metricName, scaledObject.Name)
 			}
