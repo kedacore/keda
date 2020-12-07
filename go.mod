@@ -11,7 +11,7 @@ require (
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.13
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.36.2
