@@ -136,14 +136,28 @@ docker-build:
 
 # Build KEDA Operator binary
 .PHONY: manager
-manager: generate gofmt govet
+manager: manager-dockerfile gofmt govet
+
+# Build the manager inside the Dockerfile. This elides
+# the gofmt and govet commands. Since code quality checks
+# are already in CI, we don't need to run them every
+# time we build the image
+.PHONY: manager-dockerfile
+manager-dockerfile: generate
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	-o bin/keda main.go
 
 # Build KEDA Metrics Server Adapter binary
 .PHONY: adapter
-adapter: generate gofmt govet
+adapter: adapter-dockerfile gofmt govet
+
+# Build the adapter inside the Dockerfile. This elides
+# the gofmt and govet commands. Since code quality checks
+# are already in CI, we don't need to run them every
+# time we build the image
+.PHONY: adapter-dockerfile
+adapter-dockerfile: generate
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	-o bin/keda-adapter adapter/main.go
