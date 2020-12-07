@@ -141,8 +141,12 @@ func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 }
 
 func TestResolveAuthRef(t *testing.T) {
-	corev1.AddToScheme(scheme.Scheme)
-	kedav1alpha1.AddToScheme(scheme.Scheme)
+	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
 	tests := []struct {
 		name                string
 		existing            []runtime.Object

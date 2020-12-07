@@ -30,7 +30,7 @@ linters:
     - deadcode
     - depguard
     - dogsled
-    #- errcheck
+    - errcheck
     #- funlen
     - goconst
     - gocritic
