@@ -39,7 +39,11 @@ func TestCleanUpNormalCase(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(scaledJob)
+	if err != nil {
+		t.Errorf("Unable to cleanup as: %v", err)
+		return
+	}
 
 	_, ok := actualDeletedJobName["name2"]
 	assert.True(t, ok)
@@ -129,8 +133,11 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	scaleExecutor.cleanUp(scaledJob)
-
+	err := scaleExecutor.cleanUp(scaledJob)
+	if err != nil {
+		t.Errorf("Unable to cleanup as: %v", err)
+		return
+	}
 	assert.Equal(t, 3, len(actualDeletedJobName))
 	_, ok := actualDeletedJobName["success2"]
 	assert.True(t, ok)
@@ -167,7 +174,11 @@ func TestCleanUpDefaultValue(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(scaledJob)
+	if err != nil {
+		t.Errorf("Unable to cleanup as: %v", err)
+		return
+	}
 
 	assert.Equal(t, 2, len(actualDeletedJobName))
 	_, ok := actualDeletedJobName["success0"]

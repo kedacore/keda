@@ -52,7 +52,11 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	case isActive:
 		// triggers are active, but we didn't need to scale (replica count > 0)
 		// Update LastActiveTime to now.
-		e.updateLastActiveTime(ctx, logger, scaledObject)
+		err := e.updateLastActiveTime(ctx, logger, scaledObject)
+		if err != nil {
+			logger.Error(err, "Error updating last active time")
+			return
+		}
 	default:
 		logger.V(1).Info("ScaleTarget no change")
 	}
@@ -60,9 +64,15 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
-			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are active")
+				return
+			}
 		} else {
-			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are not active")
+				return
+			}
 		}
 	}
 }
@@ -87,7 +97,10 @@ func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, sca
 		err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale)
 		if err == nil {
 			logger.Info("Successfully scaled ScaleTarget to 0 replicas")
-			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+				logger.Error(err, "Error in setting active condition")
+				return
+			}
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down",
@@ -96,7 +109,10 @@ func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, sca
 
 		activeCondition := scaledObject.Status.Conditions.GetActiveCondition()
 		if !activeCondition.IsFalse() || activeCondition.Reason != "ScalerCooldown" {
-			e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active")
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active"); err != nil {
+				logger.Error(err, "Error in setting active condition")
+				return
+			}
 		}
 	}
 }
@@ -117,7 +133,10 @@ func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, s
 			"New Replicas Count", scale.Spec.Replicas)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
-		e.updateLastActiveTime(ctx, logger, scaledObject)
+		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {
+			logger.Error(err, "Error in Updating lastScaleTime and lastActiveTime on the scaledObject")
+			return
+		}
 	}
 }
 

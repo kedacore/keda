@@ -131,7 +131,9 @@ func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	// ensure Status Conditions are initialized
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
-		kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, conditions)
+		if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, conditions); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// reconcile ScaledObject and set status appropriately
@@ -145,7 +147,9 @@ func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
 	}
-	kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, &conditions)
+	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, &conditions); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, err
 }
 

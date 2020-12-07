@@ -184,7 +184,9 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 
 	defer resp.Body.Close()
 
-	json.NewDecoder(resp.Body).Decode(&monitoringInfo)
+	if err := json.NewDecoder(resp.Body).Decode(&monitoringInfo); err != nil {
+		return -1, err
+	}
 	if resp.StatusCode == 200 && monitoringInfo.Status == 200 {
 		messageCount = monitoringInfo.MsgCount
 	} else {
