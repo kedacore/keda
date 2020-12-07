@@ -25,7 +25,7 @@ require (
 	github.com/imdario/mergo v0.3.11
 	github.com/influxdata/influxdb-client-go/v2 v2.2.0
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200618121405-54026617ec44
-	github.com/lib/pq v1.8.0
+	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
