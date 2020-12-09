@@ -41,22 +41,22 @@ var (
 	prometheusMetricsPath string
 )
 
-func (a *Adapter) makeProviderOrDie(globalHTTPTimeout time.Duration) provider.MetricsProvider {
+func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
 		logger.Error(err, "failed to get the config")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to get the config (%s)", err)
 	}
 
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 
 	kubeclient, err := client.New(cfg, client.Options{
@@ -64,7 +64,7 @@ func (a *Adapter) makeProviderOrDie(globalHTTPTimeout time.Duration) provider.Me
 	})
 	if err != nil {
 		logger.Error(err, "unable to construct new client")
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to construct new client (%s)", err)
 	}
 
 	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout)
@@ -72,13 +72,13 @@ func (a *Adapter) makeProviderOrDie(globalHTTPTimeout time.Duration) provider.Me
 	namespace, err := getWatchNamespace()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace)
+	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), nil
 }
 
 func printVersion() {
@@ -128,10 +128,14 @@ func main() {
 	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
-		os.Exit(1)
+		return
 	}
 
-	kedaProvider := cmd.makeProviderOrDie(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
+	kedaProvider, err := cmd.makeProvider(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
+	if err != nil {
+		logger.Error(err, "making provider")
+		return
+	}
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
