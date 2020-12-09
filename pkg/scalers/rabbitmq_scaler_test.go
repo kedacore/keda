@@ -119,7 +119,10 @@ func TestGetQueueInfo(t *testing.T) {
 				}
 
 				w.WriteHeader(testData.responseStatus)
-				w.Write([]byte(testData.response))
+				_, err := w.Write([]byte(testData.response))
+				if err != nil {
+					t.Error("Expect request path to =", testData.response, "but it is", err)
+				}
 			}))
 
 			resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}

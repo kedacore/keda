@@ -115,8 +115,9 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
-
-	cmd.Flags().Parse(os.Args)
+	if err := cmd.Flags().Parse(os.Args); err != nil {
+		return
+	}
 
 	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
 	if globalHTTPTimeoutStr == "" {
