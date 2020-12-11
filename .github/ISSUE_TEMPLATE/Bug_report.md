@@ -4,7 +4,7 @@ about: Create a report to help us improve
 labels: bug
 ---
 
-A clear and concise description of what the bug is.
+*A clear and concise description of what the bug is.*
 
 ## Expected Behavior
 
@@ -17,6 +17,14 @@ A clear and concise description of what the bug is.
   1.
   2.
   3.
+
+## Logs from KEDA operator
+
+*Provide logs from KEDA operator, if need be.*
+
+```
+example
+```
 
 ## Specifications
 
