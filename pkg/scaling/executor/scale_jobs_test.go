@@ -65,8 +65,9 @@ func TestDefaultScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithDefaultStrategy("default"))
 	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
-	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
-	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 5))
+	// pendingJobCount isn't relevant on this scenario
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 0, 5))
+	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 0, 5))
 }
 
 func TestCustomScalingStrategy(t *testing.T) {
@@ -75,13 +76,14 @@ func TestCustomScalingStrategy(t *testing.T) {
 	customScalingRunningJobPercentage := "0.5"
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
 	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
-	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
-	assert.Equal(t, int64(9), strategy.GetEffectiveMaxScale(10, 0, 10))
+	// pendingJobCount isn't relevant on this scenario
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 0, 5))
+	assert.Equal(t, int64(9), strategy.GetEffectiveMaxScale(10, 0, 0, 10))
 	strategy = NewScalingStrategy(logger, getMockScaledJobWithCustomStrategyWithNilParameter("custom", "custom"))
 
 	// If you don't set the two parameters is the same behavior as DefaultStrategy
-	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
-	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 5))
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 0, 5))
+	assert.Equal(t, int64(2), strategy.GetEffectiveMaxScale(2, 0, 0, 5))
 
 	// Empty String will be DefaultStrategy
 	customScalingQueueLengthDeduction = int32(1)
@@ -93,21 +95,25 @@ func TestCustomScalingStrategy(t *testing.T) {
 	customScalingQueueLengthDeduction = int32(2)
 	customScalingRunningJobPercentage = "0"
 	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
-	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 5))
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 2, 0, 5))
 
 	// Exceed the MaxReplicaCount
 	customScalingQueueLengthDeduction = int32(-2)
 	customScalingRunningJobPercentage = "0"
 	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
-	assert.Equal(t, int64(4), strategy.GetEffectiveMaxScale(3, 2, 4))
+	assert.Equal(t, int64(4), strategy.GetEffectiveMaxScale(3, 2, 0, 4))
 }
 
 func TestAccurateScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", 0, "0"))
 	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
-	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(3, 2, 5))
-	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(5, 2, 5))
+	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(3, 2, 0, 5))
+	assert.Equal(t, int64(3), strategy.GetEffectiveMaxScale(5, 2, 0, 5))
+
+	// Test with 2 pending jobs
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(3, 4, 2, 10))
+	assert.Equal(t, int64(1), strategy.GetEffectiveMaxScale(5, 4, 2, 5))
 }
 
 func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
