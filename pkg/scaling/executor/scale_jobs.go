@@ -25,9 +25,11 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
 
 	runningJobCount := e.getRunningJobCount(scaledJob)
+	pendingJobCount := e.getPendingJobCount(scaledJob)
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
+	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
-	effectiveMaxScale := NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount, scaledJob.MaxReplicaCount())
+	effectiveMaxScale := NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, scaledJob.MaxReplicaCount())
 
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
@@ -140,6 +142,53 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 	}
 
 	return runningJobs
+}
+
+func (e *scaleExecutor) isAnyPodRunningOrCompleted(j *batchv1.Job) bool {
+	opts := []client.ListOption{
+		client.InNamespace(j.GetNamespace()),
+		client.MatchingLabels(map[string]string{"job-name": j.GetName()}),
+	}
+
+	pods := &corev1.PodList{}
+	err := e.client.List(context.TODO(), pods, opts...)
+
+	if err != nil {
+		return false
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodRunning {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) int64 {
+	var pendingJobs int64
+
+	opts := []client.ListOption{
+		client.InNamespace(scaledJob.GetNamespace()),
+		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+	}
+
+	jobs := &batchv1.JobList{}
+	err := e.client.List(context.TODO(), jobs, opts...)
+
+	if err != nil {
+		return 0
+	}
+
+	for _, job := range jobs.Items {
+		job := job
+		if !e.isJobFinished(&job) && !e.isAnyPodRunningOrCompleted(&job) {
+			pendingJobs++
+		}
+	}
+
+	return pendingJobs
 }
 
 // Clean up will delete the jobs that is exceed historyLimit
@@ -261,13 +310,13 @@ func NewScalingStrategy(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) S
 
 // ScalingStrategy is an interface for switching scaling algorithm
 type ScalingStrategy interface {
-	GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64
+	GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64
 }
 
 type defaultScalingStrategy struct {
 }
 
-func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
 	return maxScale - runningJobCount
 }
 
@@ -276,18 +325,18 @@ type customScalingStrategy struct {
 	CustomScalingRunningJobPercentage *float64
 }
 
-func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
 	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount)
 }
 
 type accurateScalingStrategy struct {
 }
 
-func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, maxReplicaCount int64) int64 {
+func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
 	if (maxScale + runningJobCount) > maxReplicaCount {
 		return maxReplicaCount - runningJobCount
 	}
-	return maxScale
+	return maxScale - pendingJobCount
 }
 
 func min(x, y int64) int64 {
