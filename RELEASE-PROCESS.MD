@@ -5,8 +5,8 @@ The release process of a new version of KEDA involves the following:
 ## 0. Prerequisites
 
 Look at the last released version in the releases page: https://github.com/kedacore/keda/releases
-For example: currently it is 1.1.0
-The next version will thus be 1.2.0
+For example: currently it is 2.0.0
+The next version will thus be 2.1.0
 
 ## 1. Changelog
 
@@ -22,9 +22,9 @@ See [docs](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
 ## 3. Create KEDA release on GitHub
 
-Creating a new release in the releases page (https://github.com/kedacore/keda/release) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 1.2.0).
+Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.1.0).
 
-KEDA Deployment YAML file (eg. keda-1.2.0.yaml) is also automatically created and attached to the Release as part of the workflow.
+KEDA Deployment YAML file (eg. keda-2.1.0.yaml) is also automatically created and attached to the Release as part of the workflow.
 
 > Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda/tags
 
