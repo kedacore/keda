@@ -15,7 +15,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.36.2
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.3.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.4
@@ -40,14 +40,14 @@ require (
 	google.golang.org/api v0.36.0
 	google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d
 	google.golang.org/grpc v1.34.0
-	k8s.io/api v0.18.8
-	k8s.io/apimachinery v0.18.8
+	k8s.io/api v0.19.2
+	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.18.8
+	k8s.io/code-generator v0.19.2
 	k8s.io/klog v1.0.0
 	k8s.io/metrics v0.18.8
 	knative.dev/pkg v0.0.0-20201019114258-95e9532f0457
-	sigs.k8s.io/controller-runtime v0.6.4
+	sigs.k8s.io/controller-runtime v0.7.0
 )
 
 replace (
