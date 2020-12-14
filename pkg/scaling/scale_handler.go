@@ -199,7 +199,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 
 func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler) bool {
 	isActive := false
-	for _, scaler := range scalers {
+	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scaler.Close()
 
@@ -214,6 +214,7 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
 			}
+			closeScalers(scalers[i+1:])
 			break
 		}
 	}
