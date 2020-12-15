@@ -39,10 +39,9 @@ type artemisMetadata struct {
 //revive:enable:var-naming
 
 type artemisMonitoring struct {
-	Request   string `json:"request"`
-	MsgCount  int    `json:"value"`
-	Status    int    `json:"status"`
-	Timestamp int64  `json:"timestamp"`
+	MsgCount  int   `json:"value"`
+	Status    int   `json:"status"`
+	Timestamp int64 `json:"timestamp"`
 }
 
 const (
