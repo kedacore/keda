@@ -57,7 +57,7 @@ test.before((t) => {
 
     // Wait for influxdb instance to be ready
     let influxdbStatus = 'false'
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 25; i++) {
         influxdbStatus = sh.exec(`kubectl get pod ${influxdbPodName} --namespace ${influxdbNamespaceName} -o jsonpath='{.status.containerStatuses[0].started}'`).stdout
         if (influxdbStatus !== 'true') {
             sh.exec('sleep 2s')
@@ -98,7 +98,7 @@ test.serial('Should start off deployment with 0 replicas and scale to 2 replicas
     t.is(numReplicasAfter, '2', 'Number of replicas should have scaled to 2')
 })
 
-test.after((t) => {
+test.after.always((t) => {
     t.is(0, sh.exec(`kubectl delete namespace ${influxdbNamespaceName}`).code, 'Should delete influxdb namespace')
 })
 
