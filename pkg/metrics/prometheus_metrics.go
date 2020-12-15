@@ -98,7 +98,7 @@ func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace strin
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaler := scalerErrorsTotal.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
 	if errscaler != nil {
 		log.Fatalf("Unable to write to serve custom metrics: %v", errscaler)
 	}
