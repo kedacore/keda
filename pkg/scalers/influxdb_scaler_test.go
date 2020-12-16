@@ -41,6 +41,7 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
 	{&testInfluxDBMetadata[1], "influxdb-influx_org-influx_metric"},
+	{&testInfluxDBMetadata[2], "influxdb-influx_org-influxdata-com"},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {

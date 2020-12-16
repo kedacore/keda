@@ -3,8 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
-	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
@@ -71,12 +71,6 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		return nil, fmt.Errorf("no auth token given")
 	}
 
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metricName = val
-	} else {
-		metricName = strconv.FormatInt(time.Now().UTC().Unix(), 10)
-	}
-
 	val, ok = config.TriggerMetadata["organizationName"]
 	switch {
 	case ok && val != "":
@@ -101,6 +95,16 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		serverURL = val
 	} else {
 		return nil, fmt.Errorf("no server url given")
+	}
+
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		metricName = val
+	} else {
+		url, err := url.Parse(serverURL)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse server url")
+		}
+		metricName = url.Hostname()
 	}
 
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
