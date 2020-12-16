@@ -64,3 +64,16 @@ test.serial('verifyKeda', t => {
 
   t.true(success, 'expected keda deployments to start 2 pods successfully')
 })
+
+test.serial('setup helm', t => {
+  // check if helm is already installed.
+  let result = sh.exec('helm version')
+  if(result.code == 0) {
+    t.pass('helm is already installed. skipping setup')
+    return
+  }
+  t.is(0, sh.exec(`curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3`).code, 'should be able to download helm script')
+  t.is(0, sh.exec(`chmod 700 get_helm.sh`).code, 'should be able to change helm script permissions')
+  t.is(0, sh.exec(`./get_helm.sh`).code, 'should be able to download helm')
+  t.is(0, sh.exec(`helm version`).code, 'should be able to get helm version')
+})

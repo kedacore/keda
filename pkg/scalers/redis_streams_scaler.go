@@ -66,7 +66,7 @@ func NewRedisStreamsScaler(config *ScalerConfig) (Scaler, error) {
 
 func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 	options := &redis.Options{
-		Addr:     metadata.connectionInfo.address,
+		Addr:     metadata.connectionInfo.addresses[0],
 		Password: metadata.connectionInfo.password,
 		DB:       metadata.databaseIndex,
 	}
