@@ -1,7 +1,5 @@
 # Security Policy
 
-We strive to ship secure software, but we need the community to help us.
-
 ## Supported Versions
 
 KEDA commits to supporting the n-2 version minor version of the current major release; as well as the last minor version of the previous major release.
@@ -29,9 +27,6 @@ We strive to ship secure software, but we need the community to help us find sec
 In case of a confirmed breach, reporters will get full credit and can be keep in the loop, if
 preferred.
 
-We do not provide compensations for reporting vulnerabilities except for eternal
-gratitude.
-
 ### Private Disclosure Processes
 
 We ask that all suspected vulnerabilities be privately and responsibly disclosed by [contacting our maintainers](mailto:cncf-keda-maintainers@lists.cncf.io).
@@ -39,6 +34,11 @@ We ask that all suspected vulnerabilities be privately and responsibly disclosed
 ### Public Disclosure Processes
 
 If you know of a publicly disclosed security vulnerability please IMMEDIATELY email the [KEDA maintainers](mailto:cncf-keda-maintainers@lists.cncf.io) to inform about the vulnerability so they may start the patch, release, and communication process.
+
+### Compensation
+
+We do not provide compensations for reporting vulnerabilities except for eternal
+gratitude.
 
 ## Communication
 
