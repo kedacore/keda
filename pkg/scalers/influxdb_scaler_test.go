@@ -40,8 +40,8 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, true}}
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
-	{&testInfluxDBMetadata[1], "influxdb-influx_org-influx_metric"},
-	{&testInfluxDBMetadata[2], "influxdb-influx_org-influxdata-com"},
+	{&testInfluxDBMetadata[1], "influxdb-influx_metric-influx_org"},
+	{&testInfluxDBMetadata[2], "influxdb-https---xxx-influx_org"},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {
