@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -14,10 +16,15 @@ const (
 )
 
 // GetAzureADPodIdentityToken returns the AADToken for resource
-func GetAzureADPodIdentityToken(audience string) (AADToken, error) {
+func GetAzureADPodIdentityToken(httpClient util.HTTPDoer, audience string) (AADToken, error) {
 	var token AADToken
 
-	resp, err := http.Get(fmt.Sprintf(msiURL, url.QueryEscape(audience)))
+	urlStr := fmt.Sprintf(msiURL, url.QueryEscape(audience))
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return token, err
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return token, err
 	}

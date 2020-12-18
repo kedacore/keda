@@ -42,15 +42,17 @@ type scaleHandler struct {
 	logger            logr.Logger
 	scaleLoopContexts *sync.Map
 	scaleExecutor     executor.ScaleExecutor
+	globalHTTPTimeout time.Duration
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
 		scaleLoopContexts: &sync.Map{},
 		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme),
+		globalHTTPTimeout: globalHTTPTimeout,
 	}
 }
 
@@ -327,11 +329,12 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 
 	for i, trigger := range withTriggers.Spec.Triggers {
 		config := &scalers.ScalerConfig{
-			Name:            withTriggers.Name,
-			Namespace:       withTriggers.Namespace,
-			TriggerMetadata: trigger.Metadata,
-			ResolvedEnv:     resolvedEnv,
-			AuthParams:      make(map[string]string),
+			Name:              withTriggers.Name,
+			Namespace:         withTriggers.Namespace,
+			TriggerMetadata:   trigger.Metadata,
+			ResolvedEnv:       resolvedEnv,
+			AuthParams:        make(map[string]string),
+			GlobalHTTPTimeout: h.globalHTTPTimeout,
 		}
 		if podTemplateSpec != nil {
 			authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)

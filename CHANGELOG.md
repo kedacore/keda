@@ -37,6 +37,7 @@
 
 ### New
 
+- KEDA uses a dedicated [HTTP client](https://pkg.go.dev/net/http#Client), connection pool, and (optional) TLS certificate for each configured scaler
 - KEDA scales any CustomResource that implements Scale subresource ([#703](https://github.com/kedacore/keda/issues/703))
 - Provide KEDA go-client ([#494](https://github.com/kedacore/keda/issues/494))
 - Define KEDA readiness and liveness probes ([#788](https://github.com/kedacore/keda/issues/788))

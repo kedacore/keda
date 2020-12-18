@@ -33,10 +33,11 @@ const (
 )
 
 type azureLogAnalyticsScaler struct {
-	metadata  *azureLogAnalyticsMetadata
-	cache     *sessionCache
-	name      string
-	namespace string
+	metadata   *azureLogAnalyticsMetadata
+	cache      *sessionCache
+	name       string
+	namespace  string
+	httpClient *http.Client
 }
 
 type azureLogAnalyticsMetadata struct {
@@ -95,10 +96,11 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureLogAnalyticsScaler{
-		metadata:  azureLogAnalyticsMetadata,
-		cache:     &sessionCache{metricValue: -1, metricThreshold: -1},
-		name:      config.Name,
-		namespace: config.Namespace,
+		metadata:   azureLogAnalyticsMetadata,
+		cache:      &sessionCache{metricValue: -1, metricThreshold: -1},
+		name:       config.Name,
+		namespace:  config.Namespace,
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -509,15 +511,13 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 	request.Header.Add("Cache-Control", "no-cache")
 	request.Header.Add("User-Agent", "keda/2.0.0")
 
-	httpClient := &http.Client{}
-
-	resp, err := httpClient.Do(request)
+	resp, err := s.httpClient.Do(request)
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("error calling %s. Inner Error: %v", caller, err)
 	}
 
 	defer resp.Body.Close()
-	httpClient.CloseIdleConnections()
+	s.httpClient.CloseIdleConnections()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

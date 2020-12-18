@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
@@ -32,8 +33,9 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type azureEventHubScaler struct {
-	metadata *eventHubMetadata
-	client   *eventhub.Hub
+	metadata   *eventHubMetadata
+	client     *eventhub.Hub
+	httpClient *http.Client
 }
 
 type eventHubMetadata struct {
@@ -54,8 +56,9 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureEventHubScaler{
-		metadata: parsedMetadata,
-		client:   hub,
+		metadata:   parsedMetadata,
+		client:     hub,
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -137,7 +140,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.httpClient, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)

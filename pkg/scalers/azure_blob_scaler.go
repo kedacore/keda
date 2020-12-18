@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -28,6 +29,7 @@ const (
 type azureBlobScaler struct {
 	metadata    *azureBlobMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
+	httpClient  *http.Client
 }
 
 type azureBlobMetadata struct {
@@ -51,6 +53,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureBlobScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -122,6 +125,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := azure.GetAzureBlobListLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.blobContainerName,
@@ -161,6 +165,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.blobContainerName,
