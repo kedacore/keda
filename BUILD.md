@@ -116,7 +116,7 @@ to deploy it as part of KEDA. Do the following:
    ```bash
    IMAGE_REPO=johndoe make deploy
    ```
-4. Once the keda pods are up, check the logs to verify everything running ok, eg:
+4. Once the KEDA pods are up, check the logs to verify everything running ok, eg:
     ```bash
     kubectl logs -l app=keda-operator -n keda -f
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
@@ -132,14 +132,14 @@ You can change default log levels for both KEDA Operator and Metrics Server. KED
 ### KEDA Operator logging
 
 To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
- modify it's value and redeploy.
+ modify its value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
 
 To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
- modify it's value and redeploy.
+ modify its value and redeploy.
 
 Allowed values are `json` and `console`
 
@@ -147,7 +147,7 @@ Default value: `console`
 
 ### Metrics Server logging
 
-Find `--v=0` argument in Operator Deployment section in `config/metrics-server/deployment.yaml` file, modify it's value and redeploy.
+Find `--v=0` argument in Operator Deployment section in `config/metrics-server/deployment.yaml` file, modify its value and redeploy.
 
 Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
 

@@ -25,6 +25,8 @@
 - Bug fix in aws_iam_authorization to utilize correct secret from env key name ([PR #1332](https://github.com/kedacore/keda/pull/1332))
 - Add metricName field to postgres scaler and auto generate if not defined. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
 - Mask password in postgres scaler auto generated metricName. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
+- Bug fix for pending jobs in ScaledJob's accurateScalingStrategy . ([#1323](https://github.com/kedacore/keda/issues/1323))
+- Fix memory leak because of unclosed scalers. ([#1413](https://github.com/kedacore/keda/issues/1413))
 
 ### Breaking Changes
 
