@@ -119,7 +119,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", val))
 	} else {
 		if meta.connection != "" {
-			maskedConnectionString, err := kedautil.MaskPassword(meta.connection)
+			maskedConnectionString, err := kedautil.MaskPartOfURL(meta.connection, kedautil.Password)
 			if err != nil {
 				return nil, fmt.Errorf("url parsing error %s", err.Error())
 			}
