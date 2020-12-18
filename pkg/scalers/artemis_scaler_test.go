@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -117,7 +118,10 @@ func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockArtemisScaler := artemisScaler{meta}
+		mockArtemisScaler := artemisScaler{
+			metadata:   meta,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockArtemisScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

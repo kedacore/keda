@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
@@ -34,6 +35,7 @@ var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 type azureServiceBusScaler struct {
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
+	httpClient  *http.Client
 }
 
 type azureServiceBusMetadata struct {
@@ -56,6 +58,7 @@ func NewAzureServiceBusScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureServiceBusScaler{
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -184,11 +187,12 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 }
 
 type azureTokenProvider struct {
+	httpClient *http.Client
 }
 
 // GetToken implements TokenProvider interface for azureTokenProvider
-func (azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
-	token, err := azure.GetAzureADPodIdentityToken("https://servicebus.azure.net")
+func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
+	token, err := azure.GetAzureADPodIdentityToken(a.httpClient, "https://servicebus.azure.net")
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +219,9 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 		if err != nil {
 			return -1, err
 		}
-		namespace.TokenProvider = azureTokenProvider{}
+		namespace.TokenProvider = azureTokenProvider{
+			httpClient: s.httpClient,
+		}
 		namespace.Name = s.metadata.namespace
 	}
 

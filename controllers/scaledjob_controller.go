@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -25,14 +26,15 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Log          logr.Logger
-	Scheme       *runtime.Scheme
-	scaleHandler scaling.ScaleHandler
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	scaleHandler      scaling.ScaleHandler
+	globalHTTPTimeout time.Duration
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme())
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.globalHTTPTimeout)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)

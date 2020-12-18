@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -74,7 +75,11 @@ func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAzQueueScaler := azureQueueScaler{meta, podIdentity}
+		mockAzQueueScaler := azureQueueScaler{
+			metadata:    meta,
+			podIdentity: podIdentity,
+			httpClient:  http.DefaultClient,
+		}
 
 		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

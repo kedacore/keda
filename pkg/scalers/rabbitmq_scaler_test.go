@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -133,7 +134,14 @@ func TestGetQueueInfo(t *testing.T) {
 				"protocol":    "http",
 			}
 
-			s, err := NewRabbitMQScaler(&ScalerConfig{ResolvedEnv: resolvedEnv, TriggerMetadata: metadata, AuthParams: map[string]string{}})
+			s, err := NewRabbitMQScaler(
+				&ScalerConfig{
+					ResolvedEnv:       resolvedEnv,
+					TriggerMetadata:   metadata,
+					AuthParams:        map[string]string{},
+					GlobalHTTPTimeout: 300 * time.Millisecond,
+				},
+			)
 
 			if err != nil {
 				t.Error("Expect success", err)
@@ -167,7 +175,12 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockRabbitMQScaler := rabbitMQScaler{meta, nil, nil}
+		mockRabbitMQScaler := rabbitMQScaler{
+			metadata:   meta,
+			connection: nil,
+			channel:    nil,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

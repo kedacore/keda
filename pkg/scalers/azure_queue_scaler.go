@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -27,6 +28,7 @@ const (
 type azureQueueScaler struct {
 	metadata    *azureQueueMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
+	httpClient  *http.Client
 }
 
 type azureQueueMetadata struct {
@@ -48,6 +50,7 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureQueueScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -108,10 +111,11 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	return &meta, config.PodIdentity, nil
 }
 
-// GetScaleDecision is a func
+// IsActive determines whether this scaler is currently active
 func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := azure.GetAzureQueueLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,
@@ -149,6 +153,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := azure.GetAzureQueueLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,

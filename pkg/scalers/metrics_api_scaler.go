@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	neturl "net/url"
 
@@ -53,8 +52,6 @@ type metricsAPIScalerMetadata struct {
 	ca        string
 }
 
-const defaultTimeOut = 3 * time.Second
-
 type authenticationType string
 
 const (
@@ -73,9 +70,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 
-	client := &http.Client{
-		Timeout: defaultTimeOut,
-	}
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
 
 	if meta.enableTLS {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
@@ -83,12 +78,12 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 			return nil, err
 		}
 
-		client.Transport = &http.Transport{TLSClientConfig: config}
+		httpClient.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
 	return &metricsAPIScaler{
 		metadata: meta,
-		client:   client,
+		client:   httpClient,
 	}, nil
 }
 

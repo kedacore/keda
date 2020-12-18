@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,7 +20,8 @@ import (
 )
 
 type artemisScaler struct {
-	metadata *artemisMetadata
+	metadata   *artemisMetadata
+	httpClient *http.Client
 }
 
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
@@ -54,13 +54,19 @@ var artemisLog = logf.Log.WithName("artemis_queue_scaler")
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
+	// do we need to guarantee this timeout for a specific
+	// reason? if not, we can have buildScaler pass in
+	// the global client
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
 
 	return &artemisScaler{
-		metadata: artemisMetadata,
+		metadata:   artemisMetadata,
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -164,9 +170,7 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 	var monitoringInfo *artemisMonitoring
 	messageCount := 0
 
-	client := &http.Client{
-		Timeout: time.Second * 3,
-	}
+	client := s.httpClient
 	url := s.getMonitoringEndpoint()
 
 	req, err := http.NewRequest("GET", url, nil)
