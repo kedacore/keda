@@ -32,8 +32,9 @@ const (
 )
 
 type redisStreamsScaler struct {
-	metadata *redisStreamsMetadata
-	conn     *redis.Client
+	metadata                 *redisStreamsMetadata
+	closeFn                  func() error
+	getPendingEntriesCountFn func() (int64, error)
 }
 
 type redisStreamsMetadata struct {
@@ -47,20 +48,76 @@ type redisStreamsMetadata struct {
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(config *ScalerConfig) (Scaler, error) {
-	meta, err := parseRedisStreamsMetadata(config)
+func NewRedisStreamsScaler(isClustered bool, config *ScalerConfig) (Scaler, error) {
+	if isClustered {
+		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
+		}
+		return createClusteredRedisStreamsScaler(meta)
+	}
+	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
+	return createRedisStreamsScaler(meta)
+}
 
-	c, err := getRedisConnection(meta)
+func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClusterClient(meta.connectionInfo)
 	if err != nil {
-		return nil, fmt.Errorf("redis connection failed: %s", err)
+		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
+	}
+
+	closeFn := func() error {
+		if err := client.Close(); err != nil {
+			redisStreamsLog.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+
+	pendingEntriesCountFn := func() (int64, error) {
+		pendingEntries, err := client.XPending(meta.streamName, meta.consumerGroupName).Result()
+		if err != nil {
+			return -1, err
+		}
+		return pendingEntries.Count, nil
 	}
 
 	return &redisStreamsScaler{
-		metadata: meta,
-		conn:     c,
+		metadata:                 meta,
+		closeFn:                  closeFn,
+		getPendingEntriesCountFn: pendingEntriesCountFn,
+	}, nil
+}
+
+func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClient(meta.connectionInfo, meta.databaseIndex)
+	if err != nil {
+		return nil, fmt.Errorf("connection to redis failed: %s", err)
+	}
+
+	closeFn := func() error {
+		if err := client.Close(); err != nil {
+			redisStreamsLog.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+
+	pendingEntriesCountFn := func() (int64, error) {
+		pendingEntries, err := client.XPending(meta.streamName, meta.consumerGroupName).Result()
+		if err != nil {
+			return -1, err
+		}
+		return pendingEntries.Count, nil
+	}
+
+	return &redisStreamsScaler{
+		metadata:                 meta,
+		closeFn:                  closeFn,
+		getPendingEntriesCountFn: pendingEntriesCountFn,
 	}, nil
 }
 
@@ -88,8 +145,8 @@ func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
 	return c, nil
 }
 
-func parseRedisStreamsMetadata(config *ScalerConfig) (*redisStreamsMetadata, error) {
-	connInfo, err := parseRedisAddress(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
+func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
+	connInfo, err := parseFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +191,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig) (*redisStreamsMetadata, err
 
 // IsActive checks if there are pending entries in the 'Pending Entries List' for consumer group of a stream
 func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.getPendingEntriesCount()
+	count, err := s.getPendingEntriesCountFn()
 
 	if err != nil {
 		redisStreamsLog.Error(err, "error")
@@ -145,7 +202,7 @@ func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *redisStreamsScaler) Close() error {
-	return s.conn.Close()
+	return s.closeFn()
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
@@ -166,7 +223,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics fetches the number of pending entries for a consumer group in a stream
 func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	pendingEntriesCount, err := s.getPendingEntriesCount()
+	pendingEntriesCount, err := s.getPendingEntriesCountFn()
 
 	if err != nil {
 		redisStreamsLog.Error(err, "error fetching pending entries count")
@@ -179,12 +236,4 @@ func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, 
 		Timestamp:  metav1.Now(),
 	}
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-func (s *redisStreamsScaler) getPendingEntriesCount() (int64, error) {
-	pendingEntries, err := s.conn.XPending(s.metadata.streamName, s.metadata.consumerGroupName).Result()
-	if err != nil {
-		return -1, err
-	}
-	return pendingEntries.Count, nil
 }

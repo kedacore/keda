@@ -365,6 +365,47 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 	return info, nil
 }
 
+func getRedisClusterClient(info redisConnectionInfo) (*redis.ClusterClient, error) {
+	options := &redis.ClusterOptions{
+		Addrs:    info.addresses,
+		Password: info.password,
+	}
+	if info.enableTLS {
+		options.TLSConfig = &tls.Config{
+			InsecureSkipVerify: info.enableTLS,
+		}
+	}
+
+	// confirm if connected
+	c := redis.NewClusterClient(options)
+	err := c.Ping().Err()
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func getRedisClient(info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
+	options := &redis.Options{
+		Addr:     info.addresses[0],
+		Password: info.password,
+		DB:       dbIndex,
+	}
+	if info.enableTLS {
+		options.TLSConfig = &tls.Config{
+			InsecureSkipVerify: info.enableTLS,
+		}
+	}
+
+	// confirm if connected
+	c := redis.NewClient(options)
+	err := c.Ping().Err()
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 // Splits a string separated by sep and trims toTrim from all the elements.
 func splitAndTrim(s, sep, toTrim string) []string {
 	x := strings.Split(s, sep)
