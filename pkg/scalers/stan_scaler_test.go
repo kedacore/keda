@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -49,7 +50,11 @@ func TestStanGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockStanScaler := stanScaler{nil, meta}
+		mockStanScaler := stanScaler{
+			channelInfo: nil,
+			metadata:    meta,
+			httpClient:  http.DefaultClient,
+		}
 
 		metricSpec := mockStanScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

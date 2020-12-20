@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
@@ -38,6 +39,9 @@ type PushScaler interface {
 type ScalerConfig struct {
 	// Name used for external scalers
 	Name string
+
+	// The timeout to be used on all HTTP requests from the controller
+	GlobalHTTPTimeout time.Duration
 
 	// Namespace used for external scalers
 	Namespace string

@@ -113,25 +113,29 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
 			if source.ConfigMapRef != nil {
-				if configMap, err := resolveConfigMap(client, source.ConfigMapRef, namespace); err == nil {
+				configMap, err := resolveConfigMap(client, source.ConfigMapRef, namespace)
+				switch {
+				case err == nil:
 					for k, v := range configMap {
 						resolved[k] = v
 					}
-				} else if source.ConfigMapRef.Optional != nil && *source.ConfigMapRef.Optional {
+				case source.ConfigMapRef.Optional != nil && *source.ConfigMapRef.Optional:
 					// ignore error when ConfigMap is marked as optional
 					continue
-				} else {
+				default:
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
 				}
 			} else if source.SecretRef != nil {
-				if secretsMap, err := resolveSecretMap(client, source.SecretRef, namespace); err == nil {
+				secretsMap, err := resolveSecretMap(client, source.SecretRef, namespace)
+				switch {
+				case err == nil:
 					for k, v := range secretsMap {
 						resolved[k] = v
 					}
-				} else if source.SecretRef.Optional != nil && *source.SecretRef.Optional {
+				case source.SecretRef.Optional != nil && *source.SecretRef.Optional:
 					// ignore error when Secret is marked as optional
 					continue
-				} else {
+				default:
 					return nil, fmt.Errorf("error reading secret ref %s on namespace %s: %s", source.SecretRef, namespace, err)
 				}
 			}
@@ -149,7 +153,8 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 				value = resolveEnvValue(envVar.Value, resolved)
 			} else if envVar.ValueFrom != nil {
 				// env is an EnvVarSource, that can be on of the 4 below
-				if envVar.ValueFrom.SecretKeyRef != nil {
+				switch {
+				case envVar.ValueFrom.SecretKeyRef != nil:
 					// env is a secret selector
 					value, err = resolveSecretValue(client, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace)
 					if err != nil {
@@ -158,7 +163,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 							envVar.Name,
 							namespace)
 					}
-				} else if envVar.ValueFrom.ConfigMapKeyRef != nil {
+				case envVar.ValueFrom.ConfigMapKeyRef != nil:
 					// env is a configMap selector
 					value, err = resolveConfigValue(client, envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, namespace)
 					if err != nil {
@@ -167,7 +172,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 							envVar.Name,
 							namespace)
 					}
-				} else {
+				default:
 					logger.V(1).Info("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
 					continue
 				}
@@ -219,7 +224,7 @@ func resolveEnvValue(value string, env map[string]string) string {
 			// append resolved env value into the buffer
 			buf.WriteString(content)
 			// make cursor continue scan
-			cursor = cursor + length
+			cursor += length
 			checkpoint = cursor + 1
 		}
 	}

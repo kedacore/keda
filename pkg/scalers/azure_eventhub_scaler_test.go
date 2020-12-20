@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"testing"
@@ -111,7 +112,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection("none", storageConnectionString, "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(http.DefaultClient, "none", storageConnectionString, "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -257,7 +258,7 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 }
 
 func TestGetUnprocessedEventCountWithoutCheckpointReturning1Message(t *testing.T) {
-	//After the first message the lastsequencenumber init to 0
+	// After the first message the lastsequencenumber init to 0
 	partitionInfo := eventhub.HubPartitionRuntimeInformation{
 		PartitionID:             "0",
 		LastSequenceNumber:      0,
@@ -272,7 +273,7 @@ func TestGetUnprocessedEventCountWithoutCheckpointReturning1Message(t *testing.T
 }
 
 func TestGetUnprocessedEventCountWithoutCheckpointReturning0Message(t *testing.T) {
-	//An empty partition starts with an equal value on last-/beginning-sequencenumber other than 0
+	// An empty partition starts with an equal value on last-/beginning-sequencenumber other than 0
 	partitionInfo := eventhub.HubPartitionRuntimeInformation{
 		PartitionID:             "0",
 		LastSequenceNumber:      255,
@@ -438,7 +439,11 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockEventHubScaler := azureEventHubScaler{meta, nil}
+		mockEventHubScaler := azureEventHubScaler{
+			metadata:   meta,
+			client:     nil,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockEventHubScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

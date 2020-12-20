@@ -75,7 +75,7 @@ func (s *cpuMemoryScaler) IsActive(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-//Close no need for cpuMemory scaler
+// Close no need for cpuMemory scaler
 func (s *cpuMemoryScaler) Close() error {
 	return nil
 }

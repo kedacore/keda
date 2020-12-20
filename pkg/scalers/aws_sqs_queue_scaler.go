@@ -81,7 +81,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 
 	queueURLPath := queueURL.Path
 	queueURLPathParts := strings.Split(queueURLPath, "/")
-	if len(queueURLPathParts) != 3 || len(queueURLPathParts[2]) <= 0 {
+	if len(queueURLPathParts) != 3 || len(queueURLPathParts[2]) == 0 {
 		return nil, fmt.Errorf("cannot get queueName from queueURL")
 	}
 
@@ -133,7 +133,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := s.GetAwsSqsQueueLength()
 

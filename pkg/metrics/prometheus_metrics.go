@@ -66,13 +66,19 @@ func init() {
 func (metricsServer PrometheusMetricServer) NewServer(address string, pattern string) {
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			log.Fatalf("Unable to write to serve custom metrics: %v", err)
+		}
 	})
 	log.Printf("Starting metrics server at %v", address)
 	http.Handle(pattern, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	// initialize the total error metric
-	scalerErrorsTotal.GetMetricWith(prometheus.Labels{})
+	_, errscaler := scalerErrorsTotal.GetMetricWith(prometheus.Labels{})
+	if errscaler != nil {
+		log.Fatalf("Unable to initialize total error metrics as : %v", errscaler)
+	}
 
 	log.Fatal(http.ListenAndServe(address, nil))
 }
@@ -92,7 +98,10 @@ func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace strin
 		return
 	}
 	// initialize metric with 0 if not already set
-	scalerErrorsTotal.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	if errscaler != nil {
+		log.Fatalf("Unable to write to serve custom metrics: %v", errscaler)
+	}
 }
 
 // RecordScalerObjectError counts the number of errors with the scaled object
@@ -103,7 +112,11 @@ func (metricsServer PrometheusMetricServer) RecordScalerObjectError(namespace st
 		return
 	}
 	// initialize metric with 0 if not already set
-	scaledObjectErrors.GetMetricWith(labels)
+	_, errscaledobject := scaledObjectErrors.GetMetricWith(labels)
+	if errscaledobject != nil {
+		log.Fatalf("Unable to write to serve custom metrics: %v", errscaledobject)
+		return
+	}
 }
 
 func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {

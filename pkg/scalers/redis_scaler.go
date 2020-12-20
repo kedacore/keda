@@ -228,26 +228,29 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info := redisConnectionInfo{}
-	if authParams["address"] != "" {
+	switch {
+	case authParams["address"] != "":
 		info.addresses = append(info.addresses, authParams["address"])
-	} else if metadata["address"] != "" {
+	case metadata["address"] != "":
 		info.addresses = append(info.addresses, metadata["address"])
-	} else if metadata["addressFromEnv"] != "" {
+	case metadata["addressFromEnv"] != "":
 		info.addresses = append(info.addresses, resolvedEnv[metadata["addressFromEnv"]])
-	} else {
-		if authParams["host"] != "" {
+	default:
+		switch {
+		case authParams["host"] != "":
 			info.hosts = append(info.hosts, authParams["host"])
-		} else if metadata["host"] != "" {
+		case metadata["host"] != "":
 			info.hosts = append(info.hosts, metadata["host"])
-		} else if metadata["hostFromEnv"] != "" {
+		case metadata["hostFromEnv"] != "":
 			info.hosts = append(info.hosts, resolvedEnv[metadata["hostFromEnv"]])
 		}
 
-		if authParams["port"] != "" {
+		switch {
+		case authParams["port"] != "":
 			info.ports = append(info.ports, authParams["port"])
-		} else if metadata["port"] != "" {
+		case metadata["port"] != "":
 			info.ports = append(info.ports, metadata["port"])
-		} else if metadata["portFromEnv"] != "" {
+		case metadata["portFromEnv"] != "":
 			info.ports = append(info.ports, resolvedEnv[metadata["portFromEnv"]])
 		}
 

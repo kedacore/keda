@@ -3,16 +3,15 @@ package scalers
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"hash"
 
 	"github.com/xdg/scram"
 )
 
 // SHA256 hash generator function for SCRAM conversation
-var SHA256 scram.HashGeneratorFcn = func() hash.Hash { return sha256.New() }
+var SHA256 scram.HashGeneratorFcn = sha256.New
 
 // SHA512 hash generator function for SCRAM conversation
-var SHA512 scram.HashGeneratorFcn = func() hash.Hash { return sha512.New() }
+var SHA512 scram.HashGeneratorFcn = sha512.New
 
 // XDGSCRAMClient struct to perform SCRAM conversation
 type XDGSCRAMClient struct {

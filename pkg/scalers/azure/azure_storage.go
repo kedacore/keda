@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
@@ -42,10 +43,10 @@ func (e StorageEndpointType) Name() string {
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
+func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err := GetAzureADPodIdentityToken("https://storage.azure.com/")
+		token, err := GetAzureADPodIdentityToken(httpClient, "https://storage.azure.com/")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -75,10 +76,10 @@ func ParseAzureStorageQueueConnection(podIdentity kedav1alpha1.PodIdentityProvid
 }
 
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
+func ParseAzureStorageBlobConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err := GetAzureADPodIdentityToken("https://storage.azure.com/")
+		token, err := GetAzureADPodIdentityToken(httpClient, "https://storage.azure.com/")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -120,21 +121,22 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 
 	var endpointProtocol, name, key, endpointSuffix, endpoint string
 	for _, v := range parts {
-		if strings.HasPrefix(v, "DefaultEndpointsProtocol") {
+		switch {
+		case strings.HasPrefix(v, "DefaultEndpointsProtocol"):
 			endpointProtocol = getValue(v)
-		} else if strings.HasPrefix(v, "AccountName") {
+		case strings.HasPrefix(v, "AccountName"):
 			name = getValue(v)
-		} else if strings.HasPrefix(v, "AccountKey") {
+		case strings.HasPrefix(v, "AccountKey"):
 			key = getValue(v)
-		} else if strings.HasPrefix(v, "EndpointSuffix") {
+		case strings.HasPrefix(v, "EndpointSuffix"):
 			endpointSuffix = getValue(v)
-		} else if endpointType == BlobEndpoint && strings.HasPrefix(v, endpointType.Prefix()) {
+		case endpointType == BlobEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
 			endpoint = getValue(v)
-		} else if endpointType == QueueEndpoint && strings.HasPrefix(v, endpointType.Prefix()) {
+		case endpointType == QueueEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
 			endpoint = getValue(v)
-		} else if endpointType == TableEndpoint && strings.HasPrefix(v, endpointType.Prefix()) {
+		case endpointType == TableEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
 			endpoint = getValue(v)
-		} else if endpointType == FileEndpoint && strings.HasPrefix(v, endpointType.Prefix()) {
+		case endpointType == FileEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
 			endpoint = getValue(v)
 		}
 	}

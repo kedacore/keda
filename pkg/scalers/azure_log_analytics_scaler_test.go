@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -27,7 +28,7 @@ var (
 	query = "let x = 10; let y = 1; print MetricValue = x, Threshold = y;"
 )
 
-//Faked parameters
+// Faked parameters
 var sampleLogAnalyticsResolvedEnv = map[string]string{
 	tenantID:     "d248da64-0e1e-4f79-b8c6-72ab7aa055eb",
 	clientID:     "41826dd4-9e0a-4357-a5bd-a88ad771ea7d",
@@ -66,9 +67,9 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": "", "threshold": "1900000000"}, true},
 	// Missing threshold, should fail
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
-	//All parameters set, should succeed
+	// All parameters set, should succeed
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
-	//All parameters set, should succeed
+	// All parameters set, should succeed
 	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 }
 
@@ -83,7 +84,7 @@ var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTes
 	{map[string]string{"query": "", "threshold": "1900000000"}, true},
 	// Missing threshold, should fail
 	{map[string]string{"query": query, "threshold": ""}, true},
-	//All parameters set, should succeed
+	// All parameters set, should succeed
 	{map[string]string{"query": query, "threshold": "1900000000"}, true},
 }
 
@@ -147,7 +148,13 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		cache := &sessionCache{metricValue: 1, metricThreshold: 2}
-		mockLogAnalyticsScaler := azureLogAnalyticsScaler{meta, cache, "test-so", "test-ns"}
+		mockLogAnalyticsScaler := azureLogAnalyticsScaler{
+			metadata:   meta,
+			cache:      cache,
+			name:       "test-so",
+			namespace:  "test-ns",
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

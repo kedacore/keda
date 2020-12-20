@@ -42,15 +42,17 @@ type scaleHandler struct {
 	logger            logr.Logger
 	scaleLoopContexts *sync.Map
 	scaleExecutor     executor.ScaleExecutor
+	globalHTTPTimeout time.Duration
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
 		scaleLoopContexts: &sync.Map{},
 		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme),
+		globalHTTPTimeout: globalHTTPTimeout,
 	}
 }
 
@@ -199,7 +201,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 
 func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler) bool {
 	isActive := false
-	for _, scaler := range scalers {
+	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scaler.Close()
 
@@ -214,6 +216,7 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
 			}
+			closeScalers(scalers[i+1:])
 			break
 		}
 	}
@@ -230,7 +233,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
-		//skip cpu/memory resource scaler
+		// skip cpu/memory resource scaler
 		if metricSpecs[0].External == nil {
 			continue
 		}
@@ -326,11 +329,12 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 
 	for i, trigger := range withTriggers.Spec.Triggers {
 		config := &scalers.ScalerConfig{
-			Name:            withTriggers.Name,
-			Namespace:       withTriggers.Namespace,
-			TriggerMetadata: trigger.Metadata,
-			ResolvedEnv:     resolvedEnv,
-			AuthParams:      make(map[string]string),
+			Name:              withTriggers.Name,
+			Namespace:         withTriggers.Namespace,
+			TriggerMetadata:   trigger.Metadata,
+			ResolvedEnv:       resolvedEnv,
+			AuthParams:        make(map[string]string),
+			GlobalHTTPTimeout: h.globalHTTPTimeout,
 		}
 		if podTemplateSpec != nil {
 			authParams, podIdentity := resolver.ResolveAuthRef(h.client, logger, trigger.AuthenticationRef, &podTemplateSpec.Spec, withTriggers.Namespace)
@@ -436,6 +440,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":
 		return scalers.NewIBMMQScaler(config)
+	case "influxdb":
+		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
 	case "liiklus":

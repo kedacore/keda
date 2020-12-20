@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
@@ -32,8 +33,9 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type azureEventHubScaler struct {
-	metadata *eventHubMetadata
-	client   *eventhub.Hub
+	metadata   *eventHubMetadata
+	client     *eventhub.Hub
+	httpClient *http.Client
 }
 
 type eventHubMetadata struct {
@@ -54,8 +56,9 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureEventHubScaler{
-		metadata: parsedMetadata,
-		client:   hub,
+		metadata:   parsedMetadata,
+		client:     hub,
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -130,14 +133,14 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	return &meta, nil
 }
 
-//GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
+// GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
 func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
-	//if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
+	// if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
 	if partitionInfo != nil && partitionInfo.LastEnqueuedOffset == "-1" {
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, scaler.httpClient, scaler.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)
@@ -151,7 +154,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 
 	unprocessedEventCountInPartition := int64(0)
 
-	//If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
+	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
 	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
 	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
 	if checkpoint.Offset == "" {

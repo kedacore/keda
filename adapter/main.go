@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,22 +41,22 @@ var (
 	prometheusMetricsPath string
 )
 
-func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
+func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
 		logger.Error(err, "failed to get the config")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to get the config (%s)", err)
 	}
 
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 
 	kubeclient, err := client.New(cfg, client.Options{
@@ -62,21 +64,21 @@ func (a *Adapter) makeProviderOrDie() provider.MetricsProvider {
 	})
 	if err != nil {
 		logger.Error(err, "unable to construct new client")
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to construct new client (%s)", err)
 	}
 
-	handler := scaling.NewScaleHandler(kubeclient, nil, scheme)
+	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout)
 
 	namespace, err := getWatchNamespace()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace)
+	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), nil
 }
 
 func printVersion() {
@@ -97,6 +99,13 @@ func getWatchNamespace() (string, error) {
 }
 
 func main() {
+	var err error
+	defer func() {
+		if err != nil {
+			logger.Error(err, "unable to run external metrics adapter")
+		}
+	}()
+
 	defer klog.Flush()
 
 	printVersion()
@@ -106,14 +115,31 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
-	cmd.Flags().Parse(os.Args)
+	if err := cmd.Flags().Parse(os.Args); err != nil {
+		return
+	}
 
-	kedaProvider := cmd.makeProviderOrDie()
+	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
+	if globalHTTPTimeoutStr == "" {
+		// default to 3 seconds if they don't pass the env var
+		globalHTTPTimeoutStr = "3000"
+	}
+
+	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	if err != nil {
+		logger.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
+		return
+	}
+
+	kedaProvider, err := cmd.makeProvider(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
+	if err != nil {
+		logger.Error(err, "making provider")
+		return
+	}
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
-	if err := cmd.Run(wait.NeverStop); err != nil {
-		logger.Error(err, "unable to run external metrics adapter")
-		os.Exit(1)
+	if err = cmd.Run(wait.NeverStop); err != nil {
+		return
 	}
 }

@@ -23,13 +23,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	//"k8s.io/client-go/kubernetes/scheme"
+	// "k8s.io/client-go/kubernetes/scheme"
 
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	// kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -56,7 +56,7 @@ var _ = BeforeSuite(func(done Done) {
 		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
-	//var err error
+	// var err error
 	// cfg, err = testEnv.Start()
 	// Expect(err).ToNot(HaveOccurred())
 	// Expect(cfg).ToNot(BeNil())

@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -28,6 +29,7 @@ const (
 type azureBlobScaler struct {
 	metadata    *azureBlobMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
+	httpClient  *http.Client
 }
 
 type azureBlobMetadata struct {
@@ -51,6 +53,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureBlobScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
 	}, nil
 }
 
@@ -91,7 +94,8 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch config.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		// Azure Blob Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
 		if config.AuthParams["connection"] != "" {
@@ -103,14 +107,14 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		if len(meta.connection) == 0 {
 			return nil, "", fmt.Errorf("no connection setting given")
 		}
-	} else if config.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure:
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
 			return nil, "", fmt.Errorf("no accountName given")
 		}
-	} else {
+	default:
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
 	}
 
@@ -121,6 +125,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := azure.GetAzureBlobListLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.blobContainerName,
@@ -156,10 +161,11 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-//GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
+		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.blobContainerName,

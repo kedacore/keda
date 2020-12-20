@@ -42,7 +42,7 @@ The return type of this function is `MetricSpec`, but in KEDA's case we will mos
 - `MetricName`: the name of our metric we are returning in this scaler. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
 - `MetricSelector`: //TODO
 - `TargetValue`: is the value of the metric we want to reach at all times at all costs. As long as the current metric doesn't match TargetValue, HPA will increase the number of the pods until it reaches the maximum number of pods allowed to scale to.
-- `TargetAverageValue`: the value of the metric for which we require one pod to handle. e.g. if we are have a scaler based on the length of a message queue, and we specificy 10 for `TargetAverageValue`, we are saying that each pod will handle 10 messages. So if the length of the queue becomes 30, we expect that we have 3 pods in our cluster. (`TargetAveryage` and `TargetValue` are mutually exclusive)
+- `TargetAverageValue`: the value of the metric for which we require one pod to handle. e.g. if we are have a scaler based on the length of a message queue, and we specificy 10 for `TargetAverageValue`, we are saying that each pod will handle 10 messages. So if the length of the queue becomes 30, we expect that we have 3 pods in our cluster. (`TargetAverage` and `TargetValue` are mutually exclusive)
 
 ### IsActive
 
@@ -62,7 +62,7 @@ Thus, each scaler should have a constructing function, KEDA will [explicitly inv
 
 The constructor should have the following parameters:
 
-- `resolvedEnv`: of type `map[string]string`. This is a map of all the environment variables that are exist for the target Deploymnet.
+- `resolvedEnv`: of type `map[string]string`. This is a map of all the environment variables that exist for the target Deployment.
 - `metadata`: of type `map[string]string`. This is a map for all the `trigger` attributes of the ScaledObject.
 
 

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -52,7 +53,10 @@ func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPrometheusScaler := prometheusScaler{meta}
+		mockPrometheusScaler := prometheusScaler{
+			metadata:   meta,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name

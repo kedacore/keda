@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -74,11 +75,12 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 func TestParseDefaultQueueLength(t *testing.T) {
 	for _, testData := range testDefaultQueueLength {
 		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
-		if err != nil && !testData.isError {
+		switch {
+		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
-		} else if testData.isError && err == nil {
+		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		} else if metadata.queueLength != defaultRabbitMQQueueLength {
+		case metadata.queueLength != defaultRabbitMQQueueLength:
 			t.Error("Expected default queueLength =", defaultRabbitMQQueueLength, "but got", metadata.queueLength)
 		}
 	}
@@ -117,7 +119,10 @@ func TestGetQueueInfo(t *testing.T) {
 				}
 
 				w.WriteHeader(testData.responseStatus)
-				w.Write([]byte(testData.response))
+				_, err := w.Write([]byte(testData.response))
+				if err != nil {
+					t.Error("Expect request path to =", testData.response, "but it is", err)
+				}
 			}))
 
 			resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
@@ -129,7 +134,14 @@ func TestGetQueueInfo(t *testing.T) {
 				"protocol":    "http",
 			}
 
-			s, err := NewRabbitMQScaler(&ScalerConfig{ResolvedEnv: resolvedEnv, TriggerMetadata: metadata, AuthParams: map[string]string{}})
+			s, err := NewRabbitMQScaler(
+				&ScalerConfig{
+					ResolvedEnv:       resolvedEnv,
+					TriggerMetadata:   metadata,
+					AuthParams:        map[string]string{},
+					GlobalHTTPTimeout: 300 * time.Millisecond,
+				},
+			)
 
 			if err != nil {
 				t.Error("Expect success", err)
@@ -150,10 +162,8 @@ func TestGetQueueInfo(t *testing.T) {
 						t.Error("Expect to not be active")
 					}
 				}
-			} else {
-				if !strings.Contains(err.Error(), testData.response) {
-					t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
-				}
+			} else if !strings.Contains(err.Error(), testData.response) {
+				t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 			}
 		}
 	}
@@ -165,7 +175,12 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockRabbitMQScaler := rabbitMQScaler{meta, nil, nil}
+		mockRabbitMQScaler := rabbitMQScaler{
+			metadata:   meta,
+			connection: nil,
+			channel:    nil,
+			httpClient: http.DefaultClient,
+		}
 
 		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
