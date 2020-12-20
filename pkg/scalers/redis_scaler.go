@@ -51,42 +51,7 @@ var redisLog = logf.Log.WithName("redis_scaler")
 
 // NewRedisScaler creates a new redisScaler
 func NewRedisScaler(isClustered bool, config *ScalerConfig) (Scaler, error) {
-	if isClustered {
-		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
-		}
-		return createClusteredRedisScaler(meta)
-	}
-	meta, err := parseRedisMetadata(config, parseRedisAddress)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
-	}
-	return createStandaloneRedisScaler(meta)
-}
-
-func createClusteredRedisScaler(meta *redisMetadata) (Scaler, error) {
-	options := &redis.ClusterOptions{
-		Addrs:    meta.connectionInfo.addresses,
-		Password: meta.connectionInfo.password,
-	}
-	if meta.connectionInfo.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: meta.connectionInfo.enableTLS,
-		}
-	}
-	client := redis.NewClusterClient(options)
-
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			redisLog.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
-
-	listLengthFn := func() (int64, error) {
-		luaScript := `
+	luaScript := `
 		local listName = KEYS[1]
 		local listType = redis.call('type', listName).ok
 		local cmd = {
@@ -99,8 +64,36 @@ func createClusteredRedisScaler(meta *redisMetadata) (Scaler, error) {
 
 		return redis.call(cmd[listType], listName)
 	`
+	if isClustered {
+		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+		}
+		return createClusteredRedisScaler(meta, luaScript)
+	}
+	meta, err := parseRedisMetadata(config, parseRedisAddress)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+	}
+	return createRedisScaler(meta, luaScript)
+}
 
-		cmd := client.Eval(luaScript, []string{meta.listName})
+func createClusteredRedisScaler(meta *redisMetadata, script string) (Scaler, error) {
+	client, err := getRedisClusterClient(meta.connectionInfo)
+	if err != nil {
+		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
+	}
+
+	closeFn := func() error {
+		if err := client.Close(); err != nil {
+			redisLog.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+
+	listLengthFn := func() (int64, error) {
+		cmd := client.Eval(script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}
@@ -115,20 +108,11 @@ func createClusteredRedisScaler(meta *redisMetadata) (Scaler, error) {
 	}, nil
 }
 
-func createStandaloneRedisScaler(meta *redisMetadata) (Scaler, error) {
-	options := &redis.Options{
-		Addr:     meta.connectionInfo.addresses[0],
-		Password: meta.connectionInfo.password,
-		DB:       meta.databaseIndex,
+func createRedisScaler(meta *redisMetadata, script string) (Scaler, error) {
+	client, err := getRedisClient(meta.connectionInfo, meta.databaseIndex)
+	if err != nil {
+		return nil, fmt.Errorf("connection to redis failed: %s", err)
 	}
-
-	if meta.connectionInfo.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: meta.connectionInfo.enableTLS,
-		}
-	}
-
-	client := redis.NewClient(options)
 
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
@@ -139,21 +123,7 @@ func createStandaloneRedisScaler(meta *redisMetadata) (Scaler, error) {
 	}
 
 	listLengthFn := func() (int64, error) {
-		luaScript := `
-		local listName = KEYS[1]
-		local listType = redis.call('type', listName).ok
-		local cmd = {
-			zset = 'zcard',
-			set = 'scard',
-			list = 'llen',
-			hash = 'hlen',
-			none = 'llen'
-		}
-
-		return redis.call(cmd[listType], listName)
-	`
-
-		cmd := client.Eval(luaScript, []string{meta.listName})
+		cmd := client.Eval(script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}

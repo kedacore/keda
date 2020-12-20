@@ -2,11 +2,9 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strconv"
 
-	"github.com/go-redis/redis"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -119,30 +117,6 @@ func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
 	}, nil
-}
-
-func getRedisConnection(metadata *redisStreamsMetadata) (*redis.Client, error) {
-	options := &redis.Options{
-		Addr:     metadata.connectionInfo.addresses[0],
-		Password: metadata.connectionInfo.password,
-		DB:       metadata.databaseIndex,
-	}
-
-	if metadata.connectionInfo.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-	}
-
-	// this does not guarantee successful connection
-	c := redis.NewClient(options)
-
-	// confirm if connected
-	err := c.Ping().Err()
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
