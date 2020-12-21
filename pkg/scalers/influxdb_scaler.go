@@ -98,17 +98,18 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metricName = val
+		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", val))
 	} else {
 		parsedURL, err := url.Parse(serverURL)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse server url")
 		}
 
-		metricName, err = kedautil.MaskPartOfURL(parsedURL.String(), kedautil.Hostname)
+		maskedURL, err := kedautil.MaskPartOfURL(parsedURL.String(), kedautil.Hostname)
 		if err != nil {
 			return nil, fmt.Errorf("failure masking part of url")
 		}
+		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s-%s", maskedURL, organizationName))
 	}
 
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
@@ -195,7 +196,7 @@ func (s *influxDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "influxdb", s.metadata.metricName, s.metadata.organizationName)),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
