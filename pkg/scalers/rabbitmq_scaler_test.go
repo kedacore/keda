@@ -139,7 +139,7 @@ func TestGetQueueInfo(t *testing.T) {
 					ResolvedEnv:       resolvedEnv,
 					TriggerMetadata:   metadata,
 					AuthParams:        map[string]string{},
-					GlobalHTTPTimeout: 300 * time.Millisecond,
+					GlobalHTTPTimeout: 1000 * time.Millisecond,
 				},
 			)
 
