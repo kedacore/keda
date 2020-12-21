@@ -285,28 +285,28 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 	info := redisConnectionInfo{}
 	switch {
 	case authParams["addresses"] != "":
-		info.addresses = splitAndTrim(authParams["addresses"],  " ")
+		info.addresses = splitAndTrim(authParams["addresses"])
 	case metadata["addresses"] != "":
-		info.addresses = splitAndTrim(metadata["addresses"],  " ")
+		info.addresses = splitAndTrim(metadata["addresses"])
 	case metadata["addressesFromEnv"] != "":
-		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]],  " ")
+		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]])
 	default:
 		switch {
 		case authParams["hosts"] != "":
-			info.hosts = splitAndTrim(authParams["hosts"],  " ")
+			info.hosts = splitAndTrim(authParams["hosts"])
 		case metadata["hosts"] != "":
-			info.hosts = splitAndTrim(metadata["hosts"],  " ")
+			info.hosts = splitAndTrim(metadata["hosts"])
 		case metadata["hostsFromEnv"] != "":
-			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]],  " ")
+			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]])
 		}
 
 		switch {
 		case authParams["ports"] != "":
-			info.ports = splitAndTrim(authParams["ports"],  " ")
+			info.ports = splitAndTrim(authParams["ports"])
 		case metadata["ports"] != "":
-			info.ports = splitAndTrim(metadata["ports"], " ")
+			info.ports = splitAndTrim(metadata["ports"])
 		case metadata["portsFromEnv"] != "":
-			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]],  " ")
+			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]])
 		}
 
 		if len(info.hosts) != 0 && len(info.ports) != 0 {
@@ -382,12 +382,11 @@ func getRedisClient(info redisConnectionInfo, dbIndex int) (*redis.Client, error
 	return c, nil
 }
 
-// Splits a string separated by sep and trims toTrim from all the elements.
-func splitAndTrim(s, toTrim string) []string {
-	sep := ","
-	x := strings.Split(s, sep)
+// Splits a string separated by comma and trims space from all the elements.
+func splitAndTrim(s string) []string {
+	x := strings.Split(s, ",")
 	for i := range x {
-		x[i] = strings.Trim(x[i], toTrim)
+		x[i] = strings.Trim(x[i], " ")
 	}
 	return x
 }

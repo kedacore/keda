@@ -134,7 +134,6 @@ test.serial('Deployment for redis host and port env vars should have 0 replica o
 
 
 test.serial(`Deployment using redis host port env vars should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-  
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'

@@ -245,7 +245,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
+	for _, testCase := range cases {
+		c := testCase
 		t.Run(c.name, func(t *testing.T) {
 			config := &ScalerConfig{
 				TriggerMetadata: c.metadata,
