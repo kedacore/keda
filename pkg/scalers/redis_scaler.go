@@ -283,27 +283,30 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 
 func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info := redisConnectionInfo{}
-	if authParams["addresses"] != "" {
-		info.addresses = splitAndTrim(authParams["addresses"], ",", " ")
-	} else if metadata["addresses"] != "" {
-		info.addresses = splitAndTrim(metadata["addresses"], ",", " ")
-	} else if metadata["addressesFromEnv"] != "" {
-		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]], ",", " ")
-	} else if len(info.addresses) == 0 {
-		if authParams["hosts"] != "" {
-			info.hosts = splitAndTrim(authParams["hosts"], ",", " ")
-		} else if metadata["hosts"] != "" {
-			info.hosts = splitAndTrim(metadata["hosts"], ",", " ")
-		} else if metadata["hostsFromEnv"] != "" {
-			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]], ",", " ")
+	switch {
+	case authParams["addresses"] != "":
+		info.addresses = splitAndTrim(authParams["addresses"],  " ")
+	case metadata["addresses"] != "":
+		info.addresses = splitAndTrim(metadata["addresses"],  " ")
+	case metadata["addressesFromEnv"] != "":
+		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]],  " ")
+	default:
+		switch {
+		case authParams["hosts"] != "":
+			info.hosts = splitAndTrim(authParams["hosts"],  " ")
+		case metadata["hosts"] != "":
+			info.hosts = splitAndTrim(metadata["hosts"],  " ")
+		case metadata["hostsFromEnv"] != "":
+			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]],  " ")
 		}
 
-		if authParams["ports"] != "" {
-			info.ports = splitAndTrim(authParams["ports"], ",", " ")
-		} else if metadata["ports"] != "" {
-			info.ports = splitAndTrim(metadata["ports"], ",", " ")
-		} else if metadata["portsFromEnv"] != "" {
-			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]], ",", " ")
+		switch {
+		case authParams["ports"] != "":
+			info.ports = splitAndTrim(authParams["ports"],  " ")
+		case metadata["ports"] != "":
+			info.ports = splitAndTrim(metadata["ports"], " ")
+		case metadata["portsFromEnv"] != "":
+			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]],  " ")
 		}
 
 		if len(info.hosts) != 0 && len(info.ports) != 0 {
@@ -380,7 +383,8 @@ func getRedisClient(info redisConnectionInfo, dbIndex int) (*redis.Client, error
 }
 
 // Splits a string separated by sep and trims toTrim from all the elements.
-func splitAndTrim(s, sep, toTrim string) []string {
+func splitAndTrim(s, toTrim string) []string {
+	sep := ","
 	x := strings.Split(s, sep)
 	for i := range x {
 		x[i] = strings.Trim(x[i], toTrim)
