@@ -40,7 +40,7 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, true}}
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
-	{&testInfluxDBMetadata[1], "influxdb-influx_metric-influx_org"},
+	{&testInfluxDBMetadata[1], "influxdb-influx_metric"},
 	{&testInfluxDBMetadata[2], "influxdb-https---xxx-influx_org"},
 }
 
@@ -52,7 +52,7 @@ func TestInfluxDBParseMetadata(t *testing.T) {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
 		if testData.isError && err == nil {
-			t.Errorf("Expected error but got success for unit test #%v", testCaseNum)
+			t.Errorf("Expected error but got success for unit test # %v", testCaseNum)
 		}
 		testCaseNum++
 	}
@@ -69,7 +69,7 @@ func TestInfluxDBGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)
 		}
 	}
 }
