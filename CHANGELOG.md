@@ -19,6 +19,7 @@
 ### New
 - Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
 - Introducing InfluxDB scaler ([#1239](https://github.com/kedacore/keda/issues/1239))
+- Global authentication credentials can be managed using ClusterTriggerAuthentication objects ([#1452](https://github.com/kedacore/keda/pull/1452))
 
 ### Improvements
 - Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
