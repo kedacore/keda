@@ -42,8 +42,9 @@ type rabbitMQScaler struct {
 type rabbitMQMetadata struct {
 	queueName   string
 	queueLength int
-	host        string // connection string for either HTTP or AMQP protocol
-	protocol    string // either http or amqp protocol
+	host        string  // connection string for either HTTP or AMQP protocol
+	protocol    string  // either http or amqp protocol
+	vhostName   *string // override the vhost from the connection info
 }
 
 type queueInfo struct {
@@ -69,7 +70,18 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		}, nil
 	}
 
-	conn, ch, err := getConnectionAndChannel(meta.host)
+	// Override vhost if requested.
+	host := meta.host
+	if meta.vhostName != nil {
+		hostURI, err := amqp.ParseURI(host)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+		}
+		hostURI.Vhost = *meta.vhostName
+		host = hostURI.String()
+	}
+
+	conn, ch, err := getConnectionAndChannel(host)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
 	}
@@ -124,6 +136,11 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.queueLength = queueLength
 	} else {
 		meta.queueLength = defaultRabbitMQQueueLength
+	}
+
+	// Resolve vhostName
+	if val, ok := config.TriggerMetadata["vhostName"]; ok {
+		meta.vhostName = &val
 	}
 
 	return &meta, nil
@@ -207,6 +224,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	}
 
 	vhost := parsedURL.Path
+
+	// Override vhost if requested.
+	if s.metadata.vhostName != nil {
+		vhost = "/" + *s.metadata.vhostName
+	}
 
 	if vhost == "" || vhost == "/" || vhost == "//" {
 		vhost = "/%2F"
