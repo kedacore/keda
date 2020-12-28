@@ -27,6 +27,7 @@
 - Mask password in postgres scaler auto generated metricName. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
 - Bug fix for pending jobs in ScaledJob's accurateScalingStrategy . ([#1323](https://github.com/kedacore/keda/issues/1323))
 - Fix memory leak because of unclosed scalers. ([#1413](https://github.com/kedacore/keda/issues/1413))
+- Improve performance when fetching pod information ([#1457](https://github.com/kedacore/keda/pull/1457))
 
 ### Breaking Changes
 
