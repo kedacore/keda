@@ -2,16 +2,20 @@ package scaling
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/scale"
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -373,17 +377,33 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		unstruct := &unstructured.Unstructured{}
-		unstruct.SetGroupVersionKind(obj.Status.ScaleTargetGVKR.GroupVersionKind())
-		if err := h.client.Get(context.TODO(), client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
-			// resource doesn't exist
-			h.logger.Error(err, "Target resource doesn't exist", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
-			return nil, "", err
-		}
-
+		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		withPods := &duckv1.WithPod{}
-		if err := duck.FromUnstructured(unstruct, withPods); err != nil {
-			h.logger.Error(err, "Cannot convert unstructured into PodSpecable Duck-type", "object", unstruct)
+		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
+		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
+		targetObj, err := scheme.Scheme.New(gvk)
+		if err == nil {
+			// Core type, use it so we get an informer-cache-backed Get to reduce API load.
+			if err := h.client.Get(context.TODO(), objKey, targetObj); err != nil {
+				// resource doesn't exist
+				h.logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			if err = duckFromRuntimeObject(targetObj, withPods); err != nil {
+				h.logger.Error(err, "Cannot convert target object into PodSpecable Duck-type", "object", targetObj)
+			}
+		} else {
+			// Not a core type, use an unstructured instead. This will not use a local cache so perf may suffer at scale.
+			unstruct := &unstructured.Unstructured{}
+			unstruct.SetGroupVersionKind(gvk)
+			if err := h.client.Get(context.TODO(), objKey, unstruct); err != nil {
+				// resource doesn't exist
+				h.logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			if err := duck.FromUnstructured(targetObj.(json.Marshaler), withPods); err != nil {
+				h.logger.Error(err, "Cannot convert Unstructured into PodSpecable Duck-type", "object", targetObj)
+			}
 		}
 
 		if withPods.Spec.Template.Spec.Containers == nil {
@@ -401,6 +421,44 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 	default:
 		return nil, "", fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
+}
+
+// Use reflect to extract WithPod data from an arbitrary object.
+func duckFromRuntimeObject(obj runtime.Object, target *duckv1.WithPod) error {
+	maybePtr := func(v reflect.Value) reflect.Value {
+		if v.Kind() == reflect.Ptr {
+			return v.Elem()
+		}
+		return v
+	}
+	rootVal := maybePtr(reflect.ValueOf(obj))
+	if rootVal.Kind() != reflect.Struct {
+		return fmt.Errorf("runtime object is not a struct")
+	}
+
+	val := maybePtr(rootVal.FieldByName("ObjectMeta"))
+	objMeta, ok := val.Interface().(metav1.ObjectMeta)
+	if !ok {
+		return fmt.Errorf(".ObjectMeta is not a metav1.ObjectMeta")
+	}
+	target.ObjectMeta = objMeta
+
+	val = maybePtr(rootVal.FieldByName("Spec"))
+	if val.Kind() != reflect.Struct {
+		return fmt.Errorf(".Spec is not a struct")
+	}
+	val = maybePtr(val.FieldByName("Template"))
+	if val.Kind() != reflect.Struct {
+		return fmt.Errorf(".Spec.Template is not a struct")
+	}
+	val = maybePtr(val.FieldByName("Spec"))
+	podSpec, ok := val.Interface().(corev1.PodSpec)
+	if !ok {
+		return fmt.Errorf(".Spec.Template.Spec is not a corev1.PodSpec")
+	}
+	target.Spec.Template.Spec = podSpec
+
+	return nil
 }
 
 func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {

@@ -4,8 +4,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestTargetAverageValue(t *testing.T) {
@@ -48,4 +52,52 @@ func createMetricSpec(averageValue int) v2beta2.MetricSpec {
 			},
 		},
 	}
+}
+
+func TestDuckFromRuntimeObjectDeployment(t *testing.T) {
+	withPods := &duckv1.WithPod{}
+	// Test with a Deployment.
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "main",
+						},
+					},
+				},
+			},
+		},
+	}
+	err := duckFromRuntimeObject(deployment, withPods)
+	assert.Nil(t, err)
+	assert.Equal(t, withPods.ObjectMeta.Name, "foo")
+	assert.Equal(t, withPods.ObjectMeta.Namespace, "bar")
+	assert.Equal(t, withPods.Spec.Template.Spec.Containers[0].Name, "main")
+}
+
+func TestDuckFromRuntimeObjectStatefulSet(t *testing.T) {
+	withPods := &duckv1.WithPod{}
+	// Test with a StatefulSet.
+	statefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "main",
+						},
+					},
+				},
+			},
+		},
+	}
+	err := duckFromRuntimeObject(statefulSet, withPods)
+	assert.Nil(t, err)
+	assert.Equal(t, withPods.ObjectMeta.Name, "foo")
+	assert.Equal(t, withPods.ObjectMeta.Namespace, "bar")
+	assert.Equal(t, withPods.Spec.Template.Spec.Containers[0].Name, "main")
 }
