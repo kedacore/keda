@@ -56,6 +56,7 @@ type ScaledObjectReconciler struct {
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// create Discovery clientset
+	// TODO If we need to increase the QPS of scaling API calls, copy and tweak this RESTConfig.
 	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
 		r.Log.Error(err, "Not able to create Discovery clientset")
