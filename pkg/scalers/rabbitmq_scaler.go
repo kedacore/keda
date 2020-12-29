@@ -29,7 +29,8 @@ const (
 const (
 	httpProtocol    = "http"
 	amqpProtocol    = "amqp"
-	defaultProtocol = amqpProtocol
+	autoProtocol    = "auto"
+	defaultProtocol = autoProtocol
 )
 
 type rabbitMQScaler struct {
@@ -99,12 +100,14 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve protocol type
 	meta.protocol = defaultProtocol
+	if val, ok := config.AuthParams["protocol"]; ok {
+		meta.protocol = val
+	}
 	if val, ok := config.TriggerMetadata["protocol"]; ok {
-		if val == amqpProtocol || val == httpProtocol {
-			meta.protocol = val
-		} else {
-			return nil, fmt.Errorf("the protocol has to be either `%s` or `%s` but is `%s`", amqpProtocol, httpProtocol, val)
-		}
+		meta.protocol = val
+	}
+	if meta.protocol != amqpProtocol && meta.protocol != httpProtocol && meta.protocol != autoProtocol {
+		return nil, fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
 	}
 
 	// Resolve host value
@@ -117,6 +120,22 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	default:
 		return nil, fmt.Errorf("no host setting given")
+	}
+
+	// If the protocol is auto, check the host scheme.
+	if meta.protocol == autoProtocol {
+		parsedURL, err := url.Parse(meta.host)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse host to find protocol: %s", err)
+		}
+		switch parsedURL.Scheme {
+		case "amqp", "amqps":
+			meta.protocol = amqpProtocol
+		case "http", "https":
+			meta.protocol = httpProtocol
+		default:
+			return nil, fmt.Errorf("unknown host URL scheme `%s`", parsedURL.Scheme)
+		}
 	}
 
 	// Resolve queueName
