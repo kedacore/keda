@@ -298,20 +298,19 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 		return 0, fmt.Errorf("error finding offset block for topic %s and partition %d", s.metadata.topic, partition)
 	}
 	consumerOffset := block.Offset
+	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
+		kafkaLog.V(0).Info(fmt.Sprintf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition))
+		return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
+	}
 	latestOffset, err := s.client.GetOffset(s.metadata.topic, partition, sarama.OffsetNewest)
 	if err != nil {
 		kafkaLog.Error(err, fmt.Sprintf("error finding latest offset for topic %s and partition %d\n", s.metadata.topic, partition))
 		return 0, fmt.Errorf("error finding latest offset for topic %s and partition %d", s.metadata.topic, partition)
 	}
-
-	if consumerOffset == invalidOffset {
-		if s.metadata.offsetResetPolicy == latest {
-			kafkaLog.V(0).Info(fmt.Sprintf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition))
-			return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", s.metadata.topic, s.metadata.group, partition)
-		}
+	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
 		return latestOffset, nil
 	}
-	return (latestOffset - consumerOffset), nil
+	return latestOffset - consumerOffset, nil
 }
 
 // Close closes the kafka admin and client
