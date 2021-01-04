@@ -28,6 +28,7 @@
 - Bug fix for pending jobs in ScaledJob's accurateScalingStrategy . ([#1323](https://github.com/kedacore/keda/issues/1323))
 - Fix memory leak because of unclosed scalers. ([#1413](https://github.com/kedacore/keda/issues/1413))
 - Optimize Kafka scaler's `getLagForPartition` function. ([#1464](https://github.com/kedacore/keda/pull/1464))
+- Reduce unnecessary /scale requests from ScaledObject controller ([#1453](https://github.com/kedacore/keda/pull/1453))
 
 ### Breaking Changes
 
