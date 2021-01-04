@@ -14,7 +14,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
-	github.com/aws/aws-sdk-go v1.36.12
+	github.com/aws/aws-sdk-go v1.36.19
 	github.com/go-logr/logr v0.1.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
@@ -23,7 +23,7 @@ require (
 	github.com/google/go-cmp v0.5.4
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.11
-	github.com/influxdata/influxdb-client-go/v2 v2.2.0
+	github.com/influxdata/influxdb-client-go/v2 v2.2.1
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20200618121405-54026617ec44
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
@@ -34,7 +34,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.6.1
-	github.com/tidwall/gjson v1.6.4
+	github.com/tidwall/gjson v1.6.7
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	google.golang.org/api v0.36.0
