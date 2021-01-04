@@ -3,7 +3,7 @@ updates:
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
-    interval: weekly
+    interval: monthly
   open-pull-requests-limit: 10
   labels:
   - enhancement
@@ -11,7 +11,7 @@ updates:
 - package-ecosystem: gomod
   directory: "/"
   schedule:
-    interval: weekly
+    interval: monthly
   open-pull-requests-limit: 10
   labels:
   - enhancement
@@ -19,7 +19,7 @@ updates:
 - package-ecosystem: docker
   directory: "/"
   schedule:
-    interval: weekly
+    interval: monthly
   open-pull-requests-limit: 10
   labels:
   - enhancement
