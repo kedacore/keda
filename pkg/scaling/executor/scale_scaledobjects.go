@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -23,18 +22,25 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// to reduce API calls. Everything else uses the scale subresource.
 	var currentScale *autoscalingv1.Scale
 	var currentReplicas int32
-	targetRef := scaledObject.Spec.ScaleTargetRef
-	// TODO Should this use a more generic runtime.Object approach using scheme.Scheme.New()?
-	if (targetRef.APIVersion == "" || strings.HasPrefix(targetRef.APIVersion, "apps/")) &&
-		(targetRef.Kind == "" || targetRef.Kind == "Deployment") {
+	targetGVKR := scaledObject.Status.ScaleTargetGVKR
+	switch {
+	case targetGVKR.Group == "apps" && targetGVKR.Kind == "Deployment":
 		deployment := &appsv1.Deployment{}
-		err := e.client.Get(ctx, client.ObjectKey{Name: targetRef.Name, Namespace: scaledObject.Namespace}, deployment)
+		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, deployment)
 		if err != nil {
 			logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
 			return
 		}
 		currentReplicas = *deployment.Spec.Replicas
-	} else {
+	case targetGVKR.Group == "apps" && targetGVKR.Kind == "StatefulSet":
+		statefulSet := &appsv1.StatefulSet{}
+		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, statefulSet)
+		if err != nil {
+			logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
+			return
+		}
+		currentReplicas = *statefulSet.Spec.Replicas
+	default:
 		var err error
 		currentScale, err = e.getScaleTargetScale(ctx, scaledObject)
 		if err != nil {
