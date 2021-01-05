@@ -46,6 +46,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 	// queue name with slashes
 	{map[string]string{"queueLength": "10", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
+	// vhost passed
+	{map[string]string{"vhostName": "myVhost", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
+	// vhost passed but empty
+	{map[string]string{"vhostName": "", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -90,81 +94,100 @@ type getQueueInfoTestData struct {
 	response       string
 	responseStatus int
 	isActive       bool
+	extraMetadata  map[string]string
+	vhostPath      string
 }
 
 var testQueueInfoTestData = []getQueueInfoTestData{
-	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true},
-	{`{"messages": 1, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true},
-	{`{"messages": 1, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, true},
-	{`{"messages": 0, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, false},
-	{`Password is incorrect`, http.StatusUnauthorized, false},
+	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
+	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
 
 var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
+var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
+	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
+}
+
 func TestGetQueueInfo(t *testing.T) {
+	allTestData := []getQueueInfoTestData{}
 	for _, testData := range testQueueInfoTestData {
-		testData := testData
 		for _, vhostPath := range vhostPathes {
-			expectedVhost := "myhost"
+			testData := testData
+			testData.vhostPath = vhostPath
+			allTestData = append(allTestData, testData)
+		}
+	}
+	allTestData = append(allTestData, testQueueInfoTestDataSingleVhost...)
 
-			if vhostPath != "/myhost" {
-				expectedVhost = "%2F"
+	for _, testData := range allTestData {
+		testData := testData
+		expectedVhost := "myhost"
+
+		if testData.vhostPath != "/myhost" {
+			expectedVhost = "%2F"
+		}
+
+		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			expectedPath := "/api/queues/" + expectedVhost + "/evaluate_trials"
+			if r.RequestURI != expectedPath {
+				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
 
-			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expectedPath := "/api/queues/" + expectedVhost + "/evaluate_trials"
-				if r.RequestURI != expectedPath {
-					t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
-				}
-
-				w.WriteHeader(testData.responseStatus)
-				_, err := w.Write([]byte(testData.response))
-				if err != nil {
-					t.Error("Expect request path to =", testData.response, "but it is", err)
-				}
-			}))
-
-			resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, vhostPath)}
-
-			metadata := map[string]string{
-				"queueLength": "10",
-				"queueName":   "evaluate_trials",
-				"hostFromEnv": host,
-				"protocol":    "http",
+			w.WriteHeader(testData.responseStatus)
+			_, err := w.Write([]byte(testData.response))
+			if err != nil {
+				t.Error("Expect request path to =", testData.response, "but it is", err)
 			}
+		}))
 
-			s, err := NewRabbitMQScaler(
-				&ScalerConfig{
-					ResolvedEnv:       resolvedEnv,
-					TriggerMetadata:   metadata,
-					AuthParams:        map[string]string{},
-					GlobalHTTPTimeout: 1000 * time.Millisecond,
-				},
-			)
+		resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, testData.vhostPath), "plainHost": apiStub.URL}
 
+		metadata := map[string]string{
+			"queueLength": "10",
+			"queueName":   "evaluate_trials",
+			"hostFromEnv": host,
+			"protocol":    "http",
+		}
+		for k, v := range testData.extraMetadata {
+			metadata[k] = v
+		}
+
+		s, err := NewRabbitMQScaler(
+			&ScalerConfig{
+				ResolvedEnv:       resolvedEnv,
+				TriggerMetadata:   metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+			},
+		)
+
+		if err != nil {
+			t.Error("Expect success", err)
+		}
+
+		ctx := context.TODO()
+		active, err := s.IsActive(ctx)
+
+		if testData.responseStatus == http.StatusOK {
 			if err != nil {
 				t.Error("Expect success", err)
 			}
 
-			ctx := context.TODO()
-			active, err := s.IsActive(ctx)
-
-			if testData.responseStatus == http.StatusOK {
-				if err != nil {
-					t.Error("Expect success", err)
+			if active != testData.isActive {
+				if testData.isActive {
+					t.Error("Expect to be active")
+				} else {
+					t.Error("Expect to not be active")
 				}
-
-				if active != testData.isActive {
-					if testData.isActive {
-						t.Error("Expect to be active")
-					} else {
-						t.Error("Expect to not be active")
-					}
-				}
-			} else if !strings.Contains(err.Error(), testData.response) {
-				t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 			}
+		} else if !strings.Contains(err.Error(), testData.response) {
+			t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 		}
 	}
 }
