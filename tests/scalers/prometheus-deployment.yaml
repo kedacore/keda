@@ -288,7 +288,7 @@ metadata:
 
 ---
 # Source: prometheus/templates/server-clusterrole.yaml
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
@@ -330,7 +330,7 @@ rules:
 
 ---
 # Source: prometheus/templates/server-clusterrolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
