@@ -512,8 +512,10 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 	request.Header.Add("User-Agent", "keda/2.0.0")
 
 	resp, err := s.httpClient.Do(request)
-	if err != nil {
+	if err != nil && resp != nil {
 		return nil, resp.StatusCode, fmt.Errorf("error calling %s. Inner Error: %v", caller, err)
+	} else if err != nil {
+		return nil, 0, fmt.Errorf("error calling %s. Inner Error: %v", caller, err)
 	}
 
 	defer resp.Body.Close()
