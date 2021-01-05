@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.4
 	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.7
-	github.com/Azure/azure-storage-blob-go v0.12.0
+	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.15
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
