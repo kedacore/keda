@@ -29,7 +29,7 @@
 - Fix memory leak because of unclosed scalers. ([#1413](https://github.com/kedacore/keda/issues/1413))
 - Optimize Kafka scaler's `getLagForPartition` function. ([#1464](https://github.com/kedacore/keda/pull/1464))
 - Reduce unnecessary /scale requests from ScaledObject controller ([#1453](https://github.com/kedacore/keda/pull/1453))
-- Add support for the WATCH_NAMESPACE environment variable to the operator
+- Add support for the WATCH_NAMESPACE environment variable to the operator ([#1474](https://github.com/kedacore/keda/pull/1474))
 
 ### Breaking Changes
 
