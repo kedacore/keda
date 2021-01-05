@@ -31,14 +31,20 @@ rules:
   - '*'
   verbs:
   - get
-  - list
-  - watch
 - apiGroups:
   - '*'
   resources:
   - '*/scale'
   verbs:
   - '*'
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - list
+  - watch
 - apiGroups:
   - autoscaling
   resources:
