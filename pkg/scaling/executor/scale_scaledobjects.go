@@ -18,7 +18,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
 
-	// Get the current replica count. As a special case, Deployments fetch directly from the object so they can use the informer cache
+	// Get the current replica count. As a special case, Deployments and StatefulSets fetch directly from the object so they can use the informer cache
 	// to reduce API calls. Everything else uses the scale subresource.
 	var currentScale *autoscalingv1.Scale
 	var currentReplicas int32
@@ -28,7 +28,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		deployment := &appsv1.Deployment{}
 		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, deployment)
 		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
+			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
 			return
 		}
 		currentReplicas = *deployment.Spec.Replicas
@@ -36,7 +36,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		statefulSet := &appsv1.StatefulSet{}
 		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, statefulSet)
 		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
+			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
 			return
 		}
 		currentReplicas = *statefulSet.Spec.Replicas
@@ -44,7 +44,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		var err error
 		currentScale, err = e.getScaleTargetScale(ctx, scaledObject)
 		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replias count) on the scaleTarget")
+			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
 			return
 		}
 		currentReplicas = currentScale.Spec.Replicas
