@@ -22,11 +22,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// to reduce API calls. Everything else uses the scale subresource.
 	var currentScale *autoscalingv1.Scale
 	var currentReplicas int32
+	targetName := scaledObject.Spec.ScaleTargetRef.Name
 	targetGVKR := scaledObject.Status.ScaleTargetGVKR
 	switch {
 	case targetGVKR.Group == "apps" && targetGVKR.Kind == "Deployment":
 		deployment := &appsv1.Deployment{}
-		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, deployment)
+		err := e.client.Get(ctx, client.ObjectKey{Name: targetName, Namespace: scaledObject.Namespace}, deployment)
 		if err != nil {
 			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
 			return
@@ -34,7 +35,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		currentReplicas = *deployment.Spec.Replicas
 	case targetGVKR.Group == "apps" && targetGVKR.Kind == "StatefulSet":
 		statefulSet := &appsv1.StatefulSet{}
-		err := e.client.Get(ctx, client.ObjectKey{Name: targetGVKR.Resource, Namespace: scaledObject.Namespace}, statefulSet)
+		err := e.client.Get(ctx, client.ObjectKey{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet)
 		if err != nil {
 			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
 			return
