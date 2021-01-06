@@ -32,6 +32,7 @@
 - Reduce unnecessary /scale requests from ScaledObject controller ([#1453](https://github.com/kedacore/keda/pull/1453))
 - Add support for the WATCH_NAMESPACE environment variable to the operator ([#1474](https://github.com/kedacore/keda/pull/1474))
 - Automatically determine the RabbitMQ protocol when possible, and support setting the protocl via TriggerAuthentication ([#1459](https://github.com/kedacore/keda/pulls/1459))
+- Improve performance when fetching pod information ([#1457](https://github.com/kedacore/keda/pull/1457))
 
 ### Breaking Changes
 
