@@ -19,6 +19,7 @@
 ### New
 - Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
 - Introducing InfluxDB scaler ([#1239](https://github.com/kedacore/keda/issues/1239))
+- Add Redis cluster support for Redis list and Redis streams scalers ([#1437](https://github.com/kedacore/keda/pull/1437))
 - Global authentication credentials can be managed using ClusterTriggerAuthentication objects ([#1452](https://github.com/kedacore/keda/pull/1452))
 
 ### Improvements
@@ -28,6 +29,13 @@
 - Mask password in postgres scaler auto generated metricName. ([PR #1381](https://github.com/kedacore/keda/pull/1381))
 - Bug fix for pending jobs in ScaledJob's accurateScalingStrategy . ([#1323](https://github.com/kedacore/keda/issues/1323))
 - Fix memory leak because of unclosed scalers. ([#1413](https://github.com/kedacore/keda/issues/1413))
+- Override the vhost on a RabbitMQ scaler via `vhostName` in the metadata. ([#1451](https://github.com/kedacore/keda/pull/1451))
+- Optimize Kafka scaler's `getLagForPartition` function. ([#1464](https://github.com/kedacore/keda/pull/1464))
+- Reduce unnecessary /scale requests from ScaledObject controller ([#1453](https://github.com/kedacore/keda/pull/1453))
+- Add support for the WATCH_NAMESPACE environment variable to the operator ([#1474](https://github.com/kedacore/keda/pull/1474))
+- Automatically determine the RabbitMQ protocol when possible, and support setting the protocl via TriggerAuthentication ([#1459](https://github.com/kedacore/keda/pulls/1459),[#1483](https://github.com/kedacore/keda/pull/1483))
+- Improve performance when fetching pod information ([#1457](https://github.com/kedacore/keda/pull/1457))
+- Improve performance when fetching current scaling information on Deployments ([#1458](https://github.com/kedacore/keda/pull/1458))
 
 ### Breaking Changes
 

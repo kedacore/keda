@@ -1,8 +1,8 @@
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
-<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/main-build/badge.svg" alt="main build"></a>
-<a href="https://github.com/kedacore/keda/actions"><img src="https://github.com/kedacore/keda/workflows/nightly-e2e-test/badge.svg" alt="nightly e2e"></a>
+<a href="https://github.com/kedacore/keda/actions?query=workflow%3Amain-build"><img src="https://github.com/kedacore/keda/workflows/main-build/badge.svg" alt="main build"></a>
+<a href="https://github.com/kedacore/keda/actions?query=workflow%3Anightly-e2e-test"><img src="https://github.com/kedacore/keda/workflows/nightly-e2e-test/badge.svg" alt="nightly e2e"></a>
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
 

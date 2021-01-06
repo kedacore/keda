@@ -4,6 +4,7 @@ set -eu
 DIR=$(dirname "$0")
 cd $DIR
 
+concurrent_tests_limit=10
 pids=()
 lookup=()
 failed_count=0
@@ -15,13 +16,22 @@ function run_setup {
 }
 
 function run_tests {
-    for test_case in $(find scalers -name "*.test.ts")
+    counter=0
+    # randomize tests order using shuf
+    for test_case in $(find scalers -name "*.test.ts" | shuf)
     do
+        counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
         echo "Running $test_case with pid: $pid"
         pids+=($pid)
         lookup[$pid]=$test_case
+        # limit concurrent runs
+        if [[ "$counter" -gt "$concurrent_tests_limit" ]]; then
+            wait_for_jobs
+            counter=0
+            pids=()
+        fi
     done
 }
 
@@ -65,7 +75,7 @@ function run_cleanup {
 }
 
 function print_failed {
-    echo "$failed_count tests failed"
+    echo "$failed_count e2e tests failed"
     for failed_test in "${failed_lookup[@]}"; do
         echo $failed_test
     done

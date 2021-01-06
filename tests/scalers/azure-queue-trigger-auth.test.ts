@@ -124,7 +124,7 @@ spec:
     spec:
       containers:
       - name: test-deployment
-        image: ahmelsayed/queue-consumer:latest
+        image: docker.io/kedacore/tests-azure-queue:824031e
         resources:
         ports:
         env:
