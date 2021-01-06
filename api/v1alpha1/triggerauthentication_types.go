@@ -6,6 +6,31 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// ClusterTriggerAuthentication defines how a trigger can authenticate globally
+// +genclient
+// +genclient:nonNamespaced
+// +kubebuilder:resource:path=clustertriggerauthentications,scope=Cluster,shortName=cta;clustertriggerauth
+// +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
+// +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
+// +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
+type ClusterTriggerAuthentication struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec TriggerAuthenticationSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterTriggerAuthenticationList contains a list of ClusterTriggerAuthentication
+type ClusterTriggerAuthenticationList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ClusterTriggerAuthentication `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // TriggerAuthentication defines how a trigger can authenticate
 // +genclient
 // +kubebuilder:resource:path=triggerauthentications,scope=Namespaced,shortName=ta;triggerauth
@@ -130,5 +155,6 @@ type VaultSecret struct {
 }
 
 func init() {
+	SchemeBuilder.Register(&ClusterTriggerAuthentication{}, &ClusterTriggerAuthenticationList{})
 	SchemeBuilder.Register(&TriggerAuthentication{}, &TriggerAuthenticationList{})
 }

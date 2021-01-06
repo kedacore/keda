@@ -107,10 +107,13 @@ type ScaledObjectList struct {
 	Items           []ScaledObject `json:"items"`
 }
 
-// ScaledObjectAuthRef points to the TriggerAuthentication object that
+// ScaledObjectAuthRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
 // is used to authenticate the scaler with the environment
 type ScaledObjectAuthRef struct {
 	Name string `json:"name"`
+	// Kind of the resource being referred to. Defaults to TriggerAuthentication.
+	// +optional
+	Kind string `json:"kind,omitempty"`
 }
 
 func init() {
