@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -373,28 +374,51 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		unstruct := &unstructured.Unstructured{}
-		unstruct.SetGroupVersionKind(obj.Status.ScaleTargetGVKR.GroupVersionKind())
-		if err := h.client.Get(context.TODO(), client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
-			// resource doesn't exist
-			h.logger.Error(err, "Target resource doesn't exist", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
-			return nil, "", err
+		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
+		podTemplateSpec := corev1.PodTemplateSpec{}
+		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
+		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Status.ScaleTargetGVKR.Resource}
+		switch {
+		// For core types, use a typed client so we get an informer-cache-backed Get to reduce API load.
+		case gvk.Group == "apps" && gvk.Kind == "Deployment":
+			deployment := &appsv1.Deployment{}
+			if err := h.client.Get(context.TODO(), objKey, deployment); err != nil {
+				// resource doesn't exist
+				h.logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			podTemplateSpec.ObjectMeta = deployment.ObjectMeta
+			podTemplateSpec.Spec = deployment.Spec.Template.Spec
+		case gvk.Group == "apps" && gvk.Kind == "StatefulSet":
+			statefulSet := &appsv1.StatefulSet{}
+			if err := h.client.Get(context.TODO(), objKey, statefulSet); err != nil {
+				// resource doesn't exist
+				h.logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
+			podTemplateSpec.Spec = statefulSet.Spec.Template.Spec
+		default:
+			unstruct := &unstructured.Unstructured{}
+			unstruct.SetGroupVersionKind(gvk)
+			if err := h.client.Get(context.TODO(), objKey, unstruct); err != nil {
+				// resource doesn't exist
+				h.logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			withPods := &duckv1.WithPod{}
+			if err := duck.FromUnstructured(unstruct, withPods); err != nil {
+				h.logger.Error(err, "Cannot convert Unstructured into PodSpecable Duck-type", "object", unstruct)
+			}
+			podTemplateSpec.ObjectMeta = withPods.ObjectMeta
+			podTemplateSpec.Spec = withPods.Spec.Template.Spec
 		}
 
-		withPods := &duckv1.WithPod{}
-		if err := duck.FromUnstructured(unstruct, withPods); err != nil {
-			h.logger.Error(err, "Cannot convert unstructured into PodSpecable Duck-type", "object", unstruct)
-		}
-
-		if withPods.Spec.Template.Spec.Containers == nil {
-			h.logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "resource", obj.Status.ScaleTargetGVKR.GVKString(), "name", obj.Spec.ScaleTargetRef.Name)
+		if podTemplateSpec.Spec.Containers == nil || len(podTemplateSpec.Spec.Containers) == 0 {
+			h.logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "resource", gvk.String(), "name", obj.Spec.ScaleTargetRef.Name)
 			return nil, "", nil
 		}
 
-		podTemplateSpec := corev1.PodTemplateSpec{
-			ObjectMeta: withPods.ObjectMeta,
-			Spec:       withPods.Spec.Template.Spec,
-		}
 		return &podTemplateSpec, obj.Spec.ScaleTargetRef.EnvSourceContainerName, nil
 	case *kedav1alpha1.ScaledJob:
 		return &obj.Spec.JobTargetRef.Template, obj.Spec.EnvSourceContainerName, nil
@@ -459,9 +483,13 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(config)
+		return scalers.NewRedisScaler(false, config)
+	case "redis-cluster":
+		return scalers.NewRedisScaler(true, config)
+	case "redis-cluster-streams":
+		return scalers.NewRedisStreamsScaler(true, config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(config)
+		return scalers.NewRedisStreamsScaler(false, config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	default:

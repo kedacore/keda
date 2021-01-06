@@ -47,6 +47,16 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+// getWatchNamespace returns the namespace the operator should be watching for changes
+func getWatchNamespace() (string, error) {
+	const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
+	ns, found := os.LookupEnv(WatchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
+	}
+	return ns, nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -64,6 +74,12 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	setupLog := ctrl.Log.WithName("setup")
 
+	namespace, err := getWatchNamespace()
+	if err != nil {
+		setupLog.Error(err, "failed to get watch namespace")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -71,6 +87,7 @@ func main() {
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "operator.keda.sh",
+		Namespace:              namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
