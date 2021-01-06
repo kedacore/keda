@@ -19,6 +19,7 @@
 ### New
 - Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
 - Introducing InfluxDB scaler ([#1239](https://github.com/kedacore/keda/issues/1239))
+- Add Redis cluster support for Redis list and Redis streams scalers.
 
 ### Improvements
 - Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
