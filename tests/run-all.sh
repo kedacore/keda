@@ -75,7 +75,7 @@ function run_cleanup {
 }
 
 function print_failed {
-    echo "$failed_count tests failed"
+    echo "$failed_count e2e tests failed"
     for failed_test in "${failed_lookup[@]}"; do
         echo $failed_test
     done
