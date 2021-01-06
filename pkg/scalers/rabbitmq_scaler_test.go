@@ -50,6 +50,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"vhostName": "myVhost", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
 	// vhost passed but empty
 	{map[string]string{"vhostName": "", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
+	// protocol defined in authParams
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, false, map[string]string{"protocol": "http"}},
+	// auto protocol and a bad URL
+	{map[string]string{"queueName": "sample", "host": "something://"}, true, map[string]string{}},
+	// auto protocol and an HTTP URL
+	{map[string]string{"queueName": "sample", "host": "http://"}, false, map[string]string{}},
+	// auto protocol and an HTTPS URL
+	{map[string]string{"queueName": "sample", "host": "https://"}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -71,9 +79,9 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 
 var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 	// use default queueLength
-	{map[string]string{"queueName": "sample", "host": host}, false, map[string]string{}},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
 	// use default queueLength with includeUnacked
-	{map[string]string{"queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, false, map[string]string{}},
 }
 
 func TestParseDefaultQueueLength(t *testing.T) {
@@ -194,7 +202,7 @@ func TestGetQueueInfo(t *testing.T) {
 
 func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range rabbitMQMetricIdentifiers {
-		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: map[string]string{"myHostSecret": "myHostSecret"}, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
+		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
