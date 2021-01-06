@@ -224,8 +224,13 @@ spec:
                   properties:
                     authenticationRef:
                       description: ScaledObjectAuthRef points to the TriggerAuthentication
-                        object that is used to authenticate the scaler with the environment
+                        or ClusterTriggerAuthentication object that is used to authenticate
+                        the scaler with the environment
                       properties:
+                        kind:
+                          description: Kind of the resource being referred to. Defaults
+                            to TriggerAuthentication.
+                          type: string
                         name:
                           type: string
                       required:

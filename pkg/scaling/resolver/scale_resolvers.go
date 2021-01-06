@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -54,16 +56,15 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 	var podIdentity kedav1alpha1.PodIdentityProvider
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
-		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
-		err := client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(client, triggerAuthRef, namespace)
 		if err != nil {
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
-			if triggerAuth.Spec.PodIdentity != nil {
-				podIdentity = triggerAuth.Spec.PodIdentity.Provider
+			if triggerAuthSpec.PodIdentity != nil {
+				podIdentity = triggerAuthSpec.PodIdentity.Provider
 			}
-			if triggerAuth.Spec.Env != nil {
-				for _, e := range triggerAuth.Spec.Env {
+			if triggerAuthSpec.Env != nil {
+				for _, e := range triggerAuthSpec.Env {
 					if podSpec == nil {
 						result[e.Parameter] = ""
 						continue
@@ -76,18 +77,18 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 					}
 				}
 			}
-			if triggerAuth.Spec.SecretTargetRef != nil {
-				for _, e := range triggerAuth.Spec.SecretTargetRef {
-					result[e.Parameter] = resolveAuthSecret(client, logger, e.Name, namespace, e.Key)
+			if triggerAuthSpec.SecretTargetRef != nil {
+				for _, e := range triggerAuthSpec.SecretTargetRef {
+					result[e.Parameter] = resolveAuthSecret(client, logger, e.Name, triggerNamespace, e.Key)
 				}
 			}
-			if triggerAuth.Spec.HashiCorpVault != nil && len(triggerAuth.Spec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuth.Spec.HashiCorpVault)
+			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
+				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
 				err := vault.Initialize(logger)
 				if err != nil {
 					logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
-					for _, e := range triggerAuth.Spec.HashiCorpVault.Secrets {
+					for _, e := range triggerAuthSpec.HashiCorpVault.Secrets {
 						secret, err := vault.Read(e.Path)
 						if err != nil {
 							logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
@@ -105,6 +106,50 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 	}
 
 	return result, podIdentity
+}
+
+var clusterObjectNamespaceCache *string
+
+func getClusterObjectNamespace() (string, error) {
+	// Check if a cached value is available.
+	if clusterObjectNamespaceCache != nil {
+		return *clusterObjectNamespaceCache, nil
+	}
+	env := os.Getenv("KEDA_CLUSTER_OBJECT_NAMESPACE")
+	if env != "" {
+		clusterObjectNamespaceCache = &env
+		return env, nil
+	}
+	data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		return "", err
+	}
+	strData := string(data)
+	clusterObjectNamespaceCache = &strData
+	return strData, nil
+}
+
+func getTriggerAuthSpec(client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
+		err := client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		if err != nil {
+			return nil, "", err
+		}
+		return &triggerAuth.Spec, namespace, nil
+	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+		clusterNamespace, err := getClusterObjectNamespace()
+		if err != nil {
+			return nil, "", err
+		}
+		triggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
+		err = client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name}, triggerAuth)
+		if err != nil {
+			return nil, "", err
+		}
+		return &triggerAuth.Spec, clusterNamespace, nil
+	}
+	return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 }
 
 func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Container, namespace string) (map[string]string, error) {
