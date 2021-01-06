@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 
@@ -43,7 +44,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
+			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
@@ -101,7 +102,7 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			_, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}})
+			_, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}}, parseRedisAddress)
 			assert.NotNil(t, err)
 		})
 	}
@@ -130,16 +131,135 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams})
+		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockRedisStreamsScaler := redisStreamsScaler{meta, nil}
+		closeFn := func() error { return nil }
+		getPendingEntriesCountFn := func() (int64, error) { return -1, nil }
+		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
 
 		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestParseRedisClusterStreamsMetadata(t *testing.T) {
+	cases := []struct {
+		name        string
+		metadata    map[string]string
+		resolvedEnv map[string]string
+		authParams  map[string]string
+		wantMeta    *redisStreamsMetadata
+		wantErr     error
+	}{
+		{
+			name:     "empty metadata",
+			wantMeta: nil,
+			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+		},
+		{
+			name: "unequal number of hosts/ports",
+			metadata: map[string]string{
+				"hosts": "a, b, c",
+				"ports": "1, 2",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+		},
+		{
+			name: "no stream name",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"pendingEntriesCount": "5",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("missing redis stream name"),
+		},
+		{
+			name: "missing pending entries count",
+			metadata: map[string]string{
+				"hosts":  "a, b, c",
+				"ports":  "1, 2, 3",
+				"stream": "my-stream",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("missing pending entries count"),
+		},
+		{
+			name: "invalid pending entries count",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"pendingEntriesCount": "invalid",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("error parsing pending entries count"),
+		},
+		{
+			name: "address is defined in auth params",
+			metadata: map[string]string{
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "hosts and ports given in auth params",
+			metadata: map[string]string{
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"hosts": "   a, b,    c ",
+				"ports": "1, 2, 3",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+				},
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			config := &ScalerConfig{
+				TriggerMetadata: c.metadata,
+				ResolvedEnv:     c.resolvedEnv,
+				AuthParams:      c.authParams,
+			}
+			meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
+			if c.wantErr != nil {
+				assert.Contains(t, err.Error(), c.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, c.wantMeta, meta)
+		})
 	}
 }

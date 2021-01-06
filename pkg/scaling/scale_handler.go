@@ -483,9 +483,13 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(config)
+		return scalers.NewRedisScaler(false, config)
+	case "redis-cluster":
+		return scalers.NewRedisScaler(true, config)
+	case "redis-cluster-streams":
+		return scalers.NewRedisStreamsScaler(true, config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(config)
+		return scalers.NewRedisStreamsScaler(false, config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	default:
