@@ -377,7 +377,7 @@ func (h *scaleHandler) getPods(scalableObject interface{}) (*corev1.PodTemplateS
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		podTemplateSpec := corev1.PodTemplateSpec{}
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
-		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Status.ScaleTargetGVKR.Resource}
+		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
 		switch {
 		// For core types, use a typed client so we get an informer-cache-backed Get to reduce API load.
 		case gvk.Group == "apps" && gvk.Kind == "Deployment":
