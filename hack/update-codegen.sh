@@ -7,6 +7,12 @@ set -o pipefail
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
+# At some environments (eg. GitHub Actions), due to $GOPATH setting, the codegen output might not be at the expected path
+# in the project repo, therefore we should force the output to the specific directory (see --output-base)
+# we need to handle (move) the generated files to the correct location in the repo then
+CODEGEN_OUTPUT_BASE="${SCRIPT_ROOT}"/output
+CODEGEN_OUTPUT_GENERATED="${CODEGEN_OUTPUT_BASE}"/github.com/kedacore/keda/v2/pkg/generated
+
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
@@ -16,14 +22,14 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-
 bash "${CODEGEN_PKG}"/generate-groups.sh "client,informer,lister" \
   github.com/kedacore/keda/v2/pkg/generated github.com/kedacore/keda/v2/api \
   keda:v1alpha1 \
-  --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+  --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt --output-base "${CODEGEN_OUTPUT_BASE}"
 
 # (Zbynek): If v2 is specified in go.mod, codegen unfortunately outputs to 'v2/pkg/generated' instead of 'pkg/generated',
-# therefore we need to move the generated code around the repo a bit
-if [ -d v2/pkg/generated ]; then
-  rm -rf pkg/generated
-  mv v2/pkg/generated pkg/
-  rm -rf v2
+# and since we are using a specific ouput for codegen,  we need to move the generated code around the repo a bit
+if [ -d "${CODEGEN_OUTPUT_GENERATED}" ]; then
+  rm -rf "${SCRIPT_ROOT}"/pkg/generated
+  mv "${CODEGEN_OUTPUT_GENERATED}" "${SCRIPT_ROOT}"/pkg/
+  rm -rf "${SCRIPT_ROOT}"/output
 fi
 
 # (Zbynek): Kubebuilder project layout has api under 'api/v1alpha1'
