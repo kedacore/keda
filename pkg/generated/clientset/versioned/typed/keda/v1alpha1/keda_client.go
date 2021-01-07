@@ -26,6 +26,7 @@ import (
 
 type KedaV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ClusterTriggerAuthenticationsGetter
 	ScaledJobsGetter
 	ScaledObjectsGetter
 	TriggerAuthenticationsGetter
@@ -34,6 +35,10 @@ type KedaV1alpha1Interface interface {
 // KedaV1alpha1Client is used to interact with features provided by the keda group.
 type KedaV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *KedaV1alpha1Client) ClusterTriggerAuthentications() ClusterTriggerAuthenticationInterface {
+	return newClusterTriggerAuthentications(c)
 }
 
 func (c *KedaV1alpha1Client) ScaledJobs(namespace string) ScaledJobInterface {

@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// ClusterTriggerAuthenticationListerExpansion allows custom methods to be added to
+// ClusterTriggerAuthenticationLister.
+type ClusterTriggerAuthenticationListerExpansion interface{}
+
 // ScaledJobListerExpansion allows custom methods to be added to
 // ScaledJobLister.
 type ScaledJobListerExpansion interface{}

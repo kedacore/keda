@@ -53,6 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=keda, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("clustertriggerauthentications"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Keda().V1alpha1().ClusterTriggerAuthentications().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scaledjobs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Keda().V1alpha1().ScaledJobs().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scaledobjects"):
