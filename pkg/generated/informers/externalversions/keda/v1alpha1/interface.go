@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// ClusterTriggerAuthentications returns a ClusterTriggerAuthenticationInformer.
+	ClusterTriggerAuthentications() ClusterTriggerAuthenticationInformer
 	// ScaledJobs returns a ScaledJobInformer.
 	ScaledJobs() ScaledJobInformer
 	// ScaledObjects returns a ScaledObjectInformer.
@@ -41,6 +43,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// ClusterTriggerAuthentications returns a ClusterTriggerAuthenticationInformer.
+func (v *version) ClusterTriggerAuthentications() ClusterTriggerAuthenticationInformer {
+	return &clusterTriggerAuthenticationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // ScaledJobs returns a ScaledJobInformer.
