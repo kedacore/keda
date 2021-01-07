@@ -28,6 +28,10 @@ type FakeKedaV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeKedaV1alpha1) ClusterTriggerAuthentications() v1alpha1.ClusterTriggerAuthenticationInterface {
+	return &FakeClusterTriggerAuthentications{c}
+}
+
 func (c *FakeKedaV1alpha1) ScaledJobs(namespace string) v1alpha1.ScaledJobInterface {
 	return &FakeScaledJobs{c, namespace}
 }

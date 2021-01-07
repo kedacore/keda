@@ -18,6 +18,8 @@ limitations under the License.
 
 package v1alpha1
 
+type ClusterTriggerAuthenticationExpansion interface{}
+
 type ScaledJobExpansion interface{}
 
 type ScaledObjectExpansion interface{}
