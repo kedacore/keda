@@ -476,6 +476,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewMetricsAPIScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
+	case "openstack-swift":
+		return scalers.NewOpenstackSwiftScaler(config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
 	case "prometheus":
