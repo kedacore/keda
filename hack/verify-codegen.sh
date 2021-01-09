@@ -37,6 +37,6 @@ if [[ $ret -eq 0 ]]
 then
   echo "${DIFFROOT} up to date."
 else
-  echo "${DIFFROOT} is out of date. Please run make clientset-generate"
+  echo "${DIFFROOT} is out of date. Please run 'make clientset-generate'"
   exit 1
 fi
