@@ -10,8 +10,6 @@ const redisService = 'redis-cluster-streams'
 const testNamespace = 'redis-cluster-streams-test'
 const redisPassword = 'foobared'
 let redisHost = ''
-let redisAddress = ''
-const redisPort = 6379
 const numMessages = 100
 
 test.before(t => {
@@ -35,7 +33,6 @@ test.before(t => {
 
     // Get Redis cluster address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
-    redisAddress = `${redisHost}:${redisPort}`
 
     // Create test namespace.
     sh.exec(`kubectl create namespace ${testNamespace}`)
@@ -114,6 +111,7 @@ test.after.always.cb('clean up deployment', t => {
     'triggerauthentications.keda.sh/keda-redis-stream-triggerauth',
     'secret/redis-password',
     'deployment/redis-streams-consumer',
+    'job/redis-streams-producer',
   ]
 
   for (const resource of resources) {
@@ -121,6 +119,7 @@ test.after.always.cb('clean up deployment', t => {
   }
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
+  sh.exec(`helm delete ${redisClusterName} --namespace ${redisNamespace}`)
   sh.exec(`kubectl delete namespace ${redisNamespace}`)
   t.end()
 })
