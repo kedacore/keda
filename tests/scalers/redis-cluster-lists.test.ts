@@ -251,8 +251,8 @@ test.after.always.cb('clean up deployment', t => {
         `scaledobject.keda.sh/${redisWorkerHostPortRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerAddressRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
-        'triggerauthentication.keda.sh/keda-redis-list-triggerauth',
-        'triggerauthentication.keda.sh/keda-redis-list-triggerauth-host-port',
+        'triggerauthentication.keda.sh/keda-redis-cluster-list-triggerauth',
+        'triggerauthentication.keda.sh/keda-redis-cluster-list-triggerauth-host-port',
         `deployment/${redisWorkerAddressRefDeploymentName}`,
         `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         `deployment/${redisWorkerHostPortRefDeploymentName}`,
@@ -264,6 +264,7 @@ test.after.always.cb('clean up deployment', t => {
     }
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
+    sh.exec(`helm delete ${redisClusterName} --namespace ${redisNamespace}`)
     sh.exec(`kubectl delete namespace ${redisNamespace}`)
     t.end()
 })
