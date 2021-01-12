@@ -149,6 +149,10 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	}
 	r.Body.Close()
 
+	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
+		return -1, fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))
+	}
+
 	var result promQueryResult
 	err = json.Unmarshal(b, &result)
 	if err != nil {
