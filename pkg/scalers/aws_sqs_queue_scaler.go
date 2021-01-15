@@ -185,7 +185,7 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		return -1, err
 	}
 
-	approximateNumberOfMessages, err := strconv.Atoi(*output.Attributes[awsSqsQueueMetricName])
+	approximateNumberOfMessages, err := strconv.ParseInt(*output.Attributes[awsSqsQueueMetricName], 10, 32)
 	if err != nil {
 		return -1, err
 	}
