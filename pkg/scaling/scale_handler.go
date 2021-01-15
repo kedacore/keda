@@ -474,6 +474,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
+	case "mongodb":
+		return scalers.NewMongoDBScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "openstack-swift":
