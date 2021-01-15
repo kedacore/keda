@@ -153,7 +153,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 
 	meta.databaseIndex = defaultDBIndex
 	if val, ok := config.TriggerMetadata[databaseIndexMetadata]; ok {
-		dbIndex, err := strconv.ParseInt(val, 10, 64)
+		dbIndex, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis database index %v", err)
 		}
