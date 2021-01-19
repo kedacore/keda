@@ -56,6 +56,10 @@ issues:
     - path: scale_handler.go
       linters:
         - gocyclo
+  # Excluding interfacer for finalizers, reason: https://github.com/kedacore/keda/pull/1390
+    - path: _finalizer.go
+      linters:
+        - interfacer
 
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
