@@ -38,6 +38,7 @@
 - Improve performance when fetching pod information ([#1457](https://github.com/kedacore/keda/pull/1457))
 - Improve performance when fetching current scaling information on Deployments ([#1458](https://github.com/kedacore/keda/pull/1458))
 - Improve error reporting in prometheus scaler ([PR #1497](https://github.com/kedacore/keda/pull/1497))
+- Serve OpenAPI spec from keda metrics apiserver ([PR #1512](https://github.com/kedacore/keda/pull/1512))
 
 ### Breaking Changes
 
