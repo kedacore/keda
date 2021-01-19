@@ -37,9 +37,9 @@
 - Automatically determine the RabbitMQ protocol when possible, and support setting the protocl via TriggerAuthentication ([#1459](https://github.com/kedacore/keda/pulls/1459), [#1483](https://github.com/kedacore/keda/pull/1483))
 - Improve performance when fetching pod information ([#1457](https://github.com/kedacore/keda/pull/1457))
 - Improve performance when fetching current scaling information on Deployments ([#1458](https://github.com/kedacore/keda/pull/1458))
-- Improve error reporting in prometheus scaler ([PR #1497](https://github.com/kedacore/keda/pull/1497))
+- Improve error reporting in prometheus scaler ([#1497](https://github.com/kedacore/keda/pull/1497))
 - Check that metricNames are unique in ScaledObject ([#1390](https://github.com/kedacore/keda/pull/1390))
-- Serve OpenAPI spec from keda metrics apiserver ([PR #1512](https://github.com/kedacore/keda/pull/1512))
+- Serve OpenAPI spec from keda metrics apiserver ([#1512](https://github.com/kedacore/keda/pull/1512))
 
 ### Breaking Changes
 
