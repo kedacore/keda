@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
-
-	"github.com/go-logr/logr"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"

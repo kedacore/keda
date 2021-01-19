@@ -8,22 +8,23 @@ import (
 	"strconv"
 	"time"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	generatedopenapi "github.com/kedacore/keda/v2/pkg/generated/openapi"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/version"
+	basecmd "github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/cmd"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
-	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
-	"github.com/kedacore/keda/v2/pkg/scaling"
-	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider
@@ -111,6 +112,11 @@ func main() {
 	printVersion()
 
 	cmd := &Adapter{}
+
+	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(scheme.Scheme))
+	cmd.OpenAPIConfig.Info.Title = "keda-adapter"
+	cmd.OpenAPIConfig.Info.Version = "1.0.0"
+
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
