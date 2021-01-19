@@ -40,6 +40,7 @@
 - Improve error reporting in prometheus scaler ([PR #1497](https://github.com/kedacore/keda/pull/1497))
 
 ### Breaking Changes
+- Require metricNames be unique in scaled objects ([#1390](https://github.com/kedacore/keda/pull/1390))
 
 ### Other
 - Bump go module version to v2 ([#1324](https://github.com/kedacore/keda/pull/1324))
