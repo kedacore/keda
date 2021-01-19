@@ -190,6 +190,11 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
+	err = r.validateMetricNameUniqueness(logger, scaledObject)
+	if err != nil {
+		return "Error checking metric name uniqueness", err
+	}
+
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
 	if err != nil {
@@ -233,6 +238,34 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, sca
 
 	logger.V(1).Info("Adding scaledObjectName label on ScaledObject", "value", scaledObject.Name)
 	return r.Client.Update(context.TODO(), scaledObject)
+}
+
+func (r *ScaledObjectReconciler) validateMetricNameUniqueness(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	scalers, err := r.scaleHandler.GetScalers(scaledObject)
+	if err != nil {
+		logger.Error(err, "Unable to fetch scalers in metric name uniqueness check")
+		return err
+	}
+
+	observedMetricNames := make(map[string]struct{})
+	for _, scaler := range scalers {
+		for _, metric := range scaler.GetMetricSpecForScaling() {
+			// Only validate external metricNames
+			if metric.External == nil {
+				continue
+			}
+
+			metricName := metric.External.Metric.Name
+			if _, ok := observedMetricNames[metricName]; ok {
+				return fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metircName manually", metricName, scaledObject.Name)
+			}
+
+			observedMetricNames[metricName] = struct{}{}
+		}
+	}
+
+	logger.V(1).Info("All metric names are unique in ScaledObject", "value", scaledObject.Name)
+	return nil
 }
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource
