@@ -8,14 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
-	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
-	"github.com/kedacore/keda/v2/pkg/scaling"
-	"github.com/kedacore/keda/v2/version"
-	basecmd "github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/cmd"
-	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
@@ -25,6 +17,16 @@ import (
 	"k8s.io/klog/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	basecmd "github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/cmd"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
+
+	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider
