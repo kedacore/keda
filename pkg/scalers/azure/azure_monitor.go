@@ -10,7 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"k8s.io/klog"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
@@ -43,6 +43,8 @@ type MonitorInfo struct {
 	ClientID            string
 	ClientPassword      string
 }
+
+var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
 func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
@@ -119,7 +121,7 @@ func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetric
 	}
 
 	metricResourceURI := azMetricRequest.metricResourceURI()
-	klog.V(2).Infof("resource uri: %s", metricResourceURI)
+	azureMonitorLog.V(2).Info("metric request", "resource uri", metricResourceURI)
 
 	metricResult, err := client.List(ctx, metricResourceURI,
 		azMetricRequest.Timespan, nil,
@@ -159,7 +161,7 @@ func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insig
 		return -1, fmt.Errorf("unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 	}
 
-	klog.V(2).Infof("metric type: %s %f", azMetricRequest.Aggregation, *valuePtr)
+	azureMonitorLog.V(2).Info("value extracted from metric request", "metric type", azMetricRequest.Aggregation, "metric value", *valuePtr)
 
 	return *valuePtr, nil
 }
