@@ -157,7 +157,7 @@ adapter: adapter-dockerfile gofmt govet
 # are already in CI, we don't need to run them every
 # time we build the image
 .PHONY: adapter-dockerfile
-adapter-dockerfile: generate
+adapter-dockerfile: generate adapter/generated/openapi/zz_generated.openapi.go
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
 	-o bin/keda-adapter adapter/main.go
@@ -173,9 +173,10 @@ manifests: controller-gen
 
 # Generate code (API)
 .PHONY: generate
-generate: controller-gen adapter/generated/openapi/zz_generated.openapi.go
+generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+# Generate OpenAPI for Metrics Adapter
 adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
 	@OPENAPI_PATH=`go list -mod=readonly -m -f '{{.Dir}}' k8s.io/kube-openapi`; \
 	go run $${OPENAPI_PATH}/cmd/openapi-gen/openapi-gen.go --logtostderr \
