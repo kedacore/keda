@@ -254,11 +254,13 @@ clientset-prepare:
 clientset-verify: clientset-prepare
 	./hack/verify-codegen.sh
 	rm -rf api/keda
+	rm -rf vendor
 
 .PHONY: clientset-generate
 clientset-generate: clientset-prepare
 	./hack/update-codegen.sh
 	rm -rf api/keda
+	rm -rf vendor
 
 ##################################################
 # Build Tools Image                              #
