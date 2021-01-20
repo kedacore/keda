@@ -23,6 +23,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Go modules sync
+        run: go mod tidy
+
       - name: Login to Docker Hub
         env:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
