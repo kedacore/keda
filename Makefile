@@ -173,15 +173,15 @@ manifests: controller-gen
 
 # Generate code (API)
 .PHONY: generate
-generate: controller-gen pkg/generated/openapi/zz_generated.openapi.go
+generate: controller-gen adapter/generated/openapi/zz_generated.openapi.go
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
-pkg/generated/openapi/zz_generated.openapi.go: go.mod go.sum
+adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
 	@OPENAPI_PATH=`go list -m -f '{{.Dir}}' k8s.io/kube-openapi`; \
 	go run $${OPENAPI_PATH}/cmd/openapi-gen/openapi-gen.go --logtostderr \
 	    -i k8s.io/metrics/pkg/apis/custom_metrics,k8s.io/metrics/pkg/apis/custom_metrics/v1beta1,k8s.io/metrics/pkg/apis/custom_metrics/v1beta2,k8s.io/metrics/pkg/apis/external_metrics,k8s.io/metrics/pkg/apis/external_metrics/v1beta1,k8s.io/metrics/pkg/apis/metrics,k8s.io/metrics/pkg/apis/metrics/v1beta1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1 \
 	    -h ./hack/boilerplate.go.txt \
-	    -p ./pkg/generated/openapi \
+	    -p ./adapter/generated/openapi \
 	    -O zz_generated.openapi \
 	    -o ./ \
 	    -r /dev/null

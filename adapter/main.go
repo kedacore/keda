@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	generatedopenapi "github.com/kedacore/keda/v2/pkg/generated/openapi"
 	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
