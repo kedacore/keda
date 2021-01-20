@@ -26,8 +26,10 @@ import (
 )
 
 // TriggerAuthenticationLister helps list TriggerAuthentications.
+// All objects returned here must be treated as read-only.
 type TriggerAuthenticationLister interface {
 	// List lists all TriggerAuthentications in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerAuthentication, err error)
 	// TriggerAuthentications returns an object that can list and get TriggerAuthentications.
 	TriggerAuthentications(namespace string) TriggerAuthenticationNamespaceLister
@@ -58,10 +60,13 @@ func (s *triggerAuthenticationLister) TriggerAuthentications(namespace string) T
 }
 
 // TriggerAuthenticationNamespaceLister helps list and get TriggerAuthentications.
+// All objects returned here must be treated as read-only.
 type TriggerAuthenticationNamespaceLister interface {
 	// List lists all TriggerAuthentications in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerAuthentication, err error)
 	// Get retrieves the TriggerAuthentication from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TriggerAuthentication, error)
 	TriggerAuthenticationNamespaceListerExpansion
 }

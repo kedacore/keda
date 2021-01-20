@@ -26,8 +26,10 @@ import (
 )
 
 // ScaledJobLister helps list ScaledJobs.
+// All objects returned here must be treated as read-only.
 type ScaledJobLister interface {
 	// List lists all ScaledJobs in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error)
 	// ScaledJobs returns an object that can list and get ScaledJobs.
 	ScaledJobs(namespace string) ScaledJobNamespaceLister
@@ -58,10 +60,13 @@ func (s *scaledJobLister) ScaledJobs(namespace string) ScaledJobNamespaceLister 
 }
 
 // ScaledJobNamespaceLister helps list and get ScaledJobs.
+// All objects returned here must be treated as read-only.
 type ScaledJobNamespaceLister interface {
 	// List lists all ScaledJobs in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error)
 	// Get retrieves the ScaledJob from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ScaledJob, error)
 	ScaledJobNamespaceListerExpansion
 }
