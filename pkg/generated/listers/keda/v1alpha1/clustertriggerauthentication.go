@@ -26,10 +26,13 @@ import (
 )
 
 // ClusterTriggerAuthenticationLister helps list ClusterTriggerAuthentications.
+// All objects returned here must be treated as read-only.
 type ClusterTriggerAuthenticationLister interface {
 	// List lists all ClusterTriggerAuthentications in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerAuthentication, err error)
 	// Get retrieves the ClusterTriggerAuthentication from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ClusterTriggerAuthentication, error)
 	ClusterTriggerAuthenticationListerExpansion
 }

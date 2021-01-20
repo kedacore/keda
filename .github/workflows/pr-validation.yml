@@ -23,6 +23,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Go modules sync
+        run: go mod tidy
+
       - name: Verify Generated clientset is up to date
         run: make clientset-verify
 

@@ -26,8 +26,10 @@ import (
 )
 
 // ScaledObjectLister helps list ScaledObjects.
+// All objects returned here must be treated as read-only.
 type ScaledObjectLister interface {
 	// List lists all ScaledObjects in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error)
 	// ScaledObjects returns an object that can list and get ScaledObjects.
 	ScaledObjects(namespace string) ScaledObjectNamespaceLister
@@ -58,10 +60,13 @@ func (s *scaledObjectLister) ScaledObjects(namespace string) ScaledObjectNamespa
 }
 
 // ScaledObjectNamespaceLister helps list and get ScaledObjects.
+// All objects returned here must be treated as read-only.
 type ScaledObjectNamespaceLister interface {
 	// List lists all ScaledObjects in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error)
 	// Get retrieves the ScaledObject from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ScaledObject, error)
 	ScaledObjectNamespaceListerExpansion
 }

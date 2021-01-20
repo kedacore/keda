@@ -39,6 +39,7 @@
 - Improve performance when fetching current scaling information on Deployments ([#1458](https://github.com/kedacore/keda/pull/1458))
 - Improve error reporting in prometheus scaler ([#1497](https://github.com/kedacore/keda/pull/1497))
 - Check that metricNames are unique in ScaledObject ([#1390](https://github.com/kedacore/keda/pull/1390))
+- Serve OpenAPI spec from KEDA Metrics Apiserver ([#1512](https://github.com/kedacore/keda/pull/1512))
 
 ### Breaking Changes
 
