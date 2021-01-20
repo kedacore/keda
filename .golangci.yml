@@ -60,7 +60,10 @@ issues:
     - path: _finalizer.go
       linters:
         - interfacer
-
+    # Excluding the stackdriver_client scaler until it is fixed: https://github.com/kedacore/keda/pull/1512#issuecomment-763454243
+    - path: pkg/scalers/stackdriver_client.go
+      linters:
+        - staticcheck
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
