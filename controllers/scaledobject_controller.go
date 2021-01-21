@@ -6,6 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -46,6 +50,7 @@ type ScaledObjectReconciler struct {
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
+	Recorder record.EventRecorder
 
 	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
@@ -91,7 +96,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
 	r.scaledObjectsGenerations = &sync.Map{}
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.GlobalHTTPTimeout)
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
@@ -159,9 +164,11 @@ func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnkownState", "ScaledObject check failed")
+		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.CheckFailed, msg)
 	} else {
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
+		r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.Ready, msg)
 	}
 	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		return ctrl.Result{}, err

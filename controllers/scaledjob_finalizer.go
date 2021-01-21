@@ -3,6 +3,9 @@ package controllers
 import (
 	"context"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -33,6 +36,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(logger logr.Logger, scaledJob *k
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
+	r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.Deleted, "ScaledJob was deleted")
 	return nil
 }
 

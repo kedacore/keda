@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -44,16 +47,18 @@ type scaleHandler struct {
 	scaleLoopContexts *sync.Map
 	scaleExecutor     executor.ScaleExecutor
 	globalHTTPTimeout time.Duration
+	recorder          record.EventRecorder
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
 		scaleLoopContexts: &sync.Map{},
-		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme),
+		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
 		globalHTTPTimeout: globalHTTPTimeout,
+		recorder:          recorder,
 	}
 }
 
@@ -90,6 +95,9 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 			cancelValue()
 		}
 		h.scaleLoopContexts.Store(key, cancel)
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersRestarted, "Restarted scalers watch")
+	} else {
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersStarted, "Started scalers watch")
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject
@@ -115,6 +123,7 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersStopped, "Stopped scalers watch")
 	} else {
 		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
 	}

@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,12 +33,13 @@ type ScaledJobReconciler struct {
 	Log               logr.Logger
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
+	Recorder          record.EventRecorder
 	scaleHandler      scaling.ScaleHandler
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout)
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
@@ -84,9 +89,11 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			reqLogger.Error(err, msg)
 			conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 			conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
+			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.CheckFailed, msg)
 		} else {
 			reqLogger.V(1).Info(msg)
 			conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
+			r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.Ready, msg)
 		}
 
 		return ctrl.Result{}, err
