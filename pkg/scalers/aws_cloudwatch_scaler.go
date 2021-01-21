@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,8 +36,8 @@ type awsCloudwatchScaler struct {
 type awsCloudwatchMetadata struct {
 	namespace      string
 	metricsName    string
-	dimensionName  string
-	dimensionValue string
+	dimensionName  []string
+	dimensionValue []string
 
 	targetMetricValue float64
 	minMetricValue    float64
@@ -64,11 +65,44 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+func parseMetricValues(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
+	metricsMeta := awsCloudwatchMetadata{}
+
+	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
+		if n, ok := strconv.ParseInt(val, 10, 64); ok == nil {
+			metricsMeta.metricCollectionTime = n
+		} else {
+			return nil, fmt.Errorf("metricCollectionTime not a valid number")
+		}
+	} else {
+		metricsMeta.metricCollectionTime = defaultMetricCollectionTime
+	}
+
+	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
+		if n, ok := strconv.ParseInt(val, 10, 64); ok == nil {
+			metricsMeta.metricStatPeriod = n
+		} else {
+			return nil, fmt.Errorf("metricStatPeriod not a valid number")
+		}
+	} else {
+		metricsMeta.metricStatPeriod = defaultMetricStatPeriod
+	}
+
+	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
+		metricsMeta.metricStat = val
+	} else {
+		metricsMeta.metricStat = defaultMetricStat
+	}
+
+	return &metricsMeta, nil
+}
+
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
-	meta := awsCloudwatchMetadata{}
-	meta.metricCollectionTime = defaultMetricCollectionTime
-	meta.metricStat = defaultMetricStat
-	meta.metricStatPeriod = defaultMetricStatPeriod
+	meta, err := parseMetricValues(config)
+
+	if err != nil {
+		return nil, fmt.Errorf("an error occurred when the scaler tried to get the metrics values")
+	}
 
 	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
 		meta.namespace = val
@@ -83,15 +117,19 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 	}
 
 	if val, ok := config.TriggerMetadata["dimensionName"]; ok && val != "" {
-		meta.dimensionName = val
+		meta.dimensionName = strings.Split(val, ";")
 	} else {
 		return nil, fmt.Errorf("dimension name not given")
 	}
 
 	if val, ok := config.TriggerMetadata["dimensionValue"]; ok && val != "" {
-		meta.dimensionValue = val
+		meta.dimensionValue = strings.Split(val, ";")
 	} else {
 		return nil, fmt.Errorf("dimension value not given")
+	}
+
+	if len(meta.dimensionName) != len(meta.dimensionValue) {
+		return nil, fmt.Errorf("dimensionName and dimensionValue are not matching in size")
 	}
 
 	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
@@ -151,7 +189,7 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 
 	meta.awsAuthorization = auth
 
-	return &meta, nil
+	return meta, nil
 }
 
 func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -175,7 +213,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "aws-cloudwatch", c.metadata.namespace, c.metadata.dimensionName, c.metadata.dimensionValue)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "aws-cloudwatch", c.metadata.namespace, c.metadata.dimensionName[0], c.metadata.dimensionValue[0])),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -223,6 +261,14 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		})
 	}
 
+	dimensions := []*cloudwatch.Dimension{}
+	for i := range c.metadata.dimensionName {
+		dimensions = append(dimensions, &cloudwatch.Dimension{
+			Name:  &c.metadata.dimensionName[i],
+			Value: &c.metadata.dimensionValue[i],
+		})
+	}
+
 	input := cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
 		EndTime:   aws.Time(time.Now()),
@@ -231,13 +277,8 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 				Id: aws.String("c1"),
 				MetricStat: &cloudwatch.MetricStat{
 					Metric: &cloudwatch.Metric{
-						Namespace: aws.String(c.metadata.namespace),
-						Dimensions: []*cloudwatch.Dimension{
-							{
-								Name:  aws.String(c.metadata.dimensionName),
-								Value: aws.String(c.metadata.dimensionValue),
-							},
-						},
+						Namespace:  aws.String(c.metadata.namespace),
+						Dimensions: dimensions,
 						MetricName: aws.String(c.metadata.metricsName),
 					},
 					Period: aws.Int64(c.metadata.metricStatPeriod),
