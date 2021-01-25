@@ -28,6 +28,12 @@ spec:
     - jsonPath: .spec.triggers[*].type
       name: Triggers
       type: string
+    - jsonPath: .spec.minReplicaCount
+      name: MinReplicas
+      type: integer
+   - jsonPath: .spec.maxReplicaCount
+      name: MaxReplicas
+      type: integer    
     - jsonPath: .spec.triggers[*].authenticationRef.name
       name: Authentication
       type: string
