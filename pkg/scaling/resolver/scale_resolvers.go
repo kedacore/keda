@@ -218,7 +218,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 							namespace)
 					}
 				default:
-					logger.V(1).Info("cannot resolve env %s to a value. fieldRef and resourceFieldRef env are skipped", envVar.Name)
+					logger.V(1).Info("cannot resolve env to a value. fieldRef and resourceFieldRef env are skipped", "env-var-name", envVar.Name)
 					continue
 				}
 			}
