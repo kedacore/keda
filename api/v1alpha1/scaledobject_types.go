@@ -11,9 +11,9 @@ import (
 // +kubebuilder:resource:path=scaledobjects,scope=Namespaced,shortName=so
 // +kubebuilder:printcolumn:name="ScaleTargetKind",type="string",JSONPath=".status.scaleTargetKind"
 // +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
-// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Min",type="integer",JSONPath=".spec.minReplicaCount"
 // +kubebuilder:printcolumn:name="Max",type="integer",JSONPath=".spec.maxReplicaCount"
+// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"

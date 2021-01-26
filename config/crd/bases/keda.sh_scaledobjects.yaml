@@ -25,15 +25,15 @@ spec:
     - jsonPath: .spec.scaleTargetRef.name
       name: ScaleTargetName
       type: string
-    - jsonPath: .spec.triggers[*].type
-      name: Triggers
-      type: string
     - jsonPath: .spec.minReplicaCount
       name: Min
       type: integer
     - jsonPath: .spec.maxReplicaCount
       name: Max
       type: integer
+    - jsonPath: .spec.triggers[*].type
+      name: Triggers
+      type: string
     - jsonPath: .spec.triggers[*].authenticationRef.name
       name: Authentication
       type: string
