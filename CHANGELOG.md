@@ -41,6 +41,7 @@
 - Check that metricNames are unique in ScaledObject ([#1390](https://github.com/kedacore/keda/pull/1390))
 - Serve OpenAPI spec from KEDA Metrics Apiserver ([#1512](https://github.com/kedacore/keda/pull/1512))
 - Support metrics with multiple dimensions and configurable metricValues on AWS Cloudwatch Scaler ([#1230](https://github.com/kedacore/keda/issues/1230))
+- Show `MIN/MAX` replica counts when using `kubectl get scaledobject/scaledjob` ([#1534](https://github.com/kedacore/keda/pull/1534))
 
 ### Breaking Changes
 
