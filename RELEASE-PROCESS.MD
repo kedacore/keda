@@ -69,10 +69,10 @@ b). In the image section update the keda and metricsAdapter to point to the dock
 
 Then run the commands here: https://github.com/kedacore/charts
 
--- To deploy KEDA through Azure Functions Core Tools --
+### Deploy KEDA through Azure Functions Core Tools (optional)
 
 Update the following file:
-https://github.com/Azure/azure-functions-core-tools/blob/dev/src/Azure.Functions.Cli/StaticResources/keda.yaml
+https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
 [Search for 1.1.0 etc. and replace it]
 
 ## 5. Create Helm release on GitHub
