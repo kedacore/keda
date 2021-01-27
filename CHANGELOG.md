@@ -5,6 +5,7 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.1.0](#v210)
 - [v2.0.0](#v200)
 - [v1.5.0](#v150)
 - [v1.4.1](#v141)
@@ -17,6 +18,25 @@
 ## Unreleased
 
 ### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.1.0
+
+### New
+
 - Can use Pod Identity with Azure Event Hub scaler ([#994](https://github.com/kedacore/keda/issues/994))
 - Introducing InfluxDB scaler ([#1239](https://github.com/kedacore/keda/issues/1239))
 - Add Redis cluster support for Redis list and Redis streams scalers ([#1437](https://github.com/kedacore/keda/pull/1437))
@@ -24,6 +44,7 @@
 - Introducing OpenStack Swift scaler ([#1342](https://github.com/kedacore/keda/issues/1342))
 
 ### Improvements
+
 - Support add ScaledJob's label to its job ([#1311](https://github.com/kedacore/keda/issues/1311))
 - Bug fix in aws_iam_authorization to utilize correct secret from env key name ([#1332](https://github.com/kedacore/keda/pull/1332))
 - Add metricName field to postgres scaler and auto generate if not defined ([#1381](https://github.com/kedacore/keda/pull/1381))
@@ -45,7 +66,10 @@
 
 ### Breaking Changes
 
+None.
+
 ### Other
+
 - Bump go module version to v2 ([#1324](https://github.com/kedacore/keda/pull/1324))
 
 ## v2.0.0
