@@ -63,6 +63,7 @@
 - Serve OpenAPI spec from KEDA Metrics Apiserver ([#1512](https://github.com/kedacore/keda/pull/1512))
 - Support metrics with multiple dimensions and configurable metricValues on AWS Cloudwatch Scaler ([#1230](https://github.com/kedacore/keda/issues/1230))
 - Show `MIN/MAX` replica counts when using `kubectl get scaledobject/scaledjob` ([#1534](https://github.com/kedacore/keda/pull/1534))
+- Fix unnecessary HPA updates when Resource based Trigger is used ([#1541](https://github.com/kedacore/keda/pull/1541))
 
 ### Breaking Changes
 
