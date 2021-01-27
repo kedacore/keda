@@ -42,6 +42,7 @@
 - Add Redis cluster support for Redis list and Redis streams scalers ([#1437](https://github.com/kedacore/keda/pull/1437))
 - Global authentication credentials can be managed using `ClusterTriggerAuthentication` objects ([#1452](https://github.com/kedacore/keda/pull/1452))
 - Introducing OpenStack Swift scaler ([#1342](https://github.com/kedacore/keda/issues/1342))
+- Introducing MongoDB scaler ([#1467](https://github.com/kedacore/keda/pull/1467))
 
 ### Improvements
 
