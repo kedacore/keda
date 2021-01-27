@@ -5,6 +5,7 @@ resources:
 - bases/keda.sh_scaledobjects.yaml
 - bases/keda.sh_scaledjobs.yaml
 - bases/keda.sh_triggerauthentications.yaml
+- bases/keda.sh_clustertriggerauthentications.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 ## ScaledJob CRD needs to be patched because of an issue with required properties
