@@ -64,15 +64,14 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 
 ## 4. Update Helm Charts
 
-a). Update the version and appVersion here:  https://github.com/kedacore/charts/blob/master/keda/Chart.yaml
-b). In the image section update the keda and metricsAdapter to point to the docker images from step 1 https://github.com/kedacore/charts/blob/master/keda/values.yaml
+Update the `version` and `appVersion` in our [chart definition](https://github.com/kedacore/charts/blob/master/keda/Chart.yaml).
 
-Then run the commands here: https://github.com/kedacore/charts
+Guidance on how to release it can be found in our [contribution guide](https://github.com/kedacore/charts/blob/master/CONTRIBUTING.md#shipping-a-new-version).
 
--- To deploy KEDA through Azure Functions Core Tools --
+### Deploy KEDA through Azure Functions Core Tools (optional)
 
 Update the following file:
-https://github.com/Azure/azure-functions-core-tools/blob/dev/src/Azure.Functions.Cli/StaticResources/keda.yaml
+https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
 [Search for 1.1.0 etc. and replace it]
 
 ## 5. Create Helm release on GitHub
