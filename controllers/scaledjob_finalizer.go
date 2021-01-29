@@ -36,7 +36,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(logger logr.Logger, scaledJob *k
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
-	r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.Deleted, "ScaledJob was deleted")
+	r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobDeleted, "ScaledJob was deleted")
 	return nil
 }
 

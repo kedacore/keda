@@ -57,7 +57,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
-	r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.Deleted, "ScaledObject was deleted")
+	r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectDeleted, "ScaledObject was deleted")
 	return nil
 }
 

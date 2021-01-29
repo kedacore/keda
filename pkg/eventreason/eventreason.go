@@ -17,36 +17,51 @@ limitations under the License.
 package eventreason
 
 const (
-	// Ready is for event when ScaledObject or ScaledJob is ready
-	Ready = "Ready"
+	// ScaledObjectReady is for event when a new ScaledObject is ready
+	ScaledObjectReady = "ScaledObjectReady"
 
-	// CheckFailed is for event when ScaledObject or ScaledJob validation check failed
-	CheckFailed = "CheckFailed"
+	// ScaledJobReady is for event when a new ScaledJob is ready
+	ScaledJobReady = "ScaledJobReady"
 
-	// Deleted is for event when ScaledObject or ScaledJob is deleted
-	Deleted = "Deleted"
+	// ScaledObjectCheckFailed is for event when ScaledObject validation check fails
+	ScaledObjectCheckFailed = "ScaledObjectCheckFailed"
 
-	// ScalersStarted is for event when scalers watch started for ScaledObject or ScaledJob
-	ScalersStarted = "ScalersStarted"
+	// ScaledJobCheckFailed is for event when ScaledJob validation check fails
+	ScaledJobCheckFailed = "ScaledJobCheckFailed"
 
-	// ScalersRestarted is for event when scalers watch was restarted for ScaledObject or ScaledJob
-	ScalersRestarted = "ScalersRestarted"
+	// ScaledObjectDeleted is for event when ScaledObject is deleted
+	ScaledObjectDeleted = "ScaledObjectDeleted"
 
-	// ScalersStopped is for event when scalers watch was stopped for ScaledObject or ScaledJob
-	ScalersStopped = "ScalersStopped"
+	// ScaledJobDeleted is for event when ScaledJob is deleted
+	ScaledJobDeleted = "ScaledJobDeleted"
+
+	// KEDAScalersStarted is for event when scalers watch started for ScaledObject or ScaledJob
+	KEDAScalersStarted = "KEDAScalersStarted"
+
+	// KEDAScalersStopped is for event when scalers watch was stopped for ScaledObject or ScaledJob
+	KEDAScalersStopped = "KEDAScalersStopped"
+
+	// KEDAScalerFailed is for event when a scaler fails for a ScaledJob or a ScaledObject
+	KEDAScalerFailed = "KEDAScalerFailed"
 
 	// ScaleTargetActivated is for event when the scale target of ScaledObject was activated
-	ScaleTargetActivated = "ScaleTargetActivated"
+	KEDAScaleTargetActivated = "KEDAScaleTargetActivated"
 
 	// ScaleTargetDeactivated is for event when the scale target for ScaledObject was deactivated
-	ScaleTargetDeactivated = "ScaleTargetDeactivated"
+	KEDAScaleTargetDeactivated = "KEDAScaleTargetDeactivated"
 
 	// ScaleTargetActivationFailed is for event when the activation the scale target for ScaledObject fails
-	ScaleTargetActivationFailed = "ScaleTargetActivationFailed"
+	KEDAScaleTargetActivationFailed = "KEDAScaleTargetActivationFailed"
 
 	// ScaleTargetDeactivationFailed is for event when the deactivation of the scale target for ScaledObject fails
-	ScaleTargetDeactivationFailed = "ScaleTargetDeactivationFailed"
+	KEDAScaleTargetDeactivationFailed = "KEDAScaleTargetDeactivationFailed"
 
 	// JobsCreated is for event when jobs for ScaledJob are created
-	JobsCreated = "JobsCreated"
+	KEDAJobsCreated = "KEDAJobsCreated"
+
+	// TriggerAuthenticationDeleted is for event when a TriggerAuthentication is deleted
+	TriggerAuthenticationDeleted = "TriggerAuthenticationDeleted"
+
+	// TriggerAuthenticationAdded is for event when a TriggerAuthentication is added
+	TriggerAuthenticationAdded = "TriggerAuthenticationAdded"
 )

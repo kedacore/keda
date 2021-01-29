@@ -110,7 +110,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 		}
 	}
 	logger.Info("Created jobs", "Number of jobs", scaleTo)
-	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.JobsCreated, "Created %d jobs", scaleTo)
+	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
 }
 
 func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {

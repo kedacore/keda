@@ -95,9 +95,8 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 			cancelValue()
 		}
 		h.scaleLoopContexts.Store(key, cancel)
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersRestarted, "Restarted scalers watch")
 	} else {
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersStarted, "Started scalers watch")
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "Started scalers watch")
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject
@@ -123,7 +122,7 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.ScalersStopped, "Stopped scalers watch")
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
 	} else {
 		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
 	}
@@ -201,7 +200,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers))
+		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers, obj))
 	case *kedav1alpha1.ScaledJob:
 		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
 		isActive, scaleTo, maxScale := h.checkScaledJobScalers(ctx, scalers, scaledJob)
@@ -209,7 +208,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
-func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler) bool {
+func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) bool {
 	isActive := false
 	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
@@ -217,6 +216,7 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 
 		if err != nil {
 			h.logger.V(1).Info("Error getting scale decision", "Error", err)
+			h.recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		} else if isTriggerActive {
 			isActive = true
@@ -271,6 +271,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scaler.Close()
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
+			h.recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		} else if isTriggerActive {
 			isActive = true
@@ -371,6 +372,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 		scaler, err := buildScaler(trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
+			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
 

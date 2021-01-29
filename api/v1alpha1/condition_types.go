@@ -115,6 +115,13 @@ func (c *Conditions) GetActiveCondition() Condition {
 	return c.getCondition(ConditionActive)
 }
 
+func (c *Conditions) GetReadyCondition() Condition {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	return c.getCondition(ConditionReady)
+}
+
 func (c Conditions) getCondition(conditionType ConditionType) Condition {
 	for i := range c {
 		if c[i].Type == conditionType {

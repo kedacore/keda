@@ -3,10 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	corev1 "k8s.io/api/core/v1"
+	"time"
+
 	"k8s.io/client-go/tools/record"
 
 	"github.com/go-logr/logr"
@@ -89,11 +89,14 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			reqLogger.Error(err, msg)
 			conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 			conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.CheckFailed, msg)
+			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, msg)
 		} else {
+			wasReady := conditions.GetReadyCondition()
+			if wasReady.IsFalse() || wasReady.IsUnknown() {
+				r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobReady, "ScaledJob is ready for scaling")
+			}
 			reqLogger.V(1).Info(msg)
 			conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
-			r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.Ready, msg)
 		}
 
 		return ctrl.Result{}, err

@@ -50,7 +50,7 @@ type ScaledObjectReconciler struct {
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
-	Recorder record.EventRecorder
+	Recorder          record.EventRecorder
 
 	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
@@ -164,15 +164,20 @@ func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnkownState", "ScaledObject check failed")
-		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.CheckFailed, msg)
+		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 	} else {
+		wasReady := conditions.GetReadyCondition()
+		if wasReady.IsFalse() || wasReady.IsUnknown() {
+			r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "ScaledObject is ready for scaling")
+		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
-		r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.Ready, msg)
 	}
+
 	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
+
 	return ctrl.Result{}, err
 }
 

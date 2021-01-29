@@ -129,7 +129,7 @@ func main() {
 		Log:               ctrl.Log.WithName("controllers").WithName("ScaledObject"),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder: mgr.GetEventRecorderFor("scaledobject-controller"),
+		Recorder:          mgr.GetEventRecorderFor("scaledobject-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
@@ -139,9 +139,17 @@ func main() {
 		Log:               ctrl.Log.WithName("controllers").WithName("ScaledJob"),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder: mgr.GetEventRecorderFor("scaledjob-controller"),
+		Recorder:          mgr.GetEventRecorderFor("scaledjob-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
+		os.Exit(1)
+	}
+	if err = (&controllers.TriggerAuthenticationReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("TriggerAuthentication"),
+		Recorder: mgr.GetEventRecorderFor("triggerauthentication-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "TriggerAuthentication")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
