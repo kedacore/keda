@@ -23,6 +23,7 @@ type TriggerAuthenticationReconciler struct {
 	Recorder record.EventRecorder
 }
 
+// Reconcile performs reconciliation on the identified TriggerAuthentication resource based on the request information passed, returns the result and an error (if any).
 func (r *TriggerAuthenticationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("TriggerAuthentication.Namespace", req.Namespace, "TriggerAuthentication.Name", req.Name)
 
@@ -48,6 +49,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager initializes the TriggerAuthenticationReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).

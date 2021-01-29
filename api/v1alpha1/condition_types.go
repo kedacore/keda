@@ -115,6 +115,7 @@ func (c *Conditions) GetActiveCondition() Condition {
 	return c.getCondition(ConditionActive)
 }
 
+// GetReadyCondition returns Condition of type Ready
 func (c *Conditions) GetReadyCondition() Condition {
 	if *c == nil {
 		c = GetInitializedConditions()

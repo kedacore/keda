@@ -44,19 +44,19 @@ const (
 	// KEDAScalerFailed is for event when a scaler fails for a ScaledJob or a ScaledObject
 	KEDAScalerFailed = "KEDAScalerFailed"
 
-	// ScaleTargetActivated is for event when the scale target of ScaledObject was activated
+	// KEDAScaleTargetActivated is for event when the scale target of ScaledObject was activated
 	KEDAScaleTargetActivated = "KEDAScaleTargetActivated"
 
-	// ScaleTargetDeactivated is for event when the scale target for ScaledObject was deactivated
+	// KEDAScaleTargetDeactivated is for event when the scale target for ScaledObject was deactivated
 	KEDAScaleTargetDeactivated = "KEDAScaleTargetDeactivated"
 
-	// ScaleTargetActivationFailed is for event when the activation the scale target for ScaledObject fails
+	// KEDAScaleTargetActivationFailed is for event when the activation the scale target for ScaledObject fails
 	KEDAScaleTargetActivationFailed = "KEDAScaleTargetActivationFailed"
 
-	// ScaleTargetDeactivationFailed is for event when the deactivation of the scale target for ScaledObject fails
+	// KEDAScaleTargetDeactivationFailed is for event when the deactivation of the scale target for ScaledObject fails
 	KEDAScaleTargetDeactivationFailed = "KEDAScaleTargetDeactivationFailed"
 
-	// JobsCreated is for event when jobs for ScaledJob are created
+	// KEDAJobsCreated is for event when jobs for ScaledJob are created
 	KEDAJobsCreated = "KEDAJobsCreated"
 
 	// TriggerAuthenticationDeleted is for event when a TriggerAuthentication is deleted
