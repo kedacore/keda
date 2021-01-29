@@ -10,7 +10,8 @@ _Provide a description of what has been changed_
 
 - [ ] Commits are signed with Developer Certificate of Origin (DCO)
 - [ ] Tests have been added
-- [ ] A PR is opened to update the documentation on https://github.com/kedacore/keda-docs
+- [ ] A PR is opened to update our Helm chart ([repo](https://github.com/kedacore/charts)) *(if applicable)*
+- [ ] A PR is opened to update the documentation on ([repo](https://github.com/kedacore/keda-docs)) *(if applicable)*
 - [ ] Changelog has been updated
 
 Fixes #
