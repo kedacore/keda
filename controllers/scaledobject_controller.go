@@ -42,17 +42,16 @@ import (
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
-	Log    logr.Logger
-	Client client.Client
-	Scheme *runtime.Scheme
+	Log               logr.Logger
+	Client            client.Client
+	Scheme            *runtime.Scheme
+	GlobalHTTPTimeout time.Duration
 
 	scaleClient              *scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
 	scaleHandler             scaling.ScaleHandler
 	kubeVersion              kedautil.K8sVersion
-
-	globalHTTPTimeout time.Duration
 }
 
 // A cache mapping "resource.group" to true or false if we know if this resource is scalable.
@@ -92,7 +91,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
 	r.scaledObjectsGenerations = &sync.Map{}
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.globalHTTPTimeout)
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.GlobalHTTPTimeout)
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
