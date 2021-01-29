@@ -23,7 +23,7 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Add `KEDA_HTTP_DEFAULT_TIMEOUT` support in operator ([#1548](https://github.com/kedacore/keda/issues/1548))
 
 ### Breaking Changes
 
