@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	corev1 "k8s.io/api/core/v1"
-	"time"
 
 	"k8s.io/client-go/tools/record"
 
