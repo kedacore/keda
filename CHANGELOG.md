@@ -34,6 +34,7 @@
 - Fix memory leak by checking triggers uniqueness properly ([#1640](https://github.com/kedacore/keda/pull/1640))
 - Print correct ScaleTarget Kind in Events ([#1641](https://github.com/kedacore/keda/pull/1641))
 - Fixed keda clusterroles to give permissions for clustertriggerauthentications ([#1645](https://github.com/kedacore/keda/pull/1645))
+- Make `swiftURL` parameter optional for the OpenStack Swift scaler ([#1652](https://github.com/kedacore/keda/pull/1652))
 
 ### Breaking Changes
 
