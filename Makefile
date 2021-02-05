@@ -28,6 +28,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
+GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/v2/version.Version=$(VERSION)"
 
 ##################################################
 # All                                            #
@@ -93,9 +94,7 @@ set-version:
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
 run: generate
-	go run \
-	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
-	./main.go $(ARGS)
+	go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
 
 # Install CRDs into a cluster
 .PHONY: install
@@ -144,9 +143,7 @@ manager: manager-dockerfile gofmt govet
 # time we build the image
 .PHONY: manager-dockerfile
 manager-dockerfile: generate
-	${GO_BUILD_VARS} go build \
-	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
-	-o bin/keda main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda main.go
 
 # Build KEDA Metrics Server Adapter binary
 .PHONY: adapter
@@ -158,9 +155,7 @@ adapter: adapter-dockerfile gofmt govet
 # time we build the image
 .PHONY: adapter-dockerfile
 adapter-dockerfile: generate adapter/generated/openapi/zz_generated.openapi.go
-	${GO_BUILD_VARS} go build \
-	-ldflags "-X=github.com/kedacore/keda/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/version.Version=$(VERSION)" \
-	-o bin/keda-adapter adapter/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-adapter adapter/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
+	"time"
 
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -108,18 +110,34 @@ func main() {
 		os.Exit(1)
 	}
 
+	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
+	if globalHTTPTimeoutStr == "" {
+		// default to 3 seconds if they don't pass the env var
+		globalHTTPTimeoutStr = "3000"
+	}
+
+	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
+		return
+	}
+
+	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
+
 	if err = (&controllers.ScaledObjectReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ScaledObject"),
-		Scheme: mgr.GetScheme(),
+		Client:            mgr.GetClient(),
+		Log:               ctrl.Log.WithName("controllers").WithName("ScaledObject"),
+		Scheme:            mgr.GetScheme(),
+		GlobalHTTPTimeout: globalHTTPTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
 	if err = (&controllers.ScaledJobReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ScaledJob"),
-		Scheme: mgr.GetScheme(),
+		Client:            mgr.GetClient(),
+		Log:               ctrl.Log.WithName("controllers").WithName("ScaledJob"),
+		Scheme:            mgr.GetScheme(),
+		GlobalHTTPTimeout: globalHTTPTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)

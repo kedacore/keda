@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/v2/version"
@@ -160,6 +161,12 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 		scaler.Close()
 	}
+
+	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,
+	// see https://github.com/kedacore/keda/issues/1531 for details
+	sort.Slice(scaledObjectMetricSpecs, func(i, j int) bool {
+		return scaledObjectMetricSpecs[i].Type < scaledObjectMetricSpecs[j].Type
+	})
 
 	// store External.MetricNames,Resource.MetricsNames used by scalers defined in the ScaledObject
 	status := scaledObject.Status.DeepCopy()
