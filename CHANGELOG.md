@@ -16,11 +16,11 @@
 - [v1.0.0](#v100)
 
 ## Unreleased
-- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 
 ### Improvements
 
