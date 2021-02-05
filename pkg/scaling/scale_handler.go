@@ -154,12 +154,14 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 	for _, s := range ss {
 		scaler, ok := s.(scalers.PushScaler)
 		if !ok {
+			s.Close()
 			continue
 		}
 
 		go func() {
 			activeCh := make(chan bool)
 			go scaler.Run(ctx, activeCh)
+			defer scaler.Close()
 			for {
 				select {
 				case <-ctx.Done():

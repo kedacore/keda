@@ -9,7 +9,14 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	metrics "github.com/rcrowley/go-metrics"
 )
+
+func init() {
+	// Disable metrics for kafka client (sarama)
+	// https://github.com/Shopify/sarama/issues/1321
+	metrics.UseNilMetrics = true
+}
 
 // Scaler interface
 type Scaler interface {
