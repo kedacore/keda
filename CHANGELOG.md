@@ -25,6 +25,7 @@
 
 - Add `KEDA_HTTP_DEFAULT_TIMEOUT` support in operator ([#1548](https://github.com/kedacore/keda/issues/1548))
 - Removed `MIN field` for scaledjob.([#1553](https://github.com/kedacore/keda/pull/1553))
+- Add basic, tls and bearer authentication support to the prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
 
 ### Breaking Changes
 
