@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.73.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.4
-	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible
+	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible // indirect
 	github.com/Azure/azure-service-bus-go v0.10.7
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -30,7 +30,7 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.4
+	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
