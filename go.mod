@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.73.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.4
-	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible
+	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible // indirect
 	github.com/Azure/azure-service-bus-go v0.10.7
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -15,7 +15,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.36.19
-	github.com/go-logr/logr v0.3.0
+	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.3.0 // indirect
 	github.com/go-openapi/spec v0.20.0
 	github.com/go-redis/redis v6.15.9+incompatible
@@ -48,8 +48,8 @@ require (
 	k8s.io/apimachinery v0.20.2
 	k8s.io/apiserver v0.20.2
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/code-generator v0.20.0
-	k8s.io/klog/v2 v2.4.0
+	k8s.io/code-generator v0.20.0 // indirect
+	k8s.io/klog/v2 v2.5.0
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/metrics v0.20.0
 	knative.dev/pkg v0.0.0-20201019114258-95e9532f0457
