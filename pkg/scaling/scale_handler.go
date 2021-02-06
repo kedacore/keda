@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -44,16 +47,18 @@ type scaleHandler struct {
 	scaleLoopContexts *sync.Map
 	scaleExecutor     executor.ScaleExecutor
 	globalHTTPTimeout time.Duration
+	recorder          record.EventRecorder
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
 		scaleLoopContexts: &sync.Map{},
-		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme),
+		scaleExecutor:     executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
 		globalHTTPTimeout: globalHTTPTimeout,
+		recorder:          recorder,
 	}
 }
 
@@ -90,6 +95,8 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 			cancelValue()
 		}
 		h.scaleLoopContexts.Store(key, cancel)
+	} else {
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "Started scalers watch")
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject
@@ -115,6 +122,7 @@ func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
 	} else {
 		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
 	}
@@ -194,7 +202,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers))
+		h.scaleExecutor.RequestScale(ctx, obj, h.checkScaledObjectScalers(ctx, scalers, obj))
 	case *kedav1alpha1.ScaledJob:
 		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
 		isActive, scaleTo, maxScale := h.checkScaledJobScalers(ctx, scalers, scaledJob)
@@ -202,7 +210,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
-func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler) bool {
+func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) bool {
 	isActive := false
 	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
@@ -210,6 +218,7 @@ func (h *scaleHandler) checkScaledObjectScalers(ctx context.Context, scalers []s
 
 		if err != nil {
 			h.logger.V(1).Info("Error getting scale decision", "Error", err)
+			h.recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		} else if isTriggerActive {
 			isActive = true
@@ -264,6 +273,7 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scaler.Close()
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
+			h.recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		} else if isTriggerActive {
 			isActive = true
@@ -364,6 +374,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 		scaler, err := buildScaler(trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
+			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
 		}
 
