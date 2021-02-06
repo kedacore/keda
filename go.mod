@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.73.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.4
-	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible
+	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible // indirect
 	github.com/Azure/azure-service-bus-go v0.10.7
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -46,9 +46,9 @@ require (
 	google.golang.org/grpc v1.34.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
-	k8s.io/apiserver v0.20.2
+	k8s.io/apiserver v0.20.2 // indirect
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/code-generator v0.20.0
+	k8s.io/code-generator v0.20.2 // indirect
 	k8s.io/klog/v2 v2.4.0
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/metrics v0.20.0
