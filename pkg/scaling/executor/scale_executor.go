@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,15 +32,17 @@ type scaleExecutor struct {
 	scaleClient      *scale.ScalesGetter
 	reconcilerScheme *runtime.Scheme
 	logger           logr.Logger
+	recorder         record.EventRecorder
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme) ScaleExecutor {
+func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      scaleClient,
 		reconcilerScheme: reconcilerScheme,
 		logger:           logf.Log.WithName("scaleexecutor"),
+		recorder:         recorder,
 	}
 }
 
