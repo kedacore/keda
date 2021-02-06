@@ -78,7 +78,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *scaledObject.Spec.MinReplicaCount)
 		if err == nil {
 			logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
-				"ScaleTarget.Replicas", currentScale.Spec.Replicas)
+				"Original Replicas Count", currentReplicas,
+				"New Replicas Count", *scaledObject.Spec.MinReplicaCount)
 		}
 	case isActive:
 		// triggers are active, but we didn't need to scale (replica count > 0)
