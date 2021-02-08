@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -108,6 +110,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 		}
 	}
 	logger.Info("Created jobs", "Number of jobs", scaleTo)
+	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
 }
 
 func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {
