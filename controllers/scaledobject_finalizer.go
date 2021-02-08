@@ -3,6 +3,9 @@ package controllers
 import (
 	"context"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,6 +57,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
+	r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectDeleted, "ScaledObject was deleted")
 	return nil
 }
 

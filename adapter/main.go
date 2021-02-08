@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
@@ -70,7 +73,9 @@ func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.Metric
 		return nil, fmt.Errorf("unable to construct new client (%s)", err)
 	}
 
-	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout)
+	broadcaster := record.NewBroadcaster()
+	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
+	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout, recorder)
 
 	namespace, err := getWatchNamespace()
 	if err != nil {

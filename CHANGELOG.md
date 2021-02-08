@@ -20,12 +20,14 @@
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 
 ### Improvements
 
 - Add `KEDA_HTTP_DEFAULT_TIMEOUT` support in operator ([#1548](https://github.com/kedacore/keda/issues/1548))
 - Removed `MIN field` for scaledjob ([#1553](https://github.com/kedacore/keda/pull/1553))
 - Add container port for Prometheus on operator YAML ([#1562](https://github.com/kedacore/keda/pull/1562))
+- Fix a memory leak in kafka client and close push scalers ([#1565](https://github.com/kedacore/keda/issues/1565))
 
 ### Breaking Changes
 

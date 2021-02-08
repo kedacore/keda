@@ -19,7 +19,7 @@ const redisWorkerHostPortRefDeploymentName = 'redis-worker-test-hostport'
 const redisWorkerAddressRefDeploymentName = 'redis-worker-test-address'
 const redisWorkerHostPortRefTriggerAuthDeploymentName = 'redis-worker-test-hostport-triggerauth'
 const itemsToWrite = 200
-const deploymentContainerImage = 'goku321/redis-cluster-list:v1.4'
+const deploymentContainerImage = 'goku321/redis-cluster-list:v1.7'
 const writeJobNameForHostPortRef = 'redis-writer-host-port-ref'
 const writeJobNameForAddressRef = 'redis-writer-address-ref'
 const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-auth'
@@ -29,14 +29,7 @@ test.before(t => {
     sh.exec(`kubectl create namespace ${redisNamespace}`)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let clusterStatus = 1
-    for (let i = 0; i < 3; i++) {
-        clusterStatus = sh.exec(`helm install ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
-        if (clusterStatus == 0) {
-          break
-        }
-        sh.exec('sleep 5s')
-    }
+    let clusterStatus = sh.exec(`helm install --timeout 600s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
     t.is(0,
         clusterStatus,
         'creating a Redis cluster should work.'
@@ -146,7 +139,7 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -186,7 +179,7 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -226,7 +219,7 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -336,7 +329,7 @@ spec:
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
         - name: READ_PROCESS_TIME
-          value: "200"
+          value: "500"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -446,7 +439,7 @@ spec:
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
         - name: READ_PROCESS_TIME
-          value: "200"
+          value: "500"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
