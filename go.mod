@@ -30,7 +30,7 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.4
+	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
