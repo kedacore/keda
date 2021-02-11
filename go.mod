@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-service-bus-go v0.10.7
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
-	github.com/Azure/go-autorest/autorest v0.11.15
+	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
@@ -30,7 +30,7 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.5 // indirect
+	github.com/onsi/gomega v1.10.5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -46,9 +46,9 @@ require (
 	google.golang.org/grpc v1.34.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
-	k8s.io/apiserver v0.20.2
+	k8s.io/apiserver v0.20.2 // indirect
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/code-generator v0.20.0 // indirect
+	k8s.io/code-generator v0.20.0
 	k8s.io/klog/v2 v2.5.0
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/metrics v0.20.0
