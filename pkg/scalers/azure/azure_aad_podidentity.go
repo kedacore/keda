@@ -24,6 +24,10 @@ func GetAzureADPodIdentityToken(httpClient util.HTTPDoer, audience string) (AADT
 	if err != nil {
 		return token, err
 	}
+	req.Header = map[string][]string{
+		"Metadata": {"true"},
+	}
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return token, err
