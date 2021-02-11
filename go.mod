@@ -3,7 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.15
 
 require (
-	cloud.google.com/go v0.73.0
+	cloud.google.com/go v0.74.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.4
 	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible // indirect
@@ -30,7 +30,7 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.5 // indirect
+	github.com/onsi/gomega v1.10.5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -41,14 +41,14 @@ require (
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	go.mongodb.org/mongo-driver v1.1.2
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	google.golang.org/api v0.36.0
-	google.golang.org/genproto v0.0.0-20201203001206-6486ece9c497
+	google.golang.org/api v0.39.0
+	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
 	google.golang.org/grpc v1.34.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/apiserver v0.20.2
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/code-generator v0.20.0 // indirect
+	k8s.io/code-generator v0.20.0
 	k8s.io/klog/v2 v2.5.0
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/metrics v0.20.0
