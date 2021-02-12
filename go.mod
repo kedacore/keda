@@ -6,9 +6,9 @@ require (
 	cloud.google.com/go v0.74.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.6
-	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go v48.2.2+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.9
-	github.com/Azure/azure-storage-blob-go v0.11.0
+	github.com/Azure/azure-storage-blob-go v0.13.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.11
 	github.com/influxdata/influxdb-client-go/v2 v2.2.1
-	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20201216091021-1b9fa998bbaa // indirect
+	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20201216091021-1b9fa998bbaa
 	github.com/lib/pq v1.9.0
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.14.2

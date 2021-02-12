@@ -116,7 +116,7 @@ func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer,
 	// Create a BlockBlobURL object to a blob in the container.
 	blobURL := azblob.NewBlockBlobURL(*baseURL, azblob.NewPipeline(blobCreds, azblob.PipelineOptions{}))
 
-	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false)
+	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
 		return Checkpoint{}, fmt.Errorf("unable to download file from blob storage: %w", err)
 	}
