@@ -68,6 +68,7 @@ inputs:
     description: Where is your cluster running?
     required: false
     choices:
+    - Any
     - Alibaba Cloud
     - Amazon Web Services
     - Google Cloud
