@@ -17,14 +17,7 @@ test.before(t => {
     sh.exec(`kubectl create namespace ${redisNamespace}`)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let clusterStatus = 1
-    for (let i = 0; i < 3; i++) {
-        clusterStatus = sh.exec(`helm install ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
-        if (clusterStatus == 0) {
-          break
-        }
-        sh.exec('sleep 5s')
-    }
+    let clusterStatus = sh.exec(`helm install --timeout 600s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
     t.is(0,
         clusterStatus,
         'creating a Redis cluster should work.'
@@ -167,7 +160,7 @@ spec:
     spec:
       containers:
         - name: redis-streams-consumer
-          image: goku321/redis-cluster-streams:v2.3
+          image: goku321/redis-cluster-streams:v2.5
           command: ["./main"]
           args: ["consumer"]
           imagePullPolicy: Always
@@ -218,7 +211,7 @@ spec:
     spec:
       containers:
       - name: producer
-        image: goku321/redis-cluster-streams:v2.3
+        image: goku321/redis-cluster-streams:v2.5
         command: ["./main"]
         args: ["producer"]
         imagePullPolicy: Always
