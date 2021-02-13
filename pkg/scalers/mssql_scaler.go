@@ -30,16 +30,16 @@ type mssqlMetadata struct {
 	// Both URL syntax (sqlserver://host?database=dbName) and OLEDB syntax is supported.
 	// +optional
 	connectionString string
-	// The username credential for connecting to the SQL database server, if not specified in the connection string.
+	// The username credential for connecting to the MSSQL instance, if not specified in the connection string.
 	// +optional
 	username string
-	// The password credential for connecting to the SQL database server, if not specified in the connection string.
+	// The password credential for connecting to the MSSQL instance, if not specified in the connection string.
 	// +optional
 	password string
-	// The hostname of the database server to connect to query, if not specified in the connection string.
+	// The hostname of the MSSQL instance endpoint, if not specified in the connection string.
 	// +optional
 	host string
-	// The port number of the database server endpoint to connect to, if not specified in the connection string.
+	// The port number of the MSSQL instance endpoint, if not specified in the connection string.
 	// +optional
 	port int
 	// The name of the database to query, if not specified in the connection string.
@@ -141,16 +141,17 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", val))
 	} else {
-		if meta.database != "" {
+		switch {
+		case meta.database != "":
 			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.database))
-		} else if meta.host != "" {
+		case meta.host != "":
 			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.host))
-		} else if meta.connectionString != "" {
+		case meta.connectionString != "":
 			// The mssql provider supports of a variety of connection string formats. Instead of trying to parse
 			// the connection string and mask out sensitive data, play it safe and just hash the whole thing.
 			connectionStringHash := sha256.Sum256([]byte(meta.connectionString))
 			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%x", connectionStringHash))
-		} else {
+		default:
 			meta.metricName = "mssql"
 		}
 	}
@@ -189,22 +190,22 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 			query.Add("database", meta.database)
 		}
 
-		connectionUrl := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
+		connectionURL := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
 		if meta.username != "" {
 			if meta.password != "" {
-				connectionUrl.User = url.UserPassword(meta.username, meta.password)
+				connectionURL.User = url.UserPassword(meta.username, meta.password)
 			} else {
-				connectionUrl.User = url.User(meta.username)
+				connectionURL.User = url.User(meta.username)
 			}
 		}
 
 		if meta.port > 0 {
-			connectionUrl.Host = fmt.Sprintf("%s:%d", meta.host, meta.port)
+			connectionURL.Host = fmt.Sprintf("%s:%d", meta.host, meta.port)
 		} else {
-			connectionUrl.Host = meta.host
+			connectionURL.Host = meta.host
 		}
 
-		connStr = connectionUrl.String()
+		connStr = connectionURL.String()
 	}
 
 	return connStr

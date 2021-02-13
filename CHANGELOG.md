@@ -19,7 +19,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
 
 ### Improvements
 
