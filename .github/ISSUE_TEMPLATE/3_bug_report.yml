@@ -44,24 +44,24 @@ inputs:
     description: What version of KEDA that are you running?
     required: false
     choices:
-    - 2.1.0
-    - 2.0.0
-    - 1.5.0
-    - < 1.5.0
-    - Other
+    - "2.1.0"
+    - "2.0.0"
+    - "1.5.0"
+    - "< 1.5.0"
+    - "Other"
 - type: dropdown
   attributes:
     label: Kubernetes Version
     description: What version of Kubernetes that are you running?
     required: false
     choices:
-    - 1.20
-    - 1.19
-    - 1.18
-    - 1.17
-    - 1.16
-    - < 1.16
-    - Other
+    - "1.20"
+    - "1.19"
+    - "1.18"
+    - "1.17"
+    - "1.16"
+    - "< 1.16"
+    - "Other"
 - type: dropdown
   attributes:
     label: Platform
