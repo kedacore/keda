@@ -1,0 +1,25 @@
+name: Suggest a new scaler
+about: Suggest a new scaler to add
+labels: "scaler, needs-discussion"
+issue_body: true
+inputs:
+- type: textarea
+  attributes:
+    label: Proposal
+    description: "What would you like to scale on"
+    placeholder: "A clear and concise description of what scaler you'd like to use and how you'd want to use it."
+- type: input
+  attributes:
+    label: Scaler Source
+    description: On what do you want to scale?
+    required: true
+- type: textarea
+  attributes:
+    label: Scaling Mechanics
+    description: How do you want to scale?
+    required: true
+- type: input
+  attributes:
+    label: Authentication Source
+    description: How would you like to authenticate
+    required: true
