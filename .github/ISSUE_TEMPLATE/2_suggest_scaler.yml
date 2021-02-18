@@ -12,17 +12,17 @@ body:
   attributes:
     label: Scaler Source
     description: On what do you want to scale?
-  validation:
+  validations:
     required: true
 - type: textarea
   attributes:
     label: Scaling Mechanics
     description: How do you want to scale?
-  validation:
+  validations:
     required: true
 - type: input
   attributes:
     label: Authentication Source
     description: How would you like to authenticate
-  validation:
+  validations:
     required: true

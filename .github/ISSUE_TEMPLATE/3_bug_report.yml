@@ -13,14 +13,14 @@ body:
     label: Expected Behavior
     description: What did you expect to happen?
     placeholder: What did you expect to happen?
-  validation:
+  validations:
     required: true
 - type: textarea
   attributes:
     label: Actual Behavior
     description: Also tell us, what did you see is happen?
     placeholder: Tell us what you see that is happening
-  validation:
+  validations:
     required: true
 - type: textarea
   attributes:
@@ -30,7 +30,7 @@ body:
       1.
       2.
       3.
-  validation:
+  validations:
     required: true
 - type: textarea
   attributes:
@@ -40,7 +40,7 @@ body:
       ```
       example
       ```
-  validation:
+  validations:
     required: false
 - type: dropdown
   attributes:
@@ -52,7 +52,7 @@ body:
     - "1.5.0"
     - "< 1.5.0"
     - "Other"
-  validation:
+  validations:
     required: false
 - type: dropdown
   attributes:
@@ -66,7 +66,7 @@ body:
     - "1.16"
     - "< 1.16"
     - "Other"
-  validation:
+  validations:
     required: false
 - type: dropdown
   attributes:
@@ -80,12 +80,12 @@ body:
     - Microsoft Azure
     - Red Hat OpenShift
     - Other
-  validation:
+  validations:
     required: false
 - type: input
   attributes:
     label: Scaler Details
     description: What scaler are you using?
     placeholder: ie. Azure Service Bus, Kafka, ...
-  validation:
+  validations:
     required: false
