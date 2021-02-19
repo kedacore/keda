@@ -1,4 +1,4 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: Ask a question about KEDA or get support
     url: https://github.com/kedacore/keda/discussions/new
