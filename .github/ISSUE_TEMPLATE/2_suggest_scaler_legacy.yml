@@ -1,8 +1,8 @@
-name: Suggest a new scaler ⚙
+name: Suggest a new scaler
 about: Suggest a new scaler to add
 labels: "scaler, needs-discussion"
 issue_body: true
-body:
+inputs:
 - type: textarea
   attributes:
     label: Proposal
@@ -12,17 +12,14 @@ body:
   attributes:
     label: Scaler Source
     description: On what do you want to scale?
-  validations:
     required: true
 - type: textarea
   attributes:
     label: Scaling Mechanics
     description: How do you want to scale?
-  validations:
     required: true
 - type: input
   attributes:
     label: Authentication Source
     description: How would you like to authenticate
-  validations:
     required: true
