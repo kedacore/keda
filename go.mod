@@ -15,7 +15,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.36.19
-	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
+	github.com/denisenkom/go-mssqldb v0.9.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.3.0 // indirect
 	github.com/go-openapi/spec v0.20.0

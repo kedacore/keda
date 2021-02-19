@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 
+	// mssql driver required for this scaler
+	_ "github.com/denisenkom/go-mssqldb"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
