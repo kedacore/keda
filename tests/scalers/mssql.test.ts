@@ -16,7 +16,7 @@ const getReplicaCountCommand = `kubectl get deployment.apps/${appName} -n ${test
 
 test.before(t => {
     sh.config.silent = true
-    
+
     // deploy the mssql container
     sh.exec(`kubectl create namespace ${mssqlns}`)
     const mssqlDeploymentYamlFile = tmp.fileSync()
@@ -112,7 +112,7 @@ type: Opaque
 stringData:
   mssql-sa-password: ${password}
   mssql-connection-string: ${sqlConnectionString}
----  
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
