@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
+	"unicode"
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/v2/version"
@@ -58,6 +60,9 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 	labelName := getHPAName(scaledObject)
 	if len(labelName) > 63 {
 		labelName = labelName[:63]
+		labelName = strings.TrimRightFunc(labelName, func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+		})
 	}
 	labels := map[string]string{
 		"app.kubernetes.io/name":       labelName,
