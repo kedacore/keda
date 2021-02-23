@@ -489,6 +489,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewMetricsAPIScaler(config)
 	case "mongodb":
 		return scalers.NewMongoDBScaler(config)
+	case "mssql":
+		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "openstack-swift":
