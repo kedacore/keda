@@ -29,6 +29,7 @@
 - Add container port for Prometheus on operator YAML ([#1562](https://github.com/kedacore/keda/pull/1562))
 - Fix a memory leak in kafka client and close push scalers ([#1565](https://github.com/kedacore/keda/issues/1565))
 - Add 'Metadata' header to AAD podIdentity request ([#1566](https://github.com/kedacore/keda/issues/1566))
+- KEDA should make sure generate correct labels for HPA ([#1630](https://github.com/kedacore/keda/issues/1630))
 
 ### Breaking Changes
 
