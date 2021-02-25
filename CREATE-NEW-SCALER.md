@@ -13,7 +13,7 @@ In order to develop a scaler, a developer should do the following:
 
 If you want to deploy locally
 1. Open the terminal and go to the root of the source code
-2. Run `IMAGE_REPO=johndoe make publish`, where `johndoe` is your Docker Hub repo, this will create and publish images with your build of KEDA into your repo. Please refer [the guide for local deployment](Readme.md#deploying-custom-keda-locally-outside-cluster) for more details.
+2. Run `IMAGE_REPO=johndoe make publish`, where `johndoe` is your Docker Hub repo, this will create and publish images with your build of KEDA into your repo. Please refer [the guide for local deployment](https://github.com/kedacore/keda/blob/main/BUILD.md#custom-keda-locally-outside-cluster) for more details.
 3. Run `IMAGE_REPO=johndoe make deploy`, this will deploy KEDA to your cluster.
 
 ## Scaler interface
