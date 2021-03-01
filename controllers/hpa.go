@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	"github.com/kedacore/keda/v2/controllers/util"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
 )
 
@@ -160,7 +159,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 
 			if metricSpec.External != nil {
 				externalMetricName := metricSpec.External.Metric.Name
-				if util.Contains(externalMetricNames, externalMetricName) {
+				if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
 					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)				}
 
 				// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
