@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -43,21 +44,25 @@ type prometheusAuthMetadataTestData struct {
 
 var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	// success TLS
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, false},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, false},
 	// fail TLS, ca not given
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "tls"}, map[string]string{"cert": "ceert", "key": "keey"}, true},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"cert": "ceert", "key": "keey"}, true},
 	// fail TLS, key not given
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert"}, true},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert"}, true},
 	// fail TLS, cert not given
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "tls"}, map[string]string{"ca": "caaa", "key": "keey"}, true},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"ca": "caaa", "key": "keey"}, true},
 	// success bearer default
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "bearer"}, map[string]string{"bearerToken": "tooooken"}, false},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "bearer"}, map[string]string{"bearerToken": "tooooken"}, false},
 	// fail bearerAuth with no token
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "bearer"}, map[string]string{}, true},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "bearer"}, map[string]string{}, true},
 	// success basicAuth
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authMode": "basic"}, map[string]string{}, true},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "basic"}, map[string]string{}, true},
+
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls, basic"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey", "username": "user", "password": "pass"}, false},
+
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls,basic"}, map[string]string{"username": "user", "password": "pass"}, true},
 }
 
 func TestPrometheusParseMetadata(t *testing.T) {
@@ -103,9 +108,9 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if (meta.enableBearerAuth && !(testData.metadata["authMode"] == "bearer")) ||
-				(meta.enableBasicAuth && !(testData.metadata["authMode"] == "basic")) ||
-				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) {
+			if (meta.enableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
+				(meta.enableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
+				(meta.enableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
