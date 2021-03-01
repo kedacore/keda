@@ -201,12 +201,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
-	// Check for any duplicate names in scaledObject
-	err = r.validateMetricNameUniqueness(logger, scaledObject)
-	if err != nil {
-		return "Error checking metric name uniqueness", err
-	}
-
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
 	if err != nil {
@@ -225,6 +219,12 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
+		// Check for any duplicate names in scaledObject
+		err = r.validateMetricNameUniqueness(logger, scaledObject)
+		if err != nil {
+			return "Error checking metric name uniqueness", err
+		}
+
 		if r.requestScaleLoop(logger, scaledObject) != nil {
 			return "Failed to start a new scale loop with scaling logic", err
 		}
