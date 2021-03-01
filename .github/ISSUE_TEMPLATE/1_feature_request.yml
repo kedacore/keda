@@ -1,0 +1,19 @@
+name: Feature request 🧭
+about: Suggest an idea for this project
+labels: "needs-discussion,feature-request"
+issue_body: true
+body:
+- type: textarea
+  attributes:
+    label: Proposal
+    description: "What would you like to have as a feature"
+    placeholder: "A clear and concise description of what you want to happen."
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Use-Case
+    description: "How would this help you?"
+    placeholder: "Tell us more what you'd like to achieve."
+  validations:
+    required: false

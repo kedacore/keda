@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
+	"unicode"
 
 	"github.com/go-logr/logr"
 	version "github.com/kedacore/keda/v2/version"
@@ -58,6 +60,9 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 	labelName := getHPAName(scaledObject)
 	if len(labelName) > 63 {
 		labelName = labelName[:63]
+		labelName = strings.TrimRightFunc(labelName, func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+		})
 	}
 	labels := map[string]string{
 		"app.kubernetes.io/name":       labelName,
@@ -151,11 +156,17 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 			if metricSpec.Resource != nil {
 				resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 			}
+
 			if metricSpec.External != nil {
+				externalMetricName := metricSpec.External.Metric.Name
+				if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
+					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)
+				}
+
 				// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 				metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
 				metricSpec.External.Metric.Selector.MatchLabels["scaledObjectName"] = scaledObject.Name
-				externalMetricNames = append(externalMetricNames, metricSpec.External.Metric.Name)
+				externalMetricNames = append(externalMetricNames, externalMetricName)
 			}
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)

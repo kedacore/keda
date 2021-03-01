@@ -50,6 +50,10 @@ spec:
               path: /readyz
               port: 8081
             initialDelaySeconds: 20
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
           env:
             - name: WATCH_NAMESPACE
               value: ""

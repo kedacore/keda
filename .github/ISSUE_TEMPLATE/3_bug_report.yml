@@ -1,0 +1,91 @@
+name: Report a bug 🐛
+about: Create a report to help us improve
+labels: "bug"
+issue_body: true
+body:
+- type: textarea
+  attributes:
+    label: Report
+    description: "What bug have you encountered?"
+    placeholder: "A clear and concise description of what the bug is."
+- type: textarea
+  attributes:
+    label: Expected Behavior
+    description: What did you expect to happen?
+    placeholder: What did you expect to happen?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Actual Behavior
+    description: Also tell us, what did you see is happen?
+    placeholder: Tell us what you see that is happening
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to Reproduce the Problem
+    description: "How can we reproduce this bug? Please walk us through it step by step."
+    value: |
+      1.
+      2.
+      3.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Logs from KEDA operator
+    description: "Provide logs from KEDA operator, if need be."
+    value: |
+      ```
+      example
+      ```
+  validations:
+    required: false
+- type: dropdown
+  attributes:
+    label: KEDA Version
+    description: What version of KEDA that are you running?
+    options:
+    - "2.1.0"
+    - "2.0.0"
+    - "1.5.0"
+    - "< 1.5.0"
+    - "Other"
+  validations:
+    required: false
+- type: dropdown
+  attributes:
+    label: Kubernetes Version
+    description: What version of Kubernetes that are you running?
+    options:
+    - "1.20"
+    - "1.19"
+    - "1.18"
+    - "1.17"
+    - "1.16"
+    - "< 1.16"
+    - "Other"
+  validations:
+    required: false
+- type: dropdown
+  attributes:
+    label: Platform
+    description: Where is your cluster running?
+    options:
+    - Any
+    - Alibaba Cloud
+    - Amazon Web Services
+    - Google Cloud
+    - Microsoft Azure
+    - Red Hat OpenShift
+    - Other
+  validations:
+    required: false
+- type: input
+  attributes:
+    label: Scaler Details
+    description: What scaler are you using?
+    placeholder: ie. Azure Service Bus, Kafka, ...
+  validations:
+    required: false
