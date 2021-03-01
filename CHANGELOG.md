@@ -31,6 +31,7 @@
 - Fix a memory leak in kafka client and close push scalers ([#1565](https://github.com/kedacore/keda/issues/1565))
 - Add 'Metadata' header to AAD podIdentity request ([#1566](https://github.com/kedacore/keda/issues/1566))
 - KEDA should make sure generate correct labels for HPA ([#1630](https://github.com/kedacore/keda/issues/1630))
+- Close scalers after name check; fix memory leak ([#1636](https://github.com/kedacore/keda/issues/1636))
 
 ### Breaking Changes
 
