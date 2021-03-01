@@ -253,7 +253,10 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 func (s *mssqlScaler) getQueryResult() (int, error) {
 	var value int
 	err := s.connection.QueryRow(s.metadata.query).Scan(&value)
-	if err != nil {
+	switch {
+	case err == sql.ErrNoRows:
+		value = 0
+	case err != nil:
 		mssqlLog.Error(err, fmt.Sprintf("Could not query mssql database: %s", err))
 		return 0, err
 	}
