@@ -201,6 +201,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
+	// Check for any duplicate names in scaledObject
 	err = r.validateMetricNameUniqueness(logger, scaledObject)
 	if err != nil {
 		return "Error checking metric name uniqueness", err
@@ -260,6 +261,8 @@ func (r *ScaledObjectReconciler) validateMetricNameUniqueness(logger logr.Logger
 
 	observedMetricNames := make(map[string]struct{})
 	for _, scaler := range scalers {
+		defer scaler.Close()
+
 		for _, metric := range scaler.GetMetricSpecForScaling() {
 			// Only validate external metricNames
 			if metric.External == nil {
