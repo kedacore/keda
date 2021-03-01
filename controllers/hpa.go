@@ -156,11 +156,17 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 			if metricSpec.Resource != nil {
 				resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 			}
+
 			if metricSpec.External != nil {
+				externalMetricName := metricSpec.External.Metric.Name
+				if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
+					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)
+				}
+
 				// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 				metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
 				metricSpec.External.Metric.Selector.MatchLabels["scaledObjectName"] = scaledObject.Name
-				externalMetricNames = append(externalMetricNames, metricSpec.External.Metric.Name)
+				externalMetricNames = append(externalMetricNames, externalMetricName)
 			}
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
