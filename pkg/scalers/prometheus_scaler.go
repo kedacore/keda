@@ -9,7 +9,6 @@ import (
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -82,7 +81,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	if meta.enableTLS || len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error creating the TLS config: %s", err)
 		}
 
 		httpClient.Transport = &http.Transport{TLSClientConfig: config}
@@ -130,7 +129,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 		return &meta, nil
 	}
 
-	authType := authenticationType(strings.TrimSpace(authMode))
+	authType := authenticationType(authMode)
 	switch authType {
 	case bearerAuth:
 		if len(config.AuthParams["bearerToken"]) == 0 {
