@@ -161,8 +161,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 			if metricSpec.External != nil {
 				externalMetricName := metricSpec.External.Metric.Name
 				if util.Contains(externalMetricNames, externalMetricName) {
-					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metircName manually", externalMetricName, scaledObject.Name)
-				}
+					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)				}
 
 				// add the scaledObjectName label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 				metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
