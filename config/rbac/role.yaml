@@ -60,6 +60,13 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
+  - clustertriggerauthentications
+  - clustertriggerauthentications/status
+  verbs:
+  - '*'
+- apiGroups:
+  - keda.sh
+  resources:
   - scaledjobs
   - scaledjobs/finalizers
   - scaledjobs/status
@@ -76,8 +83,6 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
-  - clustertriggerauthentications
-  - clustertriggerauthentications/status
   - triggerauthentications
   - triggerauthentications/status
   verbs:

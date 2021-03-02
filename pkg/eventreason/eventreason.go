@@ -64,4 +64,10 @@ const (
 
 	// TriggerAuthenticationAdded is for event when a TriggerAuthentication is added
 	TriggerAuthenticationAdded = "TriggerAuthenticationAdded"
+
+	// ClusterTriggerAuthenticationDeleted is for event when a ClusterTriggerAuthentication is deleted
+	ClusterTriggerAuthenticationDeleted = "ClusterTriggerAuthenticationDeleted"
+
+	// ClusterTriggerAuthenticationAdded is for event when a ClusterTriggerAuthentication is added
+	ClusterTriggerAuthenticationAdded = "ClusterTriggerAuthenticationAdded"
 )

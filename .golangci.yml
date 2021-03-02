@@ -60,6 +60,11 @@ issues:
     - path: _finalizer.go
       linters:
         - interfacer
+  # Exclude for clustertriggerauthentication_controller and triggerauthentication_controller, reason:
+  # controllers/clustertriggerauthentication_controller.go:1: 1-59 lines are duplicate of `controllers/triggerauthentication_controller.go:1-58` (dupl)
+    - path: triggerauthentication_controller.go
+      linters:
+        - dupl
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
