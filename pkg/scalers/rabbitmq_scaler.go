@@ -25,7 +25,7 @@ const (
 	rabbitQueueLengthMetricName        = "queueLength"
 	rabbitPublishedPerSecondMetricName = "publishRate"
 	defaultRabbitMQQueueLength         = 20
-	defaultRabbitMQPublishRate         = 0 //Default to zero to disable publish rate metering for back compat.
+	defaultRabbitMQPublishRate         = 0 // Default to zero to disable publish rate metering for back compat.
 	rabbitMetricType                   = "External"
 )
 
@@ -166,19 +166,17 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.publishRate = defaultRabbitMQPublishRate
 	}
 
-	// Resolve queueLength
-	if val, ok := config.TriggerMetadata[rabbitQueueLengthMetricName]; ok {
+	val, ok := config.TriggerMetadata[rabbitQueueLengthMetricName]
+	switch {
+	case ok:
 		queueLength, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
 		}
-
 		meta.queueLength = queueLength
-		// If publishRate was explicitly specified then set queueLength to zero to disable
-	} else if meta.publishRate > 0 {
+	case meta.publishRate > 0:
 		meta.queueLength = 0
-		// Only default queue length if publishRate was not explicitly provided
-	} else {
+	default:
 		meta.queueLength = defaultRabbitMQQueueLength
 	}
 
@@ -322,24 +320,23 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 		}
 
 		return []v2beta2.MetricSpec{metricSpec}
-	} else {
-		targetMetricValue := resource.NewMilliQuantity(int64(s.metadata.publishRate*1000), resource.DecimalSI)
-
-		externalMetric := &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
-				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName)),
-			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
-		}
-		metricSpec := v2beta2.MetricSpec{
-			External: externalMetric, Type: rabbitMetricType,
-		}
-
-		return []v2beta2.MetricSpec{metricSpec}
 	}
+	targetMetricValue := resource.NewMilliQuantity(int64(s.metadata.publishRate*1000), resource.DecimalSI)
+
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName)),
+		},
+		Target: v2beta2.MetricTarget{
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
+		},
+	}
+	metricSpec := v2beta2.MetricSpec{
+		External: externalMetric, Type: rabbitMetricType,
+	}
+
+	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -357,14 +354,12 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		}
 
 		return append([]external_metrics.ExternalMetricValue{}, metric), nil
-	} else {
-		metric := external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
-
-		return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	}
+	metric := external_metrics.ExternalMetricValue{
+		MetricName: metricName,
+		Value:      *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI),
+		Timestamp:  metav1.Now(),
 	}
 
+	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
