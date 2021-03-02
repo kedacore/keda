@@ -20,7 +20,7 @@
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
+- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523) | [#1647](https://github.com/kedacore/keda/pull/1647))
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
 
 ### Improvements
