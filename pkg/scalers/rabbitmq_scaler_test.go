@@ -124,19 +124,19 @@ type getQueueInfoTestData struct {
 
 var testQueueInfoTestData = []getQueueInfoTestData{
 	// queueLength
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
 	// publishRate
-	{`{"messages": 0, "messages_unacknowledged": 0, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
 	// error response
 	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
@@ -144,12 +144,12 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
 
 var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":1743.2}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "publish_details":{"rate":0}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
 }
 
 func TestGetQueueInfo(t *testing.T) {

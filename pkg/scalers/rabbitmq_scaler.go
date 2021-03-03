@@ -52,10 +52,14 @@ type rabbitMQMetadata struct {
 }
 
 type queueInfo struct {
-	Messages               int           `json:"messages"`
-	MessagesUnacknowledged int           `json:"messages_unacknowledged"`
-	PublishDetail          publishDetail `json:"publish_details"`
-	Name                   string        `json:"name"`
+	Messages               int         `json:"messages"`
+	MessagesUnacknowledged int         `json:"messages_unacknowledged"`
+	MessageStat            messageStat `json:"message_stats"`
+	Name                   string      `json:"name"`
+}
+
+type messageStat struct {
+	PublishDetail publishDetail `json:"publish_details"`
 }
 
 type publishDetail struct {
@@ -242,7 +246,7 @@ func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 		}
 
 		// messages count includes count of ready and unack-ed
-		return info.Messages, info.PublishDetail.Rate, nil
+		return info.Messages, info.MessageStat.PublishDetail.Rate, nil
 	}
 
 	items, err := s.channel.QueueInspect(s.metadata.queueName)
