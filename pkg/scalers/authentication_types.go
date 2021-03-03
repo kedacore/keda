@@ -6,5 +6,4 @@ const (
 	apiKeyAuth authenticationType = "apiKey"
 	basicAuth  authenticationType = "basic"
 	tlsAuth    authenticationType = "tls"
-	bearerAuth authenticationType = "bearer"
 )
