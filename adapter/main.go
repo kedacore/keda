@@ -134,7 +134,7 @@ func main() {
 	}
 
 	ctrl.SetLogger(logger)
-	
+
 	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
 	if globalHTTPTimeoutStr == "" {
 		// default to 3 seconds if they don't pass the env var
