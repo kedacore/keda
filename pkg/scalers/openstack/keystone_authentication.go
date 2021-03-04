@@ -10,17 +10,41 @@ import (
 	"path"
 	"time"
 
+	openstackutil "github.com/kedacore/keda/v2/pkg/scalers/openstack/utils"
+
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const tokensEndpoint = "/auth/tokens"
+const tokensEndpoint = "/v3/auth/tokens"
+const catalogEndpoint = "/v3/auth/catalog"
 
-// KeystoneAuthMetadata contains all the necessary metadata for Keystone authentication
-type KeystoneAuthMetadata struct {
-	AuthURL    string       `json:"-"`
-	AuthToken  string       `json:"-"`
-	HTTPClient *http.Client `json:"-"`
-	Properties *authProps   `json:"auth"`
+// Client is a struct containing an authentication token and an HTTP client for HTTP requests.
+// It can also have a public URL for an specific OpenStack project or service.
+// "authMetadata" is an unexported attribute used to validate the current token or to renew it against Keystone when it is expired.
+type Client struct {
+	// Token is the authentication token for querying an OpenStack API.
+	Token string
+
+	// URL is the public URL for an OpenStack project.
+	URL string
+
+	// HTTPClient is the client used for launching HTTP requests.
+	HTTPClient *http.Client
+
+	// authMetadata contains the properties needed for retrieving an authentication token, renew it, and dinamically discover services public URLs from Keystone.
+	authMetadata *KeystoneAuthRequest
+}
+
+// KeystoneAuthRequest contains all the necessary metadata for building an authentication request for Keystone, the official OpenStack Identity Provider.
+type KeystoneAuthRequest struct {
+	// AuthURL is the Keystone URL.
+	AuthURL string `json:"-"`
+
+	// HTTPClientTimeout is the HTTP client for querying the OpenStack service API.
+	HTTPClientTimeout time.Duration `json:"-"`
+
+	// Properties contains the authentication metadata to build the body of a token request.
+	Properties *authProps `json:"auth"`
 }
 
 type authProps struct {
@@ -56,59 +80,34 @@ type projectProps struct {
 	ID string `json:"id"`
 }
 
-// GetToken retrieves a token from Keystone
-func (authProps *KeystoneAuthMetadata) GetToken() (string, error) {
-	jsonBody, jsonError := json.Marshal(authProps)
+type keystoneCatalog struct {
+	Catalog []service `json:"catalog"`
+}
 
-	if jsonError != nil {
-		return "", jsonError
-	}
+type service struct {
+	Endpoints []endpoint `json:"endpoints"`
+	Type      string     `json:"type"`
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+}
 
-	body := bytes.NewReader(jsonBody)
-
-	tokenURL, err := url.Parse(authProps.AuthURL)
-
-	if err != nil {
-		return "", fmt.Errorf("the authURL is invalid: %s", err.Error())
-	}
-
-	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
-
-	getTokenRequest, getTokenRequestError := http.NewRequest("POST", tokenURL.String(), body)
-
-	getTokenRequest.Header.Set("Content-Type", "application/json")
-
-	if getTokenRequestError != nil {
-		return "", getTokenRequestError
-	}
-
-	resp, requestError := authProps.HTTPClient.Do(getTokenRequest)
-
-	if requestError != nil {
-		return "", requestError
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		authProps.AuthToken = resp.Header["X-Subject-Token"][0]
-		return resp.Header["X-Subject-Token"][0], nil
-	}
-
-	errBody, readBodyErr := ioutil.ReadAll(resp.Body)
-
-	if readBodyErr != nil {
-		return "", readBodyErr
-	}
-
-	return "", fmt.Errorf(string(errBody))
+type endpoint struct {
+	URL       string `json:"url"`
+	Interface string `json:"interface"`
+	Region    string `json:"region"`
+	RegionID  string `json:"region_id"`
+	ID        string `json:"id"`
 }
 
 // IsTokenValid checks if a authentication token is valid
-func IsTokenValid(authProps KeystoneAuthMetadata) (bool, error) {
-	token := authProps.AuthToken
+func (client *Client) IsTokenValid() (bool, error) {
+	var token = client.Token
 
-	tokenURL, err := url.Parse(authProps.AuthURL)
+	if token == "" {
+		return false, fmt.Errorf("no authentication token provided")
+	}
+
+	tokenURL, err := url.Parse(client.authMetadata.AuthURL)
 
 	if err != nil {
 		return false, fmt.Errorf("the authURL is invalid: %s", err.Error())
@@ -116,34 +115,45 @@ func IsTokenValid(authProps KeystoneAuthMetadata) (bool, error) {
 
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
 
-	checkTokenRequest, checkRequestError := http.NewRequest("HEAD", tokenURL.String(), nil)
+	checkTokenRequest, err := http.NewRequest("HEAD", tokenURL.String(), nil)
 	checkTokenRequest.Header.Set("X-Subject-Token", token)
 	checkTokenRequest.Header.Set("X-Auth-Token", token)
 
-	if checkRequestError != nil {
-		return false, checkRequestError
+	if err != nil {
+		return false, err
 	}
 
-	checkResp, requestError := authProps.HTTPClient.Do(checkTokenRequest)
+	response, err := client.HTTPClient.Do(checkTokenRequest)
 
-	if requestError != nil {
-		return false, requestError
+	if err != nil {
+		return false, err
 	}
 
-	defer checkResp.Body.Close()
+	defer response.Body.Close()
 
-	if checkResp.StatusCode >= 400 {
+	if response.StatusCode >= 400 {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-// NewPasswordAuth creates a struct containing metadata for authentication using password method
-func NewPasswordAuth(authURL string, userID string, userPassword string, projectID string, httpTimeout int) (*KeystoneAuthMetadata, error) {
-	var tokenError error
+// RenewToken retrives another token from Keystone
+func (client *Client) RenewToken() error {
+	token, err := client.authMetadata.getToken()
 
-	passAuth := new(KeystoneAuthMetadata)
+	if err != nil {
+		return err
+	}
+
+	client.Token = token
+
+	return nil
+}
+
+// NewPasswordAuth creates a struct containing metadata for authentication using the password method
+func NewPasswordAuth(authURL string, userID string, userPassword string, projectID string, httpTimeout int) (*KeystoneAuthRequest, error) {
+	passAuth := new(KeystoneAuthRequest)
 
 	passAuth.Properties = new(authProps)
 
@@ -164,24 +174,21 @@ func NewPasswordAuth(authURL string, userID string, userPassword string, project
 
 	passAuth.AuthURL = url.String()
 
-	passAuth.HTTPClient = kedautil.CreateHTTPClient(time.Duration(httpTimeout) * time.Second)
+	passAuth.HTTPClientTimeout = time.Duration(httpTimeout) * time.Second
 
 	passAuth.Properties.Identity.Methods = []string{"password"}
+
 	passAuth.Properties.Identity.Password.User.ID = userID
 	passAuth.Properties.Identity.Password.User.Password = userPassword
 
 	passAuth.Properties.Scope.Project.ID = projectID
 
-	passAuth.AuthToken, tokenError = passAuth.GetToken()
-
-	return passAuth, tokenError
+	return passAuth, nil
 }
 
-// NewAppCredentialsAuth creates a struct containing metadata for authentication using application credentials method
-func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout int) (*KeystoneAuthMetadata, error) {
-	var tokenError error
-
-	appAuth := new(KeystoneAuthMetadata)
+// NewAppCredentialsAuth creates a struct containing metadata for authentication using the application credentials method
+func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout int) (*KeystoneAuthRequest, error) {
+	appAuth := new(KeystoneAuthRequest)
 
 	appAuth.Properties = new(authProps)
 
@@ -197,14 +204,203 @@ func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout
 
 	appAuth.AuthURL = url.String()
 
-	appAuth.HTTPClient = kedautil.CreateHTTPClient(time.Duration(httpTimeout) * time.Second)
-
 	appAuth.Properties.Identity.AppCredential = new(appCredentialProps)
 	appAuth.Properties.Identity.Methods = []string{"application_credential"}
 	appAuth.Properties.Identity.AppCredential.ID = id
 	appAuth.Properties.Identity.AppCredential.Secret = secret
 
-	appAuth.AuthToken, tokenError = appAuth.GetToken()
+	appAuth.HTTPClientTimeout = time.Duration(httpTimeout) * time.Second
 
-	return appAuth, tokenError
+	return appAuth, nil
+}
+
+// RequestClient returns a Client containing an HTTP client and a token.
+// If an OpenStack project name is provided as first parameter, it will try to retrieve its API URL using the current credentials.
+// If an OpenStack region or availability zone is provided as second parameter, it will retrieve the service API URL for that region.
+// Otherwise, if the service API URL was found, it retrieves the first public URL for that service.
+func (keystone *KeystoneAuthRequest) RequestClient(projectProps ...string) (Client, error) {
+	var client = Client{
+		HTTPClient:   kedautil.CreateHTTPClient(keystone.HTTPClientTimeout),
+		authMetadata: keystone,
+	}
+
+	token, err := keystone.getToken()
+
+	if err != nil {
+		return client, err
+	}
+
+	client.Token = token
+
+	var serviceURL string
+
+	switch len(projectProps) {
+	case 2:
+		serviceURL, err = keystone.getServiceURL(token, projectProps[0], projectProps[1])
+	case 1:
+		serviceURL, err = keystone.getServiceURL(token, projectProps[0], "")
+	default:
+		serviceURL = ""
+	}
+
+	if err != nil {
+		return client, fmt.Errorf("scaler could not find the service URL dinamically. Either provide it in the scaler parameters or check your OpenStack configuration: %s", err.Error())
+	}
+
+	client.URL = serviceURL
+
+	return client, nil
+}
+
+func (keystone *KeystoneAuthRequest) getToken() (string, error) {
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+
+	jsonBody, err := json.Marshal(keystone)
+
+	if err != nil {
+		return "", err
+	}
+
+	jsonBodyReader := bytes.NewReader(jsonBody)
+
+	tokenURL, err := url.Parse(keystone.AuthURL)
+
+	if err != nil {
+		return "", fmt.Errorf("the authURL is invalid: %s", err.Error())
+	}
+
+	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
+
+	tokenRequest, err := http.NewRequest("POST", tokenURL.String(), jsonBodyReader)
+
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := httpClient.Do(tokenRequest)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return resp.Header["X-Subject-Token"][0], nil
+	}
+
+	errBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return "", err
+	}
+
+	return "", fmt.Errorf(string(errBody))
+}
+
+// getCatalog retrives the OpenStack catalog according to the current authorization
+func (keystone *KeystoneAuthRequest) getCatalog(token string) ([]service, error) {
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+
+	catalogURL, err := url.Parse(keystone.AuthURL)
+
+	if err != nil {
+		return nil, fmt.Errorf("the authURL is invalid: %s", err.Error())
+	}
+
+	catalogURL.Path = path.Join(catalogURL.Path, catalogEndpoint)
+
+	getCatalog, err := http.NewRequest("GET", catalogURL.String(), nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	getCatalog.Header.Set("X-Auth-Token", token)
+
+	resp, err := httpClient.Do(getCatalog)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		var keystoneCatalog = keystoneCatalog{}
+
+		err := json.NewDecoder(resp.Body).Decode(&keystoneCatalog)
+
+		if err != nil {
+			return nil, fmt.Errorf("error parsing the catalog resquest response body: %s", err.Error())
+		}
+
+		return keystoneCatalog.Catalog, nil
+	}
+
+	errBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf(string(errBody))
+}
+
+// getServiceURL retrieves a public URL for an OpenStack project from the OpenStack catalog
+func (keystone *KeystoneAuthRequest) getServiceURL(token string, projectName string, region string) (string, error) {
+	serviceTypes, err := openstackutil.GetServiceTypes(projectName)
+
+	if err != nil {
+		return "", err
+	}
+
+	serviceCatalog, err := keystone.getCatalog(token)
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(serviceCatalog) == 0 {
+		return "", fmt.Errorf("no catalog provided based upon the current authorization. Service URL cannot be dinamically retrieved")
+	}
+
+	for _, serviceType := range serviceTypes {
+		for _, service := range serviceCatalog {
+			if serviceType == service.Type {
+				for _, endpoint := range service.Endpoints {
+					if endpoint.Interface == "public" {
+						if region != "" {
+							if endpoint.Region == region {
+								return endpoint.URL, nil
+							}
+							continue
+						}
+						return endpoint.URL, nil
+					}
+				}
+				return "", fmt.Errorf("service '%s' does not have a public URL or the public URL for a specific region is not registered in the catalog", projectName)
+			}
+		}
+	}
+
+	// If getServiceTypes() timed-out or failed or if serviceType is not in the catalog, try to find by project name
+	for _, service := range serviceCatalog {
+		if projectName == service.Name {
+			for _, endpoint := range service.Endpoints {
+				if endpoint.Interface == "public" {
+					if region != "" {
+						if endpoint.Region == region {
+							return endpoint.URL, nil
+						}
+						continue
+					}
+					return endpoint.URL, nil
+				}
+			}
+			return "", fmt.Errorf("service '%s' does not have a public URL or the public URL for a specific region is not registered in the catalog", projectName)
+		}
+	}
+
+	return "", fmt.Errorf("service '%s' not found in catalog. Please, provide different credentials or reach to your OpenStack cluster manager", projectName)
 }
