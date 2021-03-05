@@ -21,11 +21,13 @@ import (
 )
 
 const (
-	rabbitQueueLengthMetricName        = "queueLength"
-	rabbitPublishedPerSecondMetricName = "publishRate"
-	defaultRabbitMQQueueLength         = 20
-	defaultRabbitMQPublishRate         = 0 // Default to zero to disable publish rate metering for back compat.
-	rabbitMetricType                   = "External"
+	rabbitQueueLengthMetricName  = "queueLength"
+	rabbitModeTriggerConfigName  = "mode"
+	rabbitValueTriggerConfigName = "value"
+	rabbitModeQueueLength        = "QueueLength"
+	rabbitModeMessageRate        = "MessageRate"
+	defaultRabbitMQQueueLength   = 20
+	rabbitMetricType             = "External"
 )
 
 const (
@@ -43,12 +45,12 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	queueLength int
-	publishRate float64 // Publish/sec. rate on the queue, requires HTTP protocol
-	host        string  // connection string for either HTTP or AMQP protocol
-	protocol    string  // either http or amqp protocol
-	vhostName   *string // override the vhost from the connection info
+	queueName string
+	mode      string  // QueueLength or MessageRate
+	value     int     // trigger value (queue length or publish/sec. rate)
+	host      string  // connection string for either HTTP or AMQP protocol
+	protocol  string  // either http or amqp protocol
+	vhostName *string // override the vhost from the connection info
 }
 
 type queueInfo struct {
@@ -157,43 +159,65 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	// Resolve publishRate
-	if val, ok := config.TriggerMetadata[rabbitPublishedPerSecondMetricName]; ok {
-		publishRate, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitPublishedPerSecondMetricName, err)
-		}
-
-		meta.publishRate = publishRate
-	} else {
-		meta.publishRate = defaultRabbitMQPublishRate
-	}
-
-	val, ok := config.TriggerMetadata[rabbitQueueLengthMetricName]
-	switch {
-	case ok:
-		queueLength, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
-		}
-		meta.queueLength = queueLength
-	case meta.publishRate > 0:
-		meta.queueLength = 0
-	default:
-		meta.queueLength = defaultRabbitMQQueueLength
-	}
-
-	if meta.publishRate > 0 && meta.queueLength > 0 {
-		return nil, fmt.Errorf("only one of queueLength or publishRate can be specified; use two separate triggers if both are desired")
-	}
-
-	if meta.publishRate > 0 && meta.protocol != httpProtocol {
-		return nil, fmt.Errorf("protocol %s not supported; must be http to use publishRate", meta.protocol)
-	}
-
 	// Resolve vhostName
 	if val, ok := config.TriggerMetadata["vhostName"]; ok {
 		meta.vhostName = &val
+	}
+
+	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
+	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
+	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]
+
+	// Initialize to default trigger settings
+	meta.mode = rabbitModeQueueLength
+	meta.value = defaultRabbitMQQueueLength
+
+	// If nothing is specified for the trigger then return the default
+	if !deprecatedQueueLengthPresent && !modePresent && !valuePresent {
+		return &meta, nil
+	}
+
+	// Only allow one of `queueLength` or `mode`/`value`
+	if deprecatedQueueLengthPresent && (modePresent || valuePresent) {
+		return nil, fmt.Errorf("queueLength is deprecated; configure only %s and %s", rabbitModeTriggerConfigName, rabbitValueTriggerConfigName)
+	}
+
+	// Parse deprecated `queueLength` value
+	if deprecatedQueueLengthPresent {
+		queueLength, err := strconv.Atoi(deprecatedQueueLengthValue)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+		}
+		meta.mode = rabbitModeQueueLength
+		meta.value = queueLength
+
+		return &meta, nil
+	}
+
+	if !modePresent {
+		return nil, fmt.Errorf("%s must be specified", rabbitModeTriggerConfigName)
+	}
+	if !valuePresent {
+		return nil, fmt.Errorf("%s must be specified", rabbitValueTriggerConfigName)
+	}
+
+	// Resolve trigger mode
+	switch mode {
+	case rabbitModeQueueLength:
+		meta.mode = rabbitModeQueueLength
+	case rabbitModeMessageRate:
+		meta.mode = rabbitModeMessageRate
+	default:
+		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", mode, rabbitModeQueueLength, rabbitModeMessageRate)
+	}
+	triggerValue, err := strconv.Atoi(value)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
+	}
+	meta.value = triggerValue
+
+	if meta.mode == rabbitModeMessageRate && meta.protocol != httpProtocol {
+		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
 	}
 
 	return &meta, nil
@@ -232,10 +256,10 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting rabbitMQ: %s", err)
 	}
 
-	if s.metadata.queueLength > 0 {
+	if s.metadata.mode == rabbitModeQueueLength {
 		return messages > 0, nil
 	}
-	return publishRate > 0, nil
+	return publishRate > 0 || messages > 0, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
@@ -307,14 +331,13 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	var metricName string
-	var metricValue *resource.Quantity
-	if s.metadata.queueLength > 0 {
+
+	if s.metadata.mode == rabbitModeQueueLength {
 		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName))
-		metricValue = resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	} else {
 		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", s.metadata.queueName))
-		metricValue = resource.NewMilliQuantity(int64(s.metadata.publishRate*1000), resource.DecimalSI)
 	}
+	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -340,7 +363,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	var metricValue resource.Quantity
-	if s.metadata.queueLength > 0 {
+	if s.metadata.mode == rabbitModeQueueLength {
 		metricValue = *resource.NewQuantity(int64(messages), resource.DecimalSI)
 	} else {
 		metricValue = *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI)

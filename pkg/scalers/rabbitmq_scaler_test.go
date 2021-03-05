@@ -58,18 +58,32 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueName": "sample", "host": "http://"}, false, map[string]string{}},
 	// auto protocol and an HTTPS URL
 	{map[string]string{"queueName": "sample", "host": "https://"}, false, map[string]string{}},
-	// publishRate number
-	{map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueName": "sample", "host": "https://"}, false, map[string]string{}},
-	// publishRate not number
-	{map[string]string{rabbitPublishedPerSecondMetricName: "AA", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
-	// publishRate http
-	{map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueName": "sample", "host": "http://"}, false, map[string]string{}},
-	// publishRate amqp
-	{map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueName": "sample", "host": "amqp://"}, true, map[string]string{}},
-	// publishRate amqps
-	{map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueName": "sample", "host": "amqps://"}, true, map[string]string{}},
-	// publishRate and queueLength
-	{map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "10", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// queueLength and mode
+	{map[string]string{"queueLength": "10", "mode": "QueueLength", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// queueLength and value
+	{map[string]string{"queueLength": "10", "value": "20", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// queueLength and mode and value
+	{map[string]string{"queueLength": "10", "mode": "QueueLength", "value": "20", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// only mode
+	{map[string]string{"mode": "QueueLength", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// only value
+	{map[string]string{"value": "20", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// mode and value
+	{map[string]string{"mode": "QueueLength", "value": "20", "queueName": "sample", "host": "https://"}, false, map[string]string{}},
+	// invalid mode
+	{map[string]string{"mode": "Feelings", "value": "20", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// invalid value
+	{map[string]string{"mode": "QueueLength", "value": "lots", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
+	// queue length amqp
+	{map[string]string{"mode": "QueueLength", "value": "20", "queueName": "sample", "host": "amqps://"}, false, map[string]string{}},
+	// message rate amqp
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "amqps://"}, true, map[string]string{}},
+	// message rate amqp
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "amqp://"}, true, map[string]string{}},
+	// message rate amqp
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://"}, false, map[string]string{}},
+	// message rate amqp
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "https://"}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -94,8 +108,6 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
 	// use default queueLength with includeUnacked
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, false, map[string]string{}},
-	// use default queueLength with includeUnacked
-	{map[string]string{"queueName": "sample", rabbitPublishedPerSecondMetricName: "100", "hostFromEnv": host, "protocol": "http"}, false, map[string]string{}},
 }
 
 func TestParseDefaultQueueLength(t *testing.T) {
@@ -106,10 +118,8 @@ func TestParseDefaultQueueLength(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		case metadata.publishRate > 0 && metadata.queueLength != 0:
-			t.Error("Expected default queueLength = 0 when publishRate is specified")
-		case metadata.publishRate == 0 && metadata.queueLength != defaultRabbitMQQueueLength:
-			t.Error("Expected default queueLength =", defaultRabbitMQQueueLength, "but got", metadata.queueLength)
+		case metadata.value != defaultRabbitMQQueueLength:
+			t.Error("Expected default queueLength =", defaultRabbitMQQueueLength, "but got", metadata.value)
 		}
 	}
 }
@@ -124,19 +134,32 @@ type getQueueInfoTestData struct {
 
 var testQueueInfoTestData = []getQueueInfoTestData{
 	// queueLength
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, nil, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, nil, ""},
-	// publishRate
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{rabbitPublishedPerSecondMetricName: "100", "queueLength": "0"}, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"queueLength": "10"}, ""},
+	// mode QueueLength
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	// mode MessageRate
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
+	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
 	// error response
 	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
@@ -187,7 +210,6 @@ func TestGetQueueInfo(t *testing.T) {
 		resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, testData.vhostPath), "plainHost": apiStub.URL}
 
 		metadata := map[string]string{
-			"queueLength": "10",
 			"queueName":   "evaluate_trials",
 			"hostFromEnv": host,
 			"protocol":    "http",
