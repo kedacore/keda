@@ -164,6 +164,15 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = &val
 	}
 
+	_, err := parseTrigger(&meta, config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+	}
+
+	return &meta, nil
+}
+
+func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetadata, error) {
 	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
 	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
 	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]
@@ -174,7 +183,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// If nothing is specified for the trigger then return the default
 	if !deprecatedQueueLengthPresent && !modePresent && !valuePresent {
-		return &meta, nil
+		return meta, nil
 	}
 
 	// Only allow one of `queueLength` or `mode`/`value`
@@ -191,7 +200,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.mode = rabbitModeQueueLength
 		meta.value = queueLength
 
-		return &meta, nil
+		return meta, nil
 	}
 
 	if !modePresent {
@@ -220,7 +229,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
 	}
 
-	return &meta, nil
+	return meta, nil
 }
 
 func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
