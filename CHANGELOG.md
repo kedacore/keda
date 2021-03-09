@@ -36,6 +36,7 @@
 - Fixed keda clusterroles to give permissions for clustertriggerauthentications ([#1645](https://github.com/kedacore/keda/pull/1645))
 - Make `swiftURL` parameter optional for the OpenStack Swift scaler ([#1652](https://github.com/kedacore/keda/pull/1652))
 - Fix memory leak of `keda-metrics-apiserver` by setting a controller-runtime logger properly ([#1654](https://github.com/kedacore/keda/pull/1654))
+- Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
 
 ### Breaking Changes
 
