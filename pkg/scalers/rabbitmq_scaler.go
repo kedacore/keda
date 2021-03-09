@@ -21,9 +21,13 @@ import (
 )
 
 const (
-	rabbitQueueLengthMetricName = "queueLength"
-	defaultRabbitMQQueueLength  = 20
-	rabbitMetricType            = "External"
+	rabbitQueueLengthMetricName  = "queueLength"
+	rabbitModeTriggerConfigName  = "mode"
+	rabbitValueTriggerConfigName = "value"
+	rabbitModeQueueLength        = "QueueLength"
+	rabbitModeMessageRate        = "MessageRate"
+	defaultRabbitMQQueueLength   = 20
+	rabbitMetricType             = "External"
 )
 
 const (
@@ -41,17 +45,27 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	queueLength int
-	host        string  // connection string for either HTTP or AMQP protocol
-	protocol    string  // either http or amqp protocol
-	vhostName   *string // override the vhost from the connection info
+	queueName string
+	mode      string  // QueueLength or MessageRate
+	value     int     // trigger value (queue length or publish/sec. rate)
+	host      string  // connection string for either HTTP or AMQP protocol
+	protocol  string  // either http or amqp protocol
+	vhostName *string // override the vhost from the connection info
 }
 
 type queueInfo struct {
-	Messages               int    `json:"messages"`
-	MessagesUnacknowledged int    `json:"messages_unacknowledged"`
-	Name                   string `json:"name"`
+	Messages               int         `json:"messages"`
+	MessagesUnacknowledged int         `json:"messages_unacknowledged"`
+	MessageStat            messageStat `json:"message_stats"`
+	Name                   string      `json:"name"`
+}
+
+type messageStat struct {
+	PublishDetail publishDetail `json:"publish_details"`
+}
+
+type publishDetail struct {
+	Rate float64 `json:"rate"`
 }
 
 var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
@@ -145,24 +159,77 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("no queue name given")
 	}
 
-	// Resolve queueLength
-	if val, ok := config.TriggerMetadata[rabbitQueueLengthMetricName]; ok {
-		queueLength, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
-		}
-
-		meta.queueLength = queueLength
-	} else {
-		meta.queueLength = defaultRabbitMQQueueLength
-	}
-
 	// Resolve vhostName
 	if val, ok := config.TriggerMetadata["vhostName"]; ok {
 		meta.vhostName = &val
 	}
 
+	_, err := parseTrigger(&meta, config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+	}
+
 	return &meta, nil
+}
+
+func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetadata, error) {
+	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
+	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
+	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]
+
+	// Initialize to default trigger settings
+	meta.mode = rabbitModeQueueLength
+	meta.value = defaultRabbitMQQueueLength
+
+	// If nothing is specified for the trigger then return the default
+	if !deprecatedQueueLengthPresent && !modePresent && !valuePresent {
+		return meta, nil
+	}
+
+	// Only allow one of `queueLength` or `mode`/`value`
+	if deprecatedQueueLengthPresent && (modePresent || valuePresent) {
+		return nil, fmt.Errorf("queueLength is deprecated; configure only %s and %s", rabbitModeTriggerConfigName, rabbitValueTriggerConfigName)
+	}
+
+	// Parse deprecated `queueLength` value
+	if deprecatedQueueLengthPresent {
+		queueLength, err := strconv.Atoi(deprecatedQueueLengthValue)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+		}
+		meta.mode = rabbitModeQueueLength
+		meta.value = queueLength
+
+		return meta, nil
+	}
+
+	if !modePresent {
+		return nil, fmt.Errorf("%s must be specified", rabbitModeTriggerConfigName)
+	}
+	if !valuePresent {
+		return nil, fmt.Errorf("%s must be specified", rabbitValueTriggerConfigName)
+	}
+
+	// Resolve trigger mode
+	switch mode {
+	case rabbitModeQueueLength:
+		meta.mode = rabbitModeQueueLength
+	case rabbitModeMessageRate:
+		meta.mode = rabbitModeMessageRate
+	default:
+		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", mode, rabbitModeQueueLength, rabbitModeMessageRate)
+	}
+	triggerValue, err := strconv.Atoi(value)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
+	}
+	meta.value = triggerValue
+
+	if meta.mode == rabbitModeMessageRate && meta.protocol != httpProtocol {
+		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
+	}
+
+	return meta, nil
 }
 
 func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
@@ -193,31 +260,34 @@ func (s *rabbitMQScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueueMessages()
+	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
 		return false, fmt.Errorf("error inspecting rabbitMQ: %s", err)
 	}
 
-	return messages > 0, nil
+	if s.metadata.mode == rabbitModeQueueLength {
+		return messages > 0, nil
+	}
+	return publishRate > 0 || messages > 0, nil
 }
 
-func (s *rabbitMQScaler) getQueueMessages() (int, error) {
+func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 	if s.metadata.protocol == httpProtocol {
 		info, err := s.getQueueInfoViaHTTP()
 		if err != nil {
-			return -1, err
+			return -1, -1, err
 		}
 
 		// messages count includes count of ready and unack-ed
-		return info.Messages, nil
+		return info.Messages, info.MessageStat.PublishDetail.Rate, nil
 	}
 
 	items, err := s.channel.QueueInspect(s.metadata.queueName)
 	if err != nil {
-		return -1, err
+		return -1, -1, err
 	}
 
-	return items.Messages, nil
+	return items.Messages, 0, nil
 }
 
 func getJSON(httpClient *http.Client, url string, target interface{}) error {
@@ -269,32 +339,48 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
+	var metricName string
+
+	if s.metadata.mode == rabbitModeQueueLength {
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName))
+	} else {
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", s.metadata.queueName))
+	}
+	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName)),
+			Name: metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
+			AverageValue: metricValue,
 		},
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,
 	}
+
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	messages, err := s.getQueueMessages()
+	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting rabbitMQ: %s", err)
 	}
 
+	var metricValue resource.Quantity
+	if s.metadata.mode == rabbitModeQueueLength {
+		metricValue = *resource.NewQuantity(int64(messages), resource.DecimalSI)
+	} else {
+		metricValue = *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI)
+	}
+
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
+		Value:      metricValue,
 		Timestamp:  metav1.Now(),
 	}
 
