@@ -26,7 +26,7 @@ type pulsarScaler struct {
 }
 
 type pulsarMetadata struct {
-	statsUrl            string
+	statsURL            string
 	tenant              string
 	namespace           string
 	topic               string
@@ -48,7 +48,7 @@ const (
 
 var pulsarLog = logf.Log.WithName("pulsar_scaler")
 
-type Subscription struct {
+type pulsarSubscription struct {
 	Msgrateout                       float64       `json:"msgRateOut"`
 	Msgthroughputout                 float64       `json:"msgThroughputOut"`
 	Bytesoutcounter                  int           `json:"bytesOutCounter"`
@@ -72,21 +72,22 @@ type Subscription struct {
 	Consumersaftermarkdeleteposition struct {
 	} `json:"consumersAfterMarkDeletePosition"`
 }
-type Stats struct {
-	Msgratein         float64                 `json:"msgRateIn"`
-	Msgthroughputin   float64                 `json:"msgThroughputIn"`
-	Msgrateout        float64                 `json:"msgRateOut"`
-	Msgthroughputout  float64                 `json:"msgThroughputOut"`
-	Bytesincounter    int                     `json:"bytesInCounter"`
-	Msgincounter      int                     `json:"msgInCounter"`
-	Bytesoutcounter   int                     `json:"bytesOutCounter"`
-	Msgoutcounter     int                     `json:"msgOutCounter"`
-	Averagemsgsize    float64                 `json:"averageMsgSize"`
-	Msgchunkpublished bool                    `json:"msgChunkPublished"`
-	Storagesize       int                     `json:"storageSize"`
-	Backlogsize       int                     `json:"backlogSize"`
-	Publishers        []interface{}           `json:"publishers"`
-	Subscriptions     map[string]Subscription `json:"subscriptions"`
+
+type pulsarStats struct {
+	Msgratein         float64                       `json:"msgRateIn"`
+	Msgthroughputin   float64                       `json:"msgThroughputIn"`
+	Msgrateout        float64                       `json:"msgRateOut"`
+	Msgthroughputout  float64                       `json:"msgThroughputOut"`
+	Bytesincounter    int                           `json:"bytesInCounter"`
+	Msgincounter      int                           `json:"msgInCounter"`
+	Bytesoutcounter   int                           `json:"bytesOutCounter"`
+	Msgoutcounter     int                           `json:"msgOutCounter"`
+	Averagemsgsize    float64                       `json:"averageMsgSize"`
+	Msgchunkpublished bool                          `json:"msgChunkPublished"`
+	Storagesize       int                           `json:"storageSize"`
+	Backlogsize       int                           `json:"backlogSize"`
+	Publishers        []interface{}                 `json:"publishers"`
+	Subscriptions     map[string]pulsarSubscription `json:"subscriptions"`
 	Replication       struct {
 	} `json:"replication"`
 	Deduplicationstatus string `json:"deduplicationStatus"`
@@ -133,10 +134,8 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 			Certificates:       []tls.Certificate{cert},
 			RootCAs:            rootCAs,
 		}
-		//tlsConfig.BuildNameToCertificate()
 		transport := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: transport}
-
 	}
 
 	return &pulsarScaler{
@@ -148,12 +147,12 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
-	case config.TriggerMetadata["statsUrlFromEnv"] != "":
-		meta.statsUrl = config.ResolvedEnv[config.TriggerMetadata["statsUrlFromEnv"]]
-	case config.TriggerMetadata["statsUrl"] != "":
-		meta.statsUrl = config.TriggerMetadata["statsUrl"]
+	case config.TriggerMetadata["statsURLFromEnv"] != "":
+		meta.statsURL = config.ResolvedEnv[config.TriggerMetadata["statsURLFromEnv"]]
+	case config.TriggerMetadata["statsURL"] != "":
+		meta.statsURL = config.TriggerMetadata["statsURL"]
 	default:
-		return meta, errors.New("no statsUrl given")
+		return meta, errors.New("no statsURL given")
 	}
 
 	switch {
@@ -223,14 +222,13 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
 	}
-
 	return meta, nil
 }
 
-func (s *pulsarScaler) GetStats() (*Stats, error) {
-	stats := new(Stats)
+func (s *pulsarScaler) GetStats() (*pulsarStats, error) {
+	stats := new(pulsarStats)
 
-	req, err := http.NewRequest("GET", s.metadata.statsUrl, nil)
+	req, err := http.NewRequest("GET", s.metadata.statsURL, nil)
 	if err != nil {
 		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
@@ -263,11 +261,9 @@ func (s *pulsarScaler) GetStats() (*Stats, error) {
 		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
-
 }
 
 func (s *pulsarScaler) getMsgBackLog() (int, bool, error) {
-
 	stats, err := s.GetStats()
 	if err != nil {
 		return 0, false, err
@@ -284,7 +280,6 @@ func (s *pulsarScaler) getMsgBackLog() (int, bool, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *pulsarScaler) IsActive(_ context.Context) (bool, error) {
-
 	msgBackLog, found, err := s.getMsgBackLog()
 	if err != nil {
 		return false, err
@@ -301,7 +296,6 @@ func (s *pulsarScaler) IsActive(_ context.Context) (bool, error) {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *pulsarScaler) GetMetrics(_ context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-
 	msgBacklog, found, err := s.getMsgBackLog()
 	if err != nil {
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
@@ -320,7 +314,6 @@ func (s *pulsarScaler) GetMetrics(_ context.Context, metricName string, _ labels
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-
 }
 
 func (s *pulsarScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
