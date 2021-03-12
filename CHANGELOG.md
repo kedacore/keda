@@ -22,6 +22,7 @@
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
+- Add Apache Pulsar scaler ([#853](https://github.com/kedacore/keda/issues/853) | [docs](https://keda.sh/docs/2.2/scalers/pulsar/))
 
 ### Improvements
 
