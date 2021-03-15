@@ -24,8 +24,15 @@ import (
 )
 
 const (
-	awsSqsQueueMetricName    = "ApproximateNumberOfMessages"
 	targetQueueLengthDefault = 5
+)
+
+var (
+	awsSqsQueueMetricNames = []string{
+		"ApproximateNumberOfMessages",
+		"ApproximateNumberOfMessagesNotVisible",
+	}
+	sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 )
 
 type awsSqsQueueScaler struct {
@@ -39,8 +46,6 @@ type awsSqsQueueMetadata struct {
 	awsRegion         string
 	awsAuthorization  awsAuthorizationMetadata
 }
-
-var sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
@@ -154,7 +159,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 // Get SQS Queue Length
 func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: aws.StringSlice([]string{awsSqsQueueMetricName}),
+		AttributeNames: aws.StringSlice(awsSqsQueueMetricNames),
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
@@ -185,9 +190,13 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		return -1, err
 	}
 
-	approximateNumberOfMessages, err := strconv.ParseInt(*output.Attributes[awsSqsQueueMetricName], 10, 32)
-	if err != nil {
-		return -1, err
+	var approximateNumberOfMessages int64
+	for _, awsSqsQueueMetric := range awsSqsQueueMetricNames {
+		metricValue, err := strconv.ParseInt(*output.Attributes[awsSqsQueueMetric], 10, 32)
+		if err != nil {
+			return -1, err
+		}
+		approximateNumberOfMessages += metricValue
 	}
 
 	return int32(approximateNumberOfMessages), nil
