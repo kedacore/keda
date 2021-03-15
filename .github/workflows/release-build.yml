@@ -26,6 +26,16 @@ jobs:
       - name: Go modules sync
         run: go mod tidy
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          # Username used to log in to a Docker registry. If not set then no login will occur
+          username: ${{ github.repository_owner }}
+          # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
+          password: ${{ secrets.GHCR_AUTH_PAT }}
+          # Server address of Docker registry. If not set then will default to Docker Hub
+          registry: ghcr.io
+
       - name: Login to Docker Hub
         env:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -41,8 +51,13 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Publish KEDA images to Docker Hub
+      - name: Publish KEDA images on GitHub Container Registry
         run: make publish
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Publish KEDA images on Docker Hub
+        run: make publish-dockerhub
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
