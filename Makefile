@@ -2,7 +2,7 @@
 # Variables                                      #
 ##################################################
 VERSION		   ?= main
-IMAGE_REGISTRY ?= docker.io
+IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
@@ -70,15 +70,24 @@ publish: docker-build
 	docker push $(IMAGE_CONTROLLER)
 	docker push $(IMAGE_ADAPTER)
 
+# Mirror images on Docker Hub
+.PHONY: publish-dockerhub
+publish-dockerhub:
+	docker tag $(IMAGE_CONTROLLER) docker.io/$(IMAGE_REPO)/keda:$(VERSION)
+	docker tag $(IMAGE_ADAPTER) docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
+	docker push docker.io/$(IMAGE_REPO)/keda:$(VERSION)
+	docker push docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
+
+
 ##################################################
 # Release                                        #
 ##################################################
 .PHONY: release
 release: manifests kustomize set-version
 	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
@@ -110,9 +119,9 @@ uninstall: manifests kustomize
 .PHONY: deploy
 deploy: manifests kustomize
 	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -

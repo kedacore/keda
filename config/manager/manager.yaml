@@ -25,7 +25,7 @@ spec:
       serviceAccountName: keda-operator
       containers:
         - name: keda-operator
-          image: docker.io/kedacore/keda:latest
+          image: ghcr.io/kedacore/keda:latest
           command:
             - /keda
           args:
