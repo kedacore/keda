@@ -107,14 +107,14 @@ If you want to change KEDA's behaviour, or if you have created a new scaler (mor
 to deploy it as part of KEDA. Do the following:
 
 1. Make your change in the code.
-2. Build and publish on Docker Hub images with your changes, `IMAGE_REPO` should point to your repository
- (specifying `IMAGE_REGISTRY` as well allows you to use registry of your choice eg. quay.io).
+2. Build and publish images with your changes, `IMAGE_REPO` should point to your repository,
+`IMAGE_REGISTRY` allows you to use registry of your choice eg. quay.io, default is `ghcr.io`
    ```bash
-   IMAGE_REPO=johndoe make publish
+   IMAGE_REGISTRY=docker.io IMAGE_REPO=johndoe make publish
    ```
 3. Deploy KEDA with your custom images.
    ```bash
-   IMAGE_REPO=johndoe make deploy
+   IMAGE_REGISTRY=docker.io IMAGE_REPO=johndoe make deploy
    ```
 4. Once the KEDA pods are up, check the logs to verify everything running ok, eg:
     ```bash

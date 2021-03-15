@@ -22,7 +22,7 @@ spec:
       serviceAccountName: keda-operator
       containers:
         - name: keda-metrics-apiserver
-          image: docker.io/kedacore/keda-metrics-apiserver:latest
+          image: ghcr.io/kedacore/keda-metrics-apiserver:latest
           imagePullPolicy: Always
           resources:
             requests:
