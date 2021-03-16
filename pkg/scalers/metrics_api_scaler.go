@@ -172,39 +172,46 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
-func GetValueFromResponse(body []byte, valueLocation string) (int64, error) {
+func GetValueFromResponse(body []byte, valueLocation string) (*resource.Quantity, error) {
 	r := gjson.GetBytes(body, valueLocation)
-	if r.Type != gjson.Number {
-		msg := fmt.Sprintf("valueLocation must point to value of type number got: %s", r.Type.String())
-		return 0, errors.New(msg)
+	errorMsg := "valueLocation must point to value of type number or a string representing a Quanitity got: '%s'"
+	if r.Type == gjson.String {
+		q, err := resource.ParseQuantity(r.String())
+		if err != nil {
+			return nil, fmt.Errorf(errorMsg, r.String())
+		}
+		return &q, nil
 	}
-	return int64(r.Num), nil
+	if r.Type != gjson.Number {
+		return nil, fmt.Errorf(errorMsg, r.Type.String())
+	}
+	return resource.NewQuantity(int64(r.Num), resource.DecimalSI), nil
 }
 
-func (s *metricsAPIScaler) getMetricValue() (int64, error) {
+func (s *metricsAPIScaler) getMetricValue() (*resource.Quantity, error) {
 	request, err := getMetricAPIServerRequest(s.metadata)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	r, err := s.client.Do(request)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if r.StatusCode != http.StatusOK {
 		msg := fmt.Sprintf("api returned %d", r.StatusCode)
-		return 0, errors.New(msg)
+		return nil, errors.New(msg)
 	}
 
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	v, err := GetValueFromResponse(b, s.metadata.valueLocation)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	return v, nil
 }
@@ -222,7 +229,7 @@ func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return v > 0.0, nil
+	return v.AsApproximateFloat64() > 0.0, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -253,7 +260,7 @@ func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, me
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(v, resource.DecimalSI),
+		Value:      *v,
 		Timestamp:  metav1.Now(),
 	}
 
