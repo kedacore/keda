@@ -25,7 +25,7 @@ func (g GinkgoTestReporter) Fatalf(format string, args ...interface{}) {
 
 var _ = Describe("ScaledObjectController", func() {
 	var (
-		testLogger = zap.LoggerTo(GinkgoWriter, true)
+		testLogger = zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter))
 	)
 
 	Describe("Metric Names", func() {
