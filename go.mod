@@ -55,7 +55,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1
 	k8s.io/metrics v0.20.4
 	knative.dev/pkg v0.0.0-20210315160101-6a33a1ab29ac
-	sigs.k8s.io/controller-runtime v0.6.5
+	sigs.k8s.io/controller-runtime v0.8.3
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.20.4
