@@ -174,15 +174,16 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
 func GetValueFromResponse(body []byte, valueLocation string) (*resource.Quantity, error) {
 	r := gjson.GetBytes(body, valueLocation)
+	errorMsg := "valueLocation must point to value of type number or a string representing a Quanitity got: '%s'"
 	if r.Type == gjson.String {
 		q, err := resource.ParseQuantity(r.String())
-		if err == nil {
-			return &q, nil
+		if err != nil {
+			return nil, fmt.Errorf(errorMsg, r.String())
 		}
+		return &q, nil
 	}
 	if r.Type != gjson.Number {
-		msg := fmt.Sprintf("valueLocation must point to value of type number got: %s", r.Type.String())
-		return nil, errors.New(msg)
+		return nil, fmt.Errorf(errorMsg, r.Type.String())
 	}
 	return resource.NewQuantity(int64(r.Num), resource.DecimalSI), nil
 }
