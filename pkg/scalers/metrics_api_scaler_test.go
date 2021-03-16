@@ -68,21 +68,42 @@ func TestParseMetricsAPIMetadata(t *testing.T) {
 }
 
 func TestGetValueFromResponse(t *testing.T) {
-	d := []byte(`{"components":[{"id": "82328e93e", "tasks": 32}],"count":2.43}`)
+	d := []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`)
 	v, err := GetValueFromResponse(d, "components.0.tasks")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v != 32 {
-		t.Errorf("Expected %d got %d", 32, v)
+	if v.CmpInt64(32) != 0 {
+		t.Errorf("Expected %d got %d", 32, v.AsDec())
 	}
 
 	v, err = GetValueFromResponse(d, "count")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v != 2 {
-		t.Errorf("Expected %d got %d", 2, v)
+	if v.CmpInt64(2) != 0 {
+		t.Errorf("Expected %d got %d", 2, v.AsDec())
+	}
+
+	v, err = GetValueFromResponse(d, "components.0.str")
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if v.CmpInt64(64) != 0 {
+		t.Errorf("Expected %d got %d", 64, v.AsDec())
+	}
+
+	v, err = GetValueFromResponse(d, "components.0.k")
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if v.CmpInt64(1000) != 0 {
+		t.Errorf("Expected %d got %d", 1000, v.AsDec())
+	}
+
+	_, err = GetValueFromResponse(d, "components.0.wrong")
+	if err == nil {
+		t.Error("Expected error but got success", err)
 	}
 }
 

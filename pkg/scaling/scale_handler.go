@@ -245,8 +245,10 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
-		// skip cpu/memory resource scaler
-		if metricSpecs[0].External == nil {
+
+		// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
+		// or skip cpu/memory resource scaler
+		if len(metricSpecs) < 1 || metricSpecs[0].External == nil {
 			continue
 		}
 

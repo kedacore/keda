@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.15.3
+FROM golang:1.15.6
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -81,7 +81,7 @@ RUN apt-get update \
 # Enable go modules
 ENV GO111MODULE=on
 
-ENV OPERATOR_RELEASE_VERSION=v1.0.0
+ENV OPERATOR_RELEASE_VERSION=v1.0.1
 RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION}/operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && chmod +x operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
     && mkdir -p /usr/local/bin/ \
