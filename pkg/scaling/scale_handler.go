@@ -495,6 +495,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
+	case "openstack-metric":
+		return scalers.NewOpenstackMetricScaler(config)
 	case "openstack-swift":
 		return scalers.NewOpenstackSwiftScaler(config)
 	case "postgresql":
