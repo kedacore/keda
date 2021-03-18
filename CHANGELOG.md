@@ -40,8 +40,9 @@
 
 - Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523) | [#1647](https://github.com/kedacore/keda/pull/1647))
 - Support Quantities in Metrics API scaler ([#1667](https://github.com/kedacore/keda/issues/1667))
-- Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
+- Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
+- ScaledJob: support metadata labels in Job template ([#1686](https://github.com/kedacore/keda/pull/1686))
 
 ### Improvements
 
@@ -56,10 +57,8 @@
 - Fixed KEDA ClusterRoles to give permissions for ClusterTriggerAuthentications ([#1645](https://github.com/kedacore/keda/pull/1645))
 - Make `swiftURL` parameter optional for the OpenStack Swift scaler ([#1652](https://github.com/kedacore/keda/pull/1652))
 - Fix memory leak of `keda-metrics-apiserver` by setting a controller-runtime logger properly ([#1654](https://github.com/kedacore/keda/pull/1654))
-- Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
 - AWS SQS Scaler: Add Visible + NotVisible messages for scaling considerations ([#1664](https://github.com/kedacore/keda/pull/1664))
 - Fixing behavior on ScaledJob with incorrect External Scaler ([#1672](https://github.com/kedacore/keda/pull/1672))
-- ScaledJob: support metadata labels in Job template ([#1686](https://github.com/kedacore/keda/pull/1686))
 
 ### Breaking Changes
 
