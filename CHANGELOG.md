@@ -41,6 +41,7 @@
 - Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
 - AWS SQS Scaler: Add Visible + NotVisible messages for scaling considerations ([#1664](https://github.com/kedacore/keda/pull/1664))
 - Fixing behavior on ScaledJob with incorrect External Scaler ([#1672](https://github.com/kedacore/keda/pull/1672))
+- ScaledJob: support metadata labels in Job template ([#1686](https://github.com/kedacore/keda/pull/1686))
 
 ### Breaking Changes
 
