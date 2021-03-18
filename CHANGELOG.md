@@ -5,6 +5,7 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.2.0](#v220)
 - [v2.1.0](#v210)
 - [v2.0.0](#v200)
 - [v1.5.0](#v150)
@@ -19,23 +20,40 @@
 
 ### New
 
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXXX))
+
+### Breaking Changes
+
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.2.0
+
+### New
+
 - Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523) | [#1647](https://github.com/kedacore/keda/pull/1647))
-- Support Quantities in metrics API scaler ([#1667](https://github.com/kedacore/keda/issues/1667))
+- Support Quantities in Metrics API scaler ([#1667](https://github.com/kedacore/keda/issues/1667))
 - Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523))
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
 
 ### Improvements
 
-- Add `KEDA_HTTP_DEFAULT_TIMEOUT` support in operator ([#1548](https://github.com/kedacore/keda/issues/1548))
-- Removed `MIN field` for scaledjob ([#1553](https://github.com/kedacore/keda/pull/1553))
-- Add container port for Prometheus on operator YAML ([#1562](https://github.com/kedacore/keda/pull/1562))
-- Fix a memory leak in kafka client and close push scalers ([#1565](https://github.com/kedacore/keda/issues/1565))
+- Add `KEDA_HTTP_DEFAULT_TIMEOUT` support in Operator ([#1548](https://github.com/kedacore/keda/issues/1548))
+- Removed `MIN field` for ScaledJob ([#1553](https://github.com/kedacore/keda/pull/1553))
+- Add container port for Prometheus on Operator YAML ([#1562](https://github.com/kedacore/keda/pull/1562))
+- Fix a memory leak in Kafka client and close push scalers ([#1565](https://github.com/kedacore/keda/issues/1565))
 - Add 'Metadata' header to AAD podIdentity request ([#1566](https://github.com/kedacore/keda/issues/1566))
 - KEDA should make sure generate correct labels for HPA ([#1630](https://github.com/kedacore/keda/issues/1630))
 - Fix memory leak by checking triggers uniqueness properly ([#1640](https://github.com/kedacore/keda/pull/1640))
 - Print correct ScaleTarget Kind in Events ([#1641](https://github.com/kedacore/keda/pull/1641))
-- Fixed keda clusterroles to give permissions for clustertriggerauthentications ([#1645](https://github.com/kedacore/keda/pull/1645))
+- Fixed KEDA ClusterRoles to give permissions for ClusterTriggerAuthentications ([#1645](https://github.com/kedacore/keda/pull/1645))
 - Make `swiftURL` parameter optional for the OpenStack Swift scaler ([#1652](https://github.com/kedacore/keda/pull/1652))
 - Fix memory leak of `keda-metrics-apiserver` by setting a controller-runtime logger properly ([#1654](https://github.com/kedacore/keda/pull/1654))
 - Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
@@ -45,11 +63,11 @@
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- None.
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- None.
 
 ## v2.1.0
 
