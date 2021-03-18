@@ -1,4 +1,6 @@
 ---
+## needs to be patched because of an issue with required properties in order to be able to deploy on k8s 1.18+
+## https://github.com/kedacore/keda/issues/927
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/containers/items/properties/ports/items/required/-
   value: protocol
@@ -10,3 +12,9 @@
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/initContainers/items/properties/ports/items/required/-
   value: protocol
+
+## needs to be patched because of an issue with controller-gen, which is not including anything in metadata from nested contructs
+## https://github.com/kedacore/keda/issues/1311
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/metadata/x-kubernetes-preserve-unknown-fields
+  value: true
