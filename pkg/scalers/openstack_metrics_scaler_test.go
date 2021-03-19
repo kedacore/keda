@@ -45,22 +45,22 @@ var invalidOpenstackMetricMetadaTestData = []parseOpenstackMetricMetadataTestDat
 	// Missing metricID
 	{metadata: map[string]string{"metricsUrl": "http://localhost:8041/v1/metric", "aggregationMethod": "mean", "granularity": "300", "threshold": "1250", "timeout": "30"}},
 
-	//Empty metricID
+	// Empty metricID
 	{metadata: map[string]string{"metricsUrl": "http://localhost:8041/v1/metric", "metricID": "", "aggregationMethod": "mean", "granularity": "300", "threshold": "1250"}},
 
-	//Missing aggregation method
+	// Missing aggregation method
 	{metadata: map[string]string{"metricsUrl": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "granularity": "300", "threshold": "1250", "timeout": "30"}},
 
-	//Missing granularity
+	// Missing granularity
 	{metadata: map[string]string{"metricsUrl": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "threshold": "1250", "timeout": "30"}},
 
-	//Missing threshold
+	// Missing threshold
 	{metadata: map[string]string{"metricsUrl": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "timeout": "30"}},
 
-	//granularity 0
+	// granularity 0
 	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "avc", "threshold": "1250"}},
 
-	//threshold 0
+	// threshold 0
 	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0z"}},
 }
 
@@ -108,6 +108,10 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 		}
 
 		_, err = parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+
+		if err != nil {
+			t.Error(err, "parseOpenstackMetricAuthenticationMetadata method failed")
+		}
 
 		mockMetricsScaler := openstackMetricScaler{meta, openstack.Client{}}
 		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling()
