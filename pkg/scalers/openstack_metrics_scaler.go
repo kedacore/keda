@@ -82,7 +82,6 @@ func NewOpenstackMetricScaler(config *ScalerConfig) (Scaler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %s", err)
 		}
-
 	} else {
 		// User choose the "password" authentication method
 		if authMetadata.userID != "" {
@@ -98,6 +97,10 @@ func NewOpenstackMetricScaler(config *ScalerConfig) (Scaler, error) {
 
 	if openstackMetricMetadata.metricsURL == "" {
 		metricsClient, err = keystoneAuth.RequestClient()
+		if err != nil {
+			openstackMetricLog.Error(err, "Fail to retrieve new keystone clinet for openstack metrics scaler")
+			return nil, err
+		}
 	}
 
 	return &openstackMetricScaler{
@@ -113,22 +116,22 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 	if val, ok := triggerMetadata["metricsURL"]; ok && val != "" {
 		meta.metricsURL = val
 	} else {
-		openstackMetricLog.Error(fmt.Errorf("No metricsURL could be read"), "Error readig metricsURL")
-		return nil, fmt.Errorf("No metricsURL was declared")
+		openstackMetricLog.Error(fmt.Errorf("no metrics url could be read"), "Error readig metricsURL")
+		return nil, fmt.Errorf("no metrics url was declared")
 	}
 
 	if val, ok := triggerMetadata["metricID"]; ok && val != "" {
 		meta.metricID = val
 	} else {
-		openstackMetricLog.Error(fmt.Errorf("No metricID could be read"), "Error reading metricID")
-		return nil, fmt.Errorf("No metricID was declared")
+		openstackMetricLog.Error(fmt.Errorf("no metric id could be read"), "Error reading metricID")
+		return nil, fmt.Errorf("no metric id was declared")
 	}
 
 	if val, ok := triggerMetadata["aggregationMethod"]; ok && val != "" {
 		meta.aggregationMethod = val
 	} else {
-		openstackMetricLog.Error(fmt.Errorf("No aggregationMethod could be read"), "Error reading aggregation method")
-		return nil, fmt.Errorf("No aggregationMethod could be read")
+		openstackMetricLog.Error(fmt.Errorf("no aggregation method could be read"), "Error reading aggregation method")
+		return nil, fmt.Errorf("no aggregation method could be read")
 	}
 
 	if val, ok := triggerMetadata["granularity"]; ok && val != "" {
@@ -137,24 +140,31 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 				openstackMetricLog.Error(err, "Error converting granulality information %s", err.Error)
 				return nil, err
 			}
-
 			meta.granularity = granularity
-
 		}
-
 	} else {
-		return nil, fmt.Errorf("No granularity found")
+		return nil, fmt.Errorf("no granularity found")
 	}
 
 	if val, ok := triggerMetadata["threshold"]; ok && val != "" {
 		// converts the string to float64 but its value is convertible to float32 without changing
 		_threshold, err := strconv.ParseFloat(val, 32)
 		if err != nil {
-			openstackMetricLog.Error(err, "Error parsing openstack metric metadata", "threshold", "threshold")
-			return nil, fmt.Errorf("Error parsing openstack metric metadata : %s", err.Error())
+			openstackMetricLog.Error(err, "error parsing openstack metric metadata", "threshold", "threshold")
+			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
 		}
 
 		meta.threshold = _threshold
+	}
+
+	if val, ok := triggerMetadata["timeout"]; ok && val != "" {
+		httpClientTimeout, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("httpClientTimeout parsing error: %s", err.Error())
+		}
+		meta.timeout = httpClientTimeout
+	} else {
+		meta.timeout = metricDefaultHTTPClientTimeout
 	}
 
 	return &meta, nil
@@ -178,14 +188,12 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 		} else {
 			return authMeta, fmt.Errorf("password doesn't exist in the authParams")
 		}
-
 	} else if val, ok := authParams["appCredentialSecretId"]; ok && val != "" {
 		authMeta.appCredentialSecretID = val
 
 		if val, ok := authParams["appCredentialSecret"]; ok && val != "" {
 			authMeta.appCredentialSecret = val
 		}
-
 	} else {
 		return authMeta, fmt.Errorf("neither userID or appCredentialSecretID exist in the authParams")
 	}
@@ -197,7 +205,6 @@ func (a *openstackMetricScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(a.metadata.threshold), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			//aux1, err := fmt.Sprintf("%s-%s", "openstack-metric", a.authMetadata.AuthURL)
 			Name: kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", a.metadata.aggregationMethod)),
 		},
 		Target: v2beta2.MetricTarget{
@@ -247,7 +254,6 @@ func (a *openstackMetricScaler) Close() error {
 
 // Gets measureament from API as float64, converts it to int and return the value.
 func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
-
 	var metricURL string = a.metadata.metricsURL
 
 	isValid, validationError := a.metricClient.IsTokenValid()
@@ -258,8 +264,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	}
 
 	if !isValid {
-		var tokenRequestError error
-		tokenRequestError = a.metricClient.RenewToken()
+		tokenRequestError := a.metricClient.RenewToken()
 		if tokenRequestError != nil {
 			openstackMetricLog.Error(tokenRequestError, "The token being used is invalid")
 			return defaultValueWhenError, tokenRequestError
@@ -271,8 +276,8 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	openstackMetricsURL, err := url.Parse(metricURL)
 
 	if err != nil {
-		openstackMetricLog.Error(err, "The metrics URL provided is invalid")
-		return defaultValueWhenError, fmt.Errorf("The metrics URL is invalid: %s", err.Error())
+		openstackMetricLog.Error(err, "metric url provided is invalid")
+		return defaultValueWhenError, fmt.Errorf("metric url is invalid: %s", err.Error())
 	}
 
 	openstackMetricsURL.Path = path.Join(openstackMetricsURL.Path, a.metadata.metricID+"/measures")
@@ -280,8 +285,8 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	granularity := 2 // We start with granularity with value 2 cause gnocchi APIm which is used by openstack, consider a time window, and we want to get the last value
 
 	if a.metadata.granularity <= 0 {
-		openstackMetricLog.Error(fmt.Errorf("Granularity Value is less than 1"), "Minimum accepatble value expected for ganularity is 1.")
-		return defaultValueWhenError, fmt.Errorf("Granularity Value is less than 1")
+		openstackMetricLog.Error(fmt.Errorf("granularity value is less than 1"), "Minimum accepatble value expected for ganularity is 1.")
+		return defaultValueWhenError, fmt.Errorf("granularity value is less than 1")
 	}
 
 	if (a.metadata.granularity / 60) > 1 {
@@ -294,7 +299,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	queryParameter.Set("aggregation", a.metadata.aggregationMethod)
 
 	currTimeWithWindow := time.Now().Add(time.Minute + time.Duration(granularity)).Format(time.RFC3339)
-	queryParameter.Set("start", string(currTimeWithWindow)[:17]+"00")
+	queryParameter.Set("start", currTimeWithWindow[:17]+"00")
 
 	openstackMetricsURL.RawQuery = queryParameter.Encode()
 
@@ -312,9 +317,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	}
 
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
-
 		bodyError, readError := ioutil.ReadAll(resp.Body)
 
 		if readError != nil {
@@ -337,7 +340,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 		return defaultValueWhenError, nil
 	}
 
-	errUnMarshall := json.Unmarshal([]byte(body), &m.measures)
+	errUnMarshall := json.Unmarshal(body, &m.measures)
 
 	if errUnMarshall != nil {
 		openstackMetricLog.Error(errUnMarshall, "Failed converting json format Body structure.")
@@ -351,15 +354,14 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	}
 
 	if len(targetMeasure) != 3 {
-		openstackMetricLog.Error(fmt.Errorf("Unexpected json response"), "Unexpected json tuple, expected structure is [string, float, float].")
-		return defaultValueWhenError, fmt.Errorf("Unexpected json response")
+		openstackMetricLog.Error(fmt.Errorf("unexpected json response"), "unexpected json tuple, expected structure is [string, float, float].")
+		return defaultValueWhenError, fmt.Errorf("unexpected json response")
 	}
 
 	if val, ok := targetMeasure[2].(float64); ok {
 		return val, nil
 	}
 
-	openstackMetricLog.Error(fmt.Errorf("Failed to convert interface type to flaot64"), "Unable to convert targetMeasure to expected format float64")
-	return defaultValueWhenError, fmt.Errorf("Failed to convert interface type to flaot64")
-
+	openstackMetricLog.Error(fmt.Errorf("failed to convert interface type to float64"), "unable to convert target measure to expected format float64")
+	return defaultValueWhenError, fmt.Errorf("failed to convert interface type to float64")
 }
