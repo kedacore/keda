@@ -188,12 +188,8 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 		} else {
 			return authMeta, fmt.Errorf("password doesn't exist in the authParams")
 		}
-	} else if val, ok := authParams["appCredentialSecretId"]; ok && val != "" {
+	} else if val, ok := authParams["appCredentialSecret"]; ok && val != "" {
 		authMeta.appCredentialSecretID = val
-
-		if val, ok := authParams["appCredentialSecret"]; ok && val != "" {
-			authMeta.appCredentialSecret = val
-		}
 	} else {
 		return authMeta, fmt.Errorf("neither userID or appCredentialSecretID exist in the authParams")
 	}

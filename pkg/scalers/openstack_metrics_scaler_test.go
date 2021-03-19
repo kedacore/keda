@@ -77,8 +77,8 @@ var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetad
 
 	// Using Application Credentials method:
 
-	// Missing appCredentialID
-	{authMetadata: map[string]string{"appCredentialSecret": "my-app-credential-secret", "authURL": "http://localhost:5000/v3/"}},
+	// Missing appCredentialID and appCredentialSecret
+	{authMetadata: map[string]string{"authURL": "http://localhost:5000/v3/"}},
 	// Missing appCredentialSecret
 	{authMetadata: map[string]string{"appCredentialID": "my-app-credential-id", "authURL": "http://localhost:5000/v3/"}},
 	// Missing authURL
@@ -110,7 +110,7 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 		_, err = parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
 
 		if err != nil {
-			t.Error(err, "parseOpenstackMetricAuthenticationMetadata method failed")
+			t.Fatal("could not parse openstack metric authentication metadata")
 		}
 
 		mockMetricsScaler := openstackMetricScaler{meta, openstack.Client{}}
@@ -150,7 +150,7 @@ func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[0], "Missing userID"},
 		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[1], "Missing password"},
 		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[2], "Missing authURL"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[3], "Missing appCredentialID"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[3], "Missing appCredentialID and appCredentialSecret"},
 		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[4], "Missing appCredentialSecret"},
 		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[5], "Missing authURL - application credential"},
 	}
