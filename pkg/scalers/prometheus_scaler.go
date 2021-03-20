@@ -19,6 +19,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -81,7 +82,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	if len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
-		if err != nil {
+		if err != nil || config == nil {
 			return nil, fmt.Errorf("error creating the TLS config: %s", err)
 		}
 
@@ -132,18 +133,24 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 
 	authTypes := strings.Split(authModes, ",")
 	for _, t := range authTypes {
-		authType := authenticationType(strings.TrimSpace(t))
+		authType := authentication.AuthenticationType(strings.TrimSpace(t))
 		switch authType {
-		case bearerAuth:
+		case authentication.BearerAuth:
 			if len(config.AuthParams["bearerToken"]) == 0 {
 				return nil, errors.New("no bearer token provided")
+			}
+			if meta.enableBasicAuth {
+				return nil, errors.New("beare and basic authentication can not be set both")
 			}
 
 			meta.bearerToken = config.AuthParams["bearerToken"]
 			meta.enableBearerAuth = true
-		case basicAuth:
+		case authentication.BasicAuth:
 			if len(config.AuthParams["username"]) == 0 {
 				return nil, errors.New("no username given")
+			}
+			if meta.enableBearerAuth {
+				return nil, errors.New("beare and basic authentication can not be set both")
 			}
 
 			meta.username = config.AuthParams["username"]
@@ -151,7 +158,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 			// username as apikey and password as empty
 			meta.password = config.AuthParams["password"]
 			meta.enableBasicAuth = true
-		case tlsAuth:
+		case authentication.TlsAuth:
 			if len(config.AuthParams["ca"]) == 0 {
 				return nil, errors.New("no ca given")
 			}
@@ -221,8 +228,7 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 
 	if s.metadata.enableBearerAuth {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.bearerToken))
-	}
-	if s.metadata.enableBasicAuth {
+	} else if s.metadata.enableBasicAuth {
 		req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	}
 

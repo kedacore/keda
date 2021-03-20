@@ -19,6 +19,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -113,9 +114,9 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		return &meta, nil
 	}
 
-	authType := authenticationType(strings.TrimSpace(authMode))
+	authType := authentication.AuthenticationType(strings.TrimSpace(authMode))
 	switch authType {
-	case apiKeyAuth:
+	case authentication.ApiKeyAuth:
 		if len(config.AuthParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
@@ -132,7 +133,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		if len(config.TriggerMetadata["keyParamName"]) > 0 {
 			meta.keyParamName = config.TriggerMetadata["keyParamName"]
 		}
-	case basicAuth:
+	case authentication.BasicAuth:
 		if len(config.AuthParams["username"]) == 0 {
 			return nil, errors.New("no username given")
 		}
@@ -142,7 +143,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		// username as apikey and password as empty
 		meta.password = config.AuthParams["password"]
 		meta.enableBaseAuth = true
-	case tlsAuth:
+	case authentication.TlsAuth:
 		if len(config.AuthParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}
