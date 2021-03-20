@@ -3,6 +3,7 @@ package scalers
 import (
 	"testing"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +24,7 @@ type openstackSwiftMetricIdentifier struct {
 
 var openstackSwiftMetadataTestData = []parseOpenstackSwiftMetadataTestData{
 	// Only required parameters
-	{metadata: map[string]string{"swiftURL": "http://localhost:8080/v1/my-account-id", "containerName": "my-container"}},
+	{metadata: map[string]string{"containerName": "my-container"}},
 	// Adding objectCount
 	{metadata: map[string]string{"swiftURL": "http://localhost:8080/v1/my-account-id", "containerName": "my-container", "objectCount": "5"}},
 	// Adding objectPrefix
@@ -44,8 +45,6 @@ var openstackSwiftAuthMetadataTestData = []parseOpenstackSwiftAuthMetadataTestDa
 }
 
 var invalidOpenstackSwiftMetadataTestData = []parseOpenstackSwiftMetadataTestData{
-	// Missing swiftURL
-	{metadata: map[string]string{"containerName": "my-container", "objectCount": "5"}},
 	// Missing containerName
 	{metadata: map[string]string{"swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5"}},
 	// objectCount is not an integer value
@@ -108,7 +107,7 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse auth metadata:", err)
 		}
 
-		mockSwiftScaler := openstackSwiftScaler{meta, nil}
+		mockSwiftScaler := openstackSwiftScaler{meta, openstack.Client{}}
 
 		metricSpec := mockSwiftScaler.GetMetricSpecForScaling()
 
@@ -122,11 +121,10 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 
 func TestParseOpenstackSwiftMetadataForInvalidCases(t *testing.T) {
 	testCases := []openstackSwiftMetricIdentifier{
-		{nil, &invalidOpenstackSwiftMetadataTestData[0], &parseOpenstackSwiftAuthMetadataTestData{}, "missing swiftURL"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[1], &parseOpenstackSwiftAuthMetadataTestData{}, "missing containerName"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[2], &parseOpenstackSwiftAuthMetadataTestData{}, "objectCount is not an integer value"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[3], &parseOpenstackSwiftAuthMetadataTestData{}, "onlyFiles is not a boolean value"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[4], &parseOpenstackSwiftAuthMetadataTestData{}, "timeout is not an integer value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[0], &parseOpenstackSwiftAuthMetadataTestData{}, "missing containerName"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[1], &parseOpenstackSwiftAuthMetadataTestData{}, "objectCount is not an integer value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[2], &parseOpenstackSwiftAuthMetadataTestData{}, "onlyFiles is not a boolean value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[3], &parseOpenstackSwiftAuthMetadataTestData{}, "timeout is not an integer value"},
 	}
 
 	for _, testData := range testCases {
