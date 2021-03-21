@@ -80,7 +80,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
 
-	if len(meta.ca) > 0 {
+	if meta.ca != "" || meta.enableTLS {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil || config == nil {
 			return nil, fmt.Errorf("error creating the TLS config: %s", err)
@@ -159,10 +159,6 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 			meta.password = config.AuthParams["password"]
 			meta.enableBasicAuth = true
 		case authentication.TLSAuthType:
-			if len(config.AuthParams["ca"]) == 0 {
-				return nil, errors.New("no ca given")
-			}
-
 			if len(config.AuthParams["cert"]) == 0 {
 				return nil, errors.New("no cert given")
 			}
