@@ -133,9 +133,9 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 
 	authTypes := strings.Split(authModes, ",")
 	for _, t := range authTypes {
-		authType := authentication.AuthenticationType(strings.TrimSpace(t))
+		authType := authentication.Type(strings.TrimSpace(t))
 		switch authType {
-		case authentication.BearerAuth:
+		case authentication.BearerAuthType:
 			if len(config.AuthParams["bearerToken"]) == 0 {
 				return nil, errors.New("no bearer token provided")
 			}
@@ -145,7 +145,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 
 			meta.bearerToken = config.AuthParams["bearerToken"]
 			meta.enableBearerAuth = true
-		case authentication.BasicAuth:
+		case authentication.BasicAuthType:
 			if len(config.AuthParams["username"]) == 0 {
 				return nil, errors.New("no username given")
 			}
@@ -158,7 +158,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 			// username as apikey and password as empty
 			meta.password = config.AuthParams["password"]
 			meta.enableBasicAuth = true
-		case authentication.TLSAuth:
+		case authentication.TLSAuthType:
 			if len(config.AuthParams["ca"]) == 0 {
 				return nil, errors.New("no ca given")
 			}
