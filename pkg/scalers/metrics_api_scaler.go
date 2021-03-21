@@ -116,7 +116,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 
 	authType := authentication.AuthenticationType(strings.TrimSpace(authMode))
 	switch authType {
-	case authentication.ApiKeyAuth:
+	case authentication.APIKeyAuth:
 		if len(config.AuthParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
@@ -143,7 +143,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		// username as apikey and password as empty
 		meta.password = config.AuthParams["password"]
 		meta.enableBaseAuth = true
-	case authentication.TlsAuth:
+	case authentication.TLSAuth:
 		if len(config.AuthParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}

@@ -1,10 +1,11 @@
 package authentication
 
+// AuthenticationType describes the authentication types available in scalers
 type AuthenticationType string
 
 const (
-	ApiKeyAuth AuthenticationType = "apiKey"
+	APIKeyAuth AuthenticationType = "apiKey"
 	BasicAuth  AuthenticationType = "basic"
-	TlsAuth    AuthenticationType = "tls"
+	TLSAuth    AuthenticationType = "tls"
 	BearerAuth AuthenticationType = "bearer"
 )

@@ -158,7 +158,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 			// username as apikey and password as empty
 			meta.password = config.AuthParams["password"]
 			meta.enableBasicAuth = true
-		case authentication.TlsAuth:
+		case authentication.TLSAuth:
 			if len(config.AuthParams["ca"]) == 0 {
 				return nil, errors.New("no ca given")
 			}
