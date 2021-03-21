@@ -45,8 +45,8 @@ type prometheusAuthMetadataTestData struct {
 var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	// success TLS
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, false},
-	// fail TLS, ca not given
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"cert": "ceert", "key": "keey"}, true},
+	// TLS, ca is optional
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"cert": "ceert", "key": "keey"}, false},
 	// fail TLS, key not given
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true", "authModes": "tls"}, map[string]string{"ca": "caaa", "cert": "ceert"}, true},
 	// fail TLS, cert not given
