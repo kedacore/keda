@@ -95,12 +95,10 @@ func NewOpenstackMetricScaler(config *ScalerConfig) (Scaler, error) {
 		}
 	}
 
-	if openstackMetricMetadata.metricsURL == "" {
-		metricsClient, err = keystoneAuth.RequestClient()
-		if err != nil {
-			openstackMetricLog.Error(err, "Fail to retrieve new keystone clinet for openstack metrics scaler")
-			return nil, err
-		}
+	metricsClient, err = keystoneAuth.RequestClient()
+	if err != nil {
+		openstackMetricLog.Error(err, "Fail to retrieve new keystone clinet for openstack metrics scaler")
+		return nil, err
 	}
 
 	return &openstackMetricScaler{
@@ -135,13 +133,12 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 	}
 
 	if val, ok := triggerMetadata["granularity"]; ok && val != "" {
-		if granularity, err := strconv.Atoi(val); err != nil {
-			if err != nil {
-				openstackMetricLog.Error(err, "Error converting granulality information %s", err.Error)
-				return nil, err
-			}
-			meta.granularity = granularity
+		granularity, err := strconv.Atoi(val)
+		if err != nil {
+			openstackMetricLog.Error(err, "Error converting granulality information %s", err.Error)
+			return nil, err
 		}
+		meta.granularity = granularity
 	} else {
 		return nil, fmt.Errorf("no granularity found")
 	}
@@ -348,14 +345,17 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 		return defaultValueWhenError, errUnMarshall
 	}
 
-	var targetMeasure []interface{} = nil
+	var targetMeasure []interface{}
 
-	if len(m.measures) > 1 {
+	if len(m.measures) > 0 {
 		targetMeasure = m.measures[len(m.measures)-1]
+	} else {
+		openstackMetricLog.Info("No measure was returned from openstack")
+		return defaultValueWhenError, nil
 	}
 
 	if len(targetMeasure) != 3 {
-		openstackMetricLog.Error(fmt.Errorf("unexpected json response"), "unexpected json tuple, expected structure is [string, float, float].")
+		openstackMetricLog.Error(fmt.Errorf("unexpected json response"), "unexpected json tuple, expected structure is [string, float, float]")
 		return defaultValueWhenError, fmt.Errorf("unexpected json response")
 	}
 
