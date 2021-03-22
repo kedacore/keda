@@ -278,23 +278,28 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 
 	openstackMetricsURL.Path = path.Join(openstackMetricsURL.Path, a.metadata.metricID+"/measures")
 	queryParameter := openstackMetricsURL.Query()
-	granularity := 2 // We start with granularity with value 2 cause gnocchi APIm which is used by openstack, consider a time window, and we want to get the last value
+	granularity := 0 // We start with granularity with value 2 cause gnocchi APIm which is used by openstack, consider a time window, and we want to get the last value
 
 	if a.metadata.granularity <= 0 {
 		openstackMetricLog.Error(fmt.Errorf("granularity value is less than 1"), "Minimum accepatble value expected for ganularity is 1.")
 		return defaultValueWhenError, fmt.Errorf("granularity value is less than 1")
 	}
 
-	if (a.metadata.granularity / 60) > 1 {
-		granularity = (a.metadata.granularity / 60)
+	if (a.metadata.granularity / 60) > 0 {
+		granularity = (a.metadata.granularity / 60) - 1
 	}
-
-	granularity--
 
 	queryParameter.Set("granularity", strconv.Itoa(a.metadata.granularity))
 	queryParameter.Set("aggregation", a.metadata.aggregationMethod)
 
-	currTimeWithWindow := time.Now().Add(time.Minute + time.Duration(granularity)).Format(time.RFC3339)
+	var currTimeWithWindow string
+
+	if granularity > 0 {
+		currTimeWithWindow = time.Now().Add(time.Minute * time.Duration(granularity)).Format(time.RFC3339)
+	} else {
+		currTimeWithWindow = time.Now().Format(time.RFC3339)
+	}
+
 	queryParameter.Set("start", currTimeWithWindow[:17]+"00")
 
 	openstackMetricsURL.RawQuery = queryParameter.Encode()
