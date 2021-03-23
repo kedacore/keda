@@ -62,7 +62,10 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 - <list items>
 ```
 
-## 4. Update Helm Charts
+## 4. Add the new version to GitHub Bug report template
+Add the new released version to the list in `KEDA Version` dropdown in [3_bug_report.yml](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml).
+
+## 5. Update Helm Charts
 
 Update the `version` and `appVersion` in our [chart definition](https://github.com/kedacore/charts/blob/master/keda/Chart.yaml).
 
@@ -74,6 +77,6 @@ Update the following file:
 https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
 [Search for 1.1.0 etc. and replace it]
 
-## 5. Create Helm release on GitHub
+## 6. Create Helm release on GitHub
 
 Create Helm release on GitHub with changelog of what changed to our Helm chart.

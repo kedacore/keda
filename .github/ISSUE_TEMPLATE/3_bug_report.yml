@@ -1,5 +1,5 @@
 name: Report a bug 🐛
-about: Create a report to help us improve
+description: Create a report to help us improve
 labels: "bug"
 issue_body: true
 body:
@@ -47,6 +47,7 @@ body:
     label: KEDA Version
     description: What version of KEDA that are you running?
     options:
+    - "2.2.0"
     - "2.1.0"
     - "2.0.0"
     - "1.5.0"
