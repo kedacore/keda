@@ -24,7 +24,7 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXXX))
+- Remove app.kubernetes.io/version label from label selectors ([#1696](https://github.com/kedacore/keda/pull/1696))
 
 ### Breaking Changes
 
