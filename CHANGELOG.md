@@ -20,7 +20,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXXX))
+- Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
 
 ### Improvements
 

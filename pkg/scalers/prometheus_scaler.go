@@ -3,11 +3,13 @@ package scalers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -37,6 +40,21 @@ type prometheusMetadata struct {
 	metricName    string
 	query         string
 	threshold     int
+
+	// bearer auth
+	enableBearerAuth bool
+	bearerToken      string
+
+	// basic auth
+	enableBasicAuth bool
+	username        string
+	password        string // +optional
+
+	// client certification
+	enableTLS bool
+	cert      string
+	key       string
+	ca        string
 }
 
 type promQueryResult struct {
@@ -60,9 +78,20 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
 
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+
+	if meta.ca != "" || meta.enableTLS {
+		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
+		if err != nil || config == nil {
+			return nil, fmt.Errorf("error creating the TLS config: %s", err)
+		}
+
+		httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+
 	return &prometheusScaler{
 		metadata:   meta,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -94,6 +123,60 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 		}
 
 		meta.threshold = t
+	}
+
+	authModes, ok := config.TriggerMetadata["authModes"]
+	// no authMode specified
+	if !ok {
+		return &meta, nil
+	}
+
+	authTypes := strings.Split(authModes, ",")
+	for _, t := range authTypes {
+		authType := authentication.Type(strings.TrimSpace(t))
+		switch authType {
+		case authentication.BearerAuthType:
+			if len(config.AuthParams["bearerToken"]) == 0 {
+				return nil, errors.New("no bearer token provided")
+			}
+			if meta.enableBasicAuth {
+				return nil, errors.New("beare and basic authentication can not be set both")
+			}
+
+			meta.bearerToken = config.AuthParams["bearerToken"]
+			meta.enableBearerAuth = true
+		case authentication.BasicAuthType:
+			if len(config.AuthParams["username"]) == 0 {
+				return nil, errors.New("no username given")
+			}
+			if meta.enableBearerAuth {
+				return nil, errors.New("beare and basic authentication can not be set both")
+			}
+
+			meta.username = config.AuthParams["username"]
+			// password is optional. For convenience, many application implement basic auth with
+			// username as apikey and password as empty
+			meta.password = config.AuthParams["password"]
+			meta.enableBasicAuth = true
+		case authentication.TLSAuthType:
+			if len(config.AuthParams["cert"]) == 0 {
+				return nil, errors.New("no cert given")
+			}
+			meta.cert = config.AuthParams["cert"]
+
+			if len(config.AuthParams["key"]) == 0 {
+				return nil, errors.New("no key given")
+			}
+
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		default:
+			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", t)
+		}
+	}
+
+	if len(config.AuthParams["ca"]) > 0 {
+		meta.ca = config.AuthParams["ca"]
 	}
 
 	return &meta, nil
@@ -138,6 +221,13 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 	if err != nil {
 		return -1, err
 	}
+
+	if s.metadata.enableBearerAuth {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.bearerToken))
+	} else if s.metadata.enableBasicAuth {
+		req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	}
+
 	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
