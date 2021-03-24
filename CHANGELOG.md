@@ -20,7 +20,7 @@
 
 ### New
 
-- Added basic, tls and bearer authentication support to the prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
+- Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
 
 ### Improvements
 
