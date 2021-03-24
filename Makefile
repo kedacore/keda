@@ -88,6 +88,8 @@ release: manifests kustomize set-version
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+	# Need this workaround to mitigate a problem with inserting labels into selectors,
+	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
@@ -122,6 +124,8 @@ deploy: manifests kustomize
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+	# Need this workaround to mitigate a problem with inserting labels into selectors,
+	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009	
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
