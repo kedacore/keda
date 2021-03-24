@@ -1,0 +1,10 @@
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: metadataLabelTransformer
+labels:
+  app.kubernetes.io/version: main
+  app.kubernetes.io/part-of: keda-operator
+fieldSpecs:
+- path: metadata/labels
+  create: true
