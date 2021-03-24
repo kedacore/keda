@@ -41,8 +41,12 @@
 - Emit Kubernetes Events on KEDA events ([#1523](https://github.com/kedacore/keda/pull/1523) | [#1647](https://github.com/kedacore/keda/pull/1647))
 - Support Quantities in Metrics API scaler ([#1667](https://github.com/kedacore/keda/issues/1667))
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
+<<<<<<< HEAD
 - Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
 - ScaledJob: support metadata labels in Job template ([#1686](https://github.com/kedacore/keda/pull/1686))
+=======
+- Add Openstack Metrics Scaler ([#1372](https://github.com/kedacore/keda/issues/1382))
+>>>>>>> update changelog.md
 
 ### Improvements
 
