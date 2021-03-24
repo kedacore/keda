@@ -19,6 +19,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -52,13 +53,8 @@ type metricsAPIScalerMetadata struct {
 	ca        string
 }
 
-type authenticationType string
-
 const (
-	apiKeyAuth       authenticationType = "apiKey"
-	basicAuth        authenticationType = "basic"
-	tlsAuth          authenticationType = "tls"
-	methodValueQuery                    = "query"
+	methodValueQuery = "query"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
@@ -72,7 +68,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
 
-	if meta.enableTLS {
+	if meta.enableTLS || len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil {
 			return nil, err
@@ -118,9 +114,9 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		return &meta, nil
 	}
 
-	authType := authenticationType(strings.TrimSpace(authMode))
+	authType := authentication.Type(strings.TrimSpace(authMode))
 	switch authType {
-	case apiKeyAuth:
+	case authentication.APIKeyAuthType:
 		if len(config.AuthParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
@@ -137,7 +133,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		if len(config.TriggerMetadata["keyParamName"]) > 0 {
 			meta.keyParamName = config.TriggerMetadata["keyParamName"]
 		}
-	case basicAuth:
+	case authentication.BasicAuthType:
 		if len(config.AuthParams["username"]) == 0 {
 			return nil, errors.New("no username given")
 		}
@@ -147,11 +143,10 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		// username as apikey and password as empty
 		meta.password = config.AuthParams["password"]
 		meta.enableBaseAuth = true
-	case tlsAuth:
+	case authentication.TLSAuthType:
 		if len(config.AuthParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}
-		meta.ca = config.AuthParams["ca"]
 
 		if len(config.AuthParams["cert"]) == 0 {
 			return nil, errors.New("no cert given")
@@ -166,6 +161,10 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		meta.enableTLS = true
 	default:
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
+	}
+
+	if len(config.AuthParams["ca"]) > 0 {
+		meta.ca = config.AuthParams["ca"]
 	}
 
 	return &meta, nil
