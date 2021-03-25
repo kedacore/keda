@@ -28,9 +28,10 @@ type kafkaMetricIdentifier struct {
 
 // A complete valid metadata example for reference
 var validKafkaMetadata = map[string]string{
-	"bootstrapServers": "broker1:9092,broker2:9092",
-	"consumerGroup":    "my-group",
-	"topic":            "my-topic",
+	"bootstrapServers":   "broker1:9092,broker2:9092",
+	"consumerGroup":      "my-group",
+	"topic":              "my-topic",
+	"allowIdleConsumers": "false",
 }
 
 // A complete valid authParams example for sasl, with username and passwd

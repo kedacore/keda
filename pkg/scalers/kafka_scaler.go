@@ -25,11 +25,12 @@ type kafkaScaler struct {
 }
 
 type kafkaMetadata struct {
-	bootstrapServers  []string
-	group             string
-	topic             string
-	lagThreshold      int64
-	offsetResetPolicy offsetResetPolicy
+	bootstrapServers   []string
+	group              string
+	topic              string
+	lagThreshold       int64
+	offsetResetPolicy  offsetResetPolicy
+	allowIdleConsumers bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -179,6 +180,15 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
+	}
+
+	meta.allowIdleConsumers = false
+	if val, ok := config.TriggerMetadata["allowIdleConsumers"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing allowIdleConsumers: %s", err)
+		}
+		meta.allowIdleConsumers = t
 	}
 
 	return meta, nil
@@ -360,9 +370,11 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, partitions %v, threshold %v", totalLag, len(partitions), s.metadata.lagThreshold))
 
-	// don't scale out beyond the number of partitions
-	if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
-		totalLag = int64(len(partitions)) * s.metadata.lagThreshold
+	if !s.metadata.allowIdleConsumers {
+		// don't scale out beyond the number of partitions
+		if (totalLag / s.metadata.lagThreshold) > int64(len(partitions)) {
+			totalLag = int64(len(partitions)) * s.metadata.lagThreshold
+		}
 	}
 
 	metric := external_metrics.ExternalMetricValue{
