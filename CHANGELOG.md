@@ -18,6 +18,8 @@
 
 ## Unreleased
 
+- Add Openstack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
+
 ### New
 
 - Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
@@ -43,7 +45,6 @@
 - Add Microsoft SQL Server (MSSQL) scaler ([#674](https://github.com/kedacore/keda/issues/674) | [docs](https://keda.sh/docs/2.2/scalers/mssql/))
 - Add `publishRate` trigger to RabbitMQ scaler ([#1653](https://github.com/kedacore/keda/pull/1653))
 - ScaledJob: support metadata labels in Job template ([#1686](https://github.com/kedacore/keda/pull/1686))
-- Add Openstack Metrics Scaler ([#1372](https://github.com/kedacore/keda/issues/1382))
 
 ### Improvements
 

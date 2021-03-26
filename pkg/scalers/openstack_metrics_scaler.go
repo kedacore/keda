@@ -198,7 +198,7 @@ func (a *openstackMetricScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(a.metadata.threshold), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", a.metadata.aggregationMethod)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s-%s-%s", a.metadata.metricID, strconv.FormatFloat(a.metadata.threshold, 'f', 0, 32), a.metadata.aggregationMethod)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
