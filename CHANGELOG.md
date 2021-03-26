@@ -18,7 +18,7 @@
 
 ## Unreleased
 
-- Add Openstack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
+- Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
 
 ### New
 
