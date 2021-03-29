@@ -18,6 +18,8 @@
 
 ## Unreleased
 
+- Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
+
 ### New
 
 - Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
