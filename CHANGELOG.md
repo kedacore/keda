@@ -19,6 +19,7 @@
 ## Unreleased
 
 - Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
+- Fixed goroutine leaks in usage of timers
 
 ### New
 
