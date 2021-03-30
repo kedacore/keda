@@ -26,15 +26,15 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	// empty
 	{map[string]string{}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// all properly formed
-	{map[string]string{"organizationUrlFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolId": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
+	{map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// using triggerAuthentication
-	{map[string]string{"poolId": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationUrl": "https://dev.azure.com/sample", "personalAccessToken": "sample"}},
-	// missing organizationUrl
-	{map[string]string{"organizationUrlFromEnv": "", "personalAccessTokenFromEnv": "sample", "poolId": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	{map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "personalAccessToken": "sample"}},
+	// missing organizationURL
+	{map[string]string{"organizationURLFromEnv": "", "personalAccessTokenFromEnv": "sample", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// missing personalAccessToken
-	{map[string]string{"organizationUrlFromEnv": "AZP_URL", "poolId": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
-	// missing poolId
-	{map[string]string{"organizationUrlFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolId": "", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	{map[string]string{"organizationURLFromEnv": "AZP_URL", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	// missing poolID
+	{map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 }
 
 var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
