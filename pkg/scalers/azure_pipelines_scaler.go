@@ -27,14 +27,15 @@ type azurePipelinesScaler struct {
 }
 
 type azurePipelinesMetadata struct {
-	organizationUrl            string
+	organizationURL            string
 	personalAccessToken        string
-	poolId                     string
+	poolID                     string
 	targetPipelinesQueueLength int
 }
 
 var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 
+// NewAzurePipelinesScaler creates a new AzurePipelinesScaler
 func NewAzurePipelinesScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseAzurePipelinesMetadata(config)
 	if err != nil {
@@ -62,13 +63,13 @@ func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata,
 		meta.targetPipelinesQueueLength = queueLength
 	}
 
-	if val, ok := config.AuthParams["organizationUrl"]; ok && val != "" {
-		// Found the organizationUrl in a parameter from TriggerAuthentication
-		meta.organizationUrl = val
-	} else if val, ok := config.TriggerMetadata["organizationUrlFromEnv"]; ok && val != "" {
-		meta.organizationUrl = config.ResolvedEnv[val]
+	if val, ok := config.AuthParams["organizationURL"]; ok && val != "" {
+		// Found the organizationURL in a parameter from TriggerAuthentication
+		meta.organizationURL = val
+	} else if val, ok := config.TriggerMetadata["organizationURLFromEnv"]; ok && val != "" {
+		meta.organizationURL = config.ResolvedEnv[val]
 	} else {
-		return nil, fmt.Errorf("no organizationUrl given")
+		return nil, fmt.Errorf("no organizationURL given")
 	}
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
@@ -80,17 +81,16 @@ func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata,
 		return nil, fmt.Errorf("no personalAccessToken given")
 	}
 
-	if val, ok := config.TriggerMetadata["poolId"]; ok && val != "" {
-		meta.poolId = val
+	if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
+		meta.poolID = val
 	} else {
-		return nil, fmt.Errorf("no poolId given")
+		return nil, fmt.Errorf("no poolID given")
 	}
 
 	return &meta, nil
 }
 
 func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%s/jobrequests", s.metadata.organizationUrl, s.metadata.poolId)
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%s/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return -1, err
@@ -132,7 +132,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	}
 
 	var result map[string]interface{}
-	err = json.Unmarshal([]byte(b), &result)
+	err = json.Unmarshal(b, &result)
 	if err != nil {
 		return -1, err
 	}
@@ -158,7 +158,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-pipelines-queue", s.metadata.poolId)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-pipelines-queue", s.metadata.poolID)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
