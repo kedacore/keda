@@ -53,7 +53,7 @@ require (
 	k8s.io/code-generator v0.20.5
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1
-	k8s.io/metrics v0.20.4
+	k8s.io/metrics v0.20.5
 	knative.dev/pkg v0.0.0-20210315160101-6a33a1ab29ac
 	sigs.k8s.io/controller-runtime v0.6.5
 )
