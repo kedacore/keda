@@ -14,7 +14,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.28.0
-	github.com/aws/aws-sdk-go v1.37.32
+	github.com/aws/aws-sdk-go v1.38.10
 	github.com/denisenkom/go-mssqldb v0.9.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0 // indirect
@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.2.2
+	github.com/influxdata/influxdb-client-go/v2 v2.2.3
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/hashstructure v1.1.0
