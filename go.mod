@@ -45,7 +45,7 @@ require (
 	go.mongodb.org/mongo-driver v1.5.1
 	google.golang.org/api v0.42.0
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018
-	google.golang.org/grpc v1.36.0
+	google.golang.org/grpc v1.36.1
 	k8s.io/api v0.20.5
 	k8s.io/apimachinery v0.20.5
 	k8s.io/apiserver v0.20.5
