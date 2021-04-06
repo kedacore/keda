@@ -40,7 +40,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/gjson v1.7.4
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	go.mongodb.org/mongo-driver v1.5.1
 	google.golang.org/api v0.43.0
