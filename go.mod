@@ -22,7 +22,7 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.5.0
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.5
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
