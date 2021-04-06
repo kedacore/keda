@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.2.2
+	github.com/influxdata/influxdb-client-go/v2 v2.2.3
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/hashstructure v1.1.0
