@@ -231,23 +231,28 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 
 	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 1 minute
 	retryDuration := time.Second * 2
-	retryBackoff := func() <-chan time.Time {
-		ch := time.After(retryDuration)
+	// the caller of this function needs to ensure that they call Stop() on the resulting
+	// timer, to release background resources.
+	retryBackoff := func() *time.Timer {
+		tmr := time.NewTimer(retryDuration)
 		retryDuration *= time.Second * 2
 		if retryDuration > time.Minute*1 {
 			retryDuration = time.Minute * 1
 		}
-		return ch
+		return tmr
 	}
 
 	// start the first run without delay
 	runWithLog()
 
 	for {
+		backoffTimer := retryBackoff()
 		select {
 		case <-ctx.Done():
+			backoffTimer.Stop()
 			return
-		case <-retryBackoff():
+		case <-backoffTimer.C:
+			backoffTimer.Stop()
 			runWithLog()
 		}
 	}
