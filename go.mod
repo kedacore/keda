@@ -14,13 +14,13 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.28.0
-	github.com/aws/aws-sdk-go v1.37.32
+	github.com/aws/aws-sdk-go v1.38.10
 	github.com/denisenkom/go-mssqldb v0.9.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-openapi/spec v0.20.3
 	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.5
