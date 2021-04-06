@@ -20,7 +20,7 @@ require (
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-openapi/spec v0.20.3
 	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.5
