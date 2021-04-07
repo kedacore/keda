@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -28,6 +29,7 @@ type azurePipelinesScaler struct {
 
 type azurePipelinesMetadata struct {
 	organizationURL            string
+	organizationName           string
 	personalAccessToken        string
 	poolID                     string
 	targetPipelinesQueueLength int
@@ -70,6 +72,12 @@ func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata,
 		meta.organizationURL = config.ResolvedEnv[val]
 	} else {
 		return nil, fmt.Errorf("no organizationURL given")
+	}
+
+	if val := meta.organizationURL[strings.LastIndex(meta.organizationURL, "/")+1:]; val != "" {
+		meta.organizationName = meta.organizationURL[strings.LastIndex(meta.organizationURL, "/")+1:]
+	} else {
+		return nil, fmt.Errorf("failed to extract organization name from organizationURL")
 	}
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
@@ -158,7 +166,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-pipelines-queue", s.metadata.poolID)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-pipelines-queue", s.metadata.organizationName, s.metadata.poolID)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
