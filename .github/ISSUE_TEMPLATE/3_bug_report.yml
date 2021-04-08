@@ -1,7 +1,6 @@
 name: Report a bug 🐛
 description: Create a report to help us improve
 labels: "bug"
-issue_body: true
 body:
 - type: textarea
   attributes:
@@ -90,3 +89,8 @@ body:
     placeholder: ie. Azure Service Bus, Kafka, ...
   validations:
     required: false
+- type: textarea
+  id: anything-else
+  attributes:
+    label: Anything else?
+    description: "Let us know if you have anything else to share"
