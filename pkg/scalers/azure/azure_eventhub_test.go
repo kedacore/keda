@@ -37,7 +37,9 @@ func TestCheckpointFromBlobStorageAzureWebjob(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		Offset:         offset,
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -55,30 +57,29 @@ func TestCheckpointFromBlobStorageAzureWebjob(t *testing.T) {
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
-func TestCheckpointFromBlobStorageWithDefault(t *testing.T) {
+func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 	if StorageConnectionString == "" {
 		return
 	}
 
 	partitionID := "0"
-	offset := "1002"
-	consumerGroup := "$default"
+	offset := "1005"
+	consumerGroup := "$Default"
 
 	sequencenumber := int64(1)
 
-	metadata := map[string]string{
-		"offset":         offset,
-		"sequencenumber": strconv.FormatInt(sequencenumber, 10),
-	}
-
 	containerName := "defaultcontainer"
-	urlPath := fmt.Sprintf("eventhubnamespace.servicebus.windows.net/hub/%s/checkpoint/", consumerGroup)
+	checkpointFormat := "{\"Offset\":\"%s\",\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
+	checkpoint := fmt.Sprintf(checkpointFormat, offset, sequencenumber, partitionID)
+	urlPath := fmt.Sprintf("%s/", consumerGroup)
 
-	ctx, err := createNewCheckpointInStorage(urlPath, containerName, partitionID, "", metadata)
+	ctx, err := createNewCheckpointInStorage(urlPath, containerName, partitionID, checkpoint, nil)
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		Offset:         offset,
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -97,8 +98,93 @@ func TestCheckpointFromBlobStorageWithDefault(t *testing.T) {
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
-func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
+func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T) {
+	if StorageConnectionString == "" {
+		return
+	}
 
+	partitionID := "0"
+	offset := "1006"
+	consumerGroup := "$Default"
+
+	sequencenumber := int64(1)
+
+	containerName := "defaultcontainerpython"
+	checkpointFormat := "{\"Offset\":\"%s\",\"sequence_number\":%d,\"partition_id\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
+	checkpoint := fmt.Sprintf(checkpointFormat, offset, sequencenumber, partitionID)
+	urlPath := fmt.Sprintf("%s/", consumerGroup)
+
+	ctx, err := createNewCheckpointInStorage(urlPath, containerName, partitionID, checkpoint, nil)
+	assert.Equal(t, err, nil)
+
+	expectedCheckpoint := Checkpoint{
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
+		PartitionID:    partitionID,
+		SequenceNumber: sequencenumber,
+	}
+
+	eventHubInfo := EventHubInfo{
+		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub",
+		StorageConnection:     StorageConnectionString,
+		EventHubConsumerGroup: consumerGroup,
+		EventHubName:          "hub",
+		BlobContainer:         containerName,
+	}
+
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	_ = check.Offset
+	_ = expectedCheckpoint.Offset
+	assert.Equal(t, check, expectedCheckpoint)
+}
+
+func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
+	if StorageConnectionString == "" {
+		return
+	}
+
+	partitionID := "0"
+	offset := "1002"
+	consumerGroup := "$default"
+
+	sequencenumber := int64(1)
+
+	metadata := map[string]string{
+		"offset":         offset,
+		"sequencenumber": strconv.FormatInt(sequencenumber, 10),
+	}
+
+	containerName := "blobmetadatacontainer"
+	urlPath := fmt.Sprintf("eventhubnamespace.servicebus.windows.net/hub/%s/checkpoint/", consumerGroup)
+
+	ctx, err := createNewCheckpointInStorage(urlPath, containerName, partitionID, "", metadata)
+	assert.Equal(t, err, nil)
+
+	expectedCheckpoint := Checkpoint{
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
+		PartitionID:    partitionID,
+		SequenceNumber: sequencenumber,
+	}
+
+	eventHubInfo := EventHubInfo{
+		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub",
+		StorageConnection:     StorageConnectionString,
+		EventHubConsumerGroup: consumerGroup,
+		EventHubName:          "hub",
+		BlobContainer:         containerName,
+		CheckpointType:        "BlobMetadata",
+	}
+
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	_ = check.Offset
+	_ = expectedCheckpoint.Offset
+	assert.Equal(t, check, expectedCheckpoint)
+}
+
+func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	if StorageConnectionString == "" {
 		return
 	}
@@ -118,7 +204,9 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		Offset:         offset,
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -162,11 +250,24 @@ func TestShouldParseCheckpointForWebJobWithCheckpointType(t *testing.T) {
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
 
-func TestShouldParseCheckpointForDefaultWithCheckpointType(t *testing.T) {
+func TestShouldParseCheckpointForDefault(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
-		CheckpointType:        "Default",
+		BlobContainer:         "DefaultContainer",
+	}
+
+	cp := newCheckpointer(eventHubInfo, "0")
+	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/DefaultContainer/$Default/0")
+}
+
+func TestShouldParseCheckpointForBlobMetadataWithCheckpointType(t *testing.T) {
+	eventHubInfo := EventHubInfo{
+		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
+		EventHubConsumerGroup: "$Default",
+		CheckpointType:        "BlobMetadata",
 		BlobContainer:         "containername",
 	}
 
@@ -176,11 +277,12 @@ func TestShouldParseCheckpointForDefaultWithCheckpointType(t *testing.T) {
 	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$Default/checkpoint/0")
 }
 
-func TestShouldParseCheckpointForDefault(t *testing.T) {
+func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
 		BlobContainer:         "containername",
+		CheckpointType:        "BlobMetadata",
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
