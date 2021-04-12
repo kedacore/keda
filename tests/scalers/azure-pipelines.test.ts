@@ -19,7 +19,7 @@ test.before(async t => {
     t.fail('AZURE_DEVOPS_ORGANIZATION_URL, AZURE_DEVOPS_PAT, AZURE_DEVOPS_PROJECT, AZURE_DEVOPS_BUILD_DEFINITON_ID and AZURE_DEVOPS_POOL_NAME environment variables are required for azure pipelines tests')
   }
 
-  let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken); 
+  let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
 
   let taskAgent: ta.ITaskAgentApiBase = await connection.getTaskAgentApi();
@@ -45,7 +45,7 @@ test.serial('Deployment should have 1 replicas on start', t => {
 })
 
 test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
-  let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken); 
+  let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
   let build: ba.IBuildApi = await connection.getBuildApi();
   var definitionID = parseInt(buildDefinitionID)
