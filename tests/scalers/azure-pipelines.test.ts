@@ -25,7 +25,7 @@ test.before(async t => {
   let taskAgent: ta.ITaskAgentApiBase = await connection.getTaskAgentApi();
   let agentPool: ti.TaskAgentPool[] = await taskAgent.getAgentPools(poolName)
   let poolID: number = agentPool[0].id
-    
+
   if(!poolID) {
     t.fail("failed to convert poolName to poolID")
   }
