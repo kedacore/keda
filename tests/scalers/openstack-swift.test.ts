@@ -7,12 +7,12 @@ import SwiftClient from './openstack/openstack-swift-helper';
 
 var swiftClient: SwiftClient
 
-const openstackSwiftURL = process.env['OS_SWIFT_URL']
-const openstackUserID = process.env['OS_USER_ID']
-const openstackPassword = process.env['OS_PASSWORD']
-const openstackProjectID = process.env['OS_PROJECT_ID']
-const openstackAuthURL = process.env['OS_AUTH_URL']
-const openstackRegionName = process.env['OS_REGION_NAME']
+const openstackSwiftURL = process.env['OPENSTACK_SWIFT_URL']
+const openstackUserID = process.env['OPENSTACK_USER_ID']
+const openstackPassword = process.env['OPENSTACK_PASSWORD']
+const openstackProjectID = process.env['OPENSTACK_PROJECT_ID']
+const openstackAuthURL = process.env['OPENSTACK_AUTH_URL']
+const openstackRegionName = process.env['OPENSTACK_REGION_NAME']
 
 const testNamespace = 'openstack-swift-password-test'
 
@@ -41,19 +41,19 @@ test.before(t => {
   sh.config.silent = true
 
   if (!openstackUserID) {
-    t.fail('OS_USER_ID environment variable is required for running tests')
+    t.fail('OPENSTACK_USER_ID environment variable is required for running tests')
   }
 
   if (!openstackPassword) {
-    t.fail('OS_PASSWORD environment variable is required for running tests')
+    t.fail('OPENSTACK_PASSWORD environment variable is required for running tests')
   }
 
   if (!openstackProjectID) {
-    t.fail('OS_PROJECT_ID environment variable is required for running tests')
+    t.fail('OPENSTACK_PROJECT_ID environment variable is required for running tests')
   }
 
   if (!openstackAuthURL) {
-    t.fail('OS_AUTH_URL environment variable is required for running tests')
+    t.fail('OPENSTACK_AUTH_URL environment variable is required for running tests')
   }
 });
 
@@ -83,18 +83,18 @@ test.serial.before(async t => {
   if (openstackRegionName) base64OpenstackRegionName = Buffer.from(openstackRegionName).toString('base64')
 
   fs.writeFileSync(secretYamlFile.name, swiftSecretYaml
-    .replace('{{OS_USER_ID}}', base64OpenstackUserID)
-    .replace('{{OS_PASSWORD}}', base64OpenstackPassword)
-    .replace('{{OS_PROJECT_ID}}', base64OpenstackProjectID)
-    .replace('{{OS_AUTH_URL}}', base64OpenstackAuthURL)
-    .replace('{{OS_REGION_NAME}}', base64OpenstackRegionName)
+    .replace('{{OPENSTACK_USER_ID}}', base64OpenstackUserID)
+    .replace('{{OPENSTACK_PASSWORD}}', base64OpenstackPassword)
+    .replace('{{OPENSTACK_PROJECT_ID}}', base64OpenstackProjectID)
+    .replace('{{OPENSTACK_AUTH_URL}}', base64OpenstackAuthURL)
+    .replace('{{OPENSTACK_REGION_NAME}}', base64OpenstackRegionName)
   )
 
   fs.writeFileSync(triggerAuthenticationYamlFile.name, swiftTriggerAuthenticationYaml)
 
   fs.writeFileSync(scaledObjectYamlFile.name, swiftScaledObjectYaml
     .replace('{{DEPLOYMENT_NAME}}', deploymentName)
-    .replace('{{OS_SWIFT_URL}}', openstackSwiftURL)
+    .replace('{{OPENSTACK_SWIFT_URL}}', openstackSwiftURL)
     .replace('{{CONTAINER_NAME}}', swiftContainerName)
   )
 
@@ -268,10 +268,10 @@ metadata:
   name: openstack-password-secrets
 type: Opaque
 data:
-  userID: {{OS_USER_ID}}
-  password: {{OS_PASSWORD}}
-  projectID: {{OS_PROJECT_ID}}
-  authURL: {{OS_AUTH_URL}}
+  userID: {{OPENSTACK_USER_ID}}
+  password: {{OPENSTACK_PASSWORD}}
+  projectID: {{OPENSTACK_PROJECT_ID}}
+  authURL: {{OPENSTACK_AUTH_URL}}
 `
 
 const swiftTriggerAuthenticationYaml = `
