@@ -6,7 +6,7 @@ const requestTimeout = 30000
 
 const keystoneClient: AxiosInstance = axios.create({
     url: '/v3/auth/tokens',
-    baseURL: process.env['OS_AUTH_URL'],
+    baseURL: process.env['OPENSTACK_AUTH_URL'],
     timeout: requestTimeout
 })
 
@@ -47,7 +47,7 @@ class OpenstackHelperClient {
     // It will use the service URL provided by the user. If not provided, it will look for the URL into the Openstack catalog
     private static async getCredentials(osServiceName: string, osServiceURL ?: string): Promise<Credentials> {
         const credentials = <Credentials>{}
-        const osRegion = process.env['OS_REGION_NAME']
+        const osRegion = process.env['OPENSTACK_REGION_NAME']
 
         try {
             const response = await keystoneClient.request({
@@ -61,14 +61,14 @@ class OpenstackHelperClient {
                             ],
                             "password": {
                                 "user": {
-                                    "id": process.env['OS_USER_ID'],
-                                    "password": process.env['OS_PASSWORD']
+                                    "id": process.env['OPENSTACK_USER_ID'],
+                                    "password": process.env['OPENSTACK_PASSWORD']
                                 }
                             }
                         },
                         "scope": {
                             "project": {
-                                "id": process.env['OS_PROJECT_ID']
+                                "id": process.env['OPENSTACK_PROJECT_ID']
                             }
                         }
                     }
