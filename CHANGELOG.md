@@ -36,7 +36,7 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Adding OpenStack Swift scaler end-to-end tests ([#1522](https://github.com/kedacore/keda/pull/1522))
 
 ## v2.2.0
 
