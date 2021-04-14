@@ -51,7 +51,7 @@ test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async
   var definitionID = parseInt(buildDefinitionID)
 
   // wait for the first agent to be registered in the agent pool
-  await new Promise(resolve => setTimeout(resolve, 15 * 1000));
+  await new Promise(resolve => setTimeout(resolve, 20 * 1000));
 
   for(let i = 0; i < 3; i++) {
     await build.queueBuild(null, projectName, null, null, null, definitionID)
@@ -123,7 +123,7 @@ spec:
     spec:
       containers:
       - name: azdevops-agent
-        image: docker.io/troydn/azdevopsagent:latest
+        image: ghcr.io/kedacore/tests-azure-pipelines-agent:b3a02cc
         env:
           - name: AZP_URL
             value: {{AZP_URL}}
