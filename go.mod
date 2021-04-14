@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.81.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.7
-	github.com/Azure/azure-sdk-for-go v52.6.0+incompatible
+	github.com/Azure/azure-sdk-for-go v53.1.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.11
 	github.com/Azure/azure-storage-blob-go v0.13.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -14,8 +14,8 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.28.0
-	github.com/aws/aws-sdk-go v1.38.13
-	github.com/denisenkom/go-mssqldb v0.9.0
+	github.com/aws/aws-sdk-go v1.38.19
+	github.com/denisenkom/go-mssqldb v0.10.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-openapi/spec v0.20.3
@@ -32,7 +32,7 @@ require (
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/onsi/ginkgo v1.16.0
+	github.com/onsi/ginkgo v1.16.1
 	github.com/onsi/gomega v1.11.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.10.0
@@ -41,11 +41,11 @@ require (
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/gjson v1.7.4
-	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
+	github.com/xdg/scram v1.0.3
 	go.mongodb.org/mongo-driver v1.5.1
-	google.golang.org/api v0.43.0
-	google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1
-	google.golang.org/grpc v1.36.1
+	google.golang.org/api v0.44.0
+	google.golang.org/genproto v0.0.0-20210413151531-c14fb6ef47c3
+	google.golang.org/grpc v1.37.0
 	k8s.io/api v0.20.5
 	k8s.io/apimachinery v0.20.5
 	k8s.io/apiserver v0.20.5
@@ -54,11 +54,11 @@ require (
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1
 	k8s.io/metrics v0.20.5
-	knative.dev/pkg v0.0.0-20210315160101-6a33a1ab29ac
+	knative.dev/pkg v0.0.0-20210412173742-b51994e3b312
 	sigs.k8s.io/controller-runtime v0.6.5
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.20.4
+replace k8s.io/client-go => k8s.io/client-go v0.20.5
 
 // adapter uses k8s.io/apiserver/pkg/server, which indirectly uses go.etcd.io/etcd/proxy/grpcproxy.
 // etcd is not compatible with newer grpc version, see here https://github.com/etcd-io/etcd/issues/12124
