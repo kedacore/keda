@@ -140,8 +140,9 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	pollingInterval := getPollingInterval(withTriggers)
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
 
-	tmr := time.NewTimer(pollingInterval)
 	for {
+		tmr := time.NewTimer(pollingInterval)
+
 		select {
 		case <-tmr.C:
 			h.checkScalers(ctx, scalableObject, scalingMutex)
