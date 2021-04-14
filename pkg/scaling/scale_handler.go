@@ -464,6 +464,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(config)
+	case "azure-pipelines":
+		return scalers.NewAzurePipelinesScaler(config)
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
