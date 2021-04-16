@@ -20,7 +20,7 @@
 
 - Add Azure Pipelines Scaler ([#1706](https://github.com/kedacore/keda/pull/1706))
 - Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
-- Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704))
+- Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704) | [#1739](https://github.com/kedacore/keda/pull/1739))
 
 ### New
 
