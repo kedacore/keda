@@ -22,6 +22,7 @@
     "async": "^3.1.0",
     "ava": "^2.4.0",
     "axios": "^0.21.1",
+    "azure-devops-node-api": "^10.2.2",
     "azure-storage": "^2.10.3",
     "chalk": "^2.4.2",
     "eol": "^0.9.1",
