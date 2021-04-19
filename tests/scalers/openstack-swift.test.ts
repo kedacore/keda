@@ -214,7 +214,7 @@ test.serial('Deployment should be scaled to 0 after deleting all objects in cont
       t.fail(`Could not delete all objects inside container to test scaling to zero. Swift API returned: ${response}`)
     }
 
-    for (let i = 0; i < 20 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '0'; i++) {
       replicaCount = sh.exec(
           `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
       ).stdout
@@ -227,7 +227,7 @@ test.serial('Deployment should be scaled to 0 after deleting all objects in cont
     t.is(
       replicaCount,
       '0',
-      'Replica count should be 0 after creating ScaledObject'
+      'Replica count should be 0 after deleting all objects in container'
     )
   } catch (err) {
     t.fail(err.message)
