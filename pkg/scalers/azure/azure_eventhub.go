@@ -18,7 +18,7 @@ type EventHubInfo struct {
 	BlobContainer         string
 	Namespace             string
 	EventHubName          string
-	CheckpointType        string
+	CheckpointStrategy    string
 }
 
 // GetEventHubClient returns eventhub client

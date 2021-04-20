@@ -28,7 +28,7 @@ const (
 	thresholdMetricName             = "unprocessedEventThreshold"
 	defaultEventHubConsumerGroup    = "$Default"
 	defaultBlobContainer            = ""
-	defaultCheckpointType           = ""
+	defaultCheckpointStrategy       = ""
 )
 
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
@@ -94,9 +94,9 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.EventHubConsumerGroup = val
 	}
 
-	meta.eventHubInfo.CheckpointType = defaultCheckpointType
-	if val, ok := config.TriggerMetadata["checkpointType"]; ok {
-		meta.eventHubInfo.CheckpointType = val
+	meta.eventHubInfo.CheckpointStrategy = defaultCheckpointStrategy
+	if val, ok := config.TriggerMetadata["checkpointStrategy"]; ok {
+		meta.eventHubInfo.CheckpointStrategy = val
 	}
 
 	meta.eventHubInfo.BlobContainer = defaultBlobContainer
