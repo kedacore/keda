@@ -17,21 +17,23 @@ type graphiteMetricIdentifier struct {
 var testGrapMetadata = []parseGraphiteMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"grapServerAddress": "http://localhost:81", "grapMetricName": "stats.counters.http.hello-world.request.count.count", "threshold": "100", "grapQuery": "up", "disableScaleToZero": "true"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, false},
 	// missing serverAddress
-	{map[string]string{"grapServerAddress": "", "grapMetricName": "stats.counters.http.hello-world.request.count.count", "threshold": "100", "grapQuery": "up", "disableScaleToZero": "true"}, true},
+	{map[string]string{"serverAddress": "", "grapmetricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
 	// missing metricName
-	{map[string]string{"grapServerAddress": "http://localhost:81", "grapMetricName": "", "threshold": "100", "grapQuery": "up", "disableScaleToZero": "true"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
 	// malformed threshold
-	{map[string]string{"grapServerAddress": "http://localhost:81", "grapMetricName": "stats.counters.http.hello-world.request.count.count", "threshold": "one", "grapQuery": "up", "disableScaleToZero": "true"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
 	// missing query
-	{map[string]string{"grapServerAddress": "http://localhost:81", "grapMetricName": "stats.counters.http.hello-world.request.count.count", "threshold": "100", "grapQuery": "", "disableScaleToZero": "true"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
+	// missing queryTime
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "", "disableScaleToZero": "true"}, true},
 	// all properly formed, default disableScaleToZero
-	{map[string]string{"grapServerAddress": "http://localhost:81", "grapMetricName": "stats.counters.http.hello-world.request.count.count", "threshold": "100", "grapQuery": "up"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "queryTime": "-30Seconds", "query": "stats.counters.http.hello-world.request.count.count"}, false},
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
-	{&testGrapMetadata[1], "graphite-http---localhost-9090-http_requests_total"},
+	{&testGrapMetadata[1], "graphite-http---localhost-81-request-count"},
 }
 
 func TestGraphiteParseMetadata(t *testing.T) {
