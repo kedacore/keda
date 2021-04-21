@@ -39,6 +39,8 @@ type ScaledJobSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
+	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
+	// +optional
 	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
 	Triggers        []ScaleTriggers `json:"triggers"`
 }
@@ -82,4 +84,13 @@ func (s ScaledJob) MaxReplicaCount() int64 {
 	}
 
 	return 100
+}
+
+// MinReplicaCount returns MinReplicaCount
+func (s ScaledJob) MinReplicaCount() int64 {
+	if s.Spec.MinReplicaCount != nil {
+		return int64(*s.Spec.MinReplicaCount)
+	}
+
+	return 0
 }

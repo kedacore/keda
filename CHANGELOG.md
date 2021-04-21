@@ -21,6 +21,7 @@
 - Add Azure Pipelines Scaler ([#1706](https://github.com/kedacore/keda/pull/1706))
 - Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
 - Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704) | [#1739](https://github.com/kedacore/keda/pull/1739))
+- Add a way to always have job running ([#1752](https://github.com/kedacore/keda/pull/1752))
 
 ### New
 
@@ -160,6 +161,7 @@ None.
 - CRDs are using `apiextensions.k8s.io/v1` apiVersion ([#1202](https://github.com/kedacore/keda/pull/1202))
 
 ### Other
+
 - Change API optional structs to pointers to conform with k8s guide ([#1170](https://github.com/kedacore/keda/issues/1170))
 - Update Operator SDK and k8s deps ([#1007](https://github.com/kedacore/keda/pull/1007),[#870](https://github.com/kedacore/keda/issues/870),[#1180](https://github.com/kedacore/keda/pull/1180))
 - Change Metrics Server image name from `keda-metrics-adapter` to `keda-metrics-apiserver` ([#1105](https://github.com/kedacore/keda/issues/1105))
@@ -172,13 +174,13 @@ Learn more about our release in [our milestone](https://github.com/kedacore/keda
 ### New
 
 - **Scalers**
-    - Introduce Active MQ Artemis scaler ([Docs](https://keda.sh/docs/1.5/scalers/artemis/))
-    - Introduce Redis Streams scaler ([Docs](https://keda.sh/docs/1.5/scalers/redis-streams/) | [Details](https://github.com/kedacore/keda/issues/746))
-    - Introduce Cron scaler ([Docs](https://keda.sh/docs/1.5/scalers/cron/) | [Details](https://github.com/kedacore/keda/issues/812))
+  - Introduce Active MQ Artemis scaler ([Docs](https://keda.sh/docs/1.5/scalers/artemis/))
+  - Introduce Redis Streams scaler ([Docs](https://keda.sh/docs/1.5/scalers/redis-streams/) | [Details](https://github.com/kedacore/keda/issues/746))
+  - Introduce Cron scaler ([Docs](https://keda.sh/docs/1.5/scalers/cron/) | [Details](https://github.com/kedacore/keda/issues/812))
 - **Secret Providers**
-    - Introduce HashiCorp Vault secret provider ([Docs](https://keda.sh/docs/1.5/concepts/authentication/#hashicorp-vault-secrets) | [Details](https://github.com/kedacore/keda/issues/673))
+  - Introduce HashiCorp Vault secret provider ([Docs](https://keda.sh/docs/1.5/concepts/authentication/#hashicorp-vault-secrets) | [Details](https://github.com/kedacore/keda/issues/673))
 - **Other**
-    - Introduction of `nodeSelector` in raw YAML deployment specifications ([Details](https://github.com/kedacore/keda/pull/856))
+  - Introduction of `nodeSelector` in raw YAML deployment specifications ([Details](https://github.com/kedacore/keda/pull/856))
 
 ### Improvements
 

@@ -387,6 +387,11 @@ func (in *ScaledJobSpec) DeepCopyInto(out *ScaledJobSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.MinReplicaCount != nil {
+		in, out := &in.MinReplicaCount, &out.MinReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
 	in.ScalingStrategy.DeepCopyInto(&out.ScalingStrategy)
 	if in.Triggers != nil {
 		in, out := &in.Triggers, &out.Triggers

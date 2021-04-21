@@ -6725,6 +6725,9 @@ spec:
               maxReplicaCount:
                 format: int32
                 type: integer
+              minReplicaCount:
+                format: int32
+                type: integer
               pollingInterval:
                 format: int32
                 type: integer

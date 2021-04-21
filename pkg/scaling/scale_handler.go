@@ -287,10 +287,17 @@ func (h *scaleHandler) checkScaledJobScalers(ctx context.Context, scalers []scal
 		}
 	}
 	if targetAverageValue != 0 {
-		maxValue = min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue))
+		maxValue = max(min(scaledJob.MaxReplicaCount(), devideWithCeil(queueLength, targetAverageValue)), scaledJob.MinReplicaCount())
 	}
-	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
-	return isActive, queueLength, maxValue
+
+	scaleTo := queueLength
+	if scaleTo < scaledJob.MinReplicaCount() {
+		isActive = true
+		scaleTo = scaledJob.MinReplicaCount()
+	}
+
+	h.logger.Info("Scaler", "maxValue", maxValue, "scaleTo", scaleTo, "isActive", isActive)
+	return isActive, scaleTo, maxValue
 }
 
 func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {
@@ -331,6 +338,14 @@ func min(x, y int64) int64 {
 		return y
 	}
 	return x
+}
+
+// Max function for int64
+func max(x, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
 }
 
 // buildScalers returns list of Scalers for the specified triggers
