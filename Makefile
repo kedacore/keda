@@ -14,8 +14,8 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-GIT_VERSION = $(shell git describe --always --abbrev=7)
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+GIT_VERSION ?= $(shell git describe --always --abbrev=7)
+GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 TEST_CLUSTER_NAME ?= keda-nightly-run-2
@@ -143,8 +143,8 @@ build: manifests set-version manager adapter
 
 # Build the docker image
 docker-build:
-	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
-	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION}
+	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 # Build KEDA Operator binary
 .PHONY: manager
