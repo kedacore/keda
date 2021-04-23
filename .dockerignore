@@ -1,0 +1,12 @@
+# Don't send .git context
+.git/
+
+# Binaries
+/bin/
+/keda
+
+# Dockerfiles
+Dockerfile
+Dockerfile.*
+
+*.md

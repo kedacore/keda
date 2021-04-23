@@ -1,7 +1,9 @@
 # Build the manager binary
 FROM golang:1.15.6 as builder
 
-ARG BUILD_VERSION
+ARG BUILD_VERSION=main
+ARG GIT_COMMIT=HEAD
+ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
@@ -23,10 +25,8 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 
-COPY .git/ .git/
-
 # Build
-RUN VERSION=${BUILD_VERSION} make manager-dockerfile
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make manager-dockerfile
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
