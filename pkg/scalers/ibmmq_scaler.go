@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,7 +30,8 @@ const (
 
 // IBMMQScaler assigns struct data pointer to metadata variable
 type IBMMQScaler struct {
-	metadata *IBMMQMetadata
+	metadata           *IBMMQMetadata
+	defaultHTTPTimeout time.Duration
 }
 
 // IBMMQMetadata Metadata used by KEDA to query IBM MQ queue depth and scale
@@ -65,7 +67,10 @@ func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
 	}
 
-	return &IBMMQScaler{metadata: meta}, nil
+	return &IBMMQScaler{
+		metadata:           meta,
+		defaultHTTPTimeout: config.GlobalHTTPTimeout,
+	}, nil
 }
 
 // Close closes and returns nil
@@ -168,7 +173,8 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP() (int, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
 	}
-	client := &http.Client{Transport: tr}
+	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout)
+	client.Transport = tr
 
 	resp, err := client.Do(req)
 	if err != nil {
