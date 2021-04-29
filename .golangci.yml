@@ -24,8 +24,7 @@ linters:
     - unconvert
     - ineffassign
     - staticcheck
-    - interfacer
-    - scopelint
+    - exportloopref
     - structcheck
     - deadcode
     - depguard
@@ -52,14 +51,9 @@ issues:
       linters:
         - gomnd
         - dupl
-        - interfacer
     - path: scale_handler.go
       linters:
         - gocyclo
-  # Excluding interfacer for finalizers, reason: https://github.com/kedacore/keda/pull/1390
-    - path: _finalizer.go
-      linters:
-        - interfacer
   # Exclude for clustertriggerauthentication_controller and triggerauthentication_controller, reason:
   # controllers/clustertriggerauthentication_controller.go:1: 1-59 lines are duplicate of `controllers/triggerauthentication_controller.go:1-58` (dupl)
     - path: triggerauthentication_controller.go
