@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/imdario/mergo"
@@ -76,22 +77,23 @@ func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer,
 }
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
-	if info.CheckpointStrategy == "GoSdk" {
+	switch {
+	case (info.CheckpointStrategy == "GoSdk"):
 		return &goSdkCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	} else if info.CheckpointStrategy == "BlobMetadata" {
+	case (info.CheckpointStrategy == "BlobMetadata"):
 		return &blobMetadataCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	} else if info.CheckpointStrategy == "AzureWebJob" || info.BlobContainer == "" {
+	case (info.CheckpointStrategy == "AzureWebJob" || info.BlobContainer == ""):
 		return &azureWebjobCheckpointer{
 			containerName: "azure-webjobs-eventhub",
 			partitionID:   partitionID,
 		}
-	} else {
+	default:
 		return &defaultCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
@@ -129,8 +131,7 @@ func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*u
 		return nil, err
 	}
 
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
-
+	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
 	return path, nil
 }
 

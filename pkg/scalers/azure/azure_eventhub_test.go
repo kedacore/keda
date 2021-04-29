@@ -24,7 +24,7 @@ func TestCheckpointFromBlobStorageAzureWebjob(t *testing.T) {
 
 	partitionID := "0"
 	offset := "1001"
-	consumerGroup := "$Default"
+	consumerGroup := "$Default1"
 
 	sequencenumber := int64(1)
 
@@ -62,9 +62,9 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 		return
 	}
 
-	partitionID := "0"
+	partitionID := "1"
 	offset := "1005"
-	consumerGroup := "$Default"
+	consumerGroup := "$Default2"
 
 	sequencenumber := int64(1)
 
@@ -92,7 +92,7 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 		BlobContainer:         containerName,
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
 	_ = check.Offset
 	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
@@ -103,9 +103,9 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 		return
 	}
 
-	partitionID := "0"
+	partitionID := "2"
 	offset := "1006"
-	consumerGroup := "$Default"
+	consumerGroup := "$Default3"
 
 	sequencenumber := int64(1)
 
@@ -133,7 +133,7 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 		BlobContainer:         containerName,
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
 	_ = check.Offset
 	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
@@ -144,7 +144,7 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 		return
 	}
 
-	partitionID := "0"
+	partitionID := "4"
 	offset := "1002"
 	consumerGroup := "$default"
 
@@ -178,7 +178,7 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 		CheckpointStrategy:    "BlobMetadata",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
 	_ = check.Offset
 	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
@@ -219,7 +219,7 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 		CheckpointStrategy: "GoSdk",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
 	_ = check.Offset
 	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
@@ -263,20 +263,6 @@ func TestShouldParseCheckpointForDefault(t *testing.T) {
 	assert.Equal(t, url.Path, "/DefaultContainer/$Default/0")
 }
 
-func TestShouldParseCheckpointForBlobMetadataWithCheckpointStrategy(t *testing.T) {
-	eventHubInfo := EventHubInfo{
-		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
-		EventHubConsumerGroup: "$Default",
-		CheckpointStrategy:    "BlobMetadata",
-		BlobContainer:         "containername",
-	}
-
-	cp := newCheckpointer(eventHubInfo, "0")
-	url, _ := cp.resolvePath(eventHubInfo)
-
-	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$Default/checkpoint/0")
-}
-
 func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
@@ -288,7 +274,7 @@ func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 	cp := newCheckpointer(eventHubInfo, "0")
 	url, _ := cp.resolvePath(eventHubInfo)
 
-	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$Default/checkpoint/0")
+	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$default/checkpoint/0")
 }
 
 func TestShouldParseCheckpointForGoSdk(t *testing.T) {
@@ -305,12 +291,7 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 	assert.Equal(t, url.Path, "/containername/0")
 }
 
-func Test(t *testing.T) {
-
-}
-
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
-
 	credential, endpoint, _ := ParseAzureStorageBlobConnection(http.DefaultClient, "none", StorageConnectionString, "")
 
 	// Create container
