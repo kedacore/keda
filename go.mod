@@ -45,7 +45,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210416161957-9910b6c460de
 	google.golang.org/grpc v1.37.0
 	k8s.io/api v0.20.6
-	k8s.io/apimachinery v0.20.6
+	k8s.io/apimachinery v0.21.0
 	k8s.io/apiserver v0.20.6
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	k8s.io/code-generator v0.20.6
