@@ -15,7 +15,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// goCheckpoint struct to adapt GoSdk Checkpoint
+// goCheckpoint struct to adapt goSdk Checkpoint
 type goCheckpoint struct {
 	Checkpoint struct {
 		SequenceNumber int64  `json:"sequenceNumber"`
@@ -78,17 +78,17 @@ func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer,
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	switch {
-	case (info.CheckpointStrategy == "GoSdk"):
+	case (info.CheckpointStrategy == "goSdk"):
 		return &goSdkCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "BlobMetadata"):
+	case (info.CheckpointStrategy == "blobMetadata"):
 		return &blobMetadataCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "AzureWebJob" || info.BlobContainer == ""):
+	case (info.CheckpointStrategy == "azureWebJob" || info.BlobContainer == ""):
 		return &azureWebjobCheckpointer{
 			containerName: "azure-webjobs-eventhub",
 			partitionID:   partitionID,
@@ -124,7 +124,7 @@ func (checkpointer *azureWebjobCheckpointer) extractCheckpoint(get *azblob.Downl
 	return checkpoint, nil
 }
 
-// resolve path for BlobMetadataCheckpointer
+// resolve path for blobMetadataCheckpointer
 func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
 	eventHubNamespace, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
@@ -135,19 +135,19 @@ func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*u
 	return path, nil
 }
 
-// extract checkpoint for BlobMetadataCheckpointer
+// extract checkpoint for blobMetadataCheckpointer
 func (checkpointer *blobMetadataCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 	return getCheckpointFromStorageMetadata(get, checkpointer.partitionID)
 }
 
-// resolve path for GoSdkCheckpointer
+// resolve path for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
 	path, _ := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
 
 	return path, nil
 }
 
-// extract checkpoint for GoSdkCheckpointer
+// extract checkpoint for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 	var checkpoint goCheckpoint
 	err := readToCheckpointFromBody(get, &checkpoint)

@@ -175,7 +175,7 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 		EventHubConsumerGroup: consumerGroup,
 		EventHubName:          "hub",
 		BlobContainer:         containerName,
-		CheckpointStrategy:    "BlobMetadata",
+		CheckpointStrategy:    "blobMetadata",
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
@@ -216,7 +216,7 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 		StorageConnection:  StorageConnectionString,
 		EventHubName:       "hub",
 		BlobContainer:      containerName,
-		CheckpointStrategy: "GoSdk",
+		CheckpointStrategy: "goSdk",
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
@@ -241,7 +241,7 @@ func TestShouldParseCheckpointForWebJobWithCheckpointStrategy(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
-		CheckpointStrategy:    "AzureWebJob",
+		CheckpointStrategy:    "azureWebJob",
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
@@ -268,7 +268,7 @@ func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
 		BlobContainer:         "containername",
-		CheckpointStrategy:    "BlobMetadata",
+		CheckpointStrategy:    "blobMetadata",
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
@@ -282,7 +282,7 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
 		BlobContainer:         "containername",
-		CheckpointStrategy:    "GoSdk",
+		CheckpointStrategy:    "goSdk",
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
