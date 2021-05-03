@@ -56,10 +56,8 @@ RUN RELEASE_VERSION=v1.0.1 && \
     rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 
 # Install kubebuilder tools
-RUN os=$(go env GOOS) && \
-    arch=$(go env GOARCH) && \
-    curl -L https://go.kubebuilder.io/dl/2.3.1/${os}/${arch} | tar -xz -C /tmp/ && \
-    mv /tmp/kubebuilder_2.3.1_${os}_${arch} /usr/local/kubebuilder
+RUN curl -L https://go.kubebuilder.io/dl/2.3.1/linux/amd64 | tar -xz -C /tmp/ && \
+    mv /tmp/kubebuilder_2.3.1_linux_amd64 /usr/local/kubebuilder
 
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
