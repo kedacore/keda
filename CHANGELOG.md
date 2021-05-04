@@ -30,6 +30,7 @@
 - Apache Kafka Scaler: Add `allowIdleConsumers` to the list of trigger parameters ([#1684](https://github.com/kedacore/keda/pull/1684))
 - Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704) | [#1739](https://github.com/kedacore/keda/pull/1739))
 - Setting timeouts in the HTTP client used by the IBM MQ scaler ([#1758](https://github.com/kedacore/keda/pull/1758))
+- Fix cleanup of removed triggers ([#1768](https://github.com/kedacore/keda/pull/1768))
 
 ### Breaking Changes
 
