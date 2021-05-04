@@ -1,16 +1,23 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type GinkgoTestReporter struct{}
@@ -174,6 +181,102 @@ var _ = Describe("ScaledObjectController", func() {
 				Ω(metricSpecs).Should(BeNil())
 				Ω(err).ShouldNot(BeNil())
 			})
+		})
+	})
+
+	Describe("functional tests", func() {
+		var deployment *appsv1.Deployment
+
+		BeforeEach(func() {
+			deployment = &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"},
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "myapp",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app": "myapp",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "app",
+									Image: "app",
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+
+		It("cleans up a deleted trigger from the HPA", func() {
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), deployment)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject with two triggers.
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "clean-up-test", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: "myapp",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "2 * * * *",
+								"end":             "3 * * * *",
+								"desiredReplicas": "2",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA.
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-clean-up-test", Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.Metrics).To(HaveLen(2))
+			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-UTC-0xxxx-1xxxx"))
+			Expect(hpa.Spec.Metrics[1].External.Metric.Name).To(Equal("cron-UTC-2xxxx-3xxxx"))
+
+			// Remove the second trigger.
+			Eventually(func() error {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: "clean-up-test", Namespace: "default"}, so)
+				Expect(err).ToNot(HaveOccurred())
+				so.Spec.Triggers = so.Spec.Triggers[:1]
+				return k8sClient.Update(context.Background(), so)
+			}).ShouldNot(HaveOccurred())
+
+			// Wait until the HPA is updated.
+			Eventually(func() int {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-clean-up-test", Namespace: "default"}, hpa)
+				Expect(err).ToNot(HaveOccurred())
+				return len(hpa.Spec.Metrics)
+			}).Should(Equal(1))
+			// And it should only be the first one left.
+			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-UTC-0xxxx-1xxxx"))
 		})
 	})
 })
