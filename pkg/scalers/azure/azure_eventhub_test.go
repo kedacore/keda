@@ -17,7 +17,7 @@ import (
 // Add a valid Storage account connection string here
 const StorageConnectionString = ""
 
-func TestCheckpointFromBlobStorageAzureWebjob(t *testing.T) {
+func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 	if StorageConnectionString == "" {
 		return
 	}
@@ -225,7 +225,7 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
-func TestShouldParseCheckpointForWebJob(t *testing.T) {
+func TestShouldParseCheckpointForFunction(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
@@ -237,11 +237,11 @@ func TestShouldParseCheckpointForWebJob(t *testing.T) {
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
 
-func TestShouldParseCheckpointForWebJobWithCheckpointStrategy(t *testing.T) {
+func TestShouldParseCheckpointForFunctionWithCheckpointStrategy(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
 		EventHubConsumerGroup: "$Default",
-		CheckpointStrategy:    "azureWebJob",
+		CheckpointStrategy:    "azureFunction",
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")

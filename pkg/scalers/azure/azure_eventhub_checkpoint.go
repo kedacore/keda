@@ -50,7 +50,7 @@ type checkpointer interface {
 	extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error)
 }
 
-type azureWebjobCheckpointer struct {
+type azureFunctionCheckpointer struct {
 	partitionID   string
 	containerName string
 }
@@ -88,8 +88,8 @@ func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "azureWebJob" || info.BlobContainer == ""):
-		return &azureWebjobCheckpointer{
+	case (info.CheckpointStrategy == "azureFunction" || info.BlobContainer == ""):
+		return &azureFunctionCheckpointer{
 			containerName: "azure-webjobs-eventhub",
 			partitionID:   partitionID,
 		}
@@ -101,8 +101,8 @@ func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	}
 }
 
-// resolve path for AzureWebJobCheckpointer
-func (checkpointer *azureWebjobCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+// resolve path for AzureFunctionCheckpointer
+func (checkpointer *azureFunctionCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
 	eventHubNamespace, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
 		return nil, err
@@ -113,8 +113,8 @@ func (checkpointer *azureWebjobCheckpointer) resolvePath(info EventHubInfo) (*ur
 	return path, nil
 }
 
-// extract checkpoint for AzureWebJobCheckpointer
-func (checkpointer *azureWebjobCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+// extract checkpoint for AzureFunctionCheckpointer
+func (checkpointer *azureFunctionCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 	var checkpoint Checkpoint
 	err := readToCheckpointFromBody(get, &checkpoint)
 	if err != nil {

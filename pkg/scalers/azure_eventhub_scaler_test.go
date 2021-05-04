@@ -49,7 +49,7 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	// missing unprocessed event threshold - should replace with default
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting}, false},
 	// added blob container details
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName, "checkpointStrategy": "azureWebJob"}, false},
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName, "checkpointStrategy": "azureFunction"}, false},
 }
 
 var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestData{
