@@ -63,7 +63,7 @@ var stanLog = logf.Log.WithName("stan_scaler")
 func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	stanMetadata, err := parseStanMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
+		return nil, fmt.Errorf("error parsing stan metadata: %s", err)
 	}
 
 	return &stanScaler{
