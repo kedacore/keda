@@ -28,6 +28,7 @@ const (
 	thresholdMetricName             = "unprocessedEventThreshold"
 	defaultEventHubConsumerGroup    = "$Default"
 	defaultBlobContainer            = ""
+	defaultCheckpointStrategy       = ""
 )
 
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
@@ -93,6 +94,11 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.EventHubConsumerGroup = val
 	}
 
+	meta.eventHubInfo.CheckpointStrategy = defaultCheckpointStrategy
+	if val, ok := config.TriggerMetadata["checkpointStrategy"]; ok {
+		meta.eventHubInfo.CheckpointStrategy = val
+	}
+
 	meta.eventHubInfo.BlobContainer = defaultBlobContainer
 	if val, ok := config.TriggerMetadata["blobContainer"]; ok {
 		meta.eventHubInfo.BlobContainer = val
@@ -145,7 +151,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)
 		if stErr, ok := err.(azblob.StorageError); ok {
-			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
+			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound || stErr.ServiceCode() == azblob.ServiceCodeContainerNotFound {
 				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
 			}
 		}
