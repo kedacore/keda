@@ -250,6 +250,18 @@ func TestKafkaCombinedMetadataConfig(t *testing.T) {
 		if err == nil && meta.password != testData.password {
 			t.Errorf("Expected password %s but got %s\n", testData.password, meta.password)
 		}
+		if meta.enableTLS != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
+		}
+		if err == nil && meta.cert != testData.cert {
+			t.Errorf("Expected cert %s but got %s\n", testData.cert, meta.cert)
+		}
+		if err == nil && meta.key != testData.key {
+			t.Errorf("Expected key %s but got %s\n", testData.key, meta.key)
+		}
+		if err == nil && meta.ca != testData.ca {
+			t.Errorf("Expected ca %s but got %s\n", testData.ca, meta.ca)
+		}
 	}
 }
 
