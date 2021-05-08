@@ -140,20 +140,22 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	}
 
 	meta.saslType = KafkaSASLTypeNone
-	if val, ok := config.AuthParams["sasl"]; ok {
+	if val := parseMetadaKeyAsString(config, "sasl"); val != "" {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
-			if config.AuthParams["username"] == "" {
+			username := parseMetadaKeyAsString(config, "username")
+			if username == "" {
 				return meta, errors.New("no username given")
 			}
-			meta.username = strings.TrimSpace(config.AuthParams["username"])
+			meta.username = strings.TrimSpace(username)
 
-			if config.AuthParams["password"] == "" {
+			password := parseMetadaKeyAsString(config, "password")
+			if password == "" {
 				return meta, errors.New("no password given")
 			}
-			meta.password = strings.TrimSpace(config.AuthParams["password"])
+			meta.password = strings.TrimSpace(password)
 			meta.saslType = mode
 		} else {
 			return meta, fmt.Errorf("err SASL mode %s given", mode)
@@ -161,21 +163,24 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	}
 
 	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
+	if val := parseMetadaKeyAsString(config, "tls"); val != "" {
 		val = strings.TrimSpace(val)
 
 		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
+			cert := parseMetadaKeyAsString(config, "cert")
+			key := parseMetadaKeyAsString(config, "key")
+			ca := parseMetadaKeyAsString(config, "ca")
+			certGiven := cert != ""
+			keyGiven := key != ""
 			if certGiven && !keyGiven {
 				return meta, errors.New("key must be provided with cert")
 			}
 			if keyGiven && !certGiven {
 				return meta, errors.New("cert must be provided with key")
 			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
+			meta.ca = ca
+			meta.cert = cert
+			meta.key = key
 			meta.enableTLS = true
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -192,6 +197,20 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	}
 
 	return meta, nil
+}
+
+func parseMetadaKeyAsString(config *ScalerConfig, metadataKey string) string {
+	switch {
+	case config.TriggerMetadata[metadataKey+"FromEnv"] != "":
+		return config.ResolvedEnv[config.TriggerMetadata[metadataKey+"FromEnv"]]
+	case config.TriggerMetadata[metadataKey] != "":
+		return config.TriggerMetadata[metadataKey]
+	default:
+		if config.AuthParams[metadataKey] != "" {
+			return config.AuthParams[metadataKey]
+		}
+		return ""
+	}
 }
 
 // IsActive determines if we need to scale from zero

@@ -22,6 +22,28 @@ type parseKafkaAuthParamsTestData struct {
 	enableTLS  bool
 }
 
+type parseKafkaCombinedMetadataTestData struct {
+	metadata           map[string]string
+	isError            bool
+	numBrokers         int
+	brokers            []string
+	group              string
+	topic              string
+	offsetResetPolicy  offsetResetPolicy
+	allowIdleConsumers bool
+
+	// SASL
+	saslType kafkaSaslType
+	username string
+	password string
+
+	// TLS
+	enableTLS bool
+	cert      string
+	key       string
+	ca        string
+}
+
 type kafkaMetricIdentifier struct {
 	metadataTestData *parseKafkaMetadataTestData
 	name             string
@@ -109,6 +131,13 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
 
+var parseKafkaCombinedMetadataTestDataset = []parseKafkaCombinedMetadataTestData{
+	// success, SASL only configured with triggers metadata
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "sasl": "plaintext", "username": "admin", "password": "admin"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), true, "plaintext", "admin", "admin", false, "", "", ""},
+	// success, TLS only configured with triggers metadata
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), true, "none", "", "", true, "ceert", "keey", "caaa"},
+}
+
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 	{&parseKafkaMetadataTestDataset[4], "kafka-my-topic-my-group"},
 }
@@ -183,6 +212,47 @@ func TestKafkaAuthParams(t *testing.T) {
 		}
 	}
 }
+
+func TestKafkaCombinedMetadataConfig(t *testing.T) {
+	for _, testData := range parseKafkaCombinedMetadataTestDataset {
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if len(meta.bootstrapServers) != testData.numBrokers {
+			t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
+		}
+		if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
+			t.Errorf("Expected %v but got %v\n", testData.brokers, meta.bootstrapServers)
+		}
+		if meta.group != testData.group {
+			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+		}
+		if meta.topic != testData.topic {
+			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
+		}
+		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+		}
+		if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
+			t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
+		}
+		if err == nil && meta.saslType != testData.saslType {
+			t.Errorf("Expected saslType %v but got %v\n", testData.saslType, meta.saslType)
+		}
+		if err == nil && meta.username != testData.username {
+			t.Errorf("Expected username %s but got %s\n", testData.username, meta.username)
+		}
+		if err == nil && meta.password != testData.password {
+			t.Errorf("Expected password %s but got %s\n", testData.password, meta.password)
+		}
+	}
+}
+
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams})
