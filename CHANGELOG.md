@@ -23,6 +23,7 @@
 - Add Azure Pipelines Scaler ([#1706](https://github.com/kedacore/keda/pull/1706))
 - Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
 - Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
+- Add header Origin to apache artemis scaler
 
 ### Improvements
 
