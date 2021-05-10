@@ -117,7 +117,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 		logger.Error(err, "Vault renew token: failed to create the payload")
 	}
 
-	renewer, err := vh.client.NewRenewer(&vaultApi.RenewerInput{
+	renewer, err := vh.client.NewLifetimeWatcher(&vaultApi.RenewerInput{
 		Secret: secret,
 		//Grace:  time.Duration(15 * time.Second),
 		//Increment: 60,

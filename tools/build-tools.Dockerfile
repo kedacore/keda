@@ -33,16 +33,6 @@ RUN GO_VERSION=1.15.6 && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
 
-# Install helm/tiller
-RUN HELM_VERSION=v2.16.1 && \
-    curl -LO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    helm_sha256=7eebaaa2da4734242bbcdced62cc32ba8c7164a18792c8acdf16c77abffce202 && \
-    echo "$helm_sha256 helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c - && \
-    tar xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    mv linux-amd64/helm /usr/local/bin && mv linux-amd64/tiller /usr/local/bin && \
-    rm -rf linux-amd64 helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    helm init --client-only
-
 # Install kubectl
 RUN apt-get update && apt-get install -y apt-transport-https && \
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
@@ -64,6 +54,10 @@ RUN RELEASE_VERSION=v1.0.1 && \
     mkdir -p /usr/local/bin/ && \
     cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && \
     rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+
+# Install kubebuilder tools
+RUN curl -L https://go.kubebuilder.io/dl/2.3.1/linux/amd64 | tar -xz -C /tmp/ && \
+    mv /tmp/kubebuilder_2.3.1_linux_amd64 /usr/local/kubebuilder
 
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \

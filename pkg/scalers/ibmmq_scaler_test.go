@@ -3,6 +3,7 @@ package scalers
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 // Test host URLs for validation
@@ -98,11 +99,15 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
 		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		httpTimeout := 100 * time.Millisecond
 
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockIBMMQScaler := IBMMQScaler{metadata}
+		mockIBMMQScaler := IBMMQScaler{
+			metadata:           metadata,
+			defaultHTTPTimeout: httpTimeout,
+		}
 		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling()
 		metricName := metricSpec[0].External.Metric.Name
 
