@@ -2,11 +2,15 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+
 	"io/ioutil"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
+	"strings"
 
 	"github.com/tidwall/gjson"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -16,6 +20,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -37,6 +42,11 @@ type graphiteMetadata struct {
 	query         string
 	threshold     int
 	from          string
+
+	// basic auth
+	enableBasicAuth bool
+	username        string
+	password        string // +optional
 }
 
 var graphiteLog = logf.Log.WithName("graphite_scaler")
@@ -47,7 +57,6 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing graphite metadata: %s", err)
 	}
-
 	return &graphiteScaler{
 		metadata: meta,
 	}, nil
@@ -89,6 +98,31 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.threshold = t
 	}
 
+	authModes, ok := config.TriggerMetadata["authModes"]
+	// no authMode specified
+	if !ok {
+		return &meta, nil
+	}
+
+	authTypes := strings.Split(authModes, ",")
+	for _, t := range authTypes {
+		authType := authentication.Type(strings.TrimSpace(t))
+		switch authType {
+		case authentication.BasicAuthType:
+			if len(config.AuthParams["username"]) == 0 {
+				return nil, errors.New("no username given")
+			}
+
+			meta.username = config.AuthParams["username"]
+			// password is optional. For convenience, many application implement basic auth with
+			// username as apikey and password as empty
+			meta.password = config.AuthParams["password"]
+			meta.enableBasicAuth = true
+		default:
+			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", t)
+		}
+	}
+
 	return &meta, nil
 }
 
@@ -124,9 +158,17 @@ func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
+	client := &http.Client{}
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
-	url := fmt.Sprintf("%s/render?target=%s&format=json", s.metadata.serverAddress, queryEscaped)
-	r, err := http.Get(url)
+	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.serverAddress, s.metadata.from, queryEscaped)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return -1, err
+	}
+	if s.metadata.enableBasicAuth {
+		req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	}
+	r, err := client.Do(req)
 	if err != nil {
 		return -1, err
 	}
