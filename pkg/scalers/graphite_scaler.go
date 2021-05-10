@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
-
 	"io/ioutil"
 	"net/http"
 	url_pkg "net/url"
