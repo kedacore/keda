@@ -42,8 +42,8 @@ require (
 	github.com/tidwall/gjson v1.7.5
 	github.com/xdg/scram v1.0.3
 	go.mongodb.org/mongo-driver v1.5.1
-	google.golang.org/api v0.45.0
-	google.golang.org/genproto v0.0.0-20210416161957-9910b6c460de
+	google.golang.org/api v0.46.0
+	google.golang.org/genproto v0.0.0-20210429181445-86c259c2b4ab
 	google.golang.org/grpc v1.37.0
 	k8s.io/api v0.20.6
 	k8s.io/apimachinery v0.20.6
