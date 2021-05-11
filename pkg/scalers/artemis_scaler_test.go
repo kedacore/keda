@@ -78,6 +78,30 @@ var testArtemisMetadataWithAuthParams = []parseArtemisMetadataTestData{
 	{map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test"}, false},
 }
 
+func TestArtemisDefaultCorsHeader(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if !(meta.corsHeader == "http://localhost:8161") {
+		t.Errorf("Expected http://localhost:8161 but got %s", meta.corsHeader)
+	}
+}
+
+func TestArtemisCorsHeader(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword", "corsHeader": "test"}
+	meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if !(meta.corsHeader == "test") {
+		t.Errorf("Expected test but got %s", meta.corsHeader)
+	}
+}
+
 func TestArtemisParseMetadata(t *testing.T) {
 	for _, testData := range testArtemisMetadata {
 		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil})

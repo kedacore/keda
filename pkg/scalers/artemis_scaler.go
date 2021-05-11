@@ -34,6 +34,7 @@ type artemisMetadata struct {
 	password           string
 	restAPITemplate    string
 	queueLength        int
+	corsHeader         string
 }
 
 //revive:enable:var-naming
@@ -48,6 +49,7 @@ const (
 	artemisMetricType         = "External"
 	defaultArtemisQueueLength = 10
 	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultCorsHeader         = "http://%s"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -85,6 +87,12 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		return nil, errors.New("no management endpoint given")
 	}
 	meta.managementEndpoint = config.TriggerMetadata["managementEndpoint"]
+
+	if val, ok := config.TriggerMetadata["corsHeader"]; ok && val != "" {
+		meta.corsHeader = config.TriggerMetadata["corsHeader"]
+	} else {
+		meta.corsHeader = fmt.Sprintf(defaultCorsHeader, meta.managementEndpoint)
+	}
 
 	if config.TriggerMetadata["queueName"] == "" {
 		return nil, errors.New("no queue name given")
@@ -176,6 +184,7 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 	req, err := http.NewRequest("GET", url, nil)
 
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	req.Header.Set("Origin", s.metadata.corsHeader)
 
 	if err != nil {
 		return -1, err
@@ -193,7 +202,7 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 	if resp.StatusCode == 200 && monitoringInfo.Status == 200 {
 		messageCount = monitoringInfo.MsgCount
 	} else {
-		return -1, fmt.Errorf("artemis management endpoint response error code : %d", resp.StatusCode)
+		return -1, fmt.Errorf("artemis management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
 
 	artemisLog.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
