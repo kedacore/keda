@@ -5,7 +5,7 @@ go 1.15
 require (
 	cloud.google.com/go v0.81.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.0
-	github.com/Azure/azure-event-hubs-go/v3 v3.3.7
+	github.com/Azure/azure-event-hubs-go/v3 v3.3.8
 	github.com/Azure/azure-sdk-for-go v53.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.11
 	github.com/Azure/azure-storage-blob-go v0.13.0
