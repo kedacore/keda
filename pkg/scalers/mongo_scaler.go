@@ -58,16 +58,14 @@ type mongoDBMetadata struct {
 	// A threshold that is used as targetAverageValue in HPA
 	// +required
 	queryValue int
-
+	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
+	// +optional
 	metricName string
 }
 
 // Default variables and settings
 const (
 	mongoDBDefaultTimeOut = 10 * time.Second
-	defaultCollection     = "default"
-	defaultDB             = "test"
-	defaultQueryValue     = 1
 )
 
 var mongoDBLog = logf.Log.WithName("mongodb_scaler")
@@ -101,12 +99,7 @@ func NewMongoDBScaler(config *ScalerConfig) (Scaler, error) {
 func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error) {
 	var connStr string
 	// setting default metadata
-	meta := mongoDBMetadata{
-		collection: defaultCollection,
-		query:      "",
-		queryValue: defaultQueryValue,
-		dbName:     defaultDB,
-	}
+	meta := mongoDBMetadata{}
 
 	// parse metaData from ScaledJob config
 	if val, ok := config.TriggerMetadata["collection"]; ok {
@@ -138,11 +131,12 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	}
 
 	// Resolve connectionString
-	if c, ok := config.AuthParams["connectionString"]; ok {
-		meta.connectionString = c
-	} else if v, ok := config.TriggerMetadata["connectionStringFromEnv"]; ok {
-		meta.connectionString = config.ResolvedEnv[v]
-	} else {
+	switch {
+	case config.AuthParams["connectionString"] != "":
+		meta.connectionString = config.AuthParams["connectionString"]
+	case config.TriggerMetadata["connectionStringFromEnv"] != "":
+		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
+	default:
 		meta.connectionString = ""
 		if val, ok := config.TriggerMetadata["host"]; ok {
 			meta.host = val
@@ -160,13 +154,12 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		} else {
 			return nil, "", fmt.Errorf("no username given")
 		}
-		// get password from env or authParams
-		if v, ok := config.AuthParams["password"]; ok {
-			meta.password = v
-		} else if v, ok := config.TriggerMetadata["passwordFromEnv"]; ok {
-			meta.password = config.ResolvedEnv[v]
-		}
 
+		if config.AuthParams["password"] != "" {
+			meta.password = config.AuthParams["password"]
+		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
+			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+		}
 		if len(meta.password) == 0 {
 			return nil, "", fmt.Errorf("no password given")
 		}
@@ -178,7 +171,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		// Build connection str
 		addr := fmt.Sprintf("%s:%s", meta.host, meta.port)
 		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
-		connStr = "mongodb://" + auth + "@" + addr
+		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
