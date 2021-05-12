@@ -13,7 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/Shopify/sarama v1.28.0
+	github.com/Shopify/sarama v1.29.0
 	github.com/aws/aws-sdk-go v1.38.37
 	github.com/denisenkom/go-mssqldb v0.10.0
 	github.com/go-logr/logr v0.4.0
