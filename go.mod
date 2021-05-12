@@ -13,7 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/Shopify/sarama v1.28.0
+	github.com/Shopify/sarama v1.29.0
 	github.com/aws/aws-sdk-go v1.38.37
 	github.com/denisenkom/go-mssqldb v0.10.0
 	github.com/go-logr/logr v0.4.0
@@ -44,7 +44,7 @@ require (
 	go.mongodb.org/mongo-driver v1.5.2
 	google.golang.org/api v0.46.0
 	google.golang.org/genproto v0.0.0-20210429181445-86c259c2b4ab
-	google.golang.org/grpc v1.37.0
+	google.golang.org/grpc v1.37.1
 	k8s.io/api v0.20.6
 	k8s.io/apimachinery v0.20.6
 	k8s.io/apiserver v0.20.6
