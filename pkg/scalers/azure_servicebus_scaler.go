@@ -40,6 +40,7 @@ type azureServiceBusScaler struct {
 
 type azureServiceBusMetadata struct {
 	targetLength     int
+	clusterNamespace string
 	queueName        string
 	topicName        string
 	subscriptionName string
@@ -67,6 +68,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
 	meta.targetLength = defaultTargetMessageCount
+	meta.clusterNamespace = config.Namespace
 
 	// get target metric value
 	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
@@ -151,9 +153,9 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	metricName := "azure-servicebus"
 	if s.metadata.entityType == queue {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.queueName))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", metricName, s.metadata.clusterNamespace, s.metadata.queueName))
 	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", metricName, s.metadata.topicName, s.metadata.subscriptionName))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", metricName, s.metadata.clusterNamespace, s.metadata.topicName, s.metadata.subscriptionName))
 	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
