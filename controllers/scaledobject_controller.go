@@ -348,8 +348,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(logger logr.Logger, scaledObje
 		return err
 	}
 
-	// passing deep copy of ScaledObject to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
-	if err = r.scaleHandler.HandleScalableObject(scaledObject.DeepCopy()); err != nil {
+	if err = r.scaleHandler.HandleScalableObject(scaledObject); err != nil {
 		return err
 	}
 

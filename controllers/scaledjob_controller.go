@@ -154,8 +154,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
 
-	// passing deep copy of ScaledJob to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
-	return r.scaleHandler.HandleScalableObject(scaledJob.DeepCopy())
+	return r.scaleHandler.HandleScalableObject(scaledJob)
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
