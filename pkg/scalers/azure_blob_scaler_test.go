@@ -29,6 +29,8 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// properly formed
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "5", "blobDelimiter": "/", "blobPrefix": "blobsubpath"}, false, testAzBlobResolvedEnv, map[string]string{}, ""},
+	// properly formed with metricName
+	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "5", "blobDelimiter": "/", "blobPrefix": "blobsubpath", "metricName": "customname"}, false, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// Empty blobcontainerName
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// improperly formed blobCount
@@ -44,8 +46,9 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 }
 
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
-	{&testAzBlobMetadata[1], "azure-blob-sample"},
-	{&testAzBlobMetadata[4], "azure-blob-sample_container"},
+	{&testAzBlobMetadata[1], "azure-blob-sample-blobsubpath-"},
+	{&testAzBlobMetadata[2], "azure-blob-customname"},
+	{&testAzBlobMetadata[5], "azure-blob-sample_container"},
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {
