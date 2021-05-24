@@ -39,6 +39,7 @@ type azureBlobMetadata struct {
 	blobPrefix        string
 	connection        string
 	accountName       string
+	metricName        string
 }
 
 var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
@@ -90,6 +91,16 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	// before triggerAuthentication CRD, pod identity was configured using this property
 	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" && val == "true" {
 		config.PodIdentity = kedav1alpha1.PodIdentityProviderAzure
+	}
+
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-blob", val))
+	} else {
+		if meta.blobPrefix != "" {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-blob", meta.blobContainerName, meta.blobPrefix))
+		} else {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-blob", meta.blobContainerName))
+		}
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
@@ -150,7 +161,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-blob", s.metadata.blobContainerName)),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
