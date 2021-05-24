@@ -151,7 +151,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	namespace, err := s.getServiceBusNamespace()
 	if err != nil {
-		fmt.Errorf("error parsing azure service bus metadata: %s", err)
+		azureServiceBusLog.Error(err, "error parsing azure service bus metadata", "namespace")
 		return nil
 	}
 
