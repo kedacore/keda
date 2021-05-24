@@ -37,6 +37,11 @@ var sampleResolvedEnv = map[string]string{
 	connectionSetting: "none",
 }
 
+// namespace example for setting up metric name
+var connectionResolvedEnv = map[string]string{
+	connectionSetting: "Endpoint=sb://namespacename.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=c29tZXJlYWxseWltcG9ydGFudGtleQ==",
+}
+
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{}, true, none, map[string]string{}, ""},
 	// properly formed queue
@@ -66,8 +71,8 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
-	{&parseServiceBusMetadataDataset[1], "azure-servicebus-testqueue"},
-	{&parseServiceBusMetadataDataset[3], "azure-servicebus-testtopic-testsubscription"},
+	{&parseServiceBusMetadataDataset[1], "azure-servicebus-namespacename-testqueue"},
+	{&parseServiceBusMetadataDataset[3], "azure-servicebus-namespacename-testtopic-testsubscription"},
 }
 
 var commonHTTPClient = &http.Client{
@@ -151,7 +156,7 @@ func TestGetServiceBusLength(t *testing.T) {
 
 func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

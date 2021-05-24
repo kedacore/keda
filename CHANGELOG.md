@@ -27,6 +27,7 @@
 
 ### Improvements
 
+- Azure Service Bus Scaler: Namespace from `connectionString` parameter is added to `metricName` due to uniqueness violation for clusters having more than one queue with the same name  ([#1755](https://github.com/kedacore/keda/issues/1755))
 - Remove app.kubernetes.io/version label from label selectors ([#1696](https://github.com/kedacore/keda/pull/1696))
 - Apache Kafka Scaler: Add `allowIdleConsumers` to the list of trigger parameters ([#1684](https://github.com/kedacore/keda/pull/1684))
 - Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704) | [#1739](https://github.com/kedacore/keda/pull/1739))
