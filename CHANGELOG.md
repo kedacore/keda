@@ -43,6 +43,7 @@
 ### Other
 
 - Adding OpenStack Swift scaler end-to-end tests ([#1522](https://github.com/kedacore/keda/pull/1522))
+- Pass deepCopy objects to the polling goroutines ([#1812](https://github.com/kedacore/keda/pull/1812))
 
 ## v2.2.0
 
