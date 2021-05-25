@@ -1,9 +1,0 @@
-resources:
-- manager.yaml
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-images:
-- name: ghcr.io/kedacore/keda
-  newName: docker.io/nilayasiktoprak/keda
-  newTag: main
