@@ -101,8 +101,16 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 
 	// a mutex is used to synchronize scale requests per scalableObject
 	scalingMutex := &sync.Mutex{}
-	go h.startPushScalers(ctx, withTriggers, scalableObject, scalingMutex)
-	go h.startScaleLoop(ctx, withTriggers, scalableObject, scalingMutex)
+
+	// passing deep copy of ScaledObject/ScaledJob to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
+	switch obj := scalableObject.(type) {
+	case *kedav1alpha1.ScaledObject:
+		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+	case *kedav1alpha1.ScaledJob:
+		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+	}
 	return nil
 }
 
