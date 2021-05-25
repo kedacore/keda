@@ -57,7 +57,7 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
-* **Meeting time:** Bi-weekly Tues 16:00 UTC (does follow US daylight savings).
+* **Meeting time:** Bi-weekly Tues 15:00 UTC (does follow US daylight savings).
 ([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
  [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
 * **Zoom link:** [https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09](https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09)  (Password: keda)
