@@ -22,7 +22,7 @@ npx ava scalers/prometheus.test.ts
 The test script will run 3 phases:
 - **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys [`/deploy/KedaScaleController.yaml`](../deploy/KedaScaleController.yaml) to `keda` namespace in the cluster, and updates the image to `kedacore/keda:master`
 
-    After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scrips"` in package.json](package.json#L14).
+    After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scripts"` in package.json](package.json#L14).
 
 - **Tests**: Currently there are only scaler tests in `tests/scalers`. All files run in parallel, but tests within the file can run either in parallel or in series. More about tests below.
 
@@ -31,7 +31,7 @@ The test script will run 3 phases:
 
 ## Adding tests:
 
-* Tests are written in TypeScript using [ava](https://github.com/avajs/ava) framework. See [ava docs here](https://github.com/avajs/ava/blob/master/docs)
+* Tests are written in TypeScript using [ava](https://github.com/avajs/ava) framework. See [ava docs here](https://github.com/avajs/ava/tree/main/docs)
 * Each scaler tests should be in a file. **e.g**: `azure-queue.tests.ts`, `kafka.tests.ts`, etc
 * All files in `scalers/**.ts` are run in parallel by default. Make sure your tests don't affect the global state of the cluster in a way that can break other tests.
 * Each test file is expected to do it's own setup and clean up for its resources.
@@ -113,7 +113,7 @@ test.after.always('remove redis and my deployment', t => {
 ```
 
 * You can see [`azure-queue.test.ts`](scalers/azure-queue.test.ts) for a full example.
-* Ava has more options for asserting and writing tests. The docs are very good. https://github.com/avajs/ava/blob/master/docs/01-writing-tests.md
+* Ava has more options for asserting and writing tests. The docs are very good. https://github.com/avajs/ava/blob/main/docs/01-writing-tests.md
 * **debugging**: when debugging, you can force only 1 test to run by adding `only` to the test definition.
 
 ```ts
