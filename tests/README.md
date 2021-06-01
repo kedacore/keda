@@ -20,7 +20,7 @@ npx ava scalers/prometheus.test.ts
 ## E2E test setup
 
 The test script will run 3 phases:
-- **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys [`/deploy/KedaScaleController.yaml`](../deploy/KedaScaleController.yaml) to `keda` namespace in the cluster, and updates the image to `kedacore/keda:master`
+- **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys keda to `keda` namespace in the cluster, and updates the image to `kedacore/keda:master`.
 
     After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scripts"` in package.json](package.json#L14).
 
