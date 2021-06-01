@@ -50,7 +50,7 @@ require (
 	k8s.io/apiserver v0.20.7
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	k8s.io/code-generator v0.20.7
-	k8s.io/klog/v2 v2.8.0
+	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1
 	k8s.io/metrics v0.20.7
 	knative.dev/pkg v0.0.0-20210525071438-e2947dba201a
