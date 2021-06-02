@@ -50,6 +50,21 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		logger.V(1).Info("No change in activity")
 	}
 
+	condition := scaledJob.Status.Conditions.GetActiveCondition()
+	if condition.IsUnknown() || condition.IsTrue() != isActive {
+		if isActive {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are active")
+				return
+			}
+		} else {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are not active")
+				return
+			}
+		}
+	}
+
 	err := e.cleanUp(scaledJob)
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
@@ -98,10 +113,10 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 			job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
 		}
 
-		// Set ScaledObject instance as the owner and controller
+		// Set ScaledJob instance as the owner and controller
 		err := controllerutil.SetControllerReference(scaledJob, job, e.reconcilerScheme)
 		if err != nil {
-			logger.Error(err, "Failed to set ScaledObject as the owner of the new Job")
+			logger.Error(err, "Failed to set ScaledJob as the owner of the new Job")
 		}
 
 		err = e.client.Create(context.TODO(), job)
