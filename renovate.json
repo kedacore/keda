@@ -1,4 +1,6 @@
 {
+  "branchPrefix":"renovate-",
+  "labels":["dependencies"],
   "extends": [
     "config:base",
     "default:disablePrControls"
