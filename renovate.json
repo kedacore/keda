@@ -1,6 +1,12 @@
 {
   "branchPrefix":"renovate-",
   "labels":["dependencies"],
+  "packageRules": [
+    {
+      "packagePatterns": ["^k8s.io/","^sigs.k8s.io/"],
+      "groupName": "Kubernetes Dependencies"
+    }
+  ],
   "extends": [
     "config:base",
     "default:disablePrControls"
