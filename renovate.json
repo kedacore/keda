@@ -11,8 +11,10 @@
       "groupName": "GitHub Actions"
     }
   ],
+  "commitBody": "",
   "extends": [
     "config:base",
-    "default:disablePrControls"
+    "default:disablePrControls",
+    ":gitSignOff"
   ]
 }
