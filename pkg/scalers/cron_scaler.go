@@ -74,11 +74,17 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 		return nil, fmt.Errorf("no timezone specified. %s", config.TriggerMetadata)
 	}
 	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
+		if strings.Contains(val, "-") {
+			return nil, fmt.Errorf("error parsing start schedule. %s: range or hyphenated inputs are not allowed", config.TriggerMetadata)
+		}
 		meta.start = val
 	} else {
 		return nil, fmt.Errorf("no start schedule specified. %s", config.TriggerMetadata)
 	}
 	if val, ok := config.TriggerMetadata["end"]; ok && val != "" {
+		if strings.Contains(val, "-") {
+			return nil, fmt.Errorf("error parsing end schedule. %s: range or hyphenated inputs are not allowed", config.TriggerMetadata)
+		}
 		meta.end = val
 	} else {
 		return nil, fmt.Errorf("no end schedule specified. %s", config.TriggerMetadata)
