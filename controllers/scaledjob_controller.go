@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	corev1 "k8s.io/api/core/v1"
 
@@ -80,39 +81,55 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	var errMsg string
-	if scaledJob.Spec.JobTargetRef != nil {
-		reqLogger.Info("Detected ScaleType = Job")
-		conditions := scaledJob.Status.Conditions.DeepCopy()
-		msg, err := r.reconcileScaledJob(reqLogger, scaledJob)
-		if err != nil {
-			reqLogger.Error(err, msg)
-			conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
-			conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, msg)
-		} else {
-			wasReady := conditions.GetReadyCondition()
-			if wasReady.IsFalse() || wasReady.IsUnknown() {
-				r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobReady, "ScaledJob is ready for scaling")
-			}
-			reqLogger.V(1).Info(msg)
-			conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
+	// ensure Status Conditions are initialized
+	if !scaledJob.Status.Conditions.AreInitialized() {
+		conditions := kedav1alpha1.GetInitializedConditions()
+		if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledJob, conditions); err != nil {
+			return ctrl.Result{}, err
 		}
-
-		return ctrl.Result{}, err
 	}
 
-	errMsg = "scaledJob.Spec.JobTargetRef is not set"
-	err = fmt.Errorf(errMsg)
-	reqLogger.Error(err, "scaledJob.Spec.JobTargetRef not found")
+	// Check jobTargetRef is specified
+	if scaledJob.Spec.JobTargetRef == nil {
+		errMsg := "scaledJob.spec.jobTargetRef is not set"
+		err := fmt.Errorf(errMsg)
+		reqLogger.Error(err, "scaledJob.spec.jobTargetRef not found")
+		return ctrl.Result{}, err
+	}
+	msg, err := r.reconcileScaledJob(reqLogger, scaledJob)
+	conditions := scaledJob.Status.Conditions.DeepCopy()
+	if err != nil {
+		reqLogger.Error(err, msg)
+		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
+		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
+		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, msg)
+	} else {
+		wasReady := conditions.GetReadyCondition()
+		if wasReady.IsFalse() || wasReady.IsUnknown() {
+			r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobReady, "ScaledJob is ready for scaling")
+		}
+		reqLogger.V(1).Info(msg)
+		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
+	}
+
+	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledJob, &conditions); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, err
 }
 
-// reconcileJobType implemets reconciler logic for K8s Jobs based ScaleObject
+// reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
 func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
 	if err != nil {
 		return msg, err
+	}
+
+	// Check ScaledJob is Ready or not
+	_, err = r.scaleHandler.GetScalers(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting scalers")
+		return "Failed to ensure ScaledJob is correctly created", err
 	}
 
 	// scaledJob was created or modified - let's start a new ScaleLoop
@@ -120,7 +137,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 	if err != nil {
 		return "Failed to start a new scale loop with scaling logic", err
 	}
-	logger.Info("Initializing Scaling logic according to ScaledObject Specification")
+	logger.Info("Initializing Scaling logic according to ScaledJob Specification")
 	return "ScaledJob is defined correctly and is ready to scaling", nil
 }
 
