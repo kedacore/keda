@@ -31,11 +31,11 @@ var testCronMetadata = []parseCronMetadataTestData{
 	{validCronMetadata, false},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45 * * * *"}, true},
 	{map[string]string{"start": "30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata","start": "30-33 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata","start": "30 * * * *", "end": "45-50 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata","start": "-30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata","start": "30 * * * *", "end": "-50 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata","start": "30 * * * *", "end": "50 * * -3 *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30-33 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45-50 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "-30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "-50 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "50 * * -3 *", "desiredReplicas": "10"}, true},
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
