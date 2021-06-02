@@ -118,7 +118,7 @@ func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, err
 }
 
-// reconcileJobType implemets reconciler logic for K8s Jobs based ScaledJob
+// reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
 func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
 	if err != nil {
