@@ -23,6 +23,7 @@ const (
 	queueLengthMetricName    = "queueLength"
 	defaultTargetQueueLength = 5
 	externalMetricType       = "External"
+	defaultEndpointSuffix    = "queue.core.windows.net"
 )
 
 type azureQueueScaler struct {
@@ -36,6 +37,7 @@ type azureQueueMetadata struct {
 	queueName         string
 	connection        string
 	accountName       string
+	endpointSuffix    string
 }
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
@@ -66,6 +68,11 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		}
 
 		meta.targetQueueLength = queueLength
+	}
+
+	meta.endpointSuffix = defaultEndpointSuffix
+	if val, ok := config.TriggerMetadata["endpointSuffix"]; ok && val != "" {
+		meta.endpointSuffix = val
 	}
 
 	if val, ok := config.TriggerMetadata["queueName"]; ok && val != "" {
@@ -120,6 +127,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {
@@ -158,6 +166,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {

@@ -43,7 +43,7 @@ func (e StorageEndpointType) Name() string {
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
+func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure:
 		token, err := GetAzureADPodIdentityToken(httpClient, "https://storage.azure.com/")
@@ -56,7 +56,7 @@ func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity keda
 		}
 
 		credential := azqueue.NewTokenCredential(token.AccessToken, nil)
-		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.queue.core.windows.net", accountName))
+		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.%s", accountName, endpointSuffix))
 		return credential, endpoint, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, QueueEndpoint)
