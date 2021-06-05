@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 
@@ -40,6 +41,11 @@ func (e StorageEndpointType) Prefix() string {
 // Name returns resource name for StorageEndpointType
 func (e StorageEndpointType) Name() string {
 	return [...]string{"blob", "queue", "table", "file"}[e]
+}
+
+// DefaultEndpointSuffix returns the default endpoint suffix for a StorageEndpointType
+func (e StorageEndpointType) DefaultEndpointSuffix() string {
+	return fmt.Sprintf("%s.%s", e.Name(), storage.DefaultBaseURL)
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
