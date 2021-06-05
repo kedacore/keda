@@ -40,6 +40,7 @@ type azureBlobMetadata struct {
 	connection        string
 	accountName       string
 	metricName        string
+	endpointSuffix    string
 }
 
 var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
@@ -63,6 +64,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	meta.targetBlobCount = defaultTargetBlobCount
 	meta.blobDelimiter = defaultBlobDelimiter
 	meta.blobPrefix = defaultBlobPrefix
+	meta.endpointSuffix = azure.BlobEndpoint.DefaultEndpointSuffix()
 
 	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
 		blobCount, err := strconv.Atoi(val)
@@ -86,6 +88,10 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 
 	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
 		meta.blobPrefix = val + meta.blobDelimiter
+	}
+
+	if val, ok := config.TriggerMetadata["endpointSuffix"]; ok && val != "" {
+		meta.endpointSuffix = val
 	}
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
@@ -143,6 +149,7 @@ func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 		s.metadata.accountName,
 		s.metadata.blobDelimiter,
 		s.metadata.blobPrefix,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {
@@ -183,6 +190,7 @@ func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, met
 		s.metadata.accountName,
 		s.metadata.blobDelimiter,
 		s.metadata.blobPrefix,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {
