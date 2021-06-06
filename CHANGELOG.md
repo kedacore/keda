@@ -19,11 +19,9 @@
 
 ## Unreleased
 
-- Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
-
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
 
 ### Improvements
 
