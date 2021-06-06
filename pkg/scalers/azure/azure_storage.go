@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/azure-storage-queue-go/azqueue"
+	az "github.com/Azure/go-autorest/autorest/azure"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -31,6 +31,9 @@ const (
 	TableEndpoint
 	// FileEndpoint storage type
 	FileEndpoint
+
+	// PrivateCloud cloud type
+	PrivateCloud string = "Private"
 )
 
 // Prefix returns prefix for a StorageEndpointType
@@ -43,9 +46,30 @@ func (e StorageEndpointType) Name() string {
 	return [...]string{"blob", "queue", "table", "file"}[e]
 }
 
-// DefaultEndpointSuffix returns the default endpoint suffix for a StorageEndpointType
-func (e StorageEndpointType) DefaultEndpointSuffix() string {
-	return fmt.Sprintf("%s.%s", e.Name(), storage.DefaultBaseURL)
+// GetEndpointSuffix returns the endpoint suffix for a StorageEndpointType based on the specified environment
+func (e StorageEndpointType) GetEndpointSuffix(environment az.Environment) string {
+	return fmt.Sprintf("%s.%s", e.Name(), environment.StorageEndpointSuffix)
+}
+
+// ParseEndpointSuffix parses cloud and endpointSuffix metadata and returns endpoint suffix
+func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType StorageEndpointType) (string, error) {
+	if val, ok := metadata["cloud"]; ok && val != "" {
+		if strings.EqualFold(val, PrivateCloud) {
+			if val, ok := metadata["endpointSuffix"]; ok && val != "" {
+				return val, nil
+			}
+			return "", fmt.Errorf("endpointSuffix must be provided for %s cloud type", PrivateCloud)
+		}
+
+		env, err := az.EnvironmentFromName(val)
+		if err != nil {
+			return "", fmt.Errorf("invalid cloud environment %s", val)
+		}
+		return endpointType.GetEndpointSuffix(env), nil
+	}
+
+	// Use the default public cloud endpoint suffix if `cloud` isn't specified
+	return endpointType.GetEndpointSuffix(az.PublicCloud), nil
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url

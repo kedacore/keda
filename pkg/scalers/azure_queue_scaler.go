@@ -58,7 +58,6 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1alpha1.PodIdentityProvider, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
-	meta.endpointSuffix = azure.QueueEndpoint.DefaultEndpointSuffix()
 
 	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.Atoi(val)
@@ -70,9 +69,12 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		meta.targetQueueLength = queueLength
 	}
 
-	if val, ok := config.TriggerMetadata["endpointSuffix"]; ok && val != "" {
-		meta.endpointSuffix = val
+	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.QueueEndpoint)
+	if err != nil {
+		return nil, "", err
 	}
+
+	meta.endpointSuffix = endpointSuffix
 
 	if val, ok := config.TriggerMetadata["queueName"]; ok && val != "" {
 		meta.queueName = val

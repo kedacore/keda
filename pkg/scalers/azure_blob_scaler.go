@@ -64,7 +64,6 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	meta.targetBlobCount = defaultTargetBlobCount
 	meta.blobDelimiter = defaultBlobDelimiter
 	meta.blobPrefix = defaultBlobPrefix
-	meta.endpointSuffix = azure.BlobEndpoint.DefaultEndpointSuffix()
 
 	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
 		blobCount, err := strconv.Atoi(val)
@@ -90,9 +89,12 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		meta.blobPrefix = val + meta.blobDelimiter
 	}
 
-	if val, ok := config.TriggerMetadata["endpointSuffix"]; ok && val != "" {
-		meta.endpointSuffix = val
+	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.BlobEndpoint)
+	if err != nil {
+		return nil, "", err
 	}
+
+	meta.endpointSuffix = endpointSuffix
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
 	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" && val == "true" {
