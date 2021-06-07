@@ -93,10 +93,15 @@ func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 						if err != nil {
 							logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.path", e.Path)
-							continue
+						} else {
+							if secret == nil {
+								// sometimes there is no error, but `vault.Read(e.Path)` is not being able to parse the secret and returns nil
+								logger.Error(fmt.Errorf("unable to parse secret, is the provided path correct?"), "Error trying to read secret from Vault",
+									"triggerAuthRef.Name", triggerAuthRef.Name, "secret.path", e.Path)
+							} else {
+								result[e.Parameter] = resolveVaultSecret(logger, secret.Data, e.Key)
+							}
 						}
-
-						result[e.Parameter] = resolveVaultSecret(logger, secret.Data, e.Key)
 					}
 
 					vault.Stop()
