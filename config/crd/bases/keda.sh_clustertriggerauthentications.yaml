@@ -29,6 +29,9 @@ spec:
     - jsonPath: .spec.env[*].name
       name: Env
       type: string
+    - jsonPath: .spec.hashiCorpVault.address
+      name: VaultAddress
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
