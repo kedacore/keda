@@ -292,7 +292,7 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 }
 
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
-	credential, endpoint, _ := ParseAzureStorageBlobConnection(http.DefaultClient, "none", StorageConnectionString, "")
+	credential, endpoint, _ := ParseAzureStorageBlobConnection(http.DefaultClient, "none", StorageConnectionString, "", "")
 
 	// Create container
 	ctx := context.Background()
