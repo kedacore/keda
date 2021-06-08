@@ -9,7 +9,7 @@ import (
 
 func TestGetBlobLength(t *testing.T) {
 	httpClient := http.DefaultClient
-	length, err := GetAzureBlobListLength(context.TODO(), httpClient, "", "", "blobContainerName", "", "", "")
+	length, err := GetAzureBlobListLength(context.TODO(), httpClient, "", "", "blobContainerName", "", "", "", "")
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
 	}
@@ -22,7 +22,7 @@ func TestGetBlobLength(t *testing.T) {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
-	length, err = GetAzureBlobListLength(context.TODO(), httpClient, "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "blobContainerName", "", "", "")
+	length, err = GetAzureBlobListLength(context.TODO(), httpClient, "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "blobContainerName", "", "", "", "")
 
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
