@@ -1,4 +1,5 @@
 {
+  "groupName": "all",
   "branchPrefix":"renovate-",
   "labels":["dependencies"],
   "packageRules": [
