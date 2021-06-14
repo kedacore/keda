@@ -119,6 +119,10 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 		return nil, fmt.Errorf("no tenantId given")
 	}
 
+	if val, ok := config.TriggerMetadata["metricNamespace"]; ok {
+		meta.azureMonitorInfo.Namespace = val
+	}
+
 	clientID, clientPassword, err := parseAzurePodIdentityParams(config)
 	if err != nil {
 		return nil, err
