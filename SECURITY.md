@@ -14,10 +14,11 @@ Here's an overview:
 
 ## Prevention
 
-KEDA maintainers are working to incorporate prevention by using various measures:
+Container images are scanned in every pull request (PR) with [Snyk](https://snyk.io/) to detect new vulnerabilities.
 
-- Scan published container images ([issue](https://github.com/kedacore/keda/issues/1041))
-- Scan container images for changes in PRs ([issue](https://github.com/kedacore/keda/issues/1040))
+KEDA maintainers are working to improve our prevention by adding additional measures:
+
+- Scan published container images on GitHub Container Registry ([issue](https://github.com/kedacore/keda/issues/1041))
 - Scan changes to Helm charts in PRs ([issue](https://github.com/kedacore/charts/issues/64))
 
 ## Disclosures
