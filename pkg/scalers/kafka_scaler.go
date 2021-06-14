@@ -31,6 +31,7 @@ type kafkaMetadata struct {
 	lagThreshold       int64
 	offsetResetPolicy  offsetResetPolicy
 	allowIdleConsumers bool
+	version            sarama.KafkaVersion
 
 	// SASL
 	saslType kafkaSaslType
@@ -191,6 +192,16 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.allowIdleConsumers = t
 	}
 
+	meta.version = sarama.V1_0_0_0
+	if val, ok := config.TriggerMetadata["version"]; ok {
+		val = strings.TrimSpace(val)
+		version, err := sarama.ParseKafkaVersion(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing kafka version: %s", err)
+		}
+		meta.version = version
+	}
+
 	return meta, nil
 }
 
@@ -224,7 +235,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V1_0_0_0
+	config.Version = metadata.version
 
 	if metadata.saslType != KafkaSASLTypeNone {
 		config.Net.SASL.Enable = true
