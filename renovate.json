@@ -15,7 +15,7 @@
       "groupName": "GitHub Actions"
     }
   ],
-  "commitBody": "",
+  "commitBodyTable": true,
   "extends": [
     "config:base",
     "default:disablePrControls",
