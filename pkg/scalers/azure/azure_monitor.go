@@ -20,6 +20,7 @@ import (
 
 type azureExternalMetricRequest struct {
 	MetricName                string
+	MetricNamespace           string
 	SubscriptionID            string
 	ResourceName              string
 	ResourceProviderNamespace string
@@ -37,6 +38,7 @@ type MonitorInfo struct {
 	SubscriptionID      string
 	ResourceGroupName   string
 	Name                string
+	Namespace           string
 	Filter              string
 	AggregationInterval string
 	AggregationType     string
@@ -79,11 +81,12 @@ func createMetricsClient(info MonitorInfo, podIdentityEnabled bool) insights.Met
 
 func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error) {
 	metricRequest := azureExternalMetricRequest{
-		MetricName:     info.Name,
-		SubscriptionID: info.SubscriptionID,
-		Aggregation:    info.AggregationType,
-		Filter:         info.Filter,
-		ResourceGroup:  info.ResourceGroupName,
+		MetricName:      info.Name,
+		MetricNamespace: info.Namespace,
+		SubscriptionID:  info.SubscriptionID,
+		Aggregation:     info.AggregationType,
+		Filter:          info.Filter,
+		ResourceGroup:   info.ResourceGroupName,
 	}
 
 	resourceInfo := strings.Split(info.ResourceURI, "/")
@@ -126,7 +129,7 @@ func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetric
 	metricResult, err := client.List(ctx, metricResourceURI,
 		azMetricRequest.Timespan, nil,
 		azMetricRequest.MetricName, azMetricRequest.Aggregation, nil,
-		"", azMetricRequest.Filter, "", "")
+		"", azMetricRequest.Filter, "", azMetricRequest.MetricNamespace)
 	if err != nil {
 		return -1, err
 	}
