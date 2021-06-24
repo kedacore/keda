@@ -145,7 +145,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, err
 	}
 
-	var count int = 0
+	var count = 0
 	jobs, ok := result["value"].([]interface{})
 
 	if !ok {

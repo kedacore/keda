@@ -247,7 +247,7 @@ func (a *openstackMetricScaler) Close() error {
 
 // Gets measureament from API as float64, converts it to int and return the value.
 func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
-	var metricURL string = a.metadata.metricsURL
+	var metricURL = a.metadata.metricsURL
 
 	isValid, validationError := a.metricClient.IsTokenValid()
 
