@@ -1,11 +1,19 @@
 package v1alpha1
 
 import (
+	"fmt"
+	"time"
+
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+)
+
+const (
+	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
+	defaultPollingInterval = 30
 )
 
 // +kubebuilder:object:root=true
@@ -54,4 +62,18 @@ type WithTriggersList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []WithTriggers `json:"items"`
+}
+
+// GetPollingInterval returns defined polling interval, if not set default is being returned
+func (t *WithTriggers) GetPollingInterval() time.Duration {
+	if t.Spec.PollingInterval != nil {
+		return time.Second * time.Duration(*t.Spec.PollingInterval)
+	}
+
+	return time.Second * time.Duration(defaultPollingInterval)
+}
+
+// GenerateIdenitifier returns identifier for the object in for "kind.namespace.name"
+func (t *WithTriggers) GenerateIdenitifier() string {
+	return fmt.Sprintf("%s.%s.%s", t.Kind, t.Namespace, t.Name)
 }

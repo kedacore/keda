@@ -312,7 +312,7 @@ func TestResolveAuthRef(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			clusterObjectNamespaceCache = &clusterNamespace // Inject test cluster namespace.
-			gotMap, gotPodIdentity := ResolveAuthRef(fake.NewFakeClientWithScheme(scheme.Scheme, test.existing...), logf.Log.WithName("test"), test.soar, test.podSpec, namespace)
+			gotMap, gotPodIdentity := resolveAuthRef(fake.NewFakeClientWithScheme(scheme.Scheme, test.existing...), logf.Log.WithName("test"), test.soar, test.podSpec, namespace)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}
