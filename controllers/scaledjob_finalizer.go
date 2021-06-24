@@ -22,7 +22,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(logger logr.Logger, scaledJob *k
 		// Run finalization logic for scaledJobFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
-		if err := r.stopScaleLoop(scaledJob); err != nil {
+		if err := r.stopScaleLoop(logger, scaledJob); err != nil {
 			return err
 		}
 

@@ -17,7 +17,7 @@ linters:
     - nolintlint
     - rowserrcheck
     - gofmt
-    - golint
+    - revive
     - goimports
     - misspell
     - bodyclose
