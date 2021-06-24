@@ -170,15 +170,11 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-
 	return r.scaleHandler.HandleScalableObject(scaledJob)
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
-func (r *ScaledJobReconciler) stopScaleLoop(scaledJob *kedav1alpha1.ScaledJob) error {
-	if err := r.scaleHandler.DeleteScalableObject(scaledJob); err != nil {
-		return err
-	}
-
-	return nil
+func (r *ScaledJobReconciler) stopScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	logger.V(1).Info("Stopping a ScaleLoop")
+	return r.scaleHandler.DeleteScalableObject(scaledJob)
 }
