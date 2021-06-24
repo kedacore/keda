@@ -124,7 +124,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount() (int, err
 
 		// If onlyFiles is set to "true", return the total amount of files (excluding empty objects/folders)
 		if s.metadata.onlyFiles {
-			var count int = 0
+			var count = 0
 			for i := 0; i < len(objectsList); i++ {
 				if !strings.HasSuffix(objectsList[i], "/") {
 					count++

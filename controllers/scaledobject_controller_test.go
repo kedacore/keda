@@ -43,7 +43,7 @@ var _ = Describe("ScaledObjectController", func() {
 			mockStatusWriter         *mock_client.MockStatusWriter
 		)
 
-		var triggerMeta []map[string]string = []map[string]string{
+		var triggerMeta = []map[string]string{
 			{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true"},
 			{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total2", "threshold": "100", "query": "up"},
 		}
