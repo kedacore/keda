@@ -67,6 +67,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no auth token given")
 		}
+	case config.AuthParams["authToken"] != "":
+		authToken = config.AuthParams["authToken"]
 	default:
 		return nil, fmt.Errorf("no auth token given")
 	}
@@ -81,6 +83,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no organization name given")
 		}
+	case config.AuthParams["organizationName"] != "":
+		organizationName = config.AuthParams["organizationName"]
 	default:
 		return nil, fmt.Errorf("no organization name given")
 	}
@@ -92,6 +96,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["serverURL"]; ok {
+		serverURL = val
+	} else if val, ok := config.AuthParams["serverURL"]; ok {
 		serverURL = val
 	} else {
 		return nil, fmt.Errorf("no server url given")
