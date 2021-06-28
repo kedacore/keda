@@ -8,8 +8,12 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis/duck"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -20,6 +24,66 @@ const (
 	referenceOpener   = '('
 	referenceCloser   = ')'
 )
+
+// ResolveScaleTargetPodSpec for given scalableObject inspects the scale target workload,
+// which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
+// and for the given resource returns *corev1.PodTemplateSpec and a name of the container
+// which is being used for referencing environment variables
+func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
+	switch obj := scalableObject.(type) {
+	case *kedav1alpha1.ScaledObject:
+		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
+		podTemplateSpec := corev1.PodTemplateSpec{}
+		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
+		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
+		switch {
+		// For core types, use a typed client so we get an informer-cache-backed Get to reduce API load.
+		case gvk.Group == "apps" && gvk.Kind == "Deployment":
+			deployment := &appsv1.Deployment{}
+			if err := kubeClient.Get(context.TODO(), objKey, deployment); err != nil {
+				// resource doesn't exist
+				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			podTemplateSpec.ObjectMeta = deployment.ObjectMeta
+			podTemplateSpec.Spec = deployment.Spec.Template.Spec
+		case gvk.Group == "apps" && gvk.Kind == "StatefulSet":
+			statefulSet := &appsv1.StatefulSet{}
+			if err := kubeClient.Get(context.TODO(), objKey, statefulSet); err != nil {
+				// resource doesn't exist
+				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
+			podTemplateSpec.Spec = statefulSet.Spec.Template.Spec
+		default:
+			unstruct := &unstructured.Unstructured{}
+			unstruct.SetGroupVersionKind(gvk)
+			if err := kubeClient.Get(context.TODO(), objKey, unstruct); err != nil {
+				// resource doesn't exist
+				logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				return nil, "", err
+			}
+			withPods := &duckv1.WithPod{}
+			if err := duck.FromUnstructured(unstruct, withPods); err != nil {
+				logger.Error(err, "Cannot convert Unstructured into PodSpecable Duck-type", "object", unstruct)
+			}
+			podTemplateSpec.ObjectMeta = withPods.ObjectMeta
+			podTemplateSpec.Spec = withPods.Spec.Template.Spec
+		}
+
+		if podTemplateSpec.Spec.Containers == nil || len(podTemplateSpec.Spec.Containers) == 0 {
+			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "resource", gvk.String(), "name", obj.Spec.ScaleTargetRef.Name)
+			return nil, "", nil
+		}
+
+		return &podTemplateSpec, obj.Spec.ScaleTargetRef.EnvSourceContainerName, nil
+	case *kedav1alpha1.ScaledJob:
+		return &obj.Spec.JobTargetRef.Template, obj.Spec.EnvSourceContainerName, nil
+	default:
+		return nil, "", fmt.Errorf("unknown scalable object type %v", scalableObject)
+	}
+}
 
 // ResolveContainerEnv resolves all environment variables in a container.
 // It returns either map of env variable key and value or error if there is any.
@@ -49,9 +113,32 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 	return resolveEnv(client, logger, &container, namespace)
 }
 
-// ResolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
-// based on authentication method define in TriggerAuthentication, authParams and podIdentity is returned
-func ResolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
+// ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
+func ResolveAuthRefAndPodIdentity(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider, error) {
+	if podTemplateSpec != nil {
+		authParams, podIdentity := resolveAuthRef(client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace)
+
+		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+			serviceAccount := &corev1.ServiceAccount{}
+			err := client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+			if err != nil {
+				return nil, kedav1alpha1.PodIdentityProviderNone, fmt.Errorf("error getting service account: %s", err)
+			}
+			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		}
+		return authParams, podIdentity, nil
+	}
+
+	authParams, _ := resolveAuthRef(client, logger, triggerAuthRef, nil, namespace)
+	return authParams, kedav1alpha1.PodIdentityProviderNone, nil
+}
+
+// resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
+// based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
+func resolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.PodIdentityProvider
 
