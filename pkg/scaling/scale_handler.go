@@ -41,7 +41,7 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
@@ -178,7 +178,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					scalingMutex.Lock()
 					switch obj := scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
-						h.scaleExecutor.RequestScale(ctx, obj, active)
+						h.scaleExecutor.RequestScale(ctx, obj, active, false)
 					case *kedav1alpha1.ScaledJob:
 						h.logger.Info("Warning: External Push Scaler does not support ScaledJob", "object", scalableObject)
 					}
@@ -202,7 +202,8 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		h.scaleExecutor.RequestScale(ctx, obj, h.isScaledObjectActive(ctx, scalers, obj))
+		isActive, isError := h.isScaledObjectActive(ctx, scalers, obj)
+		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError)
 	case *kedav1alpha1.ScaledJob:
 		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
 		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, scaledJob)
@@ -210,29 +211,31 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
-func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) bool {
+func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) (bool, bool) {
 	isActive := false
+	isError := false
 	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scaler.Close()
 
 		if err != nil {
 			h.logger.V(1).Info("Error getting scale decision", "Error", err)
+			isError = true
 			h.recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			if scaler.GetMetricSpecForScaling()[0].External != nil {
-				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].External.Metric.Name)
+			if externalMetricsSpec := scaler.GetMetricSpecForScaling()[0].External; externalMetricsSpec != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
-			if scaler.GetMetricSpecForScaling()[0].Resource != nil {
-				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", scaler.GetMetricSpecForScaling()[0].Resource.Name)
+			if resourceMetricsSpec := scaler.GetMetricSpecForScaling()[0].Resource; resourceMetricsSpec != nil {
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
 			closeScalers(scalers[i+1:])
 			break
 		}
 	}
-	return isActive
+	return isActive, isError
 }
 
 func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
