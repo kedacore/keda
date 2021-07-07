@@ -61,9 +61,10 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 
 // Test MQ Connection metadata is parsed correctly
 // should error on missing required field
+// and verify that the password field is handled correctly.
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		_, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -72,6 +73,11 @@ func TestIBMMQParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 			fmt.Println(testData)
 		}
+		if metadata != nil && metadata.password != "" && metadata.password != testData.authParams["password"] {
+			t.Error("Expected password from configuration but found something else: ", metadata.password)
+			fmt.Println(testData)
+		}
+
 	}
 }
 
