@@ -77,7 +77,6 @@ func TestIBMMQParseMetadata(t *testing.T) {
 			t.Error("Expected password from configuration but found something else: ", metadata.password)
 			fmt.Println(testData)
 		}
-
 	}
 }
 
