@@ -30,6 +30,8 @@
 - Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
 - Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
 - Allow influxdb `authToken`, `serverURL`, and `organizationName` to be sourced from `(Cluster)TriggerAuthentication` ([#1904](https://github.com/kedacore/keda/pull/1904))
+- IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
+
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
