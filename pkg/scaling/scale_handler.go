@@ -446,6 +446,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewRedisStreamsScaler(true, config)
 	case "redis-streams":
 		return scalers.NewRedisStreamsScaler(false, config)
+	case "solace-queue":
+		return scalers.NewSolaceScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	default:
