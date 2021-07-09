@@ -1,14 +1,12 @@
-import * as async from 'async'
-import * as fs from 'fs'
+//import * as async from 'async'
+//import * as fs from 'fs'
 import * as sh from 'shelljs'
-import * as tmp from 'tmp'
+//import * as tmp from 'tmp'
 import test from 'ava'
 import { SolaceHelper } from './solace-helpers'
 
 const testNamespace = 'solace'
 const queueName = 'test'
-const username = "artemis"
-const password = "artemis"
 
 test.before(t => {
     sh.config.silent = true

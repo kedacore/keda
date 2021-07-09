@@ -20,15 +20,10 @@ type testSolaceMetricIdentifier struct {
 }
 
 var (
-	soltest_VALID_BASEURL  = "http://localhost:8080"
-	soltest_VALID_PROTOCOL = "http"
-	soltest_VALID_HOSTNAME = "localhost"
-	soltest_VALID_PORT     = "8080"
-	// ##### TODO -- RESET THIS
-	//	soltest_VALID_USERNAME                = "solace_user"
-	//	soltest_VALID_PASSWORD                = "solace_pass"
-	//	soltest_VALID_VPN                     = "solace_keda_vpn"
-	//	soltest_VALID_QUEUE_NAME              = "KEDA_Q1"
+	soltest_VALID_BASEURL          = "http://localhost:8080"
+	soltest_VALID_PROTOCOL         = "http"
+	soltest_VALID_HOSTNAME         = "localhost"
+	soltest_VALID_PORT             = "8080"
 	soltest_VALID_USERNAME         = "admin"
 	soltest_VALID_PASSWORD         = "admin"
 	soltest_VALID_VPN              = "dennis_vpn"
@@ -726,16 +721,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 		}
 		if err != nil {
 			fmt.Printf("\n       Failed to parse metadata: %v", err)
-			//			t.Error("Failed to parse metadata: ", err)
 		} else {
-
-			//			fmt.Println("Here")
-			//			fmt.Println(solaceMeta.brokerBaseUrl)
-			//			fmt.Printf("%v\n", solaceMeta.msgCountTarget)
-
-			//			var startTime metav1.Time = metav1.Now()
-			//			startTime.Time.Add(time.Duration(-2) * time.Second)
-
 			// DECLARE SCALER AND RUN METHOD TO GET METRICS
 			testSolaceScaler := SolaceScaler{
 				metadata:   solaceMeta,
