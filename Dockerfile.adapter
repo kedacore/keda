@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.15.13 as builder
+FROM golang:1.16.5 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
