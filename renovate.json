@@ -3,14 +3,6 @@
   "labels":["dependencies"],
   "packageRules": [
     {
-      "packagePatterns": ["*"],
-      "groupName": "All"
-    },
-    {
-      "packagePatterns": ["^k8s.io/","^sigs.k8s.io/"],
-      "groupName": "Kubernetes Dependencies"
-    },
-    {
       "packagePatterns": ["^actions/"],
       "groupName": "GitHub Actions"
     }
