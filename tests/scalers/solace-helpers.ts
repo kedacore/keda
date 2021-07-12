@@ -12,7 +12,7 @@ export class SolaceHelper {
         )
         t.is(
             0,
-            sh.exec(`helm repo update`).code, 
+            sh.exec(`helm repo update`).code,
             'Should update Helm Charts'
         )
     }
@@ -21,7 +21,7 @@ export class SolaceHelper {
         t.is(
           0,
           sh.exec(`kubectl create namespace ${testNamespace}`).code, 'Should create solace namespace'
-        )  
+        )
         t.is(
             0,
             sh.exec(`helm install kedalab solacecharts/pubsubplus-dev --namespace ${testNamespace} --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false`).code, 'Solace Broker should install'
@@ -145,7 +145,7 @@ spec:
           - type:          Pods
             value:         10
             periodSeconds: 10
-          selectPolicy:    Max  
+          selectPolicy:    Max
   triggers:
   - type: solace-queue
     metadata:
@@ -154,7 +154,7 @@ spec:
       queueName:           SCALED_CONSUMER_QUEUE1
       msgCountTarget:      '20'
       msgSpoolUsageTarget: '100000'
-    authenticationRef: 
+    authenticationRef:
       name: kedalab-trigger-auth
 `
 
