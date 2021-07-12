@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/imdario/mergo v0.3.12
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0
-	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210706132418-63a83be59f5f
+	github.com/kubernetes-sigs/custom-metrics-apiserver 37362ca27581
 	github.com/lib/pq v1.10.2
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.16.4
