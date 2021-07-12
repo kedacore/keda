@@ -4,15 +4,12 @@
   "packageRules": [
     {
       "packagePatterns": ["*"],
-      "groupName": "All"
-    },
-    {
-      "packagePatterns": ["^k8s.io/","^sigs.k8s.io/"],
-      "groupName": "Kubernetes Dependencies"
+      "enabled": false
     },
     {
       "packagePatterns": ["^actions/"],
-      "groupName": "GitHub Actions"
+      "groupName": "GitHub Actions",
+      "enabled": true
     }
   ],
   "commitBodyTable": true,
