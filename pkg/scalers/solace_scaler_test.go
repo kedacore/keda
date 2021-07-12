@@ -14,43 +14,38 @@ type testSolaceMetadata struct {
 	isError  bool
 }
 
+/*
 type testSolaceMetricIdentifier struct {
 	metadataTestData *testSolaceMetadata
 	name             string
 }
-
+*/
 var (
-	soltest_VALID_BASEURL          = "http://localhost:8080"
-	soltest_VALID_PROTOCOL         = "http"
-	soltest_VALID_HOSTNAME         = "localhost"
-	soltest_VALID_PORT             = "8080"
-	soltest_VALID_USERNAME         = "admin"
-	soltest_VALID_PASSWORD         = "admin"
-	soltest_VALID_VPN              = "dennis_vpn"
-	soltest_VALID_QUEUE_NAME       = "queue3"
-	soltest_VALID_MSG_COUNT_TARGET = "10"
-	soltest_VALID_MSG_SPOOL_TARGET = "20"
+	soltestValidBaseUrl        = "http://localhost:8080"
+	soltestValidProtocol       = "http"
+	soltestValidHostname       = "localhost"
+	soltestValidPort           = "8080"
+	soltestValidUsername       = "admin"
+	soltestValidPassword       = "admin"
+	soltestValidVpn            = "dennis_vpn"
+	soltestValidQueueName      = "queue3"
+	soltestValidMsgCountTarget = "10"
+	soltestValidMsgSpoolTarget = "20"
 
-	soltest_ENVVAR_USERNAME = "SOLTEST_USERNAME"
-	soltest_ENVVAR_PASSWORD = "SOLTEST_PASSWORD"
+	soltestEnvUsername = "SOLTEST_USERNAME"
+	soltestEnvPassword = "SOLTEST_PASSWORD"
 )
 
 // AUTH RECORD FOR TEST
 var testDataSolaceAuthParamsVALID = map[string]string{
-	solace_META_username: soltest_VALID_USERNAME,
-	solace_META_password: soltest_VALID_PASSWORD,
+	solaceMetaUsername: soltestValidUsername,
+	solaceMetaPassword: soltestValidPassword,
 }
 
 // ENV VARS FOR TEST -- VALID USER / PWD
 var testDataSolaceResolvedEnvVALID = map[string]string{
-	soltest_ENVVAR_USERNAME: soltest_VALID_USERNAME, // Sets the environment variables to the correct values
-	soltest_ENVVAR_PASSWORD: soltest_VALID_PASSWORD,
-}
-
-// ENV VARS FOR TEST -- INVALID USER / PWD
-var testDataSolaceResolvedEnvINVALID = map[string]string{
-	soltest_ENVVAR_USERNAME: "NOT_CORRECT_USERID", // Sets the environment variables to incorrect values
-	soltest_ENVVAR_PASSWORD: "NOT_A_PASSWORD",
+	soltestEnvUsername: soltestValidUsername, // Sets the environment variables to the correct values
+	soltestEnvPassword: soltestValidPassword,
 }
 
 // TEST CASES FOR SolaceParseMetadata()
@@ -70,18 +65,18 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#002 - brokerBaseUrl",
 		map[string]string{
-			"":                         "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			"":                       "",
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -89,17 +84,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#003 - protocol + host + port",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -108,17 +103,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#004 - missing protocol",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -126,17 +121,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#005 - missing hostname",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -144,17 +139,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#006 - missing port",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -162,17 +157,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#007 - missing username (clear)",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       "",
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       "",
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -180,17 +175,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#008 - missing password (clear)",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -198,17 +193,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#009 - missing queueName",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      "",
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      "",
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -216,18 +211,18 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#010 - missing msgCountTarget",
 		map[string]string{
-			solace_META_brokerBaseUrl:       "",
-			solace_META_brokerProtocol:      soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname:      soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:          soltest_VALID_PORT,
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget:      "",
-			solace_META_msgSpoolUsageTarget: "",
+			solaceMetaBrokerBaseUrl:       "",
+			solaceMetaBrokerProtocol:      soltestValidProtocol,
+			solaceMetaBrokerHostname:      soltestValidHostname,
+			solaceMetaBrokerPort:          soltestValidPort,
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgCountTarget:      "",
+			solaceMetamsgSpoolUsageTarget: "",
 		},
 		true,
 	},
@@ -235,17 +230,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#011 - msgSpoolUsageTarget non-numeric",
 		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: "NOT_AN_INTEGER",
+			solaceMetaBrokerBaseUrl:  "",
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: "NOT_AN_INTEGER",
 		},
 		true,
 	},
@@ -253,17 +248,17 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#012 - msgSpoolUsage non-numeric",
 		map[string]string{
-			solace_META_brokerBaseUrl:       "",
-			solace_META_brokerProtocol:      soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname:      soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:          soltest_VALID_PORT,
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgSpoolUsageTarget: "NOT_AN_INTEGER",
+			solaceMetaBrokerBaseUrl:       "",
+			solaceMetaBrokerProtocol:      soltestValidProtocol,
+			solaceMetaBrokerHostname:      soltestValidHostname,
+			solaceMetaBrokerPort:          soltestValidPort,
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgSpoolUsageTarget: "NOT_AN_INTEGER",
 		},
 		true,
 	},
@@ -271,18 +266,18 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#013 - brokerBaseUrl",
 		map[string]string{
-			"":                              "",
-			solace_META_brokerBaseUrl:       soltest_VALID_BASEURL,
-			solace_META_brokerProtocol:      "",
-			solace_META_brokerHostname:      "",
-			solace_META_brokerPort:          "",
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                            "",
+			solaceMetaBrokerBaseUrl:       soltestValidBaseUrl,
+			solaceMetaBrokerProtocol:      "",
+			solaceMetaBrokerHostname:      "",
+			solaceMetaBrokerPort:          "",
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		false,
 	},
@@ -290,24 +285,21 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 
 var testSolaceEnvCreds = []testSolaceMetadata{
 	// +Case - Should find ENV vars
-	// Environment user/pass should be set:
-	// - SOLTEST_USERNAME
-	// - SOLTEST_PASSWORD
 	{
 		"#101 - Connect with Credentials in env",
 		map[string]string{
 			//		"":               "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    soltest_ENVVAR_USERNAME,
-			solace_META_passwordEnv:    soltest_ENVVAR_PASSWORD,
-			//		solace_META_username:              "",
-			//		solace_META_password:              "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    soltestEnvUsername,
+			solaceMetaPasswordEnv:    soltestEnvPassword,
+			//		solaceMetaUsername:              "",
+			//		solaceMetaPassword:              "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -316,17 +308,17 @@ var testSolaceEnvCreds = []testSolaceMetadata{
 		"#102 - Environment vars referenced but not found",
 		map[string]string{
 			//		"":               "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "SOLTEST_DNE",
-			solace_META_passwordEnv:    "SOLTEST_DNE",
-			//		solace_META_username:              "",
-			//		solace_META_password:              "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "SOLTEST_DNE",
+			solaceMetaPasswordEnv:    "SOLTEST_DNE",
+			//		solaceMetaUsername:              "",
+			//		solaceMetaPassword:              "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		true,
 	},
@@ -340,17 +332,17 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 		"#201 - Connect with credentials from Auth Record (ENV VAR Present)",
 		map[string]string{
 			//		"":               "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    soltest_ENVVAR_USERNAME,
-			solace_META_passwordEnv:    soltest_ENVVAR_PASSWORD,
-			//		solace_META_username:              "",
-			//		solace_META_password:              "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    soltestEnvUsername,
+			solaceMetaPasswordEnv:    soltestEnvPassword,
+			//		solaceMetaUsername:              "",
+			//		solaceMetaPassword:              "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -359,17 +351,17 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 		"#202 - Connect with credentials from Auth Record (ENV VAR and Clear Auth not present)",
 		map[string]string{
 			//		"":               "",
-			//		solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			//		solace_META_usernameEnv:    soltest_ENVVAR_USERNAME,
-			//		solace_META_passwordEnv:    soltest_ENVVAR_PASSWORD,
-			//		solace_META_username:              "",
-			//		solace_META_password:              "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			//		solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: soltestValidProtocol,
+			solaceMetaBrokerHostname: soltestValidHostname,
+			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetamsgVpn:         soltestValidVpn,
+			//		solaceMetaUsernameEnv:    soltestEnvUsername,
+			//		solaceMetaPasswordEnv:    soltestEnvPassword,
+			//		solaceMetaUsername:              "",
+			//		solaceMetaPassword:              "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -378,17 +370,17 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 		"#203 - Connect with credentials from Auth Record (ENV VAR Present, Clear Auth not present)",
 		map[string]string{
 			//		"":               "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "SOLTEST_DNE",
-			solace_META_passwordEnv:    "SOLTEST_DNE",
-			//		solace_META_username:              "",
-			//		solace_META_password:              "",
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "SOLTEST_DNE",
+			solaceMetaPasswordEnv:    "SOLTEST_DNE",
+			//		solaceMetaUsername:              "",
+			//		solaceMetaPassword:              "",
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
 		},
 		false,
 	},
@@ -398,308 +390,164 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#401 - Get Metric Spec - msgCountTarget",
 		map[string]string{
-			"":                         "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-			//			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                       "",
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			solaceMetamsgCountTarget: soltestValidMsgCountTarget,
+			//			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		false,
 	},
 	{
 		"#402 - Get Metric Spec - msgSpoolUsageTarget",
 		map[string]string{
-			"":                         "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			//			solace_META_msgCountTarget:      soltest_VALID_MSG_COUNT_TARGET,
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                       "",
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			//			solaceMetamsgCountTarget:      soltestValidMsgCountTarget,
+			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		false,
 	},
 	{
 		"#403 - Get Metric Spec - BOTH msgSpoolUsage and msgCountTarget",
 		map[string]string{
-			"":                              "",
-			solace_META_brokerBaseUrl:       soltest_VALID_BASEURL,
-			solace_META_brokerProtocol:      "",
-			solace_META_brokerHostname:      "",
-			solace_META_brokerPort:          "",
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget:      soltest_VALID_MSG_COUNT_TARGET,
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                            "",
+			solaceMetaBrokerBaseUrl:       soltestValidBaseUrl,
+			solaceMetaBrokerProtocol:      "",
+			solaceMetaBrokerHostname:      "",
+			solaceMetaBrokerPort:          "",
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgCountTarget:      soltestValidMsgCountTarget,
+			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		false,
 	},
 	{
 		"#404 - Get Metric Spec - BOTH MISSING",
 		map[string]string{
-			"":                         "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			//			solace_META_msgCountTarget:      soltest_VALID_MSG_COUNT_TARGET,
-			//			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                       "",
+			solaceMetaBrokerBaseUrl:  soltestValidBaseUrl,
+			solaceMetaBrokerProtocol: "",
+			solaceMetaBrokerHostname: "",
+			solaceMetaBrokerPort:     "",
+			solaceMetamsgVpn:         soltestValidVpn,
+			solaceMetaUsernameEnv:    "",
+			solaceMetaPasswordEnv:    "",
+			solaceMetaUsername:       soltestValidUsername,
+			solaceMetaPassword:       soltestValidPassword,
+			solaceMetaqueueName:      soltestValidQueueName,
+			//			solaceMetamsgCountTarget:      soltestValidMsgCountTarget,
+			//			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		true,
 	},
 	{
 		"#405 - Get Metric Spec - BOTH ZERO",
 		map[string]string{
-			"":                              "",
-			solace_META_brokerBaseUrl:       soltest_VALID_BASEURL,
-			solace_META_brokerProtocol:      "",
-			solace_META_brokerHostname:      "",
-			solace_META_brokerPort:          "",
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget:      "0",
-			solace_META_msgSpoolUsageTarget: "0",
+			"":                            "",
+			solaceMetaBrokerBaseUrl:       soltestValidBaseUrl,
+			solaceMetaBrokerProtocol:      "",
+			solaceMetaBrokerHostname:      "",
+			solaceMetaBrokerPort:          "",
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgCountTarget:      "0",
+			solaceMetamsgSpoolUsageTarget: "0",
 		},
 		true,
 	},
 	{
 		"#406 - Get Metric Spec - ONE ZERO; OTHER VALID",
 		map[string]string{
-			"":                              "",
-			solace_META_brokerBaseUrl:       soltest_VALID_BASEURL,
-			solace_META_brokerProtocol:      "",
-			solace_META_brokerHostname:      "",
-			solace_META_brokerPort:          "",
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_usernameEnv:         "",
-			solace_META_passwordEnv:         "",
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget:      "0",
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
+			"":                            "",
+			solaceMetaBrokerBaseUrl:       soltestValidBaseUrl,
+			solaceMetaBrokerProtocol:      "",
+			solaceMetaBrokerHostname:      "",
+			solaceMetaBrokerPort:          "",
+			solaceMetamsgVpn:              soltestValidVpn,
+			solaceMetaUsernameEnv:         "",
+			solaceMetaPasswordEnv:         "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaqueueName:           soltestValidQueueName,
+			solaceMetamsgCountTarget:      "0",
+			solaceMetamsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
 		false,
 	},
 }
 
 var testSolaceExpectedMetricNames = map[string]string{
-	solace_SCALER_ID + "-" + soltest_VALID_VPN + "-" + soltest_VALID_QUEUE_NAME + "-" + "msgCount":      "",
-	solace_SCALER_ID + "-" + soltest_VALID_VPN + "-" + soltest_VALID_QUEUE_NAME + "-" + "msgSpoolUsage": "",
-}
-
-var testSolaceSEMPConnectionMetadata = []testSolaceMetadata{
-	/*
-		IF brokerBaseUrl is present, use it without interpretation as the base URL: http://my.host.domain:1234
-		IF brokerBaseUrl in not present, Use protocol, host, and port
-	*/
-
-	// +Case - Should Connect (Base URL Provided)
-	{
-		"#301 - Connect w/ baseUrl + Clear Auth",
-		map[string]string{
-			"":                         "",
-			solace_META_brokerBaseUrl:  soltest_VALID_BASEURL,
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		false,
-	},
-	{
-		"#302 - Connect with invalid username",
-		map[string]string{
-			solace_META_brokerBaseUrl:       "",
-			solace_META_brokerProtocol:      soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname:      soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:          soltest_VALID_PORT,
-			solace_META_username:            "NOT_A_REAL_USER",
-			solace_META_password:            soltest_VALID_PASSWORD,
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
-		},
-		true,
-	},
-	{
-		"#303 - Connect with invalid password",
-		map[string]string{
-			solace_META_brokerBaseUrl:       "",
-			solace_META_brokerProtocol:      soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname:      soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:          soltest_VALID_PORT,
-			solace_META_username:            soltest_VALID_USERNAME,
-			solace_META_password:            "THIS_IS_NOT_MY_PASSWORD",
-			solace_META_msgVpn:              soltest_VALID_VPN,
-			solace_META_queueName:           soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget:      soltest_VALID_MSG_COUNT_TARGET,
-			solace_META_msgSpoolUsageTarget: soltest_VALID_MSG_SPOOL_TARGET,
-		},
-		true,
-	},
-	// +Case - Should Connect (Derived Base URL)
-	{
-		"#304 - Connect with component URL + Env Var Auth",
-		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		false,
-	},
-	{
-		"#305 - Connect with component URL + K8S Auth Record",
-		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			//		solace_META_username:              soltest_VALID_USERNAME,
-			//		solace_META_password:              soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		false,
-	},
-	// -Case - Solace VPN DNE
-	{
-		"#306 - Solace VPN DNE",
-		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         "THIS_VPN_DOES_NOT_EXIST",
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		true,
-	},
-	// -Case - Queue DNE
-	{
-		"#307 - Solace Queue DNE",
-		map[string]string{
-			solace_META_brokerBaseUrl:  "",
-			solace_META_brokerProtocol: soltest_VALID_PROTOCOL,
-			solace_META_brokerHostname: soltest_VALID_HOSTNAME,
-			solace_META_brokerPort:     soltest_VALID_PORT,
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      "THIS_QUEUE_DOES_NOT_EXIST",
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		true,
-	},
-	// -Case - Bad baseUrl
-	{
-		"#308 - Bad Base URL",
-		map[string]string{
-			solace_META_brokerBaseUrl:  "http://not-a-real-server.nothing:999",
-			solace_META_brokerProtocol: "",
-			solace_META_brokerHostname: "",
-			solace_META_brokerPort:     "",
-			solace_META_msgVpn:         soltest_VALID_VPN,
-			solace_META_usernameEnv:    "",
-			solace_META_passwordEnv:    "",
-			solace_META_username:       soltest_VALID_USERNAME,
-			solace_META_password:       soltest_VALID_PASSWORD,
-			solace_META_queueName:      soltest_VALID_QUEUE_NAME,
-			solace_META_msgCountTarget: soltest_VALID_MSG_COUNT_TARGET,
-		},
-		true,
-	},
+	solaceScalerId + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + "msgcount":      "",
+	solaceScalerId + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + "msgspoolusage": "",
 }
 
 func TestSolaceParseSolaceMetadata(t *testing.T) {
 	for _, testData := range testParseSolaceMetadata {
 		fmt.Print(testData.testId)
 		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil})
-		if err != nil && !testData.isError {
+		switch {
+		case err != nil && !testData.isError:
 			t.Error("Expected success but got error: ", err)
 			fmt.Println(" --> FAIL")
-		} else if testData.isError && err == nil {
+		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
 			fmt.Println(" --> FAIL")
-		} else {
+		default:
 			fmt.Println(" --> PASS")
 		}
 	}
 	for _, testData := range testSolaceEnvCreds {
 		fmt.Print(testData.testId)
 		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: nil})
-		if err != nil && !testData.isError {
+		switch {
+		case err != nil && !testData.isError:
 			t.Error("Expected success but got error: ", err)
 			fmt.Println(" --> FAIL")
-		} else if testData.isError && err == nil {
+		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
 			fmt.Println(" --> FAIL")
-		} else {
+		default:
 			fmt.Println(" --> PASS")
 		}
 	}
 	for _, testData := range testSolaceK8sSecretCreds {
 		fmt.Print(testData.testId)
 		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID})
-		if err != nil && !testData.isError {
-			t.Error("Expected success but result is error: ", err)
+		switch {
+		case err != nil && !testData.isError:
+			t.Error("Expected success but got error: ", err)
 			fmt.Println(" --> FAIL")
-		} else if testData.isError && err == nil {
-			t.Error("Expected error but result is success")
+		case testData.isError && err == nil:
+			t.Error("Expected error but got success")
 			fmt.Println(" --> FAIL")
-		} else {
+		default:
 			fmt.Println(" --> PASS")
 		}
 	}
@@ -712,13 +560,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 		fmt.Print(testData.testId)
 		var err error
 		var solaceMeta *SolaceMetadata
-		if idx == 0 {
-			// The first instance will have nil ResolvedEnv and AuthParams -- for Clear Auth
-			solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil})
-		} else {
-			// The first instance will have nil ResolvedEnv and AuthParams -- for Clear Auth
-			solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID})
-		}
+		solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID})
 		if err != nil {
 			fmt.Printf("\n       Failed to parse metadata: %v", err)
 		} else {
@@ -730,69 +572,24 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 
 			var metric []v2beta2.MetricSpec
 			if metric = testSolaceScaler.GetMetricSpecForScaling(); metric == nil || len(metric) == 0 {
-				t.Error("Metric value not found")
+				err = fmt.Errorf("Metric value not found\n")
+			} else {
+				metricName := metric[0].External.Metric.Name
+				if _, ok := testSolaceExpectedMetricNames[metricName]; ok == false {
+					err = fmt.Errorf("Expected Metric value not found\n")
+				}
 			}
-			metricName := metric[0].External.Metric.Name
-			metricValue := metric[0].External.Target.AverageValue
-			if _, ok := testSolaceExpectedMetricNames[metricName]; ok == false {
-				t.Error("Expected Metric value not found")
-			}
-
-			fmt.Printf("\n       Found Metric: %s=%v", metricName, metricValue)
 		}
 
-		if testData.isError && err == nil {
+		switch {
+		case testData.isError && err == nil:
 			fmt.Println(" --> FAIL")
 			t.Error("Expected to fail but passed", err)
-		} else if !testData.isError && err != nil {
+		case !testData.isError && err != nil:
+			fmt.Println(" --> FAIL")
 			t.Error("Expected success but failed", err)
-		} else {
+		default:
 			fmt.Println(" --> PASS")
-		}
-
-	}
-}
-
-func TestSolaceSEMPConnection(t *testing.T) {
-	for idx := 0; idx < len(testSolaceSEMPConnectionMetadata); idx++ {
-
-		testData := testSolaceSEMPConnectionMetadata[idx]
-		fmt.Print(testData.testId)
-		var err error
-		var solaceMeta *SolaceMetadata
-		if idx < 3 {
-			// The first instance will have nil ResolvedEnv and AuthParams -- for Clear Auth
-			solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil})
-		} else {
-			// The first instance will have nil ResolvedEnv and AuthParams -- for Clear Auth
-			solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID})
-		}
-		if err != nil {
-			t.Fatal("FAILED to parse metadata: ", err)
-		}
-
-		testSolaceScaler := SolaceScaler{
-			metadata:   solaceMeta,
-			httpClient: http.DefaultClient,
-		}
-
-		val, err := testSolaceScaler.getSolaceQueueMetricsFromSEMP()
-
-		if testData.isError && err == nil {
-			fmt.Println(" --> FAIL")
-			t.Error("Expected to fail but passed", err)
-		} else if !testData.isError && err != nil {
-			fmt.Println(" --> FAIL: Connection to SEMP Failed")
-			t.Error("Expected successful connection to SEMP Failed", err)
-		} else {
-			fmt.Printf(" --> PASS")
-			if val.msgCount > 0 {
-				fmt.Printf("; msgCount=%d", val.msgCount)
-			}
-			if val.msgSpoolUsage > 0 {
-				fmt.Printf("; msgSpoolUsage=%d", val.msgSpoolUsage)
-			}
-			fmt.Println()
 		}
 	}
 }

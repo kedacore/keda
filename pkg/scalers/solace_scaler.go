@@ -19,42 +19,41 @@ import (
 )
 
 const (
-	solace_EXT_METRIC_TYPE = "External"
-	solace_SCALER_ID       = "solace"
+	solaceExtMetricType = "External"
+	solaceScalerId      = "solace"
 
 	// REST ENDPOINT String Patterns
-	solace_BROKER_BASE_URL_TEMPLATE   = "%s://%s:%s"
-	solace_SEMP_ENDPOINT_URL_TEMPLATE = "%s/%s/%s/monitor/msgVpns/%s/%ss/%s"
+	solaceBrokerBaseUrlTemplate   = "%s://%s:%s"
+	solaceSempEndpointUrlTemplate = "%s/%s/%s/monitor/msgVpns/%s/%ss/%s"
 	// SEMP REST API Context
-	solace_API_NAME          = "SEMP"
-	solace_API_VERSION       = "v2"
-	solace_API_DFLT_OBJ_TYPE = "queue"
+	solaceApiName            = "SEMP"
+	solaceApiVersion         = "v2"
+	solaceApiObjectTypeQueue = "queue"
 
 	// Log Message Templates
-	solace_FOUND_META_TRUE  = "Field %s Found in Solace Metadata; Value=%v"
-	solace_FOUND_META_FALSE = "Required Field %s NOT FOUND in Solace Metadata"
+	solaceFoundMetaFalse = "Required Field %s NOT FOUND in Solace Metadata"
 
 	// YAML Configuration Metadata Field Names
 	// Broker Identifiers
-	solace_META_brokerBaseUrl  = "brokerBaseUrl"
-	solace_META_brokerProtocol = "brokerProtocol"
-	solace_META_brokerHostname = "brokerHostname"
-	solace_META_brokerPort     = "brokerPort"
+	solaceMetaBrokerBaseUrl  = "brokerBaseUrl"
+	solaceMetaBrokerProtocol = "brokerProtocol"
+	solaceMetaBrokerHostname = "brokerHostname"
+	solaceMetaBrokerPort     = "brokerPort"
 	// Credential Identifiers
-	solace_META_username    = "username"
-	solace_META_password    = "password"
-	solace_META_usernameEnv = "usernameEnv"
-	solace_META_passwordEnv = "passwordEnv"
+	solaceMetaUsername    = "username"
+	solaceMetaPassword    = "password"
+	solaceMetaUsernameEnv = "usernameEnv"
+	solaceMetaPasswordEnv = "passwordEnv"
 	// Target Object Identifiers
-	solace_META_msgVpn    = "msgVpn"
-	solace_META_queueName = "queueName"
+	solaceMetamsgVpn    = "msgVpn"
+	solaceMetaqueueName = "queueName"
 	// Metric Targets
-	solace_META_msgCountTarget      = "msgCountTarget"
-	solace_META_msgSpoolUsageTarget = "msgSpoolUsageTarget"
+	solaceMetamsgCountTarget      = "msgCountTarget"
+	solaceMetamsgSpoolUsageTarget = "msgSpoolUsageTarget"
 
 	// Trigger type identifiers
-	solace_TRIG_msgcount      = "msgcount"
-	solace_TRIG_msgspoolusage = "msgspoolusage"
+	solaceTriggermsgcount      = "msgcount"
+	solaceTriggermsgspoolusage = "msgspoolusage"
 )
 
 // Struct for Observed Metric Values
@@ -118,7 +117,7 @@ type solaceSEMPMetadata struct {
 }
 
 //	Solace Logger
-var solaceLog = logf.Log.WithName(solace_SCALER_ID + "_scaler")
+var solaceLog = logf.Log.WithName(solaceScalerId + "_scaler")
 
 //	Constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
@@ -130,7 +129,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	solaceMetadata, err := parseSolaceMetadata(config)
 	if err != nil {
 		solaceLog.Error(err, "Error parsing Solace Trigger Metadata or missing values")
-		return nil, err //fmt.Errorf("Error parsing Solace Trigger metadata: %s", err)
+		return nil, err
 	}
 
 	return &SolaceScaler{
@@ -145,65 +144,65 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 
 	//	GET THE SEMP API ENDPOINT
 	//	First look for brokerBaseUrl in config; Use components if not found
-	if val, ok := config.TriggerMetadata[solace_META_brokerBaseUrl]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaBrokerBaseUrl]; ok && val != "" {
 		meta.brokerBaseUrl = val
 	} else {
 		//	IF brokerBaseUrl is not present, then get components
 		//	GET Protocol
-		if val, ok := config.TriggerMetadata[solace_META_brokerProtocol]; ok && (val == "https" || val == "http") {
+		if val, ok := config.TriggerMetadata[solaceMetaBrokerProtocol]; ok && (val == "https" || val == "http") {
 			meta.brokerProtocol = val
 		} else {
-			return nil, fmt.Errorf(solace_FOUND_META_FALSE, solace_META_brokerProtocol)
+			return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerProtocol)
 		}
 		//	GET Hostname
-		if val, ok := config.TriggerMetadata[solace_META_brokerHostname]; ok && val != "" {
+		if val, ok := config.TriggerMetadata[solaceMetaBrokerHostname]; ok && val != "" {
 			meta.brokerHostname = val
 		} else {
-			return nil, fmt.Errorf(solace_FOUND_META_FALSE, solace_META_brokerHostname)
+			return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerHostname)
 		}
 		//	GET Port
-		if val, ok := config.TriggerMetadata[solace_META_brokerPort]; ok && val != "" {
+		if val, ok := config.TriggerMetadata[solaceMetaBrokerPort]; ok && val != "" {
 			if _, err := strconv.Atoi(val); err == nil {
 				meta.brokerPort = val
 			} else {
 				return nil, fmt.Errorf("Can't parse brokerPort, not a valid integer: %s", err)
 			}
 		} else {
-			return nil, fmt.Errorf(solace_FOUND_META_FALSE, solace_META_brokerPort)
+			return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerPort)
 		}
 		// Format Solace Broker Base URL from components
-		meta.brokerBaseUrl = fmt.Sprintf(solace_BROKER_BASE_URL_TEMPLATE, meta.brokerProtocol, meta.brokerHostname, meta.brokerPort)
+		meta.brokerBaseUrl = fmt.Sprintf(solaceBrokerBaseUrlTemplate, meta.brokerProtocol, meta.brokerHostname, meta.brokerPort)
 	}
 
 	//	GET Message VPN
-	if val, ok := config.TriggerMetadata[solace_META_msgVpn]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetamsgVpn]; ok && val != "" {
 		meta.messageVpn = val
 	} else {
-		return nil, fmt.Errorf(solace_FOUND_META_FALSE, solace_META_msgVpn)
+		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetamsgVpn)
 	}
 
 	//	GET Queue Name
-	if val, ok := config.TriggerMetadata[solace_META_queueName]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaqueueName]; ok && val != "" {
 		meta.queueName = val
 	} else {
-		return nil, fmt.Errorf(solace_FOUND_META_FALSE, solace_META_queueName)
+		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaqueueName)
 	}
 
 	//	GET METRIC TARGET VALUES
 	//	GET msgCountTarget
-	if val, ok := config.TriggerMetadata[solace_META_msgCountTarget]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetamsgCountTarget]; ok && val != "" {
 		if msgCount, err := strconv.Atoi(val); err == nil {
 			meta.msgCountTarget = msgCount
 		} else {
-			return nil, fmt.Errorf("Can't parse [%s], not a valid integer: %s", solace_META_msgCountTarget, err)
+			return nil, fmt.Errorf("Can't parse [%s], not a valid integer: %s", solaceMetamsgCountTarget, err)
 		}
 	}
 	//	GET msgSpoolUsageTarget
-	if val, ok := config.TriggerMetadata[solace_META_msgSpoolUsageTarget]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetamsgSpoolUsageTarget]; ok && val != "" {
 		if msgSpoolUsage, err := strconv.Atoi(val); err == nil {
 			meta.msgSpoolUsageTarget = msgSpoolUsage
 		} else {
-			return nil, fmt.Errorf("Can't parse [%s], not a valid integer: %s", solace_META_msgSpoolUsageTarget, err)
+			return nil, fmt.Errorf("Can't parse [%s], not a valid integer: %s", solaceMetamsgSpoolUsageTarget, err)
 		}
 	}
 
@@ -214,45 +213,44 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
 	meta.endpointUrl = fmt.Sprintf(
-		solace_SEMP_ENDPOINT_URL_TEMPLATE,
+		solaceSempEndpointUrlTemplate,
 		meta.brokerBaseUrl,
-		solace_API_NAME,
-		solace_API_VERSION,
+		solaceApiName,
+		solaceApiVersion,
 		meta.messageVpn,
-		solace_API_DFLT_OBJ_TYPE,
+		solaceApiObjectTypeQueue,
 		meta.queueName)
 
-	/*	GET CREDENTIALS
-		The username must be a valid broker ADMIN user identifier with read access to SEMP for the broker, VPN, and relevant objects
-		The scaler will attempt to acquire username and then password independently. For each:
-		- Search K8S Secret (Encoded)
-		- Search environment variable specified by config at 'usernameEnv' / 'passwordEnv'
-		- Search 'username' / 'password' fields (Clear Text)
-	*/
+	//	GET CREDENTIALS
+	//	The username must be a valid broker ADMIN user identifier with read access to SEMP for the broker, VPN, and relevant objects
+	//	The scaler will attempt to acquire username and then password independently. For each:
+	//	- Search K8S Secret (Encoded)
+	//	- Search environment variable specified by config at 'usernameEnv' / 'passwordEnv'
+	//	- Search 'username' / 'password' fields (Clear Text)
 	//	Get username
-	if usernameSecret, ok := config.AuthParams[solace_META_username]; ok && usernameSecret != "" {
+	if usernameSecret, ok := config.AuthParams[solaceMetaUsername]; ok && usernameSecret != "" {
 		meta.username = usernameSecret
-	} else if usernameEnv, ok := config.TriggerMetadata[solace_META_usernameEnv]; ok && usernameEnv != "" {
-		if resolvedUser, ok := config.ResolvedEnv[config.TriggerMetadata[solace_META_usernameEnv]]; ok && resolvedUser != "" {
+	} else if usernameEnv, ok := config.TriggerMetadata[solaceMetaUsernameEnv]; ok && usernameEnv != "" {
+		if resolvedUser, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaUsernameEnv]]; ok && resolvedUser != "" {
 			meta.username = resolvedUser
 		} else {
 			return nil, fmt.Errorf("username could not be resolved from the environment variable: %s", usernameEnv)
 		}
-	} else if usernameClear, ok := config.TriggerMetadata[solace_META_username]; ok && usernameClear != "" {
+	} else if usernameClear, ok := config.TriggerMetadata[solaceMetaUsername]; ok && usernameClear != "" {
 		meta.username = usernameClear
 	} else {
 		return nil, fmt.Errorf("username is required and not found in K8Secret, environment, or clear text")
 	}
 	//	Get Password
-	if passwordSecret, ok := config.AuthParams[solace_META_password]; ok && passwordSecret != "" {
+	if passwordSecret, ok := config.AuthParams[solaceMetaPassword]; ok && passwordSecret != "" {
 		meta.password = passwordSecret
-	} else if passwordEnv, ok := config.TriggerMetadata[solace_META_passwordEnv]; ok && passwordEnv != "" {
-		if resolvedPassword, ok := config.ResolvedEnv[config.TriggerMetadata[solace_META_passwordEnv]]; ok && resolvedPassword != "" {
+	} else if passwordEnv, ok := config.TriggerMetadata[solaceMetaPasswordEnv]; ok && passwordEnv != "" {
+		if resolvedPassword, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaPasswordEnv]]; ok && resolvedPassword != "" {
 			meta.password = resolvedPassword
 		} else {
 			return nil, fmt.Errorf("password could not be resolved from the environment variable: %s", passwordEnv)
 		}
-	} else if passwordClear, ok := config.TriggerMetadata[solace_META_password]; ok && passwordClear != "" {
+	} else if passwordClear, ok := config.TriggerMetadata[solaceMetaPassword]; ok && passwordClear != "" {
 		meta.password = passwordClear
 	} else {
 		return nil, fmt.Errorf("password is required and not found in K8Secret, environment, or clear text")
@@ -278,14 +276,14 @@ func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgCountTarget), resource.DecimalSI)
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solace_SCALER_ID, s.metadata.messageVpn, s.metadata.queueName, solace_TRIG_msgcount)),
+				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerId, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgcount)),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,
 				AverageValue: targetMetricValue,
 			},
 		}
-		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solace_EXT_METRIC_TYPE}
+		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	// Message Spool Usage Target Spec
@@ -293,14 +291,14 @@ func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgSpoolUsageTarget), resource.DecimalSI)
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solace_SCALER_ID, s.metadata.messageVpn, s.metadata.queueName, solace_TRIG_msgspoolusage)),
+				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerId, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgspoolusage)),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,
 				AverageValue: targetMetricValue,
 			},
 		}
-		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solace_EXT_METRIC_TYPE}
+		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	return metricSpecList
@@ -340,7 +338,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP() (SolaceMetricValues, erro
 	if err := json.NewDecoder(response.Body).Decode(&sempResponse); err != nil {
 		return SolaceMetricValues{}, fmt.Errorf("Failed to read SEMP response body: %s", err)
 	}
-	if sempResponse.Meta.ResponseCode < 200 && sempResponse.Meta.ResponseCode > 299 {
+	if sempResponse.Meta.ResponseCode < 200 || sempResponse.Meta.ResponseCode > 299 {
 		return SolaceMetricValues{}, fmt.Errorf("Solace SEMP API returned error status: %d", sempResponse.Meta.ResponseCode)
 	}
 
@@ -365,13 +363,13 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 
 	var metric external_metrics.ExternalMetricValue
 	switch {
-	case strings.HasSuffix(metricName, solace_TRIG_msgcount):
+	case strings.HasSuffix(metricName, solaceTriggermsgcount):
 		metric = external_metrics.ExternalMetricValue{
 			MetricName: metricName,
 			Value:      *resource.NewQuantity(int64(metricValues.msgCount), resource.DecimalSI),
 			Timestamp:  metav1.Now(),
 		}
-	case strings.HasSuffix(metricName, solace_TRIG_msgspoolusage):
+	case strings.HasSuffix(metricName, solaceTriggermsgspoolusage):
 		metric = external_metrics.ExternalMetricValue{
 			MetricName: metricName,
 			Value:      *resource.NewQuantity(int64(metricValues.msgSpoolUsage), resource.DecimalSI),
