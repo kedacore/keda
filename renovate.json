@@ -3,8 +3,13 @@
   "labels":["dependencies"],
   "packageRules": [
     {
+      "packagePatterns": ["*"],
+      "enabled": false
+    },
+    {
       "packagePatterns": ["^actions/"],
-      "groupName": "GitHub Actions"
+      "groupName": "GitHub Actions",
+      "enabled": true
     }
   ],
   "commitBodyTable": true,
