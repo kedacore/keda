@@ -44,13 +44,20 @@ type Adapter struct {
 var logger = klogr.New().WithName("keda_metrics_adapter")
 
 var (
-	prometheusMetricsPort int
-	prometheusMetricsPath string
+	prometheusMetricsPort     int
+	prometheusMetricsPath     string
+	adapterClientRequestQPS   float32
+	adapterClientRequestBurst int
 )
 
 func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
+	if cfg != nil {
+		cfg.QPS = adapterClientRequestQPS
+		cfg.Burst = adapterClientRequestBurst
+	}
+
 	if err != nil {
 		logger.Error(err, "failed to get the config")
 		return nil, fmt.Errorf("failed to get the config (%s)", err)
@@ -129,6 +136,8 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
+	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
+	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
 	}
