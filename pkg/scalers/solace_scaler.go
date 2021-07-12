@@ -22,7 +22,6 @@ const (
 	solaceExtMetricType = "External"
 	solaceScalerID      = "solace"
 	// REST ENDPOINT String Patterns
-	//	solaceBrokerBaseURLTemplate   = "%s://%s:%s"
 	solaceSempEndpointURLTemplate = "%s/%s/%s/monitor/msgVpns/%s/%ss/%s"
 	// SEMP REST API Context
 	solaceAPIName            = "SEMP"
@@ -32,12 +31,7 @@ const (
 	solaceFoundMetaFalse = "required Field %s NOT FOUND in Solace Metadata"
 	// YAML Configuration Metadata Field Names
 	// Broker Identifiers
-	solaceMetaBrokerBaseURL = "brokerBaseUrl"
-
-	//	solaceMetaBrokerProtocol = "brokerProtocol"
-	//	solaceMetaBrokerHostname = "brokerHostname"
-	//	solaceMetaBrokerPort     = "brokerPort"
-
+	solaceMetaSempBaseURL = "solaceSempBaseURL"
 	// Credential Identifiers
 	solaceMetaUsername    = "username"
 	solaceMetaPassword    = "password"
@@ -69,12 +63,8 @@ type SolaceScaler struct {
 
 type SolaceMetadata struct {
 	// Full SEMP URL to target queue (CONSTRUCTED IN CODE)
-	endpointURL string
-	// Protocol-Host-Port: http://host-name:12345
-	brokerBaseURL string
-	//	brokerProtocol string
-	//	brokerHostname string
-	//	brokerPort     string
+	endpointURL   string
+	solaceSempURL string
 	// Solace Message VPN
 	messageVpn string
 	queueName  string
@@ -139,39 +129,10 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	meta := SolaceMetadata{}
 	//	GET THE SEMP API ENDPOINT
-	//	First look for brokerBaseURL in config; Use components if not found
-	if val, ok := config.TriggerMetadata[solaceMetaBrokerBaseURL]; ok && val != "" {
-		meta.brokerBaseURL = val
+	if val, ok := config.TriggerMetadata[solaceMetaSempBaseURL]; ok && val != "" {
+		meta.solaceSempURL = val
 	} else {
-		/*
-			//	IF brokerBaseURL is not present, then get components
-			//	GET Protocol
-			if val, ok := config.TriggerMetadata[solaceMetaBrokerProtocol]; ok && (val == "https" || val == "http") {
-				meta.brokerProtocol = val
-			} else {
-				return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerProtocol)
-			}
-			//	GET Hostname
-			if val, ok := config.TriggerMetadata[solaceMetaBrokerHostname]; ok && val != "" {
-				meta.brokerHostname = val
-			} else {
-				return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerHostname)
-			}
-			//	GET Port
-			if val, ok := config.TriggerMetadata[solaceMetaBrokerPort]; ok && val != "" {
-				if _, err := strconv.Atoi(val); err == nil {
-					meta.brokerPort = val
-				} else {
-					return nil, fmt.Errorf("can't parse brokerPort, not a valid integer: %s", err)
-				}
-			} else {
-				return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerPort)
-			}
-			// Format Solace Broker Base URL from components
-			meta.brokerBaseURL = fmt.Sprintf(solaceBrokerBaseURLTemplate, meta.brokerProtocol, meta.brokerHostname, meta.brokerPort)
-
-		*/
-		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaBrokerBaseURL)
+		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaSempBaseURL)
 	}
 	//	GET Message VPN
 	if val, ok := config.TriggerMetadata[solaceMetamsgVpn]; ok && val != "" {
@@ -179,7 +140,6 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	} else {
 		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetamsgVpn)
 	}
-
 	//	GET Queue Name
 	if val, ok := config.TriggerMetadata[solaceMetaqueueName]; ok && val != "" {
 		meta.queueName = val
@@ -196,7 +156,6 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetamsgCountTarget, err)
 		}
 	}
-
 	//	GET msgSpoolUsageTarget
 	if val, ok := config.TriggerMetadata[solaceMetamsgSpoolUsageTarget]; ok && val != "" {
 		if msgSpoolUsage, err := strconv.Atoi(val); err == nil {
@@ -214,48 +173,14 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	// Format Solace SEMP Queue Endpoint (REST URL)
 	meta.endpointURL = fmt.Sprintf(
 		solaceSempEndpointURLTemplate,
-		meta.brokerBaseURL,
+		meta.solaceSempURL,
 		solaceAPIName,
 		solaceAPIVersion,
 		meta.messageVpn,
 		solaceAPIObjectTypeQueue,
 		meta.queueName)
-	/*
-		//	GET CREDENTIALS
-		//	The username must be a valid broker ADMIN user identifier with read access to SEMP for the broker, VPN, and relevant objects
-		//	The scaler will attempt to acquire username and then password independently. For each:
-		//	- Search K8S Secret (Encoded)
-		//	- Search environment variable specified by config at 'usernameEnv' / 'passwordEnv'
-		//	- Search 'username' / 'password' fields (Clear Text)
-		//	Get username
-		if usernameSecret, ok := config.AuthParams[solaceMetaUsername]; ok && usernameSecret != "" {
-			meta.username = usernameSecret
-		} else if usernameEnv, ok := config.TriggerMetadata[solaceMetaUsernameEnv]; ok && usernameEnv != "" {
-			if resolvedUser, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaUsernameEnv]]; ok && resolvedUser != "" {
-				meta.username = resolvedUser
-			} else {
-				return nil, fmt.Errorf("username could not be resolved from the environment variable: %s", usernameEnv)
-			}
-		} else if usernameClear, ok := config.TriggerMetadata[solaceMetaUsername]; ok && usernameClear != "" {
-			meta.username = usernameClear
-		} else {
-			return nil, fmt.Errorf("username is required and not found in K8Secret, environment, or clear text")
-		}
-		//	Get Password
-		if passwordSecret, ok := config.AuthParams[solaceMetaPassword]; ok && passwordSecret != "" {
-			meta.password = passwordSecret
-		} else if passwordEnv, ok := config.TriggerMetadata[solaceMetaPasswordEnv]; ok && passwordEnv != "" {
-			if resolvedPassword, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaPasswordEnv]]; ok && resolvedPassword != "" {
-				meta.password = resolvedPassword
-			} else {
-				return nil, fmt.Errorf("password could not be resolved from the environment variable: %s", passwordEnv)
-			}
-		} else if passwordClear, ok := config.TriggerMetadata[solaceMetaPassword]; ok && passwordClear != "" {
-			meta.password = passwordClear
-		} else {
-			return nil, fmt.Errorf("password is required and not found in K8Secret, environment, or clear text")
-		}
-	*/
+
+	// Get Credentials
 	var e error
 	if meta.username, meta.password, e = getSolaceSempCredentials(config); e != nil {
 		return nil, e

@@ -149,7 +149,7 @@ spec:
   triggers:
   - type: solace-queue
     metadata:
-      brokerBaseUrl:       http://kedalab-pubsubplus-dev.solace.svc.cluster.local:8080
+      solaceSempBaseURL:   http://kedalab-pubsubplus-dev.solace.svc.cluster.local:8080
       msgVpn:              keda_vpn
       queueName:           SCALED_CONSUMER_QUEUE1
       msgCountTarget:      '20'

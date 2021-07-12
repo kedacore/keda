@@ -15,19 +15,15 @@ type testSolaceMetadata struct {
 }
 
 var (
-	soltestValidBaseURL = "http://localhost:8080"
-	//	soltestValidProtocol       = "http"
-	//	soltestValidHostname       = "localhost"
-	//	soltestValidPort           = "8080"
+	soltestValidBaseURL        = "http://localhost:8080"
 	soltestValidUsername       = "admin"
 	soltestValidPassword       = "admin"
 	soltestValidVpn            = "dennis_vpn"
 	soltestValidQueueName      = "queue3"
 	soltestValidMsgCountTarget = "10"
 	soltestValidMsgSpoolTarget = "20"
-
-	soltestEnvUsername = "SOLTEST_USERNAME"
-	soltestEnvPassword = "SOLTEST_PASSWORD"
+	soltestEnvUsername         = "SOLTEST_USERNAME"
+	soltestEnvPassword         = "SOLTEST_PASSWORD"
 )
 
 // AUTH RECORD FOR TEST
@@ -44,24 +40,17 @@ var testDataSolaceResolvedEnvVALID = map[string]string{
 
 // TEST CASES FOR SolaceParseMetadata()
 var testParseSolaceMetadata = []testSolaceMetadata{
-	//	IF brokerBaseUrl is present, use it without interpretation as the base URL: http://my.host.domain:1234
-	//	IF brokerBaseUrl in not present, Use protocol, host, and port
-
 	// Empty
 	{
 		"#001 - EMPTY", map[string]string{},
 		true,
 	},
-
 	// +Case - brokerBaseUrl
 	{
 		"#002 - brokerBaseUrl",
 		map[string]string{
-			"":                      "",
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			"":                       "",
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -72,90 +61,11 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 		},
 		false,
 	},
-
-	/*
-		// +Case - protocol + host + port
-		{
-			"#003 - protocol + host + port",
-			map[string]string{
-				solaceMetaBrokerBaseURL:  "",
-				solaceMetaBrokerProtocol: soltestValidProtocol,
-				solaceMetaBrokerHostname: soltestValidHostname,
-				solaceMetaBrokerPort:     soltestValidPort,
-				solaceMetamsgVpn:         soltestValidVpn,
-				solaceMetaUsernameEnv:    "",
-				solaceMetaPasswordEnv:    "",
-				solaceMetaUsername:       soltestValidUsername,
-				solaceMetaPassword:       soltestValidPassword,
-				solaceMetaqueueName:      soltestValidQueueName,
-				solaceMetamsgCountTarget: soltestValidMsgCountTarget,
-			},
-			false,
-		},
-		// -Case - missing protocol
-		{
-			"#004 - missing protocol",
-			map[string]string{
-				solaceMetaBrokerBaseURL:  "",
-				solaceMetaBrokerProtocol: "",
-				solaceMetaBrokerHostname: soltestValidHostname,
-				solaceMetaBrokerPort:     soltestValidPort,
-				solaceMetamsgVpn:         soltestValidVpn,
-				solaceMetaUsernameEnv:    "",
-				solaceMetaPasswordEnv:    "",
-				solaceMetaUsername:       soltestValidUsername,
-				solaceMetaPassword:       soltestValidPassword,
-				solaceMetaqueueName:      soltestValidQueueName,
-				solaceMetamsgCountTarget: soltestValidMsgCountTarget,
-			},
-			true,
-		},
-		// -Case - missing hostname
-		{
-			"#005 - missing hostname",
-			map[string]string{
-				solaceMetaBrokerBaseURL:  "",
-				solaceMetaBrokerProtocol: soltestValidProtocol,
-				solaceMetaBrokerHostname: "",
-				solaceMetaBrokerPort:     soltestValidPort,
-				solaceMetamsgVpn:         soltestValidVpn,
-				solaceMetaUsernameEnv:    "",
-				solaceMetaPasswordEnv:    "",
-				solaceMetaUsername:       soltestValidUsername,
-				solaceMetaPassword:       soltestValidPassword,
-				solaceMetaqueueName:      soltestValidQueueName,
-				solaceMetamsgCountTarget: soltestValidMsgCountTarget,
-			},
-			true,
-		},
-		// -Case - missing port
-		{
-			"#006 - missing port",
-			map[string]string{
-				solaceMetaBrokerBaseURL:  "",
-				solaceMetaBrokerProtocol: soltestValidProtocol,
-				solaceMetaBrokerHostname: soltestValidHostname,
-				solaceMetaBrokerPort:     "",
-				solaceMetamsgVpn:         soltestValidVpn,
-				solaceMetaUsernameEnv:    "",
-				solaceMetaPasswordEnv:    "",
-				solaceMetaUsername:       soltestValidUsername,
-				solaceMetaPassword:       soltestValidPassword,
-				solaceMetaqueueName:      soltestValidQueueName,
-				solaceMetamsgCountTarget: soltestValidMsgCountTarget,
-			},
-			true,
-		},
-
-	*/
 	// -Case - missing username (clear)
 	{
 		"#007 - missing username (clear)",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: soltestValidProtocol,
-			//			solaceMetaBrokerHostname: soltestValidHostname,
-			//			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -170,10 +80,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#008 - missing password (clear)",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: soltestValidProtocol,
-			//			solaceMetaBrokerHostname: soltestValidHostname,
-			//			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -188,10 +95,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#009 - missing queueName",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: soltestValidProtocol,
-			//			solaceMetaBrokerHostname: soltestValidHostname,
-			//			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -206,10 +110,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#010 - missing msgCountTarget",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol:      soltestValidProtocol,
-			//			solaceMetaBrokerHostname:      soltestValidHostname,
-			//			solaceMetaBrokerPort:          soltestValidPort,
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -225,10 +126,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#011 - msgSpoolUsageTarget non-numeric",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: soltestValidProtocol,
-			//			solaceMetaBrokerHostname: soltestValidHostname,
-			//			solaceMetaBrokerPort:     soltestValidPort,
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -243,10 +141,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#012 - msgSpoolUsage non-numeric",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol:      soltestValidProtocol,
-			//			solaceMetaBrokerHostname:      soltestValidHostname,
-			//			solaceMetaBrokerPort:          soltestValidPort,
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -261,7 +156,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	{
 		"#013 - brokerBaseUrl",
 		map[string]string{
-			solaceMetaBrokerBaseURL:       soltestValidBaseURL,
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -279,10 +174,7 @@ var testSolaceEnvCreds = []testSolaceMetadata{
 	{
 		"#101 - Connect with Credentials in env",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: soltestEnvUsername,
 			solaceMetaPasswordEnv: soltestEnvPassword,
@@ -297,10 +189,7 @@ var testSolaceEnvCreds = []testSolaceMetadata{
 	{
 		"#102 - Environment vars referenced but not found",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: "SOLTEST_DNE",
 			solaceMetaPasswordEnv: "SOLTEST_DNE",
@@ -320,10 +209,7 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 	{
 		"#201 - Connect with credentials from Auth Record (ENV VAR Present)",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: soltestEnvUsername,
 			solaceMetaPasswordEnv: soltestEnvPassword,
@@ -338,11 +224,8 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 	{
 		"#202 - Connect with credentials from Auth Record (ENV VAR and Clear Auth not present)",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: soltestValidProtocol,
-			//			solaceMetaBrokerHostname: soltestValidHostname,
-			//			solaceMetaBrokerPort:     soltestValidPort,
-			solaceMetamsgVpn: soltestValidVpn,
+			solaceMetaSempBaseURL: soltestValidBaseURL,
+			solaceMetamsgVpn:      soltestValidVpn,
 			//		solaceMetaUsernameEnv:    soltestEnvUsername,
 			//		solaceMetaPasswordEnv:    soltestEnvPassword,
 			//		solaceMetaUsername:              "",
@@ -356,10 +239,7 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 	{
 		"#203 - Connect with credentials from Auth Record (ENV VAR Present, Clear Auth not present)",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: "SOLTEST_DNE",
 			solaceMetaPasswordEnv: "SOLTEST_DNE",
@@ -376,10 +256,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#401 - Get Metric Spec - msgCountTarget",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL:    soltestValidBaseURL,
 			solaceMetamsgVpn:         soltestValidVpn,
 			solaceMetaUsernameEnv:    "",
 			solaceMetaPasswordEnv:    "",
@@ -394,10 +271,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#402 - Get Metric Spec - msgSpoolUsageTarget",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: "",
 			solaceMetaPasswordEnv: "",
@@ -412,10 +286,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#403 - Get Metric Spec - BOTH msgSpoolUsage and msgCountTarget",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol:      "",
-			//			solaceMetaBrokerHostname:      "",
-			//			solaceMetaBrokerPort:          "",
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -430,10 +301,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#404 - Get Metric Spec - BOTH MISSING",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol: "",
-			//			solaceMetaBrokerHostname: "",
-			//			solaceMetaBrokerPort:     "",
+			solaceMetaSempBaseURL: soltestValidBaseURL,
 			solaceMetamsgVpn:      soltestValidVpn,
 			solaceMetaUsernameEnv: "",
 			solaceMetaPasswordEnv: "",
@@ -448,10 +316,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#405 - Get Metric Spec - BOTH ZERO",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol:      "",
-			//			solaceMetaBrokerHostname:      "",
-			//			solaceMetaBrokerPort:          "",
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -466,10 +331,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 	{
 		"#406 - Get Metric Spec - ONE ZERO; OTHER VALID",
 		map[string]string{
-			solaceMetaBrokerBaseURL: soltestValidBaseURL,
-			//			solaceMetaBrokerProtocol:      "",
-			//			solaceMetaBrokerHostname:      "",
-			//			solaceMetaBrokerPort:          "",
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
 			solaceMetamsgVpn:              soltestValidVpn,
 			solaceMetaUsernameEnv:         "",
 			solaceMetaPasswordEnv:         "",
@@ -484,8 +346,8 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 }
 
 var testSolaceExpectedMetricNames = map[string]string{
-	solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + "msgcount":      "",
-	solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + "msgspoolusage": "",
+	solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgcount:      "",
+	solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgspoolusage: "",
 }
 
 func TestSolaceParseSolaceMetadata(t *testing.T) {
