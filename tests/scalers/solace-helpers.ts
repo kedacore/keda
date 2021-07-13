@@ -82,15 +82,22 @@ export class SolaceHelper {
         fs.writeFileSync(tmpFile.name, solaceKedaScaledObjectYaml)
         sh.exec(`kubectl apply -f ${tmpFile.name}`).code, 'creating scaled object should work.'
     }
-
+/*
     static publishMessages(t, testNamespace: string, messageRate: string, messageNumber: string) {
         t.is(
             0,
-            sh.exec(`kubectl exec -n ${testNamespace} kedalab-helper -- ./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu consumer_user@keda_vpn -cp=consumer_pwd -mr ${messageRate} -mn ${messageNumber} -mt=persistent -pql=SCALED_CONSUMER_QUEUE1`).code, 'creating solace producer deployment should work.'
+            sh.exec(`kubectl exec -n ${testNamespace} kedalab-helper -- ./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu consumer_user@keda_vpn -cp=consumer_pwd -mr ${messageRate} -mn ${messageNumber} -mt=persistent -pql=SCALED_CONSUMER_QUEUE1`).code, 'publishing messages should work'
         )
     }
+*/
+    static publishMessages(t, testNamespace: string, messageRate: string, messageNumber: string, messageSize: string) {
+      t.is(
+          0,
+          sh.exec(`kubectl exec -n ${testNamespace} kedalab-helper -- ./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu consumer_user@keda_vpn -cp=consumer_pwd -mr ${messageRate} -mn ${messageNumber} -msx ${messageSize} -mt=persistent -pql=SCALED_CONSUMER_QUEUE1`).code, 'publishing large messages should work'
+      )
+    }
 
-    static uninstallSolaceKedaObjects(t){
+  static uninstallSolaceKedaObjects(t){
         const tmpFile = tmp.fileSync()
         fs.writeFileSync(tmpFile.name, solaceKedaScaledObjectYaml)
         sh.exec(`kubectl delete -f ${tmpFile.name}`)
@@ -147,13 +154,13 @@ spec:
             periodSeconds: 10
           selectPolicy:    Max
   triggers:
-  - type: solace-queue
+  - type: solace-event-queue
     metadata:
-      solaceSempBaseURL:   http://kedalab-pubsubplus-dev.solace.svc.cluster.local:8080
-      msgVpn:              keda_vpn
-      queueName:           SCALED_CONSUMER_QUEUE1
-      msgCountTarget:      '20'
-      msgSpoolUsageTarget: '100000'
+      solaceSempBaseURL:       http://kedalab-pubsubplus-dev.solace.svc.cluster.local:8080
+      messageVpn:              keda_vpn
+      queueName:               SCALED_CONSUMER_QUEUE1
+      messageCountTarget:      '20'
+      messageSpoolUsageTarget: '1'
     authenticationRef:
       name: kedalab-trigger-auth
 `

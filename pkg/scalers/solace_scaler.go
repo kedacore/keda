@@ -38,11 +38,11 @@ const (
 	solaceMetaUsernameEnv = "usernameEnv"
 	solaceMetaPasswordEnv = "passwordEnv"
 	// Target Object Identifiers
-	solaceMetamsgVpn    = "msgVpn"
-	solaceMetaqueueName = "queueName"
+	solaceMetaMsgVpn    = "messageVpn"
+	solaceMetaQueueName = "queueName"
 	// Metric Targets
-	solaceMetamsgCountTarget      = "msgCountTarget"
-	solaceMetamsgSpoolUsageTarget = "msgSpoolUsageTarget"
+	solaceMetaMsgCountTarget      = "messageCountTarget"
+	solaceMetaMsgSpoolUsageTarget = "messageSpoolUsageTarget"
 	// Trigger type identifiers
 	solaceTriggermsgcount      = "msgcount"
 	solaceTriggermsgspoolusage = "msgspoolusage"
@@ -135,33 +135,33 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaSempBaseURL)
 	}
 	//	GET Message VPN
-	if val, ok := config.TriggerMetadata[solaceMetamsgVpn]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaMsgVpn]; ok && val != "" {
 		meta.messageVpn = val
 	} else {
-		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetamsgVpn)
+		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaMsgVpn)
 	}
 	//	GET Queue Name
-	if val, ok := config.TriggerMetadata[solaceMetaqueueName]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaQueueName]; ok && val != "" {
 		meta.queueName = val
 	} else {
-		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaqueueName)
+		return nil, fmt.Errorf(solaceFoundMetaFalse, solaceMetaQueueName)
 	}
 
 	//	GET METRIC TARGET VALUES
 	//	GET msgCountTarget
-	if val, ok := config.TriggerMetadata[solaceMetamsgCountTarget]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaMsgCountTarget]; ok && val != "" {
 		if msgCount, err := strconv.Atoi(val); err == nil {
 			meta.msgCountTarget = msgCount
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetamsgCountTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgCountTarget, err)
 		}
 	}
 	//	GET msgSpoolUsageTarget
-	if val, ok := config.TriggerMetadata[solaceMetamsgSpoolUsageTarget]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[solaceMetaMsgSpoolUsageTarget]; ok && val != "" {
 		if msgSpoolUsage, err := strconv.Atoi(val); err == nil {
-			meta.msgSpoolUsageTarget = msgSpoolUsage
+			meta.msgSpoolUsageTarget = msgSpoolUsage * 1024 * 1024
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetamsgSpoolUsageTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgSpoolUsageTarget, err)
 		}
 	}
 
