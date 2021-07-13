@@ -174,6 +174,10 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.useRegex = useRegex
 	}
 
+	if meta.useRegex && meta.protocol == amqpProtocol {
+		return nil, fmt.Errorf("configure only useRegex with http protocol")
+	}
+
 	_, err := parseTrigger(&meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
