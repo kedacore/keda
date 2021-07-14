@@ -37,6 +37,13 @@ const (
 	defaultProtocol = autoProtocol
 )
 
+const (
+	sumOperation     = "sum"
+	avgOperation     = "avg"
+	maxOperation     = "max"
+	defaultOperation = sumOperation
+)
+
 type rabbitMQScaler struct {
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
@@ -52,6 +59,7 @@ type rabbitMQMetadata struct {
 	protocol  string  // either http or amqp protocol
 	vhostName *string // override the vhost from the connection info
 	useRegex  bool    // specify if the queueName contains a rexeg
+	operation string  // specify the operation to apply in case of multiples queues
 }
 
 type queueInfo struct {
@@ -174,6 +182,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.useRegex = useRegex
 	}
 
+	// Resolve operation
+	meta.operation = defaultOperation
+	if val, ok := config.TriggerMetadata["operation"]; ok {
+		meta.operation = val
+	}
+
 	if meta.useRegex && meta.protocol == amqpProtocol {
 		return nil, fmt.Errorf("configure only useRegex with http protocol")
 	}
@@ -241,6 +255,10 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	if meta.mode == rabbitModeMessageRate && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
+	}
+
+	if meta.mode == rabbitModeMessageRate && meta.useRegex {
+		return nil, fmt.Errorf("useRegex is not compatible with mode %s", rabbitModeMessageRate)
 	}
 
 	return meta, nil
@@ -319,17 +337,12 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 			if err != nil {
 				return result, err
 			}
-			result.Name = "composed-queue"
-			maxMessages, maxMessagesUnacknowledged, maxRate := findMaximums(results)
-			result.Messages = maxMessages
-			result.MessageStat.PublishDetail.Rate = maxRate
-			result.MessagesUnacknowledged = maxMessagesUnacknowledged
+			result, err := getComposedQueue(s, results)
 			return result, err
 		} else {
 			err = json.NewDecoder(r.Body).Decode(&result)
 			return result, err
 		}
-
 	}
 
 	body, _ := ioutil.ReadAll(r.Body)
@@ -422,20 +435,48 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func findMaximums(q []queueInfo) (maxMessages, maxMessagesUnacknowledged int, maxRate float64) {
-	maxMessages = q[0].Messages
-	maxMessagesUnacknowledged = q[0].MessagesUnacknowledged
-	maxRate = q[0].MessageStat.PublishDetail.Rate
+func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
+	var queue = queueInfo{}
+	queue.Name = "composed-queue"
+	queue.MessageStat.PublishDetail.Rate = 0
+	queue.MessagesUnacknowledged = 0
+	if len(q) > 0 {
+		switch s.metadata.operation {
+		case sumOperation:
+			queue.Messages = getSum(q)
+		case avgOperation:
+			queue.Messages = getAverage(q)
+		case maxOperation:
+			queue.Messages = getMaximum(q)
+		default:
+			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.operation, sumOperation, avgOperation, maxOperation)
+		}
+	} else {
+		queue.Messages = 0
+	}
+
+	return queue, nil
+}
+
+func getSum(q []queueInfo) int {
+	var sum int
 	for _, value := range q {
-		if value.Messages > maxMessages {
-			maxMessages = value.Messages
-		}
-		if value.MessagesUnacknowledged > maxMessagesUnacknowledged {
-			maxMessagesUnacknowledged = value.MessagesUnacknowledged
-		}
-		if value.MessageStat.PublishDetail.Rate > maxRate {
-			maxRate = value.MessageStat.PublishDetail.Rate
+		sum += value.Messages
+	}
+	return sum
+}
+
+func getAverage(q []queueInfo) int {
+	sum := getSum(q)
+	return sum / len(q)
+}
+
+func getMaximum(q []queueInfo) int {
+	var max int
+	for _, value := range q {
+		if value.Messages > max {
+			max = value.Messages
 		}
 	}
-	return maxMessages, maxMessagesUnacknowledged, maxRate
+	return max
 }
