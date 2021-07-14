@@ -33,12 +33,12 @@ test.serial('Get Kubernetes version', t => {
   }
 })
 
-test.serial('Deploy Keda', t => {
+test.serial('Deploy KEDA', t => {
   let result = sh.exec('(cd .. && make deploy)')
   if (result.code !== 0) {
     t.fail('error deploying keda. ' + result)
   }
-  t.pass('Keda deployed successfully using make deploy command')
+  t.pass('KEDA deployed successfully using make deploy command')
 })
 
 test.serial('verifyKeda', t => {
@@ -53,7 +53,7 @@ test.serial('verifyKeda', t => {
     const parsedOperator = parseInt(resultOperator.stdout, 10)
     const parsedMetrics = parseInt(resultMetrics.stdout, 10)
     if (isNaN(parsedOperator) || parsedOperator != 1 || isNaN(parsedMetrics) || parsedMetrics != 1) {
-      t.log(`Keda is not ready. sleeping`)
+      t.log(`KEDA is not ready. sleeping`)
       sh.exec('sleep 5s')
     } else if (parsedOperator == 1 && parsedMetrics == 1) {
       t.log('keda is running 1 pod for operator and 1 pod for metrics server')
