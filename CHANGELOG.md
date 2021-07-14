@@ -25,6 +25,7 @@
 - Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
 - Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
 - Add Solace PubSub+ Event Broker Scaler ([#1945](https://github.com/kedacore/keda/pull/1945))
+- Add fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
 
 ### Improvements
 
@@ -33,6 +34,7 @@
 - Allow influxdb `authToken`, `serverURL`, and `organizationName` to be sourced from `(Cluster)TriggerAuthentication` ([#1904](https://github.com/kedacore/keda/pull/1904))
 - IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
 - Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
+- Optimize KafkaScaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
 
 ### Breaking Changes
 
