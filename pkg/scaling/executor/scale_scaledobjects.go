@@ -54,12 +54,18 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		currentReplicas = currentScale.Spec.Replicas
 	}
 
+	// if scaledObject.Spec.MinReplicaCount is not set, then set the default value (0)
+	minReplicas := int32(0)
+	if scaledObject.Spec.MinReplicaCount != nil {
+		minReplicas = *scaledObject.Spec.MinReplicaCount
+	}
+
 	if isActive {
 		switch {
-		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < *scaledObject.Spec.MinReplicaCount,
+		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
 			// triggers are active, Idle Replicas mode is enabled
 			// AND
-			// replica count less then minimum replica count
+			// replica count is less then minimum replica count
 
 			currentReplicas == 0:
 			// triggers are active
@@ -93,14 +99,14 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			// AND
 			// current replicas count is greater than Idle Replicas count
 
-			currentReplicas > 0 && (scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0):
+			currentReplicas > 0 && minReplicas == 0:
 			// there are no active triggers, but the ScaleTarget has replicas
 			// AND
 			// there is no minimum configured or minimum is set to ZERO
 
 			// Try to scale the deployment down, HPA will handle other scale down operations
 			e.scaleToZeroOrIdle(ctx, logger, scaledObject, currentScale)
-		case scaledObject.Spec.MinReplicaCount != nil && currentReplicas < *scaledObject.Spec.MinReplicaCount && scaledObject.Spec.IdleReplicaCount == nil:
+		case currentReplicas < minReplicas && scaledObject.Spec.IdleReplicaCount == nil:
 			// there are no active triggers
 			// AND
 			// ScaleTarget replicas count is less than minimum replica count specified in ScaledObject
