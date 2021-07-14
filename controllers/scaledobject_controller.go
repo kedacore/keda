@@ -51,7 +51,7 @@ type ScaledObjectReconciler struct {
 	GlobalHTTPTimeout time.Duration
 	Recorder          record.EventRecorder
 
-	scaleClient              *scale.ScalesGetter
+	scaleClient              scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
 	scaleHandler             scaling.ScaleHandler
@@ -90,7 +90,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Create Scale Client
 	scaleClient := initScaleClient(mgr, clientset)
-	r.scaleClient = &scaleClient
+	r.scaleClient = scaleClient
 
 	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
@@ -266,7 +266,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
