@@ -33,10 +33,10 @@ const (
 	// Broker Identifiers
 	solaceMetaSempBaseURL = "solaceSempBaseURL"
 	// Credential Identifiers
-	solaceMetaUsername    = "username"
-	solaceMetaPassword    = "password"
-	solaceMetaUsernameEnv = "usernameEnv"
-	solaceMetaPasswordEnv = "passwordEnv"
+	solaceMetaUsername        = "username"
+	solaceMetaPassword        = "password"
+	solaceMetaUsernameFromEnv = "usernameFromEnv"
+	solaceMetaPasswordFromEnv = "passwordFromEnv"
 	// Target Object Identifiers
 	solaceMetaMsgVpn    = "messageVpn"
 	solaceMetaQueueName = "queueName"
@@ -193,16 +193,16 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 	//	The username must be a valid broker ADMIN user identifier with read access to SEMP for the broker, VPN, and relevant objects
 	//	The scaler will attempt to acquire username and then password independently. For each:
 	//	- Search K8S Secret (Encoded)
-	//	- Search environment variable specified by config at 'usernameEnv' / 'passwordEnv'
+	//	- Search environment variable specified by config at 'usernameFromEnv' / 'passwordFromEnv'
 	//	- Search 'username' / 'password' fields (Clear Text)
 	//	Get username
 	if usernameSecret, ok := config.AuthParams[solaceMetaUsername]; ok && usernameSecret != "" {
 		u = usernameSecret
-	} else if usernameEnv, ok := config.TriggerMetadata[solaceMetaUsernameEnv]; ok && usernameEnv != "" {
-		if resolvedUser, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaUsernameEnv]]; ok && resolvedUser != "" {
+	} else if usernameFromEnv, ok := config.TriggerMetadata[solaceMetaUsernameFromEnv]; ok && usernameFromEnv != "" {
+		if resolvedUser, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaUsernameFromEnv]]; ok && resolvedUser != "" {
 			u = resolvedUser
 		} else {
-			return "", "", fmt.Errorf("username could not be resolved from the environment variable: %s", usernameEnv)
+			return "", "", fmt.Errorf("username could not be resolved from the environment variable: %s", usernameFromEnv)
 		}
 	} else if usernameClear, ok := config.TriggerMetadata[solaceMetaUsername]; ok && usernameClear != "" {
 		u = usernameClear
@@ -212,8 +212,8 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 	//	Get Password
 	if passwordSecret, ok := config.AuthParams[solaceMetaPassword]; ok && passwordSecret != "" {
 		p = passwordSecret
-	} else if passwordEnv, ok := config.TriggerMetadata[solaceMetaPasswordEnv]; ok && passwordEnv != "" {
-		if resolvedPassword, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaPasswordEnv]]; ok && resolvedPassword != "" {
+	} else if passwordEnv, ok := config.TriggerMetadata[solaceMetaPasswordFromEnv]; ok && passwordEnv != "" {
+		if resolvedPassword, ok := config.ResolvedEnv[config.TriggerMetadata[solaceMetaPasswordFromEnv]]; ok && resolvedPassword != "" {
 			p = resolvedPassword
 		} else {
 			return "", "", fmt.Errorf("password could not be resolved from the environment variable: %s", passwordEnv)
