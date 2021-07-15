@@ -36,6 +36,7 @@
 - IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
 - Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
 - Optimize KafkaScaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
+- Fix `keda-system-auth-delegator` ClusterRoleBinding name ([#1616](https://github.com/kedacore/keda/pull/1616). Upgrading may leave a stray ClusterRoleBinding with the old name `keda:system:auth-delegator` behind.
 
 ### Breaking Changes
 
