@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/name: keda-system-auth-delegator
     app.kubernetes.io/version: latest
     app.kubernetes.io/part-of: keda-operator
-  name: keda:system:auth-delegator
+  name: keda-system-auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
