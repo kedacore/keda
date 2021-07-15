@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -185,39 +186,9 @@ var _ = Describe("ScaledObjectController", func() {
 	})
 
 	Describe("functional tests", func() {
-		var deployment *appsv1.Deployment
-
-		BeforeEach(func() {
-			deployment = &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"},
-				Spec: appsv1.DeploymentSpec{
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app": "myapp",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app": "myapp",
-							},
-						},
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "app",
-									Image: "app",
-								},
-							},
-						},
-					},
-				},
-			}
-		})
-
 		It("cleans up a deleted trigger from the HPA", func() {
 			// Create the scaling target.
-			err := k8sClient.Create(context.Background(), deployment)
+			err := k8sClient.Create(context.Background(), generateDeployment("clean-up"))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create the ScaledObject with two triggers.
@@ -225,7 +196,7 @@ var _ = Describe("ScaledObjectController", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "clean-up-test", Namespace: "default"},
 				Spec: kedav1alpha1.ScaledObjectSpec{
 					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
-						Name: "myapp",
+						Name: "clean-up",
 					},
 					Triggers: []kedav1alpha1.ScaleTriggers{
 						{
@@ -278,5 +249,217 @@ var _ = Describe("ScaledObjectController", func() {
 			// And it should only be the first one left.
 			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-UTC-0xxxx-1xxxx"))
 		})
+
+		It("deploys ScaledObject and creates HPA, when IdleReplicaCount, MinReplicaCount and MaxReplicaCount is defined", func() {
+
+			deploymentName := "idleminmax"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var one int32 = 1
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					IdleReplicaCount: &one,
+					MinReplicaCount:  &five,
+					MaxReplicaCount:  &ten,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+
+			Ω(*hpa.Spec.MinReplicas).To(Equal(five))
+			Ω(hpa.Spec.MaxReplicas).To(Equal(ten))
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+		})
+
+		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {
+			deploymentName := "minmax"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					MinReplicaCount: &ten,
+					MaxReplicaCount: &five,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+		})
+
+		It("doesn't allow IdleReplicaCount > MinReplicaCount", func() {
+			deploymentName := "idlemin"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject with two triggers
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					IdleReplicaCount: &ten,
+					MinReplicaCount:  &five,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+		})
+
+		It("doesn't allow IdleReplicaCount > MaxReplicaCount, when MinReplicaCount is not explicitly defined", func() {
+			deploymentName := "idlemax"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject with two triggers
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					IdleReplicaCount: &ten,
+					MaxReplicaCount:  &five,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+		})
 	})
 })
+
+func generateDeployment(name string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": name,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  name,
+							Image: name,
+						},
+					},
+				},
+			},
+		},
+	}
+}
