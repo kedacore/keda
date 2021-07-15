@@ -57,6 +57,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 	// +optional
+	IdleReplicaCount *int32 `json:"idleReplicaCount,omitempty"`
+	// +optional
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
