@@ -286,7 +286,6 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	for _, testData := range testRegexQueueInfoTestData {
-
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := "/api/queues?use_regex=true&pagination=false&name=evaluate_trials"
 			if r.RequestURI != expectedPath {

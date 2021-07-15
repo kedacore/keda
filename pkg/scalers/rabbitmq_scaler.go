@@ -339,10 +339,10 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 			}
 			result, err := getComposedQueue(s, results)
 			return result, err
-		} else {
-			err = json.NewDecoder(r.Body).Decode(&result)
-			return result, err
 		}
+
+		err = json.NewDecoder(r.Body).Decode(&result)
+		return result, err
 	}
 
 	body, _ := ioutil.ReadAll(r.Body)
