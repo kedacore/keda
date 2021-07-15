@@ -14,6 +14,8 @@ const (
 	// ConditionActive specifies that the resource has finished.
 	// For resource which run to completion.
 	ConditionActive ConditionType = "Active"
+	// ConditionFallback specifies that the resource has a fallback active.
+	ConditionFallback ConditionType = "Fallback"
 )
 
 // Condition to store the condition state
@@ -44,6 +46,7 @@ type Conditions []Condition
 func (c *Conditions) AreInitialized() bool {
 	foundReady := false
 	foundActive := false
+	foundFallback := false
 	if *c != nil {
 		for _, condition := range *c {
 			if condition.Type == ConditionReady {
@@ -57,14 +60,20 @@ func (c *Conditions) AreInitialized() bool {
 				break
 			}
 		}
+		for _, condition := range *c {
+			if condition.Type == ConditionFallback {
+				foundFallback = true
+				break
+			}
+		}
 	}
 
-	return foundReady && foundActive
+	return foundReady && foundActive && foundFallback
 }
 
 // GetInitializedConditions returns Conditions initialized to the default -> Status: Unknown
 func GetInitializedConditions() *Conditions {
-	return &Conditions{{Type: ConditionReady, Status: metav1.ConditionUnknown}, {Type: ConditionActive, Status: metav1.ConditionUnknown}}
+	return &Conditions{{Type: ConditionReady, Status: metav1.ConditionUnknown}, {Type: ConditionActive, Status: metav1.ConditionUnknown}, {Type: ConditionFallback, Status: metav1.ConditionUnknown}}
 }
 
 // IsTrue is true if the condition is True
@@ -107,6 +116,14 @@ func (c *Conditions) SetActiveCondition(status metav1.ConditionStatus, reason st
 	c.setCondition(ConditionActive, status, reason, message)
 }
 
+// SetFallbackCondition modifies Fallback Condition according to input parameters
+func (c *Conditions) SetFallbackCondition(status metav1.ConditionStatus, reason string, message string) {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	c.setCondition(ConditionFallback, status, reason, message)
+}
+
 // GetActiveCondition returns Condition of type Active
 func (c *Conditions) GetActiveCondition() Condition {
 	if *c == nil {
@@ -121,6 +138,14 @@ func (c *Conditions) GetReadyCondition() Condition {
 		c = GetInitializedConditions()
 	}
 	return c.getCondition(ConditionReady)
+}
+
+// GetFallbackCondition returns Condition of type Ready
+func (c *Conditions) GetFallbackCondition() Condition {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	return c.getCondition(ConditionFallback)
 }
 
 func (c Conditions) getCondition(conditionType ConditionType) Condition {

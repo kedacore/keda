@@ -24,19 +24,19 @@ const (
 // ScaleExecutor contains methods RequestJobScale and RequestScale
 type ScaleExecutor interface {
 	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64)
-	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool)
+	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool)
 }
 
 type scaleExecutor struct {
 	client           client.Client
-	scaleClient      *scale.ScalesGetter
+	scaleClient      scale.ScalesGetter
 	reconcilerScheme *runtime.Scheme
 	logger           logr.Logger
 	recorder         record.EventRecorder
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client client.Client, scaleClient *scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      scaleClient,
@@ -71,17 +71,17 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Lo
 	return err
 }
 
-func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, mesage string) error {
+func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string, setCondition func(kedav1alpha1.Conditions, metav1.ConditionStatus, string, string)) error {
 	var patch client.Patch
 
 	runtimeObj := object.(runtime.Object)
 	switch obj := runtimeObj.(type) {
 	case *kedav1alpha1.ScaledObject:
 		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Status.Conditions.SetActiveCondition(status, reason, mesage)
+		setCondition(obj.Status.Conditions, status, reason, message)
 	case *kedav1alpha1.ScaledJob:
 		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Status.Conditions.SetActiveCondition(status, reason, mesage)
+		setCondition(obj.Status.Conditions, status, reason, message)
 	default:
 		err := fmt.Errorf("unknown scalable object type %v", obj)
 		logger.Error(err, "Failed to patch Objects Status")
@@ -93,4 +93,18 @@ func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logg
 		logger.Error(err, "Failed to patch Objects Status")
 	}
 	return err
+}
+
+func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
+		conditions.SetActiveCondition(status, reason, message)
+	}
+	return e.setCondition(ctx, logger, object, status, reason, message, active)
+}
+
+func (e *scaleExecutor) setFallbackCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	fallback := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
+		conditions.SetFallbackCondition(status, reason, message)
+	}
+	return e.setCondition(ctx, logger, object, status, reason, message, fallback)
 }

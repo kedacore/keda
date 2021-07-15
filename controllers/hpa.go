@@ -184,6 +184,9 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 	status := scaledObject.Status.DeepCopy()
 	status.ExternalMetricNames = externalMetricNames
 	status.ResourceMetricNames = resourceMetricNames
+
+	updateHealthStatus(scaledObject, externalMetricNames, status)
+
 	err = kedacontrollerutil.UpdateScaledObjectStatus(r.Client, logger, scaledObject, status)
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
@@ -191,6 +194,18 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 	}
 
 	return scaledObjectMetricSpecs, nil
+}
+
+func updateHealthStatus(scaledObject *kedav1alpha1.ScaledObject, externalMetricNames []string, status *kedav1alpha1.ScaledObjectStatus) {
+	health := scaledObject.Status.Health
+	newHealth := make(map[string]kedav1alpha1.HealthStatus)
+	for _, metricName := range externalMetricNames {
+		entry, exists := health[metricName]
+		if exists {
+			newHealth[metricName] = entry
+		}
+	}
+	status.Health = newHealth
 }
 
 // checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior

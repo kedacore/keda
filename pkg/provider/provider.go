@@ -55,7 +55,7 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 	// Note:
 	//		metric name and namespace is used to lookup for the CRD which contains configuration to call azure
 	// 		if not found then ignored and label selector is parsed for all the metrics
-	logger.V(1).Info("Keda provider received request for external metrics", "namespace", namespace, "metric name", info.Metric, "metricSelector", metricSelector.String())
+	logger.V(1).Info("KEDA provider received request for external metrics", "namespace", namespace, "metric name", info.Metric, "metricSelector", metricSelector.String())
 	selector, err := labels.ConvertSelectorToLabelsMap(metricSelector.String())
 	if err != nil {
 		logger.Error(err, "Error converting Selector to Labels Map")
@@ -94,7 +94,8 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := scaler.GetMetrics(context.TODO(), info.Metric, metricSelector)
+				metrics, err := p.getMetricsWithFallback(scaler, info.Metric, metricSelector, scaledObject, metricSpec)
+
 				if err != nil {
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
 				} else {
@@ -107,7 +108,6 @@ func (p *KedaProvider) GetExternalMetric(namespace string, metricSelector labels
 				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
-
 		scaler.Close()
 	}
 
