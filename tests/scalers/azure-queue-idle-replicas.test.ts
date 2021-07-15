@@ -164,8 +164,6 @@ kind: ScaledObject
 metadata:
   name: test-scaledobject
 spec:
-  advanced:
-    restoreToOriginalReplicaCount: true
   scaleTargetRef:
     name: test-deployment
   pollingInterval: 5
@@ -176,5 +174,5 @@ spec:
   triggers:
   - type: azure-queue
     metadata:
-      queueName: queue-name
+      queueName: ${queueName}
       connectionFromEnv: AzureWebJobsStorage`
