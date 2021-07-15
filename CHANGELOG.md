@@ -39,7 +39,7 @@
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Fix `keda-system-auth-delegator` ClusterRoleBinding name ([#1616](https://github.com/kedacore/keda/pull/1616). Upgrading may leave a stray ClusterRoleBinding with the old name `keda:system:auth-delegator` behind.
 
 ### Other
 
