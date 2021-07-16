@@ -53,23 +53,11 @@ func (e StorageEndpointType) GetEndpointSuffix(environment az.Environment) strin
 
 // ParseAzureStorageEndpointSuffix parses cloud and endpointSuffix metadata and returns endpoint suffix
 func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType StorageEndpointType) (string, error) {
-	if val, ok := metadata["cloud"]; ok && val != "" {
-		if strings.EqualFold(val, PrivateCloud) {
-			if val, ok := metadata["endpointSuffix"]; ok && val != "" {
-				return val, nil
-			}
-			return "", fmt.Errorf("endpointSuffix must be provided for %s cloud type", PrivateCloud)
-		}
-
-		env, err := az.EnvironmentFromName(val)
-		if err != nil {
-			return "", fmt.Errorf("invalid cloud environment %s", val)
-		}
+	envSuffixProvider := func(env az.Environment) (string, error) {
 		return endpointType.GetEndpointSuffix(env), nil
 	}
 
-	// Use the default public cloud endpoint suffix if `cloud` isn't specified
-	return endpointType.GetEndpointSuffix(az.PublicCloud), nil
+	return ParseEndpointSuffix(metadata, envSuffixProvider)
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url

@@ -61,14 +61,14 @@ func TestParseStorageConnectionString(t *testing.T) {
 	}
 }
 
-type parseEndpointSuffixTestData struct {
+type parseAzureStorageEndpointSuffixTestData struct {
 	metadata       map[string]string
 	endpointSuffix string
 	endpointType   StorageEndpointType
 	isError        bool
 }
 
-var parseEndpointSuffixTestDataset = []parseEndpointSuffixTestData{
+var parseAzureStorageEndpointSuffixTestDataset = []parseAzureStorageEndpointSuffixTestData{
 	{map[string]string{}, "queue.core.windows.net", QueueEndpoint, false},
 	{map[string]string{"cloud": "InvalidCloud"}, "", QueueEndpoint, true},
 	{map[string]string{"cloud": "AzureUSGovernmentCloud"}, "queue.core.usgovcloudapi.net", QueueEndpoint, false},
@@ -78,7 +78,7 @@ var parseEndpointSuffixTestDataset = []parseEndpointSuffixTestData{
 }
 
 func TestParseAzureStorageEndpointSuffix(t *testing.T) {
-	for _, testData := range parseEndpointSuffixTestDataset {
+	for _, testData := range parseAzureStorageEndpointSuffixTestDataset {
 		endpointSuffix, err := ParseAzureStorageEndpointSuffix(testData.metadata, testData.endpointType)
 		if !testData.isError && err != nil {
 			t.Error("Expected success but got error", err)
