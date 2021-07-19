@@ -449,6 +449,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewRedisStreamsScaler(true, config)
 	case "redis-streams":
 		return scalers.NewRedisStreamsScaler(false, config)
+	case "selenium-grid":
+		return scalers.NewSeleniumGridScaler(config)
 	case "solace-event-queue":
 		return scalers.NewSolaceScaler(config)
 	case "stan":
