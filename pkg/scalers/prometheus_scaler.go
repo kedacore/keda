@@ -203,8 +203,8 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "prometheus", s.metadata.serverAddress, s.metadata.metricName)),
 		},
 		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
+			Type:  v2beta2.ValueMetricType,
+			Value: targetMetricValue,
 		},
 	}
 	metricSpec := v2beta2.MetricSpec{
