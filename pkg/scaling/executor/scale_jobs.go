@@ -184,6 +184,34 @@ func (e *scaleExecutor) isAnyPodRunningOrCompleted(j *batchv1.Job) bool {
 	return false
 }
 
+func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(j *batchv1.Job, pendingPodConditions []string) bool {
+	opts := []client.ListOption{
+		client.InNamespace(j.GetNamespace()),
+		client.MatchingLabels(map[string]string{"job-name": j.GetName()}),
+	}
+
+	pods := &corev1.PodList{}
+	err := e.client.List(context.TODO(), pods, opts...)
+
+	if err != nil {
+		return false
+	}
+
+	var fulfilledConditionsCount int
+
+	for _, pod := range pods.Items {
+		for _, pendingConditionType := range pendingPodConditions {
+			for _, podCondition := range pod.Status.Conditions {
+				if string(podCondition.Type) == pendingConditionType && podCondition.Status == corev1.ConditionTrue {
+					fulfilledConditionsCount++
+				}
+			}
+		}
+	}
+
+	return len(pendingPodConditions) == fulfilledConditionsCount
+}
+
 func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) int64 {
 	var pendingJobs int64
 
@@ -201,8 +229,17 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 	for _, job := range jobs.Items {
 		job := job
-		if !e.isJobFinished(&job) && !e.isAnyPodRunningOrCompleted(&job) {
-			pendingJobs++
+
+		if !e.isJobFinished(&job) {
+			if len(scaledJob.Spec.ScalingStrategy.PendingPodConditions) > 0 {
+				if !e.areAllPendingPodConditionsFulfilled(&job, scaledJob.Spec.ScalingStrategy.PendingPodConditions) {
+					pendingJobs++
+				}
+			} else {
+				if !e.isAnyPodRunningOrCompleted(&job) {
+					pendingJobs++
+				}
+			}
 		}
 	}
 
