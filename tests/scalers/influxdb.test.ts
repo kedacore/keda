@@ -3,10 +3,11 @@ import * as eol from 'eol'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import { waitForRollout } from './helpers'
 
 const influxdbJobName = 'influx-client-job'
 const influxdbNamespaceName = 'influxdb'
-const influxdbPodName = 'influxdb-0'
+const influxdbStatefulsetName = 'influxdb'
 
 const authTokenPrefixConstant = 20
 const nginxDeploymentName = 'nginx-deployment'
@@ -56,17 +57,8 @@ test.before((t) => {
     t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${influxdbDeployTmpFile.name}`).code)
 
     // Wait for influxdb instance to be ready
-    let influxdbStatus = 'false'
-    for (let i = 0; i < 25; i++) {
-        influxdbStatus = sh.exec(`kubectl get pod ${influxdbPodName} --namespace ${influxdbNamespaceName} -o jsonpath='{.status.containerStatuses[0].started}'`).stdout
-        if (influxdbStatus !== 'true') {
-            sh.exec('sleep 2s')
-        } else {
-            break
-        }
-    }
-
-    t.is('true', influxdbStatus, 'Influxdb is not in a ready state')
+    const exitCode = waitForRollout('statefulset', influxdbStatefulsetName, influxdbNamespaceName)
+    t.is(0, exitCode, 'Influxdb is not in a ready state')
 })
 
 test.serial('Should start off deployment with 0 replicas and scale to 2 replicas when scaled object is applied', (t) => {
