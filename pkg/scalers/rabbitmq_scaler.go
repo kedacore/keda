@@ -52,14 +52,15 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName string
-	mode      string  // QueueLength or MessageRate
-	value     int     // trigger value (queue length or publish/sec. rate)
-	host      string  // connection string for either HTTP or AMQP protocol
-	protocol  string  // either http or amqp protocol
-	vhostName *string // override the vhost from the connection info
-	useRegex  bool    // specify if the queueName contains a rexeg
-	operation string  // specify the operation to apply in case of multiples queues
+	queueName  string
+	mode       string  // QueueLength or MessageRate
+	value      int     // trigger value (queue length or publish/sec. rate)
+	host       string  // connection string for either HTTP or AMQP protocol
+	protocol   string  // either http or amqp protocol
+	vhostName  *string // override the vhost from the connection info
+	useRegex   bool    // specify if the queueName contains a rexeg
+	operation  string  // specify the operation to apply in case of multiples queues
+	metricName string  // Custom metric name for trigger
 }
 
 type queueInfo struct {
@@ -195,6 +196,17 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	_, err := parseTrigger(&meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+	}
+
+	// Resolve metricName
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", val))
+	} else {
+		if meta.mode == rabbitModeQueueLength {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", meta.queueName))
+		} else {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", meta.queueName))
+		}
 	}
 
 	return &meta, nil
@@ -383,18 +395,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	var metricName string
-
-	if s.metadata.mode == rabbitModeQueueLength {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", s.metadata.queueName))
-	}
 	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
