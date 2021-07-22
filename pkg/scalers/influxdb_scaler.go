@@ -170,9 +170,14 @@ func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
 		return 0, fmt.Errorf("no results found from query")
 	}
 
-	val, ok := result.Record().Value().(float64)
-	if !ok {
-		return 0, fmt.Errorf("value could not be parsed into a float")
+	var val float64
+	switch valRaw := result.Record().Value(); valRaw.(type) {
+	case float64:
+		val = valRaw.(float64)
+	case int64:
+		val = float64(valRaw.(int64))
+	default:
+		return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
 	}
 
 	return val, nil
