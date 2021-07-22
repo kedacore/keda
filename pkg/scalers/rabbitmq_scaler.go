@@ -257,10 +257,6 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
 	}
 
-	if meta.mode == rabbitModeMessageRate && meta.useRegex {
-		return nil, fmt.Errorf("useRegex is not compatible with mode %s", rabbitModeMessageRate)
-	}
-
 	return meta, nil
 }
 
@@ -438,45 +434,58 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
 	var queue = queueInfo{}
 	queue.Name = "composed-queue"
-	queue.MessageStat.PublishDetail.Rate = 0
 	queue.MessagesUnacknowledged = 0
 	if len(q) > 0 {
 		switch s.metadata.operation {
 		case sumOperation:
-			queue.Messages = getSum(q)
+			sumMessages, sumRate := getSum(q)
+			queue.Messages = sumMessages
+			queue.MessageStat.PublishDetail.Rate = sumRate
 		case avgOperation:
-			queue.Messages = getAverage(q)
+			avgMessages, avgRate := getAverage(q)
+			queue.Messages = avgMessages
+			queue.MessageStat.PublishDetail.Rate = avgRate
 		case maxOperation:
-			queue.Messages = getMaximum(q)
+			maxMessages, maxRate := getMaximum(q)
+			queue.Messages = maxMessages
+			queue.MessageStat.PublishDetail.Rate = maxRate
 		default:
 			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.operation, sumOperation, avgOperation, maxOperation)
 		}
 	} else {
 		queue.Messages = 0
+		queue.MessageStat.PublishDetail.Rate = 0
 	}
 
 	return queue, nil
 }
 
-func getSum(q []queueInfo) int {
-	var sum int
+func getSum(q []queueInfo) (int, float64) {
+	var sumMessages int
+	var sumRate float64
 	for _, value := range q {
-		sum += value.Messages
+		sumMessages += value.Messages
+		sumRate += value.MessageStat.PublishDetail.Rate
 	}
-	return sum
+	return sumMessages, sumRate
 }
 
-func getAverage(q []queueInfo) int {
-	sum := getSum(q)
-	return sum / len(q)
+func getAverage(q []queueInfo) (int, float64) {
+	sumMessages, sumRate := getSum(q)
+	len := len(q)
+	return sumMessages / len, sumRate / float64(len)
 }
 
-func getMaximum(q []queueInfo) int {
-	var max int
+func getMaximum(q []queueInfo) (int, float64) {
+	var maxMessages int
+	var maxRate float64
 	for _, value := range q {
-		if value.Messages > max {
-			max = value.Messages
+		if value.Messages > maxMessages {
+			maxMessages = value.Messages
+		}
+		if value.MessageStat.PublishDetail.Rate > maxRate {
+			maxRate = value.MessageStat.PublishDetail.Rate
 		}
 	}
-	return max
+	return maxMessages, maxRate
 }
