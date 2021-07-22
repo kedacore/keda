@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "license": "MIT",
   "ava": {
-    "compileEnhancements": false,
     "extensions": [
       "ts"
     ],
@@ -15,12 +14,12 @@
     "test": "ava"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^0.10.3",
+    "@kubernetes/client-node": "^0.15.0",
     "@types/async": "^3.0.3",
     "@types/shelljs": "^0.8.5",
     "@types/tmp": "^0.1.0",
     "async": "^3.1.0",
-    "ava": "^2.4.0",
+    "ava": "^3.15.0",
     "axios": "^0.21.1",
     "azure-devops-node-api": "^10.2.2",
     "azure-storage": "^2.10.3",
