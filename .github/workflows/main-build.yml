@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+concurrency: e2e-tests
 jobs:
   validate:
     name: Validate

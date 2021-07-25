@@ -2,6 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { waitForRollout } from "./helpers";
 
 const redisNamespace = 'redis-cluster-streams'
 const redisClusterName = 'redis-cluster-streams'
@@ -24,14 +25,8 @@ test.before(t => {
     )
 
     // Wait for Redis cluster to be ready.
-    let redisReplicaCount = '0'
-    for (let i = 0; i < 30; i++) {
-        redisReplicaCount = sh.exec(`kubectl get statefulset/${redisStatefulSetName} -n ${redisNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-        if (redisReplicaCount != '6') {
-            sh.exec('sleep 2s')
-        }
-    }
-    t.is('6', redisReplicaCount, 'Redis is not in a ready state')
+    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace)
+    t.is(0, exitCode, 'expected rollout status for redis to finish successfully')
 
     // Get Redis cluster address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
