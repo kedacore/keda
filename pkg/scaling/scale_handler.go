@@ -6,21 +6,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"k8s.io/client-go/tools/record"
-
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/scale"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
+	"k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/scale"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
@@ -202,11 +201,20 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledObject", "object", scalableObject)
+			return
+		}
 		isActive, isError := h.isScaledObjectActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError)
 	case *kedav1alpha1.ScaledJob:
-		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
-		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, scaledJob)
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledOJob", "object", scalableObject)
+			return
+		}
+		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
 	}
 }
