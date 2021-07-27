@@ -2,6 +2,7 @@ name: nightly-e2e-test
 on:
   schedule:
     - cron: "0 0 * * *"
+concurrency: e2e-tests
 jobs:
   test:
     name: Test

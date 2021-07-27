@@ -46,7 +46,7 @@ test.serial.cb(
         (n, cb) => queueSvc.createMessage('queue-name', `test ${n}`, cb),
         () => {
           let replicaCount = '0'
-          for (let i = 0; i < 10 && replicaCount !== '4'; i++) {
+          for (let i = 0; i < 30 && replicaCount !== '4'; i++) {
             replicaCount = sh.exec(
               `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
             ).stdout
@@ -55,7 +55,7 @@ test.serial.cb(
             }
           }
 
-          t.is('4', replicaCount, 'Replica count should be 4 after 10 seconds')
+          t.is('4', replicaCount, 'Replica count should be 4 after 30 seconds')
 
           for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
             replicaCount = sh.exec(

@@ -28,6 +28,7 @@
 - Add fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
 - Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
 - Add new scaler for Selenium Grid ([#1971](https://github.com/kedacore/keda/pull/1971))
+- Support using regex to select the queues in RabbitMQ Scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
 
 ### Improvements
 
