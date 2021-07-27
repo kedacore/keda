@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -58,6 +59,8 @@ type capability struct {
 const (
 	DefaultBrowserVersion string = "latest"
 )
+
+var seleniumGridLog = logf.Log.WithName("selenium_grid_scaler")
 
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseSeleniumGridScalerMetadata(config)
@@ -202,6 +205,8 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 					count++
 				}
 			}
+		} else {
+			seleniumGridLog.Error(err, fmt.Sprintf("Error when unmarshaling session queue requests: %s", err))
 		}
 	}
 
@@ -216,6 +221,8 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 					count++
 				}
 			}
+		} else {
+			seleniumGridLog.Error(err, fmt.Sprintf("Error when unmarshaling sessions info: %s", err))
 		}
 	}
 
