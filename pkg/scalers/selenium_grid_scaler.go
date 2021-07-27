@@ -125,7 +125,7 @@ func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, 
 
 func (s *seleniumGridScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "seleniumgrid", s.metadata.browserName, s.metadata.browserVersion))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "seleniumgrid", s.metadata.url, s.metadata.browserName, s.metadata.browserVersion))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: metricName,
