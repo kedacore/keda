@@ -302,7 +302,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+			}, 20*time.Second).Should(Equal(metav1.ConditionTrue))
 		})
 
 		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {
@@ -345,7 +345,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
 		})
 
 		It("doesn't allow IdleReplicaCount > MinReplicaCount", func() {
@@ -388,7 +388,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
 		})
 
 		It("doesn't allow IdleReplicaCount > MaxReplicaCount, when MinReplicaCount is not explicitly defined", func() {
@@ -431,7 +431,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
 		})
 	})
 })
