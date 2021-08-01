@@ -55,8 +55,8 @@ github.com/Azure/azure-pipeline-go v0.2.3 h1:7U9HBg1JFK3jHl5qmo4CTZKFTVgMwdFHMVt
 github.com/Azure/azure-pipeline-go v0.2.3/go.mod h1:x841ezTBIMG6O3lAcl8ATHnsOPVl2bqk7S3ta6S6u4k=
 github.com/Azure/azure-sdk-for-go v37.1.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-sdk-for-go v51.1.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
-github.com/Azure/azure-sdk-for-go v55.6.0+incompatible h1:SDeTdsn7/wiCDVLiKR1VFDCPURKKEg59bP7ewi7kUJc=
-github.com/Azure/azure-sdk-for-go v55.6.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
+github.com/Azure/azure-sdk-for-go v55.8.0+incompatible h1:EuccMPzxu67cIE95/mrtwQivLv7ETmURi5IUgLNVug8=
+github.com/Azure/azure-sdk-for-go v55.8.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-service-bus-go v0.10.13 h1:P4dh1epxm85BOXOYZVj5tFz/3tYr5tx4G6li6BiSuig=
 github.com/Azure/azure-service-bus-go v0.10.13/go.mod h1:VsZ9cseiMvYxrEiW/yE48SOGlW10Sx6rHR3m9XEVhRg=
 github.com/Azure/azure-storage-blob-go v0.6.0/go.mod h1:oGfmITT1V6x//CswqY2gtAHND+xIP64/qL7a5QJix0Y=
