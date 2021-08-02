@@ -363,7 +363,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			return []scalers.Scaler{}, err
 		}
 
-		scaler, err := buildScaler(trigger.Type, config)
+		scaler, err := buildScaler(h.client, trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -376,7 +376,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	return scalersRes, nil
 }
 
-func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
@@ -419,6 +419,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
+	case "kubernetes-workload":
+		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
 	case "memory":
