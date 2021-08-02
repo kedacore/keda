@@ -39,9 +39,12 @@ all: test build
 ##################################################
 # Tests                                          #
 ##################################################
+ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 .PHONY: test
-test: generate gofmt govet
-	go test ./... -covermode=atomic -coverprofile cover.out
+test: generate manifests gofmt govet
+	mkdir -p ${ENVTEST_ASSETS_DIR}
+	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.5/hack/setup-envtest.sh
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -covermode=atomic -coverprofile cover.out
 
 .PHONY: e2e-test
 e2e-test:
@@ -105,7 +108,7 @@ set-version:
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
 run: generate
-	go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
+	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
 
 # Install CRDs into a cluster
 .PHONY: install
