@@ -38,6 +38,7 @@
 - IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
 - Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
 - Optimize KafkaScaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
+- Adjusts InfluxDB scaler to support queries that return integers in addition to those that return floats ([#1977](https://github.com/kedacore/keda/pull/1977))
 
 ### Breaking Changes
 
