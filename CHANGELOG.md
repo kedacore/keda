@@ -28,6 +28,8 @@
 - Add fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
 - Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
 - Support pod conditions for pending job count calculation ([#1970](https://github.com/kedacore/keda/pull/1970))
+- Add new scaler for Selenium Grid ([#1971](https://github.com/kedacore/keda/pull/1971))
+- Support using regex to select the queues in RabbitMQ Scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
 
 ### Improvements
 
@@ -37,6 +39,7 @@
 - IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
 - Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
 - Optimize KafkaScaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
+- Adjusts InfluxDB scaler to support queries that return integers in addition to those that return floats ([#1977](https://github.com/kedacore/keda/pull/1977))
 
 ### Breaking Changes
 
