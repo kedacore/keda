@@ -213,7 +213,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	case *kedav1alpha1.ScaledJob:
 		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
 		if err != nil {
-			h.logger.Error(err, "Error getting scaledOJob", "object", scalableObject)
+			h.logger.Error(err, "Error getting scaledJob", "object", scalableObject)
 			return
 		}
 		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, obj)
