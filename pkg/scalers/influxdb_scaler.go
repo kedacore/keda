@@ -170,12 +170,14 @@ func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
 		return 0, fmt.Errorf("no results found from query")
 	}
 
-	val, ok := result.Record().Value().(float64)
-	if !ok {
-		return 0, fmt.Errorf("value could not be parsed into a float")
+	switch valRaw := result.Record().Value().(type) {
+	case float64:
+		return valRaw, nil
+	case int64:
+		return float64(valRaw), nil
+	default:
+		return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
 	}
-
-	return val, nil
 }
 
 // GetMetrics connects to influxdb via the client and returns a value based on the query
