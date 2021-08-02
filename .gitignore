@@ -347,3 +347,6 @@ cover.out
 
 # GO debug binary
 cmd/manager/debug.test
+
+# testenv binary location
+testbin
