@@ -4,6 +4,9 @@ FROM ubuntu:18.04
 RUN apt-get update && \
     apt-get install -y wget curl build-essential git
 
+# Use Bash instead of Dash
+RUN ln -sf bash /bin/sh
+
 # Install azure-cli
 RUN apt-get install apt-transport-https lsb-release software-properties-common dirmngr -y && \
     curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
