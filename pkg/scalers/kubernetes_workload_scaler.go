@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -29,6 +31,7 @@ const (
 
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
+	name        string
 	value       int64
 }
 
@@ -56,26 +59,21 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
+	meta.name = config.Name
+
 	return meta, nil
 }
 
 // IsActive determines if we need to scale from zero
 func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
-	podList := &corev1.PodList{}
-	listOptions := client.ListOptions{}
-	opts := []client.ListOption{}
+	pods, err := s.getMetricValue(ctx)
 
-	listOptions.LabelSelector = s.metadata.podSelector
-	//Could be wrong, review it
-	listOptions.ApplyOptions(opts)
-
-	err := s.kubeClient.List(ctx, podList, opts...)
 	if err != nil {
 		return false, err
 	}
 
-	if len(podList.Items) == 0 {
-		return false, nil
+	if pods == 0 {
+		return false, fmt.Errorf("monitored pod count is 0")
 	}
 
 	return true, nil
@@ -91,11 +89,11 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "workload", s.metadata.podSelector.String())),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "workload", normalizeSelectorString(s.metadata.podSelector))),
 		},
 		Target: v2beta2.MetricTarget{
-			Type:  v2beta2.ValueMetricType,
-			Value: targetMetricValue,
+			Type:         v2beta2.AverageValueMetricType,
+			AverageValue: targetMetricValue,
 		},
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kubernetesWorkloadMetricType}
@@ -104,6 +102,42 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 
 // GetMetrics returns value for a supported metric
 func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	return nil, nil
-	// TODO
+	pods, err := s.getMetricValue(ctx)
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting kubernetes workload: %s", err)
+	}
+
+	metric := external_metrics.ExternalMetricValue{
+		MetricName: metricName,
+		Value:      *resource.NewQuantity(int64(pods), resource.DecimalSI),
+		Timestamp:  metav1.Now(),
+	}
+
+	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, error) {
+	podList := &corev1.PodList{}
+	listOptions := client.ListOptions{}
+	listOptions.LabelSelector = s.metadata.podSelector
+	opts := []client.ListOption{
+		&listOptions,
+	}
+
+	err := s.kubeClient.List(ctx, podList, opts...)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(podList.Items), nil
+}
+
+func normalizeSelectorString(selector labels.Selector) string {
+	s := selector.String()
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "(", "-")
+	s = strings.ReplaceAll(s, ")", "-")
+	s = strings.ReplaceAll(s, ",", "-")
+	s = strings.ReplaceAll(s, "!", "-")
+	return s
 }
