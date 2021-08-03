@@ -1,6 +1,7 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import {waitForRollout} from "./helpers";
 
 export class RabbitMQHelper {
 
@@ -13,12 +14,7 @@ export class RabbitMQHelper {
         sh.exec(`kubectl create namespace ${rabbitmqNamespace}`)
         t.is(0, sh.exec(`kubectl apply -f ${rabbitMqTmpFile.name} --namespace ${rabbitmqNamespace}`).code, 'creating a Rabbit MQ deployment should work.')
         // wait for rabbitmq to load
-        for (let i = 0; i < 10; i++) {
-            const readyReplicaCount = sh.exec(`kubectl get deploy/rabbitmq -n ${rabbitmqNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-            if (readyReplicaCount != '2') {
-                sh.exec('sleep 2s')
-            }
-        }
+        t.is(0, waitForRollout('deployment', 'rabbitmq', rabbitmqNamespace))
     }
 
     static uninstallRabbit(rabbitmqNamespace: string) {
@@ -49,15 +45,6 @@ export class RabbitMQHelper {
             sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,
             'publishing job should apply.'
         )
-
-        // wait for the publishing job to complete
-        for (let i = 0; i < 20; i++) {
-            const succeeded = sh.exec(`kubectl get job rabbitmq-publish --namespace ${namespace} -o jsonpath='{.status.succeeded}'`).stdout
-            if (succeeded == '1') {
-                break
-            }
-            sh.exec('sleep 1s')
-        }
     }
 
 }
@@ -76,7 +63,21 @@ spec:
         command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}"]
       restartPolicy: Never`
 
-const rabbitmqDeployYaml = `apiVersion: apps/v1
+const rabbitmqDeployYaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+data:
+  rabbitmq.conf: |
+    default_user = {{USERNAME}}
+    default_pass = {{PASSWORD}}
+    default_vhost = {{VHOST}}
+    management.tcp.port = 15672
+    management.tcp.ip = 0.0.0.0
+  enabled_plugins: |
+    [rabbitmq_management].
+---
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -95,13 +96,18 @@ spec:
       containers:
       - image: rabbitmq:3-management
         name: rabbitmq
-        env:
-        - name: RABBITMQ_DEFAULT_USER
-          value: "{{USERNAME}}"
-        - name: RABBITMQ_DEFAULT_PASS
-          value: "{{PASSWORD}}"
-        - name: RABBITMQ_DEFAULT_VHOST
-          value: "{{VHOST}}"
+        volumeMounts:
+          - mountPath: /etc/rabbitmq
+            name: rabbitmq-config
+        readinessProbe:
+          tcpSocket:
+            port: 5672
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: rabbitmq-config
 ---
 apiVersion: v1
 kind: Service

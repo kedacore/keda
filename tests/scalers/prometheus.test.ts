@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {waitForRollout} from "./helpers";
 
 const testNamespace = 'prometheus-test'
 const prometheusNamespace = 'monitoring'
@@ -13,14 +14,7 @@ test.before(t => {
   sh.exec(`kubectl create namespace ${prometheusNamespace}`)
   t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
   // wait for prometheus to load
-  let prometheusReadyReplicaCount = '0'
-  for (let i = 0; i < 30; i++) {
-    prometheusReadyReplicaCount = sh.exec(`kubectl get deploy/prometheus-server -n ${prometheusNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-    if (prometheusReadyReplicaCount != '1') {
-      sh.exec('sleep 2s')
-    }
-  }
-  t.is('1', prometheusReadyReplicaCount, 'Prometheus is not in a ready state')
+  t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
 
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
