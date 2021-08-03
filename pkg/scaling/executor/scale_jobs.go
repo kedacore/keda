@@ -192,7 +192,6 @@ func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(j *batchv1.Job, pend
 
 	pods := &corev1.PodList{}
 	err := e.client.List(context.TODO(), pods, opts...)
-
 	if err != nil {
 		return false
 	}
