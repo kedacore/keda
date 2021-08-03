@@ -18,7 +18,7 @@ GIT_VERSION ?= $(shell git describe --always --abbrev=7)
 GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run-2
+TEST_CLUSTER_NAME ?= keda-nightly-run-3
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))

@@ -13,6 +13,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -202,11 +203,20 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledObject", "object", scalableObject)
+			return
+		}
 		isActive, isError := h.isScaledObjectActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError)
 	case *kedav1alpha1.ScaledJob:
-		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
-		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, scaledJob)
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledJob", "object", scalableObject)
+			return
+		}
+		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
 	}
 }
