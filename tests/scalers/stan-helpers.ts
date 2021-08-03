@@ -1,6 +1,7 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import {waitForRollout} from "./helpers";
 
 export class StanHelper {
     static install(t, stanNamespace: string) {
@@ -14,7 +15,7 @@ export class StanHelper {
         )
         t.is(
             0,
-            sh.exec(`kubectl -n ${stanNamespace} wait --for=condition=Ready --timeout=600s po/stan-nats-ss-0`).code, 'Stan pod should be available.'
+            waitForRollout('statefulset', 'stan-nats-ss', stanNamespace), 'Stan pod should be available.'
         )
 
     }
