@@ -27,6 +27,7 @@
 - Add Solace PubSub+ Event Broker Scaler ([#1945](https://github.com/kedacore/keda/pull/1945))
 - Add fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
 - Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
+- Support pod conditions for pending job count calculation ([#1970](https://github.com/kedacore/keda/pull/1970))
 - Add new scaler for Selenium Grid ([#1971](https://github.com/kedacore/keda/pull/1971))
 - Support using regex to select the queues in RabbitMQ Scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
 - Support custom metric name in RabbitMQ Scaler ([#1976](https://github.com/kedacore/keda/pull/1976))
