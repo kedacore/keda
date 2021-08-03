@@ -31,7 +31,6 @@ const (
 
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
-	name        string
 	value       int64
 }
 
@@ -59,7 +58,6 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
-	meta.name = config.Name
 
 	return meta, nil
 }
