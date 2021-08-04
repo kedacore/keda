@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -122,8 +121,8 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-func createPodlist(count int) *corev1.PodList {
-	list := &corev1.PodList{}
+func createPodlist(count int) *v1.PodList {
+	list := &v1.PodList{}
 	for i := 0; i < count; i++ {
 		pod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
