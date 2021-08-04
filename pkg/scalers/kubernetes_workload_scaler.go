@@ -76,11 +76,7 @@ func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if pods == 0 {
-		return false, fmt.Errorf("monitored pod count is 0")
-	}
-
-	return true, nil
+	return pods > 0, nil
 }
 
 // Close no need for kubernetes workload scaler
@@ -93,7 +89,7 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "workload", normalizeSelectorString(s.metadata.podSelector))),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "workload", s.metadata.namespace, normalizeSelectorString(s.metadata.podSelector))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
