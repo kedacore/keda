@@ -6736,6 +6736,10 @@ spec:
                     type: integer
                   customScalingRunningJobPercentage:
                     type: string
+                  pendingPodConditions:
+                    items:
+                      type: string
+                    type: array
                   strategy:
                     type: string
                 type: object
