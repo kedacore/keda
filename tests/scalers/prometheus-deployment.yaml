@@ -344,6 +344,9 @@ subjects:
   - kind: ServiceAccount
     name: prometheus-server
     namespace: monitoring
+  - kind: ServiceAccount
+    name: prometheus-server
+    namespace: argo-monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

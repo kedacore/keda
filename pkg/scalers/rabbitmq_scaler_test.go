@@ -92,11 +92,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true"}, false, map[string]string{}},
 	// queue length and useRegex
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true"}, false, map[string]string{}},
+	// custom metric name
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "metricName": "host1-sample"}, false, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
 	{&testRabbitMQMetadata[7], "rabbitmq-namespace-name"},
+	{&testRabbitMQMetadata[31], "rabbitmq-host1-sample"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {

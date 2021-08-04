@@ -4,6 +4,9 @@ FROM ubuntu:18.04
 RUN apt-get update && \
     apt-get install -y wget curl build-essential git
 
+# Use Bash instead of Dash
+RUN ln -sf bash /bin/sh
+
 # Install azure-cli
 RUN apt-get install apt-transport-https lsb-release software-properties-common dirmngr -y && \
     curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
@@ -54,10 +57,6 @@ RUN RELEASE_VERSION=v1.0.1 && \
     mkdir -p /usr/local/bin/ && \
     cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && \
     rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
-
-# Install kubebuilder tools
-RUN curl -L https://go.kubebuilder.io/dl/2.3.1/linux/amd64 | tar -xz -C /tmp/ && \
-    mv /tmp/kubebuilder_2.3.1_linux_amd64 /usr/local/kubebuilder
 
 ENV PATH=${PATH}:/usr/local/go/bin \
     GOROOT=/usr/local/go \
