@@ -25,12 +25,13 @@ type kubernetesWorkloadScaler struct {
 const (
 	kubernetesWorkloadMetricType = "External"
 	podSelectorKey               = "podSelector"
-	namespaceSelectorKey         = "namespaceSelector"
+	namespaceKey                 = "namespace"
 	valueKey                     = "value"
 )
 
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
+	namespace   string
 	value       int64
 }
 
@@ -57,6 +58,11 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	meta.value, err = strconv.ParseInt(config.TriggerMetadata[valueKey], 10, 64)
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
+	}
+	if val, ok := config.TriggerMetadata[namespaceKey]; ok {
+		meta.namespace = val
+	} else {
+		meta.namespace = ""
 	}
 
 	return meta, nil
@@ -118,6 +124,7 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 	podList := &corev1.PodList{}
 	listOptions := client.ListOptions{}
 	listOptions.LabelSelector = s.metadata.podSelector
+	listOptions.Namespace = s.metadata.namespace
 	opts := []client.ListOption{
 		&listOptions,
 	}
