@@ -76,7 +76,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
 		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
 	}
-	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob"] = scaledJob.GetName()
+	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob.keda.sh/name"] = scaledJob.GetName()
 
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 
@@ -90,7 +90,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 		"app.kubernetes.io/version":    version.Version,
 		"app.kubernetes.io/part-of":    scaledJob.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",
-		"scaledjob":                    scaledJob.GetName(),
+		"scaledjob.keda.sh/name":       scaledJob.GetName(),
 	}
 	for key, value := range scaledJob.ObjectMeta.Labels {
 		labels[key] = value
@@ -142,7 +142,7 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}
@@ -216,7 +216,7 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}
@@ -251,7 +251,7 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}

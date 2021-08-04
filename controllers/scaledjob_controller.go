@@ -145,7 +145,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledJob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 	jobs := &batchv1.JobList{}
 	err := r.Client.List(context.TODO(), jobs, opts...)
