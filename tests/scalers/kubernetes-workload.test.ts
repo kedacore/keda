@@ -40,17 +40,17 @@ test.serial(`Deployment should scale to fit the amount of pods which match the s
     `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=5`
   )
   t.true(await waitForDeploymentReplicaCount(5, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 5 after 60 seconds')
-  
+
   sh.exec(
     `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=10`
   )
   t.true(await waitForDeploymentReplicaCount(10, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 10 after 60 seconds')
-  
+
   sh.exec(
     `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=5`
   )
   t.true(await waitForDeploymentReplicaCount(5, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 5 after 60 seconds')
-  
+
   sh.exec(
     `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=1`
   )
@@ -59,7 +59,7 @@ test.serial(`Deployment should scale to fit the amount of pods which match the s
 
 test.after.always.cb('clean up workload test related deployments', t => {
   const resources = [
-    'scaledobject.keda.sh/sut-scaledobject',    
+    'scaledobject.keda.sh/sut-scaledobject',
     'deployment.apps/sut-deployment',
     'deployment.apps/monitored-deployment',
   ]
@@ -67,7 +67,7 @@ test.after.always.cb('clean up workload test related deployments', t => {
   for (const resource of resources) {
     sh.exec(`kubectl delete ${resource} --namespace ${testNamespace}`)
   }
-  sh.exec(`kubectl delete namespace ${testNamespace}`)  
+  sh.exec(`kubectl delete namespace ${testNamespace}`)
   t.end()
 })
 
@@ -122,14 +122,14 @@ spec:
   cooldownPeriod: 5
   minReplicaCount: 1
   maxReplicaCount: 10
-  advanced:                        
-    horizontalPodAutoscalerConfig: 
-      behavior:                    
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
         scaleDown:
           stabilizationWindowSeconds: 15
   triggers:
   - type: kubernetes-workload
-    metadata:      
+    metadata:
       podSelector: 'pod=workload-test'
       namespace: ${testNamespace}
       value: '1'`

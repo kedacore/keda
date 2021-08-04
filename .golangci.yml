@@ -64,6 +64,9 @@ issues:
     - path: scale_resolvers_test.go
       linters:
         - staticcheck
+    - path: kubernetes_workload_scaler_test.go
+      linters:
+        - staticcheck
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
