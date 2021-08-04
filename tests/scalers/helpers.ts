@@ -1,7 +1,7 @@
 import * as sh from "shelljs";
 
-export function waitForRollout(type: 'deployment' | 'statefulset', name: string, namespace: string): number {
-    return sh.exec(`kubectl rollout status ${type}/${name} -n ${namespace}`).code
+export function waitForRollout(type: 'deployment' | 'statefulset', name: string, namespace: string, timeoutSeconds = 180): number {
+    return sh.exec(`kubectl rollout status ${type}/${name} -n ${namespace} --timeout ${timeoutSeconds}s`).code
 }
 
 export function sleep(duration: number) {
