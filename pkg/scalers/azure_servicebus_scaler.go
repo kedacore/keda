@@ -8,6 +8,7 @@ import (
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	servicebus "github.com/Azure/azure-service-bus-go"
+	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -46,6 +47,7 @@ type azureServiceBusMetadata struct {
 	connection       string
 	entityType       entityType
 	namespace        string
+	endpointSuffix   string
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -101,6 +103,16 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 			return nil, fmt.Errorf("no subscription name provided with topic name")
 		}
 	}
+
+	envSuffixProvider := func(env az.Environment) (string, error) {
+		return env.ServiceBusEndpointSuffix, nil
+	}
+
+	endpointSuffix, err := azure.ParseEndpointSuffix(config.TriggerMetadata, envSuffixProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.endpointSuffix = endpointSuffix
 
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
@@ -198,7 +210,8 @@ type azureTokenProvider struct {
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
-	token, err := azure.GetAzureADPodIdentityToken(a.httpClient, "https://servicebus.azure.net")
+	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
+	token, err := azure.GetAzureADPodIdentityToken(a.httpClient, "https://servicebus.azure.net/")
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +262,7 @@ func (s *azureServiceBusScaler) getServiceBusNamespace() (*servicebus.Namespace,
 		namespace.Name = s.metadata.namespace
 	}
 
+	namespace.Suffix = s.metadata.endpointSuffix
 	return namespace, nil
 }
 
