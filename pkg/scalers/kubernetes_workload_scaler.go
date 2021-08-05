@@ -6,15 +6,15 @@ import (
 	"strconv"
 	"strings"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type kubernetesWorkloadScaler struct {
