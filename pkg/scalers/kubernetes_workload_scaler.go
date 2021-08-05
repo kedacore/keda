@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	
+
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
