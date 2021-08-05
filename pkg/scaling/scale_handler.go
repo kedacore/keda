@@ -40,6 +40,12 @@ type scaleHandler struct {
 	recorder          record.EventRecorder
 }
 
+type scalerMetrics struct {
+	queueLength int64
+	maxValue    int64
+	isActive    bool
+}
+
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
 	return &scaleHandler{
@@ -240,13 +246,68 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 
 func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
 	var queueLength int64
-	var targetAverageValue int64
 	var maxValue int64
 	isActive := false
+
+	scalersMetrics := h.getScalersMetrics(ctx, scalers, scaledJob)
+	switch scaledJob.Spec.ScalingStrategy.MultipleScalersOption {
+	case "min":
+		for _, metrics := range scalersMetrics {
+			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	case "avg":
+		queueLengthSum := int64(0)
+		maxValueSum := int64(0)
+		length := 0
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLengthSum += metrics.queueLength
+				maxValueSum += metrics.maxValue
+				isActive = metrics.isActive
+				length++
+			}
+		}
+		if length != 0 {
+			queueLength = divideWithCeil(queueLengthSum, int64(length))
+			maxValue = divideWithCeil(maxValueSum, int64(length))
+		}
+	case "sum":
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLength += metrics.queueLength
+				maxValue += metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	default: // max
+		for _, metrics := range scalersMetrics {
+			if metrics.queueLength > queueLength && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	}
+	maxValue = min(scaledJob.MaxReplicaCount(), maxValue)
+	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
+	return isActive, queueLength, maxValue
+}
+
+func (h *scaleHandler) getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
+	scalersMetrics := []scalerMetrics{}
 
 	// TODO refactor this, do chores, reduce the verbosity ie: V(1) and frequency of logs
 	// move relevant funcs getTargetAverageValue(), min() and divideWithCeil() out of scaler_handler.go
 	for _, scaler := range scalers {
+		var queueLength int64
+		var targetAverageValue int64
+		isActive := false
+		maxValue := int64(0)
+
 		scalerLogger := h.logger.WithValues("Scaler", scaler)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
@@ -286,12 +347,17 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.
 			isActive = true
 			scalerLogger.Info("Scaler is active")
 		}
+
+		if targetAverageValue != 0 {
+			maxValue = min(scaledJob.MaxReplicaCount(), divideWithCeil(queueLength, targetAverageValue))
+		}
+		scalersMetrics = append(scalersMetrics, scalerMetrics{
+			queueLength: queueLength,
+			maxValue:    maxValue,
+			isActive:    isActive,
+		})
 	}
-	if targetAverageValue != 0 {
-		maxValue = min(scaledJob.MaxReplicaCount(), divideWithCeil(queueLength, targetAverageValue))
-	}
-	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
-	return isActive, queueLength, maxValue
+	return scalersMetrics
 }
 
 func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {

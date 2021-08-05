@@ -3,6 +3,7 @@ package scaling
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/stretchr/testify/assert"
@@ -119,4 +121,159 @@ func createMetricSpec(averageValue int) v2beta2.MetricSpec {
 			},
 		},
 	}
+}
+
+func TestIsScaledJobActive(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaleHandler := &scaleHandler{
+		client:            client,
+		logger:            logf.Log.WithName("scalehandler"),
+		scaleLoopContexts: &sync.Map{},
+		scaleExecutor:     executor.NewScaleExecutor(client, nil, nil, recorder),
+		globalHTTPTimeout: 5 * time.Second,
+		recorder:          recorder,
+	}
+
+	// Keep the current behavior
+	// Assme 1 trigger only
+	scaledJobSingle := createScaledObject(100, "") // testing default = max
+	scalerSingle := []scalers.Scaler{
+		createScaler(ctrl, int64(20), int32(2), true),
+	}
+
+	isActive, queueLength, maxValue := scaleHandler.isScaledJobActive(context.TODO(), scalerSingle, scaledJobSingle)
+	assert.Equal(t, true, isActive)
+	assert.Equal(t, int64(20), queueLength)
+	assert.Equal(t, int64(10), maxValue)
+
+	// Non-Active trigger only
+	scalerSingle = []scalers.Scaler{
+		createScaler(ctrl, int64(0), int32(2), false),
+	}
+
+	isActive, queueLength, maxValue = scaleHandler.isScaledJobActive(context.TODO(), scalerSingle, scaledJobSingle)
+	assert.Equal(t, false, isActive)
+	assert.Equal(t, int64(0), queueLength)
+	assert.Equal(t, int64(0), maxValue)
+
+	// Test the valiation
+	scalerTestDatam := []scalerTestData{
+		newScalerTestData(100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
+		newScalerTestData(100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
+		newScalerTestData(100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
+		newScalerTestData(100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
+	}
+
+	for index, scalerTestData := range scalerTestDatam {
+		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersOption)
+		scalers := []scalers.Scaler{
+			createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive),
+			createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive),
+			createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive),
+			createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive),
+		}
+		fmt.Printf("index: %d", index)
+		isActive, queueLength, maxValue = scaleHandler.isScaledJobActive(context.TODO(), scalers, scaledJob)
+		//	assert.Equal(t, 5, index)
+		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
+		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
+		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
+	}
+}
+
+func newScalerTestData(
+	maxReplicaCount int,
+	multipleScalersOption string,
+	scaler1QueueLength,
+	scaler1AverageValue int,
+	scaler1IsActive bool,
+	scaler2QueueLength,
+	scaler2AverageValue int,
+	scaler2IsActive bool,
+	scaler3QueueLength,
+	scaler3AverageValue int,
+	scaler3IsActive bool,
+	scaler4QueueLength,
+	scaler4AverageValue int,
+	scaler4IsActive bool,
+	resultIsActive bool,
+	resultQueueLength,
+	resultMaxLength int) scalerTestData {
+	return scalerTestData{
+		MaxReplicaCount:       int32(maxReplicaCount),
+		MultipleScalersOption: multipleScalersOption,
+		Scaler1QueueLength:    int64(scaler1QueueLength),
+		Scaler1AverageValue:   int32(scaler1AverageValue),
+		Scaler1IsActive:       scaler1IsActive,
+		Scaler2QueueLength:    int64(scaler2QueueLength),
+		Scaler2AverageValue:   int32(scaler2AverageValue),
+		Scaler2IsActive:       scaler2IsActive,
+		Scaler3QueueLength:    int64(scaler3QueueLength),
+		Scaler3AverageValue:   int32(scaler3AverageValue),
+		Scaler3IsActive:       scaler3IsActive,
+		Scaler4QueueLength:    int64(scaler4QueueLength),
+		Scaler4AverageValue:   int32(scaler4AverageValue),
+		Scaler4IsActive:       scaler4IsActive,
+		ResultIsActive:        resultIsActive,
+		ResultQueueLength:     int64(resultQueueLength),
+		ResultMaxValue:        int64(resultMaxLength),
+	}
+}
+
+type scalerTestData struct {
+	MaxReplicaCount       int32
+	MultipleScalersOption string
+	Scaler1QueueLength    int64
+	Scaler1AverageValue   int32
+	Scaler1IsActive       bool
+	Scaler2QueueLength    int64
+	Scaler2AverageValue   int32
+	Scaler2IsActive       bool
+	Scaler3QueueLength    int64
+	Scaler3AverageValue   int32
+	Scaler3IsActive       bool
+	Scaler4QueueLength    int64
+	Scaler4AverageValue   int32
+	Scaler4IsActive       bool
+	ResultIsActive        bool
+	ResultQueueLength     int64
+	ResultMaxValue        int64
+}
+
+func createScaledObject(maxReplicaCount int32, multipleScalersOption string) *kedav1alpha1.ScaledJob {
+	if multipleScalersOption != "" {
+		return &kedav1alpha1.ScaledJob{
+			Spec: kedav1alpha1.ScaledJobSpec{
+				MaxReplicaCount: &maxReplicaCount,
+				ScalingStrategy: kedav1alpha1.ScalingStrategy{
+					MultipleScalersOption: multipleScalersOption,
+				},
+			},
+		}
+	}
+	return &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			MaxReplicaCount: &maxReplicaCount,
+		},
+	}
+}
+
+func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int32, isActive bool) *mock_scalers.MockScaler {
+	metricName := "queueLength"
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(int(averageValue))}
+	metrics := []external_metrics.ExternalMetricValue{
+		{
+			MetricName: metricName,
+			Value:      *resource.NewQuantity(queueLength, resource.DecimalSI),
+		},
+	}
+	scaler.EXPECT().IsActive(gomock.Any()).Return(isActive, nil)
+	scaler.EXPECT().GetMetricSpecForScaling().Return(metricsSpecs)
+	scaler.EXPECT().GetMetrics(gomock.Any(), metricName, nil).Return(metrics, nil)
+	scaler.EXPECT().Close()
+	return scaler
 }

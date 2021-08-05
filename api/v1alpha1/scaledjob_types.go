@@ -69,6 +69,8 @@ type ScalingStrategy struct {
 	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
 	// +optional
 	CustomScalingRunningJobPercentage string `json:"customScalingRunningJobPercentage,omitempty"`
+	// +optional
+	MultipleScalersOption string `json:"multipleScalersOption,omitempty"`
 }
 
 func init() {
