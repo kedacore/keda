@@ -12,33 +12,29 @@ import (
 )
 
 type workloadMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata  map[string]string
+	namespace string
+	isError   bool
 }
 
 var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
-	{map[string]string{"value": "1", "podSelector": "app=demo", "namespace": "test"}, false},
-	{map[string]string{"value": "1", "podSelector": "app=demo", "namespace": ""}, false},
-	{map[string]string{"value": "1", "podSelector": "app=demo"}, false},
-	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2)", "namespace": "test"}, false},
-	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)", "namespace": "test"}, false},
-	{map[string]string{"podSelector": "app=demo", "namespace": "test"}, true},
-	{map[string]string{"podSelector": "app=demo", "namespace": ""}, true},
-	{map[string]string{"podSelector": "app=demo"}, true},
-	{map[string]string{"value": "1", "namespace": "test"}, true},
-	{map[string]string{"value": "1", "namespace": ""}, true},
-	{map[string]string{"value": "1"}, true},
-	{map[string]string{"value": "a", "podSelector": "app=demo", "namespace": "test"}, true},
-	{map[string]string{"value": "a", "podSelector": "app=demo", "namespace": ""}, true},
-	{map[string]string{"value": "a", "podSelector": "app=demo"}, true},
-	{map[string]string{"value": "0", "podSelector": "app=demo", "namespace": "test"}, true},
-	{map[string]string{"value": "0", "podSelector": "app=demo", "namespace": ""}, true},
-	{map[string]string{"value": "0", "podSelector": "app=demo"}, true},
+	{map[string]string{"value": "1", "podSelector": "app=demo"}, "test", false},
+	{map[string]string{"value": "1", "podSelector": "app=demo"}, "default", false},
+	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2)"}, "test", false},
+	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)"}, "test", false},
+	{map[string]string{"podSelector": "app=demo"}, "test", true},
+	{map[string]string{"podSelector": "app=demo"}, "default", true},
+	{map[string]string{"value": "1"}, "test", true},
+	{map[string]string{"value": "1"}, "default", true},
+	{map[string]string{"value": "a", "podSelector": "app=demo"}, "test", true},
+	{map[string]string{"value": "a", "podSelector": "app=demo"}, "default", true},
+	{map[string]string{"value": "0", "podSelector": "app=demo"}, "test", true},
+	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {
 	for _, testData := range parseWorkloadMetadataTestDataset {
-		_, err := parseWorkloadMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
+		_, err := parseWorkloadMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, Namespace: testData.namespace})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -49,20 +45,21 @@ func TestParseWorkloadMetadata(t *testing.T) {
 }
 
 type workloadIsActiveTestData struct {
-	metadata map[string]string
-	podCount int
-	active   bool
+	metadata  map[string]string
+	namespace string
+	podCount  int
+	active    bool
 }
 
 var isActiveWorkloadTestDataset = []workloadIsActiveTestData{
 	// "podSelector": "app=demo", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[0].metadata, 0, false},
-	{parseWorkloadMetadataTestDataset[0].metadata, 1, false},
-	{parseWorkloadMetadataTestDataset[0].metadata, 15, false},
-	// "podSelector": "app=demo"
-	{parseWorkloadMetadataTestDataset[1].metadata, 0, false},
-	{parseWorkloadMetadataTestDataset[1].metadata, 1, true},
-	{parseWorkloadMetadataTestDataset[1].metadata, 15, true},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 0, false},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 1, false},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 15, false},
+	// "podSelector": "app=demo", "namespace": "default"
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 0, false},
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 1, true},
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 15, true},
 }
 
 func TestWorkloadIsActive(t *testing.T) {
@@ -73,6 +70,7 @@ func TestWorkloadIsActive(t *testing.T) {
 				TriggerMetadata:   testData.metadata,
 				AuthParams:        map[string]string{},
 				GlobalHTTPTimeout: 1000 * time.Millisecond,
+				Namespace:         testData.namespace,
 			},
 		)
 		isActive, _ := s.IsActive(context.TODO())
@@ -86,21 +84,20 @@ func TestWorkloadIsActive(t *testing.T) {
 }
 
 type workloadGetMetricSpecForScalingTestData struct {
-	metadata map[string]string
-	name     string
+	metadata  map[string]string
+	namespace string
+	name      string
 }
 
 var getMetricSpecForScalingTestDataset = []workloadGetMetricSpecForScalingTestData{
 	// "podSelector": "app=demo", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[0].metadata, "workload-test-app=demo"},
-	// "podSelector": "app=demo", "namespace": ""
-	{parseWorkloadMetadataTestDataset[1].metadata, "workload--app=demo"},
-	// "podSelector": "app=demo"
-	{parseWorkloadMetadataTestDataset[2].metadata, "workload--app=demo"},
-	// "podSelector": "app=demo", "namespace": ""
-	{parseWorkloadMetadataTestDataset[3].metadata, "workload-test-appin-demo1-demo2-"},
-	// "podSelector": "app=demo"
-	{parseWorkloadMetadataTestDataset[4].metadata, "workload-test-appin-demo1-demo2--deployin-deploy1-deploy2-"},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, "workload-test-app=demo"},
+	// "podSelector": "app=demo", "namespace": "default"
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, "workload-default-app=demo"},
+	// "podSelector": "app in (demo1, demo2)", "namespace": "test"
+	{parseWorkloadMetadataTestDataset[2].metadata, parseWorkloadMetadataTestDataset[2].namespace, "workload-test-appin-demo1-demo2-"},
+	// "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)", "namespace": "test"
+	{parseWorkloadMetadataTestDataset[3].metadata, parseWorkloadMetadataTestDataset[3].namespace, "workload-test-appin-demo1-demo2--deployin-deploy1-deploy2-"},
 }
 
 func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
@@ -111,6 +108,7 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 				TriggerMetadata:   testData.metadata,
 				AuthParams:        map[string]string{},
 				GlobalHTTPTimeout: 1000 * time.Millisecond,
+				Namespace:         testData.namespace,
 			},
 		)
 		metric := s.GetMetricSpecForScaling()

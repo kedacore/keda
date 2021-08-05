@@ -131,5 +131,4 @@ spec:
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod=workload-test'
-      namespace: ${testNamespace}
       value: '1'`

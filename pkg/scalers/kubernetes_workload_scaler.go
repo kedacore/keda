@@ -51,6 +51,7 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig)
 func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, error) {
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
+	meta.namespace = config.Namespace
 	meta.podSelector, err = labels.Parse(config.TriggerMetadata[podSelectorKey])
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
@@ -59,12 +60,6 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
-	if val, ok := config.TriggerMetadata[namespaceKey]; ok {
-		meta.namespace = val
-	} else {
-		meta.namespace = ""
-	}
-
 	return meta, nil
 }
 
