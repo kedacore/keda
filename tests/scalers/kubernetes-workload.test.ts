@@ -27,11 +27,11 @@ test.before(t => {
 	)
 })
 
-test.serial('Deployment should have 1 replicas on start', t => {
+test.serial('Deployment should have 0 replicas on start', t => {
   const replicaCount = sh.exec(
     `kubectl get deployment.apps/sut-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
   ).stdout
-  t.is(replicaCount, '1', 'replica count should start out as 1')
+  t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
 test.serial(`Deployment should scale to fit the amount of pods which match the selector`, async t => {
@@ -52,9 +52,9 @@ test.serial(`Deployment should scale to fit the amount of pods which match the s
   t.true(await waitForDeploymentReplicaCount(5, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 5 after 60 seconds')
 
   sh.exec(
-    `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=1`
+    `kubectl scale deployment.apps/monitored-deployment --namespace ${testNamespace} --replicas=0`
   )
-  t.true(await waitForDeploymentReplicaCount(1, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 1 after 60 seconds')
+  t.true(await waitForDeploymentReplicaCount(0, 'sut-deployment', testNamespace, 6, 10000), 'Replica count should be 0 after 60 seconds')
 })
 
 test.after.always.cb('clean up workload test related deployments', t => {
@@ -78,7 +78,7 @@ metadata:
   labels:
     deploy: workload-test
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       pod: workload-test
@@ -98,7 +98,7 @@ metadata:
   labels:
     deploy: workload-sut
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       pod: workload-sut
@@ -120,7 +120,7 @@ spec:
     name: sut-deployment
   pollingInterval: 5
   cooldownPeriod: 5
-  minReplicaCount: 1
+  minReplicaCount: 0
   maxReplicaCount: 10
   advanced:
     horizontalPodAutoscalerConfig:
