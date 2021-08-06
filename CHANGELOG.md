@@ -32,6 +32,7 @@
 - Add new scaler for Selenium Grid ([#1971](https://github.com/kedacore/keda/pull/1971))
 - Support using regex to select the queues in RabbitMQ Scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
 - Support custom metric name in RabbitMQ Scaler ([#1976](https://github.com/kedacore/keda/pull/1976))
+- Add new scaler for Kubernetes Workload ([#2010](https://github.com/kedacore/keda/pull/2010))
 
 ### Improvements
 
