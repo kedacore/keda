@@ -5,6 +5,7 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.4.0](#v240)
 - [v2.3.0](#v230)
 - [v2.2.0](#v220)
 - [v2.1.0](#v210)
@@ -21,29 +22,47 @@
 
 ### New
 
-- Extend Azure Monitor scaler to support custom metrics ([#1883](https://github.com/kedacore/keda/pull/1883))
-- Support non-public cloud environments in the Azure Service Bus scaler ([#1907](https://github.com/kedacore/keda/pull/1907))
-- Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
-- Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
-- Add Solace PubSub+ Event Broker Scaler ([#1945](https://github.com/kedacore/keda/pull/1945))
-- Add fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
-- Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
-- ScaledJob: Support pod conditions for pending job count calculation ([#1970](https://github.com/kedacore/keda/pull/1970)|[#2009](https://github.com/kedacore/keda/pull/2009))
-- Add new scaler for Selenium Grid ([#1971](https://github.com/kedacore/keda/pull/1971))
-- Support using regex to select the queues in RabbitMQ Scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
-- Support custom metric name in RabbitMQ Scaler ([#1976](https://github.com/kedacore/keda/pull/1976))
-- Add new scaler for Kubernetes Workload ([#2010](https://github.com/kedacore/keda/pull/2010))
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ### Improvements
 
-- Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
-- Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
-- Allow influxdb `authToken`, `serverURL`, and `organizationName` to be sourced from `(Cluster)TriggerAuthentication` ([#1904](https://github.com/kedacore/keda/pull/1904))
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+## v2.4.0
+
+### New
+
+- Add Solace PubSub+ Event Broker scaler ([#1945](https://github.com/kedacore/keda/pull/1945))
+- Add Selenium Grid scaler ([#1971](https://github.com/kedacore/keda/pull/1971))
+- Add Kubernetes Workload scaler ([#2010](https://github.com/kedacore/keda/pull/2010))
+- Introduce fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
+- Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
+- ScaledJob: Support pod conditions for pending job count calculation ([#1970](https://github.com/kedacore/keda/pull/1970)|[#2009](https://github.com/kedacore/keda/pull/2009))
+
+### Improvements
+
+- Optimize Kafka scaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
+- Adding ability to specify Kafka Broker Version ([#1866](https://github.com/kedacore/keda/pull/1866))
+- Support custom metric name in RabbitMQ scaler ([#1976](https://github.com/kedacore/keda/pull/1976))
+- Support using regex to select the queues in RabbitMQ scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
+- Extend Azure Monitor scaler to support custom metrics ([#1883](https://github.com/kedacore/keda/pull/1883))
+- Support non-public cloud environments in the Azure Service Bus scaler ([#1907](https://github.com/kedacore/keda/pull/1907))
+- Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
+- Adjusts InfluxDB scaler to support queries that return integers in addition to those that return floats ([#1977](https://github.com/kedacore/keda/pull/1977))
+- Allow InfluxDB `authToken`, `serverURL`, and `organizationName` to be sourced from `(Cluster)TriggerAuthentication` ([#1904](https://github.com/kedacore/keda/pull/1904))
 - IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
 - Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
-- Optimize KafkaScaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
-- Adjusts InfluxDB scaler to support queries that return integers in addition to those that return floats ([#1977](https://github.com/kedacore/keda/pull/1977))
-- Adding ability to specify Kafka Broker Version ([#1866](https://github.com/kedacore/keda/pull/1866))
+- Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
+- Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
+- Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
 
 ### Breaking Changes
 
