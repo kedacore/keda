@@ -231,10 +231,10 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 	return "ScaledObject is defined correctly and is ready for scaling", nil
 }
 
-// ensureScaledObjectLabel ensures that scaledObjectName=<scaledObject.Name> label exist in the ScaledObject
+// ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
 func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	const labelScaledObjectName = "scaledObjectName"
+	const labelScaledObjectName = "scaledobject.keda.sh/name"
 
 	if scaledObject.Labels == nil {
 		scaledObject.Labels = map[string]string{labelScaledObjectName: scaledObject.Name}
@@ -246,7 +246,7 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, sca
 		scaledObject.Labels[labelScaledObjectName] = scaledObject.Name
 	}
 
-	logger.V(1).Info("Adding scaledObjectName label on ScaledObject", "value", scaledObject.Name)
+	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
 	return r.Client.Update(context.TODO(), scaledObject)
 }
 
