@@ -8,7 +8,8 @@
     ],
     "require": [
       "ts-node/register"
-    ]
+    ],
+    "timeout": "10m"
   },
   "scripts": {
     "test": "ava"

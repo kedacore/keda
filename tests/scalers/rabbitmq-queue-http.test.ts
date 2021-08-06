@@ -4,6 +4,7 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
+import {sleep, waitForDeploymentReplicaCount} from "./helpers";
 
 const testNamespace = 'rabbitmq-queue-http-test'
 const rabbitmqNamespace = 'rabbitmq-http-test'
@@ -24,40 +25,16 @@ test.before(t => {
   RabbitMQHelper.createDeployment(t, testNamespace, deployYaml, connectionString, httpConnectionString, queueName)
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-  const replicaCount = sh.exec(
-    `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-  ).stdout
-  t.is(replicaCount, '0', 'replica count should start out as 0')
+test.serial('Deployment should have 0 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 2, 1000), 'replica count should start out as 0')
 })
 
-test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, t => {
+test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
   RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount)
 
   // with messages published, the consumer deployment should start receiving the messages
-  let replicaCount = '0'
-  for (let i = 0; i < 10 && replicaCount !== '4'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    t.log('replica count is:' + replicaCount)
-    if (replicaCount !== '4') {
-      sh.exec('sleep 5s')
-    }
-  }
-
-  t.is('4', replicaCount, 'Replica count should be 4 after 10 seconds')
-
-  for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
-    }
-  }
-
-  t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+  t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', testNamespace, 30, 5000))
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 60, 5000))
 })
 
 test.after.always.cb('clean up rabbitmq-queue deployment', t => {

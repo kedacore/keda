@@ -1,28 +1,21 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {sleep, waitForRollout} from "./helpers";
 
 const testNamespace = 'argo-rollouts-test'
-const prometheusNamespace = 'monitoring'
+const prometheusNamespace = 'argo-monitoring'
 const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
 const argoRolloutsNamespace = 'argo-rollouts'
 const argoRolloutsYamlFile = tmp.fileSync()
 
-test.before(t => {
+test.before(async t => {
   // install prometheus
   sh.exec(`kubectl create namespace ${prometheusNamespace}`)
   t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
   // wait for prometheus to load
-  let prometheusReadyReplicaCount = '0'
-  for (let i = 0; i < 30; i++) {
-    prometheusReadyReplicaCount = sh.exec(`kubectl get deploy/prometheus-server -n ${prometheusNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-    if (prometheusReadyReplicaCount != '1') {
-      sh.exec('sleep 2s')
-    }
-  }
-  t.is('1', prometheusReadyReplicaCount, 'Prometheus is not in a ready state')
+  t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
 
   // install argo-rollouts
   sh.exec(`kubectl create namespace ${argoRolloutsNamespace}`)
@@ -46,9 +39,9 @@ test.before(t => {
     'creating a rollouts should work.'
   )
   for (let i = 0; i < 10; i++) {
-    const readyReplicaCount = sh.exec(`kubectl get rollouts.argoproj.io/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}`).stdout
+    const readyReplicaCount = sh.exec(`kubectl get rollouts.argoproj.io/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}"`).stdout
     if (readyReplicaCount != '1') {
-      sh.exec('sleep 2s')
+      await sleep(2000)
     }
   }
 })
@@ -60,7 +53,7 @@ test.serial('Rollouts should have 0 replicas on start', t => {
   t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, t => {
+test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, async t => {
   // generate a large number of HTTP requests (using Apache Bench) that will take some time
   // so prometheus has some time to scrape it
   const tmpFile = tmp.fileSync()
@@ -90,7 +83,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
       `kubectl get rollouts.argoproj.io/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '5') {
-      sh.exec('sleep 5s')
+      await sleep(5000)
     }
   }
 
@@ -101,7 +94,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
       `kubectl get rollouts.argoproj.io/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
+      await sleep(5000)
     }
   }
 

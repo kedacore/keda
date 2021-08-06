@@ -157,6 +157,11 @@ spec:
                 volumeMounts:
                   - mountPath: /root/.influxdbv2
                     name: data
+                readinessProbe:
+                  tcpSocket:
+                    port: 8086
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
     volumeClaimTemplates:
       - metadata:
             name: data

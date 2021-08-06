@@ -13,6 +13,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -208,11 +209,20 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledObject", "object", scalableObject)
+			return
+		}
 		isActive, isError := h.isScaledObjectActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError)
 	case *kedav1alpha1.ScaledJob:
-		scaledJob := scalableObject.(*kedav1alpha1.ScaledJob)
-		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, scaledJob)
+		err = h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
+		if err != nil {
+			h.logger.Error(err, "Error getting scaledJob", "object", scalableObject)
+			return
+		}
+		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, scalers, obj)
 		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
 	}
 }
@@ -429,7 +439,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			return []scalers.Scaler{}, err
 		}
 
-		scaler, err := buildScaler(trigger.Type, config)
+		scaler, err := buildScaler(h.client, trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -442,7 +452,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	return scalersRes, nil
 }
 
-func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
@@ -485,6 +495,8 @@ func buildScaler(triggerType string, config *scalers.ScalerConfig) (scalers.Scal
 		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
+	case "kubernetes-workload":
+		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
 	case "memory":
