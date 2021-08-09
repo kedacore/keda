@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
+# Copyright (c) Noah Kantrowitz.
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
@@ -70,8 +71,8 @@ RUN apt-get update \
     && apt-get install -y docker-ce-cli \
     #
     # Install pip & pre-commit
-    && apt-get -y install python-pip \
-    && pip install --no-cache-dir pre-commit \
+    && apt-get -y install python3-pip \
+    && python3 -m pip install --no-cache-dir pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \
