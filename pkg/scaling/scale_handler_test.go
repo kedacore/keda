@@ -186,7 +186,7 @@ func TestIsScaledJobActive(t *testing.T) {
 }
 
 func newScalerTestData(
-	maxReplicaCount int, //nolint:golint,unparam
+	maxReplicaCount int,
 	multipleScalersOption string,
 	scaler1QueueLength, //nolint:golint,unparam
 	scaler1AverageValue int, //nolint:golint,unparam
