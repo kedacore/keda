@@ -70,8 +70,8 @@ RUN apt-get update \
     && apt-get install -y docker-ce-cli \
     #
     # Install pip & pre-commit
-    && apt-get -y install python-pip \
-    && pip install --no-cache-dir pre-commit \
+    && apt-get -y install python3-pip \
+    && pip3 install --no-cache-dir pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \

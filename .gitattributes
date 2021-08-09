@@ -1,0 +1,4 @@
+# normalize all introduced text files to LF line endings (recognized by git)
+ *           text=auto
+ # additionally declare text file types
+ *.sh        text eol=lf
