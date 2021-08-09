@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: scaledjobs.keda.sh
 spec:
@@ -1466,6 +1466,7 @@ spec:
                                           to by services.
                                         type: string
                                       protocol:
+                                        default: TCP
                                         description: Protocol for port. Must be UDP,
                                           TCP, or SCTP. Defaults to "TCP".
                                         type: string
@@ -2731,6 +2732,7 @@ spec:
                                           to by services.
                                         type: string
                                       protocol:
+                                        default: TCP
                                         description: Protocol for port. Must be UDP,
                                           TCP, or SCTP. Defaults to "TCP".
                                         type: string
@@ -4003,6 +4005,7 @@ spec:
                                           to by services.
                                         type: string
                                       protocol:
+                                        default: TCP
                                         description: Protocol for port. Must be UDP,
                                           TCP, or SCTP. Defaults to "TCP".
                                         type: string
@@ -6735,6 +6738,8 @@ spec:
                     format: int32
                     type: integer
                   customScalingRunningJobPercentage:
+                    type: string
+                  multipleScalersOption:
                     type: string
                   pendingPodConditions:
                     items:

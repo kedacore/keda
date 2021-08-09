@@ -303,6 +303,7 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.
 		}
 	}
 	maxValue = min(scaledJob.MaxReplicaCount(), maxValue)
+	h.logger.Info("Scaler maxValue", "MultipleScalersOption", scaledJob.Spec.ScalingStrategy.MultipleScalersOption)
 	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
 	return isActive, queueLength, maxValue
 }
@@ -317,8 +318,9 @@ func (h *scaleHandler) getScalersMetrics(ctx context.Context, scalers []scalers.
 		var targetAverageValue int64
 		isActive := false
 		maxValue := int64(0)
+		scalerType := fmt.Sprintf("%T:", scaler)
 
-		scalerLogger := h.logger.WithValues("Scaler", scaler)
+		scalerLogger := h.logger.WithValues("Scaler", scalerType)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
