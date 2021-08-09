@@ -63,6 +63,7 @@
 - Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
 - Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
 - Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
+- Fix the issue when Scaled Jobs has multiple triggers ([#2016](https://github.com/kedacore/keda/pull/2016))
 
 ### Breaking Changes
 
