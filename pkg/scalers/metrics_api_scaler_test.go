@@ -53,6 +53,10 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{}, true},
+	// success jwtAuth default
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "jwt"}, map[string]string{"jwtToken": "token"}, false},
+	// fail jwtAuth with no api key
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "jwt"}, map[string]string{}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -121,7 +125,8 @@ func TestMetricAPIScalerAuthParams(t *testing.T) {
 		if err == nil {
 			if (meta.enableAPIKeyAuth && !(testData.metadata["authMode"] == "apiKey")) ||
 				(meta.enableBaseAuth && !(testData.metadata["authMode"] == "basic")) ||
-				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) {
+				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) ||
+				(meta.enableJwtAuth && !(testData.metadata["authMode"] == "jwt")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
