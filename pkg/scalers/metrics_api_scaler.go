@@ -51,6 +51,10 @@ type metricsAPIScalerMetadata struct {
 	cert      string
 	key       string
 	ca        string
+
+	// jwt
+	enableJwtAuth bool
+	jwtToken      string
 }
 
 const (
@@ -159,6 +163,13 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 
 		meta.key = config.AuthParams["key"]
 		meta.enableTLS = true
+	case authentication.JwtAuthType:
+		if len(config.AuthParams["jwtToken"]) == 0 {
+			return nil, errors.New("no jwtToken provided")
+		}
+
+		meta.jwtToken = config.AuthParams["jwtToken"]
+		meta.enableJwtAuth = true
 	default:
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
 	}
@@ -306,6 +317,12 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 		}
 
 		req.SetBasicAuth(meta.username, meta.password)
+	case meta.enableJwtAuth:
+		req, err = http.NewRequest("GET", meta.url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Authorization", meta.jwtToken)
 	default:
 		req, err = http.NewRequest("GET", meta.url, nil)
 		if err != nil {

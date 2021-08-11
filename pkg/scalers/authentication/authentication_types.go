@@ -12,4 +12,6 @@ const (
 	TLSAuthType Type = "tls"
 	// BearerAuthType is a auth type using a bearer token
 	BearerAuthType Type = "bearer"
+	// JwtAuthType is a auth type using a jwt token
+	JwtAuthType Type = "jwt"
 )
