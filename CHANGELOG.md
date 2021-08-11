@@ -22,7 +22,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Add JWT auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
 
 ### Improvements
 
