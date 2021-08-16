@@ -26,7 +26,7 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Support listing blobs recursively in azure-blob scaler ([#1789](https://github.com/kedacore/keda/issues/1789))
 
 ### Breaking Changes
 

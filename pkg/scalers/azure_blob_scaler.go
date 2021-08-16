@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 
@@ -81,12 +82,13 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		return nil, "", fmt.Errorf("no blobContainerName given")
 	}
 
-	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok && val != "" {
-		meta.blobDelimiter = val
-	}
+	meta.blobDelimiter = config.TriggerMetadata["blobDelimiter"]
 
 	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
-		meta.blobPrefix = val + meta.blobDelimiter
+		meta.blobPrefix = val
+		if !strings.HasSuffix(meta.blobPrefix, defaultBlobDelimiter) {
+			meta.blobPrefix += defaultBlobPrefix
+		}
 	}
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.BlobEndpoint)
