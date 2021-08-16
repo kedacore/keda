@@ -87,7 +87,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
 		meta.blobPrefix = val
 		if !strings.HasSuffix(meta.blobPrefix, defaultBlobDelimiter) {
-			meta.blobPrefix += defaultBlobPrefix
+			meta.blobPrefix += defaultBlobDelimiter
 		}
 	}
 
