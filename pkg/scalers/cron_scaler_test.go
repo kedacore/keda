@@ -29,8 +29,8 @@ var validCronMetadata = map[string]string{
 // A complete valid metadata example which is enabled every even hours
 var validCronMetadata2 = map[string]string{
 	"timezone":        "Etc/UTC",
-	"start":           "0 */2 * * *",    //Every 2 hours (even)
-	"end":             "0 1-23/2 * * *", //Every 2 hours starting at 1 (odd)
+	"start":           "0 */2 * * *",    // Every 2 hours (even)
+	"end":             "0 1-23/2 * * *", // Every 2 hours starting at 1 (odd)
 	"desiredReplicas": "10",
 }
 
