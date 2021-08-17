@@ -1,7 +1,12 @@
 package scalers
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 type metricsAPIMetadataTestData struct {
@@ -53,10 +58,10 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{}, true},
-	// success jwtAuth default
-	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "jwt"}, map[string]string{"jwtToken": "token"}, false},
-	// fail jwtAuth with no api key
-	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "jwt"}, map[string]string{}, true},
+	// success bearerAuth default
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{"token": "bearerTokenValue"}, false},
+	// fail bearerAuth without token
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -126,9 +131,52 @@ func TestMetricAPIScalerAuthParams(t *testing.T) {
 			if (meta.enableAPIKeyAuth && !(testData.metadata["authMode"] == "apiKey")) ||
 				(meta.enableBaseAuth && !(testData.metadata["authMode"] == "basic")) ||
 				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) ||
-				(meta.enableJwtAuth && !(testData.metadata["authMode"] == "jwt")) {
+				(meta.enableBearerAuth && !(testData.metadata["authMode"] == "bearer")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
+	}
+}
+
+func TestBearerAuth(t *testing.T) {
+	authentication := map[string]string{
+		"token": "secure-token",
+	}
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if val, ok := r.Header["Authorization"]; ok {
+			if val[0] != fmt.Sprintf("Bearer %s", authentication["token"]) {
+				t.Errorf("Authorization header malformed")
+			}
+		} else {
+			t.Errorf("Authorization header not found")
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`))
+	}))
+
+	metadata := map[string]string{
+		"url":           apiStub.URL,
+		"valueLocation": "components.0.tasks",
+		"targetValue":   "1",
+		"authMode":      "bearer",
+	}
+
+	s, err := NewMetricsAPIScaler(
+		&ScalerConfig{
+			ResolvedEnv:       map[string]string{},
+			TriggerMetadata:   metadata,
+			AuthParams:        authentication,
+			GlobalHTTPTimeout: 1000 * time.Millisecond,
+		},
+	)
+	if err != nil {
+		t.Errorf("Error creating the Scaler")
+	}
+
+	_, err = s.GetMetrics(context.TODO(), "test-metric", nil)
+	if err != nil {
+		t.Errorf("Error getting the metric")
 	}
 }
