@@ -24,7 +24,7 @@ func (p *KedaProvider) getMetricsWithFallback(scaler scalers.Scaler, metricName 
 
 	initHealthStatus(status)
 	metrics, err := scaler.GetMetrics(context.TODO(), metricName, metricSelector)
-	healthStatus := getHealthStatus(scaledObject, metricName)
+	healthStatus := getHealthStatus(status, metricName)
 
 	if err == nil {
 		zero := int32(0)
@@ -104,18 +104,18 @@ func (p *KedaProvider) updateStatus(scaledObject *kedav1alpha1.ScaledObject, sta
 	}
 }
 
-func getHealthStatus(scaledObject *kedav1alpha1.ScaledObject, metricName string) *kedav1alpha1.HealthStatus {
+func getHealthStatus(status *kedav1alpha1.ScaledObjectStatus, metricName string) *kedav1alpha1.HealthStatus {
 	// Get health status for a specific metric
-	_, healthStatusExists := scaledObject.Status.Health[metricName]
+	_, healthStatusExists := status.Health[metricName]
 	if !healthStatusExists {
 		zero := int32(0)
-		status := kedav1alpha1.HealthStatus{
+		healthStatus := kedav1alpha1.HealthStatus{
 			NumberOfFailures: &zero,
 			Status:           kedav1alpha1.HealthStatusHappy,
 		}
-		scaledObject.Status.Health[metricName] = status
+		status.Health[metricName] = healthStatus
 	}
-	healthStatus := scaledObject.Status.Health[metricName]
+	healthStatus := status.Health[metricName]
 	return &healthStatus
 }
 
