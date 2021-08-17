@@ -73,7 +73,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no timezone specified. %s", config.TriggerMetadata)
 	}
-	parser := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
 		_, err := parser.Parse(val)
 		if err != nil {
