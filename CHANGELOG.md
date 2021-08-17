@@ -34,7 +34,7 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
 
 ## v2.4.0
 
