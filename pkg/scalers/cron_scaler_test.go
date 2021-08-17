@@ -26,13 +26,22 @@ var validCronMetadata = map[string]string{
 	"desiredReplicas": "10",
 }
 
+// A complete valid metadata example which is enabled every even hours
+var validCronMetadata2 = map[string]string{
+	"timezone":        "Etc/UTC",
+	"start":           "0 */2 * * *",    //Every 2 hours (even)
+	"end":             "0 1-23/2 * * *", //Every 2 hours starting at 1 (odd)
+	"desiredReplicas": "10",
+}
+
 var testCronMetadata = []parseCronMetadataTestData{
 	{map[string]string{}, true},
 	{validCronMetadata, false},
+	{validCronMetadata2, false},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45 * * * *"}, true},
 	{map[string]string{"start": "30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata", "start": "30-33 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
-	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45-50 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30-33 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, false},
+	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45-50 * * * *", "desiredReplicas": "10"}, false},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "-30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "-50 * * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "50 * * -3 *", "desiredReplicas": "10"}, true},
@@ -41,10 +50,12 @@ var testCronMetadata = []parseCronMetadataTestData{
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
 	{&testCronMetadata[1], "cron-Etc-UTC-00xxThu-5923xxThu"},
+	{&testCronMetadata[2], "cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
 }
 
-var tz, _ = time.LoadLocation(validCronMetadata["timezone"])
+var tz, _ = time.LoadLocation(validCronMetadata2["timezone"])
 var currentDay = time.Now().In(tz).Weekday().String()
+var currentHour = time.Now().In(tz).Hour()
 
 func TestCronParseMetadata(t *testing.T) {
 	for _, testData := range testCronMetadata {
@@ -68,11 +79,32 @@ func TestIsActive(t *testing.T) {
 	}
 }
 
+func TestIsActiveRange(t *testing.T) {
+	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata2})
+	isActive, _ := scaler.IsActive(context.TODO())
+	if currentHour%2 == 0 {
+		assert.Equal(t, isActive, true)
+	} else {
+		assert.Equal(t, isActive, false)
+	}
+}
+
 func TestGetMetrics(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
 	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentDay == "Thursday" {
+		assert.Equal(t, metrics[0].Value.Value(), int64(10))
+	} else {
+		assert.Equal(t, metrics[0].Value.Value(), int64(1))
+	}
+}
+
+func TestGetMetricsRange(t *testing.T) {
+	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata2})
+	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
+	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
+	if currentHour%2 == 0 {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
 	} else {
 		assert.Equal(t, metrics[0].Value.Value(), int64(1))
