@@ -51,6 +51,10 @@ type metricsAPIScalerMetadata struct {
 	cert      string
 	key       string
 	ca        string
+
+	// bearer
+	enableBearerAuth bool
+	bearerToken      string
 }
 
 const (
@@ -159,6 +163,13 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 
 		meta.key = config.AuthParams["key"]
 		meta.enableTLS = true
+	case authentication.BearerAuthType:
+		if len(config.AuthParams["token"]) == 0 {
+			return nil, errors.New("no token provided")
+		}
+
+		meta.bearerToken = config.AuthParams["token"]
+		meta.enableBearerAuth = true
 	default:
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
 	}
@@ -306,6 +317,12 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 		}
 
 		req.SetBasicAuth(meta.username, meta.password)
+	case meta.enableBearerAuth:
+		req, err = http.NewRequest("GET", meta.url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.bearerToken))
 	default:
 		req, err = http.NewRequest("GET", meta.url, nil)
 		if err != nil {
