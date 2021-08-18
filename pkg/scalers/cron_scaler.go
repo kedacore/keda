@@ -89,6 +89,9 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no end schedule specified. %s", config.TriggerMetadata)
 	}
+	if meta.start == meta.end {
+		return nil, fmt.Errorf("error parsing schedule. %s: start and end can not have exactly same time input", config.TriggerMetadata)
+	}
 	if val, ok := config.TriggerMetadata["desiredReplicas"]; ok && val != "" {
 		metadataDesiredReplicas, err := strconv.Atoi(val)
 		if err != nil {
