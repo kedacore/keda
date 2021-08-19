@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -386,5 +388,38 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName, "wanted:", testData.name)
 		}
+	}
+}
+
+type rabbitMQErrorTestData struct {
+	err     error
+	message string
+}
+
+var anonimizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
+	{fmt.Errorf("https://user1:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://user1:fdasr345_-@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://fdakls_dsa:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: user:password@domain.com"},
+	{fmt.Errorf("this user1:password1@domain.com fails"), "error inspecting rabbitMQ: this user:password@domain.com fails"},
+	{fmt.Errorf("this https://user1:password1@domain.com fails also"), "error inspecting rabbitMQ: this https://user:password@domain.com fails also"},
+}
+
+func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
+	metadata := map[string]string{
+		"queueName":   "evaluate_trials",
+		"hostFromEnv": host,
+		"protocol":    "http",
+	}
+	meta, _ := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+
+	s := &rabbitMQScaler{
+		metadata:   meta,
+		httpClient: nil,
+	}
+	for _, testData := range anonimizeRabbitMQErrorTestData {
+		err := s.anonimizeRabbitMQError(testData.err)
+		assert.Equal(t, fmt.Sprint(err), testData.message)
 	}
 }

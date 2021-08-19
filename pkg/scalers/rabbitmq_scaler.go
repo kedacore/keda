@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"github.com/streadway/amqp"
@@ -302,7 +303,7 @@ func (s *rabbitMQScaler) Close() error {
 func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return false, fmt.Errorf("error inspecting rabbitMQ: %s", err)
+		return false, s.anonimizeRabbitMQError(err)
 	}
 
 	if s.metadata.mode == rabbitModeQueueLength {
@@ -417,7 +418,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting rabbitMQ: %s", err)
+		return []external_metrics.ExternalMetricValue{}, s.anonimizeRabbitMQError(err)
 	}
 
 	var metricValue resource.Quantity
@@ -493,4 +494,11 @@ func getMaximum(q []queueInfo) (int, float64) {
 		}
 	}
 	return maxMessages, maxRate
+}
+
+// Mask host for log porpouses
+func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
+	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
+	m1 := regexp.MustCompile(`([^ \/:]+):([^\/:]+)\@`)
+	return fmt.Errorf(m1.ReplaceAllString(errorMessage, "user:password@"))
 }
