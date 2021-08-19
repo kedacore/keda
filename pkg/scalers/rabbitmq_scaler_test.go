@@ -404,6 +404,7 @@ var anonimizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
 	{fmt.Errorf("fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: user:password@domain.com"},
 	{fmt.Errorf("this user1:password1@domain.com fails"), "error inspecting rabbitMQ: this user:password@domain.com fails"},
 	{fmt.Errorf("this https://user1:password1@domain.com fails also"), "error inspecting rabbitMQ: this https://user:password@domain.com fails also"},
+	{fmt.Errorf("nothing to replace here"), "error inspecting rabbitMQ: nothing to replace here"},
 }
 
 func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
