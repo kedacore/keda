@@ -21,10 +21,10 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-var anonymizePattern *regexp.Regexp
+var rabbitMQAnonymizePattern *regexp.Regexp
 
 func init() {
-	anonymizePattern = regexp.MustCompile(`([^ \/:]+):([^\/:]+)\@`)
+	rabbitMQAnonymizePattern = regexp.MustCompile(`([^ \/:]+):([^\/:]+)\@`)
 }
 
 const (
@@ -505,5 +505,5 @@ func getMaximum(q []queueInfo) (int, float64) {
 // Mask host for log porpouses
 func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
-	return fmt.Errorf(anonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }
