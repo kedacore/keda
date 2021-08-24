@@ -109,7 +109,7 @@ spec:
   triggers:
   - type: rabbitmq
     metadata:
-      queueName: {{QUEUE_NAME}}
+      queueName: "^hell.{1}$"
       hostFromEnv: RabbitApiHost
       protocol: http
       useRegex: 'true'
