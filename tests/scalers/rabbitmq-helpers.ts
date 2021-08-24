@@ -35,11 +35,14 @@ export class RabbitMQHelper {
         )
     }
 
-    static publishMessages(t, namespace: string, connectionString: string, messageCount: number) {
+    static publishMessages(t, namespace: string, connectionString: string, messageCount: number, queueName: string) {
         // publish messages
         const tmpFile = tmp.fileSync()
         fs.writeFileSync(tmpFile.name, publishYaml.replace('{{CONNECTION_STRING}}', connectionString)
-            .replace('{{MESSAGE_COUNT}}', messageCount.toString()))
+        .replace('{{MESSAGE_COUNT}}', messageCount.toString())
+        .replace('{{QUEUE_NAME}}',  queueName)
+        .replace('{{QUEUE_NAME}}',  queueName))
+
         t.is(
             0,
             sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,
@@ -52,15 +55,15 @@ export class RabbitMQHelper {
 const publishYaml = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rabbitmq-publish
+  name: rabbitmq-publish-{{QUEUE_NAME}}
 spec:
   template:
     spec:
       containers:
       - name: rabbitmq-client
-        image: jeffhollan/rabbitmq-client:dev
+        image: jorturfer/tests-rabbitmq
         imagePullPolicy: Always
-        command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}"]
+        command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}", "{{QUEUE_NAME}}"]
       restartPolicy: Never`
 
 const rabbitmqDeployYaml = `apiVersion: v1

@@ -30,7 +30,7 @@ test.serial('Deployment should have 0 replicas on start', async t => {
 })
 
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
   // with messages published, the consumer deployment should start receiving the messages
   t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', testNamespace, 30, 5000))
@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq-consumer
-        image: jeffhollan/rabbitmq-client:dev
+        image: jorturfer/tests-rabbitmq
         imagePullPolicy: Always
         command:
           - receive
