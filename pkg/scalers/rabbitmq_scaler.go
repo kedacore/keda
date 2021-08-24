@@ -200,12 +200,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve metricName
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", val))
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(val)))
 	} else {
 		if meta.mode == rabbitModeQueueLength {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", meta.queueName))
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(meta.queueName)))
 		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", meta.queueName))
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", url.QueryEscape(meta.queueName)))
 		}
 	}
 
