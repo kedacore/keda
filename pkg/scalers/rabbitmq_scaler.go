@@ -368,7 +368,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 	// Override vhost if requested.
 	if s.metadata.vhostName != nil {
-		vhost = "/" + *s.metadata.vhostName
+		vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
 	}
 
 	if vhost == "" || vhost == "/" || vhost == "//" {
@@ -380,7 +380,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	if s.metadata.useRegex {
 		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?page=1&use_regex=true&pagination=false&name=", url.QueryEscape(s.metadata.queueName))
 	} else {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", url.QueryEscape(vhost), url.QueryEscape(s.metadata.queueName))
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, url.QueryEscape(s.metadata.queueName))
 	}
 
 	var info queueInfo

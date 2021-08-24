@@ -311,7 +311,7 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	for _, testData := range testRegexQueueInfoTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?use_regex=true&pagination=false&name=evaluate_trials"
+			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=%5Eevaluate_trials%24"
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -326,7 +326,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 		resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, testData.vhostPath), "plainHost": apiStub.URL}
 
 		metadata := map[string]string{
-			"queueName":   "evaluate_trials",
+			"queueName":   "^evaluate_trials$",
 			"hostFromEnv": host,
 			"protocol":    "http",
 		}
