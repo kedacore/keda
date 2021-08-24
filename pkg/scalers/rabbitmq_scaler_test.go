@@ -98,7 +98,7 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
-	{&testRabbitMQMetadata[7], "rabbitmq-namespace-name"},
+	{&testRabbitMQMetadata[7], "rabbitmq-namespace-2Fname"},
 	{&testRabbitMQMetadata[31], "rabbitmq-host1-sample"},
 }
 

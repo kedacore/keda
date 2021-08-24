@@ -70,6 +70,10 @@ type queueInfo struct {
 	Name                   string      `json:"name"`
 }
 
+type regexQueueInfo struct {
+	Queues []queueInfo `json:"items"`
+}
+
 type messageStat struct {
 	PublishDetail publishDetail `json:"publish_details"`
 }
@@ -340,12 +344,12 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 
 	if r.StatusCode == 200 {
 		if s.metadata.useRegex {
-			var results []queueInfo
-			err = json.NewDecoder(r.Body).Decode(&results)
+			var queues regexQueueInfo
+			err = json.NewDecoder(r.Body).Decode(&queues)
 			if err != nil {
-				return result, err
+				return queueInfo{}, err
 			}
-			result, err := getComposedQueue(s, results)
+			result, err := getComposedQueue(s, queues.Queues)
 			return result, err
 		}
 
