@@ -79,7 +79,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq-consumer
-        image: jorturfer/tests-rabbitmq
+        image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command:
           - receive

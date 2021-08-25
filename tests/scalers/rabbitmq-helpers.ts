@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq-client
-        image: jorturfer/tests-rabbitmq
+        image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}", "{{QUEUE_NAME}}"]
       restartPolicy: Never`
