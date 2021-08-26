@@ -506,7 +506,7 @@ func getMaximum(q []queueInfo) (int, float64) {
 	return maxMessages, maxRate
 }
 
-// Mask host for log porpouses
+// Mask host for log purposes
 func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))

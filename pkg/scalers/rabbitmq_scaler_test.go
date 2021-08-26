@@ -414,7 +414,11 @@ func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
 		"hostFromEnv": host,
 		"protocol":    "http",
 	}
-	meta, _ := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+
+	if err != nil {
+		t.Fatalf("Error parsing metadata (%s)", err)
+	}
 
 	s := &rabbitMQScaler{
 		metadata:   meta,
