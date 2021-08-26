@@ -329,7 +329,7 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder
 .mfractor/
 
-# Keda artifacts
+# KEDA artifacts
 dist/
 bin
 .DS_Store
@@ -347,3 +347,6 @@ cover.out
 
 # GO debug binary
 cmd/manager/debug.test
+
+# testenv binary location
+testbin

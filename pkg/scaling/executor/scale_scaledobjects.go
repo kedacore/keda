@@ -16,7 +16,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 )
 
-func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool) {
+func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool) {
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
@@ -54,43 +54,78 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		currentReplicas = currentScale.Spec.Replicas
 	}
 
-	switch {
-	case currentReplicas == 0 && isActive:
-		// current replica count is 0, but there is an active trigger.
-		// scale the ScaleTarget up
-		e.scaleFromZero(ctx, logger, scaledObject, currentScale)
-	case !isActive &&
-		currentReplicas > 0 &&
-		(scaledObject.Spec.MinReplicaCount == nil || *scaledObject.Spec.MinReplicaCount == 0):
-		// there are no active triggers, but the ScaleTarget has replicas.
-		// AND
-		// There is no minimum configured or minimum is set to ZERO. HPA will handles other scale down operations
+	// if scaledObject.Spec.MinReplicaCount is not set, then set the default value (0)
+	minReplicas := int32(0)
+	if scaledObject.Spec.MinReplicaCount != nil {
+		minReplicas = *scaledObject.Spec.MinReplicaCount
+	}
 
-		// Try to scale it down.
-		e.scaleToZero(ctx, logger, scaledObject, currentScale)
-	case !isActive &&
-		scaledObject.Spec.MinReplicaCount != nil &&
-		currentReplicas < *scaledObject.Spec.MinReplicaCount:
-		// there are no active triggers
-		// AND
-		// ScaleTarget replicas count is less than minimum replica count specified in ScaledObject
-		// Let's set ScaleTarget replicas count to correct value
-		_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *scaledObject.Spec.MinReplicaCount)
-		if err == nil {
-			logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
-				"Original Replicas Count", currentReplicas,
-				"New Replicas Count", *scaledObject.Spec.MinReplicaCount)
+	if isActive {
+		switch {
+		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
+			// triggers are active, Idle Replicas mode is enabled
+			// AND
+			// replica count is less then minimum replica count
+
+			currentReplicas == 0:
+			// triggers are active
+			// AND
+			// replica count is equal to 0
+
+			// Scale the ScaleTarget up
+			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, currentScale)
+		default:
+			// triggers are active, but we didn't need to scale (replica count > 0)
+
+			// update LastActiveTime to now
+			err := e.updateLastActiveTime(ctx, logger, scaledObject)
+			if err != nil {
+				logger.Error(err, "Error updating last active time")
+				return
+			}
 		}
-	case isActive:
-		// triggers are active, but we didn't need to scale (replica count > 0)
-		// Update LastActiveTime to now.
-		err := e.updateLastActiveTime(ctx, logger, scaledObject)
-		if err != nil {
-			logger.Error(err, "Error updating last active time")
-			return
+	} else {
+		// isActive == false
+		switch {
+		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:
+			// there are no active triggers, but a scaler responded with an error
+			// AND
+			// there is a fallback replicas count defined
+
+			// Scale to the fallback replicas count
+			e.doFallbackScaling(ctx, scaledObject, currentScale, logger, currentReplicas)
+		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount,
+			// there are no active triggers, Idle Replicas mode is enabled
+			// AND
+			// current replicas count is greater than Idle Replicas count
+
+			currentReplicas > 0 && minReplicas == 0:
+			// there are no active triggers, but the ScaleTarget has replicas
+			// AND
+			// there is no minimum configured or minimum is set to ZERO
+
+			// Try to scale the deployment down, HPA will handle other scale down operations
+			e.scaleToZeroOrIdle(ctx, logger, scaledObject, currentScale)
+		case currentReplicas < minReplicas && scaledObject.Spec.IdleReplicaCount == nil:
+			// there are no active triggers
+			// AND
+			// ScaleTarget replicas count is less than minimum replica count specified in ScaledObject
+			// AND
+			// Idle Replicas mode is disabled
+
+			// ScaleTarget replicas count to correct value
+			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *scaledObject.Spec.MinReplicaCount)
+			if err == nil {
+				logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
+					"Original Replicas Count", currentReplicas,
+					"New Replicas Count", *scaledObject.Spec.MinReplicaCount)
+			}
+		default:
+			// there are no active triggers
+			// AND
+			// nothing needs to be done (eg. deployment is scaled down)
+			logger.V(1).Info("ScaleTarget no change")
 		}
-	default:
-		logger.V(1).Info("ScaleTarget no change")
 	}
 
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
@@ -109,9 +144,21 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 }
 
+func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentScale *autoscalingv1.Scale, logger logr.Logger, currentReplicas int32) {
+	_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, scaledObject.Spec.Fallback.Replicas)
+	if err == nil {
+		logger.Info("Successfully set ScaleTarget replicas count to ScaledObject fallback.replicas",
+			"Original Replicas Count", currentReplicas,
+			"New Replicas Count", scaledObject.Spec.Fallback.Replicas)
+	}
+	if e := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
+		logger.Error(e, "Error setting fallback condition")
+	}
+}
+
 // An object will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
-func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
 	var cooldownPeriod time.Duration
 
 	if scaledObject.Spec.CooldownPeriod != nil {
@@ -120,21 +167,33 @@ func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, sca
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
-	// LastActiveTime can be nil if the ScaleTarget was scaled outside of Keda.
+	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
 	if scaledObject.Status.LastActiveTime == nil ||
 		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
 		// or last time a trigger was active was > cooldown period, so scale down.
-		currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale, 0)
+
+		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
+
+		currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale, scaleToReplicas)
 		if err == nil {
-			logger.Info("Successfully scaled ScaleTarget to 0 replicas")
-			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated, "Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, 0)
+			msg := "Successfully set ScaleTarget replicas count to ScaledObject"
+			if idleValue {
+				msg += " idleReplicaCount"
+			} else {
+				msg += " minReplicaCount"
+			}
+			logger.Info(msg, "Original Replicas Count", currentReplicas, "New Replicas Count", scaleToReplicas)
+
+			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
+				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error in setting active condition")
 				return
 			}
 		} else {
-			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed, "Failed to deactivated %s %s/%s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, 0)
+			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed,
+				"Failed to deactivated %s %s/%s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down",
@@ -151,7 +210,7 @@ func (e *scaleExecutor) scaleToZero(ctx context.Context, logger logr.Logger, sca
 	}
 }
 
-func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
 	var replicas int32
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		replicas = *scaledObject.Spec.MinReplicaCount
@@ -178,7 +237,7 @@ func (e *scaleExecutor) scaleFromZero(ctx context.Context, logger logr.Logger, s
 }
 
 func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv1.Scale, error) {
-	return (*e.scaleClient).Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	return e.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 }
 
 func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, replicas int32) (int32, error) {
@@ -195,6 +254,20 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
-	_, err := (*e.scaleClient).Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+	_, err := e.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 	return currentReplicas, err
+}
+
+// getIdleOrMinimumReplicaCount returns true if the second value returned is from IdleReplicaCount
+// it returns false if it is from MinReplicaCount followed by the actual value
+func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool, int32) {
+	if scaledObject.Spec.IdleReplicaCount != nil {
+		return true, *scaledObject.Spec.IdleReplicaCount
+	}
+
+	if scaledObject.Spec.MinReplicaCount == nil {
+		return false, 0
+	}
+
+	return false, *scaledObject.Spec.MinReplicaCount
 }

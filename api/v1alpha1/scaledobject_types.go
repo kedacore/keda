@@ -17,6 +17,7 @@ import (
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
+// +kubebuilder:printcolumn:name="Fallback",type="string",JSONPath=".status.conditions[?(@.type==\"Fallback\")].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledObject is a specification for a ScaledObject resource
@@ -29,6 +30,25 @@ type ScaledObject struct {
 	Status ScaledObjectStatus `json:"status,omitempty"`
 }
 
+// HealthStatus is the status for a ScaledObject's health
+type HealthStatus struct {
+	// +optional
+	NumberOfFailures *int32 `json:"numberOfFailures,omitempty"`
+	// +optional
+	Status HealthStatusType `json:"status,omitempty"`
+}
+
+// HealthStatusType is an indication of whether the health status is happy or failing
+type HealthStatusType string
+
+const (
+	// HealthStatusHappy means the status of the health object is happy
+	HealthStatusHappy HealthStatusType = "Happy"
+
+	// HealthStatusFailing means the status of the health object is failing
+	HealthStatusFailing HealthStatusType = "Failing"
+)
+
 // ScaledObjectSpec is the spec for a ScaledObject resource
 type ScaledObjectSpec struct {
 	ScaleTargetRef *ScaleTarget `json:"scaleTargetRef"`
@@ -37,6 +57,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 	// +optional
+	IdleReplicaCount *int32 `json:"idleReplicaCount,omitempty"`
+	// +optional
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
@@ -44,6 +66,14 @@ type ScaledObjectSpec struct {
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 
 	Triggers []ScaleTriggers `json:"triggers"`
+	// +optional
+	Fallback *Fallback `json:"fallback,omitempty"`
+}
+
+// Fallback is the spec for fallback options
+type Fallback struct {
+	FailureThreshold int32 `json:"failureThreshold"`
+	Replicas         int32 `json:"replicas"`
 }
 
 // AdvancedConfig specifies advance scaling options
@@ -79,7 +109,11 @@ type ScaleTriggers struct {
 	Metadata map[string]string `json:"metadata"`
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
+	// +optional
+	FallbackReplicas *int32 `json:"fallback,omitempty"`
 }
+
+// +k8s:openapi-gen=true
 
 // ScaledObjectStatus is the status for a ScaledObject resource
 // +optional
@@ -98,6 +132,8 @@ type ScaledObjectStatus struct {
 	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
+	// +optional
+	Health map[string]HealthStatus `json:"health,omitempty"`
 }
 
 // +kubebuilder:object:root=true

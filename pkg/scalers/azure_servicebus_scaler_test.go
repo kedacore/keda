@@ -17,14 +17,16 @@ const (
 	connectionSetting = "none"
 	namespaceName     = "ns"
 	messageCount      = "1000"
+	defaultSuffix     = "servicebus.windows.net"
 )
 
 type parseServiceBusMetadataTestData struct {
-	metadata    map[string]string
-	isError     bool
-	entityType  entityType
-	authParams  map[string]string
-	podIdentity kedav1alpha1.PodIdentityProvider
+	metadata       map[string]string
+	isError        bool
+	entityType     entityType
+	endpointSuffix string
+	authParams     map[string]string
+	podIdentity    kedav1alpha1.PodIdentityProvider
 }
 
 type azServiceBusMetricIdentifier struct {
@@ -37,37 +39,52 @@ var sampleResolvedEnv = map[string]string{
 	connectionSetting: "none",
 }
 
+// namespace example for setting up metric name
+var connectionResolvedEnv = map[string]string{
+	connectionSetting: "Endpoint=sb://namespacename.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=c29tZXJlYWxseWltcG9ydGFudGtleQ==",
+}
+
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
-	{map[string]string{}, true, none, map[string]string{}, ""},
+	{map[string]string{}, true, none, "", map[string]string{}, ""},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, defaultSuffix, map[string]string{}, ""},
 	// properly formed queue with message count
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, queue, defaultSuffix, map[string]string{}, ""},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, defaultSuffix, map[string]string{}, ""},
 	// properly formed topic & subscription with message count
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, subscription, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, subscription, defaultSuffix, map[string]string{}, ""},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, map[string]string{}, ""},
+	{map[string]string{"subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
+	// valid cloud
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "AzureChinaCloud"}, false, queue, "servicebus.chinacloudapi.cn", map[string]string{}, ""},
+	// invalid cloud
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "InvalidCloud"}, true, none, "", map[string]string{}, ""},
+	// private cloud with endpoint suffix
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private", "endpointSuffix": "servicebus.private.cloud"}, false, queue, "servicebus.private.cloud", map[string]string{}, ""},
+	// private cloud without endpoint suffix
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private"}, true, none, "", map[string]string{}, ""},
+	// endpoint suffix without cloud
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "endpointSuffix": "ignored"}, false, queue, defaultSuffix, map[string]string{}, ""},
 	// connection not set
-	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, ""},
 	// connection set in auth params
-	{map[string]string{"queueName": queueName}, false, queue, map[string]string{"connection": connectionSetting}, ""},
+	{map[string]string{"queueName": queueName}, false, queue, defaultSuffix, map[string]string{"connection": connectionSetting}, ""},
 	// pod identity but missing namespace
-	{map[string]string{"queueName": queueName}, true, queue, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// correct pod identity
-	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
-	{&parseServiceBusMetadataDataset[1], "azure-servicebus-testqueue"},
-	{&parseServiceBusMetadataDataset[3], "azure-servicebus-testtopic-testsubscription"},
+	{&parseServiceBusMetadataDataset[1], "azure-servicebus-namespacename-testqueue"},
+	{&parseServiceBusMetadataDataset[3], "azure-servicebus-namespacename-testtopic-testsubscription"},
 }
 
 var commonHTTPClient = &http.Client{
@@ -111,8 +128,13 @@ func TestParseServiceBusMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
-		if meta != nil && meta.entityType != testData.entityType {
-			t.Errorf("Expected entity type %v but got %v\n", testData.entityType, meta.entityType)
+		if meta != nil {
+			if meta.entityType != testData.entityType {
+				t.Errorf("Expected entity type %v but got %v\n", testData.entityType, meta.entityType)
+			}
+			if meta.endpointSuffix != testData.endpointSuffix {
+				t.Errorf("Expected endpoint suffix %v but got %v\n", testData.endpointSuffix, meta.endpointSuffix)
+			}
 		}
 	}
 }
@@ -151,7 +173,7 @@ func TestGetServiceBusLength(t *testing.T) {
 
 func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -51,7 +51,7 @@ type ScaledObjectReconciler struct {
 	GlobalHTTPTimeout time.Duration
 	Recorder          record.EventRecorder
 
-	scaleClient              *scale.ScalesGetter
+	scaleClient              scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
 	scaleHandler             scaling.ScaleHandler
@@ -90,7 +90,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Create Scale Client
 	scaleClient := initScaleClient(mgr, clientset)
-	r.scaleClient = &scaleClient
+	r.scaleClient = scaleClient
 
 	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
@@ -200,6 +200,11 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
 
+	err = r.checkReplicaCountBoundsAreValid(scaledObject)
+	if err != nil {
+		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
+	}
+
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
 	if err != nil {
@@ -226,10 +231,10 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 	return "ScaledObject is defined correctly and is ready for scaling", nil
 }
 
-// ensureScaledObjectLabel ensures that scaledObjectName=<scaledObject.Name> label exist in the ScaledObject
+// ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
 func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	const labelScaledObjectName = "scaledObjectName"
+	const labelScaledObjectName = "scaledobject.keda.sh/name"
 
 	if scaledObject.Labels == nil {
 		scaledObject.Labels = map[string]string{labelScaledObjectName: scaledObject.Name}
@@ -241,7 +246,7 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, sca
 		scaledObject.Labels[labelScaledObjectName] = scaledObject.Name
 	}
 
-	logger.V(1).Info("Adding scaledObjectName label on ScaledObject", "value", scaledObject.Name)
+	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
 	return r.Client.Update(context.TODO(), scaledObject)
 }
 
@@ -266,7 +271,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (*r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
@@ -303,6 +308,26 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 	}
 
 	return gvkr, nil
+}
+
+// checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
+// ie. that Min is not greater then Max or Idle greater or equal to Min
+func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *kedav1alpha1.ScaledObject) error {
+	min := int32(0)
+	if scaledObject.Spec.MinReplicaCount != nil {
+		min = *getHPAMinReplicas(scaledObject)
+	}
+	max := getHPAMaxReplicas(scaledObject)
+
+	if min > max {
+		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
+	}
+
+	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
+		return fmt.Errorf("IdleReplicaCount=%d must be less or equal to MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
+	}
+
+	return nil
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created

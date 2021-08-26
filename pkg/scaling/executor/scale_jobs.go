@@ -50,6 +50,21 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		logger.V(1).Info("No change in activity")
 	}
 
+	condition := scaledJob.Status.Conditions.GetActiveCondition()
+	if condition.IsUnknown() || condition.IsTrue() != isActive {
+		if isActive {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are active")
+				return
+			}
+		} else {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+				logger.Error(err, "Error setting active condition when triggers are not active")
+				return
+			}
+		}
+	}
+
 	err := e.cleanUp(scaledJob)
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
@@ -61,7 +76,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
 		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
 	}
-	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob"] = scaledJob.GetName()
+	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob.keda.sh/name"] = scaledJob.GetName()
 
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 
@@ -75,7 +90,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 		"app.kubernetes.io/version":    version.Version,
 		"app.kubernetes.io/part-of":    scaledJob.GetName(),
 		"app.kubernetes.io/managed-by": "keda-operator",
-		"scaledjob":                    scaledJob.GetName(),
+		"scaledjob.keda.sh/name":       scaledJob.GetName(),
 	}
 	for key, value := range scaledJob.ObjectMeta.Labels {
 		labels[key] = value
@@ -98,10 +113,10 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 			job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
 		}
 
-		// Set ScaledObject instance as the owner and controller
+		// Set ScaledJob instance as the owner and controller
 		err := controllerutil.SetControllerReference(scaledJob, job, e.reconcilerScheme)
 		if err != nil {
-			logger.Error(err, "Failed to set ScaledObject as the owner of the new Job")
+			logger.Error(err, "Failed to set ScaledJob as the owner of the new Job")
 		}
 
 		err = e.client.Create(context.TODO(), job)
@@ -127,7 +142,7 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}
@@ -169,12 +184,39 @@ func (e *scaleExecutor) isAnyPodRunningOrCompleted(j *batchv1.Job) bool {
 	return false
 }
 
+func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(j *batchv1.Job, pendingPodConditions []string) bool {
+	opts := []client.ListOption{
+		client.InNamespace(j.GetNamespace()),
+		client.MatchingLabels(map[string]string{"job-name": j.GetName()}),
+	}
+
+	pods := &corev1.PodList{}
+	err := e.client.List(context.TODO(), pods, opts...)
+	if err != nil {
+		return false
+	}
+
+	var fulfilledConditionsCount int
+
+	for _, pod := range pods.Items {
+		for _, pendingConditionType := range pendingPodConditions {
+			for _, podCondition := range pod.Status.Conditions {
+				if string(podCondition.Type) == pendingConditionType && podCondition.Status == corev1.ConditionTrue {
+					fulfilledConditionsCount++
+				}
+			}
+		}
+	}
+
+	return len(pendingPodConditions) == fulfilledConditionsCount
+}
+
 func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) int64 {
 	var pendingJobs int64
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}
@@ -186,8 +228,17 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 	for _, job := range jobs.Items {
 		job := job
-		if !e.isJobFinished(&job) && !e.isAnyPodRunningOrCompleted(&job) {
-			pendingJobs++
+
+		if !e.isJobFinished(&job) {
+			if len(scaledJob.Spec.ScalingStrategy.PendingPodConditions) > 0 {
+				if !e.areAllPendingPodConditionsFulfilled(&job, scaledJob.Spec.ScalingStrategy.PendingPodConditions) {
+					pendingJobs++
+				}
+			} else {
+				if !e.isAnyPodRunningOrCompleted(&job) {
+					pendingJobs++
+				}
+			}
 		}
 	}
 
@@ -200,7 +251,7 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 
 	opts := []client.ListOption{
 		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob": scaledJob.GetName()}),
+		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 	}
 
 	jobs := &batchv1.JobList{}

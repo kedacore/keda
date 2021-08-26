@@ -37,6 +37,13 @@ const (
 	defaultProtocol = autoProtocol
 )
 
+const (
+	sumOperation     = "sum"
+	avgOperation     = "avg"
+	maxOperation     = "max"
+	defaultOperation = sumOperation
+)
+
 type rabbitMQScaler struct {
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
@@ -45,12 +52,15 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName string
-	mode      string  // QueueLength or MessageRate
-	value     int     // trigger value (queue length or publish/sec. rate)
-	host      string  // connection string for either HTTP or AMQP protocol
-	protocol  string  // either http or amqp protocol
-	vhostName *string // override the vhost from the connection info
+	queueName  string
+	mode       string  // QueueLength or MessageRate
+	value      int     // trigger value (queue length or publish/sec. rate)
+	host       string  // connection string for either HTTP or AMQP protocol
+	protocol   string  // either http or amqp protocol
+	vhostName  *string // override the vhost from the connection info
+	useRegex   bool    // specify if the queueName contains a rexeg
+	operation  string  // specify the operation to apply in case of multiples queues
+	metricName string  // Custom metric name for trigger
 }
 
 type queueInfo struct {
@@ -58,6 +68,10 @@ type queueInfo struct {
 	MessagesUnacknowledged int         `json:"messages_unacknowledged"`
 	MessageStat            messageStat `json:"message_stats"`
 	Name                   string      `json:"name"`
+}
+
+type regexQueueInfo struct {
+	Queues []queueInfo `json:"items"`
 }
 
 type messageStat struct {
@@ -164,9 +178,39 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = &val
 	}
 
+	// Resolve useRegex
+	if val, ok := config.TriggerMetadata["useRegex"]; ok {
+		useRegex, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("useRegex has invalid value")
+		}
+		meta.useRegex = useRegex
+	}
+
+	// Resolve operation
+	meta.operation = defaultOperation
+	if val, ok := config.TriggerMetadata["operation"]; ok {
+		meta.operation = val
+	}
+
+	if meta.useRegex && meta.protocol == amqpProtocol {
+		return nil, fmt.Errorf("configure only useRegex with http protocol")
+	}
+
 	_, err := parseTrigger(&meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+	}
+
+	// Resolve metricName
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(val)))
+	} else {
+		if meta.mode == rabbitModeQueueLength {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(meta.queueName)))
+		} else {
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", url.QueryEscape(meta.queueName)))
+		}
 	}
 
 	return &meta, nil
@@ -290,19 +334,31 @@ func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 	return items.Messages, 0, nil
 }
 
-func getJSON(httpClient *http.Client, url string, target interface{}) error {
-	r, err := httpClient.Get(url)
+func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
+	var result queueInfo
+	r, err := s.httpClient.Get(url)
 	if err != nil {
-		return err
+		return result, err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode == 200 {
-		return json.NewDecoder(r.Body).Decode(target)
+		if s.metadata.useRegex {
+			var queues regexQueueInfo
+			err = json.NewDecoder(r.Body).Decode(&queues)
+			if err != nil {
+				return queueInfo{}, err
+			}
+			result, err := getComposedQueue(s, queues.Queues)
+			return result, err
+		}
+
+		err = json.NewDecoder(r.Body).Decode(&result)
+		return result, err
 	}
 
 	body, _ := ioutil.ReadAll(r.Body)
-	return fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
+	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
 func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
@@ -316,7 +372,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 	// Override vhost if requested.
 	if s.metadata.vhostName != nil {
-		vhost = "/" + *s.metadata.vhostName
+		vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
 	}
 
 	if vhost == "" || vhost == "/" || vhost == "//" {
@@ -324,11 +380,15 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	}
 
 	parsedURL.Path = ""
+	var getQueueInfoManagementURI string
+	if s.metadata.useRegex {
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?page=1&use_regex=true&pagination=false&name=", url.QueryEscape(s.metadata.queueName))
+	} else {
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, url.QueryEscape(s.metadata.queueName))
+	}
 
-	getQueueInfoManagementURI := fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, s.metadata.queueName)
-
-	info := queueInfo{}
-	err = getJSON(s.httpClient, getQueueInfoManagementURI, &info)
+	var info queueInfo
+	info, err = getJSON(s, getQueueInfoManagementURI)
 
 	if err != nil {
 		return nil, err
@@ -339,18 +399,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	var metricName string
-
-	if s.metadata.mode == rabbitModeQueueLength {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", s.metadata.queueName))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", s.metadata.queueName))
-	}
 	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -385,4 +438,63 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
+	var queue = queueInfo{}
+	queue.Name = "composed-queue"
+	queue.MessagesUnacknowledged = 0
+	if len(q) > 0 {
+		switch s.metadata.operation {
+		case sumOperation:
+			sumMessages, sumRate := getSum(q)
+			queue.Messages = sumMessages
+			queue.MessageStat.PublishDetail.Rate = sumRate
+		case avgOperation:
+			avgMessages, avgRate := getAverage(q)
+			queue.Messages = avgMessages
+			queue.MessageStat.PublishDetail.Rate = avgRate
+		case maxOperation:
+			maxMessages, maxRate := getMaximum(q)
+			queue.Messages = maxMessages
+			queue.MessageStat.PublishDetail.Rate = maxRate
+		default:
+			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.operation, sumOperation, avgOperation, maxOperation)
+		}
+	} else {
+		queue.Messages = 0
+		queue.MessageStat.PublishDetail.Rate = 0
+	}
+
+	return queue, nil
+}
+
+func getSum(q []queueInfo) (int, float64) {
+	var sumMessages int
+	var sumRate float64
+	for _, value := range q {
+		sumMessages += value.Messages
+		sumRate += value.MessageStat.PublishDetail.Rate
+	}
+	return sumMessages, sumRate
+}
+
+func getAverage(q []queueInfo) (int, float64) {
+	sumMessages, sumRate := getSum(q)
+	len := len(q)
+	return sumMessages / len, sumRate / float64(len)
+}
+
+func getMaximum(q []queueInfo) (int, float64) {
+	var maxMessages int
+	var maxRate float64
+	for _, value := range q {
+		if value.Messages > maxMessages {
+			maxMessages = value.Messages
+		}
+		if value.MessageStat.PublishDetail.Rate > maxRate {
+			maxRate = value.MessageStat.PublishDetail.Rate
+		}
+	}
+	return maxMessages, maxRate
 }

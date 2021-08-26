@@ -17,7 +17,7 @@ linters:
     - nolintlint
     - rowserrcheck
     - gofmt
-    - golint
+    - revive
     - goimports
     - misspell
     - bodyclose
@@ -62,6 +62,11 @@ issues:
   # Got "sigs.k8s.io/controller-runtime/pkg/client/fake is deprecated: please use pkg/envtest for testing"
   # This might not be ideal, see: https://github.com/kubernetes-sigs/controller-runtime/issues/768
     - path: scale_resolvers_test.go
+      linters:
+        - staticcheck
+  # Got "sigs.k8s.io/controller-runtime/pkg/client/fake is deprecated: please use pkg/envtest for testing"
+  # This might not be ideal, see: https://github.com/kubernetes-sigs/controller-runtime/issues/768
+    - path: kubernetes_workload_scaler_test.go
       linters:
         - staticcheck
     # https://github.com/go-critic/go-critic/issues/926

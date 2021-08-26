@@ -67,6 +67,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no auth token given")
 		}
+	case config.AuthParams["authToken"] != "":
+		authToken = config.AuthParams["authToken"]
 	default:
 		return nil, fmt.Errorf("no auth token given")
 	}
@@ -81,6 +83,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no organization name given")
 		}
+	case config.AuthParams["organizationName"] != "":
+		organizationName = config.AuthParams["organizationName"]
 	default:
 		return nil, fmt.Errorf("no organization name given")
 	}
@@ -92,6 +96,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["serverURL"]; ok {
+		serverURL = val
+	} else if val, ok := config.AuthParams["serverURL"]; ok {
 		serverURL = val
 	} else {
 		return nil, fmt.Errorf("no server url given")
@@ -113,7 +119,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
-		value, err := strconv.ParseFloat(val, 10)
+		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %s", err.Error())
 		}
@@ -164,12 +170,14 @@ func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
 		return 0, fmt.Errorf("no results found from query")
 	}
 
-	val, ok := result.Record().Value().(float64)
-	if !ok {
-		return 0, fmt.Errorf("value could not be parsed into a float")
+	switch valRaw := result.Record().Value().(type) {
+	case float64:
+		return valRaw, nil
+	case int64:
+		return float64(valRaw), nil
+	default:
+		return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
 	}
-
-	return val, nil
 }
 
 // GetMetrics connects to influxdb via the client and returns a value based on the query

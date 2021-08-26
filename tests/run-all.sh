@@ -4,7 +4,7 @@ set -eu
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=10
+concurrent_tests_limit=5
 pids=()
 lookup=()
 failed_count=0

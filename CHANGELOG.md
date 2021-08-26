@@ -5,6 +5,8 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.4.0](#v240)
+- [v2.3.0](#v230)
 - [v2.2.0](#v220)
 - [v2.1.0](#v210)
 - [v2.0.0](#v200)
@@ -20,27 +22,87 @@
 
 ### New
 
-- Add Graphite Scaler ([#1749](https://github.com/kedacore/keda/pull/1749))
-- Add Azure Pipelines Scaler ([#1706](https://github.com/kedacore/keda/pull/1706))
-- Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
-- Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ### Improvements
 
+- Improve validation in Cron scaler in case start & end input is same.([#2032](https://github.com/kedacore/keda/pull/2032))
+- Improve the cron validation in Cron Scaler ([#2038](https://github.com/kedacore/keda/pull/2038))
+- Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
+- Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Other
+
+- Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
+
+## v2.4.0
+
+### New
+
+- Add Solace PubSub+ Event Broker scaler ([#1945](https://github.com/kedacore/keda/pull/1945))
+- Add Selenium Grid scaler ([#1971](https://github.com/kedacore/keda/pull/1971))
+- Add Kubernetes Workload scaler ([#2010](https://github.com/kedacore/keda/pull/2010))
+- Introduce fallback functionality ([#1872](https://github.com/kedacore/keda/issues/1872))
+- Introduce Idle Replica Mode ([#1958](https://github.com/kedacore/keda/pull/1958))
+- ScaledJob: Support pod conditions for pending job count calculation ([#1970](https://github.com/kedacore/keda/pull/1970)|[#2009](https://github.com/kedacore/keda/pull/2009))
+
+### Improvements
+
+- Optimize Kafka scaler by fetching all topic offsets using a single HTTP request ([#1956](https://github.com/kedacore/keda/pull/1956))
+- Adding ability to specify Kafka Broker Version ([#1866](https://github.com/kedacore/keda/pull/1866))
+- Support custom metric name in RabbitMQ scaler ([#1976](https://github.com/kedacore/keda/pull/1976))
+- Support using regex to select the queues in RabbitMQ scaler ([#1957](https://github.com/kedacore/keda/pull/1957))
+- Extend Azure Monitor scaler to support custom metrics ([#1883](https://github.com/kedacore/keda/pull/1883))
+- Support non-public cloud environments in the Azure Service Bus scaler ([#1907](https://github.com/kedacore/keda/pull/1907))
+- Support non-public cloud environments in the Azure Storage Queue and Azure Storage Blob scalers ([#1863](https://github.com/kedacore/keda/pull/1863))
+- Adjusts InfluxDB scaler to support queries that return integers in addition to those that return floats ([#1977](https://github.com/kedacore/keda/pull/1977))
+- Allow InfluxDB `authToken`, `serverURL`, and `organizationName` to be sourced from `(Cluster)TriggerAuthentication` ([#1904](https://github.com/kedacore/keda/pull/1904))
+- IBM MQ scaler password handling fix ([#1939](https://github.com/kedacore/keda/pull/1939))
+- Metrics APIServer: Add ratelimiting parameters to override client ([#1944](https://github.com/kedacore/keda/pull/1944))
+- Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
+- Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
+- Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
+
+### Breaking Changes
+
+- Fix `keda-system-auth-delegator` ClusterRoleBinding name ([#1616](https://github.com/kedacore/keda/pull/1616). Upgrading may leave a stray ClusterRoleBinding with the old name `keda:system:auth-delegator` behind.
+
+### Other
+
+- Use `scaled[object/job].keda.sh/` prefix for KEDA related labels ([#2008](https://github.com/kedacore/keda/pull/2008))
+
+## v2.3.0
+
+### New
+
+- Add Azure Pipelines Scaler ([#1706](https://github.com/kedacore/keda/pull/1706))
+- Add OpenStack Metrics Scaler ([#1382](https://github.com/kedacore/keda/issues/1382))
+- Added basic, tls and bearer authentication support to the Prometheus scaler [#1559](https://github.com/kedacore/keda/issues/1559)
+- Add header Origin to Apache Artemis scaler [#1796](https://github.com/kedacore/keda/pull/1796)
+
+### Improvements
+
+- Azure Service Bus Scaler: Namespace from `connectionString` parameter is added to `metricName` due to uniqueness violation for clusters having more than one queue with the same name  ([#1755](https://github.com/kedacore/keda/issues/1755))
 - Remove app.kubernetes.io/version label from label selectors ([#1696](https://github.com/kedacore/keda/pull/1696))
 - Apache Kafka Scaler: Add `allowIdleConsumers` to the list of trigger parameters ([#1684](https://github.com/kedacore/keda/pull/1684))
 - Fixed goroutine leaks in usage of timers ([#1704](https://github.com/kedacore/keda/pull/1704) | [#1739](https://github.com/kedacore/keda/pull/1739))
 - Setting timeouts in the HTTP client used by the IBM MQ scaler ([#1758](https://github.com/kedacore/keda/pull/1758))
 - Fix cleanup of removed triggers ([#1768](https://github.com/kedacore/keda/pull/1768))
 - Eventhub Scaler: Add trigger parameter `checkpointStrategy` to support more language-specific checkpoints ([#1621](https://github.com/kedacore/keda/pull/1621))
+- Fix Azure Blob scaler when using multiple triggers with the same `blobContainerName` and added a optional `metricName` field ([#1816](https://github.com/kedacore/keda/pull/1816))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- None.
 
 ### Other
 
 - Adding OpenStack Swift scaler end-to-end tests ([#1522](https://github.com/kedacore/keda/pull/1522))
+- Pass deepCopy objects to the polling goroutines ([#1812](https://github.com/kedacore/keda/pull/1812))
 
 ## v2.2.0
 

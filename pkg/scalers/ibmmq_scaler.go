@@ -134,10 +134,10 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	default:
 		return nil, fmt.Errorf("no username given")
 	}
-	value, booleanValue := config.AuthParams["password"] // booleanValue reports whether the type assertion succeeded or not
+	pwdValue, booleanValue := config.AuthParams["password"] // booleanValue reports whether the type assertion succeeded or not
 	switch {
-	case booleanValue && value != "":
-		meta.password = val
+	case booleanValue && pwdValue != "":
+		meta.password = pwdValue
 	case config.TriggerMetadata["passwordFromEnv"] != "":
 		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 	default:

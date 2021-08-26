@@ -6,6 +6,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {sleep, waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-pipelines-test'
 const organizationURL = process.env['AZURE_DEVOPS_ORGANIZATION_URL']
@@ -15,7 +16,7 @@ const buildDefinitionID = process.env['AZURE_DEVOPS_BUILD_DEFINITON_ID']
 const poolName = process.env['AZURE_DEVOPS_POOL_NAME']
 
 test.before(async t => {
-  if (!organizationURL && !personalAccessToken && !projectName && !buildDefinitionID && !poolName) {
+  if (!organizationURL || !personalAccessToken || !projectName || !buildDefinitionID || !poolName) {
     t.fail('AZURE_DEVOPS_ORGANIZATION_URL, AZURE_DEVOPS_PAT, AZURE_DEVOPS_PROJECT, AZURE_DEVOPS_BUILD_DEFINITON_ID and AZURE_DEVOPS_POOL_NAME environment variables are required for azure pipelines tests')
   }
 
@@ -33,15 +34,17 @@ test.before(async t => {
   sh.config.silent = true
   const base64Token = Buffer.from(personalAccessToken).toString('base64')
   const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml.replace('{{AZP_TOKEN_BASE64}}', base64Token).replace('{{AZP_URL}}', organizationURL).replace('{{AZP_POOL}}', poolName).replace('{{AZP_POOL_ID}}', poolID.toString()))
+  fs.writeFileSync(tmpFile.name, deployYaml
+      .replace('{{AZP_TOKEN_BASE64}}', base64Token)
+      .replace('{{AZP_URL}}', organizationURL)
+      .replace('{{AZP_POOL}}', poolName)
+      .replace('{{AZP_POOL_ID}}', poolID.toString()))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
   t.is(0, sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 })
 
-test.serial('Deployment should have 1 replicas on start', t => {
-  sh.exec('sleep 5s')
-  let replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-  t.is(replicaCount, '1', 'replica count should start out as 1')
+test.serial('Deployment should have 1 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should start out as 1')
 })
 
 test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
@@ -51,38 +54,18 @@ test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async
   var definitionID = parseInt(buildDefinitionID)
 
   // wait for the first agent to be registered in the agent pool
-  await new Promise(resolve => setTimeout(resolve, 20 * 1000));
+  await sleep(20 * 1000)
 
   for(let i = 0; i < 3; i++) {
     await build.queueBuild(null, projectName, null, null, null, definitionID)
   }
 
-  var replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-
-  for (let i = 0; i < 10 && replicaCount !== '3'; i++) {
-    replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-    if (replicaCount !== '3') {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  t.is(replicaCount, '3', 'replica count should be 3 after starting 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
 })
 
 test.serial('Deployment should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  await new Promise(resolve => setTimeout(resolve, 10 * 60 * 1000));
-
-  var replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-
-  for (let i = 0; i < 20 && replicaCount !== '1'; i++) {
-    replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-    if (replicaCount !== '1') {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  t.is(replicaCount, '1', 'replica count should be 1 after 10 minutes')
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
 
 test.after.always('clean up azure-pipelines deployment', t => {
@@ -151,6 +134,8 @@ spec:
     name: test-deployment
   minReplicaCount: 1
   maxReplicaCount: 3
+  pollingInterval: 50
+  cooldownPeriod: 60
   triggers:
   - type: azure-pipelines
     metadata:

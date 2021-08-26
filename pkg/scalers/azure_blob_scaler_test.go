@@ -29,6 +29,8 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// properly formed
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "5", "blobDelimiter": "/", "blobPrefix": "blobsubpath"}, false, testAzBlobResolvedEnv, map[string]string{}, ""},
+	// properly formed with metricName
+	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "5", "blobDelimiter": "/", "blobPrefix": "blobsubpath", "metricName": "customname"}, false, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// Empty blobcontainerName
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// improperly formed blobCount
@@ -39,13 +41,24 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{"accountName": "", "blobContainerName": "sample_container"}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without blob container name
 	{map[string]string{"accountName": "sample_acc", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with cloud
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container", "cloud": "AzureGermanCloud"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with invalid cloud
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container", "cloud": "InvalidCloud"}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with private cloud and endpoint suffix
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container", "cloud": "Private", "endpointSuffix": "queue.core.private.cloud"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with private cloud and no endpoint suffix
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container", "cloud": "Private", "endpointSuffix": ""}, true, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with endpoint suffix and no cloud
+	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container", "cloud": "", "endpointSuffix": "ignored"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// connection from authParams
 	{map[string]string{"blobContainerName": "sample_container", "blobCount": "5"}, false, testAzBlobResolvedEnv, map[string]string{"connection": "value"}, kedav1alpha1.PodIdentityProviderNone},
 }
 
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
-	{&testAzBlobMetadata[1], "azure-blob-sample"},
-	{&testAzBlobMetadata[4], "azure-blob-sample_container"},
+	{&testAzBlobMetadata[1], "azure-blob-sample-blobsubpath-"},
+	{&testAzBlobMetadata[2], "azure-blob-customname"},
+	{&testAzBlobMetadata[5], "azure-blob-sample_container"},
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {

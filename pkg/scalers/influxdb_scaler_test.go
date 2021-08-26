@@ -12,8 +12,9 @@ var testInfluxDBResolvedEnv = map[string]string{
 }
 
 type parseInfluxDBMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata   map[string]string
+	isError    bool
+	authParams map[string]string
 }
 
 type influxDBMetricIdentifier struct {
@@ -23,21 +24,24 @@ type influxDBMetricIdentifier struct {
 
 var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	// nothing passed
-	{map[string]string{}, true},
+	{map[string]string{}, true, map[string]string{}},
 	// everything is passed in verbatim
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false, map[string]string{}},
 	// everything is passed in (environment variables)
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationNameFromEnv": "INFLUX_ORG", "query": "from(bucket: hello)", "thresholdValue": "10", "authTokenFromEnv": "INFLUX_TOKEN"}, false},
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationNameFromEnv": "INFLUX_ORG", "query": "from(bucket: hello)", "thresholdValue": "10", "authTokenFromEnv": "INFLUX_TOKEN"}, false, map[string]string{}},
 	// no serverURL passed
-	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
+	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true, map[string]string{}},
 	// no organization name passed
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, true, map[string]string{}},
 	// no query passed
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "authToken": "myToken"}, true},
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "authToken": "myToken"}, true, map[string]string{}},
 	// no threshold value passed
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "authToken": "myToken"}, true},
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "authToken": "myToken"}, true, map[string]string{}},
 	// no auth token passed
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, true}}
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, true, map[string]string{}},
+	// authToken, organizationName, and serverURL are defined in authParams
+	{map[string]string{"query": "from(bucket: hello)", "thresholdValue": "10"}, false, map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "authToken": "myToken"}},
+}
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
 	{&testInfluxDBMetadata[1], "influxdb-influx_metric"},
@@ -47,7 +51,7 @@ var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
 func TestInfluxDBParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testInfluxDBMetadata {
-		_, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testInfluxDBResolvedEnv})
+		_, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
