@@ -29,6 +29,7 @@
 - Improve validation in Cron scaler in case start & end input is same.([#2032](https://github.com/kedacore/keda/pull/2032))
 - Improve the cron validation in Cron Scaler ([#2038](https://github.com/kedacore/keda/pull/2038))
 - Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
+- Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
 
 ### Breaking Changes
 
