@@ -7,10 +7,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
-	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,6 +16,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 )
 
 const metricName = "some_metric_name"
@@ -67,7 +68,7 @@ var _ = Describe("fallback", func() {
 		primeGetMetrics(scaler, expectedMetricValue)
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -97,7 +98,7 @@ var _ = Describe("fallback", func() {
 		)
 
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -112,7 +113,7 @@ var _ = Describe("fallback", func() {
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -140,7 +141,7 @@ var _ = Describe("fallback", func() {
 		)
 
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -169,7 +170,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -223,7 +224,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 
 		statusWriter := mock_client.NewMockStatusWriter(ctrl)
-		statusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
 		client.EXPECT().Status().Return(statusWriter)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
@@ -253,7 +254,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -286,7 +287,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 		Expect(err).ToNot(HaveOccurred())
@@ -319,7 +320,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 		Expect(err).ShouldNot(BeNil())
@@ -365,9 +366,9 @@ func (h *healthStatusMatcher) NegatedFailureMessage(actual interface{}) (message
 	}
 }
 
-func expectStatusUpdate(ctrl *gomock.Controller, client *mock_client.MockClient) {
+func expectStatusPatch(ctrl *gomock.Controller, client *mock_client.MockClient) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
-	statusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 	client.EXPECT().Status().Return(statusWriter)
 }
 
