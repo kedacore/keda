@@ -2,7 +2,7 @@
 # Variables                                      #
 ##################################################
 SHELL           = /bin/bash
-VERSION		   ?= main
+VERSION        ?= main
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
