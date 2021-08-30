@@ -64,8 +64,8 @@ var isScalableCache map[string]bool
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
 	isScalableCache = map[string]bool{
-		"deployments.apps": true,
-		"statefusets.apps": true,
+		"deployments.apps":  true,
+		"statefulsets.apps": true,
 	}
 }
 
