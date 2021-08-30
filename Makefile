@@ -1,7 +1,8 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= main
+SHELL           = /bin/bash
+VERSION        ?= main
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
