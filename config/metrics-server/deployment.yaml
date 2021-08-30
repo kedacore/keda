@@ -46,6 +46,8 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: ""
           args:
           - /usr/local/bin/keda-adapter
           - --secure-port=6443
