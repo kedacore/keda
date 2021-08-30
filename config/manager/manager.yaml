@@ -57,6 +57,8 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: ""
       terminationGracePeriodSeconds: 10
       nodeSelector:
         beta.kubernetes.io/os: linux
