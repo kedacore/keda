@@ -1,14 +1,44 @@
 domain: keda.sh
-layout: go.kubebuilder.io/v2
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
 projectName: keda
 repo: github.com/kedacore/keda
 resources:
-- group: keda.sh
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: keda.sh
+  group: keda
   kind: ScaledObject
+  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
   version: v1alpha1
-- group: keda.sh
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: keda.sh
+  group: keda
   kind: ScaledJob
+  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
   version: v1alpha1
-version: 3-alpha
-plugins:
-  go.sdk.operatorframework.io/v2-alpha: {}
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: keda.sh
+  group: keda
+  kind: TriggerAuthentication
+  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: keda.sh
+  group: keda
+  kind: ClusterTriggerAuthentication
+  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  version: v1alpha1
+version: "3"
