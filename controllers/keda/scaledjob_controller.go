@@ -1,27 +1,42 @@
-package controllers
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package keda
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	corev1 "k8s.io/api/core/v1"
-
-	"k8s.io/client-go/tools/record"
-
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -31,7 +46,6 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Log               logr.Logger
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
 	Recorder          record.EventRecorder
@@ -50,12 +64,12 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // Reconcile performs reconciliation on the identified ScaledJob resource based on the request information passed, returns the result and an error (if any).
-func (r *ScaledJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("ScaledJob.Namespace", req.Namespace, "ScaledJob.Name", req.Name)
+func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	reqLogger := log.FromContext(ctx)
 
 	// Fetch the ScaledJob instance
 	scaledJob := &kedav1alpha1.ScaledJob{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, scaledJob)
+	err := r.Client.Get(ctx, req.NamespacedName, scaledJob)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

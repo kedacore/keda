@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The KEDA Authors
+Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
