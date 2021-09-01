@@ -39,6 +39,7 @@
 ### Other
 
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
+- Bump Golang to 1.16.7 ([#2065](https://github.com/kedacore/keda/pull/2065))
 
 ## v2.4.0
 
