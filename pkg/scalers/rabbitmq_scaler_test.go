@@ -431,18 +431,14 @@ func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
 }
 
 type getQueueInfoNavigationTestData struct {
-	responses      []string
-	responseStatus int
-	isActive       bool
-	extraMetadata  map[string]string
-	vhostPath      string
+	responses []string
 }
 
 var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
 	// sum queue length
-	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 3}`, `{"items":[], "filtered_count": 250, "page": 2, "page_count": 3}`, `{"items":[], "filtered_count": 250, "page": 3, "page_count": 3}`}, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 2}`, `{"items":[], "filtered_count": 250, "page": 2, "page_count": 2}`}, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 1}`}, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
+	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 3}`, `{"items":[], "filtered_count": 250, "page": 2, "page_count": 3}`, `{"items":[], "filtered_count": 250, "page": 3, "page_count": 3}`}},
+	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 2}`, `{"items":[], "filtered_count": 250, "page": 2, "page_count": 2}`}},
+	{[]string{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 1}`}},
 }
 
 func TestGetQueueInfoNavigation(t *testing.T) {
@@ -456,22 +452,20 @@ func TestGetQueueInfoNavigation(t *testing.T) {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
 
-			w.WriteHeader(testData.responseStatus)
+			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(response))
 			if err != nil {
 				t.Error("Expect request path to =", response, "but it is", err)
 			}
 		}))
 
-		resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, testData.vhostPath), "plainHost": apiStub.URL}
+		resolvedEnv := map[string]string{host: apiStub.URL, "plainHost": apiStub.URL}
 
 		metadata := map[string]string{
 			"queueName":   "evaluate_trials",
 			"hostFromEnv": host,
 			"protocol":    "http",
-		}
-		for k, v := range testData.extraMetadata {
-			metadata[k] = v
+			"useRegex":    "true",
 		}
 
 		s, err := NewRabbitMQScaler(
