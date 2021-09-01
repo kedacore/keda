@@ -31,6 +31,7 @@
 - Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
 - Anonymize the host in case of HTTP failure (RabbitMQ Scaler) ([#2041](https://github.com/kedacore/keda/pull/2041))
 - Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
+- Adds support for automatic navigation through the pages using regex in RabbitMQ Scaler ([#2087](https://github.com/kedacore/keda/pull/2087))
 
 ### Breaking Changes
 
