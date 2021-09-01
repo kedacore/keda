@@ -69,7 +69,7 @@ type rabbitMQMetadata struct {
 	useRegex   bool          // specify if the queueName contains a rexeg
 	operation  string        // specify the operation to apply in case of multiples queues
 	metricName string        // custom metric name for trigger
-	timeout    time.Duration // custom http timeout for a specifyc trigger
+	timeout    time.Duration // custom http timeout for a specific trigger
 }
 
 type queueInfo struct {
