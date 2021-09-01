@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The KEDA Authors
+Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +74,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // KedaV1alpha1 retrieves the KedaV1alpha1Client
 func (c *Clientset) KedaV1alpha1() kedav1alpha1.KedaV1alpha1Interface {
