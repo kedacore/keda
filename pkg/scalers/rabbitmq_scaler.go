@@ -387,9 +387,8 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 func getQueueInfo(s *rabbitMQScaler, url string) (queueInfo, error) {
 	if s.metadata.useRegex {
 		return getQueueInfoUsingRegex(s, url)
-	} else {
-		return getQueueInfoFromSingleQueue(s, url)
 	}
+	return getQueueInfoFromSingleQueue(s, url)
 }
 
 func getQueueInfoFromSingleQueue(s *rabbitMQScaler, url string) (queueInfo, error) {
@@ -424,8 +423,8 @@ func getQueueInfoUsingRegex(s *rabbitMQScaler, url string) (queueInfo, error) {
 }
 
 func getQueuesPaginated(s *rabbitMQScaler, url string, page int) ([]queueInfo, error) {
-	pageUrl := fmt.Sprintf("%s&page=%d&page_size=%d", url, page, httpPageSize)
-	r, err := s.httpClient.Get(pageUrl)
+	pageURL := fmt.Sprintf("%s&page=%d&page_size=%d", url, page, httpPageSize)
+	r, err := s.httpClient.Get(pageURL)
 	if err != nil {
 		return nil, err
 	}
