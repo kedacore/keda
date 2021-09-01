@@ -29,7 +29,7 @@ spec:
           command:
             - /keda
           args:
-            - --enable-leader-election
+            - --leader-elect
             - --zap-log-level=info
             - --zap-encoder=console
           imagePullPolicy: Always
