@@ -51,6 +51,10 @@ const (
 	defaultOperation = sumOperation
 )
 
+const (
+	httpPageSize = 100
+)
+
 type rabbitMQScaler struct {
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
@@ -78,7 +82,10 @@ type queueInfo struct {
 }
 
 type regexQueueInfo struct {
-	Queues []queueInfo `json:"items"`
+	Queues         []queueInfo `json:"items"`
+	FilteredQueues int         `json:"filtered_count"`
+	CurrentPage    int         `json:"page"`
+	TotalPages     int         `json:"page_count"`
 }
 
 type messageStat struct {
@@ -341,33 +348,6 @@ func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 	return items.Messages, 0, nil
 }
 
-func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
-	var result queueInfo
-	r, err := s.httpClient.Get(url)
-	if err != nil {
-		return result, err
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode == 200 {
-		if s.metadata.useRegex {
-			var queues regexQueueInfo
-			err = json.NewDecoder(r.Body).Decode(&queues)
-			if err != nil {
-				return queueInfo{}, err
-			}
-			result, err := getComposedQueue(s, queues.Queues)
-			return result, err
-		}
-
-		err = json.NewDecoder(r.Body).Decode(&result)
-		return result, err
-	}
-
-	body, _ := ioutil.ReadAll(r.Body)
-	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
-}
-
 func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	parsedURL, err := url.Parse(s.metadata.host)
 
@@ -389,19 +369,88 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	parsedURL.Path = ""
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?page=1&use_regex=true&pagination=false&name=", url.QueryEscape(s.metadata.queueName))
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?use_regex=true&pagination=true&name=", url.QueryEscape(s.metadata.queueName))
 	} else {
 		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, url.QueryEscape(s.metadata.queueName))
 	}
 
 	var info queueInfo
-	info, err = getJSON(s, getQueueInfoManagementURI)
+	info, err = getQueueInfo(s, getQueueInfoManagementURI)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &info, nil
+}
+
+func getQueueInfo(s *rabbitMQScaler, url string) (queueInfo, error) {
+	if s.metadata.useRegex {
+		return getQueueInfoUsingRegex(s, url)
+	} else {
+		return getQueueInfoFromSingleQueue(s, url)
+	}
+}
+
+func getQueueInfoFromSingleQueue(s *rabbitMQScaler, url string) (queueInfo, error) {
+	var result queueInfo
+	r, err := s.httpClient.Get(url)
+	if err != nil {
+		return result, err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode == 200 {
+		err = json.NewDecoder(r.Body).Decode(&result)
+		return result, err
+	}
+
+	body, _ := ioutil.ReadAll(r.Body)
+	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
+}
+
+func getQueueInfoUsingRegex(s *rabbitMQScaler, url string) (queueInfo, error) {
+	var queues []queueInfo
+	var result queueInfo
+	var err error
+
+	queues, err = getQueuesPaginated(s, url, 1)
+	if err != nil {
+		return result, err
+	}
+
+	result, err = getComposedQueue(s, queues)
+	return result, err
+}
+
+func getQueuesPaginated(s *rabbitMQScaler, url string, page int) ([]queueInfo, error) {
+	pageUrl := fmt.Sprintf("%s&page=%d&page_size=%d", url, page, httpPageSize)
+	r, err := s.httpClient.Get(pageUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode == 200 {
+		var page regexQueueInfo
+		err = json.NewDecoder(r.Body).Decode(&page)
+		if err != nil {
+			return nil, err
+		}
+		if page.CurrentPage < page.TotalPages {
+			next, err := getQueuesPaginated(s, url, page.CurrentPage+1)
+			if err != nil {
+				return nil, err
+			}
+			page.Queues = append(page.Queues, next...)
+		} else {
+			rabbitmqLog.Info(fmt.Sprintf("%d queues match with '%s'", page.FilteredQueues, s.metadata.queueName))
+		}
+		return page.Queues, nil
+	}
+
+	body, _ := ioutil.ReadAll(r.Body)
+	return nil, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
