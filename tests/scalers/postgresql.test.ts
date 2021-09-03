@@ -15,7 +15,7 @@ test.before(t => {
     // install postgresql
     sh.exec(`kubectl create namespace ${postgreSQLNamespace}`)
     const postgreSQLTmpFile = tmp.fileSync()
-    fs.writeFileSync(postgreSQLTmpFile.name, postgresqlDeploymentYaml.replace('{{POSTGRES_USER}}', postgreSQLUsername)        
+    fs.writeFileSync(postgreSQLTmpFile.name, postgresqlDeploymentYaml.replace('{{POSTGRES_USER}}', postgreSQLUsername)
         .replace('{{POSTGRES_PASSWORD}}', postgreSQLPassword)
         .replace('{{POSTGRES_DB}}', postgreSQLDatabase)
         .replace('{{POSTGRES_DB}}', postgreSQLDatabase))
@@ -36,7 +36,7 @@ test.before(t => {
     t.not(postgresqlPod, '')
     const createTableSQL = `CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));`
     sh.exec( `kubectl exec -n ${postgreSQLNamespace} ${postgresqlPod} -- psql -U ${postgreSQLUsername} -d ${postgreSQLDatabase} -c "${createTableSQL}"`)
-    
+
     sh.config.silent = true
     sh.exec(`kubectl create namespace ${testNamespace}`)
     // deploy streams consumer app, scaled object etc.
