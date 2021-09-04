@@ -303,8 +303,8 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.
 		}
 	}
 	maxValue = min(scaledJob.MaxReplicaCount(), maxValue)
-	h.logger.Info("Scaler maxValue", "MultipleScalersOption", scaledJob.Spec.ScalingStrategy.MultipleScalersOption)
-	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
+	h.logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersOption", scaledJob.Spec.ScalingStrategy.MultipleScalersOption)
+
 	return isActive, queueLength, maxValue
 }
 
