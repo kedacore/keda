@@ -58,6 +58,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - '*'
+- apiGroups:
   - keda.sh
   resources:
   - clustertriggerauthentications

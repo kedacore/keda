@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package provider
 
 import (
@@ -7,11 +23,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
-	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
-	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -20,6 +31,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 )
 
 const metricName = "some_metric_name"
@@ -67,7 +84,7 @@ var _ = Describe("fallback", func() {
 		primeGetMetrics(scaler, expectedMetricValue)
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -97,7 +114,7 @@ var _ = Describe("fallback", func() {
 		)
 
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -112,7 +129,7 @@ var _ = Describe("fallback", func() {
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -140,7 +157,7 @@ var _ = Describe("fallback", func() {
 		)
 
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -169,7 +186,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -223,7 +240,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 
 		statusWriter := mock_client.NewMockStatusWriter(ctrl)
-		statusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
 		client.EXPECT().Status().Return(statusWriter)
 
 		metrics, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
@@ -253,7 +270,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 
@@ -286,7 +303,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 		Expect(err).ToNot(HaveOccurred())
@@ -319,7 +336,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusUpdate(ctrl, client)
+		expectStatusPatch(ctrl, client)
 
 		_, err := providerUnderTest.getMetricsWithFallback(scaler, metricName, nil, so, metricSpec)
 		Expect(err).ShouldNot(BeNil())
@@ -365,9 +382,9 @@ func (h *healthStatusMatcher) NegatedFailureMessage(actual interface{}) (message
 	}
 }
 
-func expectStatusUpdate(ctrl *gomock.Controller, client *mock_client.MockClient) {
+func expectStatusPatch(ctrl *gomock.Controller, client *mock_client.MockClient) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
-	statusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 	client.EXPECT().Status().Return(statusWriter)
 }
 

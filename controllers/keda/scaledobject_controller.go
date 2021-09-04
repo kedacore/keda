@@ -1,4 +1,20 @@
-package controllers
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package keda
 
 import (
 	"context"
@@ -6,13 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
-
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,14 +36,17 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/util"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -42,10 +58,10 @@ import (
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
+// +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
-	Log               logr.Logger
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
@@ -64,18 +80,20 @@ var isScalableCache map[string]bool
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
 	isScalableCache = map[string]bool{
-		"deployments.apps": true,
-		"statefusets.apps": true,
+		"deployments.apps":  true,
+		"statefulsets.apps": true,
 	}
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	setupLog := log.Log.WithName("setup")
+
 	// create Discovery clientset
 	// TODO If we need to increase the QPS of scaling API calls, copy and tweak this RESTConfig.
 	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
-		r.Log.Error(err, "Not able to create Discovery clientset")
+		setupLog.Error(err, "Not able to create Discovery clientset")
 		return err
 	}
 
@@ -83,9 +101,9 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	version, err := clientset.ServerVersion()
 	if err == nil {
 		r.kubeVersion = kedautil.NewK8sVersion(version)
-		r.Log.Info("Running on Kubernetes "+r.kubeVersion.PrettyVersion, "version", version)
+		setupLog.Info("Running on Kubernetes "+r.kubeVersion.PrettyVersion, "version", version)
 	} else {
-		r.Log.Error(err, "Not able to get Kubernetes version")
+		setupLog.Error(err, "Not able to get Kubernetes version")
 	}
 
 	// Create Scale Client
@@ -116,13 +134,13 @@ func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) 
 	)
 }
 
-// Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
-func (r *ScaledObjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("ScaledObject.Namespace", req.Namespace, "ScaledObject.Name", req.Name)
+//  Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
+func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	reqLogger := log.FromContext(ctx)
 
 	// Fetch the ScaledObject instance
 	scaledObject := &kedav1alpha1.ScaledObject{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, scaledObject)
+	err := r.Client.Get(ctx, req.NamespacedName, scaledObject)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.15.13
+FROM golang:1.16.7
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -53,7 +53,7 @@ RUN apt-get update \
         github.com/mgechev/revive \
         github.com/derekparker/delve/cmd/dlv 2>&1 \
     # Install golangci-lint
-    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.41.1 \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
@@ -70,8 +70,8 @@ RUN apt-get update \
     && apt-get install -y docker-ce-cli \
     #
     # Install pip & pre-commit
-    && apt-get -y install python-pip \
-    && pip install --no-cache-dir pre-commit \
+    && apt-get -y install python3-pip \
+    && python3 -m pip install --no-cache-dir pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \

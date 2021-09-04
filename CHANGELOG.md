@@ -26,7 +26,11 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Improve validation in Cron scaler in case start & end input is same.([#2032](https://github.com/kedacore/keda/pull/2032))
+- Improve the cron validation in Cron Scaler ([#2038](https://github.com/kedacore/keda/pull/2038))
+- Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
+- Anonymize the host in case of HTTP failure (RabbitMQ Scaler) ([#2041](https://github.com/kedacore/keda/pull/2041))
+- Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
 
 ### Breaking Changes
 
@@ -34,7 +38,10 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
+    - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
+- Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
+- Bump Golang to 1.16.7 ([#2065](https://github.com/kedacore/keda/pull/2065))
 
 ## v2.4.0
 

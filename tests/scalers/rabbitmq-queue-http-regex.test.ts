@@ -9,6 +9,8 @@ import {waitForDeploymentReplicaCount} from "./helpers";
 const testNamespace = 'rabbitmq-queue-http-regex-test'
 const rabbitmqNamespace = 'rabbitmq-http-regex-test'
 const queueName = 'hello'
+const dummyQueueName1 = 'hello-1'
+const dummyQueueName2 = 'hellohellohello'
 const username = "test-user"
 const password = "test-password"
 const vhost = "test-vh-regex"
@@ -20,7 +22,7 @@ test.before(t => {
 
   sh.config.silent = true
   // create deployment
-  const httpConnectionString = `http://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local/${vhost}`
+  const httpConnectionString = `http://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local`
 
   RabbitMQHelper.createDeployment(t, testNamespace, deployYaml, connectionString, httpConnectionString, queueName)
 })
@@ -33,7 +35,9 @@ test.serial('Deployment should have 0 replicas on start', t => {
 })
 
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, dummyQueueName1)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, dummyQueueName2)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
   // with messages published, the consumer deployment should start receiving the messages
   t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', testNamespace, 20, 5000), 'Replica count should be 4 after 10 seconds')
@@ -81,7 +85,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq-consumer
-        image: jeffhollan/rabbitmq-client:dev
+        image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command:
           - receive
@@ -105,7 +109,7 @@ spec:
   triggers:
   - type: rabbitmq
     metadata:
-      queueName: {{QUEUE_NAME}}
+      queueName: "^hell.{1}$"
       hostFromEnv: RabbitApiHost
       protocol: http
       useRegex: 'true'

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"github.com/streadway/amqp"
@@ -19,6 +20,12 @@ import (
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
+
+var rabbitMQAnonymizePattern *regexp.Regexp
+
+func init() {
+	rabbitMQAnonymizePattern = regexp.MustCompile(`([^ \/:]+):([^\/:]+)\@`)
+}
 
 const (
 	rabbitQueueLengthMetricName  = "queueLength"
@@ -68,6 +75,10 @@ type queueInfo struct {
 	MessagesUnacknowledged int         `json:"messages_unacknowledged"`
 	MessageStat            messageStat `json:"message_stats"`
 	Name                   string      `json:"name"`
+}
+
+type regexQueueInfo struct {
+	Queues []queueInfo `json:"items"`
 }
 
 type messageStat struct {
@@ -200,12 +211,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve metricName
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", val))
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(val)))
 	} else {
 		if meta.mode == rabbitModeQueueLength {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", meta.queueName))
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(meta.queueName)))
 		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", meta.queueName))
+			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", url.QueryEscape(meta.queueName)))
 		}
 	}
 
@@ -302,7 +313,7 @@ func (s *rabbitMQScaler) Close() error {
 func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return false, fmt.Errorf("error inspecting rabbitMQ: %s", err)
+		return false, s.anonimizeRabbitMQError(err)
 	}
 
 	if s.metadata.mode == rabbitModeQueueLength {
@@ -340,12 +351,12 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 
 	if r.StatusCode == 200 {
 		if s.metadata.useRegex {
-			var results []queueInfo
-			err = json.NewDecoder(r.Body).Decode(&results)
+			var queues regexQueueInfo
+			err = json.NewDecoder(r.Body).Decode(&queues)
 			if err != nil {
-				return result, err
+				return queueInfo{}, err
 			}
-			result, err := getComposedQueue(s, results)
+			result, err := getComposedQueue(s, queues.Queues)
 			return result, err
 		}
 
@@ -368,7 +379,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 	// Override vhost if requested.
 	if s.metadata.vhostName != nil {
-		vhost = "/" + *s.metadata.vhostName
+		vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
 	}
 
 	if vhost == "" || vhost == "/" || vhost == "//" {
@@ -378,9 +389,9 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	parsedURL.Path = ""
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?use_regex=true&pagination=false&name=", s.metadata.queueName)
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?page=1&use_regex=true&pagination=false&name=", url.QueryEscape(s.metadata.queueName))
 	} else {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, s.metadata.queueName)
+		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, url.QueryEscape(s.metadata.queueName))
 	}
 
 	var info queueInfo
@@ -417,7 +428,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting rabbitMQ: %s", err)
+		return []external_metrics.ExternalMetricValue{}, s.anonimizeRabbitMQError(err)
 	}
 
 	var metricValue resource.Quantity
@@ -493,4 +504,10 @@ func getMaximum(q []queueInfo) (int, float64) {
 		}
 	}
 	return maxMessages, maxRate
+}
+
+// Mask host for log purposes
+func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
+	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
+	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }
