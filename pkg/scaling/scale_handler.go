@@ -320,7 +320,7 @@ func (h *scaleHandler) getScalersMetrics(ctx context.Context, scalers []scalers.
 		maxValue := int64(0)
 		scalerType := fmt.Sprintf("%T:", scaler)
 
-		scalerLogger := h.logger.WithValues("Scaler", scalerType)
+		scalerLogger := h.logger.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
 
 		metricSpecs := scaler.GetMetricSpecForScaling()
 
