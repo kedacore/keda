@@ -7362,7 +7362,7 @@ spec:
                     type: integer
                   customScalingRunningJobPercentage:
                     type: string
-                  multipleScalersOption:
+                  multipleScalersCalculation:
                     type: string
                   pendingPodConditions:
                     items:

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-playground/assert/v2"
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -94,7 +94,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}
 
 	for index, scalerTestData := range scalerTestDatam {
-		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersOption)
+		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalers := []scalers.Scaler{
 			createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive),
 			createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive),
@@ -112,7 +112,7 @@ func TestIsScaledJobActive(t *testing.T) {
 
 func newScalerTestData(
 	maxReplicaCount int,
-	multipleScalersOption string,
+	multipleScalersCalculation string,
 	scaler1QueueLength, //nolint:golint,unparam
 	scaler1AverageValue int, //nolint:golint,unparam
 	scaler1IsActive bool, //nolint:golint,unparam
@@ -129,53 +129,53 @@ func newScalerTestData(
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
-		MaxReplicaCount:       int32(maxReplicaCount),
-		MultipleScalersOption: multipleScalersOption,
-		Scaler1QueueLength:    int64(scaler1QueueLength),
-		Scaler1AverageValue:   int32(scaler1AverageValue),
-		Scaler1IsActive:       scaler1IsActive,
-		Scaler2QueueLength:    int64(scaler2QueueLength),
-		Scaler2AverageValue:   int32(scaler2AverageValue),
-		Scaler2IsActive:       scaler2IsActive,
-		Scaler3QueueLength:    int64(scaler3QueueLength),
-		Scaler3AverageValue:   int32(scaler3AverageValue),
-		Scaler3IsActive:       scaler3IsActive,
-		Scaler4QueueLength:    int64(scaler4QueueLength),
-		Scaler4AverageValue:   int32(scaler4AverageValue),
-		Scaler4IsActive:       scaler4IsActive,
-		ResultIsActive:        resultIsActive,
-		ResultQueueLength:     int64(resultQueueLength),
-		ResultMaxValue:        int64(resultMaxLength),
+		MaxReplicaCount:            int32(maxReplicaCount),
+		MultipleScalersCalculation: multipleScalersCalculation,
+		Scaler1QueueLength:         int64(scaler1QueueLength),
+		Scaler1AverageValue:        int32(scaler1AverageValue),
+		Scaler1IsActive:            scaler1IsActive,
+		Scaler2QueueLength:         int64(scaler2QueueLength),
+		Scaler2AverageValue:        int32(scaler2AverageValue),
+		Scaler2IsActive:            scaler2IsActive,
+		Scaler3QueueLength:         int64(scaler3QueueLength),
+		Scaler3AverageValue:        int32(scaler3AverageValue),
+		Scaler3IsActive:            scaler3IsActive,
+		Scaler4QueueLength:         int64(scaler4QueueLength),
+		Scaler4AverageValue:        int32(scaler4AverageValue),
+		Scaler4IsActive:            scaler4IsActive,
+		ResultIsActive:             resultIsActive,
+		ResultQueueLength:          int64(resultQueueLength),
+		ResultMaxValue:             int64(resultMaxLength),
 	}
 }
 
 type scalerTestData struct {
-	MaxReplicaCount       int32
-	MultipleScalersOption string
-	Scaler1QueueLength    int64
-	Scaler1AverageValue   int32
-	Scaler1IsActive       bool
-	Scaler2QueueLength    int64
-	Scaler2AverageValue   int32
-	Scaler2IsActive       bool
-	Scaler3QueueLength    int64
-	Scaler3AverageValue   int32
-	Scaler3IsActive       bool
-	Scaler4QueueLength    int64
-	Scaler4AverageValue   int32
-	Scaler4IsActive       bool
-	ResultIsActive        bool
-	ResultQueueLength     int64
-	ResultMaxValue        int64
+	MaxReplicaCount            int32
+	MultipleScalersCalculation string
+	Scaler1QueueLength         int64
+	Scaler1AverageValue        int32
+	Scaler1IsActive            bool
+	Scaler2QueueLength         int64
+	Scaler2AverageValue        int32
+	Scaler2IsActive            bool
+	Scaler3QueueLength         int64
+	Scaler3AverageValue        int32
+	Scaler3IsActive            bool
+	Scaler4QueueLength         int64
+	Scaler4AverageValue        int32
+	Scaler4IsActive            bool
+	ResultIsActive             bool
+	ResultQueueLength          int64
+	ResultMaxValue             int64
 }
 
-func createScaledObject(maxReplicaCount int32, multipleScalersOption string) *kedav1alpha1.ScaledJob {
-	if multipleScalersOption != "" {
+func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string) *kedav1alpha1.ScaledJob {
+	if multipleScalersCalculation != "" {
 		return &kedav1alpha1.ScaledJob{
 			Spec: kedav1alpha1.ScaledJobSpec{
 				MaxReplicaCount: &maxReplicaCount,
 				ScalingStrategy: kedav1alpha1.ScalingStrategy{
-					MultipleScalersOption: multipleScalersOption,
+					MultipleScalersCalculation: multipleScalersCalculation,
 				},
 			},
 		}

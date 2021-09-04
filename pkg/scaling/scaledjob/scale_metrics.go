@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -28,7 +28,7 @@ func GetScaleMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob *k
 
 	logger := logf.Log.WithName("scalemetrics")
 	scalersMetrics := getScalersMetrics(ctx, scalers, scaledJob, logger, recorder)
-	switch scaledJob.Spec.ScalingStrategy.MultipleScalersOption {
+	switch scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation {
 	case "min":
 		for _, metrics := range scalersMetrics {
 			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
@@ -71,7 +71,7 @@ func GetScaleMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob *k
 		}
 	}
 	maxValue = min(scaledJob.MaxReplicaCount(), maxValue)
-	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersOption", scaledJob.Spec.ScalingStrategy.MultipleScalersOption)
+	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 
 	return isActive, queueLength, maxValue
 }

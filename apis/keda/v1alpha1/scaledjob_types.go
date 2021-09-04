@@ -88,7 +88,7 @@ type ScalingStrategy struct {
 	// +optional
 	PendingPodConditions []string `json:"pendingPodConditions,omitempty"`
 	// +optional
-	MultipleScalersOption string `json:"multipleScalersOption,omitempty"`
+	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
 }
 
 func init() {
