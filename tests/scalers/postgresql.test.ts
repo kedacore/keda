@@ -131,7 +131,7 @@ spec:
         app: postgresql-update-worker
     spec:
       containers:
-      - image: docker.io/jorturfer/e2e-postgre
+      - image: ghcr.io/kedacore/tests-postgresql
         imagePullPolicy: Always
         name: postgresql-processor-test
         command:
@@ -188,7 +188,7 @@ kind: Job
 metadata:
   labels:
     app: postgresql-insert-job
-  name: mpostgresqlysql-insert-job
+  name: postgresql-insert-job
 spec:
   template:
     metadata:
@@ -196,7 +196,7 @@ spec:
         app: postgresql-insert-job
     spec:
       containers:
-      - image: docker.io/jorturfer/e2e-postgre
+      - image: ghcr.io/kedacore/tests-postgresql
         imagePullPolicy: Always
         name: postgresql-processor-test
         command:
