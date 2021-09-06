@@ -2,15 +2,14 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
-	"strings"
 
-	"github.com/tidwall/gjson"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +17,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -27,11 +25,12 @@ const (
 	grapMetricName    = "metricName"
 	grapQuery         = "query"
 	grapThreshold     = "threshold"
-	grapqueryTime     = "queryTime"
+	grapQueryTime     = "queryTime"
 )
 
 type graphiteScaler struct {
-	metadata *graphiteMetadata
+	metadata   *graphiteMetadata
+	httpClient *http.Client
 }
 
 type graphiteMetadata struct {
@@ -47,6 +46,12 @@ type graphiteMetadata struct {
 	password        string // +optional
 }
 
+type grapQueryResult []struct {
+	Target     string                 `json:"target"`
+	Tags       map[string]interface{} `json:"tags"`
+	Datapoints [][]float64            `json:"datapoints"`
+}
+
 var graphiteLog = logf.Log.WithName("graphite_scaler")
 
 // NewGraphiteScaler creates a new graphiteScaler
@@ -55,8 +60,12 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing graphite metadata: %s", err)
 	}
+
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+
 	return &graphiteScaler{
-		metadata: meta,
+		metadata:   meta,
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -81,10 +90,10 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		return nil, fmt.Errorf("no %s given", grapMetricName)
 	}
 
-	if val, ok := config.TriggerMetadata[grapqueryTime]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[grapQueryTime]; ok && val != "" {
 		meta.from = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapqueryTime)
+		return nil, fmt.Errorf("no %s given", grapQueryTime)
 	}
 
 	if val, ok := config.TriggerMetadata[grapThreshold]; ok && val != "" {
@@ -96,30 +105,21 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.threshold = t
 	}
 
-	authModes, ok := config.TriggerMetadata["authModes"]
+	_, ok := config.TriggerMetadata["authMode"]
 	// no authMode specified
 	if !ok {
 		return &meta, nil
 	}
 
-	authTypes := strings.Split(authModes, ",")
-	for _, t := range authTypes {
-		authType := authentication.Type(strings.TrimSpace(t))
-		switch authType {
-		case authentication.BasicAuthType:
-			if len(config.AuthParams["username"]) == 0 {
-				return nil, errors.New("no username given")
-			}
-
-			meta.username = config.AuthParams["username"]
-			// password is optional. For convenience, many application implement basic auth with
-			// username as apikey and password as empty
-			meta.password = config.AuthParams["password"]
-			meta.enableBasicAuth = true
-		default:
-			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", t)
-		}
+	if len(config.AuthParams["username"]) == 0 {
+		return nil, errors.New("no username given")
 	}
+
+	meta.username = config.AuthParams["username"]
+	// password is optional. For convenience, many application implement basic auth with
+	// username as apikey and password as empty
+	meta.password = config.AuthParams["password"]
+	meta.enableBasicAuth = true
 
 	return &meta, nil
 }
@@ -156,7 +156,6 @@ func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
-	client := &http.Client{}
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.serverAddress, s.metadata.from, queryEscaped)
 	req, err := http.NewRequest("GET", url, nil)
@@ -166,7 +165,7 @@ func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
 	if s.metadata.enableBasicAuth {
 		req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	}
-	r, err := client.Do(req)
+	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
 	}
@@ -177,16 +176,22 @@ func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
 	}
 	r.Body.Close()
 
-	result := gjson.GetBytes(b, "0.datapoints.#.0")
-	var v float64 = -1
-	for _, valur := range result.Array() {
-		if valur.String() != "" {
-			if float64(valur.Int()) > v {
-				v = float64(valur.Int())
-			}
-		}
+	var result grapQueryResult
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return -1, err
 	}
-	return v, nil
+
+	if len(result) == 0 {
+		return 0, nil
+	} else if len(result) > 1 {
+		return -1, fmt.Errorf("graphite query %s returned multiple series", s.metadata.query)
+	}
+
+	// https://graphite-api.readthedocs.io/en/latest/api.html#json
+	datapoint := result[0].Datapoints[0][0]
+
+	return datapoint, nil
 }
 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
