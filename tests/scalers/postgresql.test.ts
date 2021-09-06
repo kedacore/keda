@@ -204,7 +204,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "20000"
+            value: "10000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
