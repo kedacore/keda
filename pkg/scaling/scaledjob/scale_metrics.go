@@ -99,6 +99,12 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 		}
 
 		isTriggerActive, err := scaler.IsActive(ctx)
+		if err != nil {
+			scalerLogger.V(1).Info("Error getting scaler.IsActive, but continue", "Error", err)
+			recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			scaler.Close()
+			continue
+		}
 
 		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
 
@@ -106,7 +112,13 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 
 		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
 
-		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
+		metrics, err := scaler.GetMetrics(ctx, "queueLength", nil)
+		if err != nil {
+			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
+			recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			scaler.Close()
+			continue
+		}
 
 		var metricValue int64
 
@@ -119,11 +131,8 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
 
 		scaler.Close()
-		if err != nil {
-			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
-			recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			continue
-		} else if isTriggerActive {
+
+		if isTriggerActive {
 			isActive = true
 			scalerLogger.Info("Scaler is active")
 		}
