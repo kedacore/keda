@@ -31,6 +31,7 @@
 - Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
 - Anonymize the host in case of HTTP failure (RabbitMQ Scaler) ([#2041](https://github.com/kedacore/keda/pull/2041))
 - Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
+- Fix the issue when Scaled Jobs has multiple triggers ([#2016](https://github.com/kedacore/keda/pull/2016))
 
 ### Breaking Changes
 
@@ -70,7 +71,6 @@
 - Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
 - Show HashiCorp Vault Address when using `kubectl get ta` or `kubectl get cta` ([#1862](https://github.com/kedacore/keda/pull/1862))
 - Don't panic when HashiCorp Vault path doesn't exist ([#1864](https://github.com/kedacore/keda/pull/1864))
-- Fix the issue when Scaled Jobs has multiple triggers ([#2016](https://github.com/kedacore/keda/pull/2016))
 
 ### Breaking Changes
 
