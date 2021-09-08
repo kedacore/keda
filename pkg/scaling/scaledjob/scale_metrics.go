@@ -106,11 +106,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 			continue
 		}
 
-		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-
 		targetAverageValue = getTargetAverageValue(metricSpecs)
-
-		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
 
 		metrics, err := scaler.GetMetrics(ctx, "queueLength", nil)
 		if err != nil {
@@ -128,7 +124,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 				queueLength += metricValue
 			}
 		}
-		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
+		scalerLogger.Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
 
 		scaler.Close()
 
