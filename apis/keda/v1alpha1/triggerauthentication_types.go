@@ -137,6 +137,9 @@ type HashiCorpVault struct {
 	Secrets        []VaultSecret       `json:"secrets"`
 
 	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// +optional
 	Credential *Credential `json:"credential,omitempty"`
 
 	// +optional
