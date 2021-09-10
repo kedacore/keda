@@ -54,6 +54,10 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 		return err
 	}
 
+	if len(vh.vault.Namespace) > 0 {
+		client.SetNamespace(vh.vault.Namespace)
+	}
+
 	token, err := vh.token(client)
 	if err != nil {
 		return err
