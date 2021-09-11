@@ -7,13 +7,14 @@ import (
 
 	"github.com/go-playground/assert/v2"
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
-	"github.com/kedacore/keda/v2/pkg/scalers"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
+	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 func TestTargetAverageValue(t *testing.T) {
