@@ -79,8 +79,6 @@ func GetScaleMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob *k
 func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob, logger logr.Logger, recorder record.EventRecorder) []scalerMetrics {
 	scalersMetrics := []scalerMetrics{}
 
-	// TODO refactor this, do chores, reduce the verbosity ie: V(1) and frequency of logs
-	// move relevant funcs getTargetAverageValue(), min() and divideWithCeil() out of scaler_handler.go
 	for _, scaler := range scalers {
 		var queueLength int64
 		var targetAverageValue int64
