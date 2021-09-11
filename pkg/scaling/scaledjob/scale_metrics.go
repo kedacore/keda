@@ -128,7 +128,6 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 
 		if isTriggerActive {
 			isActive = true
-			scalerLogger.Info("Scaler is active")
 		}
 
 		if targetAverageValue != 0 {
