@@ -122,7 +122,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 				queueLength += metricValue
 			}
 		}
-		scalerLogger.Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
+		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
 
 		scaler.Close()
 
