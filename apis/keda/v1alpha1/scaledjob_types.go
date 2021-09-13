@@ -87,6 +87,8 @@ type ScalingStrategy struct {
 	CustomScalingRunningJobPercentage string `json:"customScalingRunningJobPercentage,omitempty"`
 	// +optional
 	PendingPodConditions []string `json:"pendingPodConditions,omitempty"`
+	// +optional
+	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
 }
 
 func init() {
