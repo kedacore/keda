@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -105,14 +104,17 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.threshold = t
 	}
 
-	_, ok := config.TriggerMetadata["authMode"]
+	val, ok := config.TriggerMetadata["authMode"]
 	// no authMode specified
 	if !ok {
 		return &meta, nil
 	}
+	if val != "basic" {
+		return nil, fmt.Errorf("authMode must be 'basic'")
+	}
 
 	if len(config.AuthParams["username"]) == 0 {
-		return nil, errors.New("no username given")
+		return nil, fmt.Errorf("no username given")
 	}
 
 	meta.username = config.AuthParams["username"]
@@ -142,7 +144,7 @@ func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "graphite", s.metadata.serverAddress, s.metadata.metricName)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "graphite", s.metadata.metricName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
