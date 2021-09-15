@@ -346,6 +346,8 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
+	case "graphite":
+		return scalers.NewGraphiteScaler(config)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":
