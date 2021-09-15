@@ -55,6 +55,7 @@
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
 - Bump Golang to 1.16.9 ([#2065](https://github.com/kedacore/keda/pull/2065)|[#2186](https://github.com/kedacore/keda/pull/2186))
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
+- Prometheus scaler: omit `serverAddress` from generated metric name ([#2099](https://github.com/kedacore/keda/pull/2099))
 
 ## v2.4.0
 
