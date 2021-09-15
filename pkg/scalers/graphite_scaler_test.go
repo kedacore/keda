@@ -32,7 +32,7 @@ var testGrapMetadata = []parseGraphiteMetadataTestData{
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
-	{&testGrapMetadata[1], "graphite-http---localhost-81-request-count"},
+	{&testGrapMetadata[1], "graphite-request-count"},
 }
 
 type graphiteAuthMetadataTestData struct {
