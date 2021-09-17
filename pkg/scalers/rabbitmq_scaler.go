@@ -80,10 +80,8 @@ type queueInfo struct {
 }
 
 type regexQueueInfo struct {
-	Queues         []queueInfo `json:"items"`
-	FilteredQueues int         `json:"filtered_count"`
-	CurrentPage    int         `json:"page"`
-	TotalPages     int         `json:"page_count"`
+	Queues     []queueInfo `json:"items"`
+	TotalPages int         `json:"page_count"`
 }
 
 type messageStat struct {
@@ -378,8 +376,8 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 			if err != nil {
 				return queueInfo{}, err
 			}
-			if queues.FilteredQueues > len(queues.Queues) {
-				return queueInfo{}, fmt.Errorf("regex matches more queues than can be recover at once")
+			if queues.TotalPages > 1 {
+				return queueInfo{}, fmt.Errorf("regex matches more queues than can be recovered at once")
 			}
 			result, err := getComposedQueue(s, queues.Queues)
 			return result, err
