@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +36,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
+	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
 )
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
@@ -264,99 +264,7 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 }
 
 func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
-	var queueLength int64
-	var targetAverageValue int64
-	var maxValue int64
-	isActive := false
-
-	// TODO refactor this, do chores, reduce the verbosity ie: V(1) and frequency of logs
-	// move relevant funcs getTargetAverageValue(), min() and divideWithCeil() out of scaler_handler.go
-	for _, scaler := range scalers {
-		scalerLogger := h.logger.WithValues("Scaler", scaler)
-
-		metricSpecs := scaler.GetMetricSpecForScaling()
-
-		// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
-		// or skip cpu/memory resource scaler
-		if len(metricSpecs) < 1 || metricSpecs[0].External == nil {
-			continue
-		}
-
-		isTriggerActive, err := scaler.IsActive(ctx)
-
-		scalerLogger.Info("Active trigger", "isTriggerActive", isTriggerActive)
-
-		targetAverageValue = getTargetAverageValue(metricSpecs)
-
-		scalerLogger.Info("Scaler targetAverageValue", "targetAverageValue", targetAverageValue)
-
-		metrics, _ := scaler.GetMetrics(ctx, "queueLength", nil)
-
-		var metricValue int64
-
-		for _, m := range metrics {
-			if m.MetricName == "queueLength" {
-				metricValue, _ = m.Value.AsInt64()
-				queueLength += metricValue
-			}
-		}
-		scalerLogger.Info("QueueLength Metric value", "queueLength", queueLength)
-
-		scaler.Close()
-		if err != nil {
-			scalerLogger.V(1).Info("Error getting scale decision, but continue", "Error", err)
-			h.recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			continue
-		} else if isTriggerActive {
-			isActive = true
-			scalerLogger.Info("Scaler is active")
-		}
-	}
-	if targetAverageValue != 0 {
-		maxValue = min(scaledJob.MaxReplicaCount(), divideWithCeil(queueLength, targetAverageValue))
-	}
-	h.logger.Info("Scaler maxValue", "maxValue", maxValue)
-	return isActive, queueLength, maxValue
-}
-
-func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {
-	var targetAverageValue int64
-	var metricValue int64
-	var flag bool
-	for _, metric := range metricSpecs {
-		if metric.External.Target.AverageValue == nil {
-			metricValue = 0
-		} else {
-			metricValue, flag = metric.External.Target.AverageValue.AsInt64()
-			if !flag {
-				metricValue = 0
-			}
-		}
-
-		targetAverageValue += metricValue
-	}
-	count := int64(len(metricSpecs))
-	if count != 0 {
-		return targetAverageValue / count
-	}
-	return 0
-}
-
-func divideWithCeil(x, y int64) int64 {
-	ans := x / y
-	reminder := x % y
-	if reminder != 0 {
-		return ans + 1
-	}
-	return ans
-}
-
-// Min function for int64
-func min(x, y int64) int64 {
-	if x > y {
-		return y
-	}
-	return x
+	return scaledjob.GetScaleMetrics(ctx, scalers, scaledJob, h.recorder)
 }
 
 // buildScalers returns list of Scalers for the specified triggers
@@ -436,6 +344,8 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
+	case "graphite":
+		return scalers.NewGraphiteScaler(config)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":

@@ -37,37 +37,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 )
 
-func TestTargetAverageValue(t *testing.T) {
-	// count = 0
-	specs := []v2beta2.MetricSpec{}
-	targetAverageValue := getTargetAverageValue(specs)
-	assert.Equal(t, int64(0), targetAverageValue)
-	// 1 1
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(1),
-		createMetricSpec(1),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(1), targetAverageValue)
-	// 5 5 3
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
-
-	// 5 5 4
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
-}
-
 func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
