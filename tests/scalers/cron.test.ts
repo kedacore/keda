@@ -34,12 +34,12 @@ test.serial('Deployment should have 1 replicas on start', t => {
   t.is(replicaCount, '1', 'replica count should start out as 1')
 })
 
-test.serial(`Deployment should scale to 4`, async t => {  
+test.serial(`Deployment should scale to 4`, async t => {
     //The workload should scale to 4 instances in the next minute
     t.true(await waitForDeploymentReplicaCount(4, 'cron-tests-deployment', testNamespace, 30, 2000))
 })
 
-test.serial(`Deployment should scale to 1`, async t => {  
+test.serial(`Deployment should scale to 1`, async t => {
     //The workload should scale to 1 instances in the next minute
     t.true(await waitForDeploymentReplicaCount(1, 'cron-tests-deployment', testNamespace, 30, 2000))
 })
