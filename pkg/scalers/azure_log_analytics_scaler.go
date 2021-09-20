@@ -164,7 +164,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 
 	// Resolve metricName
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(val)
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", val))
 	} else {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", meta.workspaceID))
 	}
