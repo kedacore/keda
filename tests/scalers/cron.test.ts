@@ -14,7 +14,6 @@ let start =  now.getMinutes()
 now.setMinutes(now.getMinutes()+ 1)
 let end = now.getMinutes()
 
-
 test.before(t => {
   sh.config.silent = true
 	sh.exec(`kubectl create namespace ${testNamespace}`)
