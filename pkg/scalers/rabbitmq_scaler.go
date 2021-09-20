@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/streadway/amqp"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -60,14 +61,15 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName  string
-	mode       string  // QueueLength or MessageRate
-	value      int     // trigger value (queue length or publish/sec. rate)
-	host       string  // connection string for either HTTP or AMQP protocol
-	protocol   string  // either http or amqp protocol
-	vhostName  *string // override the vhost from the connection info
-	useRegex   bool    // specify if the queueName contains a rexeg
-	operation  string  // specify the operation to apply in case of multiples queues
-	metricName string  // Custom metric name for trigger
+	mode       string        // QueueLength or MessageRate
+	value      int           // trigger value (queue length or publish/sec. rate)
+	host       string        // connection string for either HTTP or AMQP protocol
+	protocol   string        // either http or amqp protocol
+	vhostName  *string       // override the vhost from the connection info
+	useRegex   bool          // specify if the queueName contains a rexeg
+	operation  string        // specify the operation to apply in case of multiples queues
+	metricName string        // custom metric name for trigger
+	timeout    time.Duration // custom http timeout for a specific trigger
 }
 
 type queueInfo struct {
@@ -78,7 +80,8 @@ type queueInfo struct {
 }
 
 type regexQueueInfo struct {
-	Queues []queueInfo `json:"items"`
+	Queues     []queueInfo `json:"items"`
+	TotalPages int         `json:"page_count"`
 }
 
 type messageStat struct {
@@ -93,11 +96,11 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
+	httpClient := kedautil.CreateHTTPClient(meta.timeout)
 
 	if meta.protocol == httpProtocol {
 		return &rabbitMQScaler{
@@ -218,6 +221,23 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		} else {
 			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", url.QueryEscape(meta.queueName)))
 		}
+	}
+
+	// Resolve timeout
+	if val, ok := config.TriggerMetadata["timeout"]; ok {
+		timeoutMS, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse timeout: %s", err)
+		}
+		if meta.protocol == amqpProtocol {
+			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %s", err)
+		}
+		if timeoutMS <= 0 {
+			return nil, fmt.Errorf("timeout must be greater than 0: %s", err)
+		}
+		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
+	} else {
+		meta.timeout = config.GlobalHTTPTimeout
 	}
 
 	return &meta, nil
@@ -355,6 +375,9 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 			err = json.NewDecoder(r.Body).Decode(&queues)
 			if err != nil {
 				return queueInfo{}, err
+			}
+			if queues.TotalPages > 1 {
+				return queueInfo{}, fmt.Errorf("regex matches more queues than can be recovered at once")
 			}
 			result, err := getComposedQueue(s, queues.Queues)
 			return result, err

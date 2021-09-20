@@ -96,6 +96,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true"}, false, map[string]string{}},
 	// custom metric name
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "metricName": "host1-sample"}, false, map[string]string{}},
+	// http valid timeout
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "timeout": "1000"}, false, map[string]string{}},
+	// http invalid timeout
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "timeout": "-10"}, true, map[string]string{}},
+	// http wrong timeout
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "timeout": "error"}, true, map[string]string{}},
+	// amqp timeout
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "timeout": "10"}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -427,5 +435,64 @@ func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
 	for _, testData := range anonimizeRabbitMQErrorTestData {
 		err := s.anonimizeRabbitMQError(testData.err)
 		assert.Equal(t, fmt.Sprint(err), testData.message)
+	}
+}
+
+type getQueueInfoNavigationTestData struct {
+	response string
+	isError  bool
+}
+
+var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
+	// sum queue length
+	{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 3}`, true},
+	{`{"items":[], "filtered_count": 250, "page": 1, "page_count": 1}`, false},
+}
+
+func TestRegexQueueMissingError(t *testing.T) {
+	for _, testData := range testRegexQueueInfoNavigationTestData {
+		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=evaluate_trials"
+			if r.RequestURI != expectedPath {
+				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(testData.response))
+			if err != nil {
+				t.Error("Expect request path to =", testData.response, "but it is", err)
+			}
+		}))
+
+		resolvedEnv := map[string]string{host: apiStub.URL, "plainHost": apiStub.URL}
+
+		metadata := map[string]string{
+			"queueName":   "evaluate_trials",
+			"hostFromEnv": host,
+			"protocol":    "http",
+			"useRegex":    "true",
+		}
+
+		s, err := NewRabbitMQScaler(
+			&ScalerConfig{
+				ResolvedEnv:       resolvedEnv,
+				TriggerMetadata:   metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+			},
+		)
+
+		if err != nil {
+			t.Error("Expect success", err)
+		}
+
+		ctx := context.TODO()
+		_, err = s.IsActive(ctx)
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
 	}
 }

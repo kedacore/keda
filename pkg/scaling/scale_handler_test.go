@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package scaling
 
 import (
@@ -8,49 +24,18 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
-	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stretchr/testify/assert"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
-
-func TestTargetAverageValue(t *testing.T) {
-	// count = 0
-	specs := []v2beta2.MetricSpec{}
-	targetAverageValue := getTargetAverageValue(specs)
-	assert.Equal(t, int64(0), targetAverageValue)
-	// 1 1
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(1),
-		createMetricSpec(1),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(1), targetAverageValue)
-	// 5 5 3
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
-
-	// 5 5 4
-	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
-	}
-	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
-}
 
 func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
