@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -79,35 +80,38 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 
 	if val, ok := config.TriggerMetadata["restApiTemplate"]; ok && val != "" {
 		meta.restAPITemplate = config.TriggerMetadata["restApiTemplate"]
+		var err error
+		if meta, err = getAPIParameters(meta); err != nil {
+			return nil, fmt.Errorf("can't parse restApiTemplate : %s ", err)
+		}
 	} else {
 		meta.restAPITemplate = defaultRestAPITemplate
-	}
+		if config.TriggerMetadata["managementEndpoint"] == "" {
+			return nil, errors.New("no management endpoint given")
+		}
+		meta.managementEndpoint = config.TriggerMetadata["managementEndpoint"]
 
-	if config.TriggerMetadata["managementEndpoint"] == "" {
-		return nil, errors.New("no management endpoint given")
+		if config.TriggerMetadata["queueName"] == "" {
+			return nil, errors.New("no queue name given")
+		}
+		meta.queueName = config.TriggerMetadata["queueName"]
+
+		if config.TriggerMetadata["brokerName"] == "" {
+			return nil, errors.New("no broker name given")
+		}
+		meta.brokerName = config.TriggerMetadata["brokerName"]
+
+		if config.TriggerMetadata["brokerAddress"] == "" {
+			return nil, errors.New("no broker address given")
+		}
+		meta.brokerAddress = config.TriggerMetadata["brokerAddress"]
 	}
-	meta.managementEndpoint = config.TriggerMetadata["managementEndpoint"]
 
 	if val, ok := config.TriggerMetadata["corsHeader"]; ok && val != "" {
 		meta.corsHeader = config.TriggerMetadata["corsHeader"]
 	} else {
 		meta.corsHeader = fmt.Sprintf(defaultCorsHeader, meta.managementEndpoint)
 	}
-
-	if config.TriggerMetadata["queueName"] == "" {
-		return nil, errors.New("no queue name given")
-	}
-	meta.queueName = config.TriggerMetadata["queueName"]
-
-	if config.TriggerMetadata["brokerName"] == "" {
-		return nil, errors.New("no broker name given")
-	}
-	meta.brokerName = config.TriggerMetadata["brokerName"]
-
-	if config.TriggerMetadata["brokerAddress"] == "" {
-		return nil, errors.New("no broker address given")
-	}
-	meta.brokerAddress = config.TriggerMetadata["brokerAddress"]
 
 	if val, ok := config.TriggerMetadata["queueLength"]; ok {
 		queueLength, err := strconv.Atoi(val)
@@ -161,6 +165,38 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	return messages > 0, nil
+}
+
+// getAPIParameters parse restAPITemplate to provide managementEndpoint , brokerName, brokerAddress, queueName
+func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
+	u, err := url.ParseRequestURI(meta.restAPITemplate)
+	if err != nil {
+		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %s", err)
+	}
+	meta.managementEndpoint = u.Host
+	splitURL := strings.Split(strings.Split(u.RawPath, ":")[1], "/")[0] // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
+	replacer := strings.NewReplacer(",", "&", "\"\"", "")
+	v, err := url.ParseQuery(replacer.Replace(splitURL)) // This returns a map with key: string types and element type [] string. : map[address:["<<brokerAddress>>"] broker:["<<brokerName>>"] component:[addresses] queue:["<<queueName>>"] routing-type:["anycast"] subcomponent:[queues]]
+	if err != nil {
+		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %s", err)
+	}
+
+	if len(v["address"][0]) == 0 {
+		return meta, errors.New("no brokerAddress given")
+	}
+	meta.brokerAddress = v["address"][0]
+
+	if len(v["queue"][0]) == 0 {
+		return meta, errors.New("no queueName is given")
+	}
+	meta.queueName = v["queue"][0]
+
+	if len(v["broker"][0]) == 0 {
+		return meta, fmt.Errorf("no brokerName given: %s", meta.restAPITemplate)
+	}
+	meta.brokerName = v["broker"][0]
+
+	return meta, nil
 }
 
 func (s *artemisScaler) getMonitoringEndpoint() string {
