@@ -48,6 +48,7 @@ type azureLogAnalyticsMetadata struct {
 	podIdentity  string
 	query        string
 	threshold    int64
+	metricName   string // Custom metric name for trigger
 }
 
 type sessionCache struct {
@@ -161,6 +162,13 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.threshold = threshold
 
+	// Resolve metricName
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(val)
+	} else {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", meta.workspaceID))
+	}
+
 	return &meta, nil
 }
 
@@ -198,7 +206,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID)),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
