@@ -108,28 +108,41 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		if val, ok := config.TriggerMetadata["host"]; ok {
-			meta.host = val
-		} else {
+
+		if config.AuthParams["host"] != "" {
+			meta.host = config.AuthParams["host"]
+		} else if config.TriggerMetadata["host"] != "" {
+			meta.host = config.TriggerMetadata["host"]
+		}
+		if meta.host == "" {
 			return nil, fmt.Errorf("no host given")
 		}
 
-		if val, ok := config.TriggerMetadata["port"]; ok {
-			port, err := strconv.Atoi(val)
+		var paramPort string
+		if config.AuthParams["port"] != "" {
+			paramPort = config.AuthParams["port"]
+		} else if config.TriggerMetadata["port"] != "" {
+			paramPort = config.TriggerMetadata["port"]
+		}
+		if paramPort != "" {
+			port, err := strconv.Atoi(paramPort)
 			if err != nil {
 				return nil, fmt.Errorf("port parsing error %s", err.Error())
 			}
-
 			meta.port = port
 		}
 
-		if val, ok := config.TriggerMetadata["username"]; ok {
-			meta.username = val
+		if config.AuthParams["username"] != "" {
+			meta.username = config.AuthParams["username"]
+		} else if config.TriggerMetadata["username"] != "" {
+			meta.username = config.TriggerMetadata["username"]
 		}
 
 		// database is optional in SQL s
-		if val, ok := config.TriggerMetadata["database"]; ok {
-			meta.database = val
+		if config.AuthParams["database"] != "" {
+			meta.database = config.AuthParams["database"]
+		} else if config.TriggerMetadata["database"] != "" {
+			meta.database = config.TriggerMetadata["database"]
 		}
 
 		if config.AuthParams["password"] != "" {
