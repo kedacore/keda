@@ -54,3 +54,58 @@ func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+var testPostgresResolvedEnv = map[string]string{
+	"POSTGRE_PASSWORD": "pass",
+	"POSTGRE_CONN_STR": "test_conn_str",
+}
+
+type parsePostgresMetadataTestData struct {
+	metadata    map[string]string
+	authParams  map[string]string
+	resolvedEnv map[string]string
+	raisesError bool
+}
+
+var testPostgresMetadata = []parsePostgresMetadataTestData{
+	// No metadata
+	{
+		metadata:    map[string]string{},
+		authParams:  map[string]string{},
+		resolvedEnv: map[string]string{},
+		raisesError: true,
+	},
+	// connectionString
+	{
+		metadata:    map[string]string{"query": "query", "targetQueryValue": "12", "connectionFromEnv": "POSTGRE_CONN_STR"},
+		authParams:  map[string]string{},
+		resolvedEnv: testPostgresResolvedEnv,
+		raisesError: false,
+	},
+	// Params instead of conn str
+	{
+		metadata:    map[string]string{"query": "query", "targetQueryValue": "12", "host": "test_host", "port": "test_port", "userName": "test_username", "passwordFromEnv": "POSTGRE_PASSWORD", "dbName": "test_dbname", "sslmode": "require"},
+		authParams:  map[string]string{},
+		resolvedEnv: testPostgresResolvedEnv,
+		raisesError: false,
+	},
+	// Params from trigger authentication
+	{
+		metadata:    map[string]string{"query": "query", "targetQueryValue": "12"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "userName": "test_username", "password": "POSTGRE_PASSWORD", "dbName": "test_dbname", "sslmode": "disable"},
+		resolvedEnv: testPostgresResolvedEnv,
+		raisesError: false,
+	},
+}
+
+func TestParsePosgresSQLMetadata(t *testing.T) {
+	for _, testData := range testPostgresMetadata {
+		_, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: map[string]string{}, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		if err != nil && !testData.raisesError {
+			t.Error("Expected success but got error", err)
+		}
+		if err == nil && testData.raisesError {
+			t.Error("Expected error but got success")
+		}
+	}
+}
