@@ -100,7 +100,7 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 
 func TestParsePosgresSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
-		_, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: map[string]string{}, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
