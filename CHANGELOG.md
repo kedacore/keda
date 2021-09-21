@@ -35,7 +35,7 @@
 - Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
 - TriggerAuthentication/Vault: add support for HashiCorp Vault namespace (Vault Enterprise) ([#2085](https://github.com/kedacore/keda/pull/2085))
 - Add custom http timeout in RabbitMQ Scaler ([#2086](https://github.com/kedacore/keda/pull/2086))
-- Add support to get connection data from Trigger Authorization in M;ySQL Scaler ([#2113](https://github.com/kedacore/keda/pull/2113))
+- Add support to get connection data from Trigger Authorization in MySQL Scaler ([#2113](https://github.com/kedacore/keda/pull/2113))
 
 ### Breaking Changes
 
