@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/monitoring v0.1.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.1.1
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.13
-	github.com/Azure/azure-sdk-for-go v57.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v57.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.10.16
 	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
