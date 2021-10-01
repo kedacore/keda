@@ -43,14 +43,14 @@ require (
 	google.golang.org/api v0.56.0
 	google.golang.org/genproto v0.0.0-20210831024726-fe130286e0e2
 	google.golang.org/grpc v1.40.0
-	k8s.io/api v0.22.1
-	k8s.io/apimachinery v0.22.1
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
 	k8s.io/apiserver v0.22.1
-	k8s.io/client-go v0.22.1
-	k8s.io/code-generator v0.22.1
+	k8s.io/client-go v0.22.2
+	k8s.io/code-generator v0.22.2
 	k8s.io/klog/v2 v2.10.0
 	k8s.io/kube-openapi v0.0.0-20210817084001-7fbd8d59e5b8
-	k8s.io/metrics v0.22.1
+	k8s.io/metrics v0.22.2
 	knative.dev/pkg v0.0.0-20210830224055-82f3a9f1c5bc
 	sigs.k8s.io/controller-runtime v0.10.0
 	sigs.k8s.io/custom-metrics-apiserver v1.22.0
