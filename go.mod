@@ -16,7 +16,7 @@ require (
 	github.com/Shopify/sarama v1.29.1
 	github.com/aws/aws-sdk-go v1.40.35
 	github.com/denisenkom/go-mssqldb v0.10.0
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.0.0
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
@@ -48,7 +48,7 @@ require (
 	k8s.io/apiserver v0.22.1
 	k8s.io/client-go v0.22.1
 	k8s.io/code-generator v0.22.1
-	k8s.io/klog/v2 v2.10.0
+	k8s.io/klog/v2 v2.20.0
 	k8s.io/kube-openapi v0.0.0-20210817084001-7fbd8d59e5b8
 	k8s.io/metrics v0.22.1
 	knative.dev/pkg v0.0.0-20210830224055-82f3a9f1c5bc
