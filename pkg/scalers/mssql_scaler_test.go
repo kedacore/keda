@@ -43,7 +43,7 @@ var testInputs = []mssqlTestData{
 	},
 	// connection string generated from minimal required metadata
 	{
-		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "127.0.0.1"},
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "127.0.0.1", "metricName": "127-0-0-1"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{},
 		expectedMetricName:       "mssql-127-0-0-1",
@@ -57,17 +57,17 @@ var testInputs = []mssqlTestData{
 		expectedMetricName:       "mssql-myMetric1",
 		expectedConnectionString: "sqlserver://user1:Password%231@example.database.windows.net:1433?database=AdventureWorks",
 	},
-	// variation of previous: no port, password from authParams, metricName from database name
+	// variation of previous: no port, password from authParams
 	{
-		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks"},
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks", "metricName": "AdventureWorks"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#2"},
 		expectedMetricName:       "mssql-AdventureWorks",
 		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net?database=AdventureWorks",
 	},
-	// variation of previous: no database name, metricName from host
+	// variation of previous: no database name
 	{
-		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user3"},
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user3", "metricName": "example-database-windows-net"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#3"},
 		expectedMetricName:       "mssql-example-database-windows-net",

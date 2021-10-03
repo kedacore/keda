@@ -28,6 +28,10 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 )
 
+const (
+	scalerMetricName = "metricName"
+)
+
 func init() {
 	// Disable metrics for kafka client (sarama)
 	// https://github.com/Shopify/sarama/issues/1321

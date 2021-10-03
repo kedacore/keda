@@ -32,6 +32,7 @@ type cronMetadata struct {
 	end             string
 	timezone        string
 	desiredReplicas int64
+	metricName      string
 }
 
 var cronLog = logf.Log.WithName("cron_scaler")
@@ -106,6 +107,8 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 		return nil, fmt.Errorf("no DesiredReplicas specified. %s", config.TriggerMetadata)
 	}
 
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "cron", config.TriggerMetadata[scalerMetricName]))
+
 	return &meta, nil
 }
 
@@ -156,7 +159,7 @@ func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "cron", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end))),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

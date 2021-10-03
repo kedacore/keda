@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"net/url"
@@ -139,25 +138,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		}
 	}
 
-	// get the metricName, which can be explicit or from the (masked) connection string
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", val))
-	} else {
-		switch {
-		case meta.database != "":
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.database))
-		case meta.host != "":
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.host))
-		case meta.connectionString != "":
-			// The mssql provider supports of a variety of connection string formats. Instead of trying to parse
-			// the connection string and mask out sensitive data, play it safe and just hash the whole thing.
-			connectionStringHash := sha256.Sum256([]byte(meta.connectionString))
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%x", connectionStringHash))
-		default:
-			meta.metricName = "mssql"
-		}
-	}
-
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "mssql", config.TriggerMetadata[scalerMetricName]))
 	return &meta, nil
 }
 
