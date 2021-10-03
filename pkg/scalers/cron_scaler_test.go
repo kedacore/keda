@@ -24,6 +24,7 @@ var validCronMetadata = map[string]string{
 	"start":           "0 0 * * Thu",
 	"end":             "59 23 * * Thu",
 	"desiredReplicas": "10",
+	"metricName":      "cron1",
 }
 
 // A complete valid metadata example which is enabled every even hours
@@ -32,6 +33,7 @@ var validCronMetadata2 = map[string]string{
 	"start":           "0 */2 * * *",    // Every 2 hours (even)
 	"end":             "0 1-23/2 * * *", // Every 2 hours starting at 1 (odd)
 	"desiredReplicas": "10",
+	"metricName":      "cron2",
 }
 
 var testCronMetadata = []parseCronMetadataTestData{
@@ -49,8 +51,8 @@ var testCronMetadata = []parseCronMetadataTestData{
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
-	{&testCronMetadata[1], "cron-Etc-UTC-00xxThu-5923xxThu"},
-	{&testCronMetadata[2], "cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
+	{&testCronMetadata[1], "cron-cron1"},
+	{&testCronMetadata[2], "cron-cron2"},
 }
 
 var tz, _ = time.LoadLocation(validCronMetadata2["timezone"])
