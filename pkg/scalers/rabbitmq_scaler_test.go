@@ -35,7 +35,7 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// properly formed metadata
-	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host, "metricName": "metric1"}, false, map[string]string{}},
 	// malformed queueLength
 	{map[string]string{"queueLength": "AA", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 	// missing host
@@ -47,7 +47,7 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// properly formed metadata with http protocol
 	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 	// queue name with slashes
-	{map[string]string{"queueLength": "10", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
+	{map[string]string{"queueLength": "10", "queueName": "namespace/name", "hostFromEnv": host, "metricName": "metric2"}, false, map[string]string{}},
 	// vhost passed
 	{map[string]string{"vhostName": "myVhost", "queueName": "namespace/name", "hostFromEnv": host}, false, map[string]string{}},
 	// vhost passed but empty
@@ -107,9 +107,8 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
-	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
-	{&testRabbitMQMetadata[7], "rabbitmq-namespace-2Fname"},
-	{&testRabbitMQMetadata[31], "rabbitmq-host1-sample"},
+	{&testRabbitMQMetadata[1], "rabbitmq-metric1"},
+	{&testRabbitMQMetadata[7], "rabbitmq-metric2"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {

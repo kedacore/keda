@@ -68,7 +68,7 @@ type rabbitMQMetadata struct {
 	vhostName  *string       // override the vhost from the connection info
 	useRegex   bool          // specify if the queueName contains a rexeg
 	operation  string        // specify the operation to apply in case of multiples queues
-	metricName string        // custom metric name for trigger
+	metricName string        // metric name for trigger
 	timeout    time.Duration // custom http timeout for a specific trigger
 }
 
@@ -212,16 +212,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
 	}
 
-	// Resolve metricName
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(val)))
-	} else {
-		if meta.mode == rabbitModeQueueLength {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", url.QueryEscape(meta.queueName)))
-		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq-rate", url.QueryEscape(meta.queueName)))
-		}
-	}
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "rabbitmq", config.TriggerMetadata[scalerMetricName]))
 
 	// Resolve timeout
 	if val, ok := config.TriggerMetadata["timeout"]; ok {
