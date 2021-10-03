@@ -18,7 +18,7 @@ package scaling
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -451,7 +451,7 @@ func generateMetricName(config *scalers.ScalerConfig) error {
 	if err != nil {
 		return err
 	}
-	metricName := md5.Sum(byteMetadata)
+	metricName := sha256.Sum256(byteMetadata)
 	config.TriggerMetadata[scalerMetricName] = fmt.Sprintf("%x", metricName)
 	return nil
 }
