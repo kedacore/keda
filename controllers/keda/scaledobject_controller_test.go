@@ -222,7 +222,6 @@ var _ = Describe("ScaledObjectController", func() {
 								"start":           "0 * * * *",
 								"end":             "1 * * * *",
 								"desiredReplicas": "1",
-								"metricName":      "trigger-1",
 							},
 						},
 						{
@@ -232,7 +231,7 @@ var _ = Describe("ScaledObjectController", func() {
 								"start":           "2 * * * *",
 								"end":             "3 * * * *",
 								"desiredReplicas": "2",
-								"metricName":      "trigger-2",
+								"metricName":      "custom-name",
 							},
 						},
 					},
@@ -247,8 +246,8 @@ var _ = Describe("ScaledObjectController", func() {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-clean-up-test", Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
 			Expect(hpa.Spec.Metrics).To(HaveLen(2))
-			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-trigger-1"))
-			Expect(hpa.Spec.Metrics[1].External.Metric.Name).To(Equal("cron-trigger-2"))
+			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-3ca863839b90fc71b32f1482f651d93ae71e87fe9e5f3fac273870c36f769ee6"))
+			Expect(hpa.Spec.Metrics[1].External.Metric.Name).To(Equal("cron-custom-name"))
 
 			// Remove the second trigger.
 			Eventually(func() error {
@@ -265,7 +264,7 @@ var _ = Describe("ScaledObjectController", func() {
 				return len(hpa.Spec.Metrics)
 			}).Should(Equal(1))
 			// And it should only be the first one left.
-			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-trigger-1"))
+			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("cron-3ca863839b90fc71b32f1482f651d93ae71e87fe9e5f3fac273870c36f769ee6"))
 		})
 
 		It("deploys ScaledObject and creates HPA, when IdleReplicaCount, MinReplicaCount and MaxReplicaCount is defined", func() {
