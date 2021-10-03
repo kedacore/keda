@@ -18,6 +18,8 @@ package scaling
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -46,6 +48,10 @@ type ScaleHandler interface {
 	DeleteScalableObject(scalableObject interface{}) error
 	GetScalers(scalableObject interface{}) ([]scalers.Scaler, error)
 }
+
+const (
+	scalerMetricName = "metricName"
+)
 
 type scaleHandler struct {
 	client            client.Client
@@ -310,6 +316,11 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 }
 
 func buildScaler(client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+	// Generate the unique metric name
+	err := generateMetricName(config)
+	if err != nil {
+		return nil, err
+	}
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
@@ -428,4 +439,19 @@ func closeScalers(scalers []scalers.Scaler) {
 	for _, scaler := range scalers {
 		defer scaler.Close()
 	}
+}
+
+func generateMetricName(config *scalers.ScalerConfig) error {
+	if val, ok := config.TriggerMetadata[scalerMetricName]; ok {
+		if val != "" {
+			return nil
+		}
+	}
+	byteMetadata, err := json.Marshal(config.TriggerMetadata)
+	if err != nil {
+		return err
+	}
+	metricName := md5.Sum(byteMetadata)
+	config.TriggerMetadata[scalerMetricName] = fmt.Sprintf("%x", metricName)
+	return nil
 }
