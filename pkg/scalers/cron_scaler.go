@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -143,14 +142,6 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *cronScaler) Close() error {
 	return nil
-}
-
-func parseCronTimeFormat(s string) string {
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ReplaceAll(s, "*", "x")
-	s = strings.ReplaceAll(s, "/", "Sl")
-	s = strings.ReplaceAll(s, "?", "Qm")
-	return s
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
