@@ -108,6 +108,10 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			if metricSpec.External == nil {
 				continue
 			}
+
+			// Add the scaler index prefix
+			metricSpec.External.Metric.Name = fmt.Sprintf("s%d-%s", scalerIndex, metricSpec.External.Metric.Name)
+
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
 				metrics, err := p.getMetricsWithFallback(scaler, info.Metric, metricSelector, scaledObject, metricSpec)

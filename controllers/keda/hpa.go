@@ -166,15 +166,17 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 		return nil, err
 	}
 
-	for _, scaler := range scalers {
+	for scalerIndex, scaler := range scalers {
 		metricSpecs := scaler.GetMetricSpecForScaling()
-
 		for _, metricSpec := range metricSpecs {
 			if metricSpec.Resource != nil {
 				resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 			}
 
 			if metricSpec.External != nil {
+				// Add the scaler index prefix
+				metricSpec.External.Metric.Name = fmt.Sprintf("s%d-%s", scalerIndex, metricSpec.External.Metric.Name)
+
 				externalMetricName := metricSpec.External.Metric.Name
 				if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
 					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)

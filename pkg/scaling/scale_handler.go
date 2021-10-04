@@ -239,7 +239,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scalers.Scaler, scaledObject *kedav1alpha1.ScaledObject) (bool, bool) {
 	isActive := false
 	isError := false
-	for i, scaler := range scalers {
+	for scalerIndex, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
 		scaler.Close()
 
@@ -251,12 +251,12 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 		} else if isTriggerActive {
 			isActive = true
 			if externalMetricsSpec := scaler.GetMetricSpecForScaling()[0].External; externalMetricsSpec != nil {
-				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
+				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", fmt.Sprintf("s%d-%s", scalerIndex, externalMetricsSpec))
 			}
 			if resourceMetricsSpec := scaler.GetMetricSpecForScaling()[0].Resource; resourceMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
-			closeScalers(scalers[i+1:])
+			closeScalers(scalers[scalerIndex+1:])
 			break
 		}
 	}
