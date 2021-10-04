@@ -83,7 +83,7 @@ type ScalerConfig struct {
 	PodIdentity kedav1alpha1.PodIdentityProvider
 }
 
-// This method helps getting a field from Auth or Meta sections
+// GetFromAuthOrMeta helps getting a field from Auth or Meta sections
 func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 	var result string
 	var err error
