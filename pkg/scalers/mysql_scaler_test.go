@@ -12,6 +12,7 @@ var testMySQLResolvedEnv = map[string]string{
 type parseMySQLMetadataTestData struct {
 	metadata    map[string]string
 	resolvedEnv map[string]string
+	authParams  map[string]string
 	raisesError bool
 }
 
@@ -24,18 +25,28 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 	// No metadata
 	{
 		metadata:    map[string]string{},
+		authParams:  map[string]string{},
 		resolvedEnv: testMySQLResolvedEnv,
 		raisesError: true,
 	},
 	// connectionString
 	{
 		metadata:    map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"},
+		authParams:  map[string]string{},
 		resolvedEnv: testMySQLResolvedEnv,
 		raisesError: false,
 	},
 	// Params instead of conn str
 	{
 		metadata:    map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		authParams:  map[string]string{},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
+	// Params from trigger authentication
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
 		resolvedEnv: testMySQLResolvedEnv,
 		raisesError: false,
 	},
@@ -48,7 +59,7 @@ var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
 
 func TestParseMySQLMetadata(t *testing.T) {
 	for _, testData := range testMySQLMetadata {
-		_, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
+		_, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
