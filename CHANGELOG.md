@@ -51,6 +51,7 @@
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
 - Bump Golang to 1.16.7 ([#2065](https://github.com/kedacore/keda/pull/2065))
+- Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
 
 ## v2.4.0
 

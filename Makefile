@@ -86,7 +86,7 @@ manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition o
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations (API).
+generate: controller-gen mockgen-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API) and mocks.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum ## Generate OpenAPI for KEDA Metrics Adapter.
@@ -123,8 +123,19 @@ clientset-generate: ## Generate client-go clientset, listers and informers.
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
 	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
 
+.PHONY: mockgen-gen
+mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
+	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
+pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
+	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
+pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
+	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
+pkg/mock/mock_client/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
+	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
-	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
+	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 
 ##################################################
 # Build                                          #
@@ -211,6 +222,10 @@ kustomize: ## Download kustomize locally if necessary.
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+
+MOCKGEN = $(shell pwd)/bin/mockgen
+mockgen: ## Download mockgen locally if necessary.
+	$(call go-get-tool,$(ENVTEST),github.com/golang/mock/mockgen@v1.6.0)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
