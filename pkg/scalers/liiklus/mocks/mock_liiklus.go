@@ -6,57 +6,58 @@ package mock_liiklus
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	liiklus "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
 	grpc "google.golang.org/grpc"
-	reflect "reflect"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-// MockLiiklusServiceClient is a mock of LiiklusServiceClient interface
+// MockLiiklusServiceClient is a mock of LiiklusServiceClient interface.
 type MockLiiklusServiceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockLiiklusServiceClientMockRecorder
 }
 
-// MockLiiklusServiceClientMockRecorder is the mock recorder for MockLiiklusServiceClient
+// MockLiiklusServiceClientMockRecorder is the mock recorder for MockLiiklusServiceClient.
 type MockLiiklusServiceClientMockRecorder struct {
 	mock *MockLiiklusServiceClient
 }
 
-// NewMockLiiklusServiceClient creates a new mock instance
+// NewMockLiiklusServiceClient creates a new mock instance.
 func NewMockLiiklusServiceClient(ctrl *gomock.Controller) *MockLiiklusServiceClient {
 	mock := &MockLiiklusServiceClient{ctrl: ctrl}
 	mock.recorder = &MockLiiklusServiceClientMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockLiiklusServiceClient) EXPECT() *MockLiiklusServiceClientMockRecorder {
 	return m.recorder
 }
 
-// Ack mocks base method
-func (m *MockLiiklusServiceClient) Ack(arg0 context.Context, arg1 *liiklus.AckRequest, arg2 ...grpc.CallOption) (*empty.Empty, error) {
+// Ack mocks base method.
+func (m *MockLiiklusServiceClient) Ack(arg0 context.Context, arg1 *liiklus.AckRequest, arg2 ...grpc.CallOption) (*emptypb.Empty, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Ack", varargs...)
-	ret0, _ := ret[0].(*empty.Empty)
+	ret0, _ := ret[0].(*emptypb.Empty)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Ack indicates an expected call of Ack
+// Ack indicates an expected call of Ack.
 func (mr *MockLiiklusServiceClientMockRecorder) Ack(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ack", reflect.TypeOf((*MockLiiklusServiceClient)(nil).Ack), varargs...)
 }
 
-// GetEndOffsets mocks base method
+// GetEndOffsets mocks base method.
 func (m *MockLiiklusServiceClient) GetEndOffsets(arg0 context.Context, arg1 *liiklus.GetEndOffsetsRequest, arg2 ...grpc.CallOption) (*liiklus.GetEndOffsetsReply, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
@@ -69,14 +70,14 @@ func (m *MockLiiklusServiceClient) GetEndOffsets(arg0 context.Context, arg1 *lii
 	return ret0, ret1
 }
 
-// GetEndOffsets indicates an expected call of GetEndOffsets
+// GetEndOffsets indicates an expected call of GetEndOffsets.
 func (mr *MockLiiklusServiceClientMockRecorder) GetEndOffsets(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEndOffsets", reflect.TypeOf((*MockLiiklusServiceClient)(nil).GetEndOffsets), varargs...)
 }
 
-// GetOffsets mocks base method
+// GetOffsets mocks base method.
 func (m *MockLiiklusServiceClient) GetOffsets(arg0 context.Context, arg1 *liiklus.GetOffsetsRequest, arg2 ...grpc.CallOption) (*liiklus.GetOffsetsReply, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
@@ -89,14 +90,14 @@ func (m *MockLiiklusServiceClient) GetOffsets(arg0 context.Context, arg1 *liiklu
 	return ret0, ret1
 }
 
-// GetOffsets indicates an expected call of GetOffsets
+// GetOffsets indicates an expected call of GetOffsets.
 func (mr *MockLiiklusServiceClientMockRecorder) GetOffsets(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOffsets", reflect.TypeOf((*MockLiiklusServiceClient)(nil).GetOffsets), varargs...)
 }
 
-// Publish mocks base method
+// Publish mocks base method.
 func (m *MockLiiklusServiceClient) Publish(arg0 context.Context, arg1 *liiklus.PublishRequest, arg2 ...grpc.CallOption) (*liiklus.PublishReply, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
@@ -109,14 +110,14 @@ func (m *MockLiiklusServiceClient) Publish(arg0 context.Context, arg1 *liiklus.P
 	return ret0, ret1
 }
 
-// Publish indicates an expected call of Publish
+// Publish indicates an expected call of Publish.
 func (mr *MockLiiklusServiceClientMockRecorder) Publish(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockLiiklusServiceClient)(nil).Publish), varargs...)
 }
 
-// Receive mocks base method
+// Receive mocks base method.
 func (m *MockLiiklusServiceClient) Receive(arg0 context.Context, arg1 *liiklus.ReceiveRequest, arg2 ...grpc.CallOption) (liiklus.LiiklusService_ReceiveClient, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
@@ -129,14 +130,14 @@ func (m *MockLiiklusServiceClient) Receive(arg0 context.Context, arg1 *liiklus.R
 	return ret0, ret1
 }
 
-// Receive indicates an expected call of Receive
+// Receive indicates an expected call of Receive.
 func (mr *MockLiiklusServiceClientMockRecorder) Receive(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockLiiklusServiceClient)(nil).Receive), varargs...)
 }
 
-// Subscribe mocks base method
+// Subscribe mocks base method.
 func (m *MockLiiklusServiceClient) Subscribe(arg0 context.Context, arg1 *liiklus.SubscribeRequest, arg2 ...grpc.CallOption) (liiklus.LiiklusService_SubscribeClient, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
@@ -149,7 +150,7 @@ func (m *MockLiiklusServiceClient) Subscribe(arg0 context.Context, arg1 *liiklus
 	return ret0, ret1
 }
 
-// Subscribe indicates an expected call of Subscribe
+// Subscribe indicates an expected call of Subscribe.
 func (mr *MockLiiklusServiceClientMockRecorder) Subscribe(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
