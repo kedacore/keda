@@ -133,22 +133,22 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	default:
 		meta.connectionString = ""
 		var err error
-		meta.host, err = getFromAuthOrMeta(config, "host")
+		meta.host, err = GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, "", err
 		}
 
-		meta.dbName, err = getFromAuthOrMeta(config, "dbName")
+		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, "", err
 		}
 
-		meta.port, err = getFromAuthOrMeta(config, "port")
+		meta.port, err = GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, "", err
 		}
 
-		meta.username, err = getFromAuthOrMeta(config, "username")
+		meta.username, err = GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, "", err
 		}
@@ -274,18 +274,4 @@ func json2BsonDoc(js string) (doc bsonx.Doc, err error) {
 	}
 
 	return doc, nil
-}
-
-func getFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
-	var result string
-	var err error
-	if config.AuthParams[field] != "" {
-		result = config.AuthParams[field]
-	} else if config.TriggerMetadata[field] != "" {
-		result = config.TriggerMetadata[field]
-	}
-	if result == "" {
-		err = fmt.Errorf("no %s given", field)
-	}
-	return result, err
 }
