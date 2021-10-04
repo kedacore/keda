@@ -65,6 +65,14 @@ var testInputs = []mssqlTestData{
 		expectedMetricName:       "mssql-AdventureWorks",
 		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net?database=AdventureWorks",
 	},
+	// connection string generated from full authParams
+	{
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"password": "Password#2", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks", "port": "1433"},
+		expectedMetricName:       "mssql-AdventureWorks",
+		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net:1433?database=AdventureWorks",
+	},
 	// variation of previous: no database name, metricName from host
 	{
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user3"},
