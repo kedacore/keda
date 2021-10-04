@@ -98,6 +98,7 @@ func NewMongoDBScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error) {
 	var connStr string
+	var err error
 	// setting default metadata
 	meta := mongoDBMetadata{}
 
@@ -124,6 +125,11 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		return nil, "", fmt.Errorf("no queryValue given")
 	}
 
+	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	if err != nil {
+		return nil, "", err
+	}
+
 	// Resolve connectionString
 	switch {
 	case config.AuthParams["connectionString"] != "":
@@ -132,13 +138,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		var err error
 		meta.host, err = GetFromAuthOrMeta(config, "host")
-		if err != nil {
-			return nil, "", err
-		}
-
-		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, "", err
 		}
