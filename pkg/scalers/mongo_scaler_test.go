@@ -13,6 +13,7 @@ var testMongoDBResolvedEnv = map[string]string{
 
 type parseMongoDBMetadataTestData struct {
 	metadata    map[string]string
+	authParams  map[string]string
 	resolvedEnv map[string]string
 	raisesError bool
 }
@@ -26,18 +27,28 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	// No metadata
 	{
 		metadata:    map[string]string{},
+		authParams:  map[string]string{},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: true,
 	},
 	// connectionStringFromEnv
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// with metric name
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
+	// from trigger auth
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12"},
+		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample", "password": "secure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
@@ -49,7 +60,7 @@ var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
 
 func TestParseMongoDBMetadata(t *testing.T) {
 	for _, testData := range testMONGODBMetadata {
-		_, _, err := parseMongoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
+		_, _, err := parseMongoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
@@ -61,7 +72,7 @@ func TestParseMongoDBMetadata(t *testing.T) {
 
 func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mongoDBMetricIdentifiers {
-		meta, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata})
+		meta, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
