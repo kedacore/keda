@@ -82,27 +82,27 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	default:
 		meta.connection = ""
 		var err error
-		meta.host, err = getFromAuthOrMeta(config, "host")
+		meta.host, err = GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.port, err = getFromAuthOrMeta(config, "port")
+		meta.port, err = GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.port, err = getFromAuthOrMeta(config, "userName")
+		meta.port, err = GetFromAuthOrMeta(config, "userName")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.dbName, err = getFromAuthOrMeta(config, "dbName")
+		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.sslmode, err = getFromAuthOrMeta(config, "sslmode")
+		meta.sslmode, err = GetFromAuthOrMeta(config, "sslmode")
 		if err != nil {
 			return nil, err
 		}
@@ -223,18 +223,4 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-func getFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
-	var result string
-	var err error
-	if config.AuthParams[field] != "" {
-		result = config.AuthParams[field]
-	} else if config.TriggerMetadata[field] != "" {
-		result = config.TriggerMetadata[field]
-	}
-	if result == "" {
-		err = fmt.Errorf("no %s given", field)
-	}
-	return result, err
 }
