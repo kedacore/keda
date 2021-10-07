@@ -75,11 +75,11 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
-
-	if config.TriggerMetadata["natsServerMonitoringEndpoint"] == "" {
-		return meta, errors.New("no monitoring endpoint given")
+	var err error
+	meta.natsServerMonitoringEndpoint, err = GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	if err != nil {
+		return meta, err
 	}
-	meta.natsServerMonitoringEndpoint = config.TriggerMetadata["natsServerMonitoringEndpoint"]
 
 	if config.TriggerMetadata["queueGroup"] == "" {
 		return meta, errors.New("no queue group given")
