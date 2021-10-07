@@ -44,7 +44,6 @@
 - Add `pageSize` (using regex) in RabbitMQ Scaler ([#2162](https://github.com/kedacore/keda/pull/2162))
 - Add `unsafeSsl` parameter in InfluxDB scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
 
-
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
