@@ -32,6 +32,7 @@ type mySQLMetadata struct {
 	query            string
 	queryValue       int
 	scalerIndex      int
+	metricName       string
 }
 
 var mySQLLog = logf.Log.WithName("mysql_scaler")
@@ -111,6 +112,18 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		}
 	}
 	meta.scalerIndex = config.ScalerIndex
+
+	if meta.connectionString != "" {
+		maskedURL, err := kedautil.MaskPartOfURL(meta.connectionString, kedautil.Hostname)
+		if err != nil {
+			return nil, fmt.Errorf("failure masking part of url")
+		}
+
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", maskedURL))
+	} else {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName))
+	}
+
 	return &meta, nil
 }
 
@@ -183,15 +196,10 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-	metricName := "mysql"
-	if s.metadata.connectionString != "" {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.connectionString))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.dbName))
-	}
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
