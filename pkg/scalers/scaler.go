@@ -18,6 +18,7 @@ package scalers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -80,4 +81,19 @@ type ScalerConfig struct {
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.PodIdentityProvider
+}
+
+// GetFromAuthOrMeta helps getting a field from Auth or Meta sections
+func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
+	var result string
+	var err error
+	if config.AuthParams[field] != "" {
+		result = config.AuthParams[field]
+	} else if config.TriggerMetadata[field] != "" {
+		result = config.TriggerMetadata[field]
+	}
+	if result == "" {
+		err = fmt.Errorf("no %s given", field)
+	}
+	return result, err
 }

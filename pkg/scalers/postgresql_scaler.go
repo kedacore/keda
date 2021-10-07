@@ -81,31 +81,30 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 	default:
 		meta.connection = ""
-		if val, ok := config.TriggerMetadata["host"]; ok {
-			meta.host = val
-		} else {
-			return nil, fmt.Errorf("no  host given")
-		}
-		if val, ok := config.TriggerMetadata["port"]; ok {
-			meta.port = val
-		} else {
-			return nil, fmt.Errorf("no  port given")
+		var err error
+		meta.host, err = GetFromAuthOrMeta(config, "host")
+		if err != nil {
+			return nil, err
 		}
 
-		if val, ok := config.TriggerMetadata["userName"]; ok {
-			meta.userName = val
-		} else {
-			return nil, fmt.Errorf("no  username given")
+		meta.port, err = GetFromAuthOrMeta(config, "port")
+		if err != nil {
+			return nil, err
 		}
-		if val, ok := config.TriggerMetadata["dbName"]; ok {
-			meta.dbName = val
-		} else {
-			return nil, fmt.Errorf("no dbname given")
+
+		meta.port, err = GetFromAuthOrMeta(config, "userName")
+		if err != nil {
+			return nil, err
 		}
-		if val, ok := config.TriggerMetadata["sslmode"]; ok {
-			meta.sslmode = val
-		} else {
-			return nil, fmt.Errorf("no sslmode name given")
+
+		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+		if err != nil {
+			return nil, err
+		}
+
+		meta.sslmode, err = GetFromAuthOrMeta(config, "sslmode")
+		if err != nil {
+			return nil, err
 		}
 
 		if config.AuthParams["password"] != "" {
