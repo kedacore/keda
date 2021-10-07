@@ -104,6 +104,12 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "timeout": "error"}, true, map[string]string{}},
 	// amqp timeout
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "timeout": "10"}, true, map[string]string{}},
+	// valid pageSize
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "100"}, false, map[string]string{}},
+	// pageSize less than 1
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "-1"}, true, map[string]string{}},
+	// invalid pageSize
+	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -321,7 +327,7 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	for _, testData := range testRegexQueueInfoTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=%5Eevaluate_trials%24"
+			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=%5Eevaluate_trials%24&page_size=100"
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -374,6 +380,68 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 			}
 		} else if !strings.Contains(err.Error(), testData.response) {
 			t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
+		}
+	}
+}
+
+type getRegexPageSizeTestData struct {
+	queueInfo getQueueInfoTestData
+	pageSize  int
+}
+
+var testRegexPageSizeTestData = []getRegexPageSizeTestData{
+	{testRegexQueueInfoTestData[0], 100},
+	{testRegexQueueInfoTestData[0], 200},
+	{testRegexQueueInfoTestData[0], 500},
+}
+
+func TestGetPageSizeWithRegex(t *testing.T) {
+	for _, testData := range testRegexPageSizeTestData {
+		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			expectedPath := fmt.Sprintf("/api/queues?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.pageSize)
+			if r.RequestURI != expectedPath {
+				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
+			}
+
+			w.WriteHeader(testData.queueInfo.responseStatus)
+			_, err := w.Write([]byte(testData.queueInfo.response))
+			if err != nil {
+				t.Error("Expect request path to =", testData.queueInfo.response, "but it is", err)
+			}
+		}))
+
+		resolvedEnv := map[string]string{host: fmt.Sprintf("%s%s", apiStub.URL, testData.queueInfo.vhostPath), "plainHost": apiStub.URL}
+
+		metadata := map[string]string{
+			"queueName":   "^evaluate_trials$",
+			"hostFromEnv": host,
+			"protocol":    "http",
+			"useRegex":    "true",
+			"pageSize":    fmt.Sprint(testData.pageSize),
+		}
+
+		s, err := NewRabbitMQScaler(
+			&ScalerConfig{
+				ResolvedEnv:       resolvedEnv,
+				TriggerMetadata:   metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+			},
+		)
+
+		if err != nil {
+			t.Error("Expect success", err)
+		}
+
+		ctx := context.TODO()
+		active, err := s.IsActive(ctx)
+
+		if err != nil {
+			t.Error("Expect success", err)
+		}
+
+		if !active {
+			t.Error("Expect to be active")
 		}
 	}
 }
@@ -452,7 +520,7 @@ var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
 func TestRegexQueueMissingError(t *testing.T) {
 	for _, testData := range testRegexQueueInfoNavigationTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=evaluate_trials"
+			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
