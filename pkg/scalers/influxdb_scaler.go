@@ -54,7 +54,6 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		client:   influxdb2.NewClient(meta.serverURL, meta.authToken),
 		metadata: meta,
 	}, nil
-
 }
 
 // parseInfluxDBMetadata parses the metadata passed in from the ScaledObject config
