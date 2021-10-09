@@ -78,26 +78,25 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		if val, ok := config.TriggerMetadata["host"]; ok {
-			meta.host = val
-		} else {
-			return nil, fmt.Errorf("no host given")
-		}
-		if val, ok := config.TriggerMetadata["port"]; ok {
-			meta.port = val
-		} else {
-			return nil, fmt.Errorf("no port given")
+		var err error
+		meta.host, err = GetFromAuthOrMeta(config, "host")
+		if err != nil {
+			return nil, err
 		}
 
-		if val, ok := config.TriggerMetadata["username"]; ok {
-			meta.username = val
-		} else {
-			return nil, fmt.Errorf("no username given")
+		meta.port, err = GetFromAuthOrMeta(config, "port")
+		if err != nil {
+			return nil, err
 		}
-		if val, ok := config.TriggerMetadata["dbName"]; ok {
-			meta.dbName = val
-		} else {
-			return nil, fmt.Errorf("no dbName given")
+
+		meta.username, err = GetFromAuthOrMeta(config, "username")
+		if err != nil {
+			return nil, err
+		}
+
+		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+		if err != nil {
+			return nil, err
 		}
 
 		if config.AuthParams["password"] != "" {

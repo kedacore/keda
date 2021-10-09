@@ -36,6 +36,14 @@
 - Escape `queueName` and `vhostName` in RabbitMQ Scaler before use them in query string (bug fix) ([#2055](https://github.com/kedacore/keda/pull/2055))
 - TriggerAuthentication/Vault: add support for HashiCorp Vault namespace (Vault Enterprise) ([#2085](https://github.com/kedacore/keda/pull/2085))
 - Add custom http timeout in RabbitMQ Scaler ([#2086](https://github.com/kedacore/keda/pull/2086))
+- Artemis Scaler parses out broker config parameters in case `restAPITemplate` is given ([#2104](https://github.com/kedacore/keda/pull/2104))
+- Add support to get connection data from Trigger Authorization in MongoDB Scaler ([#2115](https://github.com/kedacore/keda/pull/2115))
+- Add support to get connection data from Trigger Authorization in MySQL Scaler ([#2113](https://github.com/kedacore/keda/pull/2113))
+- Add support to get connection data from Trigger Authorization in MSSQL Scaler ([#2112](https://github.com/kedacore/keda/pull/2112))
+- Add support to get connection data from Trigger Authorization in PostgreSQL Scaler ([#2114](https://github.com/kedacore/keda/pull/2114))
+- Add support to provide the metric name in Azure Log Analytics Scaler ([#2106](https://github.com/kedacore/keda/pull/2106))
+- Add `pageSize` (using regex) in RabbitMQ Scaler ([#2162](https://github.com/kedacore/keda/pull/2162))
+- Add `unsafeSsl` parameter in InfluxDB scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
 
 ### Breaking Changes
 
@@ -47,6 +55,7 @@
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
 - Bump Golang to 1.16.7 ([#2065](https://github.com/kedacore/keda/pull/2065))
+- Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
 
 ## v2.4.0
 
