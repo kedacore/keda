@@ -187,6 +187,9 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	if meta.username, meta.password, e = getSolaceSempCredentials(config); e != nil {
 		return nil, e
 	}
+
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 

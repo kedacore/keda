@@ -101,6 +101,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.browserVersion = DefaultBrowserVersion
 	}
 
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 

@@ -44,7 +44,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 	// Empty
 	{
 		"#001 - EMPTY", map[string]string{},
-		0,
+		1,
 		true,
 	},
 	// +Case - brokerBaseUrl
@@ -93,7 +93,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 			solaceMetaQueueName:       soltestValidQueueName,
 			solaceMetaMsgCountTarget:  soltestValidMsgCountTarget,
 		},
-		0,
+		1,
 		true,
 	},
 	// -Case - missing queue
@@ -126,7 +126,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 			solaceMetaMsgCountTarget:      "",
 			solaceMetaMsgSpoolUsageTarget: "",
 		},
-		0,
+		1,
 		true,
 	},
 	// -Case - msgSpoolUsageTarget non-numeric
@@ -158,7 +158,7 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 			solaceMetaQueueName:           soltestValidQueueName,
 			solaceMetaMsgSpoolUsageTarget: "NOT_AN_INTEGER",
 		},
-		0,
+		1,
 		true,
 	},
 	// +Case - Pass with msgSpoolUsageTarget and not msgCountTarget
@@ -193,7 +193,7 @@ var testSolaceEnvCreds = []testSolaceMetadata{
 			solaceMetaQueueName:      soltestValidQueueName,
 			solaceMetaMsgCountTarget: soltestValidMsgCountTarget,
 		},
-		0,
+		1,
 		false,
 	},
 	// -Case - Should fail with ENV var not found
@@ -246,7 +246,7 @@ var testSolaceK8sSecretCreds = []testSolaceMetadata{
 			solaceMetaQueueName:      soltestValidQueueName,
 			solaceMetaMsgCountTarget: soltestValidMsgCountTarget,
 		},
-		0,
+		1,
 		false,
 	},
 	// +Case - Should find with creds
@@ -281,7 +281,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 			solaceMetaMsgCountTarget:  soltestValidMsgCountTarget,
 			//			solaceMetaMsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
-		0,
+		1,
 		false,
 	},
 	{
@@ -313,7 +313,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 			solaceMetaMsgCountTarget:      soltestValidMsgCountTarget,
 			solaceMetaMsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
-		0,
+		1,
 		false,
 	},
 	{
@@ -345,7 +345,7 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 			solaceMetaMsgCountTarget:      "0",
 			solaceMetaMsgSpoolUsageTarget: "0",
 		},
-		0,
+		1,
 		true,
 	},
 	{
@@ -361,14 +361,12 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 			solaceMetaMsgCountTarget:      "0",
 			solaceMetaMsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
 		},
-		0,
+		1,
 		false,
 	},
 }
 
 var testSolaceExpectedMetricNames = map[string]string{
-	"s0-" + solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgcount:      "",
-	"s0-" + solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgspoolusage: "",
 	"s1-" + solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgcount:      "",
 	"s1-" + solaceScalerID + "-" + soltestValidVpn + "-" + soltestValidQueueName + "-" + solaceTriggermsgspoolusage: "",
 }
