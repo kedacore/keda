@@ -47,6 +47,7 @@ type azureMonitorScaler struct {
 type azureMonitorMetadata struct {
 	azureMonitorInfo azure.MonitorInfo
 	targetValue      int
+	scalerIndex      int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -145,6 +146,8 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
@@ -191,7 +194,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", s.metadata.azureMonitorInfo.ResourceURI, s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", s.metadata.azureMonitorInfo.ResourceURI, s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

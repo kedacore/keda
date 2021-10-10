@@ -53,6 +53,7 @@ type azureQueueMetadata struct {
 	connection        string
 	accountName       string
 	endpointSuffix    string
+	scalerIndex       int
 }
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
@@ -132,6 +133,8 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, config.PodIdentity, nil
 }
 
@@ -163,7 +166,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-queue", s.metadata.queueName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-queue", s.metadata.queueName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

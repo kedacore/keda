@@ -60,17 +60,18 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName  string
-	mode       string        // QueueLength or MessageRate
-	value      int           // trigger value (queue length or publish/sec. rate)
-	host       string        // connection string for either HTTP or AMQP protocol
-	protocol   string        // either http or amqp protocol
-	vhostName  *string       // override the vhost from the connection info
-	useRegex   bool          // specify if the queueName contains a rexeg
-	pageSize   int           // specify the page size if useRegex is enabled
-	operation  string        // specify the operation to apply in case of multiples queues
-	metricName string        // custom metric name for trigger
-	timeout    time.Duration // custom http timeout for a specific trigger
+	queueName   string
+	mode        string        // QueueLength or MessageRate
+	value       int           // trigger value (queue length or publish/sec. rate)
+	host        string        // connection string for either HTTP or AMQP protocol
+	protocol    string        // either http or amqp protocol
+	vhostName   *string       // override the vhost from the connection info
+	useRegex    bool          // specify if the queueName contains a rexeg
+	pageSize    int           // specify the page size if useRegex is enabled
+	operation   string        // specify the operation to apply in case of multiples queues
+	metricName  string        // custom metric name for trigger
+	timeout     time.Duration // custom http timeout for a specific trigger
+	scalerIndex int           // scaler index
 }
 
 type queueInfo struct {
@@ -254,6 +255,8 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	} else {
 		meta.timeout = config.GlobalHTTPTimeout
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }
@@ -448,7 +451,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

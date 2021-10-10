@@ -37,6 +37,7 @@ type parseAzBlobMetadataTestData struct {
 
 type azBlobMetricIdentifier struct {
 	metadataTestData *parseAzBlobMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -72,9 +73,9 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 }
 
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
-	{&testAzBlobMetadata[1], "azure-blob-sample-blobsubpath-"},
-	{&testAzBlobMetadata[2], "azure-blob-customname"},
-	{&testAzBlobMetadata[5], "azure-blob-sample_container"},
+	{&testAzBlobMetadata[1], 0, "s0-azure-blob-sample-blobsubpath-"},
+	{&testAzBlobMetadata[2], 1, "s1-azure-blob-customname"},
+	{&testAzBlobMetadata[5], 2, "s2-azure-blob-sample_container"},
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {
@@ -94,7 +95,7 @@ func TestAzBlobParseMetadata(t *testing.T) {
 
 func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azBlobMetricIdentifiers {
-		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

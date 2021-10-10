@@ -36,6 +36,7 @@ type artemisMetadata struct {
 	restAPITemplate    string
 	queueLength        int
 	corsHeader         string
+	scalerIndex        int
 }
 
 //revive:enable:var-naming
@@ -153,6 +154,9 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	if meta.password == "" {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
+
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
@@ -250,7 +254,7 @@ func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
