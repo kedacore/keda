@@ -30,6 +30,7 @@ type seleniumGridScalerMetadata struct {
 	browserName    string
 	targetValue    int64
 	browserVersion string
+	scalerIndex    int
 }
 
 type seleniumResponse struct {
@@ -128,7 +129,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "seleniumgrid", s.metadata.url, s.metadata.browserName, s.metadata.browserVersion))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

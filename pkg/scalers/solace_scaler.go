@@ -75,6 +75,8 @@ type SolaceMetadata struct {
 	// Target Message Count
 	msgCountTarget      int
 	msgSpoolUsageTarget int // Spool Use Target in Megabytes
+	// Scaler index
+	scalerIndex int
 }
 
 // SEMP API Response Root Struct
@@ -239,9 +241,10 @@ func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgCountTarget), resource.DecimalSI)
+		metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerID, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerID, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgcount)),
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,
@@ -254,9 +257,10 @@ func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgSpoolUsageTarget), resource.DecimalSI)
+		metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerID, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", solaceScalerID, s.metadata.messageVpn, s.metadata.queueName, solaceTriggermsgspoolusage)),
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,

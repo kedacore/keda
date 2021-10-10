@@ -55,6 +55,8 @@ type prometheusMetadata struct {
 	cert      string
 	key       string
 	ca        string
+
+	scalerIndex int
 }
 
 type promQueryResult struct {
@@ -124,6 +126,8 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 
 		meta.threshold = t
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	authModes, ok := config.TriggerMetadata["authModes"]
 	// no authMode specified
@@ -198,9 +202,10 @@ func (s *prometheusScaler) Close() error {
 
 func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "prometheus", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "prometheus", s.metadata.metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
