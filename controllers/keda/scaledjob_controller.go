@@ -159,7 +159,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	switch scaledJob.Spec.RolloutStrategy {
 	default:
-		opts := []client.ListOption {
+		opts := []client.ListOption{
 			client.InNamespace(scaledJob.GetNamespace()),
 			client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 		}
