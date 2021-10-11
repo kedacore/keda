@@ -24,7 +24,11 @@ const (
 	pendingEntriesCountMetadata = "pendingEntriesCount"
 	streamNameMetadata          = "stream"
 	consumerGroupNameMetadata   = "consumerGroup"
+	usernameMetadata            = "username"
 	passwordMetadata            = "password"
+	sentinelUsernameMetadata    = "sentinelUsername"
+	sentinelPasswordMetadata    = "sentinelPassword"
+	sentinelMasterMetadata      = "sentinelMaster"
 	databaseIndexMetadata       = "databaseIndex"
 	enableTLSMetadata           = "enableTLS"
 )
@@ -46,13 +50,19 @@ type redisStreamsMetadata struct {
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(isClustered bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisStreamsScaler(isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
 	if isClustered {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
 		return createClusteredRedisStreamsScaler(meta)
+	} else if isSentinel {
+		meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
+		}
+		return createSentinelRedisStreamsScaler(meta)
 	}
 	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
@@ -76,7 +86,36 @@ func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, erro
 	}
 
 	pendingEntriesCountFn := func() (int64, error) {
-		pendingEntries, err := client.XPending(meta.streamName, meta.consumerGroupName).Result()
+		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
+		if err != nil {
+			return -1, err
+		}
+		return pendingEntries.Count, nil
+	}
+
+	return &redisStreamsScaler{
+		metadata:                 meta,
+		closeFn:                  closeFn,
+		getPendingEntriesCountFn: pendingEntriesCountFn,
+	}, nil
+}
+
+func createSentinelRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisSentinelClient(meta.connectionInfo, meta.databaseIndex)
+	if err != nil {
+		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
+	}
+
+	closeFn := func() error {
+		if err := client.Close(); err != nil {
+			redisStreamsLog.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+
+	pendingEntriesCountFn := func() (int64, error) {
+		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
 		if err != nil {
 			return -1, err
 		}
@@ -105,7 +144,7 @@ func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
 	}
 
 	pendingEntriesCountFn := func() (int64, error) {
-		pendingEntries, err := client.XPending(meta.streamName, meta.consumerGroupName).Result()
+		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
 		if err != nil {
 			return -1, err
 		}

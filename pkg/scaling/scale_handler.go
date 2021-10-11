@@ -379,13 +379,17 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(false, config)
+		return scalers.NewRedisScaler(false, false, config)
 	case "redis-cluster":
-		return scalers.NewRedisScaler(true, config)
-	case "redis-cluster-streams":
-		return scalers.NewRedisStreamsScaler(true, config)
+		return scalers.NewRedisScaler(true, false, config)
+	case "redis-sentinel":
+		return scalers.NewRedisScaler(false, true, config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(false, config)
+		return scalers.NewRedisStreamsScaler(false, false, config)
+	case "redis-cluster-streams":
+		return scalers.NewRedisStreamsScaler(true, false, config)
+	case "redis-sentinel-streams":
+		return scalers.NewRedisStreamsScaler(false, true, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
 	case "solace-event-queue":
