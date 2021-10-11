@@ -181,7 +181,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 		}
 		return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobs.Items)), nil
 	case "gradual":
-		logger.Info("RolloutStrategy: gradual, Not deleteing jobs owned by the previous version of the scaleJob")
+		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
 	}
 	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
 }
