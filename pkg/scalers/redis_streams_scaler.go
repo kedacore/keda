@@ -26,9 +26,6 @@ const (
 	consumerGroupNameMetadata   = "consumerGroup"
 	usernameMetadata            = "username"
 	passwordMetadata            = "password"
-	sentinelUsernameMetadata    = "sentinelUsername"
-	sentinelPasswordMetadata    = "sentinelPassword"
-	sentinelMasterMetadata      = "sentinelMaster"
 	databaseIndexMetadata       = "databaseIndex"
 	enableTLSMetadata           = "enableTLS"
 )

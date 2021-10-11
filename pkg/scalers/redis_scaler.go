@@ -306,11 +306,12 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 		return info, fmt.Errorf("no address or host given. address should be in the format of host:port or you should set the host/port values")
 	}
 
-	if authParams["username"] != "" {
+	switch {
+	case authParams["username"] != "":
 		info.username = authParams["username"]
-	} else if metadata["username"] != "" {
+	case metadata["username"] != "":
 		info.username = metadata["username"]
-	} else if metadata["usernameFromEnv"] != "" {
+	case metadata["usernameFromEnv"] != "":
 		info.username = resolvedEnv[metadata["usernameFromEnv"]]
 	}
 
@@ -332,7 +333,7 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 	return info, nil
 }
 
-func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
+func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info := redisConnectionInfo{}
 	switch {
 	case authParams["addresses"] != "":
@@ -374,11 +375,21 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 		return info, fmt.Errorf("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
 	}
 
-	if authParams["username"] != "" {
+	return info, nil
+}
+
+func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
+	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
+	if err != nil {
+		return info, err
+	}
+
+	switch {
+	case authParams["username"] != "":
 		info.username = authParams["username"]
-	} else if metadata["username"] != "" {
+	case metadata["username"] != "":
 		info.username = metadata["username"]
-	} else if metadata["usernameFromEnv"] != "" {
+	case metadata["usernameFromEnv"] != "":
 		info.username = resolvedEnv[metadata["usernameFromEnv"]]
 	}
 
@@ -401,52 +412,17 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 }
 
 func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
-	info := redisConnectionInfo{}
+	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
+	if err != nil {
+		return info, err
+	}
+
 	switch {
-	case authParams["addresses"] != "":
-		info.addresses = splitAndTrim(authParams["addresses"])
-	case metadata["addresses"] != "":
-		info.addresses = splitAndTrim(metadata["addresses"])
-	case metadata["addressesFromEnv"] != "":
-		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]])
-	default:
-		switch {
-		case authParams["hosts"] != "":
-			info.hosts = splitAndTrim(authParams["hosts"])
-		case metadata["hosts"] != "":
-			info.hosts = splitAndTrim(metadata["hosts"])
-		case metadata["hostsFromEnv"] != "":
-			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]])
-		}
-
-		switch {
-		case authParams["ports"] != "":
-			info.ports = splitAndTrim(authParams["ports"])
-		case metadata["ports"] != "":
-			info.ports = splitAndTrim(metadata["ports"])
-		case metadata["portsFromEnv"] != "":
-			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]])
-		}
-
-		if len(info.hosts) != 0 && len(info.ports) != 0 {
-			if len(info.hosts) != len(info.ports) {
-				return info, fmt.Errorf("not enough hosts or ports given. number of hosts should be equal to the number of ports")
-			}
-			for i := range info.hosts {
-				info.addresses = append(info.addresses, fmt.Sprintf("%s:%s", info.hosts[i], info.ports[i]))
-			}
-		}
-	}
-
-	if len(info.addresses) == 0 {
-		return info, fmt.Errorf("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
-	}
-
-	if authParams["username"] != "" {
+	case authParams["username"] != "":
 		info.username = authParams["username"]
-	} else if metadata["username"] != "" {
+	case metadata["username"] != "":
 		info.username = metadata["username"]
-	} else if metadata["usernameFromEnv"] != "" {
+	case metadata["usernameFromEnv"] != "":
 		info.username = resolvedEnv[metadata["usernameFromEnv"]]
 	}
 
@@ -456,11 +432,12 @@ func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]stri
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
 	}
 
-	if authParams["sentinelUsername"] != "" {
+	switch {
+	case authParams["sentinelUsername"] != "":
 		info.sentinelUsername = authParams["sentinelUsername"]
-	} else if metadata["sentinelUsername"] != "" {
+	case metadata["sentinelUsername"] != "":
 		info.sentinelUsername = metadata["sentinelUsername"]
-	} else if metadata["sentinelUsernameFromEnv"] != "" {
+	case metadata["sentinelUsernameFromEnv"] != "":
 		info.sentinelUsername = resolvedEnv[metadata["sentinelUsernameFromEnv"]]
 	}
 
@@ -470,11 +447,12 @@ func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]stri
 		info.sentinelPassword = resolvedEnv[metadata["sentinelPasswordFromEnv"]]
 	}
 
-	if authParams["sentinelMaster"] != "" {
+	switch {
+	case authParams["sentinelMaster"] != "":
 		info.sentinelMaster = authParams["sentinelMaster"]
-	} else if metadata["sentinelMaster"] != "" {
+	case metadata["sentinelMaster"] != "":
 		info.sentinelMaster = metadata["sentinelMaster"]
-	} else if metadata["sentinelMasterFromEnv"] != "" {
+	case metadata["sentinelMasterFromEnv"] != "":
 		info.sentinelMaster = resolvedEnv[metadata["sentinelMasterFromEnv"]]
 	}
 
@@ -517,6 +495,7 @@ func getRedisSentinelClient(info redisConnectionInfo, dbIndex int) (*redis.Clien
 		Password:         info.password,
 		DB:               dbIndex,
 		SentinelAddrs:    info.addresses,
+		SentinelUsername: info.sentinelUsername,
 		SentinelPassword: info.sentinelPassword,
 		MasterName:       info.sentinelMaster,
 	}

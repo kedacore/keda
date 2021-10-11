@@ -382,14 +382,14 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 		return scalers.NewRedisScaler(false, false, config)
 	case "redis-cluster":
 		return scalers.NewRedisScaler(true, false, config)
-	case "redis-sentinel":
-		return scalers.NewRedisScaler(false, true, config)
-	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(false, false, config)
 	case "redis-cluster-streams":
 		return scalers.NewRedisStreamsScaler(true, false, config)
+	case "redis-sentinel":
+		return scalers.NewRedisScaler(false, true, config)
 	case "redis-sentinel-streams":
 		return scalers.NewRedisStreamsScaler(false, true, config)
+	case "redis-streams":
+		return scalers.NewRedisStreamsScaler(false, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
 	case "solace-event-queue":
