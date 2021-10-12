@@ -1,5 +1,5 @@
 # Build the adapter binary
-FROM golang:1.16.7 as builder
+FROM golang:1.16.9 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
