@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	scalers "github.com/kedacore/keda/v2/pkg/scalers"
+	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
 // MockScaleHandler is a mock of ScaleHandler interface.
@@ -35,6 +35,18 @@ func (m *MockScaleHandler) EXPECT() *MockScaleHandlerMockRecorder {
 	return m.recorder
 }
 
+// ClearScalersCache mocks base method.
+func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, name, namespace string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ClearScalersCache", ctx, name, namespace)
+}
+
+// ClearScalersCache indicates an expected call of ClearScalersCache.
+func (mr *MockScaleHandlerMockRecorder) ClearScalersCache(ctx, name, namespace interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).ClearScalersCache), ctx, name, namespace)
+}
+
 // DeleteScalableObject mocks base method.
 func (m *MockScaleHandler) DeleteScalableObject(scalableObject interface{}) error {
 	m.ctrl.T.Helper()
@@ -49,19 +61,19 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(scalableObject inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), scalableObject)
 }
 
-// GetScalers mocks base method.
-func (m *MockScaleHandler) GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error) {
+// GetScalersCache mocks base method.
+func (m *MockScaleHandler) GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScalers", ctx, scalableObject)
-	ret0, _ := ret[0].([]scalers.Scaler)
+	ret := m.ctrl.Call(m, "GetScalersCache", ctx, scalableObject)
+	ret0, _ := ret[0].(*cache.ScalersCache)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetScalers indicates an expected call of GetScalers.
-func (mr *MockScaleHandlerMockRecorder) GetScalers(ctx, scalableObject interface{}) *gomock.Call {
+// GetScalersCache indicates an expected call of GetScalersCache.
+func (mr *MockScaleHandlerMockRecorder) GetScalersCache(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalers", reflect.TypeOf((*MockScaleHandler)(nil).GetScalers), ctx, scalableObject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).GetScalersCache), ctx, scalableObject)
 }
 
 // HandleScalableObject mocks base method.

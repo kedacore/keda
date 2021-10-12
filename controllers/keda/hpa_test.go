@@ -30,7 +30,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
-	kedascalers "github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
 var _ = Describe("hpa", func() {
@@ -129,7 +130,16 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 		},
 	}
 
-	scalers := []kedascalers.Scaler{scaler}
+	scalersCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+			Factory: func() (scalers.Scaler, error) {
+				return scaler, nil
+			},
+		}},
+		Logger:   nil,
+		Recorder: nil,
+	}
 	metricSpec := v2beta2.MetricSpec{
 		External: &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
@@ -140,8 +150,7 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	metricSpecs := []v2beta2.MetricSpec{metricSpec}
 	ctx := context.Background()
 	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(metricSpecs)
-	scaler.EXPECT().Close(ctx)
-	scaleHandler.EXPECT().GetScalers(context.Background(), gomock.Eq(scaledObject)).Return(scalers, nil)
+	scaleHandler.EXPECT().GetScalersCache(context.Background(), gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 	return scaledObject
 }

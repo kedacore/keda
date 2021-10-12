@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -24,9 +25,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -36,12 +38,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -65,7 +69,7 @@ var (
 	adapterClientRequestBurst int
 )
 
-func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, error) {
+func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, <-chan struct{}, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if cfg != nil {
@@ -75,17 +79,17 @@ func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.Metric
 
 	if err != nil {
 		logger.Error(err, "failed to get the config")
-		return nil, fmt.Errorf("failed to get the config (%s)", err)
+		return nil, nil, fmt.Errorf("failed to get the config (%s)", err)
 	}
 
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
+		return nil, nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
-		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
+		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 
 	kubeclient, err := client.New(cfg, client.Options{
@@ -93,7 +97,7 @@ func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.Metric
 	})
 	if err != nil {
 		logger.Error(err, "unable to construct new client")
-		return nil, fmt.Errorf("unable to construct new client (%s)", err)
+		return nil, nil, fmt.Errorf("unable to construct new client (%s)", err)
 	}
 
 	broadcaster := record.NewBroadcaster()
@@ -103,13 +107,43 @@ func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.Metric
 	namespace, err := getWatchNamespace()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
-		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
+		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
+	stopCh := make(chan struct{})
+	if err := runScaledObjectController(scheme, namespace, handler, logger, stopCh); err != nil {
+		return nil, nil, err
+	}
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), nil
+	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), stopCh, nil
+}
+
+func runScaledObjectController(scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}) error {
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:    scheme,
+		Namespace: namespace,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
+		ScaleHandler: scaleHandler,
+	}).SetupWithManager(mgr, controller.Options{}); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := mgr.Start(context.Background()); err != nil {
+			logger.Error(err, "controller-runtime encountered an error")
+			stopCh <- struct{}{}
+			close(stopCh)
+		}
+	}()
+
+	return nil
 }
 
 func printVersion() {
@@ -171,7 +205,7 @@ func main() {
 		return
 	}
 
-	kedaProvider, err := cmd.makeProvider(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
+	kedaProvider, stopCh, err := cmd.makeProvider(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
@@ -179,7 +213,7 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
-	if err = cmd.Run(wait.NeverStop); err != nil {
+	if err = cmd.Run(stopCh); err != nil {
 		return
 	}
 }

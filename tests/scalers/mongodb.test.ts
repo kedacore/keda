@@ -175,6 +175,24 @@ spec:
 
 const deployYaml = `
 apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: mongodb-trigger
+spec:
+  secretTargetRef:
+    - parameter: connectionString
+      name: mongodb-secret
+      key: connect
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongodb-secret
+type: Opaque
+data:
+  connect: {{MONGODB_CONNECTION_STRING_BASE64}}
+---
+apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
   name: {{MONGODB_JOB_NAME}}
@@ -205,21 +223,4 @@ spec:
       authenticationRef:
         name: mongodb-trigger
 ---
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: mongodb-trigger
-spec:
-  secretTargetRef:
-    - parameter: connectionString
-      name: mongodb-secret
-      key: connect
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mongodb-secret
-type: Opaque
-data:
-  connect: {{MONGODB_CONNECTION_STRING_BASE64}}
 `

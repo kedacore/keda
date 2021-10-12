@@ -92,14 +92,18 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	}
 
 	scaledObject := &scaledObjects.Items[0]
-	matchingMetrics := []external_metrics.ExternalMetricValue{}
-	scalers, err := p.scaleHandler.GetScalers(ctx, scaledObject)
+	var matchingMetrics []external_metrics.ExternalMetricValue
+	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
+	if err != nil {
+		return nil, err
+	}
+
 	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
 
-	for scalerIndex, scaler := range scalers {
+	for scalerIndex, scaler := range cache.GetScalers() {
 		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 		scalerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
 
@@ -110,7 +114,8 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := p.getMetricsWithFallback(ctx, scaler, info.Metric, metricSelector, scaledObject, metricSpec)
+				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric, metricSelector)
+				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
 
 				if err != nil {
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
@@ -124,7 +129,6 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
-		scaler.Close(ctx)
 	}
 
 	if len(matchingMetrics) == 0 {
