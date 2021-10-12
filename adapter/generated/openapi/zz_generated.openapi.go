@@ -14784,7 +14784,7 @@ func schema_pkg_apis_metrics_v1beta1_NodeMetrics(ref common.ReferenceCallback) c
 					},
 					"window": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
+							Default: 0,
 							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -14899,7 +14899,7 @@ func schema_pkg_apis_metrics_v1beta1_PodMetrics(ref common.ReferenceCallback) co
 					},
 					"window": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
+							Default: 0,
 							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
