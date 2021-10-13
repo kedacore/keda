@@ -280,7 +280,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 		}
 	}
 
-	for i, trigger := range withTriggers.Spec.Triggers {
+	for scalerIndex, trigger := range withTriggers.Spec.Triggers {
 		config := &scalers.ScalerConfig{
 			Name:              withTriggers.Name,
 			Namespace:         withTriggers.Namespace,
@@ -288,6 +288,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			ResolvedEnv:       resolvedEnv,
 			AuthParams:        make(map[string]string),
 			GlobalHTTPTimeout: h.globalHTTPTimeout,
+			ScalerIndex:       scalerIndex,
 		}
 
 		config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
@@ -300,7 +301,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 		if err != nil {
 			closeScalers(scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", i, err)
+			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", scalerIndex, err)
 		}
 
 		scalersRes = append(scalersRes, scaler)

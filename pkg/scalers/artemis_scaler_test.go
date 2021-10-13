@@ -17,6 +17,7 @@ type parseArtemisMetadataTestData struct {
 
 type artemisMetricIdentifier struct {
 	metadataTestData *parseArtemisMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -59,7 +60,8 @@ var testArtemisMetadata = []parseArtemisMetadataTestData{
 }
 
 var artemisMetricIdentifiers = []artemisMetricIdentifier{
-	{&testArtemisMetadata[7], "artemis-broker-activemq-queue1"},
+	{&testArtemisMetadata[7], 0, "s0-artemis-broker-activemq-queue1"},
+	{&testArtemisMetadata[7], 1, "s1-artemis-broker-activemq-queue1"},
 }
 
 var testArtemisMetadataWithEmptyAuthParams = []parseArtemisMetadataTestData{
@@ -141,7 +143,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range artemisMetricIdentifiers {
-		meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
+		meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

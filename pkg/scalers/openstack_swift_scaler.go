@@ -39,6 +39,7 @@ type openstackSwiftMetadata struct {
 	objectLimit       string
 	httpClientTimeout int
 	onlyFiles         bool
+	scalerIndex       int
 }
 
 type openstackSwiftAuthenticationMetadata struct {
@@ -299,7 +300,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	} else {
 		meta.objectLimit = defaultObjectLimit
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -391,9 +392,11 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 		metricName = s.metadata.containerName
 	}
 
+	metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "openstack-swift", metricName))
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "openstack-swift", metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

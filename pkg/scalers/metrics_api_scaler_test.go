@@ -168,7 +168,7 @@ func TestBearerAuth(t *testing.T) {
 			ResolvedEnv:       map[string]string{},
 			TriggerMetadata:   metadata,
 			AuthParams:        authentication,
-			GlobalHTTPTimeout: 1000 * time.Millisecond,
+			GlobalHTTPTimeout: 3000 * time.Millisecond,
 		},
 	)
 	if err != nil {
