@@ -32,7 +32,6 @@ type mySQLMetadata struct {
 	dbName           string
 	query            string
 	queryValue       int
-	scalerIndex      int
 	metricName       string
 }
 
@@ -112,12 +111,11 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 			return nil, fmt.Errorf("no password given")
 		}
 	}
-	meta.scalerIndex = config.ScalerIndex
 
 	if meta.connectionString != "" {
 		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
 	}
-	meta.metricName = GenerateMetricNameWithIndex(meta.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
 
 	return &meta, nil
 }
