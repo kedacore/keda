@@ -33,7 +33,7 @@ const (
 type redisStreamsScaler struct {
 	metadata                 *redisStreamsMetadata
 	closeFn                  func() error
-	getPendingEntriesCountFn func() (int64, error)
+	getPendingEntriesCountFn func(ctx context.Context) (int64, error)
 }
 
 type redisStreamsMetadata struct {
@@ -82,7 +82,7 @@ func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, erro
 		return nil
 	}
 
-	pendingEntriesCountFn := func() (int64, error) {
+	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
 		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
 		if err != nil {
 			return -1, err
@@ -111,7 +111,7 @@ func createSentinelRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error
 		return nil
 	}
 
-	pendingEntriesCountFn := func() (int64, error) {
+	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
 		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
 		if err != nil {
 			return -1, err
@@ -140,7 +140,7 @@ func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
 		return nil
 	}
 
-	pendingEntriesCountFn := func() (int64, error) {
+	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
 		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
 		if err != nil {
 			return -1, err
@@ -201,7 +201,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 
 // IsActive checks if there are pending entries in the 'Pending Entries List' for consumer group of a stream
 func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.getPendingEntriesCountFn()
+	count, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {
 		redisStreamsLog.Error(err, "error")
@@ -233,7 +233,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics fetches the number of pending entries for a consumer group in a stream
 func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	pendingEntriesCount, err := s.getPendingEntriesCountFn()
+	pendingEntriesCount, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {
 		redisStreamsLog.Error(err, "error fetching pending entries count")

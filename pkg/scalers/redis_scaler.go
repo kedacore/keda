@@ -24,14 +24,12 @@ const (
 	defaultEnableTLS        = false
 )
 
-var ctx = context.Background()
-
 type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
 
 type redisScaler struct {
 	metadata        *redisMetadata
 	closeFn         func() error
-	getListLengthFn func() (int64, error)
+	getListLengthFn func(ctx context.Context) (int64, error)
 }
 
 type redisConnectionInfo struct {
@@ -105,7 +103,7 @@ func createClusteredRedisScaler(meta *redisMetadata, script string) (Scaler, err
 		return nil
 	}
 
-	listLengthFn := func() (int64, error) {
+	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
@@ -135,7 +133,7 @@ func createSentinelRedisScaler(meta *redisMetadata, script string) (Scaler, erro
 		return nil
 	}
 
-	listLengthFn := func() (int64, error) {
+	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
@@ -165,7 +163,7 @@ func createRedisScaler(meta *redisMetadata, script string) (Scaler, error) {
 		return nil
 	}
 
-	listLengthFn := func() (int64, error) {
+	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
@@ -219,7 +217,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 
 // IsActive checks if there is any element in the Redis list
 func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.getListLengthFn()
+	length, err := s.getListLengthFn(ctx)
 
 	if err != nil {
 		redisLog.Error(err, "error")
@@ -253,7 +251,7 @@ func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics connects to Redis and finds the length of the list
 func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	listLen, err := s.getListLengthFn()
+	listLen, err := s.getListLengthFn(ctx)
 
 	if err != nil {
 		redisLog.Error(err, "error getting list length")
@@ -482,7 +480,7 @@ func getRedisClusterClient(info redisConnectionInfo) (*redis.ClusterClient, erro
 
 	// confirm if connected
 	c := redis.NewClusterClient(options)
-	err := c.Ping(ctx).Err()
+	err := c.Ping(context.Background()).Err()
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +505,7 @@ func getRedisSentinelClient(info redisConnectionInfo, dbIndex int) (*redis.Clien
 
 	// confirm if connected
 	c := redis.NewFailoverClient(options)
-	err := c.Ping(ctx).Err()
+	err := c.Ping(context.Background()).Err()
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +527,7 @@ func getRedisClient(info redisConnectionInfo, dbIndex int) (*redis.Client, error
 
 	// confirm if connected
 	c := redis.NewClient(options)
-	err := c.Ping(ctx).Err()
+	err := c.Ping(context.Background()).Err()
 	if err != nil {
 		return nil, err
 	}

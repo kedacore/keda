@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"testing"
@@ -141,7 +142,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		closeFn := func() error { return nil }
-		getPendingEntriesCountFn := func() (int64, error) { return -1, nil }
+		getPendingEntriesCountFn := func(ctx context.Context) (int64, error) { return -1, nil }
 		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
 
 		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
