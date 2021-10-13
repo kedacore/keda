@@ -38,16 +38,13 @@ var stanMetricIdentifiers = []stanMetricIdentifier{
 }
 
 func TestStanParseMetadata(t *testing.T) {
-	testCaseNum := 1
 	for _, testData := range testStanMetadata {
 		_, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
+		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
-		testCaseNum++
 	}
 }
 
