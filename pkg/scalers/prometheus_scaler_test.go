@@ -34,8 +34,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
-	{&testPromMetadata[1], 0, "s0-prometheus-http-http_requests_total"},
-	{&testPromMetadata[1], 1, "s1-prometheus-http-http_requests_total"},
+	{&testPromMetadata[1], 0, "s0-prometheus-http_requests_total"},
+	{&testPromMetadata[1], 1, "s1-prometheus-http_requests_total"},
 }
 
 type prometheusAuthMetadataTestData struct {
