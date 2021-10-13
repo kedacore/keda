@@ -9,7 +9,7 @@ option java_package = "com.github.bsideup.liiklus.protocol";
 option optimize_for = SPEED;
 option java_multiple_files = true;
 
-option go_package = "liiklus";
+option go_package = "./;liiklus";
 
 service LiiklusService {
     rpc Publish (PublishRequest) returns (PublishReply) {
