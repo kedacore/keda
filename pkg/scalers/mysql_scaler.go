@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -114,15 +115,9 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	meta.scalerIndex = config.ScalerIndex
 
 	if meta.connectionString != "" {
-		maskedURL, err := kedautil.MaskPartOfURL(meta.connectionString, kedautil.Hostname)
-		if err != nil {
-			return nil, fmt.Errorf("failure masking part of url")
-		}
-
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", maskedURL))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName))
+		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
 	}
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName))
 
 	return &meta, nil
 }
@@ -160,6 +155,17 @@ func newMySQLConnection(meta *mySQLMetadata) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+// parseMySQLDbNameFromConnectionStr returns dbname from connection string
+// in it is not able to parse it, it returns "dbname" string
+func parseMySQLDbNameFromConnectionStr(connectionString string) string {
+	splitted := strings.Split(connectionString, "/")
+
+	if size := len(splitted); size > 0 {
+		return splitted[size-1]
+	}
+	return "dbname"
 }
 
 // Close disposes of MySQL connections

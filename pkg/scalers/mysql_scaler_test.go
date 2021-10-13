@@ -6,7 +6,7 @@ import (
 
 var testMySQLResolvedEnv = map[string]string{
 	"MYSQL_PASSWORD": "pass",
-	"MYSQL_CONN_STR": "test_conn_str",
+	"MYSQL_CONN_STR": "user@tcp(http://my.mysql.dev:3306)/stats_db",
 }
 
 type parseMySQLMetadataTestData struct {
@@ -19,7 +19,7 @@ type parseMySQLMetadataTestData struct {
 type mySQLMetricIdentifier struct {
 	metadataTestData *parseMySQLMetadataTestData
 	scalerIndex      int
-	name             string
+	metricName       string
 }
 
 var testMySQLMetadata = []parseMySQLMetadataTestData{
@@ -54,8 +54,8 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{metadataTestData: &testMySQLMetadata[1], scalerIndex: 0, name: "s0-mysql-test_conn_str"},
-	{metadataTestData: &testMySQLMetadata[2], scalerIndex: 1, name: "s1-mysql-test_dbname"},
+	{metadataTestData: &testMySQLMetadata[1], scalerIndex: 0, metricName: "s0-mysql-stats_db"},
+	{metadataTestData: &testMySQLMetadata[2], scalerIndex: 1, metricName: "s1-mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
@@ -97,12 +97,8 @@ func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockMySQLScaler := mySQLScaler{meta, nil}
-
-		metricSpec := mockMySQLScaler.GetMetricSpecForScaling()
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+		if meta.metricName != testData.metricName {
+			t.Error("Wrong External metric source name:", meta.metricName)
 		}
 	}
 }
