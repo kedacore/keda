@@ -117,7 +117,7 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	if meta.connectionString != "" {
 		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
 	}
-	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName))
+	meta.metricName = GenerateMetricNameWithIndex(meta.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
 
 	return &meta, nil
 }
@@ -205,7 +205,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
