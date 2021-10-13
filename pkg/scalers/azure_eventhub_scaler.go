@@ -58,6 +58,7 @@ type azureEventHubScaler struct {
 type eventHubMetadata struct {
 	eventHubInfo azure.EventHubInfo
 	threshold    int64
+	scalerIndex  int
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -151,6 +152,8 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 			return nil, fmt.Errorf("no event hub name string given")
 		}
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }
@@ -252,7 +255,7 @@ func (scaler *azureEventHubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpe
 	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup)),
+			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

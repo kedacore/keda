@@ -56,6 +56,7 @@ type azureBlobMetadata struct {
 	accountName       string
 	metricName        string
 	endpointSuffix    string
+	scalerIndex       int
 }
 
 var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
@@ -152,6 +153,8 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, config.PodIdentity, nil
 }
 
@@ -185,7 +188,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

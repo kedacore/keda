@@ -46,6 +46,8 @@ type huaweiCloudeyeMetadata struct {
 	metricPeriod         string
 
 	huaweiAuthorization huaweiAuthorizationMetadata
+
+	scalerIndex int
 }
 
 type huaweiAuthorizationMetadata struct {
@@ -164,7 +166,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	}
 
 	meta.huaweiAuthorization = auth
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -243,9 +245,10 @@ func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "huawei-cloudeye", h.metadata.namespace,
+			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "huawei-cloudeye",
+				h.metadata.namespace,
 				h.metadata.metricsName,
-				h.metadata.dimensionName, h.metadata.dimensionValue)),
+				h.metadata.dimensionName, h.metadata.dimensionValue))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

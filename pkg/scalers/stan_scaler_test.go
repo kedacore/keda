@@ -12,6 +12,7 @@ type parseStanMetadataTestData struct {
 
 type stanMetricIdentifier struct {
 	metadataTestData *parseStanMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -29,7 +30,8 @@ var testStanMetadata = []parseStanMetadataTestData{
 }
 
 var stanMetricIdentifiers = []stanMetricIdentifier{
-	{&testStanMetadata[4], "stan-grp1-ImDurable-mySubject"},
+	{&testStanMetadata[4], 0, "s0-stan-grp1-ImDurable-mySubject"},
+	{&testStanMetadata[4], 1, "s1-stan-grp1-ImDurable-mySubject"},
 }
 
 func TestStanParseMetadata(t *testing.T) {
@@ -46,7 +48,7 @@ func TestStanParseMetadata(t *testing.T) {
 
 func TestStanGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range stanMetricIdentifiers {
-		meta, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+		meta, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

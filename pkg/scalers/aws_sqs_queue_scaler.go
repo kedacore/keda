@@ -45,6 +45,7 @@ type awsSqsQueueMetadata struct {
 	queueName         string
 	awsRegion         string
 	awsAuthorization  awsAuthorizationMetadata
+	scalerIndex       int
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
@@ -105,6 +106,8 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 
 	meta.awsAuthorization = auth
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
@@ -127,7 +130,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "AWS-SQS-Queue", s.metadata.queueName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "AWS-SQS-Queue", s.metadata.queueName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

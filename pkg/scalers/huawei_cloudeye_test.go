@@ -24,6 +24,7 @@ type parseHuaweiCloudeyeMetadataTestData struct {
 
 type huaweiCloudeyeMetricIdentifier struct {
 	metadataTestData *parseHuaweiCloudeyeMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -140,7 +141,8 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 }
 
 var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
-	{&testHuaweiCloudeyeMetadata[0], "huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
+	{&testHuaweiCloudeyeMetadata[0], 0, "s0-huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
+	{&testHuaweiCloudeyeMetadata[0], 1, "s1-huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
 }
 
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
@@ -157,7 +159,7 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 
 func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range huaweiCloudeyeMetricIdentifiers {
-		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

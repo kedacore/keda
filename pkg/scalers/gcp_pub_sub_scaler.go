@@ -34,6 +34,7 @@ type pubsubMetadata struct {
 	targetSubscriptionSize int
 	subscriptionName       string
 	gcpAuthorization       gcpAuthorizationMetadata
+	scalerIndex            int
 }
 
 var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
@@ -78,6 +79,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		return nil, err
 	}
 	meta.gcpAuthorization = *auth
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -112,7 +114,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "gcp", s.metadata.subscriptionName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "gcp", s.metadata.subscriptionName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

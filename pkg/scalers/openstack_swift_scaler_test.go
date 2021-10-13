@@ -19,6 +19,7 @@ type openstackSwiftMetricIdentifier struct {
 	resolvedEnv          map[string]string
 	metadataTestData     *parseOpenstackSwiftMetadataTestData
 	authMetadataTestData *parseOpenstackSwiftAuthMetadataTestData
+	scaledIndex          int
 	name                 string
 }
 
@@ -79,30 +80,30 @@ var invalidOpenstackSwiftAuthMetadataTestData = []parseOpenstackSwiftAuthMetadat
 
 func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 	testCases := []openstackSwiftMetricIdentifier{
-		{nil, &openstackSwiftMetadataTestData[0], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[1], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[2], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container-my-prefix"},
-		{nil, &openstackSwiftMetadataTestData[3], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[4], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[5], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[6], &openstackSwiftAuthMetadataTestData[0], "openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[0], &openstackSwiftAuthMetadataTestData[0], 0, "s0-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[1], &openstackSwiftAuthMetadataTestData[0], 1, "s1-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[2], &openstackSwiftAuthMetadataTestData[0], 2, "s2-openstack-swift-my-container-my-prefix"},
+		{nil, &openstackSwiftMetadataTestData[3], &openstackSwiftAuthMetadataTestData[0], 3, "s3-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[4], &openstackSwiftAuthMetadataTestData[0], 4, "s4-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[5], &openstackSwiftAuthMetadataTestData[0], 5, "s5-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[6], &openstackSwiftAuthMetadataTestData[0], 6, "s6-openstack-swift-my-container"},
 
-		{nil, &openstackSwiftMetadataTestData[0], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[1], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[2], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container-my-prefix"},
-		{nil, &openstackSwiftMetadataTestData[3], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[4], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[5], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
-		{nil, &openstackSwiftMetadataTestData[6], &openstackSwiftAuthMetadataTestData[1], "openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[0], &openstackSwiftAuthMetadataTestData[1], 0, "s0-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[1], &openstackSwiftAuthMetadataTestData[1], 1, "s1-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[2], &openstackSwiftAuthMetadataTestData[1], 2, "s2-openstack-swift-my-container-my-prefix"},
+		{nil, &openstackSwiftMetadataTestData[3], &openstackSwiftAuthMetadataTestData[1], 3, "s3-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[4], &openstackSwiftAuthMetadataTestData[1], 4, "s4-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[5], &openstackSwiftAuthMetadataTestData[1], 5, "s5-openstack-swift-my-container"},
+		{nil, &openstackSwiftMetadataTestData[6], &openstackSwiftAuthMetadataTestData[1], 6, "s6-openstack-swift-my-container"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
-		meta, err := parseOpenstackSwiftMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+		meta, err := parseOpenstackSwiftMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scaledIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		_, err = parseOpenstackSwiftAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+		_, err = parseOpenstackSwiftAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scaledIndex})
 		if err != nil {
 			t.Fatal("Could not parse auth metadata:", err)
 		}
@@ -121,16 +122,16 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 
 func TestParseOpenstackSwiftMetadataForInvalidCases(t *testing.T) {
 	testCases := []openstackSwiftMetricIdentifier{
-		{nil, &invalidOpenstackSwiftMetadataTestData[0], &parseOpenstackSwiftAuthMetadataTestData{}, "missing containerName"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[1], &parseOpenstackSwiftAuthMetadataTestData{}, "objectCount is not an integer value"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[2], &parseOpenstackSwiftAuthMetadataTestData{}, "onlyFiles is not a boolean value"},
-		{nil, &invalidOpenstackSwiftMetadataTestData[3], &parseOpenstackSwiftAuthMetadataTestData{}, "timeout is not an integer value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[0], &parseOpenstackSwiftAuthMetadataTestData{}, 0, "s0-missing containerName"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[1], &parseOpenstackSwiftAuthMetadataTestData{}, 1, "s1-objectCount is not an integer value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[2], &parseOpenstackSwiftAuthMetadataTestData{}, 2, "s2-onlyFiles is not a boolean value"},
+		{nil, &invalidOpenstackSwiftMetadataTestData[3], &parseOpenstackSwiftAuthMetadataTestData{}, 3, "s3-timeout is not an integer value"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackSwiftMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+			_, err := parseOpenstackSwiftMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scaledIndex})
 			assert.NotNil(t, err)
 		})
 	}
@@ -138,19 +139,19 @@ func TestParseOpenstackSwiftMetadataForInvalidCases(t *testing.T) {
 
 func TestParseOpenstackSwiftAuthenticationMetadataForInvalidCases(t *testing.T) {
 	testCases := []openstackSwiftMetricIdentifier{
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[0], "missing userID"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[1], "missing password"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[2], "missing projectID"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[3], "missing authURL for password method"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[4], "missing appCredentialID"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[5], "missing appCredentialSecret"},
-		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[6], "missing authURL for application credentials method"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[0], 0, "s0-missing userID"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[1], 1, "s1-missing password"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[2], 2, "s2-missing projectID"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[3], 3, "s3-missing authURL for password method"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[4], 4, "s4-missing appCredentialID"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[5], 5, "s5-missing appCredentialSecret"},
+		{nil, &parseOpenstackSwiftMetadataTestData{}, &invalidOpenstackSwiftAuthMetadataTestData[6], 6, "s6-missing authURL for application credentials method"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackSwiftAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+			_, err := parseOpenstackSwiftAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scaledIndex})
 			assert.NotNil(t, err)
 		})
 	}

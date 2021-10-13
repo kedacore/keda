@@ -81,6 +81,9 @@ type ScalerConfig struct {
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.PodIdentityProvider
+
+	// ScalerIndex
+	ScalerIndex int
 }
 
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
@@ -96,4 +99,9 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 		err = fmt.Errorf("no %s given", field)
 	}
 	return result, err
+}
+
+// GenerateMetricNameWithIndex helps adding the index prefix to the metric name
+func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
+	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
 }

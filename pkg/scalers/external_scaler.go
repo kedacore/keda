@@ -33,6 +33,7 @@ type externalScalerMetadata struct {
 	scalerAddress    string
 	tlsCertFile      string
 	originalMetadata map[string]string
+	scalerIndex      int
 }
 
 type connectionGroup struct {
@@ -111,7 +112,7 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 			meta.originalMetadata[key] = value
 		}
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -159,7 +160,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: spec.MetricName,
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,
