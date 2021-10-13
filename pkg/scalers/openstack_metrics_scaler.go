@@ -35,6 +35,7 @@ type openstackMetricMetadata struct {
 	granularity       int
 	threshold         float64
 	timeout           int
+	scalerIndex       int
 }
 
 type openstackMetricAuthenticationMetadata struct {
@@ -163,7 +164,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 	} else {
 		meta.timeout = metricDefaultHTTPClientTimeout
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -196,9 +197,11 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 
 func (a *openstackMetricScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(a.metadata.threshold), resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s-%s-%s", a.metadata.metricID, strconv.FormatFloat(a.metadata.threshold, 'f', 0, 32), a.metadata.aggregationMethod))
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s-%s-%s", a.metadata.metricID, strconv.FormatFloat(a.metadata.threshold, 'f', 0, 32), a.metadata.aggregationMethod)),
+			Name: GenerateMetricNameWithIndex(a.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

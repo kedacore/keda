@@ -20,6 +20,7 @@ type parseMongoDBMetadataTestData struct {
 
 type mongoDBMetricIdentifier struct {
 	metadataTestData *parseMongoDBMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -55,7 +56,8 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
-	{metadataTestData: &testMONGODBMetadata[2], name: "mongodb-hpa"},
+	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 0, name: "s0-mongodb-hpa"},
+	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 1, name: "s1-mongodb-hpa"},
 }
 
 func TestParseMongoDBMetadata(t *testing.T) {
@@ -72,7 +74,7 @@ func TestParseMongoDBMetadata(t *testing.T) {
 
 func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mongoDBMetricIdentifiers {
-		meta, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata})
+		meta, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

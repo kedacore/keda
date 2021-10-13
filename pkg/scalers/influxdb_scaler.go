@@ -31,6 +31,7 @@ type influxDBMetadata struct {
 	serverURL        string
 	unsafeSsL        bool
 	thresholdValue   float64
+	scalerIndex      int
 }
 
 var influxDBLog = logf.Log.WithName("influxdb_scaler")
@@ -153,6 +154,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		serverURL:        serverURL,
 		thresholdValue:   thresholdValue,
 		unsafeSsL:        unsafeSsL,
+		scalerIndex:      config.ScalerIndex,
 	}, nil
 }
 
@@ -222,7 +224,7 @@ func (s *influxDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

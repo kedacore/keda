@@ -32,6 +32,7 @@ type parseAzMonitorMetadataTestData struct {
 
 type azMonitorMetricIdentifier struct {
 	metadataTestData *parseAzMonitorMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -80,7 +81,8 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
-	{&testParseAzMonitorMetadata[1], "azure-monitor-test-resource-uri-test-metric"},
+	{&testParseAzMonitorMetadata[1], 0, "s0-azure-monitor-test-resource-uri-test-metric"},
+	{&testParseAzMonitorMetadata[1], 1, "s1-azure-monitor-test-resource-uri-test-metric"},
 }
 
 func TestAzMonitorParseMetadata(t *testing.T) {
@@ -97,7 +99,7 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azMonitorMetricIdentifiers {
-		meta, err := parseAzureMonitorMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, err := parseAzureMonitorMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
