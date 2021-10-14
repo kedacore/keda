@@ -7,7 +7,7 @@ daysUntilClose: 7
 # Issues with these labels will never be considered stale
 exemptLabels:
   - cant-touch-this
-  - feature-request
+  - feature
   - security
 
 # Label to use when marking an issue as stale
