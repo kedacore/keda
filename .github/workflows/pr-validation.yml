@@ -4,7 +4,10 @@ on:
 jobs:
   validate:
     name: Validate PR
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ARM64]
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: ghcr.io/kedacore/build-tools:main
     steps:
@@ -44,7 +47,10 @@ jobs:
 
   statics:
     name: Static Checks
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ARM64]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2.2.2
@@ -57,11 +63,12 @@ jobs:
 
   codeScanning:
     name: Code Scanning
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, ARM64]
         language: ['go']
         # Learn more... https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
 
