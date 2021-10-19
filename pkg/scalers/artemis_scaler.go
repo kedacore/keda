@@ -162,7 +162,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueueMessageCount()
+	messages, err := s.getQueueMessageCount(ctx)
 	if err != nil {
 		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
@@ -214,14 +214,14 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 	return monitoringEndpoint
 }
 
-func (s *artemisScaler) getQueueMessageCount() (int, error) {
+func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 	var monitoringInfo *artemisMonitoring
 	messageCount := 0
 
 	client := s.httpClient
 	url := s.getMonitoringEndpoint()
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	req.Header.Set("Origin", s.metadata.corsHeader)
@@ -267,7 +267,7 @@ func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	messages, err := s.getQueueMessageCount()
+	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {
 		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
