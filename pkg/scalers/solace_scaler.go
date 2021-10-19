@@ -277,7 +277,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 //	returns SolaceMetricValues struct populated from broker  SEMP endpoint
-func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP() (SolaceMetricValues, error) {
+func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (SolaceMetricValues, error) {
 	var scaledMetricEndpointURL = s.metadata.endpointURL
 	var httpClient = s.httpClient
 	var sempResponse solaceSEMPResponse
@@ -285,7 +285,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP() (SolaceMetricValues, erro
 
 	//	RETRIEVE METRICS FROM SOLACE SEMP API
 	//	Define HTTP Request
-	request, err := http.NewRequest("GET", scaledMetricEndpointURL, nil)
+	request, err := http.NewRequestWithContext(ctx, "GET", scaledMetricEndpointURL, nil)
 	if err != nil {
 		return SolaceMetricValues{}, fmt.Errorf("failed attempting request to solace semp api: %s", err)
 	}
@@ -327,7 +327,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP() (SolaceMetricValues, erro
 func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	var metricValues, mv SolaceMetricValues
 	var mve error
-	if mv, mve = s.getSolaceQueueMetricsFromSEMP(); mve != nil {
+	if mv, mve = s.getSolaceQueueMetricsFromSEMP(ctx); mve != nil {
 		solaceLog.Error(mve, "call to semp endpoint failed")
 		return []external_metrics.ExternalMetricValue{}, mve
 	}
@@ -360,7 +360,7 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 //	Call SEMP API to retrieve metrics
 //	IsActive returns true if queue messageCount > 0 || msgSpoolUsage > 0
 func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
-	metricValues, err := s.getSolaceQueueMetricsFromSEMP()
+	metricValues, err := s.getSolaceQueueMetricsFromSEMP(ctx)
 	if err != nil {
 		solaceLog.Error(err, "call to semp endpoint failed")
 		return false, err

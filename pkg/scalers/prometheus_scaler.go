@@ -187,7 +187,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 }
 
 func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecutePromQuery()
+	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		prometheusLog.Error(err, "error executing prometheus query")
 		return false, err
@@ -218,11 +218,11 @@ func (s *prometheusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
+func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -277,7 +277,7 @@ func (s *prometheusScaler) ExecutePromQuery() (float64, error) {
 }
 
 func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := s.ExecutePromQuery()
+	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		prometheusLog.Error(err, "error executing prometheus query")
 		return []external_metrics.ExternalMetricValue{}, err

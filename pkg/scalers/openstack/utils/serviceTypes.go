@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,14 +34,14 @@ type serviceMapping struct {
 }
 
 // GetServiceTypes retrieves all historical OpenStack Service Types for a given OpenStack project
-func GetServiceTypes(projectName string) ([]string, error) {
+func GetServiceTypes(ctx context.Context, projectName string) ([]string, error) {
 	var serviceTypesRequest serviceTypesRequest
 
 	var httpClient = kedautil.CreateHTTPClient(defaultHTTPClientTimeout * time.Second)
 
 	var url = serviceTypesAuthorityEndpoint
 
-	getServiceTypes, err := http.NewRequest("GET", url, nil)
+	getServiceTypes, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return []string{}, err

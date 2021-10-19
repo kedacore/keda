@@ -105,6 +105,7 @@ func TestParseEventHubMetadata(t *testing.T) {
 }
 
 func TestGetUnprocessedEventCountInPartition(t *testing.T) {
+	ctx := context.Background()
 	t.Log("This test will use the environment variable EVENTHUB_CONNECTION_STRING and STORAGE_CONNECTION_STRING if it is set.")
 	t.Log("If set, it will connect to the storage account and event hub to determine how many messages are in the event hub.")
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
@@ -114,7 +115,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(http.DefaultClient, "none", storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()

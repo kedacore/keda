@@ -111,7 +111,7 @@ func (s *seleniumGridScaler) Close() error {
 }
 
 func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	v, err := s.getSessionsCount()
+	v, err := s.getSessionsCount(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
 	}
@@ -144,7 +144,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
-	v, err := s.getSessionsCount()
+	v, err := s.getSessionsCount(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -152,7 +152,7 @@ func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
 	return v.AsApproximateFloat64() > 0.0, nil
 }
 
-func (s *seleniumGridScaler) getSessionsCount() (*resource.Quantity, error) {
+func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (*resource.Quantity, error) {
 	body, err := json.Marshal(map[string]string{
 		"query": "{ sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
@@ -161,7 +161,7 @@ func (s *seleniumGridScaler) getSessionsCount() (*resource.Quantity, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", s.metadata.url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}

@@ -229,8 +229,9 @@ type azureTokenProvider struct {
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
+	ctx := context.Background()
 	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	token, err := azure.GetAzureADPodIdentityToken(a.httpClient, "https://servicebus.azure.net/")
+	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
 	if err != nil {
 		return nil, err
 	}

@@ -115,7 +115,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	monitoringEndpoint := s.getMonitoringEndpoint()
 
-	req, err := http.NewRequest("GET", monitoringEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", monitoringEndpoint, nil)
 	if err != nil {
 		return false, err
 	}
@@ -126,7 +126,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if resp.StatusCode == 404 {
-		req, err := http.NewRequest("GET", s.getSTANChannelsEndpoint(), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", s.getSTANChannelsEndpoint(), nil)
 		if err != nil {
 			return false, err
 		}
@@ -216,7 +216,7 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	req, err := http.NewRequest("GET", s.getMonitoringEndpoint(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.getMonitoringEndpoint(), nil)
 	if err != nil {
 		return nil, err
 	}

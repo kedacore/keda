@@ -60,7 +60,7 @@ type measureResult struct {
 var openstackMetricLog = logf.Log.WithName("openstack_metric_scaler")
 
 // NewOpenstackMetricScaler creates new openstack metrics scaler instance
-func NewOpenstackMetricScaler(config *ScalerConfig) (Scaler, error) {
+func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	var keystoneAuth *openstack.KeystoneAuthRequest
 	var metricsClient openstack.Client
 
@@ -96,7 +96,7 @@ func NewOpenstackMetricScaler(config *ScalerConfig) (Scaler, error) {
 		}
 	}
 
-	metricsClient, err = keystoneAuth.RequestClient()
+	metricsClient, err = keystoneAuth.RequestClient(ctx)
 	if err != nil {
 		openstackMetricLog.Error(err, "Fail to retrieve new keystone clinet for openstack metrics scaler")
 		return nil, err
@@ -218,7 +218,7 @@ func (a *openstackMetricScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 }
 
 func (a *openstackMetricScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := a.readOpenstackMetrics()
+	val, err := a.readOpenstackMetrics(ctx)
 
 	if err != nil {
 		openstackMetricLog.Error(err, "Error collecting metric value")
@@ -235,7 +235,7 @@ func (a *openstackMetricScaler) GetMetrics(ctx context.Context, metricName strin
 }
 
 func (a *openstackMetricScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := a.readOpenstackMetrics()
+	val, err := a.readOpenstackMetrics(ctx)
 
 	if err != nil {
 		return false, err
@@ -249,10 +249,10 @@ func (a *openstackMetricScaler) Close() error {
 }
 
 // Gets measureament from API as float64, converts it to int and return the value.
-func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
+func (a *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float64, error) {
 	var metricURL = a.metadata.metricsURL
 
-	isValid, validationError := a.metricClient.IsTokenValid()
+	isValid, validationError := a.metricClient.IsTokenValid(ctx)
 
 	if validationError != nil {
 		openstackMetricLog.Error(validationError, "Unable to check token validity.")
@@ -260,7 +260,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 	}
 
 	if !isValid {
-		tokenRequestError := a.metricClient.RenewToken()
+		tokenRequestError := a.metricClient.RenewToken(ctx)
 		if tokenRequestError != nil {
 			openstackMetricLog.Error(tokenRequestError, "The token being used is invalid")
 			return defaultValueWhenError, tokenRequestError
@@ -304,7 +304,7 @@ func (a *openstackMetricScaler) readOpenstackMetrics() (float64, error) {
 
 	openstackMetricsURL.RawQuery = queryParameter.Encode()
 
-	openstackMetricRequest, newReqErr := http.NewRequest("GET", openstackMetricsURL.String(), nil)
+	openstackMetricRequest, newReqErr := http.NewRequestWithContext(ctx, "GET", openstackMetricsURL.String(), nil)
 	if newReqErr != nil {
 		openstackMetricLog.Error(newReqErr, "Could not build metrics request", nil)
 	}

@@ -69,6 +69,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 }
 
 func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler, error) {
+	ctx := context.Background()
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler,
 		return nil, err
 	}
 
-	return h.buildScalers(withTriggers, podTemplateSpec, containerName)
+	return h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
 }
 
 func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
@@ -268,7 +269,7 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.
 }
 
 // buildScalers returns list of Scalers for the specified triggers
-func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
+func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var scalersRes []scalers.Scaler
 	var err error
@@ -297,7 +298,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 			return []scalers.Scaler{}, err
 		}
 
-		scaler, err := buildScaler(h.client, trigger.Type, config)
+		scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
 		if err != nil {
 			closeScalers(scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -310,7 +311,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	return scalersRes, nil
 }
 
-func buildScaler(client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
@@ -370,9 +371,9 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "openstack-metric":
-		return scalers.NewOpenstackMetricScaler(config)
+		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
-		return scalers.NewOpenstackSwiftScaler(config)
+		return scalers.NewOpenstackSwiftScaler(ctx, config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
 	case "prometheus":
