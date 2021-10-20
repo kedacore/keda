@@ -80,3 +80,7 @@ https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Function
 ## 6. Create Helm release on GitHub
 
 Create Helm release on GitHub with changelog of what changed to our Helm chart.
+
+## 7. Prepare next release
+
+Prepare next release by creating a new GitHub milestone with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
