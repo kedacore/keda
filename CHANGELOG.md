@@ -22,7 +22,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Ensure that `context.Context` values are passed down the stack from all scaler gRPC handler implementation to scaler implementation code ([#2202](https://github.com/kedacore/keda/pull/2202))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
 
