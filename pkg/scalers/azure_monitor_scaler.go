@@ -190,7 +190,7 @@ func (s *azureMonitorScaler) Close() error {
 	return nil
 }
 
-func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

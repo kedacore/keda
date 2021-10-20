@@ -201,7 +201,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *IBMMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

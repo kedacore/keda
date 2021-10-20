@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -115,7 +116,7 @@ func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 			metadata:           metadata,
 			defaultHTTPTimeout: httpTimeout,
 		}
-		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling()
+		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 
 		if metricName != testData.name {

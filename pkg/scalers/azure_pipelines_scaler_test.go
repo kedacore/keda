@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
@@ -66,7 +67,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockAzurePipelinesScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzurePipelinesScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

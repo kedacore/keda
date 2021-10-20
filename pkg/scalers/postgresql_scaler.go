@@ -192,7 +192,7 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{

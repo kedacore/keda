@@ -104,7 +104,7 @@ func (s *awsKinesisStreamScaler) Close() error {
 	return nil
 }
 
-func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

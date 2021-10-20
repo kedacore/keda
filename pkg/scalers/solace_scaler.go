@@ -239,7 +239,7 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 //	METRIC IDENTIFIER HAS THE SIGNATURE:
 //	- solace-[VPN_Name]-[Queue_Name]-[metric_type]
 //	e.g. solace-myvpn-QUEUE1-msgCount
-func (s *SolaceScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {

@@ -52,17 +52,17 @@ func (mr *MockScalerMockRecorder) Close() *gomock.Call {
 }
 
 // GetMetricSpecForScaling mocks base method.
-func (m *MockScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (m *MockScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetricSpecForScaling")
+	ret := m.ctrl.Call(m, "GetMetricSpecForScaling", ctx)
 	ret0, _ := ret[0].([]v2beta2.MetricSpec)
 	return ret0
 }
 
 // GetMetricSpecForScaling indicates an expected call of GetMetricSpecForScaling.
-func (mr *MockScalerMockRecorder) GetMetricSpecForScaling() *gomock.Call {
+func (mr *MockScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockScaler)(nil).GetMetricSpecForScaling))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockScaler)(nil).GetMetricSpecForScaling), ctx)
 }
 
 // GetMetrics mocks base method.
@@ -133,17 +133,17 @@ func (mr *MockPushScalerMockRecorder) Close() *gomock.Call {
 }
 
 // GetMetricSpecForScaling mocks base method.
-func (m *MockPushScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (m *MockPushScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetricSpecForScaling")
+	ret := m.ctrl.Call(m, "GetMetricSpecForScaling", ctx)
 	ret0, _ := ret[0].([]v2beta2.MetricSpec)
 	return ret0
 }
 
 // GetMetricSpecForScaling indicates an expected call of GetMetricSpecForScaling.
-func (mr *MockPushScalerMockRecorder) GetMetricSpecForScaling() *gomock.Call {
+func (mr *MockPushScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockPushScaler)(nil).GetMetricSpecForScaling))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockPushScaler)(nil).GetMetricSpecForScaling), ctx)
 }
 
 // GetMetrics mocks base method.

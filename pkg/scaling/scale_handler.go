@@ -44,7 +44,7 @@ import (
 type ScaleHandler interface {
 	HandleScalableObject(scalableObject interface{}) error
 	DeleteScalableObject(scalableObject interface{}) error
-	GetScalers(scalableObject interface{}) ([]scalers.Scaler, error)
+	GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error)
 }
 
 type scaleHandler struct {
@@ -68,8 +68,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 	}
 }
 
-func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler, error) {
-	ctx := context.Background()
+func (h *scaleHandler) GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error) {
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		return nil, err
@@ -170,7 +169,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 
 func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
-	ss, err := h.GetScalers(scalableObject)
+	ss, err := h.GetScalers(ctx, scalableObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
@@ -209,7 +208,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
 func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}, scalingMutex sync.Locker) {
-	scalers, err := h.GetScalers(scalableObject)
+	scalers, err := h.GetScalers(ctx, scalableObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
@@ -251,10 +250,10 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			if externalMetricsSpec := scaler.GetMetricSpecForScaling()[0].External; externalMetricsSpec != nil {
+			if externalMetricsSpec := scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
-			if resourceMetricsSpec := scaler.GetMetricSpecForScaling()[0].Resource; resourceMetricsSpec != nil {
+			if resourceMetricsSpec := scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
 			closeScalers(scalers[i+1:])
@@ -365,7 +364,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
 	case "mongodb":
-		return scalers.NewMongoDBScaler(config)
+		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":

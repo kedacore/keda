@@ -349,7 +349,7 @@ func (s *kafkaScaler) Close() error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

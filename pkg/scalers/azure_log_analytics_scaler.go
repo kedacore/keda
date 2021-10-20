@@ -215,8 +215,7 @@ func (s *azureLogAnalyticsScaler) IsActive(ctx context.Context) (bool, error) {
 	return s.cache.metricValue > 0, nil
 }
 
-func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	ctx := context.Background()
+func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	err := s.updateCache(ctx)
 
 	if err != nil {

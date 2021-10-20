@@ -43,7 +43,7 @@ type Scaler interface {
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
-	GetMetricSpecForScaling() []v2beta2.MetricSpec
+	GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec
 
 	IsActive(ctx context.Context) (bool, error)
 

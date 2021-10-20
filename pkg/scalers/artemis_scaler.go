@@ -250,7 +250,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 	return messageCount, nil
 }
 
-func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

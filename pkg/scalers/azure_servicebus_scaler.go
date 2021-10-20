@@ -178,7 +178,7 @@ func (s *azureServiceBusScaler) Close() error {
 }
 
 // Returns the metric spec to be used by the HPA
-func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	namespace, err := s.getServiceBusNamespace()
 	if err != nil {

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
@@ -143,6 +144,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range artemisMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -152,7 +154,7 @@ func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockArtemisScaler.GetMetricSpecForScaling()
+		metricSpec := mockArtemisScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

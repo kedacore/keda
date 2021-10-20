@@ -162,7 +162,7 @@ func (s *azureQueueScaler) Close() error {
 	return nil
 }
 
-func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

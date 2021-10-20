@@ -85,7 +85,7 @@ func TestCheckScaledObjectFindFirstActiveIgnoringOthers(t *testing.T) {
 	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(1)}
 
 	activeScaler.EXPECT().IsActive(gomock.Any()).Return(true, nil)
-	activeScaler.EXPECT().GetMetricSpecForScaling().Times(2).Return(metricsSpecs)
+	activeScaler.EXPECT().GetMetricSpecForScaling(context.Background()).Times(2).Return(metricsSpecs)
 	activeScaler.EXPECT().Close()
 	failingScaler.EXPECT().Close()
 

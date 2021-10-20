@@ -113,7 +113,7 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 				ScalerIndex:       testData.scalerIndex,
 			},
 		)
-		metric := s.GetMetricSpecForScaling()
+		metric := s.GetMetricSpecForScaling(context.Background())
 
 		if metric[0].External.Metric.Name != testData.name {
 			t.Errorf("Expected '%s' as metric name and got '%s'", testData.name, metric[0].External.Metric.Name)

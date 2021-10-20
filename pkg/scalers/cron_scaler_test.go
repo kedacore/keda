@@ -120,7 +120,7 @@ func TestCronGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockCronScaler := cronScaler{meta}
 
-		metricSpec := mockCronScaler.GetMetricSpecForScaling()
+		metricSpec := mockCronScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

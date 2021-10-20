@@ -89,7 +89,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 
 		scalerLogger := logger.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
 
-		metricSpecs := scaler.GetMetricSpecForScaling()
+		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 
 		// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
 		// or skip cpu/memory resource scaler

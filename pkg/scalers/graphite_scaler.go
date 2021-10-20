@@ -143,7 +143,7 @@ func (s *graphiteScaler) Close() error {
 	return nil
 }
 
-func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "graphite", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{

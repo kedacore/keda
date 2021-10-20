@@ -381,7 +381,7 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *openstackSwiftScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetObjectCount := resource.NewQuantity(int64(s.metadata.objectCount), resource.DecimalSI)
 
 	var metricName string

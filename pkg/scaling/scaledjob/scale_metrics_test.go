@@ -199,7 +199,7 @@ func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int32
 		},
 	}
 	scaler.EXPECT().IsActive(gomock.Any()).Return(isActive, nil)
-	scaler.EXPECT().GetMetricSpecForScaling().Return(metricsSpecs)
+	scaler.EXPECT().GetMetricSpecForScaling(context.Background()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetrics(gomock.Any(), metricName, nil).Return(metrics, nil)
 	scaler.EXPECT().Close()
 	return scaler

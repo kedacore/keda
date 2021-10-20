@@ -194,7 +194,7 @@ func (s *redisScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "redis", s.metadata.listName))
 	externalMetric := &v2beta2.ExternalMetricSource{

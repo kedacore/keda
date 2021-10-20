@@ -198,7 +198,7 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{

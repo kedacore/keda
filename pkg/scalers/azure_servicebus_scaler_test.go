@@ -200,7 +200,7 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

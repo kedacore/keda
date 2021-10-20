@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -110,7 +111,7 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 
 		mockSwiftScaler := openstackSwiftScaler{meta, openstack.Client{}}
 
-		metricSpec := mockSwiftScaler.GetMetricSpecForScaling()
+		metricSpec := mockSwiftScaler.GetMetricSpecForScaling(context.Background())
 
 		metricName := metricSpec[0].External.Metric.Name
 

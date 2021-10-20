@@ -460,7 +460,7 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
+		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName, "wanted:", testData.name)

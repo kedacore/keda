@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -217,13 +218,14 @@ func TestKinesisParseMetadata(t *testing.T) {
 
 func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsKinesisMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta}
 
-		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling()
+		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

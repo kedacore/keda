@@ -196,7 +196,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 	return false
 }
 
-func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject))
 	externalMetric := &v2beta2.ExternalMetricSource{
