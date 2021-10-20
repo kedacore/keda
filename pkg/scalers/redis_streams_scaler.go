@@ -47,23 +47,23 @@ type redisStreamsMetadata struct {
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(isClustered bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisStreamsScaler(ctx context.Context, isClustered bool, config *ScalerConfig) (Scaler, error) {
 	if isClustered {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createClusteredRedisStreamsScaler(meta)
+		return createClusteredRedisStreamsScaler(ctx, meta)
 	}
 	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
-	return createRedisStreamsScaler(meta)
+	return createRedisStreamsScaler(ctx, meta)
 }
 
-func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
-	client, err := getRedisClusterClient(meta.connectionInfo)
+func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
 	}
@@ -91,8 +91,8 @@ func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, erro
 	}, nil
 }
 
-func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
-	client, err := getRedisClient(meta.connectionInfo, meta.databaseIndex)
+func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
 	}

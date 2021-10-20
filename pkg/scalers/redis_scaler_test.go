@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -77,7 +78,7 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		closeFn := func() error { return nil }
-		lengthFn := func() (int64, error) { return -1, nil }
+		lengthFn := func(context.Context) (int64, error) { return -1, nil }
 		mockRedisScaler := redisScaler{
 			meta,
 			closeFn,
