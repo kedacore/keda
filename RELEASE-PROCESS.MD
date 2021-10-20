@@ -83,4 +83,4 @@ Create Helm release on GitHub with changelog of what changed to our Helm chart.
 
 ## 7. Prepare next release
 
-Prepare next release by creating a new GitHub milestone with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
+Prepare next release by creating a [new GitHub milestone](https://github.com/kedacore/keda/milestones/new) called `v{upcoming-semver-version}` with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
