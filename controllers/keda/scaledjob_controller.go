@@ -155,7 +155,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 	return "ScaledJob is defined correctly and is ready to scaling", nil
 }
 
-// Delete Jobs owned by the previous version of the scaledJob based on the rolloutStartegy
+// Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	switch scaledJob.Spec.RolloutStrategy {
 	default:
