@@ -158,6 +158,8 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	switch scaledJob.Spec.RolloutStrategy {
+	case "gradual":
+		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
 	default:
 		opts := []client.ListOption{
 			client.InNamespace(scaledJob.GetNamespace()),
@@ -180,8 +182,6 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 			}
 		}
 		return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobs.Items)), nil
-	case "gradual":
-		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
 	}
 	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
 }
