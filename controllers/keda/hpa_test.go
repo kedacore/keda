@@ -138,8 +138,9 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 		},
 	}
 	metricSpecs := []v2beta2.MetricSpec{metricSpec}
-	scaler.EXPECT().GetMetricSpecForScaling(context.Background()).Return(metricSpecs)
-	scaler.EXPECT().Close()
+	ctx := context.Background()
+	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(metricSpecs)
+	scaler.EXPECT().Close(ctx)
 	scaleHandler.EXPECT().GetScalers(context.Background(), gomock.Eq(scaledObject)).Return(scalers, nil)
 
 	return scaledObject

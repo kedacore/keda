@@ -139,7 +139,7 @@ func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (s *graphiteScaler) Close() error {
+func (s *graphiteScaler) Close(context.Context) error {
 	return nil
 }
 

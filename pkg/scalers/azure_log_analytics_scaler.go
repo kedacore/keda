@@ -253,7 +253,7 @@ func (s *azureLogAnalyticsScaler) GetMetrics(ctx context.Context, metricName str
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *azureLogAnalyticsScaler) Close() error {
+func (s *azureLogAnalyticsScaler) Close(context.Context) error {
 	return nil
 }
 

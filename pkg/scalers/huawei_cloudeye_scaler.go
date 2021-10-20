@@ -269,7 +269,7 @@ func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > h.metadata.minMetricValue, nil
 }
 
-func (h *huaweiCloudeyeScaler) Close() error {
+func (h *huaweiCloudeyeScaler) Close(context.Context) error {
 	return nil
 }
 

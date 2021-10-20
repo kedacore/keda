@@ -339,7 +339,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 }
 
 // Close closes the kafka admin and client
-func (s *kafkaScaler) Close() error {
+func (s *kafkaScaler) Close(context.Context) error {
 	// underlying client will also be closed on admin's Close() call
 	err := s.admin.Close()
 	if err != nil {

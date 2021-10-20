@@ -191,6 +191,6 @@ func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 	return queuelen > 0, nil
 }
 
-func (s *azurePipelinesScaler) Close() error {
+func (s *azurePipelinesScaler) Close(context.Context) error {
 	return nil
 }

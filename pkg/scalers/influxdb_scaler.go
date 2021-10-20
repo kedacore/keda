@@ -171,7 +171,7 @@ func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close closes the connection of the client to the server
-func (s *influxDBScaler) Close() error {
+func (s *influxDBScaler) Close(context.Context) error {
 	s.client.Close()
 	return nil
 }

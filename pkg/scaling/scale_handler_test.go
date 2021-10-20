@@ -55,7 +55,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	scaledObject := &kedav1alpha1.ScaledObject{}
 
 	scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("Some error"))
-	scaler.EXPECT().Close()
+	scaler.EXPECT().Close(gomock.Any())
 
 	isActive, isError := scaleHandler.isScaledObjectActive(context.TODO(), scalers, scaledObject)
 
@@ -85,9 +85,9 @@ func TestCheckScaledObjectFindFirstActiveIgnoringOthers(t *testing.T) {
 	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(1)}
 
 	activeScaler.EXPECT().IsActive(gomock.Any()).Return(true, nil)
-	activeScaler.EXPECT().GetMetricSpecForScaling(context.Background()).Times(2).Return(metricsSpecs)
-	activeScaler.EXPECT().Close()
-	failingScaler.EXPECT().Close()
+	activeScaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Times(2).Return(metricsSpecs)
+	activeScaler.EXPECT().Close(gomock.Any())
+	failingScaler.EXPECT().Close(gomock.Any())
 
 	isActive, isError := scaleHandler.isScaledObjectActive(context.TODO(), scalers, scaledObject)
 

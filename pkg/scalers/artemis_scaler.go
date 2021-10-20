@@ -284,6 +284,6 @@ func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metri
 }
 
 // Nothing to close here.
-func (s *artemisScaler) Close() error {
+func (s *artemisScaler) Close(context.Context) error {
 	return nil
 }

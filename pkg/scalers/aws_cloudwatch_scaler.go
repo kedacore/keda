@@ -238,7 +238,7 @@ func (c *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > c.metadata.minMetricValue, nil
 }
 
-func (c *awsCloudwatchScaler) Close() error {
+func (c *awsCloudwatchScaler) Close(context.Context) error {
 	return nil
 }
 

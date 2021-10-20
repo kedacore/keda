@@ -178,14 +178,14 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 	for _, s := range ss {
 		scaler, ok := s.(scalers.PushScaler)
 		if !ok {
-			s.Close()
+			s.Close(ctx)
 			continue
 		}
 
 		go func() {
 			activeCh := make(chan bool)
 			go scaler.Run(ctx, activeCh)
-			defer scaler.Close()
+			defer scaler.Close(ctx)
 			for {
 				select {
 				case <-ctx.Done():
@@ -241,7 +241,7 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 	isError := false
 	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
-		scaler.Close()
+		scaler.Close(ctx)
 
 		if err != nil {
 			h.logger.V(1).Info("Error getting scale decision", "Error", err)
@@ -256,7 +256,7 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 			if resourceMetricsSpec := scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
-			closeScalers(scalers[i+1:])
+			closeScalers(ctx, scalers[i+1:])
 			break
 		}
 	}
@@ -293,13 +293,13 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 		config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 		if err != nil {
-			closeScalers(scalersRes)
+			closeScalers(ctx, scalersRes)
 			return []scalers.Scaler{}, err
 		}
 
 		scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
 		if err != nil {
-			closeScalers(scalersRes)
+			closeScalers(ctx, scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", scalerIndex, err)
 		}
@@ -425,8 +425,8 @@ func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers,
 	}
 }
 
-func closeScalers(scalers []scalers.Scaler) {
+func closeScalers(ctx context.Context, scalers []scalers.Scaler) {
 	for _, scaler := range scalers {
-		defer scaler.Close()
+		defer scaler.Close(ctx)
 	}
 }

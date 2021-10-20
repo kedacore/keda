@@ -97,7 +97,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *liiklusScaler) Close() error {
+func (s *liiklusScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		return err

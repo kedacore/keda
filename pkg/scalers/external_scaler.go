@@ -133,7 +133,7 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 	return response.Result, nil
 }
 
-func (s *externalScaler) Close() error {
+func (s *externalScaler) Close(context.Context) error {
 	return nil
 }
 

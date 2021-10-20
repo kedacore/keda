@@ -139,7 +139,7 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 }
 
-func (s *cronScaler) Close() error {
+func (s *cronScaler) Close(context.Context) error {
 	return nil
 }
 

@@ -158,7 +158,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *azureQueueScaler) Close() error {
+func (s *azureQueueScaler) Close(context.Context) error {
 	return nil
 }
 

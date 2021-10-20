@@ -76,7 +76,7 @@ func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close no need for kubernetes workload scaler
-func (s *kubernetesWorkloadScaler) Close() error {
+func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 	return nil
 }
 

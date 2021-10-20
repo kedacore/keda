@@ -186,7 +186,7 @@ func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (s *azureMonitorScaler) Close() error {
+func (s *azureMonitorScaler) Close(context.Context) error {
 	return nil
 }
 

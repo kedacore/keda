@@ -122,7 +122,7 @@ func (s *awsSqsQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *awsSqsQueueScaler) Close() error {
+func (s *awsSqsQueueScaler) Close(context.Context) error {
 	return nil
 }
 

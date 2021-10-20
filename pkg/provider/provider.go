@@ -124,7 +124,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
-		scaler.Close()
+		scaler.Close(ctx)
 	}
 
 	if len(matchingMetrics) == 0 {

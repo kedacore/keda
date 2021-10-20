@@ -319,7 +319,7 @@ func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partition
 }
 
 // Close closes Azure Event Hub Scaler
-func (scaler *azureEventHubScaler) Close() error {
+func (scaler *azureEventHubScaler) Close(context.Context) error {
 	if scaler.client != nil {
 		err := scaler.client.Close(context.TODO())
 		if err != nil {

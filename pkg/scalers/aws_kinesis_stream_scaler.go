@@ -100,7 +100,7 @@ func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *awsKinesisStreamScaler) Close() error {
+func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	return nil
 }
 

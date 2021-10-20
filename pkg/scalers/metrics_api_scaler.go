@@ -229,7 +229,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (*resource.Quanti
 }
 
 // Close does nothing in case of metricsAPIScaler
-func (s *metricsAPIScaler) Close() error {
+func (s *metricsAPIScaler) Close(context.Context) error {
 	return nil
 }
 

@@ -173,7 +173,7 @@ func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close - nothing to close for SB
-func (s *azureServiceBusScaler) Close() error {
+func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
 }
 

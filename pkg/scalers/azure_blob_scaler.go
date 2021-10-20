@@ -180,7 +180,7 @@ func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *azureBlobScaler) Close() error {
+func (s *azureBlobScaler) Close(context.Context) error {
 	return nil
 }
 

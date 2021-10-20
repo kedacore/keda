@@ -38,17 +38,17 @@ func (m *MockScaler) EXPECT() *MockScalerMockRecorder {
 }
 
 // Close mocks base method.
-func (m *MockScaler) Close() error {
+func (m *MockScaler) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
+	ret := m.ctrl.Call(m, "Close", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockScalerMockRecorder) Close() *gomock.Call {
+func (mr *MockScalerMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockScaler)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockScaler)(nil).Close), ctx)
 }
 
 // GetMetricSpecForScaling mocks base method.
@@ -119,17 +119,17 @@ func (m *MockPushScaler) EXPECT() *MockPushScalerMockRecorder {
 }
 
 // Close mocks base method.
-func (m *MockPushScaler) Close() error {
+func (m *MockPushScaler) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
+	ret := m.ctrl.Call(m, "Close", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockPushScalerMockRecorder) Close() *gomock.Call {
+func (mr *MockPushScalerMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockPushScaler)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockPushScaler)(nil).Close), ctx)
 }
 
 // GetMetricSpecForScaling mocks base method.

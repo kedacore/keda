@@ -75,7 +75,7 @@ func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // Close closes and returns nil
-func (s *IBMMQScaler) Close() error {
+func (s *IBMMQScaler) Close(context.Context) error {
 	return nil
 }
 

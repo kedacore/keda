@@ -95,7 +95,7 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	return size > 0, nil
 }
 
-func (s *pubsubScaler) Close() error {
+func (s *pubsubScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
 		s.client = nil
