@@ -170,7 +170,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 		}
 
 		if len(jobs.Items) > 0 {
-			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "Number of jobs to delete", len(jobs.Items))
+			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobs.Items))
 		}
 		for _, job := range jobs.Items {
 			job := job
