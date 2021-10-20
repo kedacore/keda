@@ -189,7 +189,7 @@ func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *redisScaler) Close() error {
+func (s *redisScaler) Close(context.Context) error {
 	return s.closeFn()
 }
 

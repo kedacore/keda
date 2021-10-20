@@ -196,7 +196,7 @@ func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (s *prometheusScaler) Close() error {
+func (s *prometheusScaler) Close(context.Context) error {
 	return nil
 }
 

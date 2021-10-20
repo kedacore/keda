@@ -244,6 +244,6 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 }
 
 // Nothing to close here.
-func (s *stanScaler) Close() error {
+func (s *stanScaler) Close(context.Context) error {
 	return nil
 }

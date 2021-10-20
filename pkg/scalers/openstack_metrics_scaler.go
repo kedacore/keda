@@ -244,7 +244,7 @@ func (a *openstackMetricScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (a *openstackMetricScaler) Close() error {
+func (a *openstackMetricScaler) Close(context.Context) error {
 	return nil
 }
 

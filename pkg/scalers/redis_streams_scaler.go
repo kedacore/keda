@@ -176,7 +176,7 @@ func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *redisStreamsScaler) Close() error {
+func (s *redisStreamsScaler) Close(context.Context) error {
 	return s.closeFn()
 }
 

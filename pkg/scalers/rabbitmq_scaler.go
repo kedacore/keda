@@ -336,7 +336,7 @@ func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, erro
 }
 
 // Close disposes of RabbitMQ connections
-func (s *rabbitMQScaler) Close() error {
+func (s *rabbitMQScaler) Close(context.Context) error {
 	if s.connection != nil {
 		err := s.connection.Close()
 		if err != nil {

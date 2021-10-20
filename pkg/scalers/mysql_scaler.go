@@ -167,7 +167,7 @@ func parseMySQLDbNameFromConnectionStr(connectionString string) string {
 }
 
 // Close disposes of MySQL connections
-func (s *mySQLScaler) Close() error {
+func (s *mySQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		mySQLLog.Error(err, "Error closing MySQL connection")
@@ -178,7 +178,7 @@ func (s *mySQLScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult()
+	messages, err := s.getQueryResult(ctx)
 	if err != nil {
 		mySQLLog.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
 		return false, err
@@ -187,9 +187,9 @@ func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *mySQLScaler) getQueryResult() (int, error) {
+func (s *mySQLScaler) getQueryResult(ctx context.Context) (int, error) {
 	var value int
-	err := s.connection.QueryRow(s.metadata.query).Scan(&value)
+	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	if err != nil {
 		mySQLLog.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
 		return 0, err
@@ -218,7 +218,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult()
+	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting MySQL: %s", err)
 	}

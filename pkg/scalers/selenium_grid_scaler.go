@@ -106,7 +106,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 }
 
 // No cleanup required for selenium grid scaler
-func (s *seleniumGridScaler) Close() error {
+func (s *seleniumGridScaler) Close(context.Context) error {
 	return nil
 }
 

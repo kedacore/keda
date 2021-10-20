@@ -360,7 +360,7 @@ func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
 	return objectCount > 0, nil
 }
 
-func (s *openstackSwiftScaler) Close() error {
+func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 

@@ -199,7 +199,7 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close disposes of mongoDB connections
-func (s *mongoDBScaler) Close() error {
+func (s *mongoDBScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.Disconnect(context.TODO())
 		if err != nil {

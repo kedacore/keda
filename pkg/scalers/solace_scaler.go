@@ -369,6 +369,6 @@ func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Do Nothing - Satisfies Interface
-func (s *SolaceScaler) Close() error {
+func (s *SolaceScaler) Close(context.Context) error {
 	return nil
 }

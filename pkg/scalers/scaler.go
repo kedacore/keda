@@ -48,7 +48,7 @@ type Scaler interface {
 	IsActive(ctx context.Context) (bool, error)
 
 	// Close any resources that need disposing when scaler is no longer used or destroyed
-	Close() error
+	Close(ctx context.Context) error
 }
 
 // PushScaler interface
