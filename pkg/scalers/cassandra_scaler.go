@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gocql/gocql"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -26,8 +27,9 @@ type CassandraMetadata struct {
 	username         string
 	password         string
 	clusterIPAddress string
+	port             int
 	consistency      gocql.Consistency
-	protoVersion     int
+	protocolVersion  int
 	keyspace         string
 	query            string
 	targetQueryValue int
@@ -80,20 +82,34 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		return nil, fmt.Errorf("no username given")
 	}
 
+	if val, ok := config.TriggerMetadata["port"]; ok {
+		port, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("port parsing error %s", err.Error())
+		}
+		meta.port = port
+	}
+
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
-		meta.clusterIPAddress = val
+		if meta.port > 0 {
+			meta.clusterIPAddress = fmt.Sprintf("%s:%d", val, meta.port)
+		} else if strings.Contains(val, ":") {
+			meta.clusterIPAddress = val
+		} else {
+			return nil, fmt.Errorf("no port given")
+		}
 	} else {
 		return nil, fmt.Errorf("no cluster IP address given")
 	}
 
-	if val, ok := config.TriggerMetadata["protoVersion"]; ok {
-		protoVersion, err := strconv.Atoi(val)
+	if val, ok := config.TriggerMetadata["protocolVersion"]; ok {
+		protocolVersion, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("protoVersion parsing error %s", err.Error())
+			return nil, fmt.Errorf("protocolVersion parsing error %s", err.Error())
 		}
-		meta.protoVersion = protoVersion
+		meta.protocolVersion = protocolVersion
 	} else {
-		meta.protoVersion = 4
+		meta.protocolVersion = 4
 	}
 
 	if val, ok := config.TriggerMetadata["consistency"]; ok {
@@ -104,17 +120,14 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 
 	if val, ok := config.TriggerMetadata["keyspace"]; ok {
 		meta.keyspace = val
+	} else {
+		return nil, fmt.Errorf("no keyspace given")
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", val))
 	} else {
-		switch {
-		case meta.keyspace != "":
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", meta.keyspace))
-		default:
-			meta.metricName = "cassandra"
-		}
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", meta.keyspace))
 	}
 
 	if val, ok := config.AuthParams["password"]; ok {
@@ -129,7 +142,7 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 // NewCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
 func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(meta.clusterIPAddress)
-	cluster.ProtoVersion = meta.protoVersion
+	cluster.ProtoVersion = meta.protocolVersion
 	cluster.Consistency = meta.consistency
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: meta.username,
