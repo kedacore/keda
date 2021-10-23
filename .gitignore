@@ -44,3 +44,6 @@ cover.out
 
 # GO debug binary
 cmd/manager/debug.test
+
+# pre-commit
+.pre-commit-config.yaml
