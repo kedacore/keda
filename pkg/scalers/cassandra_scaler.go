@@ -91,11 +91,12 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
-		if meta.port > 0 {
+		switch p := meta.port; {
+		case p > 0:
 			meta.clusterIPAddress = fmt.Sprintf("%s:%d", val, meta.port)
-		} else if strings.Contains(val, ":") {
+		case strings.Contains(val, ":"):
 			meta.clusterIPAddress = val
-		} else {
+		default:
 			return nil, fmt.Errorf("no port given")
 		}
 	} else {
