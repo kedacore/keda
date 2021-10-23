@@ -21,8 +21,6 @@
 
 ### New
 
-- Add Cassandra Scaler ([#1841](https://github.com/kedacore/keda/pull/1841))
-
 ### Improvements
 
 - Fix READY and ACTIVE fields of ScaledJob to show status when we run `kubectl get sj` ([#1855](https://github.com/kedacore/keda/pull/1855))
