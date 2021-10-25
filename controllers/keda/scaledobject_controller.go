@@ -342,7 +342,7 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 	}
 
 	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
-		return fmt.Errorf("IdleReplicaCount=%d must be less or equal to MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
+		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
 	}
 
 	return nil
