@@ -110,7 +110,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, "scaledJob.spec.jobTargetRef not found")
 		return ctrl.Result{}, err
 	}
-	msg, err := r.reconcileScaledJob(reqLogger, scaledJob)
+	msg, err := r.reconcileScaledJob(ctx, reqLogger, scaledJob)
 	conditions := scaledJob.Status.Conditions.DeepCopy()
 	if err != nil {
 		reqLogger.Error(err, msg)
@@ -133,8 +133,8 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 // reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
-func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
+func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	msg, err := r.deletePreviousVersionScaleJobs(ctx, logger, scaledJob)
 	if err != nil {
 		return msg, err
 	}
@@ -156,7 +156,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *
 }
 
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
-func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	switch scaledJob.Spec.RolloutStrategy {
 	case "gradual":
 		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
@@ -166,7 +166,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 			client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 		}
 		jobs := &batchv1.JobList{}
-		err := r.Client.List(context.TODO(), jobs, opts...)
+		err := r.Client.List(ctx, jobs, opts...)
 		if err != nil {
 			return "Cannot get list of Jobs owned by this scaledJob", err
 		}
@@ -176,7 +176,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger,
 		}
 		for _, job := range jobs.Items {
 			job := job
-			err = r.Client.Delete(context.TODO(), &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
+			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
 			if err != nil {
 				return "Not able to delete job: " + job.Name, err
 			}
