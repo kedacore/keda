@@ -4,16 +4,23 @@ on:
 jobs:
   validate:
     name: Validate PR
-    runs-on: ubuntu-latest
-    # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: ghcr.io/kedacore/build-tools:main
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
       - name: Check out code
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
 
-      - id: go-paths
+      - name: Set Go paths
+        id: go-paths
         run: |
           echo ::set-output name=mod_cache::$(go env GOMODCACHE)
           echo ::set-output name=build_cache::$(go env GOCACHE)
