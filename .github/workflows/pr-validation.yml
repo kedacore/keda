@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, ARM64]
     steps:
       - name: Setup Go
         uses: actions/setup-go@v2
