@@ -335,6 +335,8 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
 		return scalers.NewAzureServiceBusScaler(config)
+	case "cassandra":
+		return scalers.NewCassandraScaler(config)
 	case "cpu":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
