@@ -19,7 +19,6 @@ type cpuMemoryScaler struct {
 
 type cpuMemoryMetadata struct {
 	Type               v2beta2.MetricTargetType
-	Value              *resource.Quantity
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
 }
@@ -51,9 +50,6 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		return nil, fmt.Errorf("no value given")
 	}
 	switch meta.Type {
-	case v2beta2.ValueMetricType:
-		valueQuantity := resource.MustParse(value)
-		meta.Value = &valueQuantity
 	case v2beta2.AverageValueMetricType:
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
@@ -86,7 +82,6 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Met
 		Name: s.resourceName,
 		Target: v2beta2.MetricTarget{
 			Type:               s.metadata.Type,
-			Value:              s.metadata.Value,
 			AverageUtilization: s.metadata.AverageUtilization,
 			AverageValue:       s.metadata.AverageValue,
 		},
