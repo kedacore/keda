@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/gocql/gocql"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // cassandraScaler exposes a data pointer to CassandraMetadata and gocql.Session connection.
@@ -34,6 +35,7 @@ type CassandraMetadata struct {
 	query            string
 	targetQueryValue int
 	metricName       string
+	scalerIndex      int
 }
 
 var cassandraLog = logf.Log.WithName("cassandra_scaler")
@@ -137,6 +139,8 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		return nil, fmt.Errorf("no password given")
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
@@ -161,7 +165,7 @@ func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
 
 // IsActive returns true if there are pending events to be processed.
 func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.GetQueryResult()
+	messages, err := s.GetQueryResult(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
@@ -174,7 +178,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -190,7 +194,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric.
 func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.GetQueryResult()
+	num, err := s.GetQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
@@ -205,9 +209,9 @@ func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, met
 }
 
 // GetQueryResult returns the result of the scaler query.
-func (s *cassandraScaler) GetQueryResult() (int, error) {
+func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int, error) {
 	var value int
-	if err := s.session.Query(s.metadata.query).Scan(&value); err != nil {
+	if err := s.session.Query(s.metadata.query).WithContext(ctx).Scan(&value); err != nil {
 		if err != gocql.ErrNotFound {
 			cassandraLog.Error(err, "query failed")
 			return 0, err
