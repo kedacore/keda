@@ -175,7 +175,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// reconcile ScaledObject and set status appropriately
-	msg, err := r.reconcileScaledObject(reqLogger, scaledObject)
+	msg, err := r.reconcileScaledObject(ctx, reqLogger, scaledObject)
 	conditions := scaledObject.Status.Conditions.DeepCopy()
 	if err != nil {
 		reqLogger.Error(err, msg)
@@ -199,7 +199,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 // reconcileScaledObject implements reconciler logic for ScaleObject
-func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
 		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")
@@ -224,7 +224,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(logger logr.Logger, scale
 	}
 
 	// Create a new HPA or update existing one according to ScaledObject
-	newHPACreated, err := r.ensureHPAForScaledObjectExists(logger, scaledObject, &gvkr)
+	newHPACreated, err := r.ensureHPAForScaledObjectExists(ctx, logger, scaledObject, &gvkr)
 	if err != nil {
 		return "Failed to ensure HPA is correctly created for ScaledObject", err
 	}
@@ -349,14 +349,14 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
-func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
+func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
 	hpaName := getHPAName(scaledObject)
 	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
 		// HPA wasn't found -> let's create a new one
-		err = r.createAndDeployNewHPA(logger, scaledObject, gvkr)
+		err = r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
 		if err != nil {
 			return false, err
 		}
@@ -372,7 +372,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(logger logr.Logg
 	}
 
 	// HPA was found -> let's check if we need to update it
-	err = r.updateHPAIfNeeded(logger, scaledObject, foundHpa, gvkr)
+	err = r.updateHPAIfNeeded(ctx, logger, scaledObject, foundHpa, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to check HPA for possible update")
 		return false, err

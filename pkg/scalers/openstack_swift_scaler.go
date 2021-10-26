@@ -59,11 +59,11 @@ type openstackSwiftScaler struct {
 
 var openstackSwiftLog = logf.Log.WithName("openstack_swift_scaler")
 
-func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount() (int, error) {
+func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context.Context) (int, error) {
 	var containerName = s.metadata.containerName
 	var swiftURL = s.metadata.swiftURL
 
-	isValid, err := s.swiftClient.IsTokenValid()
+	isValid, err := s.swiftClient.IsTokenValid(ctx)
 
 	if err != nil {
 		openstackSwiftLog.Error(err, "scaler could not validate the token for authentication")
@@ -71,7 +71,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount() (int, err
 	}
 
 	if !isValid {
-		err := s.swiftClient.RenewToken()
+		err := s.swiftClient.RenewToken(ctx)
 
 		if err != nil {
 			openstackSwiftLog.Error(err, "error requesting token for authentication")
@@ -90,7 +90,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount() (int, err
 
 	swiftContainerURL.Path = path.Join(swiftContainerURL.Path, containerName)
 
-	swiftRequest, _ := http.NewRequest("GET", swiftContainerURL.String(), nil)
+	swiftRequest, _ := http.NewRequestWithContext(ctx, "GET", swiftContainerURL.String(), nil)
 
 	swiftRequest.Header.Set("X-Auth-Token", token)
 
@@ -177,7 +177,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount() (int, err
 }
 
 // NewOpenstackSwiftScaler creates a new OpenStack Swift scaler
-func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
+func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	var authRequest *openstack.KeystoneAuthRequest
 
 	var swiftClient openstack.Client
@@ -214,7 +214,7 @@ func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
 
 	if openstackSwiftMetadata.swiftURL == "" {
 		// Request a Client with a token and the Swift API endpoint
-		swiftClient, err = authRequest.RequestClient("swift", authMetadata.regionName)
+		swiftClient, err = authRequest.RequestClient(ctx, "swift", authMetadata.regionName)
 
 		if err != nil {
 			return nil, fmt.Errorf("swiftURL was not provided and the scaler could not retrieve it dinamically using the OpenStack catalog: %s", err.Error())
@@ -223,7 +223,7 @@ func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
 		openstackSwiftMetadata.swiftURL = swiftClient.URL
 	} else {
 		// Request a Client with a token, but not the Swift API endpoint
-		swiftClient, err = authRequest.RequestClient()
+		swiftClient, err = authRequest.RequestClient(ctx)
 
 		if err != nil {
 			return nil, err
@@ -351,7 +351,7 @@ func parseOpenstackSwiftAuthenticationMetadata(config *ScalerConfig) (*openstack
 }
 
 func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
-	objectCount, err := s.getOpenstackSwiftContainerObjectCount()
+	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
 
 	if err != nil {
 		return false, err
@@ -360,12 +360,12 @@ func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
 	return objectCount > 0, nil
 }
 
-func (s *openstackSwiftScaler) Close() error {
+func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 
 func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	objectCount, err := s.getOpenstackSwiftContainerObjectCount()
+	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
 
 	if err != nil {
 		openstackSwiftLog.Error(err, "error getting objectCount")
@@ -381,7 +381,7 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *openstackSwiftScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetObjectCount := resource.NewQuantity(int64(s.metadata.objectCount), resource.DecimalSI)
 
 	var metricName string

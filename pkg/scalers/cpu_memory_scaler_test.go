@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +50,7 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 		TriggerMetadata: validCPUMemoryMetadata,
 	}
 	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
-	metricSpec := scaler.GetMetricSpecForScaling()
+	metricSpec := scaler.GetMetricSpecForScaling(context.Background())
 
 	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
 	assert.Equal(t, metricSpec[0].Resource.Name, v1.ResourceCPU)

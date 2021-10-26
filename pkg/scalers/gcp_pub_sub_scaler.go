@@ -95,7 +95,7 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	return size > 0, nil
 }
 
-func (s *pubsubScaler) Close() error {
+func (s *pubsubScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
 		s.client = nil
@@ -108,7 +108,7 @@ func (s *pubsubScaler) Close() error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *pubsubScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	// Construct the target subscription size as a quantity
 	targetSubscriptionSizeQty := resource.NewQuantity(int64(s.metadata.targetSubscriptionSize), resource.DecimalSI)
 

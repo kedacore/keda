@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -48,7 +49,7 @@ func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockPostgresSQLScaler := postgreSQLScaler{meta, nil}
 
-		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling()
+		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

@@ -76,12 +76,12 @@ func (s *cpuMemoryScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close no need for cpuMemory scaler
-func (s *cpuMemoryScaler) Close() error {
+func (s *cpuMemoryScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cpuMemoryScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	cpuMemoryMetric := &v2beta2.ResourceMetricSource{
 		Name: s.resourceName,
 		Target: v2beta2.MetricTarget{

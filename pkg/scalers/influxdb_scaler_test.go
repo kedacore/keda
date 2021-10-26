@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -73,7 +74,7 @@ func TestInfluxDBGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockInfluxDBScaler := influxDBScaler{influxdb2.NewClient("https://influxdata.com", "myToken"), meta}
 
-		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling()
+		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)

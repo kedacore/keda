@@ -158,11 +158,11 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *azureQueueScaler) Close() error {
+func (s *azureQueueScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

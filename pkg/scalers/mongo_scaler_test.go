@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -80,7 +81,7 @@ func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockMongoDBScaler := mongoDBScaler{meta, &mongo.Client{}}
 
-		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling()
+		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

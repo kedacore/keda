@@ -82,7 +82,7 @@ func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string, metri
 	}, nil
 }
 
-func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -97,7 +97,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *liiklusScaler) Close() error {
+func (s *liiklusScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 		return 0, nil, err
 	}
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancel2 := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel2()
 	geor, err := s.client.GetEndOffsets(ctx2, &liiklus_service.GetEndOffsetsRequest{
 		Topic: s.metadata.topic,

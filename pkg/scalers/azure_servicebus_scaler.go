@@ -173,12 +173,12 @@ func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close - nothing to close for SB
-func (s *azureServiceBusScaler) Close() error {
+func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
 }
 
 // Returns the metric spec to be used by the HPA
-func (s *azureServiceBusScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
 	namespace, err := s.getServiceBusNamespace()
 	if err != nil {
@@ -229,8 +229,9 @@ type azureTokenProvider struct {
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
+	ctx := context.Background()
 	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	token, err := azure.GetAzureADPodIdentityToken(a.httpClient, "https://servicebus.azure.net/")
+	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
 	if err != nil {
 		return nil, err
 	}

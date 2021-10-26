@@ -17,6 +17,8 @@ limitations under the License.
 package keda
 
 import (
+	"context"
+
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -75,7 +77,7 @@ var _ = Describe("hpa", func() {
 			capturedScaledObject = *scaledObject
 		})
 
-		_, err := reconciler.getScaledObjectMetricSpecs(logger, scaledObject)
+		_, err := reconciler.getScaledObjectMetricSpecs(context.Background(), logger, scaledObject)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(capturedScaledObject.Status.Health).To(BeEmpty())
@@ -102,7 +104,7 @@ var _ = Describe("hpa", func() {
 			capturedScaledObject = *scaledObject
 		})
 
-		_, err := reconciler.getScaledObjectMetricSpecs(logger, scaledObject)
+		_, err := reconciler.getScaledObjectMetricSpecs(context.Background(), logger, scaledObject)
 
 		expectedHealth := make(map[string]v1alpha1.HealthStatus)
 		expectedHealth["some metric name"] = v1alpha1.HealthStatus{
@@ -136,9 +138,10 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 		},
 	}
 	metricSpecs := []v2beta2.MetricSpec{metricSpec}
-	scaler.EXPECT().GetMetricSpecForScaling().Return(metricSpecs)
-	scaler.EXPECT().Close()
-	scaleHandler.EXPECT().GetScalers(gomock.Eq(scaledObject)).Return(scalers, nil)
+	ctx := context.Background()
+	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(metricSpecs)
+	scaler.EXPECT().Close(ctx)
+	scaleHandler.EXPECT().GetScalers(context.Background(), gomock.Eq(scaledObject)).Return(scalers, nil)
 
 	return scaledObject
 }

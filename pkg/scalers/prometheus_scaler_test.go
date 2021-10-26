@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -90,7 +91,7 @@ func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling()
+		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
