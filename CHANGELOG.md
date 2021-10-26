@@ -22,7 +22,6 @@
 
 ### New
 
-- Ensure that `context.Context` values are passed down the stack from all scaler gRPC handler implementation to scaler implementation code ([#2202](https://github.com/kedacore/keda/pull/2202))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
 
@@ -53,6 +52,7 @@
 
 ### Other
 
+- Ensure that `context.Context` values are passed down the stack from all scaler gRPC handler implementation to scaler implementation code ([#2202](https://github.com/kedacore/keda/pull/2202))
 - Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
