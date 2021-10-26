@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -28,7 +29,9 @@ type influxDBMetadata struct {
 	organizationName string
 	query            string
 	serverURL        string
+	unsafeSsL        bool
 	thresholdValue   float64
+	scalerIndex      int
 }
 
 var influxDBLog = logf.Log.WithName("influxdb_scaler")
@@ -41,7 +44,13 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	influxDBLog.Info("starting up influxdb client")
-
+	// In case unsafeSsL is enabled.
+	if meta.unsafeSsL {
+		return &influxDBScaler{
+			client:   influxdb2.NewClientWithOptions(meta.serverURL, meta.authToken, influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: true})),
+			metadata: meta,
+		}, nil
+	}
 	return &influxDBScaler{
 		client:   influxdb2.NewClient(meta.serverURL, meta.authToken),
 		metadata: meta,
@@ -55,6 +64,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var organizationName string
 	var query string
 	var serverURL string
+	var unsafeSsL bool
 	var thresholdValue float64
 
 	val, ok := config.TriggerMetadata["authToken"]
@@ -127,6 +137,14 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no threshold value given")
 	}
+	unsafeSsL = false
+	if val, ok := config.TriggerMetadata["unsafeSsL"]; ok {
+		parsedVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsL: %s", err)
+		}
+		unsafeSsL = parsedVal
+	}
 
 	return &influxDBMetadata{
 		authToken:        authToken,
@@ -135,6 +153,8 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		query:            query,
 		serverURL:        serverURL,
 		thresholdValue:   thresholdValue,
+		unsafeSsL:        unsafeSsL,
+		scalerIndex:      config.ScalerIndex,
 	}, nil
 }
 
@@ -204,7 +224,7 @@ func (s *influxDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

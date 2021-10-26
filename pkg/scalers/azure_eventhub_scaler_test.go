@@ -31,6 +31,7 @@ type parseEventHubMetadataTestData struct {
 
 type eventHubMetricIdentifier struct {
 	metadataTestData *parseEventHubMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -65,7 +66,8 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
-	{&parseEventHubMetadataDataset[1], "azure-eventhub-none-testEventHubConsumerGroup"},
+	{&parseEventHubMetadataDataset[1], 0, "s0-azure-eventhub-none-testEventHubConsumerGroup"},
+	{&parseEventHubMetadataDataset[1], 1, "s1-azure-eventhub-none-testEventHubConsumerGroup"},
 }
 
 var testEventHubScaler = azureEventHubScaler{
@@ -435,7 +437,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}})
+		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

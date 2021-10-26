@@ -41,6 +41,7 @@ type redisStreamsMetadata struct {
 	consumerGroupName         string
 	databaseIndex             int
 	connectionInfo            redisConnectionInfo
+	scalerIndex               int
 }
 
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
@@ -159,7 +160,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -182,9 +183,10 @@ func (s *redisStreamsScaler) Close() error {
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPendingEntriesCount := resource.NewQuantity(int64(s.metadata.targetPendingEntriesCount), resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

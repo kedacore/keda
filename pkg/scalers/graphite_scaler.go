@@ -43,6 +43,7 @@ type graphiteMetadata struct {
 	enableBasicAuth bool
 	username        string
 	password        string // +optional
+	scalerIndex     int
 }
 
 type grapQueryResult []struct {
@@ -104,6 +105,8 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.threshold = t
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
 	val, ok := config.TriggerMetadata["authMode"]
 	// no authMode specified
 	if !ok {
@@ -142,9 +145,10 @@ func (s *graphiteScaler) Close() error {
 
 func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "graphite", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "graphite", s.metadata.metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

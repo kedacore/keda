@@ -116,6 +116,7 @@ type redisStreamsTestMetadata struct {
 func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	type redisStreamsMetricIdentifier struct {
 		metadataTestData *redisStreamsTestMetadata
+		scalerIndex      int
 		name             string
 	}
 
@@ -127,11 +128,12 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
-		{&redisStreamsTestData[0], "redis-streams-my-stream-my-stream-consumer-group"},
+		{&redisStreamsTestData[0], 0, "s0-redis-streams-my-stream-my-stream-consumer-group"},
+		{&redisStreamsTestData[0], 1, "s1-redis-streams-my-stream-my-stream-consumer-group"},
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams}, parseRedisAddress)
+		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

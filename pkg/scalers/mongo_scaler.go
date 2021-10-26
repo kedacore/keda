@@ -61,6 +61,10 @@ type mongoDBMetadata struct {
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
 	// +optional
 	metricName string
+
+	// The index of the scaler inside the ScaledObject
+	// +internal
+	scalerIndex int
 }
 
 // Default variables and settings
@@ -181,6 +185,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		}
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s-%s", maskedURL, meta.collection))
 	}
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
 
@@ -248,7 +253,7 @@ func (s *mongoDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

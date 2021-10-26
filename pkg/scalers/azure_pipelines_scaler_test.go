@@ -14,6 +14,7 @@ type parseAzurePipelinesMetadataTestData struct {
 
 type azurePipelinesMetricIdentifier struct {
 	metadataTestData *parseAzurePipelinesMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -38,7 +39,8 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 }
 
 var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
-	{&testAzurePipelinesMetadata[1], "azure-pipelines-queue-sample-1"},
+	{&testAzurePipelinesMetadata[1], 0, "s0-azure-pipelines-queue-sample-1"},
+	{&testAzurePipelinesMetadata[1], 1, "s1-azure-pipelines-queue-sample-1"},
 }
 
 func TestParseAzurePipelinesMetadata(t *testing.T) {
@@ -55,7 +57,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 
 func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azurePipelinesMetricIdentifiers {
-		meta, err := parseAzurePipelinesMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams})
+		meta, err := parseAzurePipelinesMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

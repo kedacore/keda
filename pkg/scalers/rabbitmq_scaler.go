@@ -60,16 +60,18 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName  string
-	mode       string        // QueueLength or MessageRate
-	value      int           // trigger value (queue length or publish/sec. rate)
-	host       string        // connection string for either HTTP or AMQP protocol
-	protocol   string        // either http or amqp protocol
-	vhostName  *string       // override the vhost from the connection info
-	useRegex   bool          // specify if the queueName contains a rexeg
-	operation  string        // specify the operation to apply in case of multiples queues
-	metricName string        // custom metric name for trigger
-	timeout    time.Duration // custom http timeout for a specific trigger
+	queueName   string
+	mode        string        // QueueLength or MessageRate
+	value       int           // trigger value (queue length or publish/sec. rate)
+	host        string        // connection string for either HTTP or AMQP protocol
+	protocol    string        // either http or amqp protocol
+	vhostName   *string       // override the vhost from the connection info
+	useRegex    bool          // specify if the queueName contains a rexeg
+	pageSize    int           // specify the page size if useRegex is enabled
+	operation   string        // specify the operation to apply in case of multiples queues
+	metricName  string        // custom metric name for trigger
+	timeout     time.Duration // custom http timeout for a specific trigger
+	scalerIndex int           // scaler index
 }
 
 type queueInfo struct {
@@ -197,6 +199,20 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.useRegex = useRegex
 	}
 
+	// Resolve pageSize
+	if val, ok := config.TriggerMetadata["pageSize"]; ok {
+		pageSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("pageSize has invalid value")
+		}
+		meta.pageSize = int(pageSize)
+		if meta.pageSize < 1 {
+			return nil, fmt.Errorf("pageSize should be 1 or greater than 1")
+		}
+	} else {
+		meta.pageSize = 100
+	}
+
 	// Resolve operation
 	meta.operation = defaultOperation
 	if val, ok := config.TriggerMetadata["operation"]; ok {
@@ -239,6 +255,8 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	} else {
 		meta.timeout = config.GlobalHTTPTimeout
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }
@@ -412,9 +430,9 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	parsedURL.Path = ""
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s", parsedURL.String(), "api/queues?page=1&use_regex=true&pagination=false&name=", url.QueryEscape(s.metadata.queueName))
+		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues?page=1&use_regex=true&pagination=false&name=%s&page_size=%d", parsedURL.String(), url.QueryEscape(s.metadata.queueName), s.metadata.pageSize)
 	} else {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/%s%s/%s", parsedURL.String(), "api/queues", vhost, url.QueryEscape(s.metadata.queueName))
+		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues%s/%s", parsedURL.String(), vhost, url.QueryEscape(s.metadata.queueName))
 	}
 
 	var info queueInfo
@@ -430,10 +448,9 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

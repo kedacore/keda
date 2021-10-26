@@ -56,6 +56,9 @@ type mssqlMetadata struct {
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
+	// The index of the scaler inside the ScaledObject
+	// +internal
+	scalerIndex int
 }
 
 var mssqlLog = logf.Log.WithName("mssql_scaler")
@@ -155,7 +158,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.metricName = "mssql"
 		}
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -216,7 +219,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

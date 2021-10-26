@@ -50,6 +50,7 @@ type stanMetadata struct {
 	durableName                  string
 	subject                      string
 	lagThreshold                 int64
+	scalerIndex                  int
 }
 
 const (
@@ -75,11 +76,11 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
-
-	if config.TriggerMetadata["natsServerMonitoringEndpoint"] == "" {
-		return meta, errors.New("no monitoring endpoint given")
+	var err error
+	meta.natsServerMonitoringEndpoint, err = GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	if err != nil {
+		return meta, err
 	}
-	meta.natsServerMonitoringEndpoint = config.TriggerMetadata["natsServerMonitoringEndpoint"]
 
 	if config.TriggerMetadata["queueGroup"] == "" {
 		return meta, errors.New("no queue group given")
@@ -106,6 +107,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 		meta.lagThreshold = t
 	}
 
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -196,9 +198,10 @@ func (s *stanScaler) hasPendingMessage() bool {
 
 func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

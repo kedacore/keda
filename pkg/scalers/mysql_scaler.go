@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -31,6 +32,7 @@ type mySQLMetadata struct {
 	dbName           string
 	query            string
 	queryValue       int
+	metricName       string
 }
 
 var mySQLLog = logf.Log.WithName("mysql_scaler")
@@ -110,6 +112,11 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		}
 	}
 
+	if meta.connectionString != "" {
+		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
+	}
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
+
 	return &meta, nil
 }
 
@@ -148,6 +155,17 @@ func newMySQLConnection(meta *mySQLMetadata) (*sql.DB, error) {
 	return db, nil
 }
 
+// parseMySQLDbNameFromConnectionStr returns dbname from connection string
+// in it is not able to parse it, it returns "dbname" string
+func parseMySQLDbNameFromConnectionStr(connectionString string) string {
+	splitted := strings.Split(connectionString, "/")
+
+	if size := len(splitted); size > 0 {
+		return splitted[size-1]
+	}
+	return "dbname"
+}
+
 // Close disposes of MySQL connections
 func (s *mySQLScaler) Close() error {
 	err := s.connection.Close()
@@ -182,15 +200,10 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-	metricName := "mysql"
-	if s.metadata.connectionString != "" {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.connectionString))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.dbName))
-	}
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

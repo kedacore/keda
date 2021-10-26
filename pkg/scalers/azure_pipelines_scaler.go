@@ -33,6 +33,7 @@ type azurePipelinesMetadata struct {
 	personalAccessToken        string
 	poolID                     string
 	targetPipelinesQueueLength int
+	scalerIndex                int
 }
 
 var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
@@ -94,6 +95,8 @@ func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata,
 	} else {
 		return nil, fmt.Errorf("no poolID given")
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }
@@ -166,7 +169,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-pipelines-queue", s.metadata.organizationName, s.metadata.poolID)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-pipelines-queue", s.metadata.organizationName, s.metadata.poolID))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

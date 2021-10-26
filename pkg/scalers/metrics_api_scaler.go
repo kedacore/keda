@@ -55,6 +55,8 @@ type metricsAPIScalerMetadata struct {
 	// bearer
 	enableBearerAuth bool
 	bearerToken      string
+
+	scalerIndex int
 }
 
 const (
@@ -177,7 +179,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	if len(config.AuthParams["ca"]) > 0 {
 		meta.ca = config.AuthParams["ca"]
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -248,7 +250,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "http", s.metadata.url, s.metadata.valueLocation))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
