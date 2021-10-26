@@ -24,6 +24,7 @@
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
+- ScaledJob: introduce rolloutStrategy ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
 
 ### Improvements
