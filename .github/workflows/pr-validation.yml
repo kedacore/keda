@@ -60,7 +60,7 @@ jobs:
           go-version: 1.16
 
       - name: Install necessary packages
-        run: apt update && apt install make
+        run: apt update && apt install make && apk add --no-cache git ca-certificates && update-ca-certificates
 
       - name: Check out code
         uses: actions/checkout@v2
