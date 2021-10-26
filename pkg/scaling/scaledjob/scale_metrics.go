@@ -89,7 +89,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 
 		scalerLogger := logger.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
 
-		metricSpecs := scaler.GetMetricSpecForScaling()
+		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 
 		// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
 		// or skip cpu/memory resource scaler
@@ -101,7 +101,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler.IsActive, but continue", "Error", err)
 			recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			scaler.Close()
+			scaler.Close(ctx)
 			continue
 		}
 
@@ -111,7 +111,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
 			recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			scaler.Close()
+			scaler.Close(ctx)
 			continue
 		}
 
@@ -125,7 +125,7 @@ func getScalersMetrics(ctx context.Context, scalers []scalers.Scaler, scaledJob 
 		}
 		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
 
-		scaler.Close()
+		scaler.Close(ctx)
 
 		if isTriggerActive {
 			isActive = true

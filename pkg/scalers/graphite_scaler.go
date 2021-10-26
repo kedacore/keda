@@ -130,7 +130,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 }
 
 func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecuteGrapQuery()
+	val, err := s.ExecuteGrapQuery(ctx)
 	if err != nil {
 		graphiteLog.Error(err, "error executing graphite query")
 		return false, err
@@ -139,11 +139,11 @@ func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (s *graphiteScaler) Close() error {
+func (s *graphiteScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "graphite", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
@@ -161,10 +161,10 @@ func (s *graphiteScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
+func (s *graphiteScaler) ExecuteGrapQuery(ctx context.Context) (float64, error) {
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.serverAddress, s.metadata.from, queryEscaped)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -201,7 +201,7 @@ func (s *graphiteScaler) ExecuteGrapQuery() (float64, error) {
 }
 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := s.ExecuteGrapQuery()
+	val, err := s.ExecuteGrapQuery(ctx)
 	if err != nil {
 		graphiteLog.Error(err, "error executing graphite query")
 		return []external_metrics.ExternalMetricValue{}, err

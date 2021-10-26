@@ -17,6 +17,7 @@ limitations under the License.
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -108,7 +109,7 @@ func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -252,13 +253,14 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 
 func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsCloudwatchMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta}
 
-		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling()
+		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

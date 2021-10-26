@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -150,13 +151,14 @@ func TestSQSParseMetadata(t *testing.T) {
 
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAWSSQSScaler := awsSqsQueueScaler{meta}
 
-		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling()
+		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

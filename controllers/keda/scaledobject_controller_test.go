@@ -100,7 +100,7 @@ var _ = Describe("ScaledObjectController", func() {
 					}
 
 					testScalers = append(testScalers, s)
-					for _, metricSpec := range s.GetMetricSpecForScaling() {
+					for _, metricSpec := range s.GetMetricSpecForScaling(context.Background()) {
 						if metricSpec.External != nil {
 							expectedExternalMetricNames = append(expectedExternalMetricNames, metricSpec.External.Metric.Name)
 						}
@@ -108,12 +108,12 @@ var _ = Describe("ScaledObjectController", func() {
 				}
 
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(uniquelyNamedScaledObject).Return(testScalers, nil)
+				mockScaleHandler.EXPECT().GetScalers(context.Background(), uniquelyNamedScaledObject).Return(testScalers, nil)
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 
 				// Call function to be tested
-				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(testLogger, uniquelyNamedScaledObject)
+				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(context.Background(), testLogger, uniquelyNamedScaledObject)
 
 				// Test that the status was updated with metric names
 				Ω(uniquelyNamedScaledObject.Status.ExternalMetricNames).Should(Equal(expectedExternalMetricNames))
@@ -139,19 +139,19 @@ var _ = Describe("ScaledObjectController", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
-				for _, metricSpec := range s.GetMetricSpecForScaling() {
+				for _, metricSpec := range s.GetMetricSpecForScaling(context.Background()) {
 					if metricSpec.External != nil {
 						expectedExternalMetricNames = append(expectedExternalMetricNames, metricSpec.External.Metric.Name)
 					}
 				}
 
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(uniquelyNamedScaledObject).Return([]scalers.Scaler{s}, nil)
+				mockScaleHandler.EXPECT().GetScalers(context.Background(), uniquelyNamedScaledObject).Return([]scalers.Scaler{s}, nil)
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 
 				// Call function to be tested
-				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(testLogger, uniquelyNamedScaledObject)
+				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(context.Background(), testLogger, uniquelyNamedScaledObject)
 
 				// Test that the status was updated
 				Ω(uniquelyNamedScaledObject.Status.ExternalMetricNames).Should(Equal(expectedExternalMetricNames))
@@ -186,10 +186,10 @@ var _ = Describe("ScaledObjectController", func() {
 				}
 
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(duplicateNamedScaledObject).Return(testScalers, nil)
+				mockScaleHandler.EXPECT().GetScalers(context.Background(), duplicateNamedScaledObject).Return(testScalers, nil)
 
 				// Call function tobe tested
-				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(testLogger, duplicateNamedScaledObject)
+				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(context.Background(), testLogger, duplicateNamedScaledObject)
 
 				// Test that the status was not updated
 				Ω(duplicateNamedScaledObject.Status.ExternalMetricNames).Should(BeNil())

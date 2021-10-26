@@ -133,12 +133,12 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 	return response.Result, nil
 }
 
-func (s *externalScaler) Close() error {
+func (s *externalScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *externalScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var result []v2beta2.MetricSpec
 
 	grpcClient, done, err := getClientForConnectionPool(s.metadata)

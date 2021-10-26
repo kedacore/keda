@@ -27,7 +27,7 @@ import (
 
 // GetAzureQueueLength returns the length of a queue in int
 func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, queueName, accountName, endpointSuffix string) (int32, error) {
-	credential, endpoint, err := ParseAzureStorageQueueConnection(httpClient, podIdentity, connectionString, accountName, endpointSuffix)
+	credential, endpoint, err := ParseAzureStorageQueueConnection(ctx, httpClient, podIdentity, connectionString, accountName, endpointSuffix)
 	if err != nil {
 		return -1, err
 	}
@@ -40,7 +40,7 @@ func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdent
 		return -1, err
 	}
 
-	visibleMessageCount, err := getVisibleCount(&queueURL, 32)
+	visibleMessageCount, err := getVisibleCount(ctx, &queueURL, 32)
 	if err != nil {
 		return -1, err
 	}
@@ -53,9 +53,8 @@ func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdent
 	return visibleMessageCount, nil
 }
 
-func getVisibleCount(queueURL *azqueue.QueueURL, maxCount int32) (int32, error) {
+func getVisibleCount(ctx context.Context, queueURL *azqueue.QueueURL, maxCount int32) (int32, error) {
 	messagesURL := queueURL.NewMessagesURL()
-	ctx := context.Background()
 	queue, err := messagesURL.Peek(ctx, maxCount)
 	if err != nil {
 		return 0, err

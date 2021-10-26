@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -165,7 +166,7 @@ func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{meta}
 
-		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling()
+		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName, "wanted:", testData.name)

@@ -17,6 +17,7 @@ limitations under the License.
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -95,6 +96,7 @@ func TestAzBlobParseMetadata(t *testing.T) {
 
 func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azBlobMetricIdentifiers {
+		ctx := context.Background()
 		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -105,7 +107,7 @@ func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzBlobScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzBlobScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

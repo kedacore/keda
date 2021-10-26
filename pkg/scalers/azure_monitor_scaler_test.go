@@ -17,6 +17,7 @@ limitations under the License.
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -105,7 +106,7 @@ func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockAzMonitorScaler := azureMonitorScaler{meta, testData.metadataTestData.podIdentity}
 
-		metricSpec := mockAzMonitorScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzMonitorScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
