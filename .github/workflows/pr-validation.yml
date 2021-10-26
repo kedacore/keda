@@ -5,15 +5,73 @@ jobs:
   validate:
     name: Validate PR
     runs-on: ubuntu-latest
-    # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: ghcr.io/kedacore/build-tools:main
+    container: ubuntu:focal
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Install necessary packages
+        run: apt update && apt install -y make ca-certificates gcc
+
       - name: Check out code
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
 
-      - id: go-paths
+      - name: Set Go paths
+        id: go-paths
+        run: |
+          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
+          echo ::set-output name=build_cache::$(go env GOCACHE)
+
+      - name: Go modules cache
+        uses: actions/cache@v2.1.6
+        with:
+          path: ${{ steps.go-paths.outputs.mod_cache }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Go build cache
+        uses: actions/cache@v2.1.6
+        with:
+          path: ${{ steps.go-paths.outputs.build_cache }}
+          key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
+
+      - name: Go modules sync
+        run: go mod tidy
+
+      - name: Verify Generated clientset is up to date
+        run: make clientset-verify
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
+
+  validate-arm64:
+    name: Validate PR on ARM64
+    runs-on: ARM64
+    container: arm64v8/ubuntu:focal
+    env:
+      ARCH: arm64
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Install necessary packages
+        run: apt update && apt install -y make ca-certificates gcc
+
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Set Go paths
+        id: go-paths
         run: |
           echo ::set-output name=mod_cache::$(go env GOMODCACHE)
           echo ::set-output name=build_cache::$(go env GOCACHE)
