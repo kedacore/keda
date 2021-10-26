@@ -12,6 +12,9 @@ jobs:
         with:
           go-version: 1.16
 
+      - name: Install necessary packages
+        run: apt update && apt install -y ca-certificates
+
       - name: Check out code
         uses: actions/checkout@v2
         with:
@@ -60,7 +63,7 @@ jobs:
           go-version: 1.16
 
       - name: Install necessary packages
-        run: apt update && apt install make git ca-certificates && update-ca-certificates
+        run: apt update && apt install -y make git ca-certificates
 
       - name: Check out code
         uses: actions/checkout@v2
