@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gocql/gocql"
@@ -70,7 +71,7 @@ func TestCassandraGetMetricSpecForScaling(t *testing.T) {
 		session, _ := cluster.CreateSession()
 		mockCassandraScaler := cassandraScaler{meta, session}
 
-		metricSpec := mockCassandraScaler.GetMetricSpecForScaling()
+		metricSpec := mockCassandraScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)

@@ -174,7 +174,7 @@ func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
-func (s *cassandraScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -222,7 +222,7 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int, error) {
 }
 
 // Close closes the Cassandra session connection.
-func (s *cassandraScaler) Close() error {
+func (s *cassandraScaler) Close(ctx context.Context) error {
 	s.session.Close()
 
 	return nil
