@@ -24,8 +24,8 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 	{map[string]string{}, true},
 	{validCPUMemoryMetadata, false},
 	{map[string]string{"type": "Utilization", "value": "50"}, false},
-	{map[string]string{"type": "Value", "value": "50"}, false},
 	{map[string]string{"type": "AverageValue", "value": "50"}, false},
+	{map[string]string{"type": "Value", "value": "50"}, true},
 	{map[string]string{"type": "AverageValue"}, true},
 	{map[string]string{"type": "xxx", "value": "50"}, true},
 }
