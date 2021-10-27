@@ -24,6 +24,7 @@
 
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
+- Add Cassandra Scaler ([#2211](https://github.com/kedacore/keda/pull/2211))
 
 ### Improvements
 
