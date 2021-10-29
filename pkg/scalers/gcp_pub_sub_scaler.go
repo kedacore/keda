@@ -12,6 +12,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -23,6 +24,7 @@ const (
 type gcpAuthorizationMetadata struct {
 	GoogleApplicationCredentials string
 	podIdentityOwner             bool
+	podIdentityProviderEnabled   bool
 }
 
 type pubsubScaler struct {
@@ -74,7 +76,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
-	auth, err := getGcpAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +155,13 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 // Stackdriver api
 func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	if s.client == nil {
-		client, err := NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
+		var client *StackDriverClient
+		var err error
+		if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
+			client, err = NewStackDriverClientPodIdentity(ctx)
+		} else {
+			client, err = NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
+		}
 		if err != nil {
 			return -1, err
 		}
@@ -165,13 +173,18 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	return s.client.GetMetrics(ctx, filter)
 }
 
-func getGcpAuthorization(authParams, metadata, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
+func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
+	metadata := config.TriggerMetadata
+	authParams := config.AuthParams
 	meta := gcpAuthorizationMetadata{}
 	if metadata["identityOwner"] == "operator" {
 		meta.podIdentityOwner = false
 	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
 		meta.podIdentityOwner = true
-		if authParams["GoogleApplicationCredentials"] != "" {
+		if config.PodIdentity == kedav1alpha1.PodIdentityProviderGCP {
+			//do nothing, rely on underneath metadata google
+			meta.podIdentityProviderEnabled = true
+		} else if authParams["GoogleApplicationCredentials"] != "" {
 			meta.GoogleApplicationCredentials = authParams["GoogleApplicationCredentials"]
 		} else {
 			if metadata["credentialsFromEnv"] != "" {
