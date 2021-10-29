@@ -20,7 +20,7 @@ import (
 type StackDriverClient struct {
 	metricsClient *monitoring.MetricClient
 	credentials   GoogleApplicationCredentials
-	projectId     string
+	projectID     string
 }
 
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
@@ -57,7 +57,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}
 	return &StackDriverClient{
 		metricsClient: client,
-		projectId:     project,
+		projectID:     project,
 	}, nil
 }
 
@@ -71,9 +71,9 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64
 
 	// Create a request with the filter and the GCP project ID
 	var req *monitoringpb.ListTimeSeriesRequest
-	if len(s.projectId) > 0 {
+	if len(s.projectID) > 0 {
 		req = &monitoringpb.ListTimeSeriesRequest{
-			Name:   "projects/" + s.projectId,
+			Name:   "projects/" + s.projectID,
 			Filter: filter,
 			Interval: &monitoringpb.TimeInterval{
 				StartTime: &timestamp.Timestamp{
