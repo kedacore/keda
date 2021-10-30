@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -197,7 +198,7 @@ func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockKafkaScaler := kafkaScaler{meta, nil, nil}
 
-		metricSpec := mockKafkaScaler.GetMetricSpecForScaling()
+		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

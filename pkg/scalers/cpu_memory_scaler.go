@@ -19,7 +19,6 @@ type cpuMemoryScaler struct {
 
 type cpuMemoryMetadata struct {
 	Type               v2beta2.MetricTargetType
-	Value              *resource.Quantity
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
 }
@@ -51,9 +50,6 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		return nil, fmt.Errorf("no value given")
 	}
 	switch meta.Type {
-	case v2beta2.ValueMetricType:
-		valueQuantity := resource.MustParse(value)
-		meta.Value = &valueQuantity
 	case v2beta2.AverageValueMetricType:
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
@@ -65,7 +61,7 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		utilizationNum := int32(valueNum)
 		meta.AverageUtilization = &utilizationNum
 	default:
-		return nil, fmt.Errorf("unsupport type")
+		return nil, fmt.Errorf("unsupported metric type, allowed values are 'Utilization' or 'AverageValue'")
 	}
 	return meta, nil
 }
@@ -76,17 +72,16 @@ func (s *cpuMemoryScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close no need for cpuMemory scaler
-func (s *cpuMemoryScaler) Close() error {
+func (s *cpuMemoryScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cpuMemoryScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	cpuMemoryMetric := &v2beta2.ResourceMetricSource{
 		Name: s.resourceName,
 		Target: v2beta2.MetricTarget{
 			Type:               s.metadata.Type,
-			Value:              s.metadata.Value,
 			AverageUtilization: s.metadata.AverageUtilization,
 			AverageValue:       s.metadata.AverageValue,
 		},

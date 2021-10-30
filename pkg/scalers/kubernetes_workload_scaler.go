@@ -76,12 +76,12 @@ func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close no need for kubernetes workload scaler
-func (s *kubernetesWorkloadScaler) Close() error {
+func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

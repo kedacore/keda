@@ -120,7 +120,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%s/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -165,7 +165,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	return count, err
 }
 
-func (s *azurePipelinesScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -191,6 +191,6 @@ func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 	return queuelen > 0, nil
 }
 
-func (s *azurePipelinesScaler) Close() error {
+func (s *azurePipelinesScaler) Close(context.Context) error {
 	return nil
 }

@@ -44,7 +44,7 @@ import (
 type ScaleHandler interface {
 	HandleScalableObject(scalableObject interface{}) error
 	DeleteScalableObject(scalableObject interface{}) error
-	GetScalers(scalableObject interface{}) ([]scalers.Scaler, error)
+	GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error)
 }
 
 type scaleHandler struct {
@@ -68,7 +68,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 	}
 }
 
-func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler, error) {
+func (h *scaleHandler) GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error) {
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (h *scaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler,
 		return nil, err
 	}
 
-	return h.buildScalers(withTriggers, podTemplateSpec, containerName)
+	return h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
 }
 
 func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
@@ -169,7 +169,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 
 func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
-	ss, err := h.GetScalers(scalableObject)
+	ss, err := h.GetScalers(ctx, scalableObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
@@ -178,14 +178,14 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 	for _, s := range ss {
 		scaler, ok := s.(scalers.PushScaler)
 		if !ok {
-			s.Close()
+			s.Close(ctx)
 			continue
 		}
 
 		go func() {
 			activeCh := make(chan bool)
 			go scaler.Run(ctx, activeCh)
-			defer scaler.Close()
+			defer scaler.Close(ctx)
 			for {
 				select {
 				case <-ctx.Done():
@@ -208,7 +208,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
 func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interface{}, scalingMutex sync.Locker) {
-	scalers, err := h.GetScalers(scalableObject)
+	scalers, err := h.GetScalers(ctx, scalableObject)
 	if err != nil {
 		h.logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
@@ -241,7 +241,7 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 	isError := false
 	for i, scaler := range scalers {
 		isTriggerActive, err := scaler.IsActive(ctx)
-		scaler.Close()
+		scaler.Close(ctx)
 
 		if err != nil {
 			h.logger.V(1).Info("Error getting scale decision", "Error", err)
@@ -250,13 +250,13 @@ func (h *scaleHandler) isScaledObjectActive(ctx context.Context, scalers []scale
 			continue
 		} else if isTriggerActive {
 			isActive = true
-			if externalMetricsSpec := scaler.GetMetricSpecForScaling()[0].External; externalMetricsSpec != nil {
+			if externalMetricsSpec := scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
-			if resourceMetricsSpec := scaler.GetMetricSpecForScaling()[0].Resource; resourceMetricsSpec != nil {
+			if resourceMetricsSpec := scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
 				h.logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
-			closeScalers(scalers[i+1:])
+			closeScalers(ctx, scalers[i+1:])
 			break
 		}
 	}
@@ -268,7 +268,7 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scalers []scalers.
 }
 
 // buildScalers returns list of Scalers for the specified triggers
-func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
+func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]scalers.Scaler, error) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var scalersRes []scalers.Scaler
 	var err error
@@ -293,13 +293,13 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 
 		config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 		if err != nil {
-			closeScalers(scalersRes)
+			closeScalers(ctx, scalersRes)
 			return []scalers.Scaler{}, err
 		}
 
-		scaler, err := buildScaler(h.client, trigger.Type, config)
+		scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
 		if err != nil {
-			closeScalers(scalersRes)
+			closeScalers(ctx, scalersRes)
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			return []scalers.Scaler{}, fmt.Errorf("error getting scaler for trigger #%d: %s", scalerIndex, err)
 		}
@@ -310,7 +310,7 @@ func (h *scaleHandler) buildScalers(withTriggers *kedav1alpha1.WithTriggers, pod
 	return scalersRes, nil
 }
 
-func buildScaler(client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "artemis-queue":
@@ -335,6 +335,8 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
 		return scalers.NewAzureServiceBusScaler(config)
+	case "cassandra":
+		return scalers.NewCassandraScaler(config)
 	case "cpu":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
@@ -364,15 +366,15 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
 	case "mongodb":
-		return scalers.NewMongoDBScaler(config)
+		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "openstack-metric":
-		return scalers.NewOpenstackMetricScaler(config)
+		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
-		return scalers.NewOpenstackSwiftScaler(config)
+		return scalers.NewOpenstackSwiftScaler(ctx, config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
 	case "prometheus":
@@ -380,13 +382,13 @@ func buildScaler(client client.Client, triggerType string, config *scalers.Scale
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
 	case "redis":
-		return scalers.NewRedisScaler(false, config)
+		return scalers.NewRedisScaler(ctx, false, config)
 	case "redis-cluster":
-		return scalers.NewRedisScaler(true, config)
+		return scalers.NewRedisScaler(ctx, true, config)
 	case "redis-cluster-streams":
-		return scalers.NewRedisStreamsScaler(true, config)
+		return scalers.NewRedisStreamsScaler(ctx, true, config)
 	case "redis-streams":
-		return scalers.NewRedisStreamsScaler(false, config)
+		return scalers.NewRedisStreamsScaler(ctx, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
 	case "solace-event-queue":
@@ -425,8 +427,8 @@ func asDuckWithTriggers(scalableObject interface{}) (*kedav1alpha1.WithTriggers,
 	}
 }
 
-func closeScalers(scalers []scalers.Scaler) {
+func closeScalers(ctx context.Context, scalers []scalers.Scaler) {
 	for _, scaler := range scalers {
-		defer scaler.Close()
+		defer scaler.Close(ctx)
 	}
 }

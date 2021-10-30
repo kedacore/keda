@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
@@ -52,6 +53,7 @@ func TestStanParseMetadata(t *testing.T) {
 
 func TestStanGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range stanMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -62,7 +64,7 @@ func TestStanGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockStanScaler.GetMetricSpecForScaling()
+		metricSpec := mockStanScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

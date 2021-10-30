@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"testing"
@@ -141,7 +142,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 		getPendingEntriesCountFn := func() (int64, error) { return -1, nil }
 		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
 
-		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
+		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

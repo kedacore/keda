@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -433,7 +434,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 			}
 
 			var metric []v2beta2.MetricSpec
-			if metric = testSolaceScaler.GetMetricSpecForScaling(); len(metric) == 0 {
+			if metric = testSolaceScaler.GetMetricSpecForScaling(context.Background()); len(metric) == 0 {
 				err = fmt.Errorf("metric value not found")
 			} else {
 				metricName := metric[0].External.Metric.Name

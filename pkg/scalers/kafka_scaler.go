@@ -339,7 +339,7 @@ func (s *kafkaScaler) getLagForPartition(partition int32, offsets *sarama.Offset
 }
 
 // Close closes the kafka admin and client
-func (s *kafkaScaler) Close() error {
+func (s *kafkaScaler) Close(context.Context) error {
 	// underlying client will also be closed on admin's Close() call
 	err := s.admin.Close()
 	if err != nil {
@@ -349,7 +349,7 @@ func (s *kafkaScaler) Close() error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

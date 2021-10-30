@@ -139,7 +139,7 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 }
 
-func (s *cronScaler) Close() error {
+func (s *cronScaler) Close(context.Context) error {
 	return nil
 }
 
@@ -152,7 +152,7 @@ func parseCronTimeFormat(s string) string {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cronScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	specReplicas := 1
 	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{

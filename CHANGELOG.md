@@ -22,10 +22,10 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - ScaledJob: introduce rolloutStrategy ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
+- Add Cassandra Scaler ([#2211](https://github.com/kedacore/keda/pull/2211))
 
 ### Improvements
 
@@ -55,6 +55,7 @@
 
 ### Other
 
+- Ensure that `context.Context` values are passed down the stack from all scaler gRPC handler implementation to scaler implementation code ([#2202](https://github.com/kedacore/keda/pull/2202))
 - Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
@@ -62,6 +63,7 @@
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
 - Prometheus scaler: omit `serverAddress` from generated metric name ([#2099](https://github.com/kedacore/keda/pull/2099))
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090)|[#2184](https://github.com/kedacore/keda/pull/2184))
+- Drop support to `ValueMetricType` using cpu_memory_scaler ([#2218](https://github.com/kedacore/keda/issues/2218))
 
 ## v2.4.0
 

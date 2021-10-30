@@ -215,7 +215,7 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mssqlScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -236,7 +236,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric
 func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult()
+	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting mssql: %s", err)
 	}
@@ -251,9 +251,9 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 }
 
 // getQueryResult returns the result of the scaler query
-func (s *mssqlScaler) getQueryResult() (int, error) {
+func (s *mssqlScaler) getQueryResult(ctx context.Context) (int, error) {
 	var value int
-	err := s.connection.QueryRow(s.metadata.query).Scan(&value)
+	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:
 		value = 0
@@ -267,7 +267,7 @@ func (s *mssqlScaler) getQueryResult() (int, error) {
 
 // IsActive returns true if there are pending events to be processed
 func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult()
+	messages, err := s.getQueryResult(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error inspecting mssql: %s", err)
 	}
@@ -276,7 +276,7 @@ func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close closes the mssql database connections
-func (s *mssqlScaler) Close() error {
+func (s *mssqlScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		mssqlLog.Error(err, "Error closing mssql connection")

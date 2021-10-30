@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,8 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 	{map[string]string{}, true},
 	{validCPUMemoryMetadata, false},
 	{map[string]string{"type": "Utilization", "value": "50"}, false},
-	{map[string]string{"type": "Value", "value": "50"}, false},
 	{map[string]string{"type": "AverageValue", "value": "50"}, false},
+	{map[string]string{"type": "Value", "value": "50"}, true},
 	{map[string]string{"type": "AverageValue"}, true},
 	{map[string]string{"type": "xxx", "value": "50"}, true},
 }
@@ -49,7 +50,7 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 		TriggerMetadata: validCPUMemoryMetadata,
 	}
 	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
-	metricSpec := scaler.GetMetricSpecForScaling()
+	metricSpec := scaler.GetMetricSpecForScaling(context.Background())
 
 	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
 	assert.Equal(t, metricSpec[0].Resource.Name, v1.ResourceCPU)

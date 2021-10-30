@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -66,6 +67,7 @@ func TestGraphiteParseMetadata(t *testing.T) {
 
 func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range graphiteMetricIdentifiers {
+		ctx := context.Background()
 		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -74,7 +76,7 @@ func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 			metadata: meta,
 		}
 
-		metricSpec := mockGraphiteScaler.GetMetricSpecForScaling()
+		metricSpec := mockGraphiteScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
