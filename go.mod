@@ -24,7 +24,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
-	github.com/hashicorp/vault/api v1.1.1
+	github.com/hashicorp/vault/api v1.3.0
 	github.com/imdario/mergo v0.3.12
 	github.com/influxdata/influxdb-client-go/v2 v2.5.1
 	github.com/lib/pq v1.10.3
