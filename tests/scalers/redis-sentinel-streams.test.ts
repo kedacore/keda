@@ -139,7 +139,7 @@ spec:
     spec:
       containers:
         - name: redis-streams-consumer
-          image: goku321/redis-cluster-streams:v2.5
+          image: ghcr.io/kedacore/tests-redis-sentinel-streams
           command: ["./main"]
           args: ["consumer"]
           imagePullPolicy: Always
@@ -198,7 +198,7 @@ spec:
     spec:
       containers:
       - name: producer
-        image: goku321/redis-cluster-streams:v2.5
+        image: ghcr.io/kedacore/tests-redis-sentinel-streams
         command: ["./main"]
         args: ["producer"]
         imagePullPolicy: Always
