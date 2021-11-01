@@ -134,7 +134,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
 func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
+	msg, err := r.deletePreviousVersionScaleJobs(ctx, logger, scaledJob)
 	if err != nil {
 		return msg, err
 	}
@@ -155,30 +155,35 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	return "ScaledJob is defined correctly and is ready to scaling", nil
 }
 
-// Delete Jobs owned by the previous version of the scaledJob
-func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	opts := []client.ListOption{
-		client.InNamespace(scaledJob.GetNamespace()),
-		client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
-	}
-	jobs := &batchv1.JobList{}
-	err := r.Client.List(context.TODO(), jobs, opts...)
-	if err != nil {
-		return "Cannot get list of Jobs owned by this scaledJob", err
-	}
-
-	if jobs.Size() > 0 {
-		logger.Info("Deleting jobs owned by the previous version of the scaledJob", "Number of jobs to delete", jobs.Size())
-	}
-	for _, job := range jobs.Items {
-		job := job
-		err = r.Client.Delete(context.TODO(), &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
-		if err != nil {
-			return "Not able to delete job: " + job.Name, err
+// Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
+func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	switch scaledJob.Spec.RolloutStrategy {
+	case "gradual":
+		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
+	default:
+		opts := []client.ListOption{
+			client.InNamespace(scaledJob.GetNamespace()),
+			client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 		}
-	}
+		jobs := &batchv1.JobList{}
+		err := r.Client.List(ctx, jobs, opts...)
+		if err != nil {
+			return "Cannot get list of Jobs owned by this scaledJob", err
+		}
 
-	return fmt.Sprintf("Deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", jobs.Size()), nil
+		if len(jobs.Items) > 0 {
+			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobs.Items))
+		}
+		for _, job := range jobs.Items {
+			job := job
+			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
+			if err != nil {
+				return "Not able to delete job: " + job.Name, err
+			}
+		}
+		return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobs.Items)), nil
+	}
+	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
 }
 
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
