@@ -46,10 +46,10 @@ require (
 	google.golang.org/genproto v0.0.0-20211011165927-a5fb3255271e
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
-	k8s.io/api v0.22.2
-	k8s.io/apimachinery v0.22.2
-	k8s.io/apiserver v0.22.2
-	k8s.io/client-go v0.22.2
+	k8s.io/api v0.22.3
+	k8s.io/apimachinery v0.22.3
+	k8s.io/apiserver v0.22.3
+	k8s.io/client-go v0.22.3
 	k8s.io/code-generator v0.22.2
 	k8s.io/klog/v2 v2.10.0
 	k8s.io/kube-openapi v0.0.0-20210929172449-94abcedd1aa4
