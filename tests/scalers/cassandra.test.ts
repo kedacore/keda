@@ -152,7 +152,7 @@ spec:
         app: cassandra-app
     spec:
       containers:
-      - image: cassandra:latest
+      - image: bitnami/cassandra:4.0.1
         imagePullPolicy: IfNotPresent
         name: cassandra
         ports:
@@ -190,7 +190,7 @@ spec:
         app: cassandra-client
     spec:
       containers:
-      - image: docker.io/bitnami/cassandra:4.0.1-debian-10-r0
+      - image: bitnami/cassandra:4.0.1
         imagePullPolicy: IfNotPresent
         name: cassandra-client
 `
@@ -203,7 +203,7 @@ metadata:
   name: cassandra-secrets
 type: Opaque
 data:
-  cassandra_password: Y2Fzc2FuZHJhCg==
+  cassandra_password: Y2Fzc2FuZHJh
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
