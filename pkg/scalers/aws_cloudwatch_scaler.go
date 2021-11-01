@@ -26,7 +26,9 @@ import (
 const (
 	defaultMetricCollectionTime = 300
 	defaultMetricStat           = "Average"
+	defaultMetricUnit           = ""
 	defaultMetricStatPeriod     = 300
+	defaultMetricEndTimeOffset  = 0
 )
 
 type awsCloudwatchScaler struct {
@@ -44,7 +46,9 @@ type awsCloudwatchMetadata struct {
 
 	metricCollectionTime int64
 	metricStat           string
+	metricUnit           string
 	metricStatPeriod     int64
+	metricEndTimeOffset  int64
 
 	awsRegion string
 
@@ -178,6 +182,24 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		}
 	}
 
+	if val, ok := config.TriggerMetadata["metricEndTimeOffset"]; ok && val != "" {
+		metricEndTimeOffset, err := strconv.Atoi(val)
+		if err != nil {
+			cloudwatchLog.Error(err, "Error parsing metricEndTimeOffset metadata")
+		} else {
+			meta.metricEndTimeOffset = int64(metricEndTimeOffset)
+		}
+	} else {
+		meta.metricEndTimeOffset = defaultMetricEndTimeOffset
+	}
+
+
+	if val, ok := config.TriggerMetadata["metricUnit"]; ok && val != "" {
+		meta.metricUnit = val
+	} else {
+		meta.metricUnit = defaultMetricUnit
+	}
+
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
@@ -273,9 +295,18 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		})
 	}
 
+	endTime := time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricEndTimeOffset)).Truncate(time.Duration(c.metadata.metricStatPeriod) * time.Second)
+	startTime := endTime.Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))
+
+	var metricUnit *string
+	if c.metadata.metricUnit != "" {
+		metricUnit = aws.String(c.metadata.metricUnit)
+	}
+
 	input := cloudwatch.GetMetricDataInput{
-		StartTime: aws.Time(time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))),
-		EndTime:   aws.Time(time.Now()),
+		StartTime: aws.Time(startTime),
+		EndTime:   aws.Time(endTime),
+		ScanBy: aws.String(cloudwatch.ScanByTimestampDescending),
 		MetricDataQueries: []*cloudwatch.MetricDataQuery{
 			{
 				Id: aws.String("c1"),
@@ -287,6 +318,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 					},
 					Period: aws.Int64(c.metadata.metricStatPeriod),
 					Stat:   aws.String(c.metadata.metricStat),
+					Unit:   metricUnit,
 				},
 				ReturnData: aws.Bool(true),
 			},
