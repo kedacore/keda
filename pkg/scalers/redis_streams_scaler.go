@@ -42,34 +42,35 @@ type redisStreamsMetadata struct {
 	consumerGroupName         string
 	databaseIndex             int
 	connectionInfo            redisConnectionInfo
+	scalerIndex               int
 }
 
 var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
 	if isClustered {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createClusteredRedisStreamsScaler(meta)
+		return createClusteredRedisStreamsScaler(ctx, meta)
 	} else if isSentinel {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createSentinelRedisStreamsScaler(meta)
+		return createSentinelRedisStreamsScaler(ctx, meta)
 	}
 	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
-	return createRedisStreamsScaler(meta)
+	return createRedisStreamsScaler(ctx, meta)
 }
 
-func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
-	client, err := getRedisClusterClient(meta.connectionInfo)
+func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
 	}
@@ -97,8 +98,8 @@ func createClusteredRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, erro
 	}, nil
 }
 
-func createSentinelRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
-	client, err := getRedisSentinelClient(meta.connectionInfo, meta.databaseIndex)
+func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
 	}
@@ -126,8 +127,8 @@ func createSentinelRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error
 	}, nil
 }
 
-func createRedisStreamsScaler(meta *redisStreamsMetadata) (Scaler, error) {
-	client, err := getRedisClient(meta.connectionInfo, meta.databaseIndex)
+func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
 	}
@@ -195,7 +196,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -211,16 +212,17 @@ func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *redisStreamsScaler) Close() error {
+func (s *redisStreamsScaler) Close(context.Context) error {
 	return s.closeFn()
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisStreamsScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetPendingEntriesCount := resource.NewQuantity(int64(s.metadata.targetPendingEntriesCount), resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "redis-streams", s.metadata.streamName, s.metadata.consumerGroupName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

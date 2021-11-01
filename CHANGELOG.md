@@ -22,9 +22,9 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
+- Add Cassandra Scaler ([#2211](https://github.com/kedacore/keda/pull/2211))
 - Improve Redis Scaler, upgrade library, add username and Sentinel support ([#2181](https://github.com/kedacore/keda/pull/2181))
 
 ### Improvements
@@ -42,8 +42,12 @@
 - Add support to get connection data from Trigger Authorization in MSSQL Scaler ([#2112](https://github.com/kedacore/keda/pull/2112))
 - Add support to get connection data from Trigger Authorization in PostgreSQL Scaler ([#2114](https://github.com/kedacore/keda/pull/2114))
 - Add support to provide the metric name in Azure Log Analytics Scaler ([#2106](https://github.com/kedacore/keda/pull/2106))
+- MySQL Scaler: don't expose connection string in `metricName` ([#2171](https://github.com/kedacore/keda/pull/2171))
+- Provide support for configuring authentication through TriggerAuthentication for Stan scaler ([#2167](https://github.com/kedacore/keda/pull/2167))
 - Add `pageSize` (using regex) in RabbitMQ Scaler ([#2162](https://github.com/kedacore/keda/pull/2162))
 - Add `unsafeSsl` parameter in InfluxDB scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
+- Improve metric name creation to be unique using scaler index inside the scaler ([#2161](https://github.com/kedacore/keda/pull/2161))
+- Improve error message if `IdleReplicaCount` are equal to `MinReplicaCount` to be the same as the check ([#2212](https://github.com/kedacore/keda/pull/2212))
 
 ### Breaking Changes
 
@@ -51,11 +55,15 @@
 
 ### Other
 
+- Ensure that `context.Context` values are passed down the stack from all scaler gRPC handler implementation to scaler implementation code ([#2202](https://github.com/kedacore/keda/pull/2202))
 - Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
 - Bump Golang to 1.16.9 ([#2065](https://github.com/kedacore/keda/pull/2065)|[#2186](https://github.com/kedacore/keda/pull/2186))
+- Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
+- Prometheus scaler: omit `serverAddress` from generated metric name ([#2099](https://github.com/kedacore/keda/pull/2099))
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090)|[#2184](https://github.com/kedacore/keda/pull/2184))
+- Drop support to `ValueMetricType` using cpu_memory_scaler ([#2218](https://github.com/kedacore/keda/issues/2218))
 
 ## v2.4.0
 

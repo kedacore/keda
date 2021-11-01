@@ -33,6 +33,7 @@ type externalScalerMetadata struct {
 	scalerAddress    string
 	tlsCertFile      string
 	originalMetadata map[string]string
+	scalerIndex      int
 }
 
 type connectionGroup struct {
@@ -111,7 +112,7 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 			meta.originalMetadata[key] = value
 		}
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -132,12 +133,12 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 	return response.Result, nil
 }
 
-func (s *externalScaler) Close() error {
+func (s *externalScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *externalScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var result []v2beta2.MetricSpec
 
 	grpcClient, done, err := getClientForConnectionPool(s.metadata)
@@ -159,7 +160,7 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: spec.MetricName,
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
 			Target: v2beta2.MetricTarget{
 				Type:         v2beta2.AverageValueMetricType,

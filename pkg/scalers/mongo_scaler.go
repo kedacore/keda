@@ -61,6 +61,10 @@ type mongoDBMetadata struct {
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
 	// +optional
 	metricName string
+
+	// The index of the scaler inside the ScaledObject
+	// +internal
+	scalerIndex int
 }
 
 // Default variables and settings
@@ -71,8 +75,8 @@ const (
 var mongoDBLog = logf.Log.WithName("mongodb_scaler")
 
 // NewMongoDBScaler creates a new mongoDB scaler
-func NewMongoDBScaler(config *ScalerConfig) (Scaler, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), mongoDBDefaultTimeOut)
+func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
 	meta, connStr, err := parseMongoDBMetadata(config)
@@ -181,11 +185,12 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		}
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s-%s", maskedURL, meta.collection))
 	}
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
 
 func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult()
+	result, err := s.getQueryResult(ctx)
 	if err != nil {
 		mongoDBLog.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
 		return false, err
@@ -194,7 +199,7 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close disposes of mongoDB connections
-func (s *mongoDBScaler) Close() error {
+func (s *mongoDBScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.Disconnect(context.TODO())
 		if err != nil {
@@ -207,8 +212,8 @@ func (s *mongoDBScaler) Close() error {
 }
 
 // getQueryResult query mongoDB by meta.query
-func (s *mongoDBScaler) getQueryResult() (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), mongoDBDefaultTimeOut)
+func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
 	filter, err := json2BsonDoc(s.metadata.query)
@@ -228,7 +233,7 @@ func (s *mongoDBScaler) getQueryResult() (int, error) {
 
 // GetMetrics query from mongoDB,and return to external metrics
 func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult()
+	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
 	}
@@ -243,12 +248,12 @@ func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metri
 }
 
 // GetMetricSpecForScaling get the query value for scaling
-func (s *mongoDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -32,6 +32,7 @@ type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
 	namespace   string
 	value       int64
+	scalerIndex int
 }
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
@@ -59,6 +60,7 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -74,16 +76,16 @@ func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close no need for kubernetes workload scaler
-func (s *kubernetesWorkloadScaler) Close() error {
+func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "workload", s.metadata.namespace, normalizeSelectorString(s.metadata.podSelector))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "workload", s.metadata.namespace, normalizeSelectorString(s.metadata.podSelector)))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

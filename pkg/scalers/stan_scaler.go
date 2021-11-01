@@ -50,6 +50,7 @@ type stanMetadata struct {
 	durableName                  string
 	subject                      string
 	lagThreshold                 int64
+	scalerIndex                  int
 }
 
 const (
@@ -75,11 +76,11 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
-
-	if config.TriggerMetadata["natsServerMonitoringEndpoint"] == "" {
-		return meta, errors.New("no monitoring endpoint given")
+	var err error
+	meta.natsServerMonitoringEndpoint, err = GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	if err != nil {
+		return meta, err
 	}
-	meta.natsServerMonitoringEndpoint = config.TriggerMetadata["natsServerMonitoringEndpoint"]
 
 	if config.TriggerMetadata["queueGroup"] == "" {
 		return meta, errors.New("no queue group given")
@@ -106,6 +107,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 		meta.lagThreshold = t
 	}
 
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -113,7 +115,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	monitoringEndpoint := s.getMonitoringEndpoint()
 
-	req, err := http.NewRequest("GET", monitoringEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", monitoringEndpoint, nil)
 	if err != nil {
 		return false, err
 	}
@@ -124,7 +126,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if resp.StatusCode == 404 {
-		req, err := http.NewRequest("GET", s.getSTANChannelsEndpoint(), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", s.getSTANChannelsEndpoint(), nil)
 		if err != nil {
 			return false, err
 		}
@@ -194,11 +196,12 @@ func (s *stanScaler) hasPendingMessage() bool {
 	return false
 }
 
-func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -213,7 +216,7 @@ func (s *stanScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	req, err := http.NewRequest("GET", s.getMonitoringEndpoint(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.getMonitoringEndpoint(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -241,6 +244,6 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 }
 
 // Nothing to close here.
-func (s *stanScaler) Close() error {
+func (s *stanScaler) Close(context.Context) error {
 	return nil
 }

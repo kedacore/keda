@@ -43,12 +43,12 @@ type Scaler interface {
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
-	GetMetricSpecForScaling() []v2beta2.MetricSpec
+	GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec
 
 	IsActive(ctx context.Context) (bool, error)
 
 	// Close any resources that need disposing when scaler is no longer used or destroyed
-	Close() error
+	Close(ctx context.Context) error
 }
 
 // PushScaler interface
@@ -81,6 +81,9 @@ type ScalerConfig struct {
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.PodIdentityProvider
+
+	// ScalerIndex
+	ScalerIndex int
 }
 
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
@@ -96,4 +99,9 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 		err = fmt.Errorf("no %s given", field)
 	}
 	return result, err
+}
+
+// GenerateMetricNameWithIndex helps adding the index prefix to the metric name
+func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
+	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
 }

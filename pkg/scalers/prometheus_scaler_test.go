@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ type parsePrometheusMetadataTestData struct {
 
 type prometheusMetricIdentifier struct {
 	metadataTestData *parsePrometheusMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -33,7 +35,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
-	{&testPromMetadata[1], "prometheus-http---localhost-9090-http_requests_total"},
+	{&testPromMetadata[1], 0, "s0-prometheus-http_requests_total"},
+	{&testPromMetadata[1], 1, "s1-prometheus-http_requests_total"},
 }
 
 type prometheusAuthMetadataTestData struct {
@@ -79,7 +82,7 @@ func TestPrometheusParseMetadata(t *testing.T) {
 
 func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range prometheusMetricIdentifiers {
-		meta, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+		meta, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -88,7 +91,7 @@ func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling()
+		metricSpec := mockPrometheusScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

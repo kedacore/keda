@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -31,6 +32,7 @@ type mySQLMetadata struct {
 	dbName           string
 	query            string
 	queryValue       int
+	metricName       string
 }
 
 var mySQLLog = logf.Log.WithName("mysql_scaler")
@@ -110,6 +112,11 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		}
 	}
 
+	if meta.connectionString != "" {
+		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
+	}
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
+
 	return &meta, nil
 }
 
@@ -148,8 +155,19 @@ func newMySQLConnection(meta *mySQLMetadata) (*sql.DB, error) {
 	return db, nil
 }
 
+// parseMySQLDbNameFromConnectionStr returns dbname from connection string
+// in it is not able to parse it, it returns "dbname" string
+func parseMySQLDbNameFromConnectionStr(connectionString string) string {
+	splitted := strings.Split(connectionString, "/")
+
+	if size := len(splitted); size > 0 {
+		return splitted[size-1]
+	}
+	return "dbname"
+}
+
 // Close disposes of MySQL connections
-func (s *mySQLScaler) Close() error {
+func (s *mySQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		mySQLLog.Error(err, "Error closing MySQL connection")
@@ -160,7 +178,7 @@ func (s *mySQLScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult()
+	messages, err := s.getQueryResult(ctx)
 	if err != nil {
 		mySQLLog.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
 		return false, err
@@ -169,9 +187,9 @@ func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *mySQLScaler) getQueryResult() (int, error) {
+func (s *mySQLScaler) getQueryResult(ctx context.Context) (int, error) {
 	var value int
-	err := s.connection.QueryRow(s.metadata.query).Scan(&value)
+	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	if err != nil {
 		mySQLLog.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
 		return 0, err
@@ -180,17 +198,12 @@ func (s *mySQLScaler) getQueryResult() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-	metricName := "mysql"
-	if s.metadata.connectionString != "" {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.connectionString))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", metricName, s.metadata.dbName))
-	}
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -205,7 +218,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult()
+	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting MySQL: %s", err)
 	}

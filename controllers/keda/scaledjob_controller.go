@@ -110,7 +110,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, "scaledJob.spec.jobTargetRef not found")
 		return ctrl.Result{}, err
 	}
-	msg, err := r.reconcileScaledJob(reqLogger, scaledJob)
+	msg, err := r.reconcileScaledJob(ctx, reqLogger, scaledJob)
 	conditions := scaledJob.Status.Conditions.DeepCopy()
 	if err != nil {
 		reqLogger.Error(err, msg)
@@ -133,14 +133,14 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 // reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
-func (r *ScaledJobReconciler) reconcileScaledJob(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	msg, err := r.deletePreviousVersionScaleJobs(logger, scaledJob)
 	if err != nil {
 		return msg, err
 	}
 
 	// Check ScaledJob is Ready or not
-	_, err = r.scaleHandler.GetScalers(scaledJob)
+	_, err = r.scaleHandler.GetScalers(ctx, scaledJob)
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return "Failed to ensure ScaledJob is correctly created", err

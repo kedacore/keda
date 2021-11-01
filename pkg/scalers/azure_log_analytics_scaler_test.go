@@ -17,6 +17,7 @@ limitations under the License.
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -37,6 +38,7 @@ type parseLogAnalyticsMetadataTestData struct {
 
 type LogAnalyticsMetricIdentifier struct {
 	metadataTestData *parseLogAnalyticsMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -90,7 +92,8 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 }
 
 var LogAnalyticsMetricIdentifiers = []LogAnalyticsMetricIdentifier{
-	{&testLogAnalyticsMetadata[7], "azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[7], 0, "s0-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[7], 1, "s1-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
 }
 
 var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTestData{
@@ -159,7 +162,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range LogAnalyticsMetricIdentifiers {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, PodIdentity: ""})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -172,7 +175,7 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling()
+		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
@@ -181,20 +184,21 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 }
 
 type parseMetadataMetricNameTestData struct {
-	metadata   map[string]string
-	metricName string
+	metadata    map[string]string
+	scalerIndex int
+	metricName  string
 }
 
 var testParseMetadataMetricName = []parseMetadataMetricNameTestData{
 	// WorkspaceID
-	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, "azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, 0, "azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
 	// Custom Name
-	{map[string]string{"metricName": "testName", "tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, "azure-log-analytics-testName"},
+	{map[string]string{"metricName": "testName", "tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, 1, "azure-log-analytics-testName"},
 }
 
 func TestLogAnalyticsParseMetadataMetricName(t *testing.T) {
 	for _, testData := range testParseMetadataMetricName {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: ""})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Error("Expected success but got error", err)
 		}

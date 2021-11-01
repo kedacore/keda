@@ -31,6 +31,7 @@ type parseEventHubMetadataTestData struct {
 
 type eventHubMetricIdentifier struct {
 	metadataTestData *parseEventHubMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -65,7 +66,8 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
-	{&parseEventHubMetadataDataset[1], "azure-eventhub-none-testEventHubConsumerGroup"},
+	{&parseEventHubMetadataDataset[1], 0, "s0-azure-eventhub-none-testEventHubConsumerGroup"},
+	{&parseEventHubMetadataDataset[1], 1, "s1-azure-eventhub-none-testEventHubConsumerGroup"},
 }
 
 var testEventHubScaler = azureEventHubScaler{
@@ -103,6 +105,7 @@ func TestParseEventHubMetadata(t *testing.T) {
 }
 
 func TestGetUnprocessedEventCountInPartition(t *testing.T) {
+	ctx := context.Background()
 	t.Log("This test will use the environment variable EVENTHUB_CONNECTION_STRING and STORAGE_CONNECTION_STRING if it is set.")
 	t.Log("If set, it will connect to the storage account and event hub to determine how many messages are in the event hub.")
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
@@ -112,7 +115,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(http.DefaultClient, "none", storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -435,7 +438,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}})
+		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -445,7 +448,7 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockEventHubScaler.GetMetricSpecForScaling()
+		metricSpec := mockEventHubScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

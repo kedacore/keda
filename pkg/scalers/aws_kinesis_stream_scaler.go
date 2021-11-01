@@ -34,6 +34,7 @@ type awsKinesisStreamMetadata struct {
 	streamName       string
 	awsRegion        string
 	awsAuthorization awsAuthorizationMetadata
+	scalerIndex      int
 }
 
 var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
@@ -83,6 +84,8 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 
 	meta.awsAuthorization = auth
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
@@ -97,15 +100,15 @@ func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *awsKinesisStreamScaler) Close() error {
+func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "AWS-Kinesis-Stream", s.metadata.streamName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "AWS-Kinesis-Stream", s.metadata.streamName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

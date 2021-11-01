@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -12,6 +13,7 @@ type parseGraphiteMetadataTestData struct {
 
 type graphiteMetricIdentifier struct {
 	metadataTestData *parseGraphiteMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -32,7 +34,8 @@ var testGrapMetadata = []parseGraphiteMetadataTestData{
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
-	{&testGrapMetadata[1], "graphite-request-count"},
+	{&testGrapMetadata[1], 0, "s0-graphite-request-count"},
+	{&testGrapMetadata[1], 1, "s1-graphite-request-count"},
 }
 
 type graphiteAuthMetadataTestData struct {
@@ -64,7 +67,8 @@ func TestGraphiteParseMetadata(t *testing.T) {
 
 func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range graphiteMetricIdentifiers {
-		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+		ctx := context.Background()
+		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -72,7 +76,7 @@ func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 			metadata: meta,
 		}
 
-		metricSpec := mockGraphiteScaler.GetMetricSpecForScaling()
+		metricSpec := mockGraphiteScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

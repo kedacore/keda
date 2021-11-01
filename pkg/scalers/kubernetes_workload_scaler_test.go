@@ -84,20 +84,21 @@ func TestWorkloadIsActive(t *testing.T) {
 }
 
 type workloadGetMetricSpecForScalingTestData struct {
-	metadata  map[string]string
-	namespace string
-	name      string
+	metadata    map[string]string
+	namespace   string
+	scalerIndex int
+	name        string
 }
 
 var getMetricSpecForScalingTestDataset = []workloadGetMetricSpecForScalingTestData{
 	// "podSelector": "app=demo", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, "workload-test-app=demo"},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 0, "s0-workload-test-app=demo"},
 	// "podSelector": "app=demo", "namespace": "default"
-	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, "workload-default-app=demo"},
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 1, "s1-workload-default-app=demo"},
 	// "podSelector": "app in (demo1, demo2)", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[2].metadata, parseWorkloadMetadataTestDataset[2].namespace, "workload-test-appin-demo1-demo2-"},
+	{parseWorkloadMetadataTestDataset[2].metadata, parseWorkloadMetadataTestDataset[2].namespace, 2, "s2-workload-test-appin-demo1-demo2-"},
 	// "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[3].metadata, parseWorkloadMetadataTestDataset[3].namespace, "workload-test-appin-demo1-demo2--deployin-deploy1-deploy2-"},
+	{parseWorkloadMetadataTestDataset[3].metadata, parseWorkloadMetadataTestDataset[3].namespace, 3, "s3-workload-test-appin-demo1-demo2--deployin-deploy1-deploy2-"},
 }
 
 func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
@@ -109,9 +110,10 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 				AuthParams:        map[string]string{},
 				GlobalHTTPTimeout: 1000 * time.Millisecond,
 				Namespace:         testData.namespace,
+				ScalerIndex:       testData.scalerIndex,
 			},
 		)
-		metric := s.GetMetricSpecForScaling()
+		metric := s.GetMetricSpecForScaling(context.Background())
 
 		if metric[0].External.Metric.Name != testData.name {
 			t.Errorf("Expected '%s' as metric name and got '%s'", testData.name, metric[0].External.Metric.Name)

@@ -31,6 +31,7 @@ type influxDBMetadata struct {
 	serverURL        string
 	unsafeSsL        bool
 	thresholdValue   float64
+	scalerIndex      int
 }
 
 var influxDBLog = logf.Log.WithName("influxdb_scaler")
@@ -153,6 +154,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		serverURL:        serverURL,
 		thresholdValue:   thresholdValue,
 		unsafeSsL:        unsafeSsL,
+		scalerIndex:      config.ScalerIndex,
 	}, nil
 }
 
@@ -160,7 +162,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 	queryAPI := s.client.QueryAPI(s.metadata.organizationName)
 
-	value, err := queryInfluxDB(queryAPI, s.metadata.query)
+	value, err := queryInfluxDB(ctx, queryAPI, s.metadata.query)
 	if err != nil {
 		return false, err
 	}
@@ -169,7 +171,7 @@ func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close closes the connection of the client to the server
-func (s *influxDBScaler) Close() error {
+func (s *influxDBScaler) Close(context.Context) error {
 	s.client.Close()
 	return nil
 }
@@ -177,8 +179,8 @@ func (s *influxDBScaler) Close() error {
 // queryInfluxDB runs the query against the associated influxdb database
 // there is an implicit assumption here that the first value returned from the iterator
 // will be the value of interest
-func queryInfluxDB(queryAPI api.QueryAPI, query string) (float64, error) {
-	result, err := queryAPI.Query(context.Background(), query)
+func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (float64, error) {
+	result, err := queryAPI.Query(ctx, query)
 	if err != nil {
 		return 0, err
 	}
@@ -203,7 +205,7 @@ func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string, metr
 	// Grab QueryAPI to make queries to influxdb instance
 	queryAPI := s.client.QueryAPI(s.metadata.organizationName)
 
-	value, err := queryInfluxDB(queryAPI, s.metadata.query)
+	value, err := queryInfluxDB(ctx, queryAPI, s.metadata.query)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
 	}
@@ -218,11 +220,11 @@ func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
-func (s *influxDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

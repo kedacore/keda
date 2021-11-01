@@ -47,6 +47,7 @@ type parseServiceBusMetadataTestData struct {
 
 type azServiceBusMetricIdentifier struct {
 	metadataTestData *parseServiceBusMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -99,8 +100,8 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
-	{&parseServiceBusMetadataDataset[1], "azure-servicebus-namespacename-testqueue"},
-	{&parseServiceBusMetadataDataset[3], "azure-servicebus-namespacename-testtopic-testsubscription"},
+	{&parseServiceBusMetadataDataset[1], 0, "s0-azure-servicebus-namespacename-testqueue"},
+	{&parseServiceBusMetadataDataset[3], 1, "s1-azure-servicebus-namespacename-testtopic-testsubscription"},
 }
 
 var commonHTTPClient = &http.Client{
@@ -136,7 +137,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 
 func TestParseServiceBusMetadata(t *testing.T) {
 	for _, testData := range parseServiceBusMetadataDataset {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity, ScalerIndex: testEventHubScaler.metadata.scalerIndex})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -189,7 +190,7 @@ func TestGetServiceBusLength(t *testing.T) {
 
 func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -199,7 +200,7 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

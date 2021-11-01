@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -28,6 +29,7 @@ type parseAWSSQSMetadataTestData struct {
 
 type awsSQSMetricIdentifier struct {
 	metadataTestData *parseAWSSQSMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -131,7 +133,8 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
-	{&testAWSSQSMetadata[1], "AWS-SQS-Queue-DeleteArtifactQ"},
+	{&testAWSSQSMetadata[1], 0, "s0-AWS-SQS-Queue-DeleteArtifactQ"},
+	{&testAWSSQSMetadata[1], 1, "s1-AWS-SQS-Queue-DeleteArtifactQ"},
 }
 
 func TestSQSParseMetadata(t *testing.T) {
@@ -148,13 +151,14 @@ func TestSQSParseMetadata(t *testing.T) {
 
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
-		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams})
+		ctx := context.Background()
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAWSSQSScaler := awsSqsQueueScaler{meta}
 
-		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling()
+		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

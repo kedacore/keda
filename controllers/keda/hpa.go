@@ -40,10 +40,10 @@ const (
 )
 
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
-func (r *ScaledObjectReconciler) createAndDeployNewHPA(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
 	logger.Info("Creating a new HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)
-	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
+	hpa, err := r.newHPAForScaledObject(ctx, logger, scaledObject, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)
 		return err
@@ -59,8 +59,8 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(logger logr.Logger, scale
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
-	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(logger, scaledObject)
+func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
+	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +120,8 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(logger logr.Logger, scale
 }
 
 // updateHPAIfNeeded checks whether update of HPA is needed
-func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
-	hpa, err := r.newHPAForScaledObject(logger, scaledObject, gvkr)
+func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+	hpa, err := r.newHPAForScaledObject(ctx, logger, scaledObject, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", getHPAName(scaledObject))
 		return err
@@ -155,19 +155,19 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(logger logr.Logger, scaledObj
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
-func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
+func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
 	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
-	scalers, err := r.scaleHandler.GetScalers(scaledObject)
+	scalers, err := r.scaleHandler.GetScalers(ctx, scaledObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err
 	}
 
 	for _, scaler := range scalers {
-		metricSpecs := scaler.GetMetricSpecForScaling()
+		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 
 		for _, metricSpec := range metricSpecs {
 			if metricSpec.Resource != nil {
@@ -187,7 +187,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(logger logr.Logger, 
 			}
 		}
 		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
-		scaler.Close()
+		scaler.Close(ctx)
 	}
 
 	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -27,12 +28,14 @@ var sampleIBMMQResolvedEnv = map[string]string{
 // Test metric identifier with test MQ data and it's name
 type IBMMQMetricIdentifier struct {
 	metadataTestData *parseIBMMQMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
 // Setting metric identifier mock name
 var IBMMQMetricIdentifiers = []IBMMQMetricIdentifier{
-	{&testIBMMQMetadata[1], "IBMMQ-testQueueManager-testQueue"},
+	{&testIBMMQMetadata[1], 0, "s0-IBMMQ-testQueueManager-testQueue"},
+	{&testIBMMQMetadata[1], 1, "s1-IBMMQ-testQueueManager-testQueue"},
 }
 
 // Test cases for TestIBMMQParseMetadata test
@@ -103,7 +106,7 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 // Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		httpTimeout := 100 * time.Millisecond
 
 		if err != nil {
@@ -113,7 +116,7 @@ func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 			metadata:           metadata,
 			defaultHTTPTimeout: httpTimeout,
 		}
-		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling()
+		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 
 		if metricName != testData.name {

@@ -15,6 +15,7 @@ type parseCronMetadataTestData struct {
 
 type cronMetricIdentifier struct {
 	metadataTestData *parseCronMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -49,8 +50,8 @@ var testCronMetadata = []parseCronMetadataTestData{
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
-	{&testCronMetadata[1], "cron-Etc-UTC-00xxThu-5923xxThu"},
-	{&testCronMetadata[2], "cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
+	{&testCronMetadata[1], 0, "s0-cron-Etc-UTC-00xxThu-5923xxThu"},
+	{&testCronMetadata[2], 1, "s1-cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
 }
 
 var tz, _ = time.LoadLocation(validCronMetadata2["timezone"])
@@ -113,13 +114,13 @@ func TestGetMetricsRange(t *testing.T) {
 
 func TestCronGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMetricIdentifiers {
-		meta, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+		meta, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockCronScaler := cronScaler{meta}
 
-		metricSpec := mockCronScaler.GetMetricSpecForScaling()
+		metricSpec := mockCronScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

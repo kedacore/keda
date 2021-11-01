@@ -36,6 +36,7 @@ type artemisMetadata struct {
 	restAPITemplate    string
 	queueLength        int
 	corsHeader         string
+	scalerIndex        int
 }
 
 //revive:enable:var-naming
@@ -153,12 +154,15 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	if meta.password == "" {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
+
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
 }
 
 // IsActive determines if we need to scale from zero
 func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueueMessageCount()
+	messages, err := s.getQueueMessageCount(ctx)
 	if err != nil {
 		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
@@ -210,14 +214,14 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 	return monitoringEndpoint
 }
 
-func (s *artemisScaler) getQueueMessageCount() (int, error) {
+func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 	var monitoringInfo *artemisMonitoring
 	messageCount := 0
 
 	client := s.httpClient
 	url := s.getMonitoringEndpoint()
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	req.Header.Set("Origin", s.metadata.corsHeader)
@@ -246,11 +250,11 @@ func (s *artemisScaler) getQueueMessageCount() (int, error) {
 	return messageCount, nil
 }
 
-func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -263,7 +267,7 @@ func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	messages, err := s.getQueueMessageCount()
+	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {
 		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
@@ -280,6 +284,6 @@ func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metri
 }
 
 // Nothing to close here.
-func (s *artemisScaler) Close() error {
+func (s *artemisScaler) Close(context.Context) error {
 	return nil
 }

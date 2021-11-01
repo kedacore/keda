@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -12,6 +13,7 @@ type postgreSQLMetricIdentifier struct {
 	metadataTestData *parsePostgreSQLMetadataTestData
 	resolvedEnv      map[string]string
 	authParam        map[string]string
+	scaleIndex       int
 	name             string
 }
 
@@ -31,23 +33,23 @@ var testPostgreSQLMetdata = []parsePostgreSQLMetadataTestData{
 }
 
 var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
-	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, "postgresql-postgresql---localhost-5432"},
-	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, "postgresql-postgresql---test@localhost"},
-	{&testPostgreSQLMetdata[2], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname"}, "postgresql-postgresql---user-xxx@localhost-5432-dbname"},
-	{&testPostgreSQLMetdata[3], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, "postgresql-scaler_sql_data2"},
-	{&testPostgreSQLMetdata[4], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname?app_name=test"}, "postgresql-postgresql---user-xxx@localhost-5432-dbname?app_name=test"},
-	{&testPostgreSQLMetdata[5], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, "postgresql-scaler_sql_data"},
+	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql-postgresql---localhost-5432"},
+	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql-postgresql---test@localhost"},
+	{&testPostgreSQLMetdata[2], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname"}, 2, "s2-postgresql-postgresql---user-xxx@localhost-5432-dbname"},
+	{&testPostgreSQLMetdata[3], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, 3, "s3-postgresql-scaler_sql_data2"},
+	{&testPostgreSQLMetdata[4], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname?app_name=test"}, 4, "s4-postgresql-postgresql---user-xxx@localhost-5432-dbname?app_name=test"},
+	{&testPostgreSQLMetdata[5], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, 5, "s5-postgresql-scaler_sql_data"},
 }
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam})
+		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, ScalerIndex: testData.scaleIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockPostgresSQLScaler := postgreSQLScaler{meta, nil}
 
-		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling()
+		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

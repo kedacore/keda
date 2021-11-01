@@ -34,6 +34,7 @@ type postgreSQLMetadata struct {
 	dbName           string
 	sslmode          string
 	metricName       string
+	scalerIndex      int
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
@@ -128,7 +129,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", meta.dbName))
 		}
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -161,7 +162,7 @@ func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
 }
 
 // Close disposes of postgres connections
-func (s *postgreSQLScaler) Close() error {
+func (s *postgreSQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		postgreSQLLog.Error(err, "Error closing postgreSQL connection")
@@ -172,7 +173,7 @@ func (s *postgreSQLScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getActiveNumber()
+	messages, err := s.getActiveNumber(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
@@ -180,9 +181,9 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber() (int, error) {
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int, error) {
 	var id int
-	err := s.connection.QueryRow(s.metadata.query).Scan(&id)
+	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
 		return 0, fmt.Errorf("could not query postgreSQL: %s", err)
@@ -191,12 +192,12 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -211,7 +212,7 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getActiveNumber()
+	num, err := s.getActiveNumber(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}

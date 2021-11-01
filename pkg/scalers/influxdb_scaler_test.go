@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -19,6 +20,7 @@ type parseInfluxDBMetadataTestData struct {
 
 type influxDBMetricIdentifier struct {
 	metadataTestData *parseInfluxDBMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -46,8 +48,8 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 }
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
-	{&testInfluxDBMetadata[1], "influxdb-influx_metric"},
-	{&testInfluxDBMetadata[2], "influxdb-https---xxx-influx_org"},
+	{&testInfluxDBMetadata[1], 0, "s0-influxdb-influx_metric"},
+	{&testInfluxDBMetadata[2], 1, "s1-influxdb-https---xxx-influx_org"},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {
@@ -66,13 +68,13 @@ func TestInfluxDBParseMetadata(t *testing.T) {
 
 func TestInfluxDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range influxDBMetricIdentifiers {
-		meta, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv})
+		meta, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockInfluxDBScaler := influxDBScaler{influxdb2.NewClient("https://influxdata.com", "myToken"), meta}
 
-		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling()
+		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)

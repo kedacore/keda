@@ -17,6 +17,7 @@ limitations under the License.
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -37,6 +38,7 @@ type parseAzQueueMetadataTestData struct {
 
 type azQueueMetricIdentifier struct {
 	metadataTestData *parseAzQueueMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -76,8 +78,8 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 }
 
 var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
-	{&testAzQueueMetadata[1], "azure-queue-sample"},
-	{&testAzQueueMetadata[4], "azure-queue-sample_queue"},
+	{&testAzQueueMetadata[1], 0, "s0-azure-queue-sample"},
+	{&testAzQueueMetadata[4], 1, "s1-azure-queue-sample_queue"},
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
@@ -97,7 +99,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -107,7 +109,7 @@ func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -16,6 +17,7 @@ type parsePubSubMetadataTestData struct {
 
 type gcpPubSubMetricIdentifier struct {
 	metadataTestData *parsePubSubMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -36,7 +38,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
-	{&testPubSubMetadata[1], "gcp-mysubscription"},
+	{&testPubSubMetadata[1], 0, "s0-gcp-mysubscription"},
+	{&testPubSubMetadata[1], 1, "s1-gcp-mysubscription"},
 }
 
 func TestPubSubParseMetadata(t *testing.T) {
@@ -53,13 +56,13 @@ func TestPubSubParseMetadata(t *testing.T) {
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv})
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockGcpPubSubScaler := pubsubScaler{nil, meta}
 
-		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling()
+		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

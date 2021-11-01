@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -24,6 +25,7 @@ type parseKafkaAuthParamsTestData struct {
 
 type kafkaMetricIdentifier struct {
 	metadataTestData *parseKafkaMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -114,7 +116,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[4], "kafka-my-topic-my-group"},
+	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic-my-group"},
+	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic-my-group"},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -189,13 +192,13 @@ func TestKafkaAuthParams(t *testing.T) {
 }
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockKafkaScaler := kafkaScaler{meta, nil, nil}
 
-		metricSpec := mockKafkaScaler.GetMetricSpecForScaling()
+		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

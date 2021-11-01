@@ -24,6 +24,7 @@ type parseRabbitMQMetadataTestData struct {
 
 type rabbitMQMetricIdentifier struct {
 	metadataTestData *parseRabbitMQMetadataTestData
+	index            int
 	name             string
 }
 
@@ -113,9 +114,9 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
-	{&testRabbitMQMetadata[1], "rabbitmq-sample"},
-	{&testRabbitMQMetadata[7], "rabbitmq-namespace-2Fname"},
-	{&testRabbitMQMetadata[31], "rabbitmq-host1-sample"},
+	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
+	{&testRabbitMQMetadata[7], 1, "s1-rabbitmq-namespace-2Fname"},
+	{&testRabbitMQMetadata[31], 2, "s2-rabbitmq-host1-sample"},
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
@@ -448,7 +449,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range rabbitMQMetricIdentifiers {
-		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil})
+		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.index})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -459,7 +460,7 @@ func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 			httpClient: http.DefaultClient,
 		}
 
-		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling()
+		metricSpec := mockRabbitMQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName, "wanted:", testData.name)

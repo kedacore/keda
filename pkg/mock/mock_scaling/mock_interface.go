@@ -5,6 +5,7 @@
 package mock_scaling
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -49,18 +50,18 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(scalableObject inte
 }
 
 // GetScalers mocks base method.
-func (m *MockScaleHandler) GetScalers(scalableObject interface{}) ([]scalers.Scaler, error) {
+func (m *MockScaleHandler) GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScalers", scalableObject)
+	ret := m.ctrl.Call(m, "GetScalers", ctx, scalableObject)
 	ret0, _ := ret[0].([]scalers.Scaler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetScalers indicates an expected call of GetScalers.
-func (mr *MockScaleHandlerMockRecorder) GetScalers(scalableObject interface{}) *gomock.Call {
+func (mr *MockScaleHandlerMockRecorder) GetScalers(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalers", reflect.TypeOf((*MockScaleHandler)(nil).GetScalers), scalableObject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalers", reflect.TypeOf((*MockScaleHandler)(nil).GetScalers), ctx, scalableObject)
 }
 
 // HandleScalableObject mocks base method.

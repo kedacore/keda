@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -28,6 +29,7 @@ type parseAWSCloudwatchMetadataTestData struct {
 
 type awsCloudwatchMetricIdentifier struct {
 	metadataTestData *parseAWSCloudwatchMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -233,7 +235,8 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
-	{&testAWSCloudwatchMetadata[1], "aws-cloudwatch-AWS-SQS-QueueName-keda"},
+	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch-AWS-SQS-QueueName-keda"},
+	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-AWS-SQS-QueueName-keda"},
 }
 
 func TestCloudwatchParseMetadata(t *testing.T) {
@@ -250,13 +253,14 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 
 func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsCloudwatchMetricIdentifiers {
-		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams})
+		ctx := context.Background()
+		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta}
 
-		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling()
+		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
