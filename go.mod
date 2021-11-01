@@ -38,7 +38,7 @@ require (
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.9.3
+	github.com/tidwall/gjson v1.11.0
 	github.com/xdg/scram v1.0.3
 	github.com/xdg/stringprep v1.0.3 // indirect
 	go.mongodb.org/mongo-driver v1.7.3
