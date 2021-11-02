@@ -26,9 +26,7 @@ import (
 const (
 	defaultMetricCollectionTime = 300
 	defaultMetricStat           = "Average"
-	defaultMetricUnit           = ""
 	defaultMetricStatPeriod     = 300
-	defaultMetricEndTimeOffset  = 0
 )
 
 type awsCloudwatchScaler struct {
@@ -71,44 +69,8 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseMetricValues(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
-	metricsMeta := awsCloudwatchMetadata{}
-
-	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
-		if n, ok := strconv.ParseInt(val, 10, 64); ok == nil {
-			metricsMeta.metricCollectionTime = n
-		} else {
-			return nil, fmt.Errorf("metricCollectionTime not a valid number")
-		}
-	} else {
-		metricsMeta.metricCollectionTime = defaultMetricCollectionTime
-	}
-
-	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
-		if n, ok := strconv.ParseInt(val, 10, 64); ok == nil {
-			metricsMeta.metricStatPeriod = n
-		} else {
-			return nil, fmt.Errorf("metricStatPeriod not a valid number")
-		}
-	} else {
-		metricsMeta.metricStatPeriod = defaultMetricStatPeriod
-	}
-
-	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
-		metricsMeta.metricStat = val
-	} else {
-		metricsMeta.metricStat = defaultMetricStat
-	}
-
-	return &metricsMeta, nil
-}
-
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
-	meta, err := parseMetricValues(config)
-
-	if err != nil {
-		return nil, fmt.Errorf("an error occurred when the scaler tried to get the metrics values")
-	}
+	meta := awsCloudwatchMetadata{}
 
 	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
 		meta.namespace = val
@@ -141,7 +103,7 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
 		targetMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			cloudwatchLog.Error(err, "Error parsing targetMetricValue metadata")
+			return nil, fmt.Errorf("error parsing targetMetricValue metadata: %v", err)
 		} else {
 			meta.targetMetricValue = targetMetricValue
 		}
@@ -152,7 +114,7 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			cloudwatchLog.Error(err, "Error parsing minMetricValue metadata")
+			return nil, fmt.Errorf("error parsing minMetricValue metadata: %v", err)
 		} else {
 			meta.minMetricValue = minMetricValue
 		}
@@ -160,44 +122,57 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, fmt.Errorf("min metric value not given")
 	}
 
-	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
-		metricCollectionTime, err := strconv.Atoi(val)
-		if err != nil {
-			cloudwatchLog.Error(err, "Error parsing metricCollectionTime metadata")
-		} else {
-			meta.metricCollectionTime = int64(metricCollectionTime)
-		}
-	}
-
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
+		if err := checkMetricStat(val); err != nil {
+			return nil, err
+		}
 		meta.metricStat = val
+	} else {
+		meta.metricStat = defaultMetricStat
 	}
 
 	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
 		metricStatPeriod, err := strconv.Atoi(val)
 		if err != nil {
-			cloudwatchLog.Error(err, "Error parsing metricStatPeriod metadata")
+			return nil, fmt.Errorf("error parsing metricStatPeriod metadata: %v", err)
+		}
+		if err := checkMetricStatPeriod(metricStatPeriod); err != nil {
+			return nil, err
 		} else {
 			meta.metricStatPeriod = int64(metricStatPeriod)
 		}
+	} else {
+		meta.metricStatPeriod = defaultMetricStatPeriod
+	}
+
+	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
+		metricCollectionTime, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metricCollectionTime metadata: %v", err)
+		}
+		meta.metricCollectionTime = int64(metricCollectionTime)
+	} else {
+		meta.metricCollectionTime = defaultMetricCollectionTime
+	}
+
+	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
+		return nil, fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", meta.metricStatPeriod, meta.metricCollectionTime)
 	}
 
 	if val, ok := config.TriggerMetadata["metricEndTimeOffset"]; ok && val != "" {
 		metricEndTimeOffset, err := strconv.Atoi(val)
 		if err != nil {
-			cloudwatchLog.Error(err, "Error parsing metricEndTimeOffset metadata")
+			return nil, fmt.Errorf("error parsing metricEndTimeOffset metadata: %v", err)
 		} else {
 			meta.metricEndTimeOffset = int64(metricEndTimeOffset)
 		}
-	} else {
-		meta.metricEndTimeOffset = defaultMetricEndTimeOffset
 	}
 
-
 	if val, ok := config.TriggerMetadata["metricUnit"]; ok && val != "" {
+		if err := checkMetricUnit(val); err != nil {
+			return nil, err
+		}
 		meta.metricUnit = val
-	} else {
-		meta.metricUnit = defaultMetricUnit
 	}
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
@@ -215,7 +190,47 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 
 	meta.scalerIndex = config.ScalerIndex
 
-	return meta, nil
+	return &meta, nil
+}
+
+func checkMetricStat(stat string) error {
+	for _, s := range cloudwatch.Statistic_Values() {
+		if stat == s {
+			return nil
+		}
+	}
+	return fmt.Errorf("metricStat '%s' is not one of %v", stat, cloudwatch.Statistic_Values())
+}
+
+func checkMetricUnit(unit string) error {
+	if unit == "" {
+		return nil
+	}
+	for _, u := range cloudwatch.StandardUnit_Values() {
+		if unit == u {
+			return nil
+		}
+	}
+	return fmt.Errorf("metricUnit '%s' is not one of %v", unit, cloudwatch.StandardUnit_Values())
+}
+
+func checkMetricStatPeriod(period int) error {
+	if period < 1 {
+		return fmt.Errorf("metricStatPeriod can not be smaller than 1, however, %d is provided", period)
+	} else if period <= 60 {
+		switch period {
+		case 1, 5, 10, 30, 60:
+			return nil
+		default:
+			return fmt.Errorf("metricStatPeriod < 60 has to be one of [1, 5, 10, 30], however, %d is provided", period)
+		}
+	}
+
+	if period % 60 != 0 {
+		return fmt.Errorf("metricStatPeriod >= 60 has to be a multiple of 60, however, %d is provided", period)
+	}
+
+	return nil
 }
 
 func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -306,7 +321,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	input := cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(startTime),
 		EndTime:   aws.Time(endTime),
-		ScanBy: aws.String(cloudwatch.ScanByTimestampDescending),
+		ScanBy:    aws.String(cloudwatch.ScanByTimestampDescending),
 		MetricDataQueries: []*cloudwatch.MetricDataQuery{
 			{
 				Id: aws.String("c1"),
