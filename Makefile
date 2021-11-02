@@ -2,7 +2,13 @@
 # Variables                                      #
 ##################################################
 SHELL           = /bin/bash
-VERSION        ?= main
+
+# VERSION is the image tag that will be used. It could be provided using environment variable imageTag
+VERSION = ${imageTag}
+ifeq '$(VERSION)' ''
+VERSION = main
+endif
+
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 

@@ -1,6 +1,8 @@
 #! /bin/bash
 set -eu
 
+e2eRegex=${e2eTestRegex:-*.test.ts}
+
 DIR=$(dirname "$0")
 cd $DIR
 
@@ -18,7 +20,7 @@ function run_setup {
 function run_tests {
     counter=0
     # randomize tests order using shuf
-    for test_case in $(find scalers -name "*.test.ts" | shuf)
+    for test_case in $(find scalers -name "$e2eRegex" | shuf)
     do
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
