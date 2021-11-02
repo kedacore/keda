@@ -78,8 +78,12 @@ jobs:
           IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
         run: |
           MESSAGE="${{ github.event.comment.body }}"
-          REGEX=${MESSAGE#"/e2e "}
-          export e2eTestRegex=$REGEX
+          REGEX='/e2e (.+)'
+          if [[ "$MESSAGE" =~ $REGEX ]]
+          then
+            export e2eTestRegex="${BASH_REMATCH[1]}"
+          fi
+          echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
       - name: React to comment
