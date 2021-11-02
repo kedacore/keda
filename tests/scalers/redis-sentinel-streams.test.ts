@@ -181,7 +181,7 @@ spec:
       metadata:
         hostsFromEnv: REDIS_HOSTS
         portsFromEnv: REDIS_PORTS
-        sentinelPasswordFromEnv: REDIS_SENTINEL_MASTER
+        sentinelMasterFromEnv: REDIS_SENTINEL_MASTER
         stream: my-stream
         consumerGroup: consumer-group-1
         pendingEntriesCount: "10"
