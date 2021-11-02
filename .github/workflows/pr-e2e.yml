@@ -88,7 +88,7 @@ jobs:
 
       - name: React to comment
         uses: dkershner6/reaction-action@v1
-        if: steps.test.conclusion == "success"
+        if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
@@ -96,7 +96,7 @@ jobs:
 
       - name: React to comment
         uses: dkershner6/reaction-action@v1
-        if: !(steps.test.conclusion == "success")
+        if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
