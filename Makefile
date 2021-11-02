@@ -3,8 +3,8 @@
 ##################################################
 SHELL           = /bin/bash
 
-# VERSION is the image tag that will be used. It could be provided using environment variable imageTag
-VERSION = ${imageTag}
+# VERSION is the image tag that will be used. It could be provided using environment variable IMAGE_TAG
+VERSION = ${IMAGE_TAG}
 ifeq '$(VERSION)' ''
 VERSION = main
 endif
