@@ -86,7 +86,7 @@ jobs:
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
-      - name: React to comment
+      - name: React to comment with success
         uses: dkershner6/reaction-action@v1
         if: steps.test.outcome == 'success'
         with:
@@ -94,7 +94,7 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - name: React to comment
+      - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
         if: steps.test.outcome != 'success'
         with:
