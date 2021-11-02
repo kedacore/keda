@@ -93,7 +93,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
-      
+
       - name: React to comment
         uses: dkershner6/reaction-action@v1
         if: steps.test.conclusion != "success"
