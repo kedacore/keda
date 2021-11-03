@@ -26,7 +26,7 @@ test.before(t => {
     )
 
     // Wait for Redis Sentinel to be ready.
-    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 240)
+    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 300)
     t.is(0, exitCode, 'expected rollout status for redis to finish successfully')
 
     // Get Redis Sentinel address.
