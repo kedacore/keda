@@ -1,14 +1,17 @@
 FROM ubuntu:18.04
 
 # Install prerequisite
-RUN apt-get update && \
-    apt-get install -y wget curl build-essential git
+RUN apt update && \
+    apt-get install software-properties-common -y
+RUN apt-add-repository ppa:git-core/ppa && \ 
+    apt update && \
+    apt install -y wget curl build-essential git
 
 # Use Bash instead of Dash
 RUN ln -sf bash /bin/sh
 
 # Install azure-cli
-RUN apt-get install apt-transport-https lsb-release software-properties-common dirmngr -y && \
+RUN apt-get install apt-transport-https lsb-release dirmngr -y && \
     curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
         tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null && \
     AZ_REPO=$(lsb_release -cs) && \
@@ -64,3 +67,8 @@ ENV PATH=${PATH}:/usr/local/go/bin \
 
 # Install FOSSA tooling
 RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+
+# Install hub
+RUN curl -LJO https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz && \
+    tar zxvf hub-linux-amd64-2.14.2.tgz
+ENV PATH="/hub-linux-amd64-2.14.2/bin:${PATH}"
