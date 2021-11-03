@@ -199,9 +199,9 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close disposes of mongoDB connections
-func (s *mongoDBScaler) Close(context.Context) error {
+func (s *mongoDBScaler) Close(ctx context.Context) error {
 	if s.client != nil {
-		err := s.client.Disconnect(context.TODO())
+		err := s.client.Disconnect(ctx)
 		if err != nil {
 			mongoDBLog.Error(err, fmt.Sprintf("failed to close mongoDB connection, because of %v", err))
 			return err

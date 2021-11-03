@@ -27,7 +27,7 @@ import (
 )
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
-func SetStatusConditions(client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
 	var patch runtimeclient.Patch
 
 	runtimeObj := object.(runtimeclient.Object)
@@ -44,7 +44,7 @@ func SetStatusConditions(client runtimeclient.StatusClient, logger logr.Logger, 
 		return err
 	}
 
-	err := client.Status().Patch(context.TODO(), runtimeObj, patch)
+	err := client.Status().Patch(ctx, runtimeObj, patch)
 	if err != nil {
 		logger.Error(err, "Failed to patch Objects Status with Conditions")
 	}
@@ -52,10 +52,10 @@ func SetStatusConditions(client runtimeclient.StatusClient, logger logr.Logger, 
 }
 
 // UpdateScaledObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
-func UpdateScaledObjectStatus(client runtimeclient.StatusClient, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
+func UpdateScaledObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 	scaledObject.Status = *status
-	err := client.Status().Patch(context.TODO(), scaledObject, patch)
+	err := client.Status().Patch(ctx, scaledObject, patch)
 	if err != nil {
 		logger.Error(err, "Failed to patch ScaledObjects Status")
 	}
