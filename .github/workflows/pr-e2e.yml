@@ -81,7 +81,7 @@ jobs:
           REGEX='/e2e (.+)'
           if [[ "$MESSAGE" =~ $REGEX ]]
           then
-            export e2eTestRegex="${BASH_REMATCH[1]}"
+            export E2E_TEST_REGEX="${BASH_REMATCH[1]}"
           fi
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
