@@ -38,7 +38,7 @@ test.before(t => {
     )
 
     // Wait for Redis sentinel to be ready.
-   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace))
+   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 240), 'Redis is not in a ready state')
 
     // Get Redis sentinel address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
