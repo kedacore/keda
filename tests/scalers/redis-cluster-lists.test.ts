@@ -37,7 +37,7 @@ test.before(t => {
     )
 
     // Wait for Redis cluster to be ready.
-   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace))
+   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 300))
 
     // Get Redis cluster address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
