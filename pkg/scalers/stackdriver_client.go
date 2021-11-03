@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/api/iterator"
@@ -18,6 +20,7 @@ import (
 type StackDriverClient struct {
 	metricsClient *monitoring.MetricClient
 	credentials   GoogleApplicationCredentials
+	projectID     string
 }
 
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
@@ -41,6 +44,23 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	}, nil
 }
 
+// NewStackDriverClient creates a new stackdriver client with the credentials underlying
+func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
+	client, err := monitoring.NewMetricClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	c := metadata.NewClient(&http.Client{})
+	project, err := c.ProjectID()
+	if err != nil {
+		return nil, err
+	}
+	return &StackDriverClient{
+		metricsClient: client,
+		projectID:     project,
+	}, nil
+}
+
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
 func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64, error) {
 	// Set the start time to 1 minute ago
@@ -50,19 +70,34 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64
 	endTime := time.Now().UTC()
 
 	// Create a request with the filter and the GCP project ID
-	req := &monitoringpb.ListTimeSeriesRequest{
-		Name:   "projects/" + s.credentials.ProjectID,
-		Filter: filter,
-		Interval: &monitoringpb.TimeInterval{
-			StartTime: &timestamp.Timestamp{
-				Seconds: startTime.Unix(),
+	var req *monitoringpb.ListTimeSeriesRequest
+	if len(s.projectID) > 0 {
+		req = &monitoringpb.ListTimeSeriesRequest{
+			Name:   "projects/" + s.projectID,
+			Filter: filter,
+			Interval: &monitoringpb.TimeInterval{
+				StartTime: &timestamp.Timestamp{
+					Seconds: startTime.Unix(),
+				},
+				EndTime: &timestamp.Timestamp{
+					Seconds: endTime.Unix(),
+				},
 			},
-			EndTime: &timestamp.Timestamp{
-				Seconds: endTime.Unix(),
+		}
+	} else {
+		req = &monitoringpb.ListTimeSeriesRequest{
+			Name:   "projects/" + s.credentials.ProjectID,
+			Filter: filter,
+			Interval: &monitoringpb.TimeInterval{
+				StartTime: &timestamp.Timestamp{
+					Seconds: startTime.Unix(),
+				},
+				EndTime: &timestamp.Timestamp{
+					Seconds: endTime.Unix(),
+				},
 			},
-		},
+		}
 	}
-
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
 

@@ -3,6 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.16
 
 require (
+	cloud.google.com/go v0.97.0 // indirect
 	cloud.google.com/go/monitoring v1.0.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.1
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
