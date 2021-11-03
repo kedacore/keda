@@ -51,6 +51,8 @@ type ScaledJobSpec struct {
 	// +optional
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 	// +optional
+	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
+	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`

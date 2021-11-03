@@ -152,7 +152,7 @@ spec:
         app: cassandra-app
     spec:
       containers:
-      - image: cassandra:latest
+      - image: bitnami/cassandra:4.0.1
         imagePullPolicy: IfNotPresent
         name: cassandra
         ports:
@@ -190,12 +190,31 @@ spec:
         app: cassandra-client
     spec:
       containers:
-      - image: docker.io/bitnami/cassandra:4.0.1-debian-10-r0
+      - image: bitnami/cassandra:4.0.1
         imagePullPolicy: IfNotPresent
         name: cassandra-client
 `
 
 const nginxDeployYaml = `
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cassandra-secrets
+type: Opaque
+data:
+  cassandra_password: Y2Fzc2FuZHJh
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-cassandra-secret
+spec:
+  secretTargetRef:
+  - parameter: password
+    name: cassandra-secrets
+    key: cassandra_password
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -237,27 +256,10 @@ spec:
       consistency: "Quorum"
       protocolVersion: "4"
       port: "9042"
+      keyspace: "${cassandraKeyspace}"
       query: "SELECT COUNT(*) FROM ${cassandraKeyspace}.${cassandraTableName};"
       targetQueryValue: "1"
       metricName: "${cassandraKeyspace}"
     authenticationRef:
       name: keda-trigger-auth-cassandra-secret
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cassandra-secrets
-type: Opaque
-data:
-  cassandra_password: Y2Fzc2FuZHJhCg==
----
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: keda-trigger-auth-cassandra-secret
-spec:
-  secretTargetRef:
-  - parameter: password
-    name: cassandra-secrets
-    key: cassandra_password
 `

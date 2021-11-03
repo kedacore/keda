@@ -2,15 +2,18 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import { waitForRollout } from './helpers'
+import {waitForRollout} from "./helpers";
 
-const redisNamespace = 'redis'
-const testNamespace = 'redis-lists-test'
-const redisDeploymentName = 'redis'
+const redisNamespace = 'redis-sentinel'
+const redisService = 'redis-sentinel'
+const testNamespace = 'redis-sentinel-lists-test'
+const redisStatefulSetName = 'redis-sentinel-node'
+const redisSentinelName = 'redis-sentinel'
+const redisSentinelMasterName = 'mymaster'
 const redisPassword = 'my-password'
-const redisHost = `redis.${redisNamespace}.svc.cluster.local`
-const redisPort = 6379
-const redisAddress = `${redisHost}:${redisPort}`
+let redisHost = ''
+const redisPort = 26379
+let redisAddress = ''
 const listNameForHostPortRef = 'my-test-list-host-port-ref'
 const listNameForAddressRef = 'my-test-list-address-ref'
 const listNameForHostPortTriggerAuth = 'my-test-list-host-port-trigger'
@@ -18,28 +21,35 @@ const redisWorkerHostPortRefDeploymentName = 'redis-worker-test-hostport'
 const redisWorkerAddressRefDeploymentName = 'redis-worker-test-address'
 const redisWorkerHostPortRefTriggerAuthDeploymentName = 'redis-worker-test-hostport-triggerauth'
 const itemsToWrite = 200
-const deploymentContainerImage = 'kedacore/tests-redis-lists:824031e'
+const deploymentContainerImage = 'ghcr.io/kedacore/tests-redis-sentinel-lists'
 const writeJobNameForHostPortRef = 'redis-writer-host-port-ref'
 const writeJobNameForAddressRef = 'redis-writer-address-ref'
 const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-auth'
 
 test.before(t => {
-    // setup Redis
+    // Deploy Redis sentinel.
     sh.exec(`kubectl create namespace ${redisNamespace}`)
+    sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    const redisDeployTmpFile = tmp.fileSync()
-    fs.writeFileSync(redisDeployTmpFile.name, redisDeployYaml.replace('{{REDIS_PASSWORD}}', redisPassword))
+    let sentinelStatus = sh.exec(`helm install --timeout 600s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
+    t.is(0,
+        sentinelStatus,
+        'creating a Redis sentinel setup should work.'
+    )
 
-    t.is(0, sh.exec(`kubectl apply --namespace ${redisNamespace} -f ${redisDeployTmpFile.name}`).code, 'creating a Redis deployment should work.')
+    // Wait for Redis sentinel to be ready.
+   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 240), 'Redis is not in a ready state')
 
-    // wait for redis to be ready
-    t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 240), 'Redis is not in a ready state')
+    // Get Redis sentinel address.
+    redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
+    redisAddress = `${redisHost}:${redisPort}`
 
+    // Create test namespace.
     sh.exec(`kubectl create namespace ${testNamespace}`)
 
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
-    fs.writeFileSync(triggerAuthTmpFile.name, scaledObjectTriggerAuthYaml.replace('{{REDIS_PASSWORD}}', base64Password))
+    fs.writeFileSync(triggerAuthTmpFile.name, scaledObjectTriggerAuthYaml.replace('{{REDIS_PASSWORD}}', base64Password).replace('{{REDIS_SENTINEL_PASSWORD}}', base64Password))
 
     t.is(
         0,
@@ -51,8 +61,10 @@ test.before(t => {
 
     fs.writeFileSync(triggerAuthHostPortTmpFile.name,
         scaledObjectTriggerAuthHostPortYaml.replace('{{REDIS_PASSWORD}}', base64Password)
-            .replace('{{REDIS_HOST}}', Buffer.from(redisHost).toString('base64'))
-            .replace('{{REDIS_PORT}}', Buffer.from(redisPort.toString()).toString('base64'))
+            .replace('{{REDIS_SENTINEL_PASSWORD}}', base64Password)
+            .replace('{{REDIS_SENTINEL_MASTER}}', Buffer.from(redisSentinelMasterName).toString('base64'))
+            .replace('{{REDIS_HOSTS}}', Buffer.from(redisHost).toString('base64'))
+            .replace('{{REDIS_PORTS}}', Buffer.from(redisPort.toString()).toString('base64'))
     )
 
     t.is(
@@ -61,11 +73,14 @@ test.before(t => {
         'creating trigger auth with host port should work..'
     )
 
+    // Create a deployment with host and port.
     const deploymentHostPortRefTmpFile = tmp.fileSync()
 
-    fs.writeFileSync(deploymentHostPortRefTmpFile.name, redisRedisListDeployHostPortYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
-        .replace(/{{REDIS_HOST}}/g, redisHost)
-        .replace(/{{REDIS_PORT}}/g, redisPort.toString())
+    fs.writeFileSync(deploymentHostPortRefTmpFile.name, redisListDeployHostPortYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
+        .replace(/{{REDIS_SENTINEL_PASSWORD}}/g, redisPassword)
+        .replace(/{{REDIS_SENTINEL_MASTER}}/g, redisSentinelMasterName)
+        .replace(/{{REDIS_HOSTS}}/g, redisHost)
+        .replace(/{{REDIS_PORTS}}/g, redisPort.toString())
         .replace(/{{LIST_NAME}}/g, listNameForHostPortRef)
         .replace(/{{DEPLOYMENT_NAME}}/g, redisWorkerHostPortRefDeploymentName)
         .replace(/{{CONTAINER_IMAGE}}/g, deploymentContainerImage)
@@ -80,7 +95,9 @@ test.before(t => {
     const deploymentAddressRefTmpFile = tmp.fileSync()
 
     fs.writeFileSync(deploymentAddressRefTmpFile.name, redisListDeployAddressYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
-        .replace(/{{REDIS_ADDRESS}}/g, redisAddress)
+        .replace(/{{REDIS_SENTINEL_PASSWORD}}/g, redisPassword)
+        .replace(/{{REDIS_SENTINEL_MASTER}}/g, redisSentinelMasterName)
+        .replace(/{{REDIS_ADDRESSES}}/g, redisAddress)
         .replace(/{{LIST_NAME}}/g, listNameForAddressRef)
         .replace(/{{DEPLOYMENT_NAME}}/g, redisWorkerAddressRefDeploymentName)
         .replace(/{{CONTAINER_IMAGE}}/g, deploymentContainerImage)
@@ -96,8 +113,10 @@ test.before(t => {
     const deploymentHostPortRefTriggerAuthTmpFile = tmp.fileSync()
 
     fs.writeFileSync(deploymentHostPortRefTriggerAuthTmpFile.name, redisListDeployHostPortInTriggerAuhYaml.replace(/{{REDIS_PASSWORD}}/g, redisPassword)
-        .replace(/{{REDIS_HOST}}/g, redisHost)
-        .replace(/{{REDIS_PORT}}/g, redisPort.toString())
+        .replace(/{{REDIS_SENTINEL_PASSWORD}}/g, redisPassword)
+        .replace(/{{REDIS_SENTINEL_MASTER}}/g, redisSentinelMasterName)
+        .replace(/{{REDIS_HOSTS}}/g, redisHost)
+        .replace(/{{REDIS_PORTS}}/g, redisPort.toString())
         .replace(/{{LIST_NAME}}/g, listNameForHostPortTriggerAuth)
         .replace(/{{DEPLOYMENT_NAME}}/g, redisWorkerHostPortRefTriggerAuthDeploymentName)
         .replace(/{{CONTAINER_IMAGE}}/g, deploymentContainerImage)
@@ -120,11 +139,10 @@ test.serial('Deployment for redis host and port env vars should have 0 replica o
 
 
 test.serial(`Deployment using redis host port env vars should max and scale to 5 with ${itemsToWrite} items written to list and back to 0`, t => {
-
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -164,7 +182,7 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -204,7 +222,7 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -238,8 +256,8 @@ test.after.always.cb('clean up deployment', t => {
         `scaledobject.keda.sh/${redisWorkerHostPortRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerAddressRefDeploymentName}`,
         `scaledobject.keda.sh/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
-        'triggerauthentication.keda.sh/keda-redis-list-triggerauth',
-        'triggerauthentication.keda.sh/keda-redis-list-triggerauth-host-port',
+        'triggerauthentication.keda.sh/keda-redis-sentinel-list-triggerauth',
+        'triggerauthentication.keda.sh/keda-redis-sentinel-list-triggerauth-host-port',
         `deployment/${redisWorkerAddressRefDeploymentName}`,
         `deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName}`,
         `deployment/${redisWorkerHostPortRefDeploymentName}`,
@@ -251,6 +269,7 @@ test.after.always.cb('clean up deployment', t => {
     }
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
+    sh.exec(`helm delete ${redisSentinelName} --namespace ${redisNamespace}`)
     sh.exec(`kubectl delete namespace ${redisNamespace}`)
     t.end()
 })
@@ -258,7 +277,9 @@ test.after.always.cb('clean up deployment', t => {
 function runWriteJob(t, jobName, listName) {
     // write to list
     const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, writeJobYaml.replace('{{REDIS_ADDRESS}}', redisAddress).replace('{{REDIS_PASSWORD}}', redisPassword)
+    fs.writeFileSync(tmpFile.name, writeJobYaml.replace('{{REDIS_ADDRESSES}}', redisAddress).replace('{{REDIS_PASSWORD}}', redisPassword)
+        .replace('{{REDIS_SENTINEL_PASSWORD}}', redisPassword)
+        .replace('{{REDIS_SENTINEL_MASTER}}', redisSentinelMasterName)
         .replace('{{LIST_NAME}}', listName)
         .replace('{{NUMBER_OF_ITEMS_TO_WRITE}}', itemsToWrite.toString())
         .replace('{{CONTAINER_IMAGE}}', deploymentContainerImage)
@@ -281,44 +302,7 @@ function runWriteJob(t, jobName, listName) {
     }
 }
 
-const redisDeployYaml = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: redis
-  namespace: redis
-spec:
-  selector:
-    matchLabels:
-      app: redis
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: redis
-    spec:
-      containers:
-      - name: master
-        image: redis:6.0.6
-        command: ["redis-server", "--requirepass", {{REDIS_PASSWORD}}]
-        ports:
-        - containerPort: 6379
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis
-  namespace: redis
-  labels:
-    app: redis
-spec:
-  ports:
-  - port: 6379
-    targetPort: 6379
-  selector:
-    app: redis
-`
-
-const redisRedisListDeployHostPortYaml = `apiVersion: apps/v1
+const redisListDeployHostPortYaml = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{DEPLOYMENT_NAME}}
@@ -338,18 +322,23 @@ spec:
       - name: redis-worker
         image: {{CONTAINER_IMAGE}}
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
         args: ["read"]
         env:
-        - name: REDIS_HOST
-          value: {{REDIS_HOST}}
-        - name: REDIS_PORT
-          value: "{{REDIS_PORT}}"
+        - name: REDIS_HOSTS
+          value: {{REDIS_HOSTS}}
+        - name: REDIS_PORTS
+          value: "{{REDIS_PORTS}}"
         - name: LIST_NAME
           value: {{LIST_NAME}}
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{REDIS_SENTINEL_PASSWORD}}
+        - name: REDIS_SENTINEL_MASTER
+          value: {{REDIS_SENTINEL_MASTER}}
         - name: READ_PROCESS_TIME
-          value: "200"
+          value: "500"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -363,14 +352,15 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
-  - type: redis
+  - type: redis-sentinel
     metadata:
-      hostFromEnv: REDIS_HOST
-      portFromEnv: REDIS_PORT
+      hostsFromEnv: REDIS_HOSTS
+      portsFromEnv: REDIS_PORTS
       listName: {{LIST_NAME}}
       listLength: "5"
+      sentinelMaster: {{REDIS_SENTINEL_MASTER}}
     authenticationRef:
-      name: keda-redis-list-triggerauth
+      name: keda-redis-sentinel-list-triggerauth
 `
 
 
@@ -394,14 +384,19 @@ spec:
       - name: redis-worker
         image: {{CONTAINER_IMAGE}}
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
         args: ["read"]
         env:
-        - name: REDIS_ADDRESS
-          value: {{REDIS_ADDRESS}}
+        - name: REDIS_ADDRESSES
+          value: {{REDIS_ADDRESSES}}
         - name: LIST_NAME
           value: {{LIST_NAME}}
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{REDIS_SENTINEL_PASSWORD}}
+        - name: REDIS_SENTINEL_MASTER
+          value: {{REDIS_SENTINEL_MASTER}}
         - name: READ_PROCESS_TIME
           value: "500"
 ---
@@ -417,13 +412,14 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
-  - type: redis
+  - type: redis-sentinel
     metadata:
-      addressFromEnv: REDIS_ADDRESS
+      addressesFromEnv: REDIS_ADDRESSES
       listName: {{LIST_NAME}}
       listLength: "5"
+      sentinelMaster: {{REDIS_SENTINEL_MASTER}}
     authenticationRef:
-      name: keda-redis-list-triggerauth
+      name: keda-redis-sentinel-list-triggerauth
 `
 
 const redisListDeployHostPortInTriggerAuhYaml = `apiVersion: apps/v1
@@ -446,18 +442,23 @@ spec:
       - name: redis-worker
         image: {{CONTAINER_IMAGE}}
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
         args: ["read"]
         env:
-        - name: REDIS_HOST
-          value: {{REDIS_HOST}}
-        - name: REDIS_PORT
-          value: "{{REDIS_PORT}}"
+        - name: REDIS_HOSTS
+          value: {{REDIS_HOSTS}}
+        - name: REDIS_PORTS
+          value: "{{REDIS_PORTS}}"
         - name: LIST_NAME
           value: {{LIST_NAME}}
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{REDIS_SENTINEL_PASSWORD}}
+        - name: REDIS_SENTINEL_MASTER
+          value: {{REDIS_SENTINEL_MASTER}}
         - name: READ_PROCESS_TIME
-          value: "200"
+          value: "500"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -471,12 +472,13 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   triggers:
-  - type: redis
+  - type: redis-sentinel
     metadata:
       listName: {{LIST_NAME}}
       listLength: "5"
+      sentinelMaster: {{REDIS_SENTINEL_MASTER}}
     authenticationRef:
-      name: keda-redis-list-triggerauth-host-port
+      name: keda-redis-sentinel-list-triggerauth-host-port
 `
 
 const scaledObjectTriggerAuthHostPortYaml = `apiVersion: v1
@@ -486,22 +488,26 @@ metadata:
 type: Opaque
 data:
   password: {{REDIS_PASSWORD}}
-  redisHost: {{REDIS_HOST}}
-  redisPort: {{REDIS_PORT}}
+  sentinelPassword: {{REDIS_SENTINEL_PASSWORD}}
+  redisHost: {{REDIS_HOSTS}}
+  redisPort: {{REDIS_PORTS}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: keda-redis-list-triggerauth-host-port
+  name: keda-redis-sentinel-list-triggerauth-host-port
 spec:
   secretTargetRef:
     - parameter: password
       name: redis-config
       key: password
-    - parameter: host
+    - parameter: sentinelPassword
+      name: redis-config
+      key: sentinelPassword
+    - parameter: hosts
       name: redis-config
       key: redisHost
-    - parameter: port
+    - parameter: ports
       name: redis-config
       key: redisPort
 `
@@ -513,16 +519,20 @@ metadata:
 type: Opaque
 data:
   password: {{REDIS_PASSWORD}}
+  sentinelPassword: {{REDIS_SENTINEL_PASSWORD}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: keda-redis-list-triggerauth
+  name: keda-redis-sentinel-list-triggerauth
 spec:
   secretTargetRef:
     - parameter: password
       name: redis-password
       key: password
+    - parameter: sentinelPassword
+      name: redis-password
+      key: sentinelPassword
 `
 
 
@@ -537,11 +547,16 @@ spec:
       - name: redis
         image: {{CONTAINER_IMAGE}}
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
         env:
-        - name: REDIS_ADDRESS
-          value: {{REDIS_ADDRESS}}
+        - name: REDIS_ADDRESSES
+          value: {{REDIS_ADDRESSES}}
         - name: REDIS_PASSWORD
           value: {{REDIS_PASSWORD}}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{REDIS_SENTINEL_PASSWORD}}
+        - name: REDIS_SENTINEL_MASTER
+          value: {{REDIS_SENTINEL_MASTER}}
         - name: LIST_NAME
           value: {{LIST_NAME}}
         - name: NO_LIST_ITEMS_TO_WRITE

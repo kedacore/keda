@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,11 +33,15 @@ type redisScaler struct {
 }
 
 type redisConnectionInfo struct {
-	addresses []string
-	password  string
-	hosts     []string
-	ports     []string
-	enableTLS bool
+	addresses        []string
+	username         string
+	password         string
+	sentinelUsername string
+	sentinelPassword string
+	sentinelMaster   string
+	hosts            []string
+	ports            []string
+	enableTLS        bool
 }
 
 type redisMetadata struct {
@@ -51,7 +55,7 @@ type redisMetadata struct {
 var redisLog = logf.Log.WithName("redis_scaler")
 
 // NewRedisScaler creates a new redisScaler
-func NewRedisScaler(ctx context.Context, isClustered bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
 	luaScript := `
 		local listName = KEYS[1]
 		local listType = redis.call('type', listName).ok
@@ -71,7 +75,14 @@ func NewRedisScaler(ctx context.Context, isClustered bool, config *ScalerConfig)
 			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 		}
 		return createClusteredRedisScaler(ctx, meta, luaScript)
+	} else if isSentinel {
+		meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+		}
+		return createSentinelRedisScaler(ctx, meta, luaScript)
 	}
+
 	meta, err := parseRedisMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
@@ -94,8 +105,37 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 	}
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
-		cl := client.WithContext(ctx)
-		cmd := cl.Eval(script, []string{meta.listName})
+		cmd := client.Eval(ctx, script, []string{meta.listName})
+		if cmd.Err() != nil {
+			return -1, cmd.Err()
+		}
+
+		return cmd.Int64()
+	}
+
+	return &redisScaler{
+		metadata:        meta,
+		closeFn:         closeFn,
+		getListLengthFn: listLengthFn,
+	}, nil
+}
+
+func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string) (Scaler, error) {
+	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
+	if err != nil {
+		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
+	}
+
+	closeFn := func() error {
+		if err := client.Close(); err != nil {
+			redisLog.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+
+	listLengthFn := func(ctx context.Context) (int64, error) {
+		cmd := client.Eval(ctx, script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}
@@ -125,8 +165,7 @@ func createRedisScaler(ctx context.Context, meta *redisMetadata, script string) 
 	}
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
-		cl := client.WithContext(ctx)
-		cmd := cl.Eval(script, []string{meta.listName})
+		cmd := client.Eval(ctx, script, []string{meta.listName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}
@@ -267,6 +306,15 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 		return info, fmt.Errorf("no address or host given. address should be in the format of host:port or you should set the host/port values")
 	}
 
+	switch {
+	case authParams["username"] != "":
+		info.username = authParams["username"]
+	case metadata["username"] != "":
+		info.username = metadata["username"]
+	case metadata["usernameFromEnv"] != "":
+		info.username = resolvedEnv[metadata["usernameFromEnv"]]
+	}
+
 	if authParams["password"] != "" {
 		info.password = authParams["password"]
 	} else if metadata["passwordFromEnv"] != "" {
@@ -285,7 +333,7 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 	return info, nil
 }
 
-func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
+func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info := redisConnectionInfo{}
 	switch {
 	case authParams["addresses"] != "":
@@ -327,6 +375,24 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 		return info, fmt.Errorf("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
 	}
 
+	return info, nil
+}
+
+func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
+	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
+	if err != nil {
+		return info, err
+	}
+
+	switch {
+	case authParams["username"] != "":
+		info.username = authParams["username"]
+	case metadata["username"] != "":
+		info.username = metadata["username"]
+	case metadata["usernameFromEnv"] != "":
+		info.username = resolvedEnv[metadata["usernameFromEnv"]]
+	}
+
 	if authParams["password"] != "" {
 		info.password = authParams["password"]
 	} else if metadata["passwordFromEnv"] != "" {
@@ -345,9 +411,67 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 	return info, nil
 }
 
+func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
+	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
+	if err != nil {
+		return info, err
+	}
+
+	switch {
+	case authParams["username"] != "":
+		info.username = authParams["username"]
+	case metadata["username"] != "":
+		info.username = metadata["username"]
+	case metadata["usernameFromEnv"] != "":
+		info.username = resolvedEnv[metadata["usernameFromEnv"]]
+	}
+
+	if authParams["password"] != "" {
+		info.password = authParams["password"]
+	} else if metadata["passwordFromEnv"] != "" {
+		info.password = resolvedEnv[metadata["passwordFromEnv"]]
+	}
+
+	switch {
+	case authParams["sentinelUsername"] != "":
+		info.sentinelUsername = authParams["sentinelUsername"]
+	case metadata["sentinelUsername"] != "":
+		info.sentinelUsername = metadata["sentinelUsername"]
+	case metadata["sentinelUsernameFromEnv"] != "":
+		info.sentinelUsername = resolvedEnv[metadata["sentinelUsernameFromEnv"]]
+	}
+
+	if authParams["sentinelPassword"] != "" {
+		info.sentinelPassword = authParams["sentinelPassword"]
+	} else if metadata["sentinelPasswordFromEnv"] != "" {
+		info.sentinelPassword = resolvedEnv[metadata["sentinelPasswordFromEnv"]]
+	}
+
+	switch {
+	case authParams["sentinelMaster"] != "":
+		info.sentinelMaster = authParams["sentinelMaster"]
+	case metadata["sentinelMaster"] != "":
+		info.sentinelMaster = metadata["sentinelMaster"]
+	case metadata["sentinelMasterFromEnv"] != "":
+		info.sentinelMaster = resolvedEnv[metadata["sentinelMasterFromEnv"]]
+	}
+
+	info.enableTLS = defaultEnableTLS
+	if val, ok := metadata["enableTLS"]; ok {
+		tls, err := strconv.ParseBool(val)
+		if err != nil {
+			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
+		}
+		info.enableTLS = tls
+	}
+
+	return info, nil
+}
+
 func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redis.ClusterClient, error) {
 	options := &redis.ClusterOptions{
 		Addrs:    info.addresses,
+		Username: info.username,
 		Password: info.password,
 	}
 	if info.enableTLS {
@@ -358,7 +482,31 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 
 	// confirm if connected
 	c := redis.NewClusterClient(options)
-	if err := c.WithContext(ctx).Ping().Err(); err != nil {
+	if err := c.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
+	options := &redis.FailoverOptions{
+		Username:         info.username,
+		Password:         info.password,
+		DB:               dbIndex,
+		SentinelAddrs:    info.addresses,
+		SentinelUsername: info.sentinelUsername,
+		SentinelPassword: info.sentinelPassword,
+		MasterName:       info.sentinelMaster,
+	}
+	if info.enableTLS {
+		options.TLSConfig = &tls.Config{
+			InsecureSkipVerify: info.enableTLS,
+		}
+	}
+
+	// confirm if connected
+	c := redis.NewFailoverClient(options)
+	if err := c.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -367,6 +515,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
 	options := &redis.Options{
 		Addr:     info.addresses[0],
+		Username: info.username,
 		Password: info.password,
 		DB:       dbIndex,
 	}
@@ -378,7 +527,8 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 
 	// confirm if connected
 	c := redis.NewClient(options)
-	if err := c.WithContext(ctx).Ping().Err(); err != nil {
+	err := c.Ping(ctx).Err()
+	if err != nil {
 		return nil, err
 	}
 	return c, nil

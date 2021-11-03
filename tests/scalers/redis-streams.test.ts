@@ -2,6 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { waitForRollout } from './helpers'
 
 const redisNamespace = 'redis-ns'
 const testNamespace = 'redis-streams-ns'
@@ -20,14 +21,7 @@ test.before(t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${redisNamespace} -f ${tmpFile1.name}`).code, 'creating a Redis deployment should work.')
 
   // wait for redis to be ready
-  let redisReplicaCount = '0'
-  for (let i = 0; i < 30; i++) {
-    redisReplicaCount = sh.exec(`kubectl get deploy/${redisDeploymentName} -n ${redisNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-    if (redisReplicaCount != '1') {
-      sh.exec('sleep 2s')
-    }
-  }
-  t.is('1', redisReplicaCount, 'Redis is not in a ready state')
+  t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 240), 'Redis is not in a ready state')
 
   sh.exec(`kubectl create namespace ${testNamespace}`)
 

@@ -29,7 +29,7 @@ export class SolaceHelper {
         sh.exec('sleep 2s')
         t.is(
             0,
-            sh.exec(`kubectl -n ${testNamespace} wait --for=condition=Ready --timeout=120s pod/kedalab-pubsubplus-dev-0`).code, 'Solace should be available.'
+            sh.exec(`kubectl -n ${testNamespace} wait --for=condition=Ready --timeout=180s pod/kedalab-pubsubplus-dev-0`).code, 'Solace should be available.'
         )
         sh.exec('sleep 2s')
     }
@@ -43,7 +43,7 @@ export class SolaceHelper {
         )
         t.is(
             0,
-            sh.exec(`kubectl -n ${testNamespace} wait --for=condition=Ready --timeout=120s pod/kedalab-helper`).code, 'kedalab-helper should be available'
+            sh.exec(`kubectl -n ${testNamespace} wait --for=condition=Ready --timeout=180s pod/kedalab-helper`).code, 'kedalab-helper should be available'
         )
         sh.exec('sleep 5s')
     }

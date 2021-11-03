@@ -19,7 +19,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-playground/assert/v2 v2.0.1
-	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocql/gocql v0.0.0-20211015133455-b225f9b53fa1
 	github.com/golang/mock v1.6.0
