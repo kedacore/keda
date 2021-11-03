@@ -56,6 +56,7 @@ jobs:
           IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
 
       - name: Run end to end tests
+        continue-on-error: true
         if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
         id: test
         env:
