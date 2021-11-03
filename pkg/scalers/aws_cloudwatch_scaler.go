@@ -27,6 +27,7 @@ const (
 	defaultMetricCollectionTime = 300
 	defaultMetricStat           = "Average"
 	defaultMetricStatPeriod     = 300
+	defaultMetricEndTimeOffset  = 0
 )
 
 type awsCloudwatchScaler struct {
@@ -69,7 +70,40 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+func getIntMetadataValue(metadata map[string]string, key string, required bool, defaultValue int64) (int64, error) {
+	if val, ok := metadata[key]; ok && val != "" {
+		value, err := strconv.Atoi(val)
+		if err != nil {
+			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
+		}
+		return int64(value), nil
+	}
+
+	if required {
+		return 0, fmt.Errorf("metadata %s not given", key)
+	}
+
+	return defaultValue, nil
+}
+
+func getFloatMetadataValue(metadata map[string]string, key string, required bool, defaultValue float64) (float64, error) {
+	if val, ok := metadata[key]; ok && val != "" {
+		value, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
+		}
+		return value, nil
+	}
+
+	if required {
+		return 0, fmt.Errorf("metadata %s not given", key)
+	}
+
+	return defaultValue, nil
+}
+
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
+	var err error
 	meta := awsCloudwatchMetadata{}
 
 	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
@@ -100,73 +134,50 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, fmt.Errorf("dimensionName and dimensionValue are not matching in size")
 	}
 
-	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
-		targetMetricValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing targetMetricValue metadata: %v", err)
-		} else {
-			meta.targetMetricValue = targetMetricValue
-		}
-	} else {
-		return nil, fmt.Errorf("target Metric Value not given")
+	meta.targetMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
+	if err != nil {
+		return nil, err
 	}
 
-	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
-		minMetricValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing minMetricValue metadata: %v", err)
-		}
-		meta.minMetricValue = minMetricValue
-	} else {
-		return nil, fmt.Errorf("min metric value not given")
+	meta.minMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
+	if err != nil {
+		return nil, err
 	}
 
 	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
-		if err := checkMetricStat(val); err != nil {
-			return nil, err
-		}
 		meta.metricStat = val
 	}
-
-	meta.metricStatPeriod = defaultMetricStatPeriod
-	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
-		metricStatPeriod, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metricStatPeriod metadata: %v", err)
-		}
-		if err := checkMetricStatPeriod(metricStatPeriod); err != nil {
-			return nil, err
-		}
-		meta.metricStatPeriod = int64(metricStatPeriod)
+	if err = checkMetricStat(meta.metricStat); err != nil {
+		return nil, err
 	}
 
-	meta.metricCollectionTime = defaultMetricCollectionTime
-	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
-		metricCollectionTime, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metricCollectionTime metadata: %v", err)
-		}
-		meta.metricCollectionTime = int64(metricCollectionTime)
+	meta.metricStatPeriod, err = getIntMetadataValue(config.TriggerMetadata, "metricStatPeriod", false, defaultMetricStatPeriod)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = checkMetricStatPeriod(meta.metricStatPeriod); err != nil {
+		return nil, err
+	}
+
+	meta.metricCollectionTime, err = getIntMetadataValue(config.TriggerMetadata, "metricCollectionTime", false, defaultMetricCollectionTime)
+	if err != nil {
+		return nil, err
 	}
 
 	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
 		return nil, fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", meta.metricStatPeriod, meta.metricCollectionTime)
 	}
 
-	if val, ok := config.TriggerMetadata["metricEndTimeOffset"]; ok && val != "" {
-		metricEndTimeOffset, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metricEndTimeOffset metadata: %v", err)
-		}
-		meta.metricEndTimeOffset = int64(metricEndTimeOffset)
+	meta.metricEndTimeOffset, err = getIntMetadataValue(config.TriggerMetadata, "metricEndTimeOffset", false, defaultMetricEndTimeOffset)
+	if err != nil {
+		return nil, err
 	}
 
-	if val, ok := config.TriggerMetadata["metricUnit"]; ok && val != "" {
-		if err := checkMetricUnit(val); err != nil {
-			return nil, err
-		}
-		meta.metricUnit = val
+	meta.metricUnit = config.TriggerMetadata["metricUnit"]
+	if err = checkMetricUnit(meta.metricUnit); err != nil {
+		return nil, err
 	}
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
@@ -175,12 +186,10 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	meta.awsAuthorization, err = getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
-
-	meta.awsAuthorization = auth
 
 	meta.scalerIndex = config.ScalerIndex
 
@@ -208,7 +217,7 @@ func checkMetricUnit(unit string) error {
 	return fmt.Errorf("metricUnit '%s' is not one of %v", unit, cloudwatch.StandardUnit_Values())
 }
 
-func checkMetricStatPeriod(period int) error {
+func checkMetricStatPeriod(period int64) error {
 	if period < 1 {
 		return fmt.Errorf("metricStatPeriod can not be smaller than 1, however, %d is provided", period)
 	} else if period <= 60 {
