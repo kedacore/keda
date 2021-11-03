@@ -115,22 +115,21 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing minMetricValue metadata: %v", err)
-		} else {
-			meta.minMetricValue = minMetricValue
 		}
+		meta.minMetricValue = minMetricValue
 	} else {
 		return nil, fmt.Errorf("min metric value not given")
 	}
 
+	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
 		if err := checkMetricStat(val); err != nil {
 			return nil, err
 		}
 		meta.metricStat = val
-	} else {
-		meta.metricStat = defaultMetricStat
 	}
 
+	meta.metricStatPeriod = defaultMetricStatPeriod
 	if val, ok := config.TriggerMetadata["metricStatPeriod"]; ok && val != "" {
 		metricStatPeriod, err := strconv.Atoi(val)
 		if err != nil {
@@ -138,21 +137,17 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		}
 		if err := checkMetricStatPeriod(metricStatPeriod); err != nil {
 			return nil, err
-		} else {
-			meta.metricStatPeriod = int64(metricStatPeriod)
 		}
-	} else {
-		meta.metricStatPeriod = defaultMetricStatPeriod
+		meta.metricStatPeriod = int64(metricStatPeriod)
 	}
 
+	meta.metricCollectionTime = defaultMetricCollectionTime
 	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
 		metricCollectionTime, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metricCollectionTime metadata: %v", err)
 		}
 		meta.metricCollectionTime = int64(metricCollectionTime)
-	} else {
-		meta.metricCollectionTime = defaultMetricCollectionTime
 	}
 
 	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
@@ -163,9 +158,8 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		metricEndTimeOffset, err := strconv.Atoi(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metricEndTimeOffset metadata: %v", err)
-		} else {
-			meta.metricEndTimeOffset = int64(metricEndTimeOffset)
 		}
+		meta.metricEndTimeOffset = int64(metricEndTimeOffset)
 	}
 
 	if val, ok := config.TriggerMetadata["metricUnit"]; ok && val != "" {
