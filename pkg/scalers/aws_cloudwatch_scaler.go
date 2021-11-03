@@ -226,7 +226,7 @@ func checkMetricStatPeriod(period int) error {
 		}
 	}
 
-	if period % 60 != 0 {
+	if period%60 != 0 {
 		return fmt.Errorf("metricStatPeriod >= 60 has to be a multiple of 60, however, %d is provided", period)
 	}
 
