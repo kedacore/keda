@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 # Install prerequisite
 RUN apt update && \
     apt-get install software-properties-common -y
-RUN apt-add-repository ppa:git-core/ppa && \ 
+RUN apt-add-repository ppa:git-core/ppa && \
     apt update && \
     apt install -y wget curl build-essential git
 
