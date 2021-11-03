@@ -21,7 +21,7 @@ test.before(t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${redisNamespace} -f ${tmpFile1.name}`).code, 'creating a Redis deployment should work.')
 
   // wait for redis to be ready
-  t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 240), 'Redis is not in a ready state')
+  t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 300), 'Redis is not in a ready state')
 
   sh.exec(`kubectl create namespace ${testNamespace}`)
 
