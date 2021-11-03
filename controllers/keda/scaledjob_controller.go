@@ -87,18 +87,18 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check if the ScaledJob instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledJob.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledJob(reqLogger, scaledJob)
+		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob)
 	}
 
 	// ensure finalizer is set on this CR
-	if err := r.ensureFinalizer(reqLogger, scaledJob); err != nil {
+	if err := r.ensureFinalizer(ctx, reqLogger, scaledJob); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// ensure Status Conditions are initialized
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
-		if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledJob, conditions); err != nil {
+		if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -126,7 +126,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
-	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledJob, &conditions); err != nil {
+	if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, err

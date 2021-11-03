@@ -110,7 +110,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := p.getMetricsWithFallback(scaler, info.Metric, metricSelector, scaledObject, metricSpec)
+				metrics, err := p.getMetricsWithFallback(ctx, scaler, info.Metric, metricSelector, scaledObject, metricSpec)
 
 				if err != nil {
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)

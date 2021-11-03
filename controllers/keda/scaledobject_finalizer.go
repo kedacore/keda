@@ -34,7 +34,7 @@ const (
 )
 
 // finalizeScaledObject runs finalization logic on ScaledObject if there's finalizer
-func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	if util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		// Run finalization logic for scaledObjectFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
@@ -45,7 +45,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 
 		// if enabled, scale scaleTarget back to the original replica count (to the state it was before scaling with KEDA)
 		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.RestoreToOriginalReplicaCount {
-			scale, err := r.scaleClient.Scales(scaledObject.Namespace).Get(context.TODO(), scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+			scale, err := r.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					logger.V(1).Info("Failed to get scaleTarget's scale status, because it was probably deleted", "error", err)
@@ -54,7 +54,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 				}
 			} else {
 				scale.Spec.Replicas = *scaledObject.Status.OriginalReplicaCount
-				_, err = r.scaleClient.Scales(scaledObject.Namespace).Update(context.TODO(), scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+				_, err = r.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 				if err != nil {
 					logger.Error(err, "Failed to restore scaleTarget's replica count back to the original", "finalizer", scaledObjectFinalizer)
 				}
@@ -65,7 +65,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 		// Remove scaledObjectFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
 		scaledObject.SetFinalizers(util.Remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-		if err := r.Client.Update(context.TODO(), scaledObject); err != nil {
+		if err := r.Client.Update(ctx, scaledObject); err != nil {
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}
@@ -77,13 +77,13 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(logger logr.Logger, scaled
 }
 
 // ensureFinalizer check there is finalizer present on the ScaledObject, if not it adds one
-func (r *ScaledObjectReconciler) ensureFinalizer(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	if !util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		logger.Info("Adding Finalizer for the ScaledObject")
 		scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))
 
 		// Update CR
-		err := r.Client.Update(context.TODO(), scaledObject)
+		err := r.Client.Update(ctx, scaledObject)
 		if err != nil {
 			logger.Error(err, "Failed to update ScaledObject with a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
