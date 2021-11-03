@@ -158,18 +158,18 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledObject.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledObject(reqLogger, scaledObject)
+		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject)
 	}
 
 	// ensure finalizer is set on this CR
-	if err := r.ensureFinalizer(reqLogger, scaledObject); err != nil {
+	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// ensure Status Conditions are initialized
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
-		if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, conditions); err != nil {
+		if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -191,7 +191,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
 	}
 
-	if err := kedacontrollerutil.SetStatusConditions(r.Client, reqLogger, scaledObject, &conditions); err != nil {
+	if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -207,13 +207,13 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	}
 
 	// Check the label needed for Metrics servers is present on ScaledObject
-	err := r.ensureScaledObjectLabel(logger, scaledObject)
+	err := r.ensureScaledObjectLabel(ctx, logger, scaledObject)
 	if err != nil {
 		return "Failed to update ScaledObject with scaledObjectName label", err
 	}
 
 	// Check if resource targeted for scaling exists and exposes /scale subresource
-	gvkr, err := r.checkTargetResourceIsScalable(logger, scaledObject)
+	gvkr, err := r.checkTargetResourceIsScalable(ctx, logger, scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct scaleTargetRef specification", err
 	}
@@ -251,7 +251,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
-func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	const labelScaledObjectName = "scaledobject.keda.sh/name"
 
 	if scaledObject.Labels == nil {
@@ -265,11 +265,11 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(logger logr.Logger, sca
 	}
 
 	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
-	return r.Client.Update(context.TODO(), scaledObject)
+	return r.Client.Update(ctx, scaledObject)
 }
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource
-func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
+func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
 	gvkr, err := kedautil.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		logger.Error(err, "Failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
@@ -289,12 +289,12 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(context.TODO(), gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
 			unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
-			if err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
+			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 				// resource doesn't exist
 				logger.Error(err, "Target resource doesn't exist", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 				return gvkr, err
@@ -319,7 +319,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(logger logr.Logge
 			status.OriginalReplicaCount = &scale.Spec.Replicas
 		}
 
-		if err := kedacontrollerutil.UpdateScaledObjectStatus(r.Client, logger, scaledObject, status); err != nil {
+		if err := kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
 			return gvkr, err
 		}
 		logger.Info("Detected resource targeted for scaling", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
@@ -353,7 +353,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	hpaName := getHPAName(scaledObject)
 	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
 		// HPA wasn't found -> let's create a new one
 		err = r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)

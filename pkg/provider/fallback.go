@@ -35,11 +35,11 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2bet
 	return scaledObject.Spec.Fallback != nil && metricSpec.External.Target.Type == v2beta2.AverageValueMetricType
 }
 
-func (p *KedaProvider) getMetricsWithFallback(scaler scalers.Scaler, metricName string, metricSelector labels.Selector, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, scaler scalers.Scaler, metricName string, metricSelector labels.Selector, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
-	metrics, err := scaler.GetMetrics(context.TODO(), metricName, metricSelector)
+	metrics, err := scaler.GetMetrics(ctx, metricName, metricSelector)
 	healthStatus := getHealthStatus(status, metricName)
 
 	if err == nil {
@@ -48,7 +48,7 @@ func (p *KedaProvider) getMetricsWithFallback(scaler scalers.Scaler, metricName 
 		healthStatus.Status = kedav1alpha1.HealthStatusHappy
 		status.Health[metricName] = *healthStatus
 
-		p.updateStatus(scaledObject, status, metricSpec)
+		p.updateStatus(ctx, scaledObject, status, metricSpec)
 		return metrics, nil
 	}
 
@@ -56,7 +56,7 @@ func (p *KedaProvider) getMetricsWithFallback(scaler scalers.Scaler, metricName 
 	*healthStatus.NumberOfFailures++
 	status.Health[metricName] = *healthStatus
 
-	p.updateStatus(scaledObject, status, metricSpec)
+	p.updateStatus(ctx, scaledObject, status, metricSpec)
 
 	switch {
 	case !isFallbackEnabled(scaledObject, metricSpec):
@@ -104,7 +104,7 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.Metr
 	return fallbackMetrics
 }
 
-func (p *KedaProvider) updateStatus(scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2beta2.MetricSpec) {
+func (p *KedaProvider) updateStatus(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2beta2.MetricSpec) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
 	if fallbackExistsInScaledObject(scaledObject, metricSpec) {
@@ -114,7 +114,7 @@ func (p *KedaProvider) updateStatus(scaledObject *kedav1alpha1.ScaledObject, sta
 	}
 
 	scaledObject.Status = *status
-	err := p.client.Status().Patch(context.TODO(), scaledObject, patch)
+	err := p.client.Status().Patch(ctx, scaledObject, patch)
 	if err != nil {
 		logger.Error(err, "Failed to patch ScaledObjects Status")
 	}
