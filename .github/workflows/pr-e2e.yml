@@ -87,7 +87,7 @@ jobs:
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
-      - name: Publish on GitHub Container Registry
+      - name: Delete e2e test image
         if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
         run: make docker-delete
         env:
