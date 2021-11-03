@@ -174,6 +174,10 @@ publish-dockerhub: ## Mirror images on Docker Hub.
 	docker push docker.io/$(IMAGE_REPO)/keda:$(VERSION)
 	docker push docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
 
+docker-delete: ## Delete images from Container Registry (default: ghcr.io).
+	docker image rm $(IMAGE_CONTROLLER)
+	docker image rm $(IMAGE_ADAPTER)
+
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}

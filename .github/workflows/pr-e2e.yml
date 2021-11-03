@@ -86,6 +86,12 @@ jobs:
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
+      - name: Publish on GitHub Container Registry
+        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
+        run: make docker-delete
+        env:
+          IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
         if: steps.test.outcome == 'success'
