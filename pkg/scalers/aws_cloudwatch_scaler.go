@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,7 @@ const (
 
 type awsCloudwatchScaler struct {
 	metadata *awsCloudwatchMetadata
+	cwClient cloudwatchiface.CloudWatchAPI
 }
 
 type awsCloudwatchMetadata struct {
@@ -67,6 +69,7 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 
 	return &awsCloudwatchScaler{
 		metadata: meta,
+		cwClient: createCloudwatchClient(meta),
 	}, nil
 }
 
@@ -100,6 +103,32 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 	}
 
 	return defaultValue, nil
+}
+
+func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWatch {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(metadata.awsRegion),
+	}))
+
+	var cloudwatchClient *cloudwatch.CloudWatch
+	if metadata.awsAuthorization.podIdentityOwner {
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		}
+
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region:      aws.String(metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region: aws.String(metadata.awsRegion),
+		})
+	}
+
+	return cloudwatchClient
 }
 
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
@@ -283,28 +312,6 @@ func (c *awsCloudwatchScaler) Close(context.Context) error {
 }
 
 func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(c.metadata.awsRegion),
-	}))
-
-	var cloudwatchClient *cloudwatch.CloudWatch
-	if c.metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
-
-		if c.metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, c.metadata.awsAuthorization.awsRoleArn)
-		}
-
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region:      aws.String(c.metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region: aws.String(c.metadata.awsRegion),
-		})
-	}
-
 	dimensions := []*cloudwatch.Dimension{}
 	for i := range c.metadata.dimensionName {
 		dimensions = append(dimensions, &cloudwatch.Dimension{
@@ -343,7 +350,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		},
 	}
 
-	output, err := cloudwatchClient.GetMetricData(&input)
+	output, err := c.cwClient.GetMetricData(&input)
 
 	if err != nil {
 		cloudwatchLog.Error(err, "Failed to get output")
