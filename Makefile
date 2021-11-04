@@ -3,8 +3,8 @@
 ##################################################
 SHELL           = /bin/bash
 
-# VERSION is the image tag that will be used. It could be provided using environment variable IMAGE_TAG
-VERSION = ${IMAGE_TAG}
+# VERSION is the image tag that will be used. It could be provided using environment variable E2E_IMAGE_TAG
+VERSION = ${E2E_IMAGE_TAG}
 ifeq '$(VERSION)' ''
 VERSION = main
 endif
@@ -173,10 +173,6 @@ publish-dockerhub: ## Mirror images on Docker Hub.
 	docker tag $(IMAGE_ADAPTER) docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
 	docker push docker.io/$(IMAGE_REPO)/keda:$(VERSION)
 	docker push docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
-
-docker-delete: ## Delete images from Container Registry (default: ghcr.io).
-	docker image rm $(IMAGE_CONTROLLER)
-	docker image rm $(IMAGE_ADAPTER)
 
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \

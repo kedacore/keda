@@ -53,7 +53,7 @@ jobs:
         if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
         run: make publish
         env:
-          IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
 
       - name: Run end to end tests
         continue-on-error: true
@@ -76,7 +76,7 @@ jobs:
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
-          IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
         run: |
           MESSAGE="${{ github.event.comment.body }}"
           REGEX='/e2e (.+)'
@@ -87,11 +87,21 @@ jobs:
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
-      - name: Delete e2e test image
-        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
-        run: make docker-delete
-        env:
-          IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+      - name: Delete operator tag
+        uses: bots-house/ghcr-delete-image-action@v1.0.1
+        with:
+          owner: kedacore
+          name: keda
+          token: ${{ secrets.GHCR_AUTH_PAT }}
+          tag: "pr-${{ steps.checkout.outputs.pr_num }}"
+
+      - name: Delete metrics server tag
+        uses: bots-house/ghcr-delete-image-action@v1.0.1
+        with:
+          owner: kedacore
+          name: keda-metrics-apiserver
+          token: ${{ secrets.GHCR_AUTH_PAT }}
+          tag: "pr-${{ steps.checkout.outputs.pr_num }}"
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
