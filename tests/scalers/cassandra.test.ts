@@ -18,6 +18,7 @@ test.before(t => {
     fs.writeFileSync(cassandraTmpFile.name, cassandraDeployYaml)
 
     t.is(0, sh.exec(`kubectl apply --namespace ${cassandraNamespace} -f ${cassandraTmpFile.name}`).code, 'creating a Cassandra deployment should work.')
+
     // wait for cassandra to load
     console.log("wait for cassandra to load")
     let cassandraReadyReplicaCount = '0'
@@ -29,30 +30,55 @@ test.before(t => {
     }
     t.is('1', cassandraReadyReplicaCount, 'Cassandra is not in a ready state')
 
+    console.log("cassandraReadyCheck")
+    let cassandraReady
+    const cassandraPod = sh.exec(`kubectl get pods --selector=app=cassandra-app -n ${cassandraNamespace} -o jsonpath='{.items[0].metadata.name}'`).stdout
+    for (let i = 0; i < 30; i++) {
+      cassandraReady = sh.exec(`kubectl exec -n ${cassandraNamespace} ${cassandraPod} -- nodetool status | grep -w -o UN`)
+      if (cassandraReady != "UN\n") {
+        sh.exec('sleep 5s')
+      }
+      else {
+        break
+      }
+    }
+
     // create cassandra-client
-      console.log("create cassandra-client")
+    console.log("create cassandra-client")
     const cassandraClientTmpFile = tmp.fileSync()
     fs.writeFileSync(cassandraClientTmpFile.name, cassandraClientDeployYaml)
 
     t.is(0, sh.exec(`kubectl apply --namespace ${cassandraNamespace} -f ${cassandraClientTmpFile.name}`).code, 'creating a Cassandra client deployment should work.')
+
     // wait for cassandra-client to load
     console.log("wait for cassandra-client to load")
     let cassandraClientReadyReplicaCount = '0'
-     for (let i = 0; i < 50; i++) {
-        cassandraClientReadyReplicaCount = sh.exec(`kubectl get deploy/cassandra-client -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-        if (cassandraClientReadyReplicaCount != '1') {
-            sh.exec('sleep 2s')
-        }
+    for (let i = 0; i < 50; i++) {
+      cassandraClientReadyReplicaCount = sh.exec(`kubectl get deploy/cassandra-client -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
+      if (cassandraClientReadyReplicaCount != '1') {
+        sh.exec('sleep 2s')
+      }
     }
     t.is('1', cassandraClientReadyReplicaCount, 'Cassandra client is not in a ready state')
+
+    console.log("cassandraClientReadyCheck")
+    let cassandraClientReady
+    const cassandraClientPod = sh.exec(`kubectl get pods --selector=app=cassandra-client -n ${cassandraNamespace} -o jsonpath='{.items[0].metadata.name}'`).stdout
+    for (let i = 0; i < 30; i++) {
+      cassandraClientReady = sh.exec(`kubectl exec -n ${cassandraNamespace} ${cassandraClientPod} -- nodetool status | grep -w -o UN`)
+      if (cassandraClientReady != "UN\n") {
+        sh.exec('sleep 5s')
+      }
+      else {
+        break
+      }
+    }
 
     // create table
     console.log("create table")
     const createKeyspace = `CREATE KEYSPACE IF NOT EXISTS ${cassandraKeyspace} WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'datacenter1' : '1'};`
     const createTableCQL = `CREATE TABLE IF NOT EXISTS ${cassandraKeyspace}.${cassandraTableName} (name text, surname text, age int, PRIMARY KEY (name, surname));`
-    const cassandraClientPod = sh.exec(`kubectl get pods --selector=app=cassandra-client -n ${cassandraNamespace} -o jsonpath='{.items[0].metadata.name}'`).stdout
     t.not(cassandraClientPod, '')
-    sh.exec('sleep 60s')
     sh.exec(`kubectl exec ${cassandraClientPod} -n ${cassandraNamespace} -- bash cqlsh -u ${cassandraUsername} -p ${cassandraPassword} cassandra.${cassandraNamespace} --execute="${createKeyspace}"`)
     sh.exec(`kubectl exec ${cassandraClientPod} -n ${cassandraNamespace} -- bash cqlsh -u ${cassandraUsername} -p ${cassandraPassword} cassandra.${cassandraNamespace} --execute="${createTableCQL}"`)
 
@@ -65,11 +91,11 @@ test.before(t => {
     // wait for nginx to load
     console.log("wait for nginx to load")
     let nginxReadyReplicaCount = '0'
-     for (let i = 0; i < 30; i++) {
-        nginxReadyReplicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-        if (nginxReadyReplicaCount != '') {
-            sh.exec('sleep 2s')
-        }
+    for (let i = 0; i < 30; i++) {
+      nginxReadyReplicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
+      if (nginxReadyReplicaCount != '') {
+        sh.exec('sleep 2s')
+      }
     }
     t.is('', nginxReadyReplicaCount, 'creating an Nginx deployment should work')
 
@@ -106,16 +132,16 @@ test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
     let replicaCount = '0'
     const maxReplicaCount = '4'
 
-     for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
-        replicaCount = sh.exec(
-            `kubectl get deploy/${nginxDeploymentName} --namespace ${cassandraNamespace} -o jsonpath="{.spec.replicas}"`).stdout
+    for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
+      replicaCount = sh.exec(
+        `kubectl get deploy/${nginxDeploymentName} --namespace ${cassandraNamespace} -o jsonpath="{.spec.replicas}"`).stdout
         if (replicaCount !== maxReplicaCount) {
-            sh.exec('sleep 2s')
+          sh.exec('sleep 2s')
         }
     }
 
     t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 60 seconds`)
-    sh.exec('sleep 60s')
+    sh.exec('sleep 30s')
 
     // delete all data from cassandra
     console.log("delete all data from cassandra")
@@ -127,7 +153,7 @@ test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
         'delete all rows'
     )
 
-    for (let i = 0; i < 36 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 30 && replicaCount !== '0'; i++) {
       replicaCount = sh.exec(
         `kubectl get deploy/${nginxDeploymentName} --namespace ${cassandraNamespace} -o jsonpath="{.spec.replicas}"`).stdout
       if (replicaCount !== '0') {
@@ -162,7 +188,7 @@ spec:
         app: cassandra-app
     spec:
       containers:
-      - image: cassandra:latest
+      - image: bitnami/cassandra:4.0.1
         imagePullPolicy: IfNotPresent
         name: cassandra
         ports:
