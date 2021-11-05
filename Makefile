@@ -6,7 +6,7 @@ SHELL           = /bin/bash
 # If E2E_IMAGE_TAG is defined, we are on pr e2e test and we have to use the new tag and append -test to the repository
 ifeq '${E2E_IMAGE_TAG}' ''
 VERSION = main
-SUFFIX = ''
+SUFFIX = 
 endif
 
 ifneq '${E2E_IMAGE_TAG}' ''
