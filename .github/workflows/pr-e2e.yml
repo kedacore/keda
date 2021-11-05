@@ -87,22 +87,6 @@ jobs:
           echo "${{ steps.checkout.outputs.pr_num }}"
           make e2e-test
 
-      - name: Delete operator tag
-        uses: bots-house/ghcr-delete-image-action@v1.0.1
-        with:
-          owner: kedacore
-          name: keda-test
-          token: ${{ secrets.GHCR_AUTH_PAT }}
-          tag: "pr-${{ steps.checkout.outputs.pr_num }}"
-
-      - name: Delete metrics server tag
-        uses: bots-house/ghcr-delete-image-action@v1.0.1
-        with:
-          owner: kedacore
-          name: keda-metrics-apiserver-test
-          token: ${{ secrets.GHCR_AUTH_PAT }}
-          tag: "pr-${{ steps.checkout.outputs.pr_num }}"
-
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
         if: steps.test.outcome == 'success'
