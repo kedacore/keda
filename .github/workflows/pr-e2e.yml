@@ -91,7 +91,7 @@ jobs:
         uses: bots-house/ghcr-delete-image-action@v1.0.1
         with:
           owner: kedacore
-          name: keda
+          name: keda-test
           token: ${{ secrets.GHCR_AUTH_PAT }}
           tag: "pr-${{ steps.checkout.outputs.pr_num }}"
 
@@ -99,7 +99,7 @@ jobs:
         uses: bots-house/ghcr-delete-image-action@v1.0.1
         with:
           owner: kedacore
-          name: keda-metrics-apiserver
+          name: keda-metrics-apiserver-test
           token: ${{ secrets.GHCR_AUTH_PAT }}
           tag: "pr-${{ steps.checkout.outputs.pr_num }}"
 
