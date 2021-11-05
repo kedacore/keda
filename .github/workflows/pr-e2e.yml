@@ -14,7 +14,7 @@ jobs:
       - uses: khan/pull-request-comment-trigger@master
         id: check-comment
         with:
-          trigger: '/e2e'
+          trigger: '/run-e2e'
           reaction: rocket
           prefix_only: true
         env:
@@ -79,7 +79,7 @@ jobs:
           E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
         run: |
           MESSAGE="${{ github.event.comment.body }}"
-          REGEX='/e2e (.+)'
+          REGEX='/run-e2e (.+)'
           if [[ "$MESSAGE" =~ $REGEX ]]
           then
             export E2E_TEST_REGEX="${BASH_REMATCH[1]}"
