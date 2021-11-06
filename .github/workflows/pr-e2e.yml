@@ -89,7 +89,7 @@ jobs:
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
-        if: steps.test.outcome == 'success'
+        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission && steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
@@ -97,7 +97,7 @@ jobs:
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
-        if: steps.test.outcome != 'success'
+        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission && steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
