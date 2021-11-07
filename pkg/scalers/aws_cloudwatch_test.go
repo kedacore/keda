@@ -2,13 +2,24 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
-var testAWSCloudwatchRoleArn = "none"
-
-var testAWSCloudwatchAccessKeyID = "none"
-var testAWSCloudwatchSecretAccessKey = "none"
+const (
+	testAWSCloudwatchRoleArn         = "none"
+	testAWSCloudwatchAccessKeyID     = "none"
+	testAWSCloudwatchSecretAccessKey = "none"
+	testAWSCloudwatchErrorMetric     = "Error"
+	testAWSCloudwatchNoValueMetric   = "NoValue"
+)
 
 var testAWSCloudwatchResolvedEnv = map[string]string{
 	"AWS_ACCESS_KEY":        "none",
@@ -314,6 +325,79 @@ var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
 	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-AWS-SQS-QueueName-keda"},
 }
 
+var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
+	{
+		namespace:            "Custom",
+		metricsName:          "HasData",
+		dimensionName:        []string{"DIM"},
+		dimensionValue:       []string{"DIM_VALUE"},
+		targetMetricValue:    100,
+		minMetricValue:       0,
+		metricCollectionTime: 60,
+		metricStat:           "Average",
+		metricUnit:           "SampleCount",
+		metricStatPeriod:     60,
+		metricEndTimeOffset:  60,
+		awsRegion:            "us-west-2",
+		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		scalerIndex:          0,
+	},
+	{
+		namespace:            "Custom",
+		metricsName:          "HasDataNoUnit",
+		dimensionName:        []string{"DIM"},
+		dimensionValue:       []string{"DIM_VALUE"},
+		targetMetricValue:    100,
+		minMetricValue:       0,
+		metricCollectionTime: 60,
+		metricStat:           "Average",
+		metricUnit:           "",
+		metricStatPeriod:     60,
+		metricEndTimeOffset:  60,
+		awsRegion:            "us-west-2",
+		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		scalerIndex:          0,
+	},
+	{
+		namespace:            "Custom",
+		metricsName:          "Error",
+		dimensionName:        []string{"DIM"},
+		dimensionValue:       []string{"DIM_VALUE"},
+		targetMetricValue:    100,
+		minMetricValue:       0,
+		metricCollectionTime: 60,
+		metricStat:           "Average",
+		metricUnit:           "",
+		metricStatPeriod:     60,
+		metricEndTimeOffset:  60,
+		awsRegion:            "us-west-2",
+		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		scalerIndex:          0,
+	},
+}
+
+type mockCloudwatch struct {
+	cloudwatchiface.CloudWatchAPI
+}
+
+func (m *mockCloudwatch) GetMetricData(input *cloudwatch.GetMetricDataInput) (*cloudwatch.GetMetricDataOutput, error) {
+	switch *input.MetricDataQueries[0].MetricStat.Metric.MetricName {
+	case testAWSCloudwatchErrorMetric:
+		return nil, errors.New("error")
+	case testAWSCloudwatchNoValueMetric:
+		return &cloudwatch.GetMetricDataOutput{
+			MetricDataResults: []*cloudwatch.MetricDataResult{},
+		}, nil
+	}
+	return &cloudwatch.GetMetricDataOutput{
+		MetricDataResults: []*cloudwatch.MetricDataResult{
+			{
+				Values: []*float64{aws.Float64(10)},
+			},
+		},
+	}, nil
+}
+
 func TestCloudwatchParseMetadata(t *testing.T) {
 	for _, testData := range testAWSCloudwatchMetadata {
 		_, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.authParams})
@@ -333,12 +417,71 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta, &mockCloudwatch{}}
 
 		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
+	var selector labels.Selector
+	for _, meta := range awsCloudwatchGetMetricTestData {
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{&meta, &mockCloudwatch{}}
+		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName, selector)
+		switch meta.metricsName {
+		case testAWSCloudwatchErrorMetric:
+			assert.Error(t, err, "expect error because of cloudwatch api error")
+		case testAWSCloudwatchNoValueMetric:
+			assert.Error(t, err, "expect error because of no data return from cloudwatch")
+		default:
+			assert.EqualValues(t, int64(10.0), value[0].Value.Value())
+		}
+	}
+}
+
+type computeQueryWindowTestArgs struct {
+	name                    string
+	current                 string
+	metricPeriodSec         int64
+	metricEndTimeOffsetSec  int64
+	metricCollectionTimeSec int64
+	expectedStartTime       string
+	expectedEndTime         string
+}
+
+var awsCloudwatchComputeQueryWindowTestData = []computeQueryWindowTestArgs{
+	{
+		name:                    "normal",
+		current:                 "2021-11-07T15:04:05.999Z",
+		metricPeriodSec:         60,
+		metricEndTimeOffsetSec:  0,
+		metricCollectionTimeSec: 60,
+		expectedStartTime:       "2021-11-07T15:03:00Z",
+		expectedEndTime:         "2021-11-07T15:04:00Z",
+	},
+	{
+		name:                    "normal with offset",
+		current:                 "2021-11-07T15:04:05.999Z",
+		metricPeriodSec:         60,
+		metricEndTimeOffsetSec:  30,
+		metricCollectionTimeSec: 60,
+		expectedStartTime:       "2021-11-07T15:02:00Z",
+		expectedEndTime:         "2021-11-07T15:03:00Z",
+	},
+}
+
+func TestComputeQueryWindow(t *testing.T) {
+	for _, testData := range awsCloudwatchComputeQueryWindowTestData {
+		current, err := time.Parse(time.RFC3339Nano, testData.current)
+		if err != nil {
+			t.Errorf("unexpected input datetime format: %v", err)
+		}
+		startTime, endTime := computeQueryWindow(current, testData.metricPeriodSec, testData.metricEndTimeOffsetSec, testData.metricCollectionTimeSec)
+		assert.Equal(t, testData.expectedStartTime, startTime.UTC().Format(time.RFC3339Nano), "unexpected startTime", "name", testData.name)
+		assert.Equal(t, testData.expectedEndTime, endTime.UTC().Format(time.RFC3339Nano), "unexpected endTime", "name", testData.name)
 	}
 }

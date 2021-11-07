@@ -265,6 +265,12 @@ func checkMetricStatPeriod(period int64) error {
 	return nil
 }
 
+func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetSec, metricCollectionTimeSec int64) (startTime, endTime time.Time) {
+	endTime = current.Add(time.Second * -1 * time.Duration(metricEndTimeOffsetSec)).Truncate(time.Duration(metricPeriodSec) * time.Second)
+	startTime = endTime.Add(time.Second * -1 * time.Duration(metricCollectionTimeSec))
+	return
+}
+
 func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := c.GetCloudwatchMetrics()
 
@@ -320,8 +326,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		})
 	}
 
-	endTime := time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricEndTimeOffset)).Truncate(time.Duration(c.metadata.metricStatPeriod) * time.Second)
-	startTime := endTime.Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))
+	startTime, endTime := computeQueryWindow(time.Now(), c.metadata.metricStatPeriod, c.metadata.metricEndTimeOffset, c.metadata.metricCollectionTime)
 
 	var metricUnit *string
 	if c.metadata.metricUnit != "" {
@@ -359,7 +364,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 
 	cloudwatchLog.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
-	if output.MetricDataResults[0].Values != nil {
+	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
 		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
 		return -1, fmt.Errorf("metric data not received")

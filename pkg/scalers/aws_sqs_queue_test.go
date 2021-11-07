@@ -2,7 +2,14 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -13,6 +20,9 @@ const (
 	testAWSSQSProperQueueURL    = "https://sqs.eu-west-1.amazonaws.com/account_id/DeleteArtifactQ"
 	testAWSSQSImproperQueueURL1 = "https://sqs.eu-west-1.amazonaws.com/account_id"
 	testAWSSQSImproperQueueURL2 = "https://sqs.eu-west-1.amazonaws.com"
+
+	testAWSSQSErrorQueueURL   = "https://sqs.eu-west-1.amazonaws.com/account_id/Error"
+	testAWSSQSBadDataQueueURL = "https://sqs.eu-west-1.amazonaws.com/account_id/BadData"
 )
 
 var testAWSSQSAuthentication = map[string]string{
@@ -31,6 +41,31 @@ type awsSQSMetricIdentifier struct {
 	metadataTestData *parseAWSSQSMetadataTestData
 	scalerIndex      int
 	name             string
+}
+
+type mockSqs struct {
+	sqsiface.SQSAPI
+}
+
+func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.GetQueueAttributesOutput, error) {
+	switch *input.QueueUrl {
+	case testAWSSQSErrorQueueURL:
+		return nil, errors.New("some error")
+	case testAWSSQSBadDataQueueURL:
+		return &sqs.GetQueueAttributesOutput{
+			Attributes: map[string]*string{
+				"ApproximateNumberOfMessages":           aws.String("NotInt"),
+				"ApproximateNumberOfMessagesNotVisible": aws.String("NotInt"),
+			},
+		}, nil
+	}
+
+	return &sqs.GetQueueAttributesOutput{
+		Attributes: map[string]*string{
+			"ApproximateNumberOfMessages":           aws.String("200"),
+			"ApproximateNumberOfMessagesNotVisible": aws.String("100"),
+		},
+	}, nil
 }
 
 var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
@@ -137,6 +172,12 @@ var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
 	{&testAWSSQSMetadata[1], 1, "s1-AWS-SQS-Queue-DeleteArtifactQ"},
 }
 
+var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
+	{queueURL: testAWSSQSProperQueueURL},
+	{queueURL: testAWSSQSErrorQueueURL},
+	{queueURL: testAWSSQSBadDataQueueURL},
+}
+
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
 		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams})
@@ -156,12 +197,28 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{meta}
+		mockAWSSQSScaler := awsSqsQueueScaler{meta, &mockSqs{}}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}
+
+func TestAWSSQSScalerGetMetrics(t *testing.T) {
+	var selector labels.Selector
+	for _, meta := range awsSQSGetMetricTestData {
+		scaler := awsSqsQueueScaler{meta, &mockSqs{}}
+		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
+		switch meta.queueURL {
+		case testAWSSQSErrorQueueURL:
+			assert.Error(t, err, "expect error because of sqs api error")
+		case testAWSSQSBadDataQueueURL:
+			assert.Error(t, err, "expect error because of bad data return from sqs")
+		default:
+			assert.EqualValues(t, int64(300.0), value[0].Value.Value())
 		}
 	}
 }
