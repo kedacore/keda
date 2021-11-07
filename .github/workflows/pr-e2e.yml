@@ -26,7 +26,7 @@ jobs:
           required-permission: write
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: React to comment with rocket
         uses: dkershner6/reaction-action@v1
         if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
@@ -39,11 +39,11 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     name: Execute e2e tests
-    container: ghcr.io/kedacore/build-tools:main    
+    container: ghcr.io/kedacore/build-tools:main
     concurrency: e2e-tests
     if: needs.check.outputs.run-e2e == '1'
     steps:
-      - uses: actions/checkout@v2      
+      - uses: actions/checkout@v2
 
       - name: Checkout Pull Request
         env:
