@@ -52,6 +52,7 @@
 - Improve error message if `IdleReplicaCount` are equal to `MinReplicaCount` to be the same as the check ([#2212](https://github.com/kedacore/keda/pull/2212))
 - Improve Cloudwatch Scaler metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
 - Refactor aws related scalers to reuse the aws clients instead of creating a new one for every GetMetrics call([#2255](https://github.com/kedacore/keda/pull/2255))
+- Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
 
 ### Breaking Changes
 
