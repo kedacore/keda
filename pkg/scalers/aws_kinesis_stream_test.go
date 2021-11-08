@@ -2,8 +2,15 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -12,6 +19,7 @@ const (
 	testAWSKinesisSecretAccessKey = "none"
 	testAWSKinesisStreamName      = "test"
 	testAWSRegion                 = "eu-west-1"
+	testAWSKinesisErrorStream     = "Error"
 )
 
 var testAWSKinesisAuthentication = map[string]string{
@@ -32,6 +40,22 @@ type awsKinesisMetricIdentifier struct {
 	metadataTestData *parseAWSKinesisMetadataTestData
 	scalerIndex      int
 	name             string
+}
+
+type mockKinesis struct {
+	kinesisiface.KinesisAPI
+}
+
+func (m *mockKinesis) DescribeStreamSummary(input *kinesis.DescribeStreamSummaryInput) (*kinesis.DescribeStreamSummaryOutput, error) {
+	if *input.StreamName == "Error" {
+		return nil, errors.New("some error")
+	}
+
+	return &kinesis.DescribeStreamSummaryOutput{
+		StreamDescriptionSummary: &kinesis.StreamDescriptionSummary{
+			OpenShardCount: aws.Int64(100),
+		},
+	}, nil
 }
 
 var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
@@ -200,6 +224,11 @@ var awsKinesisMetricIdentifiers = []awsKinesisMetricIdentifier{
 	{&testAWSKinesisMetadata[1], 1, "s1-AWS-Kinesis-Stream-test"},
 }
 
+var awsKinesisGetMetricTestData = []*awsKinesisStreamMetadata{
+	{streamName: "Good"},
+	{streamName: testAWSKinesisErrorStream},
+}
+
 func TestKinesisParseMetadata(t *testing.T) {
 	for _, testData := range testAWSKinesisMetadata {
 		result, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams, ScalerIndex: testData.scalerIndex})
@@ -223,12 +252,26 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}
+
+func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
+	var selector labels.Selector
+	for _, meta := range awsKinesisGetMetricTestData {
+		scaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
+		switch meta.streamName {
+		case testAWSKinesisErrorStream:
+			assert.Error(t, err, "expect error because of kinesis api error")
+		default:
+			assert.EqualValues(t, int64(100.0), value[0].Value.Value())
 		}
 	}
 }

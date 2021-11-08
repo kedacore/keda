@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +27,8 @@ const (
 )
 
 type awsKinesisStreamScaler struct {
-	metadata *awsKinesisStreamMetadata
+	metadata      *awsKinesisStreamMetadata
+	kinesisClient kinesisiface.KinesisAPI
 }
 
 type awsKinesisStreamMetadata struct {
@@ -47,7 +49,8 @@ func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &awsKinesisStreamScaler{
-		metadata: meta,
+		metadata:      meta,
+		kinesisClient: createKinesisClient(meta),
 	}, nil
 }
 
@@ -87,6 +90,31 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
+}
+
+func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(metadata.awsRegion),
+	}))
+
+	var kinesisClinent *kinesis.Kinesis
+	if metadata.awsAuthorization.podIdentityOwner {
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		}
+
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region:      aws.String(metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region: aws.String(metadata.awsRegion),
+		})
+	}
+	return kinesisClinent
 }
 
 // IsActive determines if we need to scale from zero
@@ -143,29 +171,7 @@ func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount() (int64, error) {
 		StreamName: &s.metadata.streamName,
 	}
 
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.metadata.awsRegion),
-	}))
-
-	var kinesisClinent *kinesis.Kinesis
-	if s.metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
-
-		if s.metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
-		}
-
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region:      aws.String(s.metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region: aws.String(s.metadata.awsRegion),
-		})
-	}
-
-	output, err := kinesisClinent.DescribeStreamSummary(input)
+	output, err := s.kinesisClient.DescribeStreamSummary(input)
 	if err != nil {
 		return -1, err
 	}
