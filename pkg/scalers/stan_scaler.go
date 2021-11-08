@@ -247,4 +247,3 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 func (s *stanScaler) Close(context.Context) error {
 	return nil
 }
-
