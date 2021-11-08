@@ -368,7 +368,8 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 }
 
 var testSolaceExpectedMetricNames = map[string]string{
-	"s1-" + solaceScalerID + "-" + soltestValidQueueName: "",
+	"s1-" + solaceScalerID + "-" + soltestValidQueueName + "-" + solaceTriggermsgcount:      "",
+	"s1-" + solaceScalerID + "-" + soltestValidQueueName + "-" + solaceTriggermsgspoolusage: "",
 }
 
 func TestSolaceParseSolaceMetadata(t *testing.T) {

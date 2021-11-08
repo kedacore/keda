@@ -237,14 +237,14 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 //	- QUEUE MESSAGE COUNT (msgCount)
 //	- QUEUE SPOOL USAGE   (msgSpoolUsage in MBytes)
 //	METRIC IDENTIFIER HAS THE SIGNATURE:
-//	- solace-[VPN_Name]-[Queue_Name]-[metric_type]
-//	e.g. solace-myvpn-QUEUE1-msgCount
+//	- solace-[Queue_Name]-[metric_type]
+//	e.g. solace-QUEUE1-msgCount
 func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var metricSpecList []v2beta2.MetricSpec
-	metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s", s.metadata.queueName))
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgCountTarget), resource.DecimalSI)
+		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -260,6 +260,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
 		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgSpoolUsageTarget), resource.DecimalSI)
+		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
