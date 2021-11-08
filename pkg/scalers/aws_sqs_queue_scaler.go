@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +37,8 @@ var (
 )
 
 type awsSqsQueueScaler struct {
-	metadata *awsSqsQueueMetadata
+	metadata  *awsSqsQueueMetadata
+	sqsClient sqsiface.SQSAPI
 }
 
 type awsSqsQueueMetadata struct {
@@ -56,7 +58,8 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &awsSqsQueueScaler{
-		metadata: meta,
+		metadata:  meta,
+		sqsClient: createSqsClient(meta),
 	}, nil
 }
 
@@ -109,6 +112,31 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
+}
+
+func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(metadata.awsRegion),
+	}))
+
+	var sqsClient *sqs.SQS
+	if metadata.awsAuthorization.podIdentityOwner {
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		}
+
+		sqsClient = sqs.New(sess, &aws.Config{
+			Region:      aws.String(metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		sqsClient = sqs.New(sess, &aws.Config{
+			Region: aws.String(metadata.awsRegion),
+		})
+	}
+	return sqsClient
 }
 
 // IsActive determines if we need to scale from zero
@@ -166,29 +194,7 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.metadata.awsRegion),
-	}))
-
-	var sqsClient *sqs.SQS
-	if s.metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
-
-		if s.metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
-		}
-
-		sqsClient = sqs.New(sess, &aws.Config{
-			Region:      aws.String(s.metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		sqsClient = sqs.New(sess, &aws.Config{
-			Region: aws.String(s.metadata.awsRegion),
-		})
-	}
-
-	output, err := sqsClient.GetQueueAttributes(input)
+	output, err := s.sqsClient.GetQueueAttributes(input)
 	if err != nil {
 		return -1, err
 	}

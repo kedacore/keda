@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,7 @@ const (
 
 type awsCloudwatchScaler struct {
 	metadata *awsCloudwatchMetadata
+	cwClient cloudwatchiface.CloudWatchAPI
 }
 
 type awsCloudwatchMetadata struct {
@@ -67,6 +69,7 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 
 	return &awsCloudwatchScaler{
 		metadata: meta,
+		cwClient: createCloudwatchClient(meta),
 	}, nil
 }
 
@@ -100,6 +103,32 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 	}
 
 	return defaultValue, nil
+}
+
+func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWatch {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(metadata.awsRegion),
+	}))
+
+	var cloudwatchClient *cloudwatch.CloudWatch
+	if metadata.awsAuthorization.podIdentityOwner {
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+
+		if metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		}
+
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region:      aws.String(metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
+			Region: aws.String(metadata.awsRegion),
+		})
+	}
+
+	return cloudwatchClient
 }
 
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
@@ -236,6 +265,12 @@ func checkMetricStatPeriod(period int64) error {
 	return nil
 }
 
+func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetSec, metricCollectionTimeSec int64) (startTime, endTime time.Time) {
+	endTime = current.Add(time.Second * -1 * time.Duration(metricEndTimeOffsetSec)).Truncate(time.Duration(metricPeriodSec) * time.Second)
+	startTime = endTime.Add(time.Second * -1 * time.Duration(metricCollectionTimeSec))
+	return
+}
+
 func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := c.GetCloudwatchMetrics()
 
@@ -283,28 +318,6 @@ func (c *awsCloudwatchScaler) Close(context.Context) error {
 }
 
 func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(c.metadata.awsRegion),
-	}))
-
-	var cloudwatchClient *cloudwatch.CloudWatch
-	if c.metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(c.metadata.awsAuthorization.awsAccessKeyID, c.metadata.awsAuthorization.awsSecretAccessKey, "")
-
-		if c.metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, c.metadata.awsAuthorization.awsRoleArn)
-		}
-
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region:      aws.String(c.metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region: aws.String(c.metadata.awsRegion),
-		})
-	}
-
 	dimensions := []*cloudwatch.Dimension{}
 	for i := range c.metadata.dimensionName {
 		dimensions = append(dimensions, &cloudwatch.Dimension{
@@ -313,8 +326,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		})
 	}
 
-	endTime := time.Now().Add(time.Second * -1 * time.Duration(c.metadata.metricEndTimeOffset)).Truncate(time.Duration(c.metadata.metricStatPeriod) * time.Second)
-	startTime := endTime.Add(time.Second * -1 * time.Duration(c.metadata.metricCollectionTime))
+	startTime, endTime := computeQueryWindow(time.Now(), c.metadata.metricStatPeriod, c.metadata.metricEndTimeOffset, c.metadata.metricCollectionTime)
 
 	var metricUnit *string
 	if c.metadata.metricUnit != "" {
@@ -343,7 +355,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		},
 	}
 
-	output, err := cloudwatchClient.GetMetricData(&input)
+	output, err := c.cwClient.GetMetricData(&input)
 
 	if err != nil {
 		cloudwatchLog.Error(err, "Failed to get output")
@@ -352,7 +364,7 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 
 	cloudwatchLog.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
-	if output.MetricDataResults[0].Values != nil {
+	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
 		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
 		return -1, fmt.Errorf("metric data not received")
