@@ -168,8 +168,8 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
-	{&testAWSSQSMetadata[1], 0, "s0-AWS-SQS-Queue-DeleteArtifactQ"},
-	{&testAWSSQSMetadata[1], 1, "s1-AWS-SQS-Queue-DeleteArtifactQ"},
+	{&testAWSSQSMetadata[1], 0, "s0-aws-sqs-DeleteArtifactQ"},
+	{&testAWSSQSMetadata[1], 1, "s1-aws-sqs-DeleteArtifactQ"},
 }
 
 var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{

@@ -36,8 +36,8 @@ var testStanMetadata = []parseStanMetadataTestData{
 }
 
 var stanMetricIdentifiers = []stanMetricIdentifier{
-	{&testStanMetadata[4], 0, "s0-stan-grp1-ImDurable-mySubject"},
-	{&testStanMetadata[4], 1, "s1-stan-grp1-ImDurable-mySubject"},
+	{&testStanMetadata[4], 0, "s0-stan-mySubject"},
+	{&testStanMetadata[4], 1, "s1-stan-mySubject"},
 }
 
 func TestStanParseMetadata(t *testing.T) {

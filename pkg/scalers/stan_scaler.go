@@ -198,7 +198,7 @@ func (s *stanScaler) hasPendingMessage() bool {
 
 func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "stan", s.metadata.queueGroup, s.metadata.durableName, s.metadata.subject))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("stan-%s", s.metadata.subject))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -247,3 +247,4 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 func (s *stanScaler) Close(context.Context) error {
 	return nil
 }
+

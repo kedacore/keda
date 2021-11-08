@@ -74,7 +74,7 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 }
 
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
-	{&testAzBlobMetadata[1], 0, "s0-azure-blob-sample-blobsubpath-"},
+	{&testAzBlobMetadata[1], 0, "s0-azure-blob-sample"},
 	{&testAzBlobMetadata[2], 1, "s1-azure-blob-customname"},
 	{&testAzBlobMetadata[5], 2, "s2-azure-blob-sample_container"},
 }
