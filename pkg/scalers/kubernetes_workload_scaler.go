@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -127,14 +126,4 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 	}
 
 	return len(podList.Items), nil
-}
-
-func normalizeSelectorString(selector labels.Selector) string {
-	s := selector.String()
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ReplaceAll(s, "(", "-")
-	s = strings.ReplaceAll(s, ")", "-")
-	s = strings.ReplaceAll(s, ",", "-")
-	s = strings.ReplaceAll(s, "!", "-")
-	return s
 }
