@@ -160,35 +160,32 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
-	scalers, err := r.scaleHandler.GetScalers(ctx, scaledObject)
+	cache, err := r.scaleHandler.GetScalersCache(ctx, scaledObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err
 	}
 
-	for _, scaler := range scalers {
-		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
+	metricSpecs := cache.GetMetricSpecForScaling(ctx)
 
-		for _, metricSpec := range metricSpecs {
-			if metricSpec.Resource != nil {
-				resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
-			}
-
-			if metricSpec.External != nil {
-				externalMetricName := metricSpec.External.Metric.Name
-				if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
-					return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)
-				}
-
-				// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
-				metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-				metricSpec.External.Metric.Selector.MatchLabels["scaledobject.keda.sh/name"] = scaledObject.Name
-				externalMetricNames = append(externalMetricNames, externalMetricName)
-			}
+	for _, metricSpec := range metricSpecs {
+		if metricSpec.Resource != nil {
+			resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 		}
-		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
-		scaler.Close(ctx)
+
+		if metricSpec.External != nil {
+			externalMetricName := metricSpec.External.Metric.Name
+			if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
+				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)
+			}
+
+			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
+			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
+			metricSpec.External.Metric.Selector.MatchLabels["scaledobject.keda.sh/name"] = scaledObject.Name
+			externalMetricNames = append(externalMetricNames, externalMetricName)
+		}
 	}
+	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 
 	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,
 	// see https://github.com/kedacore/keda/issues/1531 for details

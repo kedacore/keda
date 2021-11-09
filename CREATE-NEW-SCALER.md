@@ -93,7 +93,7 @@ The constructor should have the following parameters:
 
 ## Lifecycle of a scaler
 
-The scaler is created and closed everytime KEDA or HPA wants to call `GetMetrics`, and everytime a new ScaledObject is created or updated that has a trigger for that scaler. Thus, a developer of a scaler should not assume that the scaler will maintain any state between these calls.
+Scalers are created and cached until the ScaledObject is modified, or `.IsActive()`/`GetMetrics()` result in an error. The cached scaler is then invalidated and a new scaler is created. `Close()` is called on all scalers when disposed.
 
 ## Note
 The scaler code is embedded into the two separate binaries comprising KEDA, the operator and the custom metrics server component. The metrics server must be occasionally rebuilt published and deployed to k8s for it to have the same code as your operator.

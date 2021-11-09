@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
