@@ -91,6 +91,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
+	meta.scalerIndex = config.ScalerIndex
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.Atoi(val)
@@ -179,7 +180,6 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	if len(config.AuthParams["ca"]) > 0 {
 		meta.ca = config.AuthParams["ca"]
 	}
-	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
@@ -249,7 +249,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("http-%s", s.metadata.valueLocation))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
