@@ -348,7 +348,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(config)
+		return scalers.NewAzureServiceBusScaler(ctx, config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
 	case "cpu":
