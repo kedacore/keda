@@ -2,7 +2,7 @@ name: pr-e2e-tests
 on:
   issue_comment:
     types: [created]
-
+concurrency: e2e-tests
 jobs:
   check:
     runs-on: ubuntu-latest
