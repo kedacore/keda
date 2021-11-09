@@ -117,7 +117,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace), stopCh, nil
 }
 
 func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}) error {
