@@ -28,6 +28,7 @@
 - Add Cassandra Scaler ([#2211](https://github.com/kedacore/keda/pull/2211))
 - Improve Redis Scaler, upgrade library, add username and Sentinel support ([#2181](https://github.com/kedacore/keda/pull/2181))
 - Add GCP identity authentication when using Pubsub Scaler ([#2225](https://github.com/kedacore/keda/pull/2225))
+- Add ScalersCache to reuse scalers unless they need changing ([#2187](https://github.com/kedacore/keda/pull/2187))
 
 ### Improvements
 

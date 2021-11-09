@@ -35,6 +35,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
 type GinkgoTestReporter struct{}
@@ -82,7 +83,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 			It("should pass metric name validation", func() {
 				// Generate test data
-				testScalers := make([]scalers.Scaler, 0)
+				testScalers := make([]cache.ScalerBuilder, 0)
 				expectedExternalMetricNames := make([]string, 0)
 
 				for i, tm := range triggerMeta {
@@ -99,7 +100,12 @@ var _ = Describe("ScaledObjectController", func() {
 						Fail(err.Error())
 					}
 
-					testScalers = append(testScalers, s)
+					testScalers = append(testScalers, cache.ScalerBuilder{
+						Scaler: s,
+						Factory: func() (scalers.Scaler, error) {
+							return scalers.NewPrometheusScaler(config)
+						},
+					})
 					for _, metricSpec := range s.GetMetricSpecForScaling(context.Background()) {
 						if metricSpec.External != nil {
 							expectedExternalMetricNames = append(expectedExternalMetricNames, metricSpec.External.Metric.Name)
@@ -108,7 +114,10 @@ var _ = Describe("ScaledObjectController", func() {
 				}
 
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(context.Background(), uniquelyNamedScaledObject).Return(testScalers, nil)
+				scalerCache := cache.ScalersCache{
+					Scalers: testScalers,
+				}
+				mockScaleHandler.EXPECT().GetScalersCache(context.Background(), uniquelyNamedScaledObject).Return(&scalerCache, nil)
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 
@@ -121,6 +130,7 @@ var _ = Describe("ScaledObjectController", func() {
 				// Test returned values
 				Ω(len(metricSpecs)).Should(Equal(len(testScalers)))
 				Ω(err).Should(BeNil())
+				scalerCache.Close(ctx)
 			})
 
 			It("should pass metric name validation with single value", func() {
@@ -145,8 +155,16 @@ var _ = Describe("ScaledObjectController", func() {
 					}
 				}
 
+				scalersCache := cache.ScalersCache{
+					Scalers: []cache.ScalerBuilder{{
+						Scaler: s,
+						Factory: func() (scalers.Scaler, error) {
+							return s, nil
+						},
+					}},
+				}
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(context.Background(), uniquelyNamedScaledObject).Return([]scalers.Scaler{s}, nil)
+				mockScaleHandler.EXPECT().GetScalersCache(context.Background(), uniquelyNamedScaledObject).Return(&scalersCache, nil)
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 
@@ -167,7 +185,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 			It("should pass metric name validation", func() {
 				// Generate test data
-				testScalers := make([]scalers.Scaler, 0)
+				testScalers := make([]cache.ScalerBuilder, 0)
 				for i := 0; i < 4; i++ {
 					config := &scalers.ScalerConfig{
 						Name:            fmt.Sprintf("test.%d", i),
@@ -182,11 +200,19 @@ var _ = Describe("ScaledObjectController", func() {
 						Fail(err.Error())
 					}
 
-					testScalers = append(testScalers, s)
+					testScalers = append(testScalers, cache.ScalerBuilder{
+						Scaler: s,
+						Factory: func() (scalers.Scaler, error) {
+							return s, nil
+						},
+					})
+				}
+				scalersCache := cache.ScalersCache{
+					Scalers: testScalers,
 				}
 
 				// Set up expectations
-				mockScaleHandler.EXPECT().GetScalers(context.Background(), duplicateNamedScaledObject).Return(testScalers, nil)
+				mockScaleHandler.EXPECT().GetScalersCache(context.Background(), duplicateNamedScaledObject).Return(&scalersCache, nil)
 
 				// Call function tobe tested
 				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(context.Background(), testLogger, duplicateNamedScaledObject)

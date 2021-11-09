@@ -23,26 +23,23 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) bool {
 	return scaledObject.Spec.Fallback != nil && metricSpec.External.Target.Type == v2beta2.AverageValueMetricType
 }
 
-func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, scaler scalers.Scaler, metricName string, metricSelector labels.Selector, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
-	metrics, err := scaler.GetMetrics(ctx, metricName, metricSelector)
 	healthStatus := getHealthStatus(status, metricName)
 
-	if err == nil {
+	if suppressedError == nil {
 		zero := int32(0)
 		healthStatus.NumberOfFailures = &zero
 		healthStatus.Status = kedav1alpha1.HealthStatusHappy
@@ -60,14 +57,14 @@ func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, scaler scaler
 
 	switch {
 	case !isFallbackEnabled(scaledObject, metricSpec):
-		return nil, err
+		return nil, suppressedError
 	case !validateFallback(scaledObject):
 		logger.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers")
-		return nil, err
+		return nil, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		return doFallback(scaledObject, metricSpec, metricName, err), nil
+		return doFallback(scaledObject, metricSpec, metricName, suppressedError), nil
 	default:
-		return nil, err
+		return nil, suppressedError
 	}
 }
 

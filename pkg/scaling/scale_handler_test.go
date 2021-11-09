@@ -19,45 +19,53 @@ package scaling
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/scalers"
-	"github.com/kedacore/keda/v2/pkg/scaling/executor"
+	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
 func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
-	scaleHandler := &scaleHandler{
-		client:            client,
-		logger:            logf.Log.WithName("scalehandler"),
-		scaleLoopContexts: &sync.Map{},
-		scaleExecutor:     executor.NewScaleExecutor(client, nil, nil, recorder),
-		globalHTTPTimeout: 5 * time.Second,
-		recorder:          recorder,
+	factory := func() (scalers.Scaler, error) {
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("some error"))
+		scaler.EXPECT().Close(gomock.Any())
+		return scaler, nil
 	}
-	scaler := mock_scalers.NewMockScaler(ctrl)
-	scalers := []scalers.Scaler{scaler}
-	scaledObject := &kedav1alpha1.ScaledObject{}
+	scaler, err := factory()
+	assert.Nil(t, err)
 
-	scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("Some error"))
-	scaler.EXPECT().Close(gomock.Any())
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+	}
 
-	isActive, isError := scaleHandler.isScaledObjectActive(context.TODO(), scalers, scaledObject)
+	cache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:  scaler,
+			Factory: factory,
+		}},
+		Logger:   logf.Log.WithName("scalehandler"),
+		Recorder: recorder,
+	}
+
+	isActive, isError, _ := cache.IsScaledObjectActive(context.TODO(), &scaledObject)
+	cache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
@@ -65,22 +73,15 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 
 func TestCheckScaledObjectFindFirstActiveIgnoringOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
-
-	scaleHandler := &scaleHandler{
-		client:            client,
-		logger:            logf.Log.WithName("scalehandler"),
-		scaleLoopContexts: &sync.Map{},
-		scaleExecutor:     executor.NewScaleExecutor(client, nil, nil, recorder),
-		globalHTTPTimeout: 5 * time.Second,
-		recorder:          recorder,
-	}
-
 	activeScaler := mock_scalers.NewMockScaler(ctrl)
 	failingScaler := mock_scalers.NewMockScaler(ctrl)
-	scalers := []scalers.Scaler{activeScaler, failingScaler}
-	scaledObject := &kedav1alpha1.ScaledObject{}
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+	}
 
 	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(1)}
 
@@ -89,7 +90,25 @@ func TestCheckScaledObjectFindFirstActiveIgnoringOthers(t *testing.T) {
 	activeScaler.EXPECT().Close(gomock.Any())
 	failingScaler.EXPECT().Close(gomock.Any())
 
-	isActive, isError := scaleHandler.isScaledObjectActive(context.TODO(), scalers, scaledObject)
+	factory := func() (scalers.Scaler, error) {
+		return mock_scalers.NewMockScaler(ctrl), nil
+	}
+	scalers := []cache.ScalerBuilder{{
+		Scaler:  activeScaler,
+		Factory: factory,
+	}, {
+		Scaler:  failingScaler,
+		Factory: factory,
+	}}
+
+	scalersCache := cache.ScalersCache{
+		Scalers:  scalers,
+		Logger:   logf.Log.WithName("scalercache"),
+		Recorder: recorder,
+	}
+
+	isActive, isError, _ := scalersCache.IsScaledObjectActive(context.TODO(), scaledObject)
+	scalersCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)

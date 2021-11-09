@@ -1,12 +1,13 @@
-package scaledjob
+package cache
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/go-playground/assert/v2"
+	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
@@ -66,24 +67,44 @@ func TestIsScaledJobActive(t *testing.T) {
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledObject(100, "") // testing default = max
-	scalerSingle := []scalers.Scaler{
-		createScaler(ctrl, int64(20), int32(2), true),
+	scalerSingle := []ScalerBuilder{{
+		Scaler: createScaler(ctrl, int64(20), int32(2), true),
+		Factory: func() (scalers.Scaler, error) {
+			return createScaler(ctrl, int64(20), int32(2), true), nil
+		},
+	}}
+
+	cache := ScalersCache{
+		Scalers:  scalerSingle,
+		Logger:   logr.DiscardLogger{},
+		Recorder: recorder,
 	}
 
-	isActive, queueLength, maxValue := GetScaleMetrics(context.TODO(), scalerSingle, scaledJobSingle, recorder)
+	isActive, queueLength, maxValue := cache.IsScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, int64(20), queueLength)
 	assert.Equal(t, int64(10), maxValue)
+	cache.Close(context.Background())
 
 	// Non-Active trigger only
-	scalerSingle = []scalers.Scaler{
-		createScaler(ctrl, int64(0), int32(2), false),
+	scalerSingle = []ScalerBuilder{{
+		Scaler: createScaler(ctrl, int64(0), int32(2), false),
+		Factory: func() (scalers.Scaler, error) {
+			return createScaler(ctrl, int64(0), int32(2), false), nil
+		},
+	}}
+
+	cache = ScalersCache{
+		Scalers:  scalerSingle,
+		Logger:   logr.DiscardLogger{},
+		Recorder: recorder,
 	}
 
-	isActive, queueLength, maxValue = GetScaleMetrics(context.TODO(), scalerSingle, scaledJobSingle, recorder)
+	isActive, queueLength, maxValue = cache.IsScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, int64(0), queueLength)
 	assert.Equal(t, int64(0), maxValue)
+	cache.Close(context.Background())
 
 	// Test the valiation
 	scalerTestDatam := []scalerTestData{
@@ -96,18 +117,40 @@ func TestIsScaledJobActive(t *testing.T) {
 
 	for index, scalerTestData := range scalerTestDatam {
 		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
-		scalers := []scalers.Scaler{
-			createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive),
-			createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive),
-			createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive),
-			createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive),
+		scalersToTest := []ScalerBuilder{{
+			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive),
+			Factory: func() (scalers.Scaler, error) {
+				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive), nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive),
+			Factory: func() (scalers.Scaler, error) {
+				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive), nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive),
+			Factory: func() (scalers.Scaler, error) {
+				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive), nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive),
+			Factory: func() (scalers.Scaler, error) {
+				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive), nil
+			},
+		}}
+
+		cache = ScalersCache{
+			Scalers:  scalersToTest,
+			Logger:   logr.DiscardLogger{},
+			Recorder: recorder,
 		}
 		fmt.Printf("index: %d", index)
-		isActive, queueLength, maxValue = GetScaleMetrics(context.TODO(), scalers, scaledJob, recorder)
+		isActive, queueLength, maxValue = cache.IsScaledJobActive(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
 		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
 		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
+		cache.Close(context.Background())
 	}
 }
 
