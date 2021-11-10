@@ -21,7 +21,7 @@ import (
 const (
 	defaultTargetSubscriptionSize = 5
 	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-	compositeSubscriptionIdPrefix = "projects/[a-zA-Z0-9-]+/subscriptions/[a-zA-Z0-9-]+"
+	compositeSubscriptionIDPrefix = "projects/[a-zA-Z0-9-]+/subscriptions/[a-zA-Z0-9-]+"
 )
 
 type gcpAuthorizationMetadata struct {
@@ -171,8 +171,8 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 		s.client = client
 	}
 	var subscriptionID string
-	var projectID string = ""
-	regexpExpression, _ := regexp.Compile(compositeSubscriptionIdPrefix)
+	var projectID string
+	regexpExpression, _ := regexp.Compile(compositeSubscriptionIDPrefix)
 	if regexpExpression.MatchString(s.metadata.subscriptionName) {
 		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
 		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
