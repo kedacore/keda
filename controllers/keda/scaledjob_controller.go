@@ -147,7 +147,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	}
 
 	// scaledJob was created or modified - let's start a new ScaleLoop
-	err = r.requestScaleLoop(logger, scaledJob)
+	err = r.requestScaleLoop(ctx, logger, scaledJob)
 	if err != nil {
 		return "Failed to start a new scale loop with scaling logic", err
 	}
@@ -187,13 +187,13 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 }
 
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
-func (r *ScaledJobReconciler) requestScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-	return r.scaleHandler.HandleScalableObject(scaledJob)
+	return r.scaleHandler.HandleScalableObject(ctx, scaledJob)
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
-func (r *ScaledJobReconciler) stopScaleLoop(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Stopping a ScaleLoop")
-	return r.scaleHandler.DeleteScalableObject(scaledJob)
+	return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
 }

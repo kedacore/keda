@@ -43,8 +43,8 @@ import (
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler interface {
-	HandleScalableObject(scalableObject interface{}) error
-	DeleteScalableObject(scalableObject interface{}) error
+	HandleScalableObject(ctx context.Context, scalableObject interface{}) error
+	DeleteScalableObject(ctx context.Context, scalableObject interface{}) error
 	GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error)
 	ClearScalersCache(ctx context.Context, name, namespace string)
 }
@@ -74,7 +74,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 	}
 }
 
-func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
+func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject interface{}) error {
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		h.logger.Error(err, "error duck typing object into withTrigger")
@@ -82,7 +82,7 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 	}
 
 	key := withTriggers.GenerateIdenitifier()
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(ctx)
 
 	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
 	value, loaded := h.scaleLoopContexts.LoadOrStore(key, cancel)
@@ -111,7 +111,7 @@ func (h *scaleHandler) HandleScalableObject(scalableObject interface{}) error {
 	return nil
 }
 
-func (h *scaleHandler) DeleteScalableObject(scalableObject interface{}) error {
+func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject interface{}) error {
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		h.logger.Error(err, "error duck typing object into withTrigger")
@@ -180,7 +180,7 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 		cache.Close(ctx)
 	}
 
-	podTemplateSpec, containerName, err := resolver.ResolveScaleTargetPodSpec(h.client, h.logger, scalableObject)
+	podTemplateSpec, containerName, err := resolver.ResolveScaleTargetPodSpec(ctx, h.client, h.logger, scalableObject)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		triggerName, trigger := scalerIndex, t
 		factory := func() (scalers.Scaler, error) {
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
+				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
 				if err != nil {
 					return nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
 				}
@@ -297,7 +297,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ScalerIndex:       scalerIndex,
 			}
 
-			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
+			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 			if err != nil {
 				return nil, err
 			}
@@ -348,7 +348,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(config)
+		return scalers.NewAzureServiceBusScaler(ctx, config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
 	case "cpu":

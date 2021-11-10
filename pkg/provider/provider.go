@@ -42,6 +42,7 @@ type KedaProvider struct {
 	externalMetrics  []externalMetric
 	scaleHandler     scaling.ScaleHandler
 	watchedNamespace string
+	ctx              context.Context
 }
 
 type externalMetric struct{}
@@ -50,13 +51,14 @@ var logger logr.Logger
 var metricsServer prommetrics.PrometheusMetricServer
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
 		values:           make(map[provider.CustomMetricInfo]int64),
 		externalMetrics:  make([]externalMetric, 2, 10),
 		client:           client,
 		scaleHandler:     scaleHandler,
 		watchedNamespace: watchedNamespace,
+		ctx:              ctx,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
@@ -149,7 +151,7 @@ func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	opts := []client.ListOption{
 		client.InNamespace(p.watchedNamespace),
 	}
-	err := p.client.List(context.TODO(), scaledObjects, opts...)
+	err := p.client.List(p.ctx, scaledObjects, opts...)
 	if err != nil {
 		logger.Error(err, "Cannot get list of ScaledObjects", "WatchedNamespace", p.watchedNamespace)
 		return nil

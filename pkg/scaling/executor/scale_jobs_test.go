@@ -36,6 +36,7 @@ import (
 )
 
 func TestCleanUpNormalCase(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -55,7 +56,7 @@ func TestCleanUpNormalCase(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -133,6 +134,7 @@ func TestAccurateScalingStrategy(t *testing.T) {
 }
 
 func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -155,7 +157,7 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -170,6 +172,7 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 }
 
 func TestCleanUpDefaultValue(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -196,7 +199,7 @@ func TestCleanUpDefaultValue(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -230,11 +233,12 @@ func TestGetPendingJobCount(t *testing.T) {
 	}
 
 	for _, testData := range testPendingJobTestData {
+		ctx := context.Background()
 		client := getMockClientForTestingPendingPods(t, ctrl, testData.PodStatus)
 		scaleExecutor := getMockScaleExecutor(client)
 
 		scaledJob := getMockScaledJobWithPendingPodConditions(testData.PendingPodConditions)
-		result := scaleExecutor.getPendingJobCount(scaledJob)
+		result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
 
 		assert.Equal(t, testData.PendingJobCount, result)
 	}
