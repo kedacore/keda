@@ -50,6 +50,7 @@ const (
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 
 type azureServiceBusScaler struct {
+	ctx         context.Context
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 	httpClient  *http.Client
@@ -68,13 +69,14 @@ type azureServiceBusMetadata struct {
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
 	}
 
 	return &azureServiceBusScaler{
+		ctx:         ctx,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
@@ -221,11 +223,12 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 
 type azureTokenProvider struct {
 	httpClient *http.Client
+	ctx        context.Context
 }
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
-	ctx := context.Background()
+	ctx := a.ctx
 	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
 	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
 	if err != nil {
@@ -242,7 +245,7 @@ func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (int32, error) {
 	// get namespace
-	namespace, err := s.getServiceBusNamespace()
+	namespace, err := s.getServiceBusNamespace(ctx)
 	if err != nil {
 		return -1, err
 	}
@@ -258,7 +261,7 @@ func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (i
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusNamespace() (*servicebus.Namespace, error) {
+func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*servicebus.Namespace, error) {
 	var namespace *servicebus.Namespace
 	var err error
 
@@ -273,6 +276,7 @@ func (s *azureServiceBusScaler) getServiceBusNamespace() (*servicebus.Namespace,
 			return namespace, err
 		}
 		namespace.TokenProvider = azureTokenProvider{
+			ctx:        ctx,
 			httpClient: s.httpClient,
 		}
 		namespace.Name = s.metadata.namespace

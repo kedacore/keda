@@ -241,7 +241,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
-		if r.requestScaleLoop(logger, scaledObject) != nil {
+		if r.requestScaleLoop(ctx, logger, scaledObject) != nil {
 			return "Failed to start a new scale loop with scaling logic", err
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
@@ -382,7 +382,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 }
 
 // startScaleLoop starts ScaleLoop handler for the respective ScaledObject
-func (r *ScaledObjectReconciler) requestScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
 
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
@@ -391,7 +391,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(logger logr.Logger, scaledObje
 		return err
 	}
 
-	if err = r.scaleHandler.HandleScalableObject(scaledObject); err != nil {
+	if err = r.scaleHandler.HandleScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 
@@ -402,14 +402,14 @@ func (r *ScaledObjectReconciler) requestScaleLoop(logger logr.Logger, scaledObje
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
-func (r *ScaledObjectReconciler) stopScaleLoop(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
 		logger.Error(err, "Error getting key for scaledObject")
 		return err
 	}
 
-	if err := r.scaleHandler.DeleteScalableObject(scaledObject); err != nil {
+	if err := r.scaleHandler.DeleteScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 	// delete ScaledObject's current Generation

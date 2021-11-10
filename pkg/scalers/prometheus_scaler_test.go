@@ -3,8 +3,11 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type parsePrometheusMetadataTestData struct {
@@ -117,5 +120,89 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 				t.Error("wrong auth mode detected")
 			}
 		}
+	}
+}
+
+type prometheusQromQueryResultTestData struct {
+	name           string
+	bodyStr        string
+	responseStatus int
+	expectedValue  float64
+	isError        bool
+}
+
+var testPromQueryResult = []prometheusQromQueryResultTestData{
+	{
+		name:           "no results",
+		bodyStr:        `{}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        false,
+	},
+	{
+		name:           "no values",
+		bodyStr:        `{"data":{"result":[]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        false,
+	},
+	{
+		name:           "valid value",
+		bodyStr:        `{"data":{"result":[{"value": ["1", "2"]}]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  2,
+		isError:        false,
+	},
+	{
+		name:           "not enough values",
+		bodyStr:        `{"data":{"result":[{"value": ["1"]}]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  -1,
+		isError:        true,
+	},
+	{
+		name:           "multiple results",
+		bodyStr:        `{"data":{"result":[{},{}]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  -1,
+		isError:        true,
+	},
+	{
+		name:           "error status response",
+		bodyStr:        `{}`,
+		responseStatus: http.StatusBadRequest,
+		expectedValue:  -1,
+		isError:        true,
+	},
+}
+
+func TestPrometheusScalerExecutePromQuery(t *testing.T) {
+	for _, testData := range testPromQueryResult {
+		t.Run(testData.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.WriteHeader(testData.responseStatus)
+
+				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+					t.Fatal(err)
+				}
+			}))
+
+			scaler := prometheusScaler{
+				metadata: &prometheusMetadata{
+					serverAddress: server.URL,
+				},
+				httpClient: http.DefaultClient,
+			}
+
+			value, err := scaler.ExecutePromQuery(context.TODO())
+
+			assert.Equal(t, testData.expectedValue, value)
+
+			if testData.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }

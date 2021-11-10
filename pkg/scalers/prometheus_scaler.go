@@ -263,6 +263,13 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
 
+	valueLen := len(result.Data.Result[0].Value)
+	if valueLen == 0 {
+		return 0, nil
+	} else if valueLen < 2 {
+		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
+	}
+
 	val := result.Data.Result[0].Value[1]
 	if val != nil {
 		s := val.(string)

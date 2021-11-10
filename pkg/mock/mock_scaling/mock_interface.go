@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	scalers "github.com/kedacore/keda/v2/pkg/scalers"
+	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
 // MockScaleHandler is a mock of ScaleHandler interface.
@@ -35,45 +35,57 @@ func (m *MockScaleHandler) EXPECT() *MockScaleHandlerMockRecorder {
 	return m.recorder
 }
 
-// DeleteScalableObject mocks base method.
-func (m *MockScaleHandler) DeleteScalableObject(scalableObject interface{}) error {
+// ClearScalersCache mocks base method.
+func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, name, namespace string) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteScalableObject", scalableObject)
+	m.ctrl.Call(m, "ClearScalersCache", ctx, name, namespace)
+}
+
+// ClearScalersCache indicates an expected call of ClearScalersCache.
+func (mr *MockScaleHandlerMockRecorder) ClearScalersCache(ctx, name, namespace interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).ClearScalersCache), ctx, name, namespace)
+}
+
+// DeleteScalableObject mocks base method.
+func (m *MockScaleHandler) DeleteScalableObject(ctx context.Context, scalableObject interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteScalableObject", ctx, scalableObject)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteScalableObject indicates an expected call of DeleteScalableObject.
-func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(scalableObject interface{}) *gomock.Call {
+func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), scalableObject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), ctx, scalableObject)
 }
 
-// GetScalers mocks base method.
-func (m *MockScaleHandler) GetScalers(ctx context.Context, scalableObject interface{}) ([]scalers.Scaler, error) {
+// GetScalersCache mocks base method.
+func (m *MockScaleHandler) GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScalers", ctx, scalableObject)
-	ret0, _ := ret[0].([]scalers.Scaler)
+	ret := m.ctrl.Call(m, "GetScalersCache", ctx, scalableObject)
+	ret0, _ := ret[0].(*cache.ScalersCache)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetScalers indicates an expected call of GetScalers.
-func (mr *MockScaleHandlerMockRecorder) GetScalers(ctx, scalableObject interface{}) *gomock.Call {
+// GetScalersCache indicates an expected call of GetScalersCache.
+func (mr *MockScaleHandlerMockRecorder) GetScalersCache(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalers", reflect.TypeOf((*MockScaleHandler)(nil).GetScalers), ctx, scalableObject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).GetScalersCache), ctx, scalableObject)
 }
 
 // HandleScalableObject mocks base method.
-func (m *MockScaleHandler) HandleScalableObject(scalableObject interface{}) error {
+func (m *MockScaleHandler) HandleScalableObject(ctx context.Context, scalableObject interface{}) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HandleScalableObject", scalableObject)
+	ret := m.ctrl.Call(m, "HandleScalableObject", ctx, scalableObject)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // HandleScalableObject indicates an expected call of HandleScalableObject.
-func (mr *MockScaleHandlerMockRecorder) HandleScalableObject(scalableObject interface{}) *gomock.Call {
+func (mr *MockScaleHandlerMockRecorder) HandleScalableObject(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).HandleScalableObject), scalableObject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).HandleScalableObject), ctx, scalableObject)
 }

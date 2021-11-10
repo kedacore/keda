@@ -45,7 +45,7 @@ const (
 // which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
 // and for the given resource returns *corev1.PodTemplateSpec and a name of the container
 // which is being used for referencing environment variables
-func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
+func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, logger logr.Logger, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
@@ -56,7 +56,7 @@ func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, sca
 		// For core types, use a typed client so we get an informer-cache-backed Get to reduce API load.
 		case gvk.Group == "apps" && gvk.Kind == "Deployment":
 			deployment := &appsv1.Deployment{}
-			if err := kubeClient.Get(context.TODO(), objKey, deployment); err != nil {
+			if err := kubeClient.Get(ctx, objKey, deployment); err != nil {
 				// resource doesn't exist
 				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
 				return nil, "", err
@@ -65,7 +65,7 @@ func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, sca
 			podTemplateSpec.Spec = deployment.Spec.Template.Spec
 		case gvk.Group == "apps" && gvk.Kind == "StatefulSet":
 			statefulSet := &appsv1.StatefulSet{}
-			if err := kubeClient.Get(context.TODO(), objKey, statefulSet); err != nil {
+			if err := kubeClient.Get(ctx, objKey, statefulSet); err != nil {
 				// resource doesn't exist
 				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
 				return nil, "", err
@@ -75,7 +75,7 @@ func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, sca
 		default:
 			unstruct := &unstructured.Unstructured{}
 			unstruct.SetGroupVersionKind(gvk)
-			if err := kubeClient.Get(context.TODO(), objKey, unstruct); err != nil {
+			if err := kubeClient.Get(ctx, objKey, unstruct); err != nil {
 				// resource doesn't exist
 				logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
 				return nil, "", err
@@ -103,7 +103,7 @@ func ResolveScaleTargetPodSpec(kubeClient client.Client, logger logr.Logger, sca
 
 // ResolveContainerEnv resolves all environment variables in a container.
 // It returns either map of env variable key and value or error if there is any.
-func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
+func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.Logger, podSpec *corev1.PodSpec, containerName, namespace string) (map[string]string, error) {
 	if len(podSpec.Containers) < 1 {
 		return nil, fmt.Errorf("target object doesn't have containers")
 	}
@@ -126,18 +126,18 @@ func ResolveContainerEnv(client client.Client, logger logr.Logger, podSpec *core
 		container = podSpec.Containers[0]
 	}
 
-	return resolveEnv(client, logger, &container, namespace)
+	return resolveEnv(ctx, client, logger, &container, namespace)
 }
 
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
-func ResolveAuthRefAndPodIdentity(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider, error) {
+func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider, error) {
 	if podTemplateSpec != nil {
-		authParams, podIdentity := resolveAuthRef(client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace)
+		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace)
 
 		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
-			err := client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
 				return nil, kedav1alpha1.PodIdentityProviderNone, fmt.Errorf("error getting service account: %s", err)
 			}
@@ -148,18 +148,18 @@ func ResolveAuthRefAndPodIdentity(client client.Client, logger logr.Logger, trig
 		return authParams, podIdentity, nil
 	}
 
-	authParams, _ := resolveAuthRef(client, logger, triggerAuthRef, nil, namespace)
+	authParams, _ := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace)
 	return authParams, kedav1alpha1.PodIdentityProviderNone, nil
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
-func resolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
+func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.PodIdentityProvider
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
-		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(client, triggerAuthRef, namespace)
+		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
 		if err != nil {
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
@@ -172,7 +172,7 @@ func resolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 						result[e.Parameter] = ""
 						continue
 					}
-					env, err := ResolveContainerEnv(client, logger, podSpec, e.ContainerName, namespace)
+					env, err := ResolveContainerEnv(ctx, client, logger, podSpec, e.ContainerName, namespace)
 					if err != nil {
 						result[e.Parameter] = ""
 					} else {
@@ -182,7 +182,7 @@ func resolveAuthRef(client client.Client, logger logr.Logger, triggerAuthRef *ke
 			}
 			if triggerAuthSpec.SecretTargetRef != nil {
 				for _, e := range triggerAuthSpec.SecretTargetRef {
-					result[e.Parameter] = resolveAuthSecret(client, logger, e.Name, triggerNamespace, e.Key)
+					result[e.Parameter] = resolveAuthSecret(ctx, client, logger, e.Name, triggerNamespace, e.Key)
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
@@ -237,10 +237,10 @@ func getClusterObjectNamespace() (string, error) {
 	return strData, nil
 }
 
-func getTriggerAuthSpec(client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
 	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
-		err := client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
 			return nil, "", err
 		}
@@ -251,7 +251,7 @@ func getTriggerAuthSpec(client client.Client, triggerAuthRef *kedav1alpha1.Scale
 			return nil, "", err
 		}
 		triggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
-		err = client.Get(context.TODO(), types.NamespacedName{Name: triggerAuthRef.Name}, triggerAuth)
+		err = client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name}, triggerAuth)
 		if err != nil {
 			return nil, "", err
 		}
@@ -260,13 +260,13 @@ func getTriggerAuthSpec(client client.Client, triggerAuthRef *kedav1alpha1.Scale
 	return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 }
 
-func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Container, namespace string) (map[string]string, error) {
+func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, container *corev1.Container, namespace string) (map[string]string, error) {
 	resolved := make(map[string]string)
 
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
 			if source.ConfigMapRef != nil {
-				configMap, err := resolveConfigMap(client, source.ConfigMapRef, namespace)
+				configMap, err := resolveConfigMap(ctx, client, source.ConfigMapRef, namespace)
 				switch {
 				case err == nil:
 					for k, v := range configMap {
@@ -279,7 +279,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
 				}
 			} else if source.SecretRef != nil {
-				secretsMap, err := resolveSecretMap(client, source.SecretRef, namespace)
+				secretsMap, err := resolveSecretMap(ctx, client, source.SecretRef, namespace)
 				switch {
 				case err == nil:
 					for k, v := range secretsMap {
@@ -309,7 +309,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 				switch {
 				case envVar.ValueFrom.SecretKeyRef != nil:
 					// env is a secret selector
-					value, err = resolveSecretValue(client, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace)
+					value, err = resolveSecretValue(ctx, client, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace)
 					if err != nil {
 						return nil, fmt.Errorf("error resolving secret name %s for env %s in namespace %s",
 							envVar.ValueFrom.SecretKeyRef,
@@ -318,7 +318,7 @@ func resolveEnv(client client.Client, logger logr.Logger, container *corev1.Cont
 					}
 				case envVar.ValueFrom.ConfigMapKeyRef != nil:
 					// env is a configMap selector
-					value, err = resolveConfigValue(client, envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, namespace)
+					value, err = resolveConfigValue(ctx, client, envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, namespace)
 					if err != nil {
 						return nil, fmt.Errorf("error resolving config %s for env %s in namespace %s",
 							envVar.ValueFrom.ConfigMapKeyRef,
@@ -384,18 +384,18 @@ func resolveEnvValue(value string, env map[string]string) string {
 	return buf.String() + value[checkpoint:]
 }
 
-func resolveConfigMap(client client.Client, configMapRef *corev1.ConfigMapEnvSource, namespace string) (map[string]string, error) {
+func resolveConfigMap(ctx context.Context, client client.Client, configMapRef *corev1.ConfigMapEnvSource, namespace string) (map[string]string, error) {
 	configMap := &corev1.ConfigMap{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: configMapRef.Name, Namespace: namespace}, configMap)
+	err := client.Get(ctx, types.NamespacedName{Name: configMapRef.Name, Namespace: namespace}, configMap)
 	if err != nil {
 		return nil, err
 	}
 	return configMap.Data, nil
 }
 
-func resolveSecretMap(client client.Client, secretMapRef *corev1.SecretEnvSource, namespace string) (map[string]string, error) {
+func resolveSecretMap(ctx context.Context, client client.Client, secretMapRef *corev1.SecretEnvSource, namespace string) (map[string]string, error) {
 	secret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: secretMapRef.Name, Namespace: namespace}, secret)
+	err := client.Get(ctx, types.NamespacedName{Name: secretMapRef.Name, Namespace: namespace}, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -407,32 +407,32 @@ func resolveSecretMap(client client.Client, secretMapRef *corev1.SecretEnvSource
 	return secretsStr, nil
 }
 
-func resolveSecretValue(client client.Client, secretKeyRef *corev1.SecretKeySelector, keyName, namespace string) (string, error) {
+func resolveSecretValue(ctx context.Context, client client.Client, secretKeyRef *corev1.SecretKeySelector, keyName, namespace string) (string, error) {
 	secret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: secretKeyRef.Name, Namespace: namespace}, secret)
+	err := client.Get(ctx, types.NamespacedName{Name: secretKeyRef.Name, Namespace: namespace}, secret)
 	if err != nil {
 		return "", err
 	}
 	return string(secret.Data[keyName]), nil
 }
 
-func resolveConfigValue(client client.Client, configKeyRef *corev1.ConfigMapKeySelector, keyName, namespace string) (string, error) {
+func resolveConfigValue(ctx context.Context, client client.Client, configKeyRef *corev1.ConfigMapKeySelector, keyName, namespace string) (string, error) {
 	configMap := &corev1.ConfigMap{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: configKeyRef.Name, Namespace: namespace}, configMap)
+	err := client.Get(ctx, types.NamespacedName{Name: configKeyRef.Name, Namespace: namespace}, configMap)
 	if err != nil {
 		return "", err
 	}
 	return configMap.Data[keyName], nil
 }
 
-func resolveAuthSecret(client client.Client, logger logr.Logger, name, namespace, key string) string {
+func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Logger, name, namespace, key string) string {
 	if name == "" || namespace == "" || key == "" {
 		logger.Error(fmt.Errorf("error trying to get secret"), "name, namespace and key are required", "Secret.Namespace", namespace, "Secret.Name", name, "key", key)
 		return ""
 	}
 
 	secret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	if err != nil {
 		logger.Error(err, "Error trying to get secret from namespace", "Secret.Namespace", namespace, "Secret.Name", name)
 		return ""
