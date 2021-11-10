@@ -66,8 +66,8 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
-	{&parseEventHubMetadataDataset[1], 0, "s0-azure-eventhub-none-testEventHubConsumerGroup"},
-	{&parseEventHubMetadataDataset[1], 1, "s1-azure-eventhub-none-testEventHubConsumerGroup"},
+	{&parseEventHubMetadataDataset[1], 0, "s0-azure-eventhub-none"},
+	{&parseEventHubMetadataDataset[1], 1, "s1-azure-eventhub-none"},
 }
 
 var testEventHubScaler = azureEventHubScaler{

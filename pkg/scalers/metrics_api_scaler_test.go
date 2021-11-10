@@ -18,7 +18,7 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	// No metadata
 	{metadata: map[string]string{}, raisesError: true},
 	// OK
-	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42"}, raisesError: false},
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42"}, raisesError: false},
 	// Target not an int
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
 	// Missing metric name
@@ -72,6 +72,39 @@ func TestParseMetricsAPIMetadata(t *testing.T) {
 		}
 		if err == nil && testData.raisesError {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+type metricsAPIMetricIdentifier struct {
+	metadataTestData *metricsAPIMetadataTestData
+	scalerIndex      int
+	name             string
+}
+
+var metricsAPIMetricIdentifiers = []metricsAPIMetricIdentifier{
+	{metadataTestData: &testMetricsAPIMetadata[1], scalerIndex: 1, name: "s1-metric-api-metric-test"},
+}
+
+func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range metricsAPIMetricIdentifiers {
+		s, err := NewMetricsAPIScaler(
+			&ScalerConfig{
+				ResolvedEnv:       map[string]string{},
+				TriggerMetadata:   testData.metadataTestData.metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 3000 * time.Millisecond,
+				ScalerIndex:       testData.scalerIndex,
+			},
+		)
+		if err != nil {
+			t.Errorf("Error creating the Scaler")
+		}
+
+		metricSpec := s.GetMetricSpecForScaling(context.Background())
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

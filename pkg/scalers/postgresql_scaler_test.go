@@ -33,11 +33,11 @@ var testPostgreSQLMetdata = []parsePostgreSQLMetadataTestData{
 }
 
 var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
-	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql-postgresql---localhost-5432"},
-	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql-postgresql---test@localhost"},
-	{&testPostgreSQLMetdata[2], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname"}, 2, "s2-postgresql-postgresql---user-xxx@localhost-5432-dbname"},
+	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql"},
+	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql"},
+	{&testPostgreSQLMetdata[2], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname"}, 2, "s2-postgresql"},
 	{&testPostgreSQLMetdata[3], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, 3, "s3-postgresql-scaler_sql_data2"},
-	{&testPostgreSQLMetdata[4], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname?app_name=test"}, 4, "s4-postgresql-postgresql---user-xxx@localhost-5432-dbname?app_name=test"},
+	{&testPostgreSQLMetdata[4], nil, map[string]string{"connection": "postgresql://user:password@localhost:5432/dbname?app_name=test"}, 4, "s4-postgresql"},
 	{&testPostgreSQLMetdata[5], nil, map[string]string{"connection": "postgresql://Username123:secret@localhost"}, 5, "s5-postgresql-scaler_sql_data"},
 }
 

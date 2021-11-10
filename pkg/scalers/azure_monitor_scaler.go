@@ -194,7 +194,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", s.metadata.azureMonitorInfo.ResourceURI, s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

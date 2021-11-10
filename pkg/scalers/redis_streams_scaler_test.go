@@ -134,8 +134,8 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
-		{&redisStreamsTestData[0], 0, "s0-redis-streams-my-stream-my-stream-consumer-group"},
-		{&redisStreamsTestData[0], 1, "s1-redis-streams-my-stream-my-stream-consumer-group"},
+		{&redisStreamsTestData[0], 0, "s0-redis-streams-my-stream"},
+		{&redisStreamsTestData[0], 1, "s1-redis-streams-my-stream"},
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {

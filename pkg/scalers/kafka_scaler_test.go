@@ -116,8 +116,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic-my-group"},
-	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic-my-group"},
+	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
 }
 
 func TestGetBrokers(t *testing.T) {
