@@ -3,7 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -19,6 +21,7 @@ import (
 const (
 	defaultTargetSubscriptionSize = 5
 	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+	compositeSubscriptionIdPrefix = "projects/[a-zA-Z0-9-]+/subscriptions/[a-zA-Z0-9-]+"
 )
 
 type gcpAuthorizationMetadata struct {
@@ -167,10 +170,18 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 		}
 		s.client = client
 	}
+	var subscriptionID string
+	var projectID string = ""
+	regexpExpression, _ := regexp.Compile(compositeSubscriptionIdPrefix)
+	if regexpExpression.MatchString(s.metadata.subscriptionName) {
+		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
+		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
+	} else {
+		subscriptionID = s.metadata.subscriptionName
+	}
+	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
-
-	return s.client.GetMetrics(ctx, filter)
+	return s.client.GetMetrics(ctx, filter, projectID)
 }
 
 func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
