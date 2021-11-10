@@ -38,8 +38,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
-	{&testPubSubMetadata[1], 0, "s0-gcp-mysubscription"},
-	{&testPubSubMetadata[1], 1, "s1-gcp-mysubscription"},
+	{&testPubSubMetadata[1], 0, "s0-gcp-ps-mysubscription"},
+	{&testPubSubMetadata[1], 1, "s1-gcp-ps-mysubscription"},
 }
 
 func TestPubSubParseMetadata(t *testing.T) {

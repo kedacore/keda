@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +84,7 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "workload", s.metadata.namespace, normalizeSelectorString(s.metadata.podSelector)))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -127,14 +126,4 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 	}
 
 	return len(podList.Items), nil
-}
-
-func normalizeSelectorString(selector labels.Selector) string {
-	s := selector.String()
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ReplaceAll(s, "(", "-")
-	s = strings.ReplaceAll(s, ")", "-")
-	s = strings.ReplaceAll(s, ",", "-")
-	s = strings.ReplaceAll(s, "!", "-")
-	return s
 }

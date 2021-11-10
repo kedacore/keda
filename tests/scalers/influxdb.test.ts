@@ -57,7 +57,7 @@ test.before((t) => {
     t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${influxdbDeployTmpFile.name}`).code)
 
     // Wait for influxdb instance to be ready
-    const exitCode = waitForRollout('statefulset', influxdbStatefulsetName, influxdbNamespaceName)
+    const exitCode = waitForRollout('statefulset', influxdbStatefulsetName, influxdbNamespaceName, 300)
     t.is(0, exitCode, 'Influxdb is not in a ready state')
 })
 

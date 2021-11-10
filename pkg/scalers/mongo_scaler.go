@@ -179,11 +179,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", val))
 	} else {
-		maskedURL, err := kedautil.MaskPartOfURL(connStr, kedautil.Hostname)
-		if err != nil {
-			return nil, "", fmt.Errorf("failure masking part of url")
-		}
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s-%s", maskedURL, meta.collection))
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", meta.collection))
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil

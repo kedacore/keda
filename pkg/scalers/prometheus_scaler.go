@@ -202,7 +202,7 @@ func (s *prometheusScaler) Close(context.Context) error {
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "prometheus", s.metadata.metricName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),

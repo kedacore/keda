@@ -34,8 +34,8 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 }
 
 var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
-	{&parseLiiklusMetadataTestDataset[4], 0, "s0-liiklus-foo-mygroup"},
-	{&parseLiiklusMetadataTestDataset[4], 1, "s1-liiklus-foo-mygroup"},
+	{&parseLiiklusMetadataTestDataset[4], 0, "s0-liiklus-foo"},
+	{&parseLiiklusMetadataTestDataset[4], 1, "s1-liiklus-foo"},
 }
 
 func TestLiiklusParseMetadata(t *testing.T) {

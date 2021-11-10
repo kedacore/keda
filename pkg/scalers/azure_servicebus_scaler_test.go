@@ -100,8 +100,8 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
-	{&parseServiceBusMetadataDataset[1], 0, "s0-azure-servicebus-namespacename-testqueue"},
-	{&parseServiceBusMetadataDataset[3], 1, "s1-azure-servicebus-namespacename-testtopic-testsubscription"},
+	{&parseServiceBusMetadataDataset[1], 0, "s0-azure-servicebus-testqueue"},
+	{&parseServiceBusMetadataDataset[3], 1, "s1-azure-servicebus-testtopic"},
 }
 
 var commonHTTPClient = &http.Client{
