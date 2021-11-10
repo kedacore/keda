@@ -41,8 +41,8 @@ const (
 func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
 
-	runningJobCount := e.getRunningJobCount(scaledJob)
-	pendingJobCount := e.getPendingJobCount(scaledJob)
+	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
+	pendingJobCount := e.getPendingJobCount(ctx, scaledJob)
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
@@ -60,7 +60,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		if err != nil {
 			logger.Error(err, "Failed to update last active time")
 		}
-		e.createJobs(logger, scaledJob, scaleTo, effectiveMaxScale)
+		e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
 	} else {
 		logger.V(1).Info("No change in activity")
 	}
@@ -80,13 +80,13 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		}
 	}
 
-	err := e.cleanUp(scaledJob)
+	err := e.cleanUp(ctx, scaledJob)
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
 	}
 }
 
-func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
 	scaledJob.Spec.JobTargetRef.Template.GenerateName = scaledJob.GetName() + "-"
 	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
 		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
@@ -134,7 +134,7 @@ func (e *scaleExecutor) createJobs(logger logr.Logger, scaledJob *kedav1alpha1.S
 			logger.Error(err, "Failed to set ScaledJob as the owner of the new Job")
 		}
 
-		err = e.client.Create(context.TODO(), job)
+		err = e.client.Create(ctx, job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
 		}
@@ -152,7 +152,7 @@ func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {
 	return false
 }
 
-func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) int64 {
+func (e *scaleExecutor) getRunningJobCount(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) int64 {
 	var runningJobs int64
 
 	opts := []client.ListOption{
@@ -161,7 +161,7 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 	}
 
 	jobs := &batchv1.JobList{}
-	err := e.client.List(context.TODO(), jobs, opts...)
+	err := e.client.List(ctx, jobs, opts...)
 
 	if err != nil {
 		return 0
@@ -177,14 +177,14 @@ func (e *scaleExecutor) getRunningJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 	return runningJobs
 }
 
-func (e *scaleExecutor) isAnyPodRunningOrCompleted(j *batchv1.Job) bool {
+func (e *scaleExecutor) isAnyPodRunningOrCompleted(ctx context.Context, j *batchv1.Job) bool {
 	opts := []client.ListOption{
 		client.InNamespace(j.GetNamespace()),
 		client.MatchingLabels(map[string]string{"job-name": j.GetName()}),
 	}
 
 	pods := &corev1.PodList{}
-	err := e.client.List(context.TODO(), pods, opts...)
+	err := e.client.List(ctx, pods, opts...)
 
 	if err != nil {
 		return false
@@ -199,14 +199,14 @@ func (e *scaleExecutor) isAnyPodRunningOrCompleted(j *batchv1.Job) bool {
 	return false
 }
 
-func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(j *batchv1.Job, pendingPodConditions []string) bool {
+func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(ctx context.Context, j *batchv1.Job, pendingPodConditions []string) bool {
 	opts := []client.ListOption{
 		client.InNamespace(j.GetNamespace()),
 		client.MatchingLabels(map[string]string{"job-name": j.GetName()}),
 	}
 
 	pods := &corev1.PodList{}
-	err := e.client.List(context.TODO(), pods, opts...)
+	err := e.client.List(ctx, pods, opts...)
 	if err != nil {
 		return false
 	}
@@ -226,7 +226,7 @@ func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(j *batchv1.Job, pend
 	return len(pendingPodConditions) == fulfilledConditionsCount
 }
 
-func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) int64 {
+func (e *scaleExecutor) getPendingJobCount(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) int64 {
 	var pendingJobs int64
 
 	opts := []client.ListOption{
@@ -235,7 +235,7 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 	}
 
 	jobs := &batchv1.JobList{}
-	err := e.client.List(context.TODO(), jobs, opts...)
+	err := e.client.List(ctx, jobs, opts...)
 
 	if err != nil {
 		return 0
@@ -246,11 +246,11 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 
 		if !e.isJobFinished(&job) {
 			if len(scaledJob.Spec.ScalingStrategy.PendingPodConditions) > 0 {
-				if !e.areAllPendingPodConditionsFulfilled(&job, scaledJob.Spec.ScalingStrategy.PendingPodConditions) {
+				if !e.areAllPendingPodConditionsFulfilled(ctx, &job, scaledJob.Spec.ScalingStrategy.PendingPodConditions) {
 					pendingJobs++
 				}
 			} else {
-				if !e.isAnyPodRunningOrCompleted(&job) {
+				if !e.isAnyPodRunningOrCompleted(ctx, &job) {
 					pendingJobs++
 				}
 			}
@@ -261,7 +261,7 @@ func (e *scaleExecutor) getPendingJobCount(scaledJob *kedav1alpha1.ScaledJob) in
 }
 
 // Clean up will delete the jobs that is exceed historyLimit
-func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
+func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
 
 	opts := []client.ListOption{
@@ -270,7 +270,7 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 	}
 
 	jobs := &batchv1.JobList{}
-	err := e.client.List(context.TODO(), jobs, opts...)
+	err := e.client.List(ctx, jobs, opts...)
 	if err != nil {
 		logger.Error(err, "Can not get list of Jobs")
 		return err
@@ -303,18 +303,18 @@ func (e *scaleExecutor) cleanUp(scaledJob *kedav1alpha1.ScaledJob) error {
 		failedJobsHistoryLimit = *scaledJob.Spec.FailedJobsHistoryLimit
 	}
 
-	err = e.deleteJobsWithHistoryLimit(logger, completedJobs, successfulJobsHistoryLimit)
+	err = e.deleteJobsWithHistoryLimit(ctx, logger, completedJobs, successfulJobsHistoryLimit)
 	if err != nil {
 		return err
 	}
-	err = e.deleteJobsWithHistoryLimit(logger, failedJobs, failedJobsHistoryLimit)
+	err = e.deleteJobsWithHistoryLimit(ctx, logger, failedJobs, failedJobsHistoryLimit)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *scaleExecutor) deleteJobsWithHistoryLimit(logger logr.Logger, jobs []batchv1.Job, historyLimit int32) error {
+func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger logr.Logger, jobs []batchv1.Job, historyLimit int32) error {
 	if len(jobs) <= int(historyLimit) {
 		return nil
 	}
@@ -325,7 +325,7 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(logger logr.Logger, jobs []ba
 		deleteOptions := &client.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
 		}
-		err := e.client.Delete(context.TODO(), j.DeepCopy(), deleteOptions)
+		err := e.client.Delete(ctx, j.DeepCopy(), deleteOptions)
 		if err != nil {
 			return err
 		}

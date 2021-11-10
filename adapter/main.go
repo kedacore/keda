@@ -69,7 +69,7 @@ var (
 	adapterClientRequestBurst int
 )
 
-func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.MetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.MetricsProvider, <-chan struct{}, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if cfg != nil {
@@ -113,14 +113,14 @@ func (a *Adapter) makeProvider(globalHTTPTimeout time.Duration) (provider.Metric
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(scheme, namespace, handler, logger, stopCh); err != nil {
+	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, stopCh); err != nil {
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(logger, handler, kubeclient, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace), stopCh, nil
 }
 
-func runScaledObjectController(scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}) error {
+func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}) error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:    scheme,
 		Namespace: namespace,
@@ -136,7 +136,7 @@ func runScaledObjectController(scheme *k8sruntime.Scheme, namespace string, scal
 	}
 
 	go func() {
-		if err := mgr.Start(context.Background()); err != nil {
+		if err := mgr.Start(ctx); err != nil {
 			logger.Error(err, "controller-runtime encountered an error")
 			stopCh <- struct{}{}
 			close(stopCh)
@@ -164,6 +164,7 @@ func getWatchNamespace() (string, error) {
 }
 
 func main() {
+	ctx := ctrl.SetupSignalHandler()
 	var err error
 	defer func() {
 		if err != nil {
@@ -205,7 +206,7 @@ func main() {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(time.Duration(globalHTTPTimeoutMS) * time.Millisecond)
+	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
