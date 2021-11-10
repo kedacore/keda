@@ -70,11 +70,12 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		meta.mode = mode
 	}
 
-	if meta.mode == pubsubModeSubscriptionSize {
+	switch meta.mode {
+	case pubsubModeSubscriptionSize:
 		meta.value = defaultTargetSubscriptionSize
-	} else if meta.mode == pubsubModeOldestUnackedMessageAge {
+	case pubsubModeOldestUnackedMessageAge:
 		meta.value = defaultTargetOldestUnackedMessageAge
-	} else {
+	default:
 		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
 	}
 
