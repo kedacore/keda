@@ -118,16 +118,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", val))
 	} else {
-		if meta.connection != "" {
-			maskedConnectionString, err := kedautil.MaskPartOfURL(meta.connection, kedautil.Password)
-			if err != nil {
-				return nil, fmt.Errorf("url parsing error %s", err.Error())
-			}
-
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", maskedConnectionString))
-		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", meta.dbName))
-		}
+		meta.metricName = kedautil.NormalizeString("postgresql")
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil

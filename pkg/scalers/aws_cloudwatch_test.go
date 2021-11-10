@@ -321,8 +321,8 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
-	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch-AWS-SQS-QueueName-keda"},
-	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-AWS-SQS-QueueName-keda"},
+	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch-QueueName"},
+	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-QueueName"},
 }
 
 var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{

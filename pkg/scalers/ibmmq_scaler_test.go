@@ -34,8 +34,8 @@ type IBMMQMetricIdentifier struct {
 
 // Setting metric identifier mock name
 var IBMMQMetricIdentifiers = []IBMMQMetricIdentifier{
-	{&testIBMMQMetadata[1], 0, "s0-IBMMQ-testQueueManager-testQueue"},
-	{&testIBMMQMetadata[1], 1, "s1-IBMMQ-testQueueManager-testQueue"},
+	{&testIBMMQMetadata[1], 0, "s0-ibmmq-testQueue"},
+	{&testIBMMQMetadata[1], 1, "s1-ibmmq-testQueue"},
 }
 
 // Test cases for TestIBMMQParseMetadata test

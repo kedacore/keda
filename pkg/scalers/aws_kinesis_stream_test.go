@@ -220,8 +220,8 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 }
 
 var awsKinesisMetricIdentifiers = []awsKinesisMetricIdentifier{
-	{&testAWSKinesisMetadata[1], 0, "s0-AWS-Kinesis-Stream-test"},
-	{&testAWSKinesisMetadata[1], 1, "s1-AWS-Kinesis-Stream-test"},
+	{&testAWSKinesisMetadata[1], 0, "s0-aws-kinesis-test"},
+	{&testAWSKinesisMetadata[1], 1, "s1-aws-kinesis-test"},
 }
 
 var awsKinesisGetMetricTestData = []*awsKinesisStreamMetadata{

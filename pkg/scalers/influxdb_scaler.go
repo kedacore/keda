@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"net/url"
 	"strconv"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -116,16 +115,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", val))
 	} else {
-		parsedURL, err := url.Parse(serverURL)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse server url")
-		}
-
-		maskedURL, err := kedautil.MaskPartOfURL(parsedURL.String(), kedautil.Hostname)
-		if err != nil {
-			return nil, fmt.Errorf("failure masking part of url")
-		}
-		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s-%s", maskedURL, organizationName))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
 	}
 
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {

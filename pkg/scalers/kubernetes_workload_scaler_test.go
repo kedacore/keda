@@ -92,13 +92,13 @@ type workloadGetMetricSpecForScalingTestData struct {
 
 var getMetricSpecForScalingTestDataset = []workloadGetMetricSpecForScalingTestData{
 	// "podSelector": "app=demo", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 0, "s0-workload-test-app=demo"},
+	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 0, "s0-workload-test"},
 	// "podSelector": "app=demo", "namespace": "default"
-	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 1, "s1-workload-default-app=demo"},
+	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 1, "s1-workload-default"},
 	// "podSelector": "app in (demo1, demo2)", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[2].metadata, parseWorkloadMetadataTestDataset[2].namespace, 2, "s2-workload-test-appin-demo1-demo2-"},
+	{parseWorkloadMetadataTestDataset[2].metadata, parseWorkloadMetadataTestDataset[2].namespace, 2, "s2-workload-test"},
 	// "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)", "namespace": "test"
-	{parseWorkloadMetadataTestDataset[3].metadata, parseWorkloadMetadataTestDataset[3].namespace, 3, "s3-workload-test-appin-demo1-demo2--deployin-deploy1-deploy2-"},
+	{parseWorkloadMetadataTestDataset[3].metadata, parseWorkloadMetadataTestDataset[3].namespace, 3, "s3-workload-test"},
 }
 
 func TestWorkloadGetMetricSpecForScaling(t *testing.T) {

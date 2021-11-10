@@ -61,8 +61,8 @@ var testArtemisMetadata = []parseArtemisMetadataTestData{
 }
 
 var artemisMetricIdentifiers = []artemisMetricIdentifier{
-	{&testArtemisMetadata[7], 0, "s0-artemis-broker-activemq-queue1"},
-	{&testArtemisMetadata[7], 1, "s1-artemis-broker-activemq-queue1"},
+	{&testArtemisMetadata[7], 0, "s0-artemis-queue1"},
+	{&testArtemisMetadata[7], 1, "s1-artemis-queue1"},
 }
 
 var testArtemisMetadataWithEmptyAuthParams = []parseArtemisMetadataTestData{
