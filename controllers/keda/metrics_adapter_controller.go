@@ -88,7 +88,6 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 
 func (r *MetricsScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		WithOptions(controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles}).
 		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&kedav1alpha1.ScaledObject{}).
 		WithOptions(options).

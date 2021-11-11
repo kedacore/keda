@@ -47,20 +47,19 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Scheme                  *runtime.Scheme
-	GlobalHTTPTimeout       time.Duration
-	Recorder                record.EventRecorder
-	MaxConcurrentReconciles int
+	Scheme            *runtime.Scheme
+	GlobalHTTPTimeout time.Duration
+	Recorder          record.EventRecorder
 
 	scaleHandler scaling.ScaleHandler
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
-func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
 
 	return ctrl.NewControllerManagedBy(mgr).
-		WithOptions(controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles}).
+		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
 		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).

@@ -29,6 +29,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -132,22 +133,20 @@ func main() {
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
-		Client:                  mgr.GetClient(),
-		Scheme:                  mgr.GetScheme(),
-		GlobalHTTPTimeout:       globalHTTPTimeout,
-		Recorder:                eventRecorder,
-		MaxConcurrentReconciles: scaledObjectMaxReconciles,
-	}).SetupWithManager(mgr); err != nil {
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		GlobalHTTPTimeout: globalHTTPTimeout,
+		Recorder:          eventRecorder,
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledObjectMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ScaledJobReconciler{
-		Client:                  mgr.GetClient(),
-		Scheme:                  mgr.GetScheme(),
-		GlobalHTTPTimeout:       globalHTTPTimeout,
-		Recorder:                eventRecorder,
-		MaxConcurrentReconciles: scaledJobMaxReconciles,
-	}).SetupWithManager(mgr); err != nil {
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		GlobalHTTPTimeout: globalHTTPTimeout,
+		Recorder:          eventRecorder,
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledJobMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)
 	}

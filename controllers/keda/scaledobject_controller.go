@@ -63,11 +63,10 @@ import (
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
-	Client                  client.Client
-	Scheme                  *runtime.Scheme
-	GlobalHTTPTimeout       time.Duration
-	Recorder                record.EventRecorder
-	MaxConcurrentReconciles int
+	Client            client.Client
+	Scheme            *runtime.Scheme
+	GlobalHTTPTimeout time.Duration
+	Recorder          record.EventRecorder
 
 	scaleClient              scale.ScalesGetter
 	restMapper               meta.RESTMapper
@@ -87,7 +86,7 @@ func init() {
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
-func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	setupLog := log.Log.WithName("setup")
 
 	// create Discovery clientset
@@ -118,7 +117,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
-		WithOptions(controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles}).
+		WithOptions(options).
 		// predicate.GenerationChangedPredicate{} ignore updates to ScaledObject Status
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
