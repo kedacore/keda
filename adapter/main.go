@@ -70,7 +70,7 @@ var (
 	adapterClientRequestBurst int
 )
 
-func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.MetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if cfg != nil {
@@ -116,14 +116,14 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, externalMetricsInfo, externalMetricsInfoLock, stopCh); err != nil {
+	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
 		return nil, nil, err
 	}
 
 	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, stopCh chan<- struct{}) error {
+func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:    scheme,
 		Namespace: namespace,
@@ -137,7 +137,7 @@ func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, n
 		ScaleHandler:            scaleHandler,
 		ExternalMetricsInfo:     externalMetricsInfo,
 		ExternalMetricsInfoLock: externalMetricsInfoLock,
-	}).SetupWithManager(mgr, controller.Options{}); err != nil {
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}); err != nil {
 		return err
 	}
 
@@ -212,7 +212,17 @@ func main() {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
+	controllerMaxReconciles := 1
+	controllerMaxReconcilesStr := os.Getenv("KEDA_METRICS_CTRL_MAX_RECONCILES")
+	if controllerMaxReconcilesStr != "" {
+		controllerMaxReconciles, err = strconv.Atoi(controllerMaxReconcilesStr)
+		if err != nil {
+			logger.Error(err, "Invalid KEDA_METRICS_CTRL_MAX_RECONCILES")
+			return
+		}
+	}
+
+	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond, controllerMaxReconciles)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return

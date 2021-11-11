@@ -108,23 +108,45 @@ func main() {
 		return
 	}
 
+	scaledObjectMaxReconciles := 1
+	scaledObjectMaxReconcilesStr := os.Getenv("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
+	if scaledObjectMaxReconcilesStr != "" {
+		scaledObjectMaxReconciles, err = strconv.Atoi(scaledObjectMaxReconcilesStr)
+		if err != nil {
+			setupLog.Error(err, "Invalid KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
+			return
+		}
+	}
+
+	scaledJobMaxReconciles := 1
+	scaledJobMaxReconcilesStr := os.Getenv("KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
+	if scaledJobMaxReconcilesStr != "" {
+		scaledJobMaxReconciles, err = strconv.Atoi(scaledJobMaxReconcilesStr)
+		if err != nil {
+			setupLog.Error(err, "Invalid KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
+			return
+		}
+	}
+
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder:          eventRecorder,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		GlobalHTTPTimeout:       globalHTTPTimeout,
+		Recorder:                eventRecorder,
+		MaxConcurrentReconciles: scaledObjectMaxReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ScaledJobReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder:          eventRecorder,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		GlobalHTTPTimeout:       globalHTTPTimeout,
+		Recorder:                eventRecorder,
+		MaxConcurrentReconciles: scaledJobMaxReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)
