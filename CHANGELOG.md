@@ -60,6 +60,7 @@
 - Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
 - Add `unsafeSsl` parameter in SeleniumGrid scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
 - Improve logs of Azure Pipelines Scaler. ([#2297](https://github.com/kedacore/keda/pull/2297))
+- Allow setting `MaxConcurrentReconciles` for controllers ([#2272](https://github.com/kedacore/keda/pull/2272))
 
 ### Deprecations
 
