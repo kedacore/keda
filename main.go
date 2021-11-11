@@ -108,7 +108,7 @@ func main() {
 		return
 	}
 
-	scaledObjectMaxReconciles := 1
+	scaledObjectMaxReconciles := 10
 	scaledObjectMaxReconcilesStr := os.Getenv("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
 	if scaledObjectMaxReconcilesStr != "" {
 		scaledObjectMaxReconciles, err = strconv.Atoi(scaledObjectMaxReconcilesStr)
