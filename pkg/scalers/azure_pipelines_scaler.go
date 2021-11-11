@@ -139,7 +139,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
-		return -1, fmt.Errorf("azure Devops REST api returned error. status: %d response: %s", r.StatusCode, string(b))
+		return -1, fmt.Errorf("Azure Devops REST API (%s) returned error. StatusCode: %d Response: %s", url, r.StatusCode, string(b))
 	}
 
 	var result map[string]interface{}
