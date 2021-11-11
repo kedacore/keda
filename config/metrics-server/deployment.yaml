@@ -62,7 +62,7 @@ spec:
           - mountPath: /tmp
             name: temp-vol
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       volumes:
       - name: temp-vol
         emptyDir: {}
