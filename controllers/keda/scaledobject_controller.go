@@ -81,6 +81,7 @@ var isScalableCache *sync.Map
 
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
+	isScalableCache = &sync.Map{}
 	isScalableCache.Store("deployments.apps", true)
 	isScalableCache.Store("statefulsets.apps", true)
 }
