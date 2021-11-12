@@ -110,14 +110,14 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	switch s.metadata.mode {
 	case pubsubModeSubscriptionSize:
-		size, err := s.getSubscriptionSize(ctx)
+		size, err := s.getMetrics(ctx, pubSubStackDriverSubscriptionSizeMetricName)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
 		}
 		return size > 0, nil
 	case pubsubModeOldestUnackedMessageAge:
-		_, err := s.getOldestUnackedMessageAge(ctx)
+		_, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
@@ -171,13 +171,13 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 
 	switch s.metadata.mode {
 	case pubsubModeSubscriptionSize:
-		value, err = s.getSubscriptionSize(ctx)
+		value, err = s.getMetrics(ctx, pubSubStackDriverSubscriptionSizeMetricName)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting subscription size")
 			return []external_metrics.ExternalMetricValue{}, err
 		}
 	case pubsubModeOldestUnackedMessageAge:
-		value, err = s.getOldestUnackedMessageAge(ctx)
+		value, err = s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting oldest unacked message age")
 			return []external_metrics.ExternalMetricValue{}, err
@@ -209,9 +209,8 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 	return nil
 }
 
-// getSubscriptionSize gets the number of messages in a subscription by calling the
-// Stackdriver api
-func (s *pubsubScaler) getSubscriptionSize(ctx context.Context) (int64, error) {
+// getMetrics gets metric type value from stackdriver api
+func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
@@ -219,21 +218,7 @@ func (s *pubsubScaler) getSubscriptionSize(ctx context.Context) (int64, error) {
 		}
 	}
 
-	filter := `metric.type="` + pubSubStackDriverSubscriptionSizeMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
-
-	return s.client.GetMetrics(ctx, filter)
-}
-
-// getOldestUnackedMessageAge gets oldest unacked message age in a subscription by calling stackdriver api
-func (s *pubsubScaler) getOldestUnackedMessageAge(ctx context.Context) (int64, error) {
-	if s.client == nil {
-		err := s.setStackdriverClient(ctx)
-		if err != nil {
-			return -1, err
-		}
-	}
-
-	filter := `metric.type="` + pubSubStackDriverOldestUnackedMessageAgeMetricName + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
+	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
 
 	return s.client.GetMetrics(ctx, filter)
 }
