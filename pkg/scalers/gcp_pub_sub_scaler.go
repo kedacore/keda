@@ -170,6 +170,13 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 		}
 		s.client = client
 	}
+	subscriptionID, projectID := getSubscriptionData(s)
+	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
+
+	return s.client.GetMetrics(ctx, filter, projectID)
+}
+
+func getSubscriptionData(s *pubsubScaler) (string, string) {
 	var subscriptionID string
 	var projectID string
 	regexpExpression, _ := regexp.Compile(compositeSubscriptionIDPrefix)
@@ -179,9 +186,7 @@ func (s *pubsubScaler) GetSubscriptionSize(ctx context.Context) (int64, error) {
 	} else {
 		subscriptionID = s.metadata.subscriptionName
 	}
-	filter := `metric.type="` + pubSubStackDriverMetricName + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
-
-	return s.client.GetMetrics(ctx, filter, projectID)
+	return subscriptionID, projectID
 }
 
 func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
