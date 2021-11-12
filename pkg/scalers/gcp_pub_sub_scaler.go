@@ -108,23 +108,24 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 
 // IsActive checks if there are any messages in the subscription
 func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
-	if s.metadata.mode == pubsubModeSubscriptionSize {
+	switch s.metadata.mode {
+	case pubsubModeSubscriptionSize:
 		size, err := s.getSubscriptionSize(ctx)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
 		}
 		return size > 0, nil
-	} else if s.metadata.mode == pubsubModeOldestUnackedMessageAge {
+	case pubsubModeOldestUnackedMessageAge:
 		_, err := s.getOldestUnackedMessageAge(ctx)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
 		}
 		return true, nil
+	default:
+		return false, errors.New("unknown mode")
 	}
-
-	return false, errors.New("unknown mode")
 }
 
 func (s *pubsubScaler) Close(context.Context) error {
