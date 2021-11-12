@@ -21,7 +21,7 @@ import (
 const (
 	defaultTargetSubscriptionSize = 5
 	pubSubStackDriverMetricName   = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-	compositeSubscriptionIDPrefix = "projects/[a-zA-Z0-9-]+/subscriptions/[a-zA-Z0-9-]+"
+	compositeSubscriptionIDPrefix = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%+]*"
 )
 
 type gcpAuthorizationMetadata struct {
