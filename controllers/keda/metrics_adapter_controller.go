@@ -121,8 +121,8 @@ func (r *MetricsScaledObjectReconciler) removeFromCache(namespacedName string) {
 
 	if changed {
 		r.ExternalMetricsInfoLock.Lock()
+		defer r.ExternalMetricsInfoLock.Unlock()
 		(*r.ExternalMetricsInfo) = extMetrics
-		r.ExternalMetricsInfoLock.Unlock()
 	}
 }
 
