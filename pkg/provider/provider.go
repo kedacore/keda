@@ -148,8 +148,8 @@ func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	logger.V(1).Info("KEDA Metrics Server received request for list fo all provided external metrics names")
 
 	p.externalMetricsInfoLock.RLock()
+	defer p.externalMetricsInfoLock.RUnlock()
 	externalMetricsInfo := *p.externalMetricsInfo
-	p.externalMetricsInfoLock.RUnlock()
 
 	return externalMetricsInfo
 }
