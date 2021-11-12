@@ -67,6 +67,7 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
+	// This depends on the preexisting finalizer setup in ScaledObjectController.
 	if scaledObject.GetDeletionTimestamp() != nil {
 		r.removeFromCache(req.NamespacedName.String())
 		return ctrl.Result{}, nil
@@ -99,8 +100,8 @@ func (r *MetricsScaledObjectReconciler) addToMetricsCache(namespacedName string,
 	extMetrics := populateExternalMetrics(scaledObjectsMetrics)
 
 	r.ExternalMetricsInfoLock.Lock()
+	defer r.ExternalMetricsInfoLock.Unlock()
 	(*r.ExternalMetricsInfo) = extMetrics
-	r.ExternalMetricsInfoLock.Unlock()
 }
 
 func (r *MetricsScaledObjectReconciler) removeFromCache(namespacedName string) {
