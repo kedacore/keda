@@ -169,13 +169,14 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 	var value int64
 	var err error
 
-	if s.metadata.mode == pubsubModeSubscriptionSize {
+	switch s.metadata.mode {
+	case pubsubModeSubscriptionSize:
 		value, err = s.getSubscriptionSize(ctx)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting subscription size")
 			return []external_metrics.ExternalMetricValue{}, err
 		}
-	} else if s.metadata.mode == pubsubModeOldestUnackedMessageAge {
+	case pubsubModeOldestUnackedMessageAge:
 		value, err = s.getOldestUnackedMessageAge(ctx)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting oldest unacked message age")
