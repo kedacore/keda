@@ -88,6 +88,7 @@ jobs:
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
           E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          TEST_CLUSTER_NAME: keda-pr-run
         run: |
           MESSAGE="${{ github.event.comment.body }}"
           REGEX='/run-e2e (.+)'
