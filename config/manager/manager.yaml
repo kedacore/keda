@@ -61,4 +61,4 @@ spec:
               value: ""
       terminationGracePeriodSeconds: 10
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
