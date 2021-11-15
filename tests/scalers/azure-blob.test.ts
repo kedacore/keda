@@ -122,7 +122,7 @@ spec:
               name: test-secrets
               key: AzureWebJobsStorage
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
