@@ -31,8 +31,8 @@ type HTTPDoer interface {
 
 // CreateHTTPClient returns a new HTTP client with the timeout set to
 // timeoutMS milliseconds, or 300 milliseconds if timeoutMS <= 0.
-// unsafeSsL parameter allows to avoid tls cert validation if it's required
-func CreateHTTPClient(timeout time.Duration, unsafeSsL bool) *http.Client {
+// unsafeSsl parameter allows to avoid tls cert validation if it's required
+func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	// default the timeout to 300ms
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
@@ -40,7 +40,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsL bool) *http.Client {
 	httpClient := &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsL},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
 		},
 	}
 

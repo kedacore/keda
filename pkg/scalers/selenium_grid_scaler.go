@@ -31,7 +31,7 @@ type seleniumGridScalerMetadata struct {
 	browserName    string
 	targetValue    int64
 	browserVersion string
-	unsafeSsL      bool
+	unsafeSsl      bool
 	scalerIndex    int
 }
 
@@ -72,7 +72,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing selenium grid metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsL)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	return &seleniumGridScaler{
 		metadata: meta,
@@ -103,12 +103,12 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.browserVersion = DefaultBrowserVersion
 	}
 
-	if val, ok := config.TriggerMetadata["unsafeSsL"]; ok {
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsL: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
 		}
-		meta.unsafeSsL = parsedVal
+		meta.unsafeSsl = parsedVal
 	}
 
 	meta.scalerIndex = config.ScalerIndex
