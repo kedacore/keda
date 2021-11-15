@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Execute e2e tests
     container: ghcr.io/kedacore/build-tools:main
-    concurrency: e2e-tests
+    concurrency: pr-e2e-tests
     if: needs.check.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v2
