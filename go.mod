@@ -3,7 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.16
 
 require (
-	cloud.google.com/go v0.97.0 // indirect
+	cloud.google.com/go v0.97.0
 	cloud.google.com/go/monitoring v1.0.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.1
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
@@ -30,6 +30,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.5.1
 	github.com/lib/pq v1.10.3
 	github.com/mitchellh/hashstructure v1.1.0
+	github.com/newrelic/newrelic-client-go v0.68.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/pkg/errors v0.9.1
