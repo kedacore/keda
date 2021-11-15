@@ -70,7 +70,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
 		metadata:    stanMetadata,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 

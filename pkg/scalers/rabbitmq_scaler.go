@@ -102,7 +102,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
-	httpClient := kedautil.CreateHTTPClient(meta.timeout)
+	httpClient := kedautil.CreateHTTPClient(meta.timeout, false)
 
 	if meta.protocol == httpProtocol {
 		return &rabbitMQScaler{
