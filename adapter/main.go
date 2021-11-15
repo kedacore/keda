@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -50,6 +49,7 @@ import (
 	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
 )
 
@@ -200,26 +200,17 @@ func main() {
 
 	ctrl.SetLogger(logger)
 
-	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
-	if globalHTTPTimeoutStr == "" {
-		// default to 3 seconds if they don't pass the env var
-		globalHTTPTimeoutStr = "3000"
-	}
-
-	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	// default to 3 seconds if they don't pass the env var
+	globalHTTPTimeoutMS, err := kedautil.ResolveOsEnvInt("KEDA_HTTP_DEFAULT_TIMEOUT", 3000)
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
 		return
 	}
 
-	controllerMaxReconciles := 1
-	controllerMaxReconcilesStr := os.Getenv("KEDA_METRICS_CTRL_MAX_RECONCILES")
-	if controllerMaxReconcilesStr != "" {
-		controllerMaxReconciles, err = strconv.Atoi(controllerMaxReconcilesStr)
-		if err != nil {
-			logger.Error(err, "Invalid KEDA_METRICS_CTRL_MAX_RECONCILES")
-			return
-		}
+	controllerMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_METRICS_CTRL_MAX_RECONCILES", 1)
+	if err != nil {
+		logger.Error(err, "Invalid KEDA_METRICS_CTRL_MAX_RECONCILES")
+		return
 	}
 
 	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond, controllerMaxReconciles)

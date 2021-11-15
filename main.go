@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +34,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -97,36 +97,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
-	if globalHTTPTimeoutStr == "" {
-		// default to 3 seconds if they don't pass the env var
-		globalHTTPTimeoutStr = "3000"
-	}
-
-	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	// default to 3 seconds if they don't pass the env var
+	globalHTTPTimeoutMS, err := kedautil.ResolveOsEnvInt("KEDA_HTTP_DEFAULT_TIMEOUT", 3000)
 	if err != nil {
 		setupLog.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
-		return
+		os.Exit(1)
 	}
 
-	scaledObjectMaxReconciles := 10
-	scaledObjectMaxReconcilesStr := os.Getenv("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
-	if scaledObjectMaxReconcilesStr != "" {
-		scaledObjectMaxReconciles, err = strconv.Atoi(scaledObjectMaxReconcilesStr)
-		if err != nil {
-			setupLog.Error(err, "Invalid KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
-			return
-		}
+	scaledObjectMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES", 5)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
+		os.Exit(1)
 	}
 
-	scaledJobMaxReconciles := 1
-	scaledJobMaxReconcilesStr := os.Getenv("KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
-	if scaledJobMaxReconcilesStr != "" {
-		scaledJobMaxReconciles, err = strconv.Atoi(scaledJobMaxReconcilesStr)
-		if err != nil {
-			setupLog.Error(err, "Invalid KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
-			return
-		}
+	scaledJobMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDJOB_CTRL_MAX_RECONCILES", 1)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
+		os.Exit(1)
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
