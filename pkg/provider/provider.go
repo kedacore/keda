@@ -145,7 +145,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 
 // ListAllExternalMetrics returns the supported external metrics for this provider
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-	logger.V(1).Info("KEDA Metrics Server received request for list fo all provided external metrics names")
+	logger.V(1).Info("KEDA Metrics Server received request for list of all provided external metrics names")
 
 	p.externalMetricsInfoLock.RLock()
 	defer p.externalMetricsInfoLock.RUnlock()
