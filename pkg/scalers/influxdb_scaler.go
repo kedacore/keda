@@ -28,7 +28,7 @@ type influxDBMetadata struct {
 	organizationName string
 	query            string
 	serverURL        string
-	unsafeSsL        bool
+	unsafeSsl        bool
 	thresholdValue   float64
 	scalerIndex      int
 }
@@ -43,8 +43,8 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	influxDBLog.Info("starting up influxdb client")
-	// In case unsafeSsL is enabled.
-	if meta.unsafeSsL {
+	// In case unsafeSsl is enabled.
+	if meta.unsafeSsl {
 		return &influxDBScaler{
 			client:   influxdb2.NewClientWithOptions(meta.serverURL, meta.authToken, influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: true})),
 			metadata: meta,
@@ -63,7 +63,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var organizationName string
 	var query string
 	var serverURL string
-	var unsafeSsL bool
+	var unsafeSsl bool
 	var thresholdValue float64
 
 	val, ok := config.TriggerMetadata["authToken"]
@@ -127,13 +127,13 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no threshold value given")
 	}
-	unsafeSsL = false
-	if val, ok := config.TriggerMetadata["unsafeSsL"]; ok {
+	unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsL: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
 		}
-		unsafeSsL = parsedVal
+		unsafeSsl = parsedVal
 	}
 
 	return &influxDBMetadata{
@@ -143,7 +143,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		query:            query,
 		serverURL:        serverURL,
 		thresholdValue:   thresholdValue,
-		unsafeSsL:        unsafeSsL,
+		unsafeSsl:        unsafeSsl,
 		scalerIndex:      config.ScalerIndex,
 	}, nil
 }
