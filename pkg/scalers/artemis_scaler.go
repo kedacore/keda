@@ -61,7 +61,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// do we need to guarantee this timeout for a specific
 	// reason? if not, we can have buildScaler pass in
 	// the global client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {

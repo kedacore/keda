@@ -68,7 +68,7 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureQueueScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 

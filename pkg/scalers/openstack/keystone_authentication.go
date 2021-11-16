@@ -221,7 +221,7 @@ func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout
 // Otherwise, if the service API URL was found, it retrieves the first public URL for that service.
 func (keystone *KeystoneAuthRequest) RequestClient(ctx context.Context, projectProps ...string) (Client, error) {
 	var client = Client{
-		HTTPClient:   kedautil.CreateHTTPClient(keystone.HTTPClientTimeout),
+		HTTPClient:   kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false),
 		authMetadata: keystone,
 	}
 
@@ -254,7 +254,7 @@ func (keystone *KeystoneAuthRequest) RequestClient(ctx context.Context, projectP
 }
 
 func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, error) {
-	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false)
 
 	jsonBody, err := json.Marshal(keystone)
 
@@ -301,7 +301,7 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 
 // getCatalog retrives the OpenStack catalog according to the current authorization
 func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token string) ([]service, error) {
-	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false)
 
 	catalogURL, err := url.Parse(keystone.AuthURL)
 

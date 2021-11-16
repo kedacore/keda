@@ -45,7 +45,7 @@ func NewAzurePipelinesScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &azurePipelinesScaler{
 		metadata:   meta,
