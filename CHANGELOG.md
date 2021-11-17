@@ -57,6 +57,7 @@
 - Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
 - Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
 - Add possibility to reference a GCP PubSub subscription by full link, including project ID ([#2269](https://github.com/kedacore/keda/pull/2269))
+- Add `unsafeSsl` parameter in SeleniumGrid scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
 
 ### Breaking Changes
 

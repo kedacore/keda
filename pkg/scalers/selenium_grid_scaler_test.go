@@ -210,6 +210,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 						"url":            "http://selenium-hub:4444/graphql",
 						"browserName":    "chrome",
 						"browserVersion": "91.0",
+						"unsafeSsl":      "false",
 					},
 				},
 			},
@@ -219,6 +220,28 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				browserName:    "chrome",
 				targetValue:    1,
 				browserVersion: "91.0",
+				unsafeSsl:      false,
+			},
+		},
+		{
+			name: "valid url, browsername and unsafeSsl should return metadata",
+			args: args{
+				config: &ScalerConfig{
+					TriggerMetadata: map[string]string{
+						"url":            "http://selenium-hub:4444/graphql",
+						"browserName":    "chrome",
+						"browserVersion": "91.0",
+						"unsafeSsl":      "true",
+					},
+				},
+			},
+			wantErr: false,
+			want: &seleniumGridScalerMetadata{
+				url:            "http://selenium-hub:4444/graphql",
+				browserName:    "chrome",
+				targetValue:    1,
+				browserVersion: "91.0",
+				unsafeSsl:      true,
 			},
 		},
 	}
