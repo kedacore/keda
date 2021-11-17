@@ -56,6 +56,7 @@
 - Refactor aws related scalers to reuse the aws clients instead of creating a new one for every GetMetrics call([#2255](https://github.com/kedacore/keda/pull/2255))
 - Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
 - Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
+- Add possibility to reference a GCP PubSub subscription by full link, including project ID ([#2266](https://github.com/kedacore/keda/pull/2266))
 
 ### Breaking Changes
 
