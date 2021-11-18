@@ -142,8 +142,8 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 }
 
 var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
-	{&testHuaweiCloudeyeMetadata[0], 0, "s0-huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
-	{&testHuaweiCloudeyeMetadata[0], 1, "s1-huawei-cloudeye-SYS-ELB-mb_l7_qps-lbaas_instance_id-5e052238-0346-xxb0-86ea-92d9f33e29d2"},
+	{&testHuaweiCloudeyeMetadata[0], 0, "s0-huawei-cloudeye-mb_l7_qps"},
+	{&testHuaweiCloudeyeMetadata[0], 1, "s1-huawei-cloudeye-mb_l7_qps"},
 }
 
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {

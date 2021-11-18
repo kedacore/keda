@@ -40,8 +40,8 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 }
 
 var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
-	{&testAzurePipelinesMetadata[1], 0, "s0-azure-pipelines-queue-sample-1"},
-	{&testAzurePipelinesMetadata[1], 1, "s1-azure-pipelines-queue-sample-1"},
+	{&testAzurePipelinesMetadata[1], 0, "s0-azure-pipelines-1"},
+	{&testAzurePipelinesMetadata[1], 1, "s1-azure-pipelines-1"},
 }
 
 func TestParseAzurePipelinesMetadata(t *testing.T) {

@@ -80,7 +80,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	if meta.ca != "" || meta.enableTLS {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
@@ -202,7 +202,7 @@ func (s *prometheusScaler) Close(context.Context) error {
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s", "prometheus", s.metadata.metricName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -261,6 +261,13 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return 0, nil
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
+	}
+
+	valueLen := len(result.Data.Result[0].Value)
+	if valueLen == 0 {
+		return 0, nil
+	} else if valueLen < 2 {
+		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}
 
 	val := result.Data.Result[0].Value[1]

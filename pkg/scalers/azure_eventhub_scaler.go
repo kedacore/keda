@@ -76,7 +76,7 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureEventHubScaler{
 		metadata:   parsedMetadata,
 		client:     hub,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 
@@ -255,7 +255,7 @@ func (scaler *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2
 	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-eventhub", scaler.metadata.eventHubInfo.EventHubConnection, scaler.metadata.eventHubInfo.EventHubConsumerGroup))),
+			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", scaler.metadata.eventHubInfo.EventHubConnection))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

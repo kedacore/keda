@@ -37,7 +37,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 		// Run finalization logic for scaledJobFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
-		if err := r.stopScaleLoop(logger, scaledJob); err != nil {
+		if err := r.stopScaleLoop(ctx, logger, scaledJob); err != nil {
 			return err
 		}
 

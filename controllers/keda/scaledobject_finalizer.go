@@ -39,7 +39,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 		// Run finalization logic for scaledObjectFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
-		if err := r.stopScaleLoop(logger, scaledObject); err != nil {
+		if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 			return err
 		}
 

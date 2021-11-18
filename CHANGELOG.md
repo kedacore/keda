@@ -32,6 +32,7 @@
 
 ### Improvements
 
+- Improve context handling in appropriate functionality in which we instantiate scalers ([#2267](https://github.com/kedacore/keda/pull/2267))
 - Improve validation in Cron scaler in case start & end input is same.([#2032](https://github.com/kedacore/keda/pull/2032))
 - Improve the cron validation in Cron Scaler ([#2038](https://github.com/kedacore/keda/pull/2038))
 - Add Bearer auth for Metrics API scaler ([#2028](https://github.com/kedacore/keda/pull/2028))
@@ -54,6 +55,9 @@
 - Improve Cloudwatch Scaler metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
 - Refactor aws related scalers to reuse the aws clients instead of creating a new one for every GetMetrics call([#2255](https://github.com/kedacore/keda/pull/2255))
 - GCP PubSub scaler may be used in SubscriptionSize and OldestUnackedMessageAge modes
+- Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
+- Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
+- Add `unsafeSsl` parameter in SeleniumGrid scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
 
 ### Deprecations
 

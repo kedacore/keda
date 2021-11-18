@@ -392,7 +392,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		metricName = s.metadata.containerName
 	}
 
-	metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "openstack-swift", metricName))
+	metricName = kedautil.NormalizeString(fmt.Sprintf("openstack-swift-%s", metricName))
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

@@ -37,7 +37,7 @@ type serviceMapping struct {
 func GetServiceTypes(ctx context.Context, projectName string) ([]string, error) {
 	var serviceTypesRequest serviceTypesRequest
 
-	var httpClient = kedautil.CreateHTTPClient(defaultHTTPClientTimeout * time.Second)
+	var httpClient = kedautil.CreateHTTPClient(defaultHTTPClientTimeout*time.Second, false)
 
 	var url = serviceTypesAuthorityEndpoint
 

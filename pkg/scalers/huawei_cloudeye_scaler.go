@@ -245,10 +245,7 @@ func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2beta
 	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "huawei-cloudeye",
-				h.metadata.namespace,
-				h.metadata.metricsName,
-				h.metadata.dimensionName, h.metadata.dimensionValue))),
+			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", h.metadata.metricsName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

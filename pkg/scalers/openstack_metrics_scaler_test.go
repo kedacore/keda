@@ -90,14 +90,14 @@ var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetad
 func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 	// first, test cases with authentication based on password
 	testCases := []openstackMetricScalerMetricIdentifier{
-		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-sum"},
-		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-max"},
-		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[1], 4, "s4-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[1], 5, "s5-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-sum"},
-		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[1], 6, "s6-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-max"},
-		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[1], 7, "s7-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
+		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[1], 4, "s4-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[1], 5, "s5-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[1], 6, "s6-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[1], 7, "s7-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
 	}
 
 	for _, testData := range testCases {

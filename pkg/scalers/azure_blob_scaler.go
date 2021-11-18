@@ -71,7 +71,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureBlobScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 
@@ -118,13 +118,9 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-blob", val))
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", val))
 	} else {
-		if meta.blobPrefix != "" {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "azure-blob", meta.blobContainerName, meta.blobPrefix))
-		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-blob", meta.blobContainerName))
-		}
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", meta.blobContainerName))
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"

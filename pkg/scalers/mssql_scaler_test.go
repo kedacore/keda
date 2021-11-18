@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -136,10 +135,6 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 		outputConnectionString := getMSSQLConnectionString(outputMetadata)
 		if testData.expectedConnectionString != outputConnectionString {
 			t.Errorf("Wrong connection string. Expected '%s' but got '%s'", testData.expectedConnectionString, outputConnectionString)
-		}
-
-		if !strings.HasPrefix(outputMetadata.metricName, "mssql-") {
-			t.Errorf("Metric name '%s' was expected to start with 'mssql-' but got '%s'", outputMetadata.metricName, testData.expectedMetricName)
 		}
 
 		if testData.expectedMetricName != "" && testData.expectedMetricName != outputMetadata.metricName {

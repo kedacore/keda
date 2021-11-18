@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -30,6 +31,7 @@ type seleniumGridScalerMetadata struct {
 	browserName    string
 	targetValue    int64
 	browserVersion string
+	unsafeSsl      bool
 	scalerIndex    int
 }
 
@@ -70,7 +72,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing selenium grid metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	return &seleniumGridScaler{
 		metadata: meta,
@@ -101,6 +103,14 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.browserVersion = DefaultBrowserVersion
 	}
 
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		parsedVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+		meta.unsafeSsl = parsedVal
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -127,7 +137,7 @@ func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, 
 
 func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "seleniumgrid", s.metadata.url, s.metadata.browserName, s.metadata.browserVersion))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.browserName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),

@@ -197,7 +197,7 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 
 func (a *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricVal := resource.NewQuantity(int64(a.metadata.threshold), resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s-%s-%s", a.metadata.metricID, strconv.FormatFloat(a.metadata.threshold, 'f', 0, 32), a.metadata.aggregationMethod))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", a.metadata.metricID))
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

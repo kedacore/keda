@@ -174,7 +174,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
 	}
-	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout)
+	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, false)
 	client.Transport = tr
 
 	resp, err := client.Do(req)
@@ -205,7 +205,7 @@ func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "IBMMQ", s.metadata.queueManager, s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

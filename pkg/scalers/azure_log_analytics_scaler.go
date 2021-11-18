@@ -118,7 +118,7 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 		cache:      &sessionCache{metricValue: -1, metricThreshold: -1},
 		name:       config.Name,
 		namespace:  config.Namespace,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 
