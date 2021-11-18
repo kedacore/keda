@@ -42,9 +42,6 @@ type pubsubMetadata struct {
 	mode  string
 	value int
 
-	// deprecated
-	subscriptionSize int
-
 	subscriptionName string
 	gcpAuthorization gcpAuthorizationMetadata
 	scalerIndex      int
