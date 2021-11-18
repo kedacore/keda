@@ -55,6 +55,10 @@
 - Refactor aws related scalers to reuse the aws clients instead of creating a new one for every GetMetrics call([#2255](https://github.com/kedacore/keda/pull/2255))
 - GCP PubSub scaler may be used in SubscriptionSize and OldestUnackedMessageAge modes
 
+### Deprecations
+
+- `subscriptionSize` is deprecated in favor of `mode` and `value` for GCP Pub/Sub scaler
+
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
