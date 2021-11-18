@@ -42,6 +42,9 @@ type pubsubMetadata struct {
 	mode  string
 	value int
 
+	// deprecated
+	subscriptionSize int
+
 	subscriptionName string
 	gcpAuthorization gcpAuthorizationMetadata
 	scalerIndex      int
@@ -65,26 +68,36 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{}
 	meta.mode = pubsubModeSubscriptionSize
 
-	mode, modePresent := config.TriggerMetadata["mode"]
-	if modePresent {
-		meta.mode = mode
-	}
-
-	switch meta.mode {
-	case pubsubModeSubscriptionSize:
-		meta.value = defaultTargetSubscriptionSize
-	case pubsubModeOldestUnackedMessageAge:
-		meta.value = defaultTargetOldestUnackedMessageAge
-	default:
-		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
-	}
-
-	if val, ok := config.TriggerMetadata["value"]; ok {
-		triggerValue, err := strconv.Atoi(val)
+	if subSize, subSizePresent := config.TriggerMetadata["subscriptionSize"]; subSizePresent {
+		gcpPubSubLog.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
+		meta.mode = pubsubModeSubscriptionSize
+		subSizeValue, err := strconv.Atoi(subSize)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %s", err.Error())
 		}
-		meta.value = triggerValue
+		meta.value = subSizeValue
+	} else {
+		mode, modePresent := config.TriggerMetadata["mode"]
+		if modePresent {
+			meta.mode = mode
+		}
+
+		switch meta.mode {
+		case pubsubModeSubscriptionSize:
+			meta.value = defaultTargetSubscriptionSize
+		case pubsubModeOldestUnackedMessageAge:
+			meta.value = defaultTargetOldestUnackedMessageAge
+		default:
+			return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
+		}
+
+		if val, ok := config.TriggerMetadata["value"]; ok {
+			triggerValue, err := strconv.Atoi(val)
+			if err != nil {
+				return nil, fmt.Errorf("value parsing error %s", err.Error())
+			}
+			meta.value = triggerValue
+		}
 	}
 
 	if val, ok := config.TriggerMetadata["subscriptionName"]; ok {

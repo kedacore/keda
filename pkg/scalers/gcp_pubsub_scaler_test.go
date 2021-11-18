@@ -23,6 +23,8 @@ type gcpPubSubMetricIdentifier struct {
 
 var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
+	// all properly formed with deprecated field
+	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed with oldest unacked message age mode
