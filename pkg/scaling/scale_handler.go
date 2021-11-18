@@ -357,6 +357,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCronScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
+	case "elasticsearch":
+		return scalers.NewElasticsearchScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
