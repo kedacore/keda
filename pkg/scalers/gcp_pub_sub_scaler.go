@@ -68,7 +68,13 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{}
 	meta.mode = pubsubModeSubscriptionSize
 
+	mode, modePresent := config.TriggerMetadata["mode"]
+	value, valuePresent := config.TriggerMetadata["value"]
+
 	if subSize, subSizePresent := config.TriggerMetadata["subscriptionSize"]; subSizePresent {
+		if modePresent || valuePresent {
+			return nil, errors.New("you can use either mode and value fields or subscriptionSize field")
+		}
 		gcpPubSubLog.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
 		subSizeValue, err := strconv.Atoi(subSize)
@@ -77,7 +83,6 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		}
 		meta.value = subSizeValue
 	} else {
-		mode, modePresent := config.TriggerMetadata["mode"]
 		if modePresent {
 			meta.mode = mode
 		}
@@ -91,8 +96,8 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 			return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
 		}
 
-		if val, ok := config.TriggerMetadata["value"]; ok {
-			triggerValue, err := strconv.Atoi(val)
+		if valuePresent {
+			triggerValue, err := strconv.Atoi(value)
 			if err != nil {
 				return nil, fmt.Errorf("value parsing error %s", err.Error())
 			}
