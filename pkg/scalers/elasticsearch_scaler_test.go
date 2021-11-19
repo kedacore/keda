@@ -19,7 +19,6 @@ type parseElasticsearchMetadataTestData struct {
 type paramsTestData struct {
 	name          string
 	metadata      map[string]string
-	resolvedEnv   map[string]string
 	authParams    map[string]string
 	expectedQuery map[string]interface{}
 }
@@ -241,7 +240,6 @@ var testCases = []parseElasticsearchMetadataTestData{
 }
 
 func TestParseElasticsearchMetadata(t *testing.T) {
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			metadata, err := parseElasticsearchMetadata(&ScalerConfig{
@@ -299,7 +297,6 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 }
 
 func TestBuildQuery(t *testing.T) {
-
 	var testCases = []paramsTestData{
 		{
 			name: "no params",

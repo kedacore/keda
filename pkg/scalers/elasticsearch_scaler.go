@@ -41,7 +41,7 @@ type elasticsearchMetadata struct {
 var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
 
 // NewElasticsearchScaler creates a new elasticsearch scaler
-func NewElasticsearchScaler(config *ScalerConfig) (*elasticsearchScaler, error) {
+func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
