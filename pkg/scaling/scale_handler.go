@@ -355,10 +355,10 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
 		return scalers.NewCronScaler(config)
-	case "external":
-		return scalers.NewExternalScaler(config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
+	case "external":
+		return scalers.NewExternalScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
