@@ -8,9 +8,9 @@ import (
 )
 
 type parseElasticsearchMetadataTestData struct {
-	name          string
-	metadata      map[string]string
-	resolvedEnv   map[string]string
+	name             string
+	metadata         map[string]string
+	resolvedEnv      map[string]string
 	authParams       map[string]string
 	expectedMetadata *elasticsearchMetadata
 	expectedError    error
@@ -76,7 +76,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -91,7 +91,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -104,7 +104,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -119,7 +119,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -132,7 +132,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -147,7 +147,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -160,7 +160,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -175,7 +175,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -188,7 +188,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -203,7 +203,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -216,7 +216,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 			"passwordFromEnv":    "ELASTICSEARCH_PASSWORD",
 		},
 		authParams: map[string]string{
@@ -234,7 +234,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	},
@@ -271,7 +271,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 			"searchTemplateName": "myAwesomeSearch",
 			"params":             "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
-			"targetValue":         "12",
+			"targetValue":        "12",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -286,7 +286,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 			searchTemplateName: "myAwesomeSearch",
 			params:             []string{"param1:value1"},
 			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:         12,
+			targetValue:        12,
 		},
 		expectedError: nil,
 	}
@@ -309,7 +309,7 @@ func TestBuildQuery(t *testing.T) {
 				"searchTemplateName": "myAwesomeSearch",
 				"params":             "",
 				"valueLocation":      "hits.hits[0]._source.value",
-				"targetValue":         "12",
+				"targetValue":        "12",
 			},
 			authParams: map[string]string{
 				"username": "admin",
@@ -327,7 +327,7 @@ func TestBuildQuery(t *testing.T) {
 				"searchTemplateName": "myAwesomeSearch",
 				"params":             "param1:value1",
 				"valueLocation":      "hits.hits[0]._source.value",
-				"targetValue":         "12",
+				"targetValue":        "12",
 			},
 			authParams: map[string]string{
 				"username": "admin",
@@ -348,7 +348,7 @@ func TestBuildQuery(t *testing.T) {
 				"searchTemplateName": "myAwesomeSearch",
 				"params":             "param1:value1;param2:value2",
 				"valueLocation":      "hits.hits[0]._source.value",
-				"targetValue":         "12",
+				"targetValue":        "12",
 			},
 			authParams: map[string]string{
 				"username": "admin",
@@ -370,7 +370,7 @@ func TestBuildQuery(t *testing.T) {
 				"searchTemplateName": "myAwesomeSearch",
 				"params":             "param1 : value1   ; param2 : value2   ",
 				"valueLocation":      "hits.hits[0]._source.value",
-				"targetValue":         "12",
+				"targetValue":        "12",
 			},
 			authParams: map[string]string{
 				"username": "admin",

@@ -35,7 +35,7 @@ type elasticsearchMetadata struct {
 	searchTemplateName string
 	params             []string
 	valueLocation      string
-	targetValue         int
+	targetValue        int
 }
 
 var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
@@ -206,7 +206,7 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 		}
 	}
 	query := map[string]interface{}{
-		"id":     metadata.searchTemplateName,
+		"id": metadata.searchTemplateName,
 	}
 	if len(params) > 0 {
 		query["params"] = params
