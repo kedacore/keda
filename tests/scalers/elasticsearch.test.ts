@@ -172,7 +172,7 @@ spec:
     protocol: TCP
   selector:
     name: elasticsearch
----    
+---   
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
