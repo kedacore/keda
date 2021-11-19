@@ -250,8 +250,6 @@ func TestParseElasticsearchMetadata(t *testing.T) {
 			})
 			if tc.expectedError != nil {
 				assert.Contains(t, err.Error(), tc.expectedError.Error())
-			} else if err != nil {
-				assert.NoError(t, err)
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)
