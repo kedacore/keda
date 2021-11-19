@@ -6,19 +6,20 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v7"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/tidwall/gjson"
-	"io/ioutil"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"net/http"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
-	"strings"
 )
 
 type elasticsearchScaler struct {
