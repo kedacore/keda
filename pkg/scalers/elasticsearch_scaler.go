@@ -266,7 +266,7 @@ func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string,
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-// Splits a string separated by comma and trims space from all the elements.
+// Splits a string separated by a specified separator and trims space from all the elements.
 func splitAndTrimBySep(s string, sep string) []string {
 	x := strings.Split(s, sep)
 	for i := range x {
