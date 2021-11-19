@@ -153,7 +153,7 @@ spec:
         searchTemplateName: {{SEARCH_TEMPLATE_NAME}}
         valueLocation: "hits.total.value"
         targetValue: "1"
-        params: "dummy_value:1;dumb_value:oOooo"
+        parameters: "dummy_value:1;dumb_value:oOooo"
       authenticationRef:
         name: keda-trigger-auth-elasticsearch-secret
 `

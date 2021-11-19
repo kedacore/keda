@@ -33,7 +33,7 @@ type elasticsearchMetadata struct {
 	password           string
 	indexes            []string
 	searchTemplateName string
-	params             []string
+	parameters         []string
 	valueLocation      string
 	targetValue        int
 }
@@ -101,8 +101,8 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		return nil, err
 	}
 
-	if val, ok := config.TriggerMetadata["params"]; ok {
-		meta.params = splitAndTrimBySep(val, ";")
+	if val, ok := config.TriggerMetadata["parameters"]; ok {
+		meta.parameters = splitAndTrimBySep(val, ";")
 	}
 
 	meta.valueLocation, err = GetFromAuthOrMeta(config, "valueLocation")
@@ -198,18 +198,18 @@ func (s *elasticsearchScaler) getQueryResult() (int, error) {
 }
 
 func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
-	params := map[string]interface{}{}
-	for _, p := range metadata.params {
+	parameters := map[string]interface{}{}
+	for _, p := range metadata.parameters {
 		if p != "" {
 			kv := splitAndTrimBySep(p, ":")
-			params[kv[0]] = kv[1]
+			parameters[kv[0]] = kv[1]
 		}
 	}
 	query := map[string]interface{}{
 		"id": metadata.searchTemplateName,
 	}
-	if len(params) > 0 {
-		query["params"] = params
+	if len(parameters) > 0 {
+		query["params"] = parameters
 	}
 	return query
 }
