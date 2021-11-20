@@ -382,8 +382,6 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 }
 
 func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetObjectCount := resource.NewQuantity(int64(s.metadata.objectCount), resource.DecimalSI)
-
 	var metricName string
 
 	if s.metadata.objectPrefix != "" {
@@ -398,10 +396,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetObjectCount,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.objectCount)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

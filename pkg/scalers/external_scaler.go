@@ -21,6 +21,7 @@ import (
 )
 
 type externalScaler struct {
+	metricType      v2beta2.MetricTargetType
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
 }
@@ -49,13 +50,19 @@ var externalLog = logf.Log.WithName("external_scaler")
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config.MetricType)
+	if err != nil {
+		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+	}
+
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
 
 	return &externalScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.Name,
 			Namespace:      config.Namespace,
@@ -66,6 +73,11 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 
 // NewExternalPushScaler creates a new externalPushScaler push scaler
 func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
+	metricType, err := GetExternalMetricTargetType(config.MetricType)
+	if err != nil {
+		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+	}
+
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
@@ -73,7 +85,8 @@ func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 
 	return &externalPushScaler{
 		externalScaler{
-			metadata: meta,
+			metricType: metricType,
+			metadata:   meta,
 			scaledObjectRef: pb.ScaledObjectRef{
 				Name:           config.Name,
 				Namespace:      config.Namespace,
@@ -155,17 +168,11 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.
 	}
 
 	for _, spec := range response.MetricSpecs {
-		// Construct the target subscription size as a quantity
-		qty := resource.NewQuantity(spec.TargetSize, resource.DecimalSI)
-
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: qty,
-			},
+			Target: GetExternalMetricTarget(s.metricType, spec.TargetSize),
 		}
 
 		// Create the metric spec for the HPA

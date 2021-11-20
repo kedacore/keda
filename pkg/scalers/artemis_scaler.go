@@ -251,15 +251,11 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 }
 
 func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.queueLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

@@ -210,15 +210,11 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetValue)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

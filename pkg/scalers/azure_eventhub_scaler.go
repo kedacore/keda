@@ -252,15 +252,11 @@ func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 
 // GetMetricSpecForScaling returns metric spec
 func (scaler *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", scaler.metadata.eventHubInfo.EventHubConnection))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, scaler.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

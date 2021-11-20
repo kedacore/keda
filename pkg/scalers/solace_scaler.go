@@ -243,32 +243,24 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
-		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgCountTarget), resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.msgCountTarget)),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
-		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgSpoolUsageTarget), resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.msgSpoolUsageTarget)),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)

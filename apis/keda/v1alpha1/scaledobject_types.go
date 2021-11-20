@@ -127,6 +127,8 @@ type ScaleTriggers struct {
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
 	// +optional
 	FallbackReplicas *int32 `json:"fallback,omitempty"`
+	// +optional
+	MetricType autoscalingv2beta2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true

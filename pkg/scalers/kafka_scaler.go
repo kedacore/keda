@@ -350,15 +350,11 @@ func (s *kafkaScaler) Close(context.Context) error {
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("kafka-%s", s.metadata.topic))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

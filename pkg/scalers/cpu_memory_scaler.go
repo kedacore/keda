@@ -38,14 +38,20 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 
 func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 	meta := &cpuMemoryMetadata{}
-	if val, ok := config.TriggerMetadata["type"]; ok && val != "" {
-		meta.Type = v2beta2.MetricTargetType(val)
-	} else {
-		return nil, fmt.Errorf("no type given")
-	}
-
 	var value string
 	var ok bool
+	value, ok = config.TriggerMetadata["type"]
+	switch {
+	case ok && value != "" && config.MetricType != "":
+		return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+	case ok && value != "":
+		meta.Type = v2beta2.MetricTargetType(value)
+	case config.MetricType != "":
+		meta.Type = config.MetricType
+	default:
+		return nil, fmt.Errorf("no type given in neither trigger.metadata.type or trigger.metricType")
+	}
+
 	if value, ok = config.TriggerMetadata["value"]; !ok || value == "" {
 		return nil, fmt.Errorf("no value given")
 	}

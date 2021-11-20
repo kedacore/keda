@@ -154,15 +154,11 @@ func parseCronTimeFormat(s string) string {
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	specReplicas := 1
-	targetMetricValue := resource.NewQuantity(int64(specReplicas), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(specReplicas)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

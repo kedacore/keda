@@ -181,8 +181,6 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 
 // Returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetLengthQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
-
 	metricName := ""
 	if s.metadata.entityType == queue {
 		metricName = s.metadata.queueName
@@ -194,10 +192,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetLengthQty,
-		},
+		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
