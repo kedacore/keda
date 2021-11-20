@@ -26,14 +26,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: React to comment with rocket
-        uses: dkershner6/reaction-action@v1
-        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "rocket"
-
   run-test:
     needs: check
     runs-on: ubuntu-latest
@@ -43,6 +35,14 @@ jobs:
     if: needs.check.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v2
+
+      - name: Update comment with the execution url
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: |
+            **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+          reactions: rocket
 
       - name: Checkout Pull Request
         env:
