@@ -74,6 +74,7 @@
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090)|[#2184](https://github.com/kedacore/keda/pull/2184))
 - Drop support to `ValueMetricType` using cpu_memory_scaler ([#2218](https://github.com/kedacore/keda/issues/2218))
 - Add github action to run e2e command "on-demand" ([#2241](https://github.com/kedacore/keda/issues/2241))
+- Add execution url in the pr-e2e triggering comment ([#2306](https://github.com/kedacore/keda/issues/2306))
 
 ## v2.4.0
 
