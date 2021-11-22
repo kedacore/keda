@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -22,6 +23,12 @@ type paramsTestData struct {
 	metadata      map[string]string
 	authParams    map[string]string
 	expectedQuery map[string]interface{}
+}
+
+type elasticsearchMetricIdentifier struct {
+	metadataTestData *parseElasticsearchMetadataTestData
+	scalerIndex      int
+	name             string
 }
 
 var testCases = []parseElasticsearchMetadataTestData{
@@ -77,6 +84,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"parameters":         "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
 			"targetValue":        "12",
+			"scalerIndex":        "0",
 		},
 		authParams: map[string]string{
 			"username": "admin",
@@ -397,5 +405,27 @@ func TestBuildQuery(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedQuery, buildQuery(metadata))
 		})
+	}
+}
+
+func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
+	var elasticsearchMetricIdentifiers = []elasticsearchMetricIdentifier{
+		{&testCases[5], 0, "s0-elasticsearch-myAwesomeSearch"},
+		{&testCases[6], 1, "s1-elasticsearch-myAwesomeSearch"},
+	}
+
+	for _, testData := range elasticsearchMetricIdentifiers {
+		ctx := context.Background()
+		meta, err := parseElasticsearchMetadata(&ScalerConfig{
+			TriggerMetadata: testData.metadataTestData.metadata,
+			AuthParams:      testData.metadataTestData.authParams,
+			ScalerIndex:     testData.scalerIndex,
+		})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		elasticsearchScaler := elasticsearchScaler{metadata: meta, esClient: nil}
+		metricSpec := elasticsearchScaler.GetMetricSpecForScaling(ctx)
+		assert.Equal(t, metricSpec[0].External.Metric.Name, testData.name)
 	}
 }

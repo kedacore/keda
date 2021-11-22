@@ -237,7 +237,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.targetValue, s.metadata.metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
