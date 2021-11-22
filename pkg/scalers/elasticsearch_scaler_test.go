@@ -84,7 +84,6 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"parameters":         "param1:value1",
 			"valueLocation":      "hits.hits[0]._source.value",
 			"targetValue":        "12",
-			"scalerIndex":        "0",
 		},
 		authParams: map[string]string{
 			"username": "admin",
