@@ -7,18 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Comment evaluate
     outputs:
-      run-e2e: ${{ steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission }}
+      run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
     steps:
-      - uses: khan/pull-request-comment-trigger@master
-        id: check-comment
-        with:
-          trigger: '/run-e2e'
-          prefix_only: true
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-
       - name: Check user permission
-        if: steps.check-comment.outputs.triggered == 'true'
+        if: startsWith(github.event.comment.body,'/run-e2e')
         id: check-permission
         uses: scherermichael-oss/action-has-permission@master
         with:
