@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	nrAccount  = "nrAccount"
-	nrQueryKey = "nrQueryKey"
-	nrRegion   = "nrRegion"
+	Account  = "Account"
+	QueryKey = "QueryKey"
+	Region   = "Region"
 	metricName = "metricName"
-	nrLogLevel = "nrLogLevel"
+	LogLevel = "LogLevel"
 	nrql       = "nrql"
 	threshold  = "threshold"
 )
@@ -35,15 +35,13 @@ type newrelicScaler struct {
 }
 
 type newrelicMetadata struct {
-	nrAccount  int
-	nrql       string
-	nrRegion   string
-	nrLogLevel string
-	nrQueryKey string
+	Account  int
+	Region   string
+	LogLevel string
+	QueryKey string
 	metricName string
-
-	targetValue int
-
+	nrql       string
+	threshold  int
 	scalerIndex int
 }
 
@@ -56,9 +54,9 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	nrClient, err := newrelic.New(
-		newrelic.ConfigPersonalAPIKey(meta.nrQueryKey),
-		newrelic.ConfigRegion(meta.nrRegion),
-		newrelic.ConfigLogLevel(meta.nrLogLevel))
+		newrelic.ConfigPersonalAPIKey(meta.QueryKey),
+		newrelic.ConfigRegion(meta.Region),
+		newrelic.ConfigLogLevel(meta.LogLevel))
 
 	if err != nil {
 		log.Fatal("error initializing client:", err)
@@ -72,24 +70,20 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	meta := newrelicMetadata{}
 	var err error
-
-	if val, ok := config.TriggerMetadata[nrAccount]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[Account]; ok && val != "" {
 		t, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", nrAccount, err)
+			return nil, fmt.Errorf("error parsing %s: %s", Account, err)
 		}
-		meta.nrAccount = t
+		meta.Account = t
 	} else {
-		return nil, fmt.Errorf("no %s given >%s<", nrAccount, val)
+		return nil, fmt.Errorf("no %s given >%s<", Account, val)
 	}
-	val, err := GetFromAuthOrMeta(config, nrQueryKey)
-	switch {
-	case err == nil && val != "":
-		meta.nrQueryKey = val
-	case config.TriggerMetadata["nrQueryKeyFromEnv"] != "":
-		meta.nrQueryKey = config.ResolvedEnv[config.TriggerMetadata["nrQueryKeyFromEnv"]]
-	default:
-		return nil, fmt.Errorf("no %s given", nrQueryKey)
+
+	meta.QueryKey, err = GetFromAuthOrMeta(config, QueryKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("no %s given", QueryKey)
 	}
 
 	if val, ok := config.TriggerMetadata[metricName]; ok && val != "" {
@@ -104,16 +98,16 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
-	meta.nrRegion, err = GetFromAuthOrMeta(config, nrRegion)
+	meta.Region, err = GetFromAuthOrMeta(config, Region)
 
 	if err != nil {
-		meta.nrRegion = "US"
+		meta.Region = "US"
 		newrelicLog.Info("Using default \"US\" region")
 	}
 
-	meta.nrLogLevel, err = GetFromAuthOrMeta(config, nrLogLevel)
+	meta.LogLevel, err = GetFromAuthOrMeta(config, LogLevel)
 	if err != nil {
-		meta.nrLogLevel = "INFO"
+		meta.LogLevel = "INFO"
 	}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
@@ -121,12 +115,12 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", threshold, err)
 		}
-		meta.targetValue = t
+
+		meta.threshold = t
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
-	newrelicLog.Info("Config %v", meta.nrQueryKey)
 	return &meta, nil
 }
 
@@ -136,29 +130,28 @@ func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
 		newrelicLog.Error(err, "error executing newrelic query")
 		return false, err
 	}
-	newrelicLog.Info("IsActive")
 	return val > 0, nil
 }
 
 func (s *newrelicScaler) Close(context.Context) error {
-	newrelicLog.Info("Close")
 	return nil
 }
 
 func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, error) {
 
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
-	resp, err := s.nrClient.Nrdb.Query(s.metadata.nrAccount, nrdbQuery)
+	resp, err := s.nrClient.Nrdb.Query(s.metadata.Account, nrdbQuery)
 	if err != nil {
 		log.Fatal("error running NerdGraph query: ", err)
-	} else {
-		newrelicLog.Info("Query Executed")
 	}
 	for _, r := range resp.Results {
+		//fmt.Printf("%f", r)
 		val, ok := r[s.metadata.metricName].(float64)
 		if ok {
+			newrelicLog.Info("Result of the query %s is %s", s.metadata.nrql, val)
 			return val, nil
 		} else {
+
 			return 0, fmt.Errorf("metric not found on result")
 		}
 	}
@@ -169,7 +162,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecuteNewRelicQuery(ctx)
 	if err != nil {
-		prometheusLog.Error(err, "error executing newrelic query")
+		newrelicLog.Error(err, "error executing New Relic query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -183,7 +176,7 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("newrelic-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
