@@ -36,12 +36,13 @@ type newrelicScaler struct {
 
 type newrelicMetadata struct {
 	nrAccount  int
+	nrql       string
 	nrRegion   string
 	nrLogLevel string
 	nrQueryKey string
 	metricName string
-	nrql       string
-	threshold  int
+
+	targetValue int
 
 	scalerIndex int
 }
@@ -71,6 +72,7 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	meta := newrelicMetadata{}
 	var err error
+
 	if val, ok := config.TriggerMetadata[nrAccount]; ok && val != "" {
 		t, err := strconv.Atoi(val)
 		if err != nil {
@@ -80,10 +82,13 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no %s given >%s<", nrAccount, val)
 	}
-
-	meta.nrQueryKey, err = GetFromAuthOrMeta(config, nrQueryKey)
-
-	if err != nil {
+	val, err := GetFromAuthOrMeta(config, nrQueryKey)
+	switch {
+	case err == nil && val != "":
+		meta.nrQueryKey = val
+	case config.TriggerMetadata["nrQueryKeyFromEnv"] != "":
+		meta.nrQueryKey = config.ResolvedEnv[config.TriggerMetadata["nrQueryKeyFromEnv"]]
+	default:
 		return nil, fmt.Errorf("no %s given", nrQueryKey)
 	}
 
@@ -99,14 +104,14 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
-	meta.nrQueryKey, err = GetFromAuthOrMeta(config, nrRegion)
+	meta.nrRegion, err = GetFromAuthOrMeta(config, nrRegion)
 
 	if err != nil {
 		meta.nrRegion = "US"
 		newrelicLog.Info("Using default \"US\" region")
 	}
 
-	meta.nrQueryKey, err = GetFromAuthOrMeta(config, nrLogLevel)
+	meta.nrLogLevel, err = GetFromAuthOrMeta(config, nrLogLevel)
 	if err != nil {
 		meta.nrLogLevel = "INFO"
 	}
@@ -116,12 +121,12 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", threshold, err)
 		}
-
-		meta.threshold = t
+		meta.targetValue = t
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
+	newrelicLog.Info("Config %v", meta.nrQueryKey)
 	return &meta, nil
 }
 
@@ -131,10 +136,12 @@ func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
 		newrelicLog.Error(err, "error executing newrelic query")
 		return false, err
 	}
+	newrelicLog.Info("IsActive")
 	return val > 0, nil
 }
 
 func (s *newrelicScaler) Close(context.Context) error {
+	newrelicLog.Info("Close")
 	return nil
 }
 
@@ -144,15 +151,14 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 	resp, err := s.nrClient.Nrdb.Query(s.metadata.nrAccount, nrdbQuery)
 	if err != nil {
 		log.Fatal("error running NerdGraph query: ", err)
+	} else {
+		newrelicLog.Info("Query Executed")
 	}
 	for _, r := range resp.Results {
-		//fmt.Printf("%f", r)
 		val, ok := r[s.metadata.metricName].(float64)
 		if ok {
-			newrelicLog.Info("Result of the query %s is %s", s.metadata.nrql, val)
 			return val, nil
 		} else {
-
 			return 0, fmt.Errorf("metric not found on result")
 		}
 	}
@@ -163,7 +169,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecuteNewRelicQuery(ctx)
 	if err != nil {
-		prometheusLog.Error(err, "error executing prometheus query")
+		prometheusLog.Error(err, "error executing newrelic query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -177,7 +183,7 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("newrelic-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

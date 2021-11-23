@@ -63,6 +63,7 @@ spec:
             name: temp-vol
       nodeSelector:
         beta.kubernetes.io/os: linux
+        beta.kubernetes.io/arch: amd64
       volumes:
       - name: temp-vol
         emptyDir: {}
