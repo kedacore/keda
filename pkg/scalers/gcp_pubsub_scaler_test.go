@@ -21,6 +21,13 @@ type gcpPubSubMetricIdentifier struct {
 	name             string
 }
 
+type gcpPubSubSubscription struct {
+	metadataTestData *parsePubSubMetadataTestData
+	scalerIndex      int
+	name             string
+	projectID        string
+}
+
 var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed with deprecated field
@@ -40,12 +47,21 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, true},
+	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
+	// with full link to subscription
+	{nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// with full (bad) link to subscription
+	{nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
 	{&testPubSubMetadata[1], 0, "s0-gcp-ps-mysubscription"},
 	{&testPubSubMetadata[1], 1, "s1-gcp-ps-mysubscription"},
+}
+
+var gcpSubscriptionNameTests = []gcpPubSubSubscription{
+	{&testPubSubMetadata[10], 1, "mysubscription", "myproject"},
+	{&testPubSubMetadata[11], 1, "projects/myproject/mysubscription", ""},
 }
 
 func TestPubSubParseMetadata(t *testing.T) {
@@ -72,6 +88,21 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}
+
+func TestGcpPubSubSubscriptionName(t *testing.T) {
+	for _, testData := range gcpSubscriptionNameTests {
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockGcpPubSubScaler := pubsubScaler{nil, meta}
+		subscriptionID, projectID := getSubscriptionData(&mockGcpPubSubScaler)
+
+		if subscriptionID != testData.name || projectID != testData.projectID {
+			t.Error("Wrong Subscription parsing:", subscriptionID, projectID)
 		}
 	}
 }
