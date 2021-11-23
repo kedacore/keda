@@ -40,6 +40,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -75,18 +76,17 @@ type ScaledObjectReconciler struct {
 }
 
 // A cache mapping "resource.group" to true or false if we know if this resource is scalable.
-var isScalableCache map[string]bool
+var isScalableCache *sync.Map
 
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
-	isScalableCache = map[string]bool{
-		"deployments.apps":  true,
-		"statefulsets.apps": true,
-	}
+	isScalableCache = &sync.Map{}
+	isScalableCache.Store("deployments.apps", true)
+	isScalableCache.Store("statefulsets.apps", true)
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
-func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	setupLog := log.Log.WithName("setup")
 
 	// create Discovery clientset
@@ -117,6 +117,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(options).
 		// predicate.GenerationChangedPredicate{} ignore updates to ScaledObject Status
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
@@ -284,7 +285,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	// check if we already know.
 	var scale *autoscalingv1.Scale
 	gr := gvkr.GroupResource()
-	isScalable := isScalableCache[gr.String()]
+	_, isScalable := isScalableCache.Load(gr.String())
 	if !isScalable || wantStatusUpdate {
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
@@ -303,7 +304,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			return gvkr, errScale
 		}
-		isScalableCache[gr.String()] = true
+		isScalableCache.Store(gr.String(), true)
 	}
 
 	// if it is not already present in ScaledObject Status:
