@@ -23,6 +23,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -103,6 +104,8 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	broadcaster := record.NewBroadcaster()
 	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
 	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout, recorder)
+	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
+	externalMetricsInfoLock := &sync.RWMutex{}
 
 	namespace, err := getWatchNamespace()
 	if err != nil {
@@ -113,14 +116,14 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, stopCh); err != nil {
+	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, externalMetricsInfo, externalMetricsInfoLock, stopCh); err != nil {
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}) error {
+func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, stopCh chan<- struct{}) error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:    scheme,
 		Namespace: namespace,
@@ -130,7 +133,10 @@ func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, n
 	}
 
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
-		ScaleHandler: scaleHandler,
+		Client:                  mgr.GetClient(),
+		ScaleHandler:            scaleHandler,
+		ExternalMetricsInfo:     externalMetricsInfo,
+		ExternalMetricsInfoLock: externalMetricsInfoLock,
 	}).SetupWithManager(mgr, controller.Options{}); err != nil {
 		return err
 	}
