@@ -139,7 +139,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
-		return -1, fmt.Errorf("azure Devops REST api returned error. status: %d response: %s", r.StatusCode, string(b))
+		return -1, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
 	}
 
 	var result map[string]interface{}
@@ -152,7 +152,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	jobs, ok := result["value"].([]interface{})
 
 	if !ok {
-		return -1, fmt.Errorf("api result returned no value data")
+		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data. url: %s status: %d", url, r.StatusCode)
 	}
 
 	for _, value := range jobs {

@@ -59,6 +59,7 @@
 - Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
 - Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
 - Add `unsafeSsl` parameter in SeleniumGrid scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
+- Improve logs of Azure Pipelines Scaler. ([#2297](https://github.com/kedacore/keda/pull/2297))
 
 ### Deprecations
 
