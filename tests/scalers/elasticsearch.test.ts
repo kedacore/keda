@@ -240,6 +240,8 @@ spec:
             value: "{{ELASTIC_PASSWORD}}"
           - name: xpack.security.enabled
             value: "true"
+          - name: node.store.allow_mmap
+            value: "false"
         ports:
         - containerPort: 9200
           name: http
