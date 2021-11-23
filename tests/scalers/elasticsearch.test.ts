@@ -20,7 +20,9 @@ test.before(t => {
 
     t.is(0, sh.exec(`kubectl apply --namespace ${elasticsearchNamespace} -f ${elasticsearchTmpFile.name}`).code, 'creating an elasticsearch statefulset should work.')
     t.is(0, waitForRollout('statefulset', "elasticsearch", elasticsearchNamespace, 600))
-    sh.exec(`kubectl describe --namespace ${elasticsearchNamespace} statefulset/elasticsearch `)
+    sh.exec(`kubectl --namespace ${elasticsearchNamespace} describe statefulset/elasticsearch `)
+    sh.exec(`kubectl --namespace ${elasticsearchNamespace} describe pods`)
+    sh.exec(`kubectl --namespace ${elasticsearchNamespace} logs elasticsearch-0`)
 
     // Create the index and the search template
     sh.exec(`${kubectlExecCurl} -XPUT http://localhost:9200/${indexName} -d '${elastisearchCreateIndex}'`)
