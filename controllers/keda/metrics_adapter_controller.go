@@ -38,6 +38,7 @@ type MetricsScaledObjectReconciler struct {
 	ScaleHandler            scaling.ScaleHandler
 	ExternalMetricsInfo     *[]provider.ExternalMetricInfo
 	ExternalMetricsInfoLock *sync.RWMutex
+	MaxConcurrentReconciles int
 }
 
 var (
