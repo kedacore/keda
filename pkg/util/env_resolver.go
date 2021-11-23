@@ -8,7 +8,7 @@ import (
 func ResolveOsEnvInt(envName string, defaultValue int) (int, error) {
 	valueStr, found := os.LookupEnv(envName)
 
-	if found {
+	if found && valueStr != "" {
 		return strconv.Atoi(valueStr)
 	}
 
