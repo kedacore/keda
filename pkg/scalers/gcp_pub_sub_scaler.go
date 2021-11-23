@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -18,6 +20,7 @@ import (
 )
 
 const (
+	compositeSubscriptionIDPrefix                      = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
 	defaultTargetSubscriptionSize                      = 5
 	defaultTargetOldestUnackedMessageAge               = 10
 	pubSubStackDriverSubscriptionSizeMetricName        = "pubsub.googleapis.com/subscription/num_undelivered_messages"
@@ -232,10 +235,23 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 			return -1, err
 		}
 	}
+	subscriptionID, projectID := getSubscriptionData(s)
+	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
+	return s.client.GetMetrics(ctx, filter, projectID)
+}
 
-	return s.client.GetMetrics(ctx, filter)
+func getSubscriptionData(s *pubsubScaler) (string, string) {
+	var subscriptionID string
+	var projectID string
+	regexpExpression, _ := regexp.Compile(compositeSubscriptionIDPrefix)
+	if regexpExpression.MatchString(s.metadata.subscriptionName) {
+		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
+		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
+	} else {
+		subscriptionID = s.metadata.subscriptionName
+	}
+	return subscriptionID, projectID
 }
 
 func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
