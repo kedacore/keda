@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	Account  = "Account"
-	QueryKey = "QueryKey"
-	Region   = "Region"
+	Account    = "Account"
+	QueryKey   = "QueryKey"
+	Region     = "Region"
 	metricName = "metricName"
-	LogLevel = "LogLevel"
+	LogLevel   = "LogLevel"
 	nrql       = "nrql"
 	threshold  = "threshold"
 )
@@ -35,13 +35,13 @@ type newrelicScaler struct {
 }
 
 type newrelicMetadata struct {
-	Account  int
-	Region   string
-	LogLevel string
-	QueryKey string
-	metricName string
-	nrql       string
-	threshold  int
+	Account     int
+	Region      string
+	LogLevel    string
+	QueryKey    string
+	metricName  string
+	nrql        string
+	threshold   int
 	scalerIndex int
 }
 
