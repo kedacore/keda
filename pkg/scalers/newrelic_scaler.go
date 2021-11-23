@@ -62,6 +62,9 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 		log.Fatal("error initializing client:", err)
 	}
 
+	logMsg := fmt.Sprintf("Initialize New Relic Scaler (Account %d in Region %s)", meta.Account, meta.Region)
+
+	newrelicLog.Info(logMsg)
 	return &newrelicScaler{
 		metadata: meta,
 		nrClient: nrClient}, nil
@@ -140,9 +143,12 @@ func (s *newrelicScaler) Close(context.Context) error {
 func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, error) {
 
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
-	resp, err := s.nrClient.Nrdb.Query(s.metadata.Account, nrdbQuery)
+	//resp, err := s.nrClient.Nrdb.Query(s.metadata.Account, nrdbQuery)
+	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.Account, nrdbQuery)
 	if err != nil {
-		log.Fatal("error running NerdGraph query: ", err)
+		newrelicLog.Error(err, "error running NerdGraph query")
+		return 0, fmt.Errorf("query return no results")
+		//log.Fatal("error running NerdGraph query: ", err)
 	}
 	for _, r := range resp.Results {
 		//fmt.Printf("%f", r)
