@@ -43,7 +43,11 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	influxDBLog.Info("starting up influxdb client")
-	client := influxdb2.NewClientWithOptions(meta.serverURL, meta.authToken, influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl}))
+	client := influxdb2.NewClientWithOptions(
+		meta.serverURL,
+		meta.authToken,
+		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl})
+	)
 	return &influxDBScaler{
 		client:   client,
 		metadata: meta,
