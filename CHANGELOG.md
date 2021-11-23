@@ -30,6 +30,7 @@
 - Add GCP identity authentication when using Pubsub Scaler ([#2225](https://github.com/kedacore/keda/pull/2225))
 - Add ScalersCache to reuse scalers unless they need changing ([#2187](https://github.com/kedacore/keda/pull/2187))
 - Add an elasticsearch scaler based on search template ([#2311](https://github.com/kedacore/keda/pull/2311))
+- Cache metric names provided by KEDA Metrics Server ([#2279](https://github.com/kedacore/keda/pull/2279))
 
 ### Improvements
 
@@ -55,9 +56,15 @@
 - Improve error message if `IdleReplicaCount` are equal to `MinReplicaCount` to be the same as the check ([#2212](https://github.com/kedacore/keda/pull/2212))
 - Improve Cloudwatch Scaler metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
 - Refactor aws related scalers to reuse the aws clients instead of creating a new one for every GetMetrics call([#2255](https://github.com/kedacore/keda/pull/2255))
+- GCP PubSub scaler may be used in SubscriptionSize and OldestUnackedMessageAge modes
 - Cleanup metric names inside scalers ([#2260](https://github.com/kedacore/keda/pull/2260))
 - Validating values length in prometheus query response ([#2264](https://github.com/kedacore/keda/pull/2264))
 - Add `unsafeSsl` parameter in SeleniumGrid scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
+- Improve logs of Azure Pipelines Scaler. ([#2297](https://github.com/kedacore/keda/pull/2297))
+
+### Deprecations
+
+- `subscriptionSize` is deprecated in favor of `mode` and `value` for GCP Pub/Sub scaler
 
 ### Breaking Changes
 
@@ -75,6 +82,7 @@
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090)|[#2184](https://github.com/kedacore/keda/pull/2184))
 - Drop support to `ValueMetricType` using cpu_memory_scaler ([#2218](https://github.com/kedacore/keda/issues/2218))
 - Add github action to run e2e command "on-demand" ([#2241](https://github.com/kedacore/keda/issues/2241))
+- Add execution url in the pr-e2e triggering comment and fix problem related with not starting with ([#2306](https://github.com/kedacore/keda/issues/2306))
 
 ## v2.4.0
 
