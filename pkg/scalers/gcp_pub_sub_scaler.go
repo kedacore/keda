@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	compositeSubscriptionIDPrefix = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
+	compositeSubscriptionIDPrefix                      = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
 	defaultTargetSubscriptionSize                      = 5
 	defaultTargetOldestUnackedMessageAge               = 10
 	pubSubStackDriverSubscriptionSizeMetricName        = "pubsub.googleapis.com/subscription/num_undelivered_messages"
@@ -236,7 +236,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 		}
 	}
 	subscriptionID, projectID := getSubscriptionData(s)
-  filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + s.metadata.subscriptionName + `"`
+	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
 	return s.client.GetMetrics(ctx, filter, projectID)
 }
