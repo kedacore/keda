@@ -19,7 +19,7 @@ test.before(t => {
     fs.writeFileSync(elasticsearchTmpFile.name, elasticsearchStatefulsetYaml.replace('{{ELASTIC_PASSWORD}}', elasticPassword))
 
     t.is(0, sh.exec(`kubectl apply --namespace ${elasticsearchNamespace} -f ${elasticsearchTmpFile.name}`).code, 'creating an elasticsearch statefulset should work.')
-    t.is(0, waitForRollout('statefulset', "elasticsearch", elasticsearchNamespace, 600))
+    t.is(0, waitForRollout('statefulset', "elasticsearch", elasticsearchNamespace))
 
     // Create the index and the search template
     sh.exec(`${kubectlExecCurl} -XPUT http://localhost:9200/${indexName} -d '${elastisearchCreateIndex}'`)
