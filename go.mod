@@ -17,6 +17,7 @@ require (
 	github.com/Shopify/sarama v1.30.0
 	github.com/aws/aws-sdk-go v1.42.3
 	github.com/denisenkom/go-mssqldb v0.11.0
+	github.com/elastic/go-elasticsearch/v7 v7.15.1
 	github.com/go-logr/logr v0.4.0
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-redis/redis/v8 v8.11.4
