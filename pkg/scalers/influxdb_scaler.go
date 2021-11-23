@@ -43,15 +43,13 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	influxDBLog.Info("starting up influxdb client")
-	// In case unsafeSsl is enabled.
-	if meta.unsafeSsl {
-		return &influxDBScaler{
-			client:   influxdb2.NewClientWithOptions(meta.serverURL, meta.authToken, influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: true})),
-			metadata: meta,
-		}, nil
-	}
+	client := influxdb2.NewClientWithOptions(
+		meta.serverURL,
+		meta.authToken,
+		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl}))
+
 	return &influxDBScaler{
-		client:   influxdb2.NewClient(meta.serverURL, meta.authToken),
+		client:   client,
 		metadata: meta,
 	}, nil
 }
