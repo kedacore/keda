@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,6 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type elasticsearchScaler struct {
