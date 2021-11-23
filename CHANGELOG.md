@@ -50,7 +50,7 @@
 - MySQL Scaler: don't expose connection string in `metricName` ([#2171](https://github.com/kedacore/keda/pull/2171))
 - Provide support for configuring authentication through TriggerAuthentication for Stan scaler ([#2167](https://github.com/kedacore/keda/pull/2167))
 - Add `pageSize` (using regex) in RabbitMQ Scaler ([#2162](https://github.com/kedacore/keda/pull/2162)|[#2319](https://github.com/kedacore/keda/pull/2319))
-- Add `unsafeSsl` parameter in InfluxDB scaler ([#2157](https://github.com/kedacore/keda/pull/2157))
+- Add `unsafeSsl` parameter in InfluxDB scaler ([#2157](https://github.com/kedacore/keda/pull/2157))|[#2320](https://github.com/kedacore/keda/pull/2320)
 - Improve metric name creation to be unique using scaler index inside the scaler ([#2161](https://github.com/kedacore/keda/pull/2161))
 - Improve error message if `IdleReplicaCount` are equal to `MinReplicaCount` to be the same as the check ([#2212](https://github.com/kedacore/keda/pull/2212))
 - Improve Cloudwatch Scaler metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
