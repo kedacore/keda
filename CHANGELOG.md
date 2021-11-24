@@ -67,7 +67,7 @@
 
 ### Deprecations
 
-- GCP Pub/Sub Scaler: `subscriptionSize` is deprecated in favor of `mode` and `value` ([#2266](https://github.com/kedacore/keda/pull/2266))
+- GCP PubSub Scaler: `subscriptionSize` is deprecated in favor of `mode` and `value` ([#2266](https://github.com/kedacore/keda/pull/2266))
 
 ### Breaking Changes
 
