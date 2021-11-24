@@ -59,6 +59,10 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.22.0
 )
 
+// Needed for CVE-2020-28483 https://github.com/advisories/GHSA-h395-qcrw-5vmq
+// we need version github.com/gin-gonic/gin >= 1.7.0
+replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
+
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-amqp v0.16.4 // indirect
