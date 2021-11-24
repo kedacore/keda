@@ -22,9 +22,9 @@
 
 ### New
 
-- Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
 - Add Cassandra Scaler ([#2211](https://github.com/kedacore/keda/pull/2211))
 - Add Elasticsearch Scaler ([#2311](https://github.com/kedacore/keda/pull/2311))
+- Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
 - ScaledJob: introduce `MultipleScalersCalculation` ([#2016](https://github.com/kedacore/keda/pull/2016))
 - ScaledJob: introduce `RolloutStrategy` ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add ScalersCache to reuse scalers unless they need changing ([#2187](https://github.com/kedacore/keda/pull/2187))
