@@ -78,7 +78,7 @@
 - Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
 - Use Patch to set FallbackCondition on ScaledObject.Status ([#2037](https://github.com/kedacore/keda/pull/2037))
-- Bump Golang to 1.16.9 ([#2065](https://github.com/kedacore/keda/pull/2065)|[#2186](https://github.com/kedacore/keda/pull/2186))
+- Bump Golang to 1.17.3 ([#2329](https://github.com/kedacore/keda/pull/2329))
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090))
 - Prometheus scaler: omit `serverAddress` from generated metric name ([#2099](https://github.com/kedacore/keda/pull/2099))
 - Add Makefile mockgen targets ([#2090](https://github.com/kedacore/keda/issues/2090)|[#2184](https://github.com/kedacore/keda/pull/2184))
