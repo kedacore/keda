@@ -39,7 +39,7 @@
 - Refactor AWS related scalers to reuse the AWS clients instead of creating a new one for every GetMetrics call ([#2255](https://github.com/kedacore/keda/pull/2255))
 - Cron Scaler: improve validation in case start & end input is same ([#2032](https://github.com/kedacore/keda/pull/2032))
 - Cron Scaler: improve the cron validation ([#2038](https://github.com/kedacore/keda/pull/2038))
-- GCP PubSub Scaler: introduce `SubscriptionSize` and `OldestUnackedMessageAge` modes
+- GCP PubSub Scaler: introduce `SubscriptionSize` and `OldestUnackedMessageAge` modes ([#2266](https://github.com/kedacore/keda/pull/2266))
 - GCP PubSub Scaler: add GCP identity authentication when using ([#2225](https://github.com/kedacore/keda/pull/2225))
 - GCP PubSub Scaler: add possibility to reference a GCP PubSub subscription by full link, including project ID ([#2269](https://github.com/kedacore/keda/pull/2269))
 - InfluxDB Scaler: add `unsafeSsl` parameter ([#2157](https://github.com/kedacore/keda/pull/2157))|[#2320](https://github.com/kedacore/keda/pull/2320)
@@ -67,7 +67,7 @@
 
 ### Deprecations
 
-- GCP Pub/Sub Scaler: `subscriptionSize` is deprecated in favor of `mode` and `value`
+- GCP Pub/Sub Scaler: `subscriptionSize` is deprecated in favor of `mode` and `value` ([#2266](https://github.com/kedacore/keda/pull/2266))
 
 ### Breaking Changes
 
