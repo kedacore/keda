@@ -5,17 +5,17 @@ go 1.17
 require (
 	cloud.google.com/go v0.97.0
 	cloud.google.com/go/monitoring v1.1.0
-	github.com/Azure/azure-amqp-common-go/v3 v3.2.1
+	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
-	github.com/Azure/azure-sdk-for-go v59.2.0+incompatible
-	github.com/Azure/azure-service-bus-go v0.11.3
+	github.com/Azure/azure-sdk-for-go v59.3.0+incompatible
+	github.com/Azure/azure-service-bus-go v0.11.5
 	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.22
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.30.0
-	github.com/aws/aws-sdk-go v1.42.3
+	github.com/aws/aws-sdk-go v1.42.11
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/elastic/go-elasticsearch/v7 v7.15.1
 	github.com/go-logr/logr v0.4.0
@@ -41,27 +41,27 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/gjson v1.11.0
 	github.com/xdg/scram v1.0.3
-	go.mongodb.org/mongo-driver v1.7.4
+	go.mongodb.org/mongo-driver v1.8.0
 	google.golang.org/api v0.60.0
-	google.golang.org/genproto v0.0.0-20211111162719-482062a4217b
+	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
-	k8s.io/api v0.22.3
-	k8s.io/apimachinery v0.22.3
-	k8s.io/apiserver v0.22.3
-	k8s.io/client-go v0.22.3
-	k8s.io/code-generator v0.22.3
+	k8s.io/api v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/apiserver v0.22.4
+	k8s.io/client-go v0.22.4
+	k8s.io/code-generator v0.22.4
 	k8s.io/klog/v2 v2.10.0
-	k8s.io/kube-openapi v0.0.0-20211109043139-026bd182f079
-	k8s.io/metrics v0.22.3
-	knative.dev/pkg v0.0.0-20211111114938-0b0c3390a475
+	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65
+	k8s.io/metrics v0.22.4
+	knative.dev/pkg v0.0.0-20211123135150-787aec59e70a
 	sigs.k8s.io/controller-runtime v0.10.3
 	sigs.k8s.io/custom-metrics-apiserver v1.22.0
 )
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
-	github.com/Azure/go-amqp v0.16.0 // indirect
+	github.com/Azure/go-amqp v0.16.4 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.14 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2 // indirect
@@ -197,12 +197,12 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/crypto v0.0.0-20211115234514-b4de73f9ece8 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
 	golang.org/x/oauth2 v0.0.0-20211028175245-ba495a64dcb5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
+	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -217,10 +217,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiextensions-apiserver v0.22.2 // indirect
-	k8s.io/component-base v0.22.3 // indirect
+	k8s.io/component-base v0.22.4 // indirect
 	k8s.io/gengo v0.0.0-20210915205010-39e73c8a59cd // indirect
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a // indirect
-	nhooyr.io/websocket v1.8.6 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.22 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
