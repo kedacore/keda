@@ -36,7 +36,6 @@
 - AWS Cloudwatch Scaler: improve metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
 - Azure Log Analytics Scaler: add support to provide the metric name([#2106](https://github.com/kedacore/keda/pull/2106))
 - Azure Pipelines Scaler: improve logs ([#2297](https://github.com/kedacore/keda/pull/2297))
-- Refactor AWS related scalers to reuse the AWS clients instead of creating a new one for every GetMetrics call ([#2255](https://github.com/kedacore/keda/pull/2255))
 - Cron Scaler: improve validation in case start & end input is same ([#2032](https://github.com/kedacore/keda/pull/2032))
 - Cron Scaler: improve the cron validation ([#2038](https://github.com/kedacore/keda/pull/2038))
 - GCP PubSub Scaler: introduce `SubscriptionSize` and `OldestUnackedMessageAge` modes ([#2266](https://github.com/kedacore/keda/pull/2266))
@@ -76,6 +75,7 @@
 ### Other
 
 - Ensure that `context.Context` values are properly passed down the stack ([#2202](https://github.com/kedacore/keda/pull/2202)|[#2249](https://github.com/kedacore/keda/pull/2249))
+- Refactor AWS related scalers to reuse the AWS clients instead of creating a new one for every `GetMetrics` call ([#2255](https://github.com/kedacore/keda/pull/2255))
 - Improve context handling in appropriate functionality in which we instantiate scalers ([#2267](https://github.com/kedacore/keda/pull/2267))
 - Migrate to Kubebuilder v3 ([#2082](https://github.com/kedacore/keda/pull/2082))
     - API path has been changed: `github.com/kedacore/keda/v2/api/v1alpha1` -> `github.com/kedacore/keda/v2/apis/keda/v1alpha1`
