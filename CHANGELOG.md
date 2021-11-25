@@ -29,6 +29,7 @@
 - ScaledJob: introduce `RolloutStrategy` ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add ScalersCache to reuse scalers unless they need changing ([#2187](https://github.com/kedacore/keda/pull/2187))
 - Cache metric names provided by KEDA Metrics Server ([#2279](https://github.com/kedacore/keda/pull/2279))
+- Return minimum value for the metric and log, when cloudwatch returns empty list of metrics ([#2345](https://github.com/kedacore/keda/pull/2345))
 
 ### Improvements
 
