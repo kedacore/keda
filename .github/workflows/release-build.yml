@@ -91,5 +91,3 @@ jobs:
           asset_path: keda-${{ steps.get_version.outputs.tag }}.yaml
           asset_name: keda-${{ steps.get_version.outputs.tag }}.yaml
           asset_content_type: application/x-yaml
-
-
