@@ -71,7 +71,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureBlobScaler{
 		metadata:    meta,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 

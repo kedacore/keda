@@ -112,7 +112,7 @@ var solaceLog = logf.Log.WithName(solaceScalerID + "_scaler")
 //	Constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	// Parse Solace Metadata
 	solaceMetadata, err := parseSolaceMetadata(config)

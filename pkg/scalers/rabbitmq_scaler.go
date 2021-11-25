@@ -67,7 +67,7 @@ type rabbitMQMetadata struct {
 	protocol    string        // either http or amqp protocol
 	vhostName   *string       // override the vhost from the connection info
 	useRegex    bool          // specify if the queueName contains a rexeg
-	pageSize    int           // specify the page size if useRegex is enabled
+	pageSize    int64         // specify the page size if useRegex is enabled
 	operation   string        // specify the operation to apply in case of multiples queues
 	metricName  string        // custom metric name for trigger
 	timeout     time.Duration // custom http timeout for a specific trigger
@@ -102,7 +102,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
-	httpClient := kedautil.CreateHTTPClient(meta.timeout)
+	httpClient := kedautil.CreateHTTPClient(meta.timeout, false)
 
 	if meta.protocol == httpProtocol {
 		return &rabbitMQScaler{
@@ -205,7 +205,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		if err != nil {
 			return nil, fmt.Errorf("pageSize has invalid value")
 		}
-		meta.pageSize = int(pageSize)
+		meta.pageSize = pageSize
 		if meta.pageSize < 1 {
 			return nil, fmt.Errorf("pageSize should be 1 or greater than 1")
 		}

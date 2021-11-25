@@ -65,9 +65,20 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 - <list items>
 ```
 
-## 5. Update Helm Charts
+## 5. Setup continous container scanning with Snyk
 
-Update the `version` and `appVersion` in our [chart definition](https://github.com/kedacore/charts/blob/master/keda/Chart.yaml).
+In order to continuously scan our new container image, they must be imported in our [Snyk project](https://app.snyk.io/org/keda/projects) for all newly introduced tags.
+
+Learn more on how to do this through the [Snyk documentation](https://docs.snyk.io/products/snyk-container/image-scanning-library/github-container-registry-image-scanning/scan-container-images-from-github-container-registry-in-snyk).
+
+## 6. Prepare our Helm Chart
+
+Before we can release our new Helm chart version, we need to prepare it:
+
+- Update the `version` and `appVersion` in our [chart definition](https://github.com/kedacore/charts/blob/master/keda/Chart.yaml).
+- Update the CRDs & Kubernetes resources based on the release artifact (YAML)
+
+## 7. Ship new Helm chart
 
 Guidance on how to release it can be found in our [contribution guide](https://github.com/kedacore/charts/blob/master/CONTRIBUTING.md#shipping-a-new-version).
 
@@ -77,10 +88,6 @@ Update the following file:
 https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
 [Search for 1.1.0 etc. and replace it]
 
-## 6. Create Helm release on GitHub
-
-Create Helm release on GitHub with changelog of what changed to our Helm chart.
-
-## 7. Prepare next release
+## 8. Prepare next release
 
 Prepare next release by creating a [new GitHub milestone](https://github.com/kedacore/keda/milestones/new) called `v{upcoming-semver-version}` with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).

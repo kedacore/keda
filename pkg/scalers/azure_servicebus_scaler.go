@@ -79,7 +79,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		ctx:         ctx,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 

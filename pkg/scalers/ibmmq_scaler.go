@@ -174,7 +174,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
 	}
-	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout)
+	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, false)
 	client.Transport = tr
 
 	resp, err := client.Do(req)

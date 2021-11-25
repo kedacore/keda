@@ -367,7 +367,8 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
 		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
-		return -1, fmt.Errorf("metric data not received")
+		cloudwatchLog.Info("empty metric data received, returning minMetricValue")
+		metricValue = c.metadata.minMetricValue
 	}
 
 	return metricValue, nil
