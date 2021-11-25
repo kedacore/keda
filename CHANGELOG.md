@@ -5,6 +5,7 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.5.0](#v250)
 - [v2.4.0](#v240)
 - [v2.3.0](#v230)
 - [v2.2.0](#v220)
@@ -19,6 +20,24 @@
 - [v1.0.0](#v100)
 
 ## Unreleased
+
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+## v2.5.0
 
 ### New
 
