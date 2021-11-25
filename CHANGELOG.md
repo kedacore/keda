@@ -34,6 +34,7 @@
 
 - Artemis Scaler: parse out broker config parameters in case `restAPITemplate` is given ([#2104](https://github.com/kedacore/keda/pull/2104))
 - AWS Cloudwatch Scaler: improve metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
+- AWS Cloudwatch Scaler: return minimum value for the metric when cloudwatch returns empty list ([#2345](https://github.com/kedacore/keda/pull/2345))
 - Azure Log Analytics Scaler: add support to provide the metric name([#2106](https://github.com/kedacore/keda/pull/2106))
 - Azure Pipelines Scaler: improve logs ([#2297](https://github.com/kedacore/keda/pull/2297))
 - Cron Scaler: improve validation in case start & end input is same ([#2032](https://github.com/kedacore/keda/pull/2032))
