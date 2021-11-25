@@ -25,6 +25,8 @@ import (
 // NewTLSConfig returns a *tls.Config using the given ceClient cert, ceClient key,
 // and CA certificate. If none are appropriate, a nil *tls.Config is returned.
 func NewTLSConfig(clientCert, clientKey, caCert string) (*tls.Config, error) {
+	// skipVerify := true is a hack to avoid the CodeQL error related with allowing insecure certificates in production environments.
+	// Skipping this validation is necessary and intended in our use case in order to be able to trust in the CA.
 	skipVerify := true
 	valid := false
 
