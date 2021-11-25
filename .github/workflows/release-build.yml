@@ -52,26 +52,23 @@ jobs:
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - name: Get the version
-        uses: little-core-labs/get-git-tag@v3.0.1
         id: get_version
-        with:
-          tagRegex: "v(.*)"  
-          tagRegexGroup: 1
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
 
       - name: Release Deployment YAML file
         run: make release
         env:
-          VERSION: ${{ steps.get_version.outputs.tag }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Publish KEDA images on GitHub Container Registry
         run: make publish
         env:
-          VERSION: ${{ steps.get_version.outputs.tag }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Publish KEDA images on Docker Hub
         run: make publish-dockerhub
         env:
-          VERSION: ${{ steps.get_version.outputs.tag }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
 
         # Get release information to determine id of the current release
       - name: Get Release
@@ -87,7 +84,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.tag }}.yaml
-          asset_path: keda-${{ steps.get_version.outputs.tag }}.yaml
-          asset_name: keda-${{ steps.get_version.outputs.tag }}.yaml
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.yaml
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.yaml
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.yaml
           asset_content_type: application/x-yaml
