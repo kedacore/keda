@@ -133,27 +133,21 @@ func (s *newrelicScaler) Close(context.Context) error {
 }
 
 func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, error) {
-
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
-	//resp, err := s.nrClient.Nrdb.Query(s.metadata.account, nrdbQuery)
 	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
 	if err != nil {
 		newrelicLog.Error(err, "error running NerdGraph query")
 		return 0, fmt.Errorf("query return no results")
-		//log.Fatal("error running NerdGraph query: ", err)
 	}
 	for _, r := range resp.Results {
-		//fmt.Printf("%f", r)
 		val, ok := r[s.metadata.metricName].(float64)
 		if ok {
 			newrelicLog.Info("Result of the query %s is %s", s.metadata.nrql, val)
 			return val, nil
 		} else {
-
 			return 0, fmt.Errorf("metric not found on result")
 		}
 	}
-
 	return 0, fmt.Errorf("query return no results")
 }
 
