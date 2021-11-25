@@ -3,13 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"log"
+	"strconv"
+
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
-	"log"
-	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
@@ -144,8 +144,6 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 		if ok {
 			newrelicLog.Info("Result of the query %s is %s", s.metadata.nrql, val)
 			return val, nil
-		} else {
-			return 0, fmt.Errorf("metric not found on result")
 		}
 	}
 	return 0, fmt.Errorf("query return no results")
