@@ -71,6 +71,8 @@ In order to continuously scan our new container image, they must be imported in 
 
 Learn more on how to do this through the [Snyk documentation](https://docs.snyk.io/products/snyk-container/image-scanning-library/github-container-registry-image-scanning/scan-container-images-from-github-container-registry-in-snyk).
 
+> Note: Remember to enable the check `Without issues` in order to get the new version listed since probably it hasn't got any issue.
+
 ## 6. Prepare our Helm Chart
 
 Before we can release our new Helm chart version, we need to prepare it:
