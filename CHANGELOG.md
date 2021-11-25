@@ -29,12 +29,12 @@
 - ScaledJob: introduce `RolloutStrategy` ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add ScalersCache to reuse scalers unless they need changing ([#2187](https://github.com/kedacore/keda/pull/2187))
 - Cache metric names provided by KEDA Metrics Server ([#2279](https://github.com/kedacore/keda/pull/2279))
-- Return minimum value for the metric and log, when cloudwatch returns empty list of metrics ([#2345](https://github.com/kedacore/keda/pull/2345))
 
 ### Improvements
 
 - Artemis Scaler: parse out broker config parameters in case `restAPITemplate` is given ([#2104](https://github.com/kedacore/keda/pull/2104))
 - AWS Cloudwatch Scaler: improve metric exporting logic ([#2243](https://github.com/kedacore/keda/pull/2243))
+- AWS Cloudwatch Scaler: return minimum value for the metric when cloudwatch returns empty list ([#2345](https://github.com/kedacore/keda/pull/2345))
 - Azure Log Analytics Scaler: add support to provide the metric name([#2106](https://github.com/kedacore/keda/pull/2106))
 - Azure Pipelines Scaler: improve logs ([#2297](https://github.com/kedacore/keda/pull/2297))
 - Cron Scaler: improve validation in case start & end input is same ([#2032](https://github.com/kedacore/keda/pull/2032))
