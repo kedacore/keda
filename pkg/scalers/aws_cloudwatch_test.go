@@ -452,7 +452,7 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")
 		case testAWSCloudwatchNoValueMetric:
-			assert.NoError(t,err, "dont expect error when returning empty metric list from cloudwatch")
+			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 		default:
 			assert.EqualValues(t, int64(10.0), value[0].Value.Value())
 		}
