@@ -108,8 +108,9 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		newrelicLog.Info("Using default \"US\" region")
 	}
 
-	meta.LogLevel, err = GetFromAuthOrMeta(config, LogLevel)
-	if err != nil {
+	if val, ok := config.TriggerMetadata[LogLevel]; ok && val != "" {
+		meta.LogLevel = val
+	} else {
 		meta.LogLevel = "INFO"
 	}
 
