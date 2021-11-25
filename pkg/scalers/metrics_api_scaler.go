@@ -72,7 +72,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	if meta.enableTLS || len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
@@ -186,7 +186,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
 func GetValueFromResponse(body []byte, valueLocation string) (*resource.Quantity, error) {
 	r := gjson.GetBytes(body, valueLocation)
-	errorMsg := "valueLocation must point to value of type number or a string representing a Quanitity got: '%s'"
+	errorMsg := "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
 	if r.Type == gjson.String {
 		q, err := resource.ParseQuantity(r.String())
 		if err != nil {

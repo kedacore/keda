@@ -80,7 +80,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	if meta.ca != "" || meta.enableTLS {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)

@@ -76,7 +76,7 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureEventHubScaler{
 		metadata:   parsedMetadata,
 		client:     hub,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 
