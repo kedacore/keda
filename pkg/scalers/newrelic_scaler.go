@@ -43,12 +43,12 @@ type newrelicMetadata struct {
 	scalerIndex int
 }
 
-var newrelicLog = logf.Log.WithName("newrelic_scaler")
+var newrelicLog = logf.Log.WithName("new-relic_scaler")
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseNewRelicMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
+		return nil, fmt.Errorf("error parsing new-relic metadata: %s", err)
 	}
 
 	nrClient, err := newrelic.New(
@@ -59,9 +59,10 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 		log.Fatal("error initializing client:", err)
 	}
 
-	logMsg := fmt.Sprintf("Initialize New Relic Scaler (account %d in region %s)", meta.account, meta.region)
+	logMsg := fmt.Sprintf("Initializing New Relic Scaler (account %d in region %s)", meta.account, meta.region)
 
 	newrelicLog.Info(logMsg)
+
 	return &newrelicScaler{
 		metadata: meta,
 		nrClient: nrClient}, nil
@@ -81,7 +82,6 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	meta.queryKey, err = GetFromAuthOrMeta(config, queryKey)
-
 	if err != nil {
 		return nil, fmt.Errorf("no %s given", queryKey)
 	}
@@ -99,7 +99,6 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	meta.region, err = GetFromAuthOrMeta(config, region)
-
 	if err != nil {
 		meta.region = "US"
 		newrelicLog.Info("Using default \"US\" region")
@@ -110,12 +109,10 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", threshold, err)
 		}
-
 		meta.threshold = t
 	}
 
 	meta.scalerIndex = config.ScalerIndex
-
 	return &meta, nil
 }
 
