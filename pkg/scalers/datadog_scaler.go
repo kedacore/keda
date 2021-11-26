@@ -31,14 +31,14 @@ const (
 )
 
 type datadogMetadata struct {
-	apiKey     string // Database connection string
-	appKey     string
-	ddSite     string
-	query      string
-	queryValue int
-	vType      valueType
-	metricName string
-	age        int
+	apiKey      string
+	appKey      string
+	datadogSite string
+	query       string
+	queryValue  int
+	vType       valueType
+	metricName  string
+	age         int
 }
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
@@ -125,14 +125,14 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		return nil, fmt.Errorf("no app key given")
 	}
 
-	if val, ok := config.AuthParams["ddSite"]; ok {
+	if val, ok := config.AuthParams["datadogSite"]; ok {
 		if val != "" {
-			meta.ddSite = val
+			meta.datadogSite = val
 		} else {
-			meta.ddSite = "datadoghq.com"
+			meta.datadogSite = "datadoghq.com"
 		}
 	} else {
-		meta.ddSite = "datadoghq.com"
+		meta.datadogSite = "datadoghq.com"
 	}
 
 	return &meta, nil
@@ -157,7 +157,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata) (*datadog.
 	ctx = context.WithValue(ctx,
 		datadog.ContextServerVariables,
 		map[string]string{
-			"site": meta.ddSite,
+			"site": meta.datadogSite,
 		})
 
 	configuration := datadog.NewConfiguration()
@@ -195,7 +195,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	ctx = context.WithValue(ctx,
 		datadog.ContextServerVariables,
 		map[string]string{
-			"site": s.metadata.ddSite,
+			"site": s.metadata.datadogSite,
 		})
 
 	resp, _, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
@@ -238,7 +238,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 	ctx = context.WithValue(ctx,
 		datadog.ContextServerVariables,
 		map[string]string{
-			"site": s.metadata.ddSite,
+			"site": s.metadata.datadogSite,
 		})
 
 	resp, _, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)

@@ -21,23 +21,23 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 
 	// all properly formed
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, false},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default age
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "type": "average"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, false},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "type": "average"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default type
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, false},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// missing query
-	{map[string]string{"queryValue": "7", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, true},
+	{map[string]string{"queryValue": "7", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// missing queryValue
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, true},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// missing metricName
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, true},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// wrong query value type
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, true},
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "metricName": "redis-hits", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 
 	// success api/app keys
-	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "ddSite": "ddSite"}, false},
-	// default ddSite
+	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// default datadogSite
 	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey"}, false},
 	// missing apiKey
 	{map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricName": "redis-hits"}, map[string]string{"appKey": "appKey"}, true},
