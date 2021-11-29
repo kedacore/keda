@@ -90,7 +90,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		input:         "i(1.1)",
 		expectedInt:   0,
 		expectedFloat: 0,
-    expectedErr:   &strconv.NumError{Func: "ParseInt", Num: "1.1", Err: strconv.ErrSyntax},
+		expectedErr:   &strconv.NumError{Func: "ParseInt", Num: "1.1", Err: strconv.ErrSyntax},
 		expectedType:  reflect.TypeOf(defaultInt),
 	},
 	{
@@ -148,10 +148,8 @@ func TestParseNumeric(t *testing.T) {
 			if fmt.Sprintf("%s", err) != fmt.Sprintf("%s", testData.expectedErr) {
 				t.Error("Unexpected error returned", "wants", testData.expectedErr, "got", err)
 			}
-		} else {
-			if !errors.Is(err, testData.expectedErr) {
-				t.Error("Unexpected error returned", "wants", testData.expectedErr, "got", err)
-			}
+		} else if !errors.Is(err, testData.expectedErr) {
+			t.Error("Unexpected error returned", "wants", testData.expectedErr, "got", err)
 		}
 
 		rType := reflect.TypeOf(r)
@@ -165,12 +163,10 @@ func TestParseNumeric(t *testing.T) {
 			if r != testData.expectedInt {
 				t.Error("Value returned does not match expectation", "wants", testData.expectedInt, "got", r)
 			}
-			break
 		case reflect.TypeOf(defaultFloat):
 			if r != testData.expectedFloat {
 				t.Error("Value returned does not match expectation", "wants", testData.expectedFloat, "got", r)
 			}
-			break
 		}
 	}
 }
