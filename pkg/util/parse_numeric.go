@@ -54,9 +54,9 @@ func ParseNumeric(s string) (interface{}, error) {
 	*/
 
 	ss := []byte(s)
-	hintedRegexp, _ := regexp.MustCompile("^(?P<Type>[a-z])\\((?P<Value>[\\-]?(?:(?:0|[1-9]\\d*)(?:\\.\\d*)?|\\.\\d+))\\)$")
-	floatRegexp, _ := regexp.MustCompile("^-?\\d+\\.\\d+$")
-	intRegexp, _ := regexp.MustCompile("^-?\\d+$")
+	hintedRegexp := regexp.MustCompile("^(?P<Type>[a-z])\\((?P<Value>[\\-]?(?:(?:0|[1-9]\\d*)(?:\\.\\d*)?|\\.\\d+))\\)$")
+	floatRegexp := regexp.MustCompile("^-?\\d+\\.\\d+$")
+	intRegexp := regexp.MustCompile("^-?\\d+$")
 	if r := hintedRegexp.Find(ss); r != nil {
 		match := hintedRegexp.FindStringSubmatch(s)
 		switch match[1] {
