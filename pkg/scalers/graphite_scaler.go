@@ -194,7 +194,8 @@ func (s *graphiteScaler) ExecuteGrapQuery(ctx context.Context) (float64, error) 
 	}
 
 	// https://graphite-api.readthedocs.io/en/latest/api.html#json
-	datapoint := result[0].Datapoints[0][0]
+	latestDatapoint := len(result[0].Datapoints) - 1
+	datapoint := result[0].Datapoints[latestDatapoint][0]
 
 	return datapoint, nil
 }
