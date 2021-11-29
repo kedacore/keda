@@ -139,7 +139,7 @@ func TestParseNumeric(t *testing.T) {
 	for _, testData := range testNumericMetadatas {
 		t.Log(testData.comment)
 
-		r, err := ParseNumeric(testData.input)
+		r, err := ParseNumeric(testData.input, 64)
 
 		if reflect.ValueOf(testData.expectedErr).Kind() == reflect.Ptr {
 			if reflect.TypeOf(err) != reflect.TypeOf(testData.expectedErr) {

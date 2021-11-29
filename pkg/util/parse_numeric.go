@@ -22,6 +22,16 @@ import (
 	"strconv"
 )
 
+var hintedRegexp *regexp.Regexp
+var floatRegexp *regexp.Regexp
+var intRegexp *regexp.Regexp
+
+func init() {
+	hintedRegexp = regexp.MustCompile(`^(?P<Type>[a-z])\((?P<Value>[\-]?(?:(?:0|[1-9]\d*)(?:\.\d*)?|\.\d+))\)$`)
+	floatRegexp = regexp.MustCompile(`^-?\d+\.\d+$`)
+	intRegexp = regexp.MustCompile(`^-?\d+$`)
+}
+
 type typeHintError struct {
 	value string
 }
@@ -38,7 +48,7 @@ func (e numericParseError) Error() string {
 	return fmt.Sprintf("ParseNumeric: Provided string \"%s\" is neither an int nor a float", e.value)
 }
 
-func ParseNumeric(s string) (interface{}, error) {
+func ParseNumeric(s string, bitSize int) (interface{}, error) {
 	/* This function is a wrapper around ParseInt and ParseFloat
 	mostly, but also allows for providing in-string type hinting
 	to ensure that numeric values that would be cast to numbers
@@ -54,27 +64,24 @@ func ParseNumeric(s string) (interface{}, error) {
 	*/
 
 	ss := []byte(s)
-	hintedRegexp := regexp.MustCompile(`^(?P<Type>[a-z])\((?P<Value>[\-]?(?:(?:0|[1-9]\d*)(?:\.\d*)?|\.\d+))\)$`)
-	floatRegexp := regexp.MustCompile(`^-?\d+\.\d+$`)
-	intRegexp := regexp.MustCompile(`^-?\d+$`)
 	if r := hintedRegexp.Find(ss); r != nil {
 		match := hintedRegexp.FindStringSubmatch(s)
 		switch match[1] {
 		case "d":
-			return strconv.ParseFloat(match[2], 64)
+			return strconv.ParseFloat(match[2], bitSize)
 		case "f":
-			return strconv.ParseFloat(match[2], 64)
+			return strconv.ParseFloat(match[2], bitSize)
 		case "i":
-			return strconv.ParseInt(match[2], 10, 64)
+			return strconv.ParseInt(match[2], 10, bitSize)
 		case "n":
-			return strconv.ParseInt(match[2], 10, 64)
+			return strconv.ParseInt(match[2], 10, bitSize)
 		default:
 			return int64(0), typeHintError{value: match[1]}
 		}
 	} else if r := floatRegexp.Find(ss); r != nil {
-		return strconv.ParseFloat(s, 64)
+		return strconv.ParseFloat(s, bitSize)
 	} else if r := intRegexp.Find(ss); r != nil {
-		return strconv.ParseInt(s, 10, 64)
+		return strconv.ParseInt(s, 10, bitSize)
 	}
 	return int64(0), numericParseError{value: s}
 }
