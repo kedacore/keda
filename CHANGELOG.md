@@ -21,6 +21,9 @@
 
 ## Unreleased
 
+- bugfix: Graphite scaler should use latest datapoint returned, not earliest  (https://github.com/kedacore/keda/pull/2365)
+  
+
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
