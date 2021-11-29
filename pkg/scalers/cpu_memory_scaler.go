@@ -3,13 +3,14 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type cpuMemoryScaler struct {
@@ -54,11 +55,11 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
 	case v2beta2.UtilizationMetricType:
-		valueNum, err := strconv.ParseInt(value, 10, 32)
+		valueNum, err := kedautil.ParseNumeric(value)
 		if err != nil {
 			return nil, err
 		}
-		utilizationNum := int32(valueNum)
+		utilizationNum, _ := valueNum.(int32)
 		meta.AverageUtilization = &utilizationNum
 	default:
 		return nil, fmt.Errorf("unsupported metric type, allowed values are 'Utilization' or 'AverageValue'")
