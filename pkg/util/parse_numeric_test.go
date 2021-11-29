@@ -90,7 +90,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		input:         "i(1.1)",
 		expectedInt:   0,
 		expectedFloat: 0,
-		expectedErr:   &strconv.NumError{"ParseInt", "1.1", strconv.ErrSyntax},
+    expectedErr:   &strconv.NumError{Func: "ParseInt", Num: "1.1", Err: strconv.ErrSyntax},
 		expectedType:  reflect.TypeOf(defaultInt),
 	},
 	{
