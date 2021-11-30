@@ -194,6 +194,10 @@ func (s *graphiteScaler) ExecuteGrapQuery(ctx context.Context) (float64, error) 
 	}
 
 	// https://graphite-api.readthedocs.io/en/latest/api.html#json
+	if len(result[0].Datapoints) == 0 {
+		return 0, nil
+	}
+
 	latestDatapoint := len(result[0].Datapoints) - 1
 	datapoint := result[0].Datapoints[latestDatapoint][0]
 
