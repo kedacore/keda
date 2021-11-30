@@ -22,6 +22,12 @@ const (
 	defaultTargetPipelinesQueueLength = 1
 )
 
+type azurePipelinesPoolResponse struct {
+	Value []struct {
+		ID int `json:"id"`
+	} `json:"value"`
+}
+
 type azurePipelinesScaler struct {
 	metadata   *azurePipelinesMetadata
 	httpClient *http.Client
@@ -31,7 +37,7 @@ type azurePipelinesMetadata struct {
 	organizationURL            string
 	organizationName           string
 	personalAccessToken        string
-	poolID                     string
+	poolID                     int
 	targetPipelinesQueueLength int
 	scalerIndex                int
 }
@@ -39,13 +45,13 @@ type azurePipelinesMetadata struct {
 var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
-func NewAzurePipelinesScaler(config *ScalerConfig) (Scaler, error) {
-	meta, err := parseAzurePipelinesMetadata(config)
+func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+
+	meta, err := parseAzurePipelinesMetadata(config, httpClient, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %s", err)
 	}
-
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &azurePipelinesScaler{
 		metadata:   meta,
@@ -53,7 +59,7 @@ func NewAzurePipelinesScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata, error) {
+func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, ctx context.Context) (*azurePipelinesMetadata, error) {
 	meta := azurePipelinesMetadata{}
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
 
@@ -90,15 +96,57 @@ func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata,
 		return nil, fmt.Errorf("no personalAccessToken given")
 	}
 
-	if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
-		meta.poolID = val
+	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
+		var err error
+		meta.poolID, err = getAzurePipelinesPoolID(val, meta, httpClient, ctx)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		return nil, fmt.Errorf("no poolID given")
+		return nil, fmt.Errorf("no poolName given")
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
+}
+func getAzurePipelinesPoolID(poolName string, metadata azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return -1, err
+	}
+
+	req.SetBasicAuth("PAT", metadata.personalAccessToken)
+
+	r, err := httpClient.Do(req)
+	if err != nil {
+		return -1, err
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return -1, err
+	}
+	r.Body.Close()
+
+	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
+		return -1, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+	}
+
+	var result azurePipelinesPoolResponse
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return -1, err
+	}
+
+	count := len(result.Value)
+	if count != 1 {
+		return -1, fmt.Errorf("incorrect agent pool count, expected 1 and got %d", count)
+	}
+
+	return result.Value[0].ID, nil
 }
 
 func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -119,7 +167,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%s/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
