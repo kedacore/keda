@@ -15,6 +15,7 @@
   "commitBodyTable": true,
   "extends": [
     "config:base",
-    ":gitSignOff"
+    ":gitSignOff",
+    "default:disablePrControls"
   ]
 }
