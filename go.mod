@@ -28,7 +28,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/hashicorp/vault/api v1.3.0
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.5.1
+	github.com/influxdata/influxdb-client-go/v2 v2.6.0
 	github.com/lib/pq v1.10.4
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.16.5
