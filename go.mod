@@ -15,7 +15,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.30.0
-	github.com/aws/aws-sdk-go v1.42.11
+	github.com/aws/aws-sdk-go v1.42.16
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/elastic/go-elasticsearch/v7 v7.15.1
 	github.com/go-logr/logr v0.4.0
