@@ -18,7 +18,7 @@ require (
 	github.com/aws/aws-sdk-go v1.42.11
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/elastic/go-elasticsearch/v7 v7.15.1
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.2.1
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-sql-driver/mysql v1.6.0
