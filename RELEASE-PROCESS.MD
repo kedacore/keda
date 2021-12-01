@@ -86,9 +86,10 @@ Guidance on how to release it can be found in our [contribution guide](https://g
 
 ### Deploy KEDA through Azure Functions Core Tools (optional)
 
-Update the following file:
-https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
-[Search for 1.1.0 etc. and replace it]
+Update the following files with the release artifact (YAML):
+
+- https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
+- https://github.com/Azure/azure-functions-core-tools/blob/v4.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
 
 ## 8. Prepare next release
 
