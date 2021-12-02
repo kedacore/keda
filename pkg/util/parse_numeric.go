@@ -48,20 +48,20 @@ func (e numericParseError) Error() string {
 	return fmt.Sprintf("ParseNumeric: Provided string \"%s\" is neither an int nor a float", e.value)
 }
 
+
+// ParseNumeric is a wrapper around ParseInt and ParseFloat
+// mostly, but also allows for providing in-string type hinting
+// to ensure that numeric values that would be cast to numbers
+// by YAML parsers instead forcefully remain as strings until
+// they can get parsed at runtime.
+// 
+// For this purpose, we look for a hint which is defined as
+// a single letter, followed by a parentheses wrapped numeric
+// value.  d or f for decimal/float, i or n for integer.
+// 
+// If we don't get a match, check if s looks like a float and
+// parse it as one if so, otherwise parse as an int.
 func ParseNumeric(s string, bitSize int) (interface{}, error) {
-	/* This function is a wrapper around ParseInt and ParseFloat
-	mostly, but also allows for providing in-string type hinting
-	to ensure that numeric values that would be cast to numbers
-	by YAML parsers instead forcefully remain as strings until
-	they can get parsed at runtime.
-
-	For this purpose, we look for a hint which is defined as
-	a single letter, followed by a parentheses wrapped numeric
-	value.  d or f for decimal/float, i or n for integer.
-
-	If we don't get a match, check if s looks like a float and
-	parse it as one if so, otherwise parse as an int.
-	*/
 
 	ss := []byte(s)
 	if r := hintedRegexp.Find(ss); r != nil {
