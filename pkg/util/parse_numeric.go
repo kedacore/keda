@@ -54,11 +54,11 @@ func (e numericParseError) Error() string {
 // to ensure that numeric values that would be cast to numbers
 // by YAML parsers instead forcefully remain as strings until
 // they can get parsed at runtime.
-// 
+//
 // For this purpose, we look for a hint which is defined as
 // a single letter, followed by a parentheses wrapped numeric
 // value.  d or f for decimal/float, i or n for integer.
-// 
+//
 // If we don't get a match, check if s looks like a float and
 // parse it as one if so, otherwise parse as an int.
 func ParseNumeric(s string, bitSize int) (interface{}, error) {
