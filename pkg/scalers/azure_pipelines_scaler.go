@@ -98,55 +98,86 @@ func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, 
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
-		meta.poolID, err = getAzurePipelinesPoolID(val, meta, httpClient, ctx)
+		meta.poolID, err = getPoolIDFromName(val, &meta, httpClient, ctx)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		return nil, fmt.Errorf("no poolName given")
+		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
+			var err error
+			meta.poolID, err = validatePoolID(val, &meta, httpClient, ctx)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("no poolName or poolID given")
+		}
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }
-func getAzurePipelinesPoolID(poolName string, metadata azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+func getPoolIDFromName(poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
+	return getPoolInfo(url, metadata, httpClient, ctx)
+}
+
+func validatePoolID(poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
+	return getPoolInfo(url, metadata, httpClient, ctx)
+}
+
+func getPoolInfo(url string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+	body, err := getAzurePipelineRequest(url, metadata, httpClient, ctx)
 	if err != nil {
 		return -1, err
+	}
+
+	var result azurePipelinesPoolResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return -1, err
+	}
+
+	count := len(result.Value)
+	if count == 0 {
+		return -1, fmt.Errorf("agent pool not found")
+	}
+
+	if count != 1 {
+		return -1, fmt.Errorf("incorrect agent pool count, expected 1 and got %d", count)
+	}
+
+	return result.Value[0].ID, nil
+}
+
+func getAzurePipelineRequest(url string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return []byte{}, err
 	}
 
 	req.SetBasicAuth("PAT", metadata.personalAccessToken)
 
 	r, err := httpClient.Do(req)
 	if err != nil {
-		return -1, err
+		return []byte{}, err
 	}
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return -1, err
+		return []byte{}, err
 	}
 	r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
-		return -1, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+		return []byte{}, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
 	}
 
-	var result azurePipelinesPoolResponse
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return -1, err
-	}
+	return b, nil
 
-	count := len(result.Value)
-	if count != 1 {
-		return -1, fmt.Errorf("incorrect agent pool count, expected 1 and got %d", count)
-	}
-
-	return result.Value[0].ID, nil
 }
 
 func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -168,30 +199,13 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	body, err := getAzurePipelineRequest(url, s.metadata, s.httpClient, ctx)
 	if err != nil {
 		return -1, err
-	}
-
-	req.SetBasicAuth("PAT", s.metadata.personalAccessToken)
-
-	r, err := s.httpClient.Do(req)
-	if err != nil {
-		return -1, err
-	}
-
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return -1, err
-	}
-	r.Body.Close()
-
-	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
-		return -1, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
 	}
 
 	var result map[string]interface{}
-	err = json.Unmarshal(b, &result)
+	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return -1, err
 	}
@@ -200,7 +214,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	jobs, ok := result["value"].([]interface{})
 
 	if !ok {
-		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data. url: %s status: %d", url, r.StatusCode)
+		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data despite successful code. url: %s", url)
 	}
 
 	for _, value := range jobs {
@@ -217,7 +231,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta
 	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%s", s.metadata.poolID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
