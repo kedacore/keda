@@ -48,7 +48,6 @@ func (e numericParseError) Error() string {
 	return fmt.Sprintf("ParseNumeric: Provided string \"%s\" is neither an int nor a float", e.value)
 }
 
-
 // ParseNumeric is a wrapper around ParseInt and ParseFloat
 // mostly, but also allows for providing in-string type hinting
 // to ensure that numeric values that would be cast to numbers
