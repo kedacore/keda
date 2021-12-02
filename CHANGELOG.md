@@ -22,6 +22,7 @@
 
 ### New
 
+- Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
 - ScaledJob: introduce MultipleScalersCalculation ([#2016](https://github.com/kedacore/keda/pull/2016))
 - ScaledJob: introduce `RolloutStrategy` ([#2164](https://github.com/kedacore/keda/pull/2164))
 - Add Graphite Scaler ([#1628](https://github.com/kedacore/keda/pull/2092))
