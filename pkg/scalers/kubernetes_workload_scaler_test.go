@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,4 +138,56 @@ func createPodlist(count int) *v1.PodList {
 		list.Items = append(list.Items, *pod)
 	}
 	return list
+}
+
+func TestWorkloadPhase(t *testing.T) {
+	phases := map[v1.PodPhase]bool{
+		v1.PodRunning:   true,
+		v1.PodSucceeded: false,
+		v1.PodFailed:    false,
+		v1.PodUnknown:   false,
+		v1.PodPending:   true, // polling means we have a delay, so count pending in order to avoid more delays
+	}
+	for phase, active := range phases {
+		list := &v1.PodList{}
+		pod := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        strings.ToLower(fmt.Sprintf("phase-%s", phase)),
+				Namespace:   "default",
+				Annotations: map[string]string{},
+				Labels: map[string]string{
+					"app": "testphases",
+				},
+			},
+			Status: v1.PodStatus{
+				Phase: phase,
+			},
+		}
+		list.Items = append(list.Items, *pod)
+		s, err := NewKubernetesWorkloadScaler(
+			fake.NewClientBuilder().WithRuntimeObjects(list).Build(),
+			&ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"podSelector": "app=testphases",
+					"value":       "1",
+				},
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+				Namespace:         "default",
+			},
+		)
+		if err != nil {
+			t.Errorf("Failed to create test scaler -- %v", err)
+		}
+		isActive, err := s.IsActive(context.TODO())
+		if err != nil {
+			t.Errorf("Failed to count active -- %v", err)
+		}
+		if active && !isActive {
+			t.Errorf("Expected active for phase %s but got inactive", phase)
+		}
+		if !active && isActive {
+			t.Errorf("Expected inactive for phase %s but got active", phase)
+		}
+	}
 }
