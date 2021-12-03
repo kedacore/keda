@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"text/template"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -45,7 +47,7 @@ type activeMQMonitoring struct {
 
 const (
 	defaultTargetQueueSize         = 10
-	defaultActiveMQRestAPITemplate = "http://<<managementEndpoint>>/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=<<brokerName>>,destinationType=Queue,destinationName=<<destinationName>>/QueueSize"
+	defaultActiveMQRestAPITemplate = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
 var activeMQLog = logf.Log.WithName("activeMQ_scaler")
@@ -183,14 +185,23 @@ func getRestAPIParameters(meta activeMQMetadata) (activeMQMetadata, error) {
 	return meta, nil
 }
 
-func (s *activeMQScaler) getMonitoringEndpoint() string {
-	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.managementEndpoint,
-		"<<brokerName>>", s.metadata.brokerName,
-		"<<destinationName>>", s.metadata.destinationName)
-
-	monitoringEndpoint := replacer.Replace(s.metadata.restAPITemplate)
-
-	return monitoringEndpoint
+func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
+	var buf bytes.Buffer
+	endpoint := map[string]string{
+		"ManagementEndpoint": s.metadata.managementEndpoint,
+		"BrokerName":         s.metadata.brokerName,
+		"DestinationName":    s.metadata.destinationName,
+	}
+	template, err := template.New("monitoring_endpoint").Parse(defaultActiveMQRestAPITemplate)
+	if err != nil {
+		return "", fmt.Errorf("error parsing template: %s", err)
+	}
+	err = template.Execute(&buf, endpoint)
+	if err != nil {
+		return "", fmt.Errorf("error executing template: %s", err)
+	}
+	monitoringEndpoint := buf.String()
+	return monitoringEndpoint, nil
 }
 
 func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) {
@@ -198,7 +209,10 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 	var queueMessageCount int
 
 	client := s.httpClient
-	url := s.getMonitoringEndpoint()
+	url, err := s.getMonitoringEndpoint()
+	if err != nil {
+		return -1, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
