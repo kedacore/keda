@@ -61,7 +61,7 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		}
 		utilizationNum, ok := valueNum.(int32)
 		if !ok {
-			return nil, fmt.Errorf("provided value for Utilization was not a valid integer")
+			return nil, fmt.Errorf("provided value for Utilization (%d) was not a valid 32-bit integer", valueNum)
 		}
 		meta.AverageUtilization = &utilizationNum
 	default:
