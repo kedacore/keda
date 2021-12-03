@@ -32,9 +32,9 @@ RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03
     rm -rf docker docker-19.03.2.tgz
 
 # Install golang
-RUN GO_VERSION=1.16.9 && \
+RUN GO_VERSION=1.17.3 && \
     curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=d2c095c95f63c2a3ef961000e0ecb9d81d5c68b6ece176e2a8a2db82dc02931c && \
+    go_sha256=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c && \
     echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz

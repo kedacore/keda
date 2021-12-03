@@ -9,6 +9,7 @@ exemptLabels:
   - cant-touch-this
   - feature
   - security
+  - Epic
 
 # Label to use when marking an issue as stale
 staleLabel: stale

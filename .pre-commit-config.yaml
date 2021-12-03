@@ -32,7 +32,7 @@ repos:
       entry: "(?i)(black|white)[_-]?(list|List)"
       pass_filenames: true
     - id: sort-scalers
-      name: Check if scalers are sorted in scaler_handler.go
+      name: Check if scalers are sorted in scale_handler.go
       language: system
       entry: "bash tools/sort_scalers.sh"
       files: .*scale_handler\.go$

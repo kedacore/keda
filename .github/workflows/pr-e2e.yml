@@ -7,32 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Comment evaluate
     outputs:
-      run-e2e: ${{ steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission }}
+      run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
     steps:
-      - uses: khan/pull-request-comment-trigger@master
-        id: check-comment
-        with:
-          trigger: '/run-e2e'
-          prefix_only: true
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-
       - name: Check user permission
-        if: steps.check-comment.outputs.triggered == 'true'
+        if: startsWith(github.event.comment.body,'/run-e2e')
         id: check-permission
         uses: scherermichael-oss/action-has-permission@master
         with:
           required-permission: write
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: React to comment with rocket
-        uses: dkershner6/reaction-action@v1
-        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "rocket"
 
   run-test:
     needs: check
@@ -43,6 +27,14 @@ jobs:
     if: needs.check.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v2
+
+      - name: Update comment with the execution url
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: |
+            **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+          reactions: rocket
 
       - name: Checkout Pull Request
         env:
