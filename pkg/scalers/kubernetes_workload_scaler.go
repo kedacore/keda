@@ -27,6 +27,12 @@ const (
 	valueKey                     = "value"
 )
 
+var countIgnoresPhases = []corev1.PodPhase{
+	corev1.PodSucceeded,
+	corev1.PodFailed,
+	corev1.PodUnknown,
+}
+
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
 	namespace   string
@@ -125,5 +131,19 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 		return 0, err
 	}
 
-	return len(podList.Items), nil
+	count := 0
+	for _, pod := range podList.Items {
+		count += getCountValue(pod)
+	}
+
+	return count, nil
+}
+
+func getCountValue(pod corev1.Pod) int {
+	for _, ignore := range countIgnoresPhases {
+		if pod.Status.Phase == ignore {
+			return 0
+		}
+	}
+	return 1
 }
