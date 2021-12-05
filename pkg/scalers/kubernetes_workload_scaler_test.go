@@ -142,11 +142,14 @@ func createPodlist(count int) *v1.PodList {
 
 func TestWorkloadPhase(t *testing.T) {
 	phases := map[v1.PodPhase]bool{
-		v1.PodRunning:   true,
+		v1.PodRunning: true,
+		// succeeded and failed clearly count as terminated
 		v1.PodSucceeded: false,
 		v1.PodFailed:    false,
-		v1.PodUnknown:   false,
-		v1.PodPending:   true, // polling means we have a delay, so count pending in order to avoid more delays
+		// unknown could be for example a temporarily unresponsive node; count the pod
+		v1.PodUnknown: true,
+		// count pre-Running to avoid an additional delay on top of the poll interval
+		v1.PodPending: true,
 	}
 	for phase, active := range phases {
 		list := &v1.PodList{}
