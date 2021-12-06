@@ -20,16 +20,14 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import {waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
 
-// const newRelicApiKey = process.env['NEWRELIC_API_KEY']
-const newRelicApiKey = 'NRAK-0B14FUSYCLDOH72R9D5NHHK270O'
+const newRelicApiKey = process.env['NEWRELIC_API_KEY']
 const newRelicAccountId = '3357103'
 const testNamespace = 'new-relic-test'
 const newRelicNamespace = 'new-relic'
 const newRelicRepoUrl = 'https://helm-charts.newrelic.com'
 const newRelicRepoName = 'new-relic'
 const newRelicHelmPackageName = 'newrelic/nri-bundle'
-//const newRelicLicenseKey = process.env['NEWRELIC_LICENSE']
-const newRelicLicenseKey = 'ef0db648141c1a39f3b8e3a1a01c5c00703bNRAL'
+const newRelicLicenseKey = process.env['NEWRELIC_LICENSE']
 const kuberneteClusterName = 'keda-new-relic'
 
 
