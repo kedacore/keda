@@ -78,7 +78,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		}
 		meta.account = t
 	} else {
-		return nil, fmt.Errorf("no %s given >%s<", account, val)
+		return nil, fmt.Errorf("no %s given", account)
 	}
 
 	meta.queryKey, err = GetFromAuthOrMeta(config, queryKey)
@@ -107,9 +107,11 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
 		t, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", threshold, err)
+			return nil, fmt.Errorf("error parsing %s", threshold)
 		}
 		meta.threshold = t
+	} else {
+		return nil, fmt.Errorf("missing %s value", threshold)
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -133,17 +135,15 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
 	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
 	if err != nil {
-		newrelicLog.Error(err, "error running NerdGraph query")
-		return 0, fmt.Errorf("query return no results")
+		return 0, fmt.Errorf("error running NerdGraph query \"%s\"", s.metadata.nrql)
 	}
 	for _, r := range resp.Results {
 		val, ok := r[s.metadata.metricName].(float64)
 		if ok {
-			newrelicLog.Info("Result of the query %s is %s", s.metadata.nrql, val)
 			return val, nil
 		}
 	}
-	return 0, fmt.Errorf("query return no results")
+	return 0, fmt.Errorf("query return no results \"%s\"", s.metadata.nrql)
 }
 
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
