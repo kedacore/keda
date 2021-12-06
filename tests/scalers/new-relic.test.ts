@@ -18,10 +18,9 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
 
 const newRelicApiKey = process.env['NEWRELIC_API_KEY']
-const newRelicAccountId = '3357103'
+const newRelicAccountId = process.env['NEWRELiC_ACCOUNT_ID']
 const testNamespace = 'new-relic-test'
 const newRelicNamespace = 'new-relic'
 const newRelicRepoUrl = 'https://helm-charts.newrelic.com'
@@ -34,6 +33,9 @@ const kuberneteClusterName = 'keda-new-relic'
 test.before(t => {
   if (!newRelicApiKey) {
     t.fail('NEWRELIC_API_KEY environment variable is required for newrelic tests tests')
+  }
+  if (!newRelicLicenseKey) {
+    t.fail('NEWRELIC_LICENSE environment variable is required for newrelic tests tests')
   }
   if (!newRelicLicenseKey) {
     t.fail('NEWRELIC_LICENSE environment variable is required for newrelic tests tests')
