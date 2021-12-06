@@ -20,7 +20,7 @@ import * as tmp from 'tmp'
 import test from 'ava'
 
 const newRelicApiKey = process.env['NEWRELIC_API_KEY']
-const newRelicAccountId = process.env['NEWRELiC_ACCOUNT_ID']
+const newRelicAccountId = process.env['NEWRELIC_ACCOUNT_ID']
 const testNamespace = 'new-relic-test'
 const newRelicNamespace = 'new-relic'
 const newRelicRepoUrl = 'https://helm-charts.newrelic.com'
