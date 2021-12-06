@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/monitoring v1.1.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
-	github.com/Azure/azure-sdk-for-go v59.3.0+incompatible
+	github.com/Azure/azure-sdk-for-go v59.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.11.5
 	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -15,7 +15,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.30.0
-	github.com/aws/aws-sdk-go v1.42.11
+	github.com/aws/aws-sdk-go v1.42.16
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/elastic/go-elasticsearch/v7 v7.15.1
 	github.com/go-logr/logr v0.4.0
@@ -28,7 +28,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/hashicorp/vault/api v1.3.0
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.5.1
+	github.com/influxdata/influxdb-client-go/v2 v2.6.0
 	github.com/lib/pq v1.10.4
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -39,7 +39,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.11.0
+	github.com/tidwall/gjson v1.12.1
 	github.com/xdg/scram v1.0.3
 	go.mongodb.org/mongo-driver v1.8.0
 	google.golang.org/api v0.60.0
