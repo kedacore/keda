@@ -2,10 +2,12 @@ package scalers
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"strconv"
 
+	"crypto/md5"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,6 +85,12 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		return nil, fmt.Errorf("no %s given", account)
 	}
 
+	if val, ok := config.TriggerMetadata[nrql]; ok && val != "" {
+		meta.nrql = val
+	} else {
+		return nil, fmt.Errorf("no %s given", nrql)
+	}
+
 	meta.queryKey, err = GetFromAuthOrMeta(config, queryKey)
 	if err != nil {
 		return nil, fmt.Errorf("no %s given", queryKey)
@@ -90,14 +98,6 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 
 	if val, ok := config.TriggerMetadata[metricName]; ok && val != "" {
 		meta.metricName = val
-	} else {
-		return nil, fmt.Errorf("no %s given", metricName)
-	}
-
-	if val, ok := config.TriggerMetadata[nrql]; ok && val != "" {
-		meta.nrql = val
-	} else {
-		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
 	meta.region, err = GetFromAuthOrMeta(config, region)
@@ -150,8 +150,9 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 	if err != nil {
 		return 0, fmt.Errorf("error running NerdGraph query %s (%s)", s.metadata.nrql, err.Error())
 	}
-	for _, r := range resp.Results {
-		val, ok := r[s.metadata.metricName].(float64)
+	// Only use the first result from the query, as the query should not be multi row
+	for _, v := range resp.Results[0] {
+		val, ok := v.(float64)
 		if ok {
 			return val, nil
 		}
@@ -180,7 +181,14 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("newrelic-%s", s.metadata.metricName))
+	var metricName string
+	if s.metadata.metricName == "" {
+		// TODO: Find a better way to generate a small string based on the nrql string, or maybe just use UUID?
+		hash := md5.Sum([]byte(s.metadata.nrql))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("new-relic-%s", hex.EncodeToString(hash[:])))
+	} else {
+		metricName = kedautil.NormalizeString(fmt.Sprintf("new-relic-%s", s.metadata.metricName))
+	}
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),

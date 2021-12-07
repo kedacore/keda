@@ -28,7 +28,7 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	// missing account
 	{map[string]string{"metricName": "results", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing metricName
-	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 	// malformed threshold
 	{map[string]string{"account": "0", "metricName": "results", "threshold": "one", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing threshold
@@ -45,8 +45,8 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 }
 
 var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
-	{&testNewRelicMetadata[1], 0, "s0-newrelic-results"},
-	{&testNewRelicMetadata[1], 1, "s1-newrelic-results"},
+	{&testNewRelicMetadata[1], 0, "s0-new-relic-results"},
+	{&testNewRelicMetadata[1], 1, "s1-new-relic-results"},
 }
 
 func TestNewRelicParseMetadata(t *testing.T) {
