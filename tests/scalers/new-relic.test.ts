@@ -44,9 +44,10 @@ test.before(t => {
   sh.exec(`kubectl create namespace ${newRelicNamespace}`)
   sh.exec(`helm repo add ${newRelicRepoName} ${newRelicRepoUrl}`)
 
-  let clusterStatus = sh.exec(`helm upgrade --install --set global.cluster=${kuberneteClusterName} --set prometheus.enabled=true --set ksm.enabled=true --set global.lowDataMode=true --set global.licenseKey=${newRelicLicenseKey} --timeout 600s --set ksm.enabled=true --set logging.enabled=true --namespace ${newRelicNamespace} nri-keda ${newRelicHelmPackageName}`).code
+  let helmInstallStatus = sh.exec(`helm upgrade --install --set global.cluster=${kuberneteClusterName} --set prometheus.enabled=true --set ksm.enabled=true --set global.lowDataMode=true --set global.licenseKey=${newRelicLicenseKey} --timeout 600s --set logging.enabled=false --set ksm.enabled=true --set logging.enabled=true --namespace ${newRelicNamespace} nri-keda ${newRelicHelmPackageName}`).code
+  sh.echo(`${helmInstallStatus}`)
   t.is(0,
-    clusterStatus,
+    helmInstallStatus,
     'creating a New Relic Bundle Install should work.'
   )
 
