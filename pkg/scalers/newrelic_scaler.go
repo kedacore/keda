@@ -2,12 +2,12 @@ package scalers
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"strconv"
 
-	"crypto/md5"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
