@@ -26,7 +26,7 @@ const (
 	metricName = "metricName"
 	nrql       = "nrql"
 	threshold  = "threshold"
-	nodataerr  = "nodataerr"
+	noDataErr  = "noDataErr"
 )
 
 type newrelicScaler struct {
@@ -103,7 +103,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	meta.region, err = GetFromAuthOrMeta(config, region)
 	if err != nil {
 		meta.region = "US"
-		newrelicLog.Info("Using default \"US\" region")
+		newrelicLog.Info("Using default 'US' region")
 	}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
@@ -117,17 +117,16 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	// If Query Return an Empty Data , shall we treat it as an error or not
-	// default is NO error is returned
-	if val, ok := config.TriggerMetadata[nodataerr]; ok {
+	// default is NO error is returned when query result is empty/no data
+	if val, ok := config.TriggerMetadata[noDataErr]; ok {
 		noDataErr, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("useRegex has invalid value")
+			return nil, fmt.Errorf("noDataErr has invalid value")
 		}
 		meta.noDataErr = noDataErr
 	} else {
-		meta.noDataErr = true
+		meta.noDataErr = false
 	}
-
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -149,7 +148,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
 	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
 	if err != nil {
-		return 0, fmt.Errorf("error running NerdGraph query \"%s\"", s.metadata.nrql)
+		return 0, fmt.Errorf("error running NerdGraph query %s (%s)", s.metadata.nrql, err.Error())
 	}
 	for _, r := range resp.Results {
 		val, ok := r[s.metadata.metricName].(float64)
@@ -158,9 +157,9 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 		}
 	}
 	if s.metadata.noDataErr {
-		return 0, nil
+		return 0, fmt.Errorf("query return no results %s", s.metadata.nrql)
 	}
-	return 0, fmt.Errorf("query return no results '%s'", s.metadata.nrql)
+	return 0, nil
 }
 
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {

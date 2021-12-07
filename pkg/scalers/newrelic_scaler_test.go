@@ -31,8 +31,17 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// malformed threshold
 	{map[string]string{"account": "0", "metricName": "results", "threshold": "one", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	// missing threshold
+	{map[string]string{"account": "0", "metricName": "results", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing query
 	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey"}, true},
+	// noDataErr invalid value
+	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "invalid", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	// noDataErr valid value
+	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "true", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "false", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "0", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "1", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 }
 
 var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
