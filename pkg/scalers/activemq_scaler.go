@@ -215,14 +215,14 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return -1, err
+	}
 
 	// Add HTTP Auth and Headers
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	req.Header.Set("Content-Type", "application/json")
 
-	if err != nil {
-		return -1, err
-	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return -1, err
@@ -265,7 +265,7 @@ func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
+		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
@@ -274,7 +274,7 @@ func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		Timestamp:  metav1.Now(),
 	}
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, nil
 }
 
 func (s *activeMQScaler) Close(context.Context) error {

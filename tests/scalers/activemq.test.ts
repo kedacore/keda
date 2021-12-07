@@ -22,12 +22,12 @@ test.before(t => {
 	t.is(0, sh.exec(`kubectl apply --namespace ${activeMQNamespace} -f ${activeMQTmpFile.name}`).code, 'creating ActiveMQ deployment should work.')
 	t.is(0, waitForRollout('deployment', "activemq", activeMQNamespace))
 
-	const clusterIP = sh.exec(`kubectl get svc -n ${activeMQNamespace} -o jsonpath='{.items[0].spec.clusterIP}'`).stdout
+	const activeMQPod = sh.exec(`kubectl get pods --selector=app=activemq-app -n ${activeMQNamespace} -o jsonpath='{.items[0].metadata.name'}`).stdout
 
         // ActiveMQ ready check
 	let activeMQReady
 	for (let i = 0; i < 30; i++) {
-		activeMQReady = sh.exec(`curl -u ${activeMQUsername}:${activeMQPassword} -s http://${clusterIP}:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus | sed -e 's/[{}]/''/g' | awk -v RS=',"' -F: '/^status/ {print $2}'`)
+		activeMQReady = sh.exec(`kubectl exec -n ${activeMQNamespace} ${activeMQPod} -- curl -u ${activeMQUsername}:${activeMQPassword} -s http://localhost:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus | sed -e 's/[{}]/''/g' | awk -v RS=',"' -F: '/^status/ {print $2}'`)
 		if (activeMQReady != 200) {
 			sh.exec('sleep 5s')
 		}
@@ -38,7 +38,7 @@ test.before(t => {
 
 	// deploy Nginx, scaledobject etc.
 	const nginxTmpFile = tmp.fileSync()
-	fs.writeFileSync(nginxTmpFile.name, nginxDeployYaml.replace('{{CLUSTER_IP}}', clusterIP.toString()))
+	fs.writeFileSync(nginxTmpFile.name, nginxDeployYaml)
 
 	t.is(0, sh.exec(`kubectl apply --namespace ${activeMQNamespace} -f ${nginxTmpFile.name}`).code, 'creating Nginx deployment should work.')
         t.is(0, waitForRollout('deployment', "nginx-deployment", activeMQNamespace))
@@ -50,7 +50,6 @@ test.serial('Deployment should have 0 replicas on start', t => {
 })
 
 test.serial('Deployment should scale to 5 (the max) with 1000 messages on the queue then back to 0', t => {
-	const clusterIP = sh.exec(`kubectl get svc -n ${activeMQNamespace} -o jsonpath='{.items[0].spec.clusterIP}'`).stdout
 	const activeMQPod = sh.exec(`kubectl get pods --selector=app=activemq-app -n ${activeMQNamespace} -o jsonpath='{.items[0].metadata.name'}`).stdout
 
 	// produce 1000 messages to ActiveMQ
@@ -479,7 +478,7 @@ spec:
   triggers:
     - type: activemq
       metadata:
-        managementEndpoint: "{{CLUSTER_IP}}:8161"
+        managementEndpoint: "activemq.${activeMQNamespace}:8161"
         destinationName: "testQ"
         brokerName: "localhost"
       authenticationRef:
