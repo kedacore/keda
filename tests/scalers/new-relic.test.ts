@@ -10,6 +10,7 @@ environment variables
 
 NEWRELIC_API_KEY
 NEWRELIC_LICENSE
+NEWRELIC_ACCOUNT_ID
 
 the API key starts with 'NRAK' and the license ends in 'NRAL'
 
