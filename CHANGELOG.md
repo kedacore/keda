@@ -23,9 +23,9 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
-
 - Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ### Improvements
 
