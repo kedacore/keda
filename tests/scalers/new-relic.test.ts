@@ -127,6 +127,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   }
 
   t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+  sh.exec('sleep 10s')
 })
 
 
@@ -247,9 +248,8 @@ spec:
   - type: new-relic
     metadata:
       account: '{{NEWRELIC_ACCOUNT_ID}}'
-      metricName: result
       threshold: '100'
-      nrql: SELECT average(\`http_requests_total\`) as result FROM Metric where serviceName='test-app' and namespaceName='new-relic-test' since 60 seconds ago
+      nrql: SELECT average(\`http_requests_total\`) FROM Metric where serviceName='test-app' and namespaceName='new-relic-test' since 60 seconds ago
     authenticationRef:
         name: newrelic-trigger
 `
