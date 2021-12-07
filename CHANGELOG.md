@@ -25,6 +25,8 @@
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
+- Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
+
 ### Improvements
 
 - Graphite Scaler: use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
