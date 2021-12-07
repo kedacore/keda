@@ -79,6 +79,9 @@ jobs:
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
+          NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
+          NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
           E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
           TEST_CLUSTER_NAME: keda-pr-run
         run: |
