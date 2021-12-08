@@ -25,8 +25,8 @@ const newRelicAccountId = process.env['NEWRELIC_ACCOUNT_ID']
 const testNamespace = 'new-relic-test'
 const newRelicNamespace = 'new-relic'
 const newRelicRepoUrl = 'https://helm-charts.newrelic.com'
-const newRelicRepoName = 'new-relic'
-const newRelicHelmPackageName = 'newrelic/nri-bundle'
+const newRelicHelmRepoName = 'new-relic'
+const newRelicHelmPackageName = 'nri-bundle'
 const newRelicLicenseKey = process.env['NEWRELIC_LICENSE']
 const kuberneteClusterName = 'keda-new-relic'
 
@@ -42,9 +42,20 @@ test.before(t => {
     t.fail('NEWRELIC_ACCOUNT_ID environment variable is required for newrelic tests tests')
   }
   sh.exec(`kubectl create namespace ${newRelicNamespace}`)
-  sh.exec(`helm repo add ${newRelicRepoName} ${newRelicRepoUrl}`)
+  sh.exec(`helm repo add ${newRelicHelmRepoName} ${newRelicRepoUrl}`)
   sh.exec(`helm repo update`)
-  let helmInstallStatus = sh.exec(`helm upgrade --install --set global.cluster=${kuberneteClusterName} --set prometheus.enabled=true --set ksm.enabled=true --set global.lowDataMode=true --set global.licenseKey=${newRelicLicenseKey} --timeout 600s --set logging.enabled=false --set ksm.enabled=true --set logging.enabled=true --namespace ${newRelicNamespace} nri-keda ${newRelicHelmPackageName}`).code
+  let helmInstallStatus = sh.exec(`helm upgrade \
+        --install --set global.cluster=${kuberneteClusterName} \
+        --set prometheus.enabled=true \
+        --set ksm.enabled=true \
+        --set global.lowDataMode=true \
+        --set global.licenseKey=${newRelicLicenseKey} \
+        --timeout 600s \
+        --set logging.enabled=false \
+        --set ksm.enabled=true \
+        --set logging.enabled=true \
+        --namespace ${newRelicNamespace} \
+        nri-keda ${newRelicHelmRepoName}/${newRelicHelmPackageName}`).code
   sh.echo(`${helmInstallStatus}`)
   t.is(0,
     helmInstallStatus,
@@ -53,7 +64,9 @@ test.before(t => {
 
   sh.config.silent = true
   const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml.replace('{{NEWRELIC_API_KEY}}', Buffer.from(newRelicApiKey).toString('base64')).replace('{{NEWRELIC_ACCOUNT_ID}}',newRelicAccountId))
+  fs.writeFileSync(tmpFile.name, deployYaml.replace('{{NEWRELIC_API_KEY}}',
+    Buffer.from(newRelicApiKey).toString('base64'))
+    .replace('{{NEWRELIC_ACCOUNT_ID}}',newRelicAccountId))
   sh.exec(`kubectl create namespace ${testNamespace}`)
   sh.exec(`cp ${tmpFile.name} /tmp/paso.yaml`)
   t.is(
@@ -62,7 +75,8 @@ test.before(t => {
     'creating a deployment should work.'
   )
   for (let i = 0; i < 10; i++) {
-    const readyReplicaCount = sh.exec(`kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}"`).stdout
+    const readyReplicaCount = sh.exec(`kubectl get deployment.apps/test-app \
+      --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}"`).stdout
     if (readyReplicaCount != '1') {
       sh.exec('sleep 2s')
     }
@@ -135,6 +149,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
 
 test.after.always.cb('clean up newrelic resources', t => {
   sh.exec(`helm delete --namespace ${newRelicNamespace} nri-keda`)
+  sh.exec(`helm repo rm ${newRelicHelmRepoName}`)
   sh.exec(`kubectl delete namespace ${newRelicNamespace} --force`)
   sh.exec(`kubectl delete namespace ${testNamespace} --force`)
   t.end()
