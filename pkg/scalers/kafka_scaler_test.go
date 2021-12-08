@@ -2,12 +2,8 @@ package scalers
 
 import (
 	"context"
-	"fmt"
 	"reflect"
-	"sort"
 	"testing"
-
-	"github.com/Shopify/sarama"
 )
 
 type parseKafkaMetadataTestData struct {
@@ -207,30 +203,5 @@ func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
-	}
-}
-
-func TestYo(t *testing.T){
-	config := sarama.NewConfig()
-	client, _ := sarama.NewClient([]string{
-		"kafka-bootstrap-lb-us-west-2.stage.roktinternal.com:9095",
-	}, config)
-
-	admin, _ := sarama.NewClusterAdminFromClient(client)
-
-	cgName := "signal-processor-create-object"
-	resp, err := admin.ListConsumerGroupOffsets(cgName, nil)
-	if err != nil {
-		panic(err)
-	}
-	for k,v := range resp.Blocks{
-		partitions := make([]int32, 0)
-		for partition, _ := range v {
-			partitions = append(partitions, partition)
-		}
-		sort.SliceStable(partitions, func(i, j int) bool {
-			return partitions[i] <= partitions[j]
-		})
-		fmt.Printf("Topic: %s have partition: %v\n", k, partitions)
 	}
 }

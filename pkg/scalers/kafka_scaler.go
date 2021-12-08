@@ -224,21 +224,20 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	for topic, partitions := range topicPartitions {
-		for _, partition := range partitions {
-		lag, err := s.getLagForPartition(partition, offsets, topicPartitionsOffsets)
-		if err != nil && lag == invalidOffset {
-			return true, nil
-		}
-		kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, s.metadata.topic, partition))
+	for topic, partitionsOffsets := range topicPartitionsOffsets {
+		for partition, _ := range partitionsOffsets {
+			lag, err := s.getLagForPartition(partition, offsets, partitionsOffsets)
+			if err != nil && lag == invalidOffset {
+				return true, nil
+			}
+			kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, topic, partition))
 
-		// Return as soon as a lag was detected for any partition
-		if lag > 0 {
-			return true, nil
-		}
+			// Return as soon as a lag was detected for any partition
+			if lag > 0 {
+				return true, nil
+			}
 		}
 	}
-
 	return false, nil
 }
 
@@ -390,16 +389,17 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	topicOffsets, err := s.getTopicPartitionOffsets(topicPartitions)
+	topicsPartitionsOffsets, err := s.getTopicPartitionOffsets(topicPartitions)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	totalLag := int64(0)
-	for _, partition := range topicPartitions {
-		lag, _ := s.getLagForPartition(partition, offsets, topicOffsets)
-
-		totalLag += lag
+	for _, partitionsOffsets := range topicsPartitionsOffsets {
+		for partition, _ := range partitionsOffsets{
+			lag, _ := s.getLagForPartition(partition, offsets, partitionsOffsets)
+			totalLag += lag
+		}
 	}
 
 	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
