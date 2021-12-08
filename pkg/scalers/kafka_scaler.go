@@ -119,7 +119,9 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	case config.TriggerMetadata["topic"] != "":
 		meta.topic = config.TriggerMetadata["topic"]
 	default:
-		return meta, errors.New("no topic given")
+		meta.topic = ""
+		kafkaLog.V(1).Info(fmt.Sprintf("cosumer group %s have no topic specified, "+
+			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
@@ -396,7 +398,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	totalLag := int64(0)
 	for _, partitionsOffsets := range topicsPartitionsOffsets {
-		for partition, _ := range partitionsOffsets{
+		for partition, _ := range partitionsOffsets {
 			lag, _ := s.getLagForPartition(partition, offsets, partitionsOffsets)
 			totalLag += lag
 		}
