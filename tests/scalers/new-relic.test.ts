@@ -29,7 +29,7 @@ const newRelicHelmRepoName = 'new-relic'
 const newRelicHelmPackageName = 'nri-bundle'
 const newRelicLicenseKey = process.env['NEWRELIC_LICENSE']
 const kuberneteClusterName = 'keda-new-relic'
-
+let newRelicRegion = process.env['NEWRELIC_REGION']
 
 test.before(t => {
   if (!newRelicApiKey) {
@@ -40,6 +40,9 @@ test.before(t => {
   }
   if (!newRelicAccountId) {
     t.fail('NEWRELIC_ACCOUNT_ID environment variable is required for newrelic tests tests')
+  }
+  if (!newRelicRegion) {
+    newRelicRegion = 'EU'
   }
   sh.exec(`kubectl create namespace ${newRelicNamespace}`)
   sh.exec(`helm repo add ${newRelicHelmRepoName} ${newRelicRepoUrl}`)
@@ -64,9 +67,11 @@ test.before(t => {
 
   sh.config.silent = true
   const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml.replace('{{NEWRELIC_API_KEY}}',
-    Buffer.from(newRelicApiKey).toString('base64'))
-    .replace('{{NEWRELIC_ACCOUNT_ID}}',newRelicAccountId))
+  fs.writeFileSync(tmpFile.name, deployYaml
+    .replace('{{NEWRELIC_API_KEY}}', Buffer.from(newRelicApiKey).toString('base64'))
+    .replace('{{NEWRELIC_ACCOUNT_ID}}', newRelicAccountId)
+    .replace('{{NEWRELIC_REGION}}', newRelicRegion)
+  )
   sh.exec(`kubectl create namespace ${testNamespace}`)
   sh.exec(`cp ${tmpFile.name} /tmp/paso.yaml`)
   t.is(
@@ -265,6 +270,7 @@ spec:
   - type: new-relic
     metadata:
       account: '{{NEWRELIC_ACCOUNT_ID}}'
+      region: '{{NEWRELIC_REGION}}'
       threshold: '100'
       nrql: SELECT average(\`http_requests_total\`) FROM Metric where serviceName='test-app' and namespaceName='new-relic-test' since 60 seconds ago
     authenticationRef:
