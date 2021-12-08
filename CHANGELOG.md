@@ -23,6 +23,7 @@
 
 ### New
 
+- Add New Relic Scaler ([#2387](https://github.com/kedacore/keda/pull/2387))
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ### Improvements
