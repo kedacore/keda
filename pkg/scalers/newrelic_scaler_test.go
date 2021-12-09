@@ -20,9 +20,9 @@ type newrelicMetricIdentifier struct {
 var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 	// all properly formed
-	{map[string]string{"account": "0", "region": "EU", "metricName": "results", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "region": "EU", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 	// account as String
 	{map[string]string{"account": "ABC", "metricName": "results", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing account
@@ -30,23 +30,23 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	// missing metricName
 	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 	// malformed threshold
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "one", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	{map[string]string{"account": "0", "threshold": "one", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing threshold
-	{map[string]string{"account": "0", "metricName": "results", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	{map[string]string{"account": "0", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
 	// missing query
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey"}, true},
-	// noDataErr invalid value
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "invalid", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
-	// noDataErr valid value
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "true", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "false", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "0", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
-	{map[string]string{"account": "0", "metricName": "results", "threshold": "100", "queryKey": "somekey", "noDataErr": "1", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey"}, true},
+	// noDataError invalid value
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "noDataError": "invalid", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, true},
+	// noDataError valid value
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "noDataError": "true", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "noDataError": "false", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "noDataError": "0", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
+	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "noDataError": "1", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, false},
 }
 
 var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
-	{&testNewRelicMetadata[1], 0, "s0-new-relic-results"},
-	{&testNewRelicMetadata[1], 1, "s1-new-relic-results"},
+	{&testNewRelicMetadata[1], 0, "s0-new-relic"},
+	{&testNewRelicMetadata[1], 1, "s1-new-relic"},
 }
 
 func TestNewRelicParseMetadata(t *testing.T) {

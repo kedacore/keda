@@ -2,8 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"strconv"
@@ -21,13 +19,13 @@ import (
 )
 
 const (
-	account    = "account"
-	queryKey   = "queryKey"
-	region     = "region"
-	metricName = "metricName"
-	nrql       = "nrql"
-	threshold  = "threshold"
-	noDataErr  = "noDataErr"
+	account     = "account"
+	queryKey    = "queryKey"
+	region      = "region"
+	nrql        = "nrql"
+	threshold   = "threshold"
+	noDataError = "noDataError"
+	scalerName  = "new-relic"
 )
 
 type newrelicScaler struct {
@@ -39,19 +37,18 @@ type newrelicMetadata struct {
 	account     int
 	region      string
 	queryKey    string
-	metricName  string
-	noDataErr   bool
+	noDataError bool
 	nrql        string
 	threshold   int
 	scalerIndex int
 }
 
-var newrelicLog = logf.Log.WithName("new-relic_scaler")
+var newrelicLog = logf.Log.WithName(fmt.Sprintf("%s_scaler", scalerName))
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseNewRelicMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing new-relic metadata: %s", err)
+		return nil, fmt.Errorf("error parsing %s metadata: %s", scalerName, err)
 	}
 
 	nrClient, err := newrelic.New(
@@ -95,10 +92,6 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 		return nil, fmt.Errorf("no %s given", queryKey)
 	}
 
-	if val, ok := config.TriggerMetadata[metricName]; ok && val != "" {
-		meta.metricName = val
-	}
-
 	meta.region, err = GetFromAuthOrMeta(config, region)
 	if err != nil {
 		meta.region = "US"
@@ -117,14 +110,14 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 
 	// If Query Return an Empty Data , shall we treat it as an error or not
 	// default is NO error is returned when query result is empty/no data
-	if val, ok := config.TriggerMetadata[noDataErr]; ok {
-		noDataErr, err := strconv.ParseBool(val)
+	if val, ok := config.TriggerMetadata[noDataError]; ok {
+		noDataError, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("noDataErr has invalid value")
+			return nil, fmt.Errorf("noDataError has invalid value")
 		}
-		meta.noDataErr = noDataErr
+		meta.noDataError = noDataError
 	} else {
-		meta.noDataErr = false
+		meta.noDataError = false
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
@@ -133,7 +126,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := s.ExecuteNewRelicQuery(ctx)
 	if err != nil {
-		newrelicLog.Error(err, "error executing newrelic query")
+		newrelicLog.Error(err, "error executing NRQL")
 		return false, err
 	}
 	return val > 0, nil
@@ -147,7 +140,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
 	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
 	if err != nil {
-		return 0, fmt.Errorf("error running NerdGraph query %s (%s)", s.metadata.nrql, err.Error())
+		return 0, fmt.Errorf("error running NRQL %s (%s)", s.metadata.nrql, err.Error())
 	}
 	// Only use the first result from the query, as the query should not be multi row
 	for _, v := range resp.Results[0] {
@@ -156,7 +149,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 			return val, nil
 		}
 	}
-	if s.metadata.noDataErr {
+	if s.metadata.noDataError {
 		return 0, fmt.Errorf("query return no results %s", s.metadata.nrql)
 	}
 	return 0, nil
@@ -165,7 +158,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecuteNewRelicQuery(ctx)
 	if err != nil {
-		newrelicLog.Error(err, "error executing New Relic query")
+		newrelicLog.Error(err, "error executing NRQL query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -180,14 +173,8 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
-	var metricName string
-	if s.metadata.metricName == "" {
-		// TODO: Find a better way to generate a small string based on the nrql string, or maybe just use UUID?
-		hash := md5.Sum([]byte(s.metadata.nrql))
-		metricName = kedautil.NormalizeString(fmt.Sprintf("new-relic-%s", hex.EncodeToString(hash[:])))
-	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("new-relic-%s", s.metadata.metricName))
-	}
+	metricName := kedautil.NormalizeString(scalerName)
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
