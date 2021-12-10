@@ -136,11 +136,7 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
 
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("activemq-%s", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName))
-	}
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName)))
 
 	meta.scalerIndex = config.ScalerIndex
 
@@ -249,7 +245,7 @@ func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 	targetMetricValue := resource.NewQuantity(int64(s.metadata.targetQueueSize), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,

@@ -26,8 +26,8 @@ type activeMQMetricIdentifier struct {
 
 // Setting metric identifier mock name
 var activeMQMetricIdentifiers = []activeMQMetricIdentifier{
-	{&testActiveMQMetadata[1], 0, "s0-activemq-testMetricName"},
-	{&testActiveMQMetadata[2], 1, "s1-activemq-testQueue"},
+	{&testActiveMQMetadata[1], 0, "s0-activemq-testQueue"},
+	{&testActiveMQMetadata[9], 1, "s1-activemq-testQueue"},
 }
 
 var testActiveMQMetadata = []parseActiveMQMetadataTestData{
@@ -44,7 +44,6 @@ var testActiveMQMetadata = []parseActiveMQMetadataTestData{
 			"destinationName":    "testQueue",
 			"brokerName":         "localhost",
 			"targetQueueSize":    "10",
-			"metricName":         "testMetricName",
 		},
 		authParams: map[string]string{
 			"username": "testUsername",
