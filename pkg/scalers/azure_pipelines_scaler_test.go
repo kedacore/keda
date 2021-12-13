@@ -51,7 +51,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 				testData.authParams["organizationURL"] = apiStub.URL
 			}
 
-			_, err := parseAzurePipelinesMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient, context.TODO())
+			_, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -67,24 +67,23 @@ type validateAzurePipelinesPoolTestData struct {
 	metadata   map[string]string
 	isError    bool
 	queryParam string
+	httpCode   int
 	response   string
 }
 
 var testValidateAzurePipelinesPoolData = []validateAzurePipelinesPoolTestData{
 	// poolID exists and only one is returned
-	{"poolID exists and only one is returned", map[string]string{"poolID": "1"}, false, "poolID", `{"count":1,"value":[{"id":1}]}`},
-	// poolID exists and more than one are returned
-	{"poolID exists and more than one are returned", map[string]string{"poolID": "1"}, true, "poolID", `{"count":2,"value":[{"id":1},{"id":2}]}`},
+	{"poolID exists and only one is returned", map[string]string{"poolID": "1"}, false, "poolID", http.StatusOK, `{"count":1,"value":[{"id":1}]}`},
 	// poolID doesn't exist
-	{"poolID doesn't exist", map[string]string{"poolID": "1"}, true, "poolID", `{"count":0,"value":[]}`},
+	{"poolID doesn't exist", map[string]string{"poolID": "1"}, true, "poolID", http.StatusNotFound, `{}`},
 	// poolName exists and only one is returned
-	{"poolName exists and only one is returned", map[string]string{"poolName": "sample"}, false, "poolName", `{"count":1,"value":[{"id":1}]}`},
+	{"poolName exists and only one is returned", map[string]string{"poolName": "sample"}, false, "poolName", http.StatusOK, `{"count":1,"value":[{"id":1}]}`},
 	// poolName exists and more than one are returned
-	{"poolName exists and more than one are returned", map[string]string{"poolName": "sample"}, true, "poolName", `{"count":2,"value":[{"id":1},{"id":2}]}`},
+	{"poolName exists and more than one are returned", map[string]string{"poolName": "sample"}, true, "poolName", http.StatusOK, `{"count":2,"value":[{"id":1},{"id":2}]}`},
 	// poolName doesn't exist
-	{"poolName doesn't exist", map[string]string{"poolName": "sample"}, true, "poolName", `{"count":0,"value":[]}`},
+	{"poolName doesn't exist", map[string]string{"poolName": "sample"}, true, "poolName", http.StatusOK, `{"count":0,"value":[]}`},
 	// poolName is used if poolName and poolID are defined
-	{"poolName is used if poolName and poolID are defined", map[string]string{"poolName": "sample", "poolID": "1"}, false, "poolName", `{"count":1,"value":[{"id":1}]}`},
+	{"poolName is used if poolName and poolID are defined", map[string]string{"poolName": "sample", "poolID": "1"}, false, "poolName", http.StatusOK, `{"count":1,"value":[{"id":1}]}`},
 }
 
 func TestValidateAzurePipelinesPool(t *testing.T) {
@@ -95,7 +94,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 				if !ok {
 					t.Error("Worng QueryParam")
 				}
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(testData.httpCode)
 				_, _ = w.Write([]byte(testData.response))
 			}))
 
@@ -104,7 +103,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 				"personalAccessToken": "PAT",
 			}
 
-			_, err := parseAzurePipelinesMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient, context.TODO())
+			_, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -129,7 +128,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azurePipelinesMetricIdentifiers {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"count":1,"value":[{ "id":1}]}`))
+			_, _ = w.Write([]byte(`{"id":1}`))
 		}))
 
 		authParams := map[string]string{
@@ -142,7 +141,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 			"targetPipelinesQueueLength": "1",
 		}
 
-		meta, err := parseAzurePipelinesMetadata(&ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, ScalerIndex: testData.scalerIndex}, http.DefaultClient, context.TODO())
+		meta, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, ScalerIndex: testData.scalerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -22,10 +22,14 @@ const (
 	defaultTargetPipelinesQueueLength = 1
 )
 
-type azurePipelinesPoolResponse struct {
+type azurePipelinesPoolNameResponse struct {
 	Value []struct {
 		ID int `json:"id"`
 	} `json:"value"`
+}
+
+type azurePipelinesPoolIDResponse struct {
+	ID int `json:"id"`
 }
 
 type azurePipelinesScaler struct {
@@ -121,21 +125,12 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 
 func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
-	return getPoolInfo(ctx, url, metadata, httpClient)
-}
-
-func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
-	return getPoolInfo(ctx, url, metadata, httpClient)
-}
-
-func getPoolInfo(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
 		return -1, err
 	}
 
-	var result azurePipelinesPoolResponse
+	var result azurePipelinesPoolNameResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return -1, err
@@ -143,14 +138,30 @@ func getPoolInfo(ctx context.Context, url string, metadata *azurePipelinesMetada
 
 	count := len(result.Value)
 	if count == 0 {
-		return -1, fmt.Errorf("agent pool not found")
+		return -1, fmt.Errorf("agent pool with name `%s` not found", poolName)
 	}
 
 	if count != 1 {
-		return -1, fmt.Errorf("incorrect agent pool count, expected 1 and got %d", count)
+		return -1, fmt.Errorf("found %d agent pool with name `%s`", count, poolName)
 	}
 
 	return result.Value[0].ID, nil
+}
+
+func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
+	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
+	if err != nil {
+		return -1, fmt.Errorf("agent pool with id `%s` not found", poolID)
+	}
+
+	var result azurePipelinesPoolIDResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return -1, err
+	}
+
+	return result.ID, nil
 }
 
 func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
