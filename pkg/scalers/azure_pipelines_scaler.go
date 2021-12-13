@@ -48,7 +48,7 @@ var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	meta, err := parseAzurePipelinesMetadata(config, httpClient, ctx)
+	meta, err := parseAzurePipelinesMetadata(ctx, config, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %s", err)
 	}
@@ -59,7 +59,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	}, nil
 }
 
-func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, ctx context.Context) (*azurePipelinesMetadata, error) {
+func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, error) {
 	meta := azurePipelinesMetadata{}
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
 
@@ -98,7 +98,7 @@ func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, 
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
-		meta.poolID, err = getPoolIDFromName(val, &meta, httpClient, ctx)
+		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +119,7 @@ func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, 
 	return &meta, nil
 }
 
-func getPoolIDFromName(poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
 	return getPoolInfo(ctx, url, metadata, httpClient)
 }
