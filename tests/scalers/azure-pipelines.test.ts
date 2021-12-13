@@ -47,7 +47,7 @@ test.serial('Deployment should have 1 replicas on start', async t => {
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should start out as 1')
 })
 
-test.serial('Deployment should scale to 3 replicas after queueing 3 jobs using poolID', async t => {
+test.serial('PoolID: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
   const scaledObjectFile = tmp.fileSync()
   fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject)
   t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
@@ -67,12 +67,12 @@ test.serial('Deployment should scale to 3 replicas after queueing 3 jobs using p
   t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
 })
 
-test.serial('Deployment should scale to 1 replica after finishing 3 jobs', async t => {
+test.serial('PoolID: Deployment should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
 
-test.serial('Deployment should scale to 3 replicas after queueing 3 jobs using poolName', async t => {
+test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
   const poolNameScaledObjectFile = tmp.fileSync()
   fs.writeFileSync(poolNameScaledObjectFile.name, poolNameScaledObject)
   t.is(0, sh.exec(`kubectl apply -f ${poolNameScaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'updating ScaledObject with poolName should work.')
@@ -89,7 +89,7 @@ test.serial('Deployment should scale to 3 replicas after queueing 3 jobs using p
   t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
 })
 
-test.serial('Deployment should scale to 1 replica after finishing 3 jobs', async t => {
+test.serial('PoolName: should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
