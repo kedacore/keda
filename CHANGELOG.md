@@ -23,7 +23,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Support `poolName` or `poolID` validation in Azure Pipelines Scaler ([#2370](https://github.com/kedacore/keda/pull/2370))
 
 ### Improvements
 
