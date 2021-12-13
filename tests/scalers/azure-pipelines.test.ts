@@ -39,7 +39,7 @@ test.before(async t => {
       .replace('{{AZP_TOKEN_BASE64}}', base64Token)
       .replace('{{AZP_URL}}', organizationURL))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
-  t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')  
+  t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 
 })
 
@@ -50,7 +50,7 @@ test.serial('Deployment should have 1 replicas on start', async t => {
 test.serial('Deployment should scale to 3 replicas after queueing 3 jobs using poolID', async t => {
   const scaledObjectFile = tmp.fileSync()
   fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject)
-  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')  
+  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
 
   let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
