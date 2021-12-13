@@ -15,12 +15,6 @@ type parseAzurePipelinesMetadataTestData struct {
 	authParams  map[string]string
 }
 
-type azurePipelinesMetricIdentifier struct {
-	metadataTestData *parseAzurePipelinesMetadataTestData
-	scalerIndex      int
-	name             string
-}
-
 var testAzurePipelinesResolvedEnv = map[string]string{
 	"AZP_URL":   "https://dev.azure.com/sample",
 	"AZP_TOKEN": "sample",
@@ -39,11 +33,6 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	{"missing personalAccessToken", map[string]string{"organizationURLFromEnv": "AZP_URL", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// missing poolID
 	{"missing poolID", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
-}
-
-var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
-	{&testAzurePipelinesMetadata[1], 0, "s0-azure-pipelines-1"},
-	{&testAzurePipelinesMetadata[1], 1, "s1-azure-pipelines-1"},
 }
 
 func TestParseAzurePipelinesMetadata(t *testing.T) {
@@ -126,12 +115,21 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 	}
 }
 
+type azurePipelinesMetricIdentifier struct {
+	scalerIndex int
+	name        string
+}
+
+var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
+	{0, "s0-azure-pipelines-1"},
+	{1, "s1-azure-pipelines-1"},
+}
+
 func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azurePipelinesMetricIdentifiers {
-
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"count":1,"value":[{ "id":1}]}`))
+			_, _ = w.Write([]byte(`{"count":1,"value":[{ "id":1}]}`))
 		}))
 
 		authParams := map[string]string{

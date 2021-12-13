@@ -105,7 +105,7 @@ func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, 
 	} else {
 		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
 			var err error
-			meta.poolID, err = validatePoolID(val, &meta, httpClient, ctx)
+			meta.poolID, err = validatePoolID(ctx, val, &meta, httpClient)
 			if err != nil {
 				return nil, err
 			}
@@ -121,16 +121,16 @@ func parseAzurePipelinesMetadata(config *ScalerConfig, httpClient *http.Client, 
 
 func getPoolIDFromName(poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
-	return getPoolInfo(url, metadata, httpClient, ctx)
+	return getPoolInfo(ctx, url, metadata, httpClient)
 }
 
-func validatePoolID(poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
+func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
-	return getPoolInfo(url, metadata, httpClient, ctx)
+	return getPoolInfo(ctx, url, metadata, httpClient)
 }
 
-func getPoolInfo(url string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) (int, error) {
-	body, err := getAzurePipelineRequest(url, metadata, httpClient, ctx)
+func getPoolInfo(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
+	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
 		return -1, err
 	}
@@ -153,7 +153,7 @@ func getPoolInfo(url string, metadata *azurePipelinesMetadata, httpClient *http.
 	return result.Value[0].ID, nil
 }
 
-func getAzurePipelineRequest(url string, metadata *azurePipelinesMetadata, httpClient *http.Client, ctx context.Context) ([]byte, error) {
+func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return []byte{}, err
@@ -177,7 +177,6 @@ func getAzurePipelineRequest(url string, metadata *azurePipelinesMetadata, httpC
 	}
 
 	return b, nil
-
 }
 
 func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -199,7 +198,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
-	body, err := getAzurePipelineRequest(url, s.metadata, s.httpClient, ctx)
+	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
 	}
