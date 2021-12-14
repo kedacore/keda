@@ -251,13 +251,12 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 
 	points := series[0].GetPointlist()
 
-	if len(points) == 0 {
+	if len(points) == 0 || len(points[0]) < 2 {
+
 		return 0, fmt.Errorf("no Datadog metrics returned")
 	}
 
-	var val int = int(*points[0][1])
-
-	return val, nil
+	return int(*points[0][1]), nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
