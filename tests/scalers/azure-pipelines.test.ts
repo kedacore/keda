@@ -14,7 +14,6 @@ const personalAccessToken = process.env['AZURE_DEVOPS_PAT']
 const projectName = process.env['AZURE_DEVOPS_PROJECT']
 const buildDefinitionID = process.env['AZURE_DEVOPS_BUILD_DEFINITON_ID']
 const poolName = process.env['AZURE_DEVOPS_POOL_NAME']
-let poolID: number;
 
 test.before(async t => {
   if (!organizationURL || !personalAccessToken || !projectName || !buildDefinitionID || !poolName) {
@@ -26,7 +25,7 @@ test.before(async t => {
 
   let taskAgent: ta.ITaskAgentApiBase = await connection.getTaskAgentApi();
   let agentPool: ti.TaskAgentPool[] = await taskAgent.getAgentPools(poolName)
-  poolID = agentPool[0].id
+  let poolID: number = agentPool[0].id
 
   if(!poolID) {
     t.fail("failed to convert poolName to poolID")
@@ -37,10 +36,14 @@ test.before(async t => {
   const deployFile = tmp.fileSync()
   fs.writeFileSync(deployFile.name, deployYaml
       .replace('{{AZP_TOKEN_BASE64}}', base64Token)
+      .replace('{{AZP_POOL}}', poolName)
       .replace('{{AZP_URL}}', organizationURL))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
   t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
-
+  const scaledObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject
+      .replace('{{AZP_POOL_ID}}', poolID.toString()))
+  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
 })
 
 test.serial('Deployment should have 1 replicas on start', async t => {
@@ -48,10 +51,6 @@ test.serial('Deployment should have 1 replicas on start', async t => {
 })
 
 test.serial('PoolID: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
-  const scaledObjectFile = tmp.fileSync()
-  fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject)
-  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
-
   let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
   let build: ba.IBuildApi = await connection.getBuildApi();
@@ -74,7 +73,8 @@ test.serial('PoolID: Deployment should scale to 1 replica after finishing 3 jobs
 
 test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
   const poolNameScaledObjectFile = tmp.fileSync()
-  fs.writeFileSync(poolNameScaledObjectFile.name, poolNameScaledObject)
+  fs.writeFileSync(poolNameScaledObjectFile.name, poolNameScaledObject
+        .replace('{{AZP_POOL}}', poolName))
   t.is(0, sh.exec(`kubectl apply -f ${poolNameScaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'updating ScaledObject with poolName should work.')
 
   let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
@@ -142,7 +142,7 @@ spec:
                 name: test-secrets
                 key: personalAccessToken
           - name: AZP_POOL
-            value: ${poolName}
+            value: {{AZP_POOL}}
         volumeMounts:
         - mountPath: /var/run/docker.sock
           name: docker-volume
@@ -166,7 +166,7 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
-      poolID: "${poolID}"`
+      poolID: "{{AZP_POOL_ID}}"`
 const poolNameScaledObject =`apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -183,4 +183,4 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
-      poolID: "${poolName}"`
+      poolName: "{{AZP_POOL}}"`
