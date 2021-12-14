@@ -162,10 +162,10 @@ spec:
   pollingInterval: 50
   cooldownPeriod: 60
   advanced:
-  horizontalPodAutoscalerConfig:
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 15
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: azure-pipelines
     metadata:
@@ -184,10 +184,10 @@ spec:
   pollingInterval: 50
   cooldownPeriod: 60
   advanced:
-  horizontalPodAutoscalerConfig:
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 15
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: azure-pipelines
     metadata:
