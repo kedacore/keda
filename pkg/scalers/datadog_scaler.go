@@ -107,12 +107,6 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		meta.vType = average // Default to average between pods
 	}
 
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", val)))
-	} else {
-		return nil, fmt.Errorf("no metric name given")
-	}
-
 	if val, ok := config.AuthParams["apiKey"]; ok {
 		meta.apiKey = val
 	} else {
@@ -134,6 +128,9 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	} else {
 		meta.datadogSite = "datadoghq.com"
 	}
+
+	metricName := meta.query[0:strings.Index(meta.query, "{")]
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
 
 	return &meta, nil
 }
