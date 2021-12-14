@@ -139,7 +139,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 func newDatadogConnection(ctx context.Context, meta *datadogMetadata) (*datadog.APIClient, error) {
 
 	ctx = context.WithValue(
-		context.Background(),
+		ctx,
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
@@ -177,7 +177,7 @@ func (s *datadogScaler) Close(context.Context) error {
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 
 	ctx = context.WithValue(
-		context.Background(),
+		ctx,
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
@@ -220,7 +220,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 
 	ctx = context.WithValue(
-		context.Background(),
+		ctx,
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
