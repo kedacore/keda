@@ -161,6 +161,11 @@ spec:
   maxReplicaCount: 3
   pollingInterval: 50
   cooldownPeriod: 60
+  advanced:
+  horizontalPodAutoscalerConfig:
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 15
   triggers:
   - type: azure-pipelines
     metadata:
@@ -178,6 +183,11 @@ spec:
   maxReplicaCount: 3
   pollingInterval: 50
   cooldownPeriod: 60
+  advanced:
+  horizontalPodAutoscalerConfig:
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 15
   triggers:
   - type: azure-pipelines
     metadata:
