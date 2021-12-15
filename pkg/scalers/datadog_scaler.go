@@ -262,6 +262,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var externalMetric *v2beta2.ExternalMetricSource
+	externalMetric = new(v2beta2.ExternalMetricSource)
 
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 
