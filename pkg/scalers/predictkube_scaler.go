@@ -201,7 +201,7 @@ func (pks *predictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 			Name: GenerateMetricNameWithIndex(pks.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
+			Type:         v2beta2.ValueMetricType,
 			AverageValue: targetMetricValue,
 		},
 	}
