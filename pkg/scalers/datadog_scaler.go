@@ -119,15 +119,13 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		return nil, fmt.Errorf("no app key given")
 	}
 
-	if val, ok := config.AuthParams["datadogSite"]; ok {
-		if val != "" {
-			meta.datadogSite = val
-		} else {
-			meta.datadogSite = "datadoghq.com"
-		}
-	} else {
-		meta.datadogSite = "datadoghq.com"
+	siteVal := "datadoghq.com"
+
+	if val, ok := config.AuthParams["datadogSite"]; ok && val != "" {
+		siteVal = val
 	}
+
+	meta.datadogSite = siteVal
 
 	metricName := meta.query[0:strings.Index(meta.query, "{")]
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
