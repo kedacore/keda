@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -184,8 +185,12 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) ( /*Scaler*
 
 // IsActive returns true if we are able to get metrics from PredictKube
 func (pks *predictKubeScaler) IsActive(ctx context.Context) (bool, error) {
-	//return true, pks.ping(ctx) // TODO: ???
-	return true, nil
+	results, err := pks.doQuery(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return len(results) > 0, nil
 }
 
 func (pks *predictKubeScaler) Close(_ context.Context) error {
@@ -206,6 +211,7 @@ func (pks *predictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 			AverageValue: targetMetricValue,
 		},
 	}
+
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: predictKubeMetricType,
 	}
@@ -227,6 +233,14 @@ func (pks *predictKubeScaler) GetMetrics(ctx context.Context, metricName string,
 		}
 	}
 
+	if value == 0 {
+		err = errors.New("empty response after predict request")
+		predictKubeLog.Error(err, "")
+		return nil, err
+	} else {
+		predictKubeLog.Info(fmt.Sprintf("predict value is: %d", value))
+	}
+
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
 		Value:      *resource.NewQuantity(value, resource.DecimalSI),
@@ -243,7 +257,7 @@ func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (*PredictRes
 	}
 
 	return pks.doRequest(ctx, &PredictRequest{
-		ForecastHorizon: uint(math.Round(float64(pks.metadata.historyTimeWindow / pks.metadata.stepDuration))),
+		ForecastHorizon: uint(math.Round(float64(pks.metadata.predictHorizon / pks.metadata.stepDuration))),
 		Observations:    results,
 	})
 }
@@ -283,7 +297,7 @@ func (pks *predictKubeScaler) doRequest(ctx context.Context, data *PredictReques
 }
 
 func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*MetricValue, error) {
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 
 	// TODO: parse from query...
 	if pks.metadata.stepDuration == 0 {
