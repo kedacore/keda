@@ -64,6 +64,8 @@ require (
 replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
 require (
+	github.com/dysnix/ai-scale-libs v0.0.0-20211217063709-f888549b2d75
+	github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1
 	github.com/prometheus/common v0.32.1
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/valyala/fasthttp v1.31.0

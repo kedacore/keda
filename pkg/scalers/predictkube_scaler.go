@@ -1,37 +1,37 @@
 package scalers
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
-	"net/http"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	"github.com/valyala/fasthttp"
 	"github.com/xhit/go-str2duration/v2"
+	"google.golang.org/grpc"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	libs "github.com/dysnix/ai-scale-libs/external/configs"
+	pc "github.com/dysnix/ai-scale-libs/external/grpc/client"
+	"github.com/dysnix/ai-scale-libs/external/http_transport"
+	tc "github.com/dysnix/ai-scale-libs/external/types_convertation"
+	"github.com/dysnix/ai-scale-proto/external/proto/commonproto"
+	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
 )
 
 const (
-	predictKubeAddress    = "https://forecaster.ais.dysnix.org/predict"
+	mlEngineHost          = "0.0.0.0"
+	mlEnginePort          = 8091
 	predictKubeMetricType = "External"
 )
 
@@ -39,104 +39,13 @@ var (
 	defaultStep = time.Minute * 5
 )
 
-type PredictRequest struct {
-	ForecastHorizon uint           `json:"forecastHorizon"`
-	Observations    []*MetricValue `json:"observations"`
-}
-
-type PredictResponse struct {
-	Predictions []*MetricValue `json:"predictions"`
-}
-
-func (p PredictResponse) Len() int {
-	return len(p.Predictions)
-}
-
-func (p PredictResponse) Less(i, j int) bool {
-	return p.Predictions[i].Date.Before(p.Predictions[j].Date)
-}
-
-func (p PredictResponse) Swap(i, j int) {
-	p.Predictions[i], p.Predictions[j] = p.Predictions[j], p.Predictions[i]
-}
-
-type MetricValue struct {
-	Date  time.Time `json:"date"`
-	Value float64   `json:"rps"`
-}
-
-func (mv *MetricValue) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Date  string  `json:"date"`
-		Value float64 `json:"rps"`
-	}{
-		Date: fmt.Sprintf("%02d-%02d-%d %02d:%02d:%02d",
-			mv.Date.Month(), mv.Date.Day(), mv.Date.Year(),
-			mv.Date.Hour(), mv.Date.Minute(), mv.Date.Second()),
-		Value: mv.Value,
-	})
-}
-
-func (mv *MetricValue) UnmarshalJSON(data []byte) (err error) {
-	type alias struct {
-		Date  string  `json:"date"`
-		Value float64 `json:"rps"`
-	}
-
-	var tmp alias
-	if err = json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-
-	if mv == nil {
-		*mv = MetricValue{}
-	}
-
-	if len(tmp.Date) == 19 {
-		month, err := strconv.Atoi(tmp.Date[0:2])
-		if err != nil {
-			return err
-		}
-
-		day, err := strconv.Atoi(tmp.Date[3:5])
-		if err != nil {
-			return err
-		}
-
-		year, err := strconv.Atoi(tmp.Date[6:10])
-		if err != nil {
-			return err
-		}
-
-		hour, err := strconv.Atoi(tmp.Date[11:13])
-		if err != nil {
-			return err
-		}
-
-		minutes, err := strconv.Atoi(tmp.Date[14:16])
-		if err != nil {
-			return err
-		}
-
-		seconds, err := strconv.Atoi(tmp.Date[17:19])
-		if err != nil {
-			return err
-		}
-
-		mv.Date = time.Date(year, time.Month(month), day, hour, minutes, seconds, 0, time.UTC)
-	}
-
-	mv.Value = tmp.Value
-
-	return nil
-}
-
 type predictKubeScaler struct {
 	metadata         *predictKubeMetadata
 	prometheusClient api.Client
-	httpClient       *http.Client
+	grpcConn         *grpc.ClientConn
+	grpcClient       pb.MlEngineServiceClient
 	api              v1.API
-	transport        *transport
+	transport        http_transport.FastHttpTransport
 }
 
 type predictKubeMetadata struct {
@@ -144,7 +53,6 @@ type predictKubeMetadata struct {
 	historyTimeWindow time.Duration
 	stepDuration      time.Duration
 	apiKey            string
-	predictKubeSite   string
 	prometheusAddress string
 	metricName        string
 	query             string
@@ -154,32 +62,84 @@ type predictKubeMetadata struct {
 
 var predictKubeLog = logf.Log.WithName("predictkube_scaler")
 
-// NewPredictKubeScaler creates a new PredictKube scaler
-func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) ( /*Scaler*/ *predictKubeScaler, error) {
-	s := &predictKubeScaler{
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-				MaxIdleConns:    10,
-				WriteBufferSize: 128 << 10,
-				ReadBufferSize:  128 << 10,
+func (pks *predictKubeScaler) setupClientConn() error {
+	clientOpt, err := pc.SetGrpcClientOptions(&libs.GRPC{
+		Enabled:       true,
+		UseReflection: true,
+		Compression: libs.Compression{
+			Enabled: false,
+		},
+		Conn: &libs.Connection{
+			Host:            mlEngineHost,
+			Port:            mlEnginePort,
+			ReadBufferSize:  50 << 20,
+			WriteBufferSize: 50 << 20,
+			MaxMessageSize:  50 << 20,
+			Insecure:        true,
+			Timeout:         time.Second * 15,
+		},
+		Keepalive: &libs.Keepalive{
+			Time:    time.Minute * 5,
+			Timeout: time.Minute * 5,
+			EnforcementPolicy: &libs.EnforcementPolicy{
+				MinTime:             time.Minute * 20,
+				PermitWithoutStream: false,
 			},
 		},
+	},
+		&libs.Base{
+			Monitoring: libs.Monitoring{
+				Enabled: false,
+			},
+			Profiling: libs.Profiling{
+				Enabled: false,
+			},
+			IsDebugMode: true,
+			Single: &libs.Single{
+				Enabled: false,
+			},
+		},
+		pc.InjectPublicClientMetadataInterceptor(pks.metadata.apiKey),
+	)
+
+	if err != nil {
+		return err
 	}
+
+	pks.grpcConn, err = grpc.Dial(fmt.Sprintf("%s:%d", mlEngineHost, mlEnginePort), clientOpt...)
+	if err != nil {
+		return err
+	}
+
+	pks.grpcClient = pb.NewMlEngineServiceClient(pks.grpcConn)
+
+	return err
+}
+
+// NewPredictKubeScaler creates a new PredictKube scaler
+func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*predictKubeScaler, error) {
+	s := &predictKubeScaler{}
 
 	meta, err := parsePredictKubeMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing PredictKube metadata: %s", err)
+		predictKubeLog.Error(err, "error parsing PredictKube metadata")
+		return nil, fmt.Errorf("error parsing PredictKube metadata: %3s", err)
 	}
 
 	s.metadata = meta
 
 	err = s.initPredictKubePrometheusConn(ctx, meta)
 	if err != nil {
-		return nil, fmt.Errorf("error create Prometheus client and API objects: %s", err)
+		predictKubeLog.Error(err, "error create Prometheus client and API objects")
+		return nil, fmt.Errorf("error create Prometheus client and API objects: %3s", err)
 	}
+
+	err = s.setupClientConn()
+	if err != nil {
+		predictKubeLog.Error(err, "error init GRPC client")
+		return nil, fmt.Errorf("error init GRPC client: %3s", err)
+	}
+
 	return s, nil
 }
 
@@ -194,9 +154,8 @@ func (pks *predictKubeScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (pks *predictKubeScaler) Close(_ context.Context) error {
-	pks.transport.close()
-	pks.httpClient.CloseIdleConnections()
-	return nil
+	pks.transport.Close()
+	return pks.grpcConn.Close()
 }
 
 func (pks *predictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
@@ -219,18 +178,10 @@ func (pks *predictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 }
 
 func (pks *predictKubeScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := pks.doPredictRequest(ctx)
+	value, err := pks.doPredictRequest(ctx)
 	if err != nil {
 		predictKubeLog.Error(err, "error executing query to predict controller service")
 		return []external_metrics.ExternalMetricValue{}, err
-	}
-
-	var value int64
-	if val != nil && len(val.Predictions) > 0 {
-		lastElement := val.Predictions[len(val.Predictions)-1]
-		if lastElement != nil {
-			value = int64(lastElement.Value)
-		}
 	}
 
 	if value == 0 {
@@ -250,53 +201,47 @@ func (pks *predictKubeScaler) GetMetrics(ctx context.Context, metricName string,
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (*PredictResponse, error) {
+func max(array []*commonproto.Item) (max int64) {
+	if len(array) > 0 {
+		max = int64(array[0].Value)
+		var min = int64(array[0].Value)
+		for _, value := range array {
+			if max < int64(value.Value) {
+				max = int64(value.Value)
+			}
+			if min > int64(value.Value) {
+				min = int64(value.Value)
+			}
+		}
+	}
+
+	return max
+}
+
+func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (int64, error) {
 	results, err := pks.doQuery(ctx)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return pks.doRequest(ctx, &PredictRequest{
-		ForecastHorizon: uint(math.Round(float64(pks.metadata.predictHorizon / pks.metadata.stepDuration))),
+	resp, err := pks.grpcClient.GetPredictMetric(ctx, &pb.ReqGetPredictMetric{
+		ForecastHorizon: uint64(math.Round(float64(pks.metadata.predictHorizon / pks.metadata.stepDuration))),
 		Observations:    results,
 	})
-}
 
-func (pks *predictKubeScaler) doRequest(ctx context.Context, data *PredictRequest) (*PredictResponse, error) {
-	bts, err := json.Marshal(data)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", pks.metadata.predictKubeSite, bytes.NewReader(bts))
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := pks.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if resp.Body != nil {
-			_ = resp.Body.Close()
+	return func(x, y int64) int64 {
+		if x < y {
+			return y
 		}
-	}()
-
-	result := &PredictResponse{}
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Sort(result)
-
-	return result, nil
+		return x
+	}(resp.GetResultMetric(), max(results)), nil
 }
 
-func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*MetricValue, error) {
+func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {
 	currentTime := time.Now().UTC()
 
 	// TODO: parse from query...
@@ -323,14 +268,21 @@ func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*MetricValue, erro
 	return pks.parsePrometheusResult(val)
 }
 
-func (pks *predictKubeScaler) parsePrometheusResult(result model.Value) (out []*MetricValue, err error) {
+func (pks *predictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
+	metricName := GenerateMetricNameWithIndex(pks.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", pks.metadata.metricName)))
 	switch result.Type() {
 	case model.ValVector:
 		if res, ok := result.(model.Vector); ok {
 			for _, val := range res {
-				out = append(out, &MetricValue{
-					Date:  val.Timestamp.Time(),
-					Value: float64(val.Value),
+				t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(val.Timestamp.Time()))
+				if err != nil {
+					return nil, err
+				}
+
+				out = append(out, &commonproto.Item{
+					Timestamp:  t,
+					Value:      float64(val.Value),
+					MetricName: metricName,
 				})
 			}
 		}
@@ -338,30 +290,48 @@ func (pks *predictKubeScaler) parsePrometheusResult(result model.Value) (out []*
 		if res, ok := result.(model.Matrix); ok {
 			for _, val := range res {
 				for _, v := range val.Values {
-					out = append(out, &MetricValue{
-						Date:  v.Timestamp.Time(),
-						Value: float64(v.Value),
+					t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(v.Timestamp.Time()))
+					if err != nil {
+						return nil, err
+					}
+
+					out = append(out, &commonproto.Item{
+						Timestamp:  t,
+						Value:      float64(v.Value),
+						MetricName: metricName,
 					})
 				}
 			}
 		}
 	case model.ValScalar:
 		if res, ok := result.(*model.Scalar); ok {
-			out = append(out, &MetricValue{
-				Date:  res.Timestamp.Time(),
-				Value: float64(res.Value),
+			t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(res.Timestamp.Time()))
+			if err != nil {
+				return nil, err
+			}
+
+			out = append(out, &commonproto.Item{
+				Timestamp:  t,
+				Value:      float64(res.Value),
+				MetricName: metricName,
 			})
 		}
 	case model.ValString:
 		if res, ok := result.(*model.String); ok {
+			t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(res.Timestamp.Time()))
+			if err != nil {
+				return nil, err
+			}
+
 			s, err := strconv.ParseFloat(res.Value, 64)
 			if err != nil {
 				return nil, err
 			}
 
-			out = append(out, &MetricValue{
-				Date:  res.Timestamp.Time(),
-				Value: s,
+			out = append(out, &commonproto.Item{
+				Timestamp:  t,
+				Value:      s,
+				MetricName: metricName,
 			})
 		}
 	}
@@ -435,16 +405,6 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		return nil, fmt.Errorf("no api key given")
 	}
 
-	if val, ok := config.AuthParams["predictKubeSite"]; ok {
-		if val != "" {
-			meta.predictKubeSite = val
-		} else {
-			meta.predictKubeSite = predictKubeAddress
-		}
-	} else {
-		meta.predictKubeSite = predictKubeAddress
-	}
-
 	return &meta, nil
 }
 
@@ -455,10 +415,10 @@ func (pks *predictKubeScaler) ping(ctx context.Context) (err error) {
 
 // initPredictKubePrometheusConn init prometheus client and setup connection to API
 func (pks *predictKubeScaler) initPredictKubePrometheusConn(ctx context.Context, meta *predictKubeMetadata) (err error) {
-	pks.transport = newTransport(&httpTransport{
-		maxIdleConnDuration: 10,
-		readTimeout:         time.Second * 15,
-		writeTimeout:        time.Second * 15,
+	pks.transport = http_transport.NewTransport(&libs.HTTPTransport{
+		MaxIdleConnDuration: 10,
+		ReadTimeout:         time.Second * 15,
+		WriteTimeout:        time.Second * 15,
 	})
 
 	pks.prometheusClient, err = api.NewClient(api.Config{
@@ -480,105 +440,4 @@ func (pks *predictKubeScaler) initPredictKubePrometheusConn(ctx context.Context,
 	}
 
 	return err
-}
-
-type httpTransport struct {
-	maxIdleConnDuration time.Duration
-	readTimeout         time.Duration
-	writeTimeout        time.Duration
-}
-
-// transport implements the estransport interface with
-// the github.com/valyala/fasthttp HTTP client.
-type transport struct {
-	client *fasthttp.Client
-}
-
-func newTransport(opts *httpTransport) *transport {
-	return &transport{
-		client: &fasthttp.Client{
-			MaxIdleConnDuration: opts.maxIdleConnDuration,
-			ReadTimeout:         opts.readTimeout,
-			WriteTimeout:        opts.writeTimeout,
-			// nolint:gosec
-			TLSConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
-}
-
-// RoundTrip performs the request and returns a response or error
-func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	freq := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(freq)
-
-	fres := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(fres)
-
-	copyRequest(freq, req)
-
-	err := t.client.Do(freq, fres)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &http.Response{Header: make(http.Header)}
-	copyResponse(res, fres)
-
-	return res, nil
-}
-
-func (t *transport) close() {
-	t.client.CloseIdleConnections()
-}
-
-// copyRequest converts a http.Request to fasthttp.Request
-func copyRequest(dst *fasthttp.Request, src *http.Request) {
-	if src.Method == fasthttp.MethodGet && src.Body != nil {
-		src.Method = fasthttp.MethodPost
-	}
-
-	dst.SetHost(src.Host)
-	dst.SetRequestURI(src.URL.String())
-
-	dst.Header.SetRequestURI(src.URL.String())
-	dst.Header.SetMethod(src.Method)
-
-	for k, vv := range src.Header {
-		for _, v := range vv {
-			dst.Header.Set(k, v)
-		}
-	}
-
-	if src.Body != nil {
-		dst.SetBodyStream(bodyCloserReader{
-			body: src.Body,
-		}, -1)
-	}
-}
-
-// copyResponse converts a http.Response to fasthttp.Response
-func copyResponse(dst *http.Response, src *fasthttp.Response) {
-	dst.StatusCode = src.StatusCode()
-
-	src.Header.VisitAll(func(k, v []byte) {
-		dst.Header.Set(string(k), string(v))
-	})
-
-	// Cast to a string to make a copy seeing as src.Body() won't
-	// be valid after the response is released back to the pool (fasthttp.ReleaseResponse).
-	dst.Body = ioutil.NopCloser(strings.NewReader(string(src.Body())))
-}
-
-type bodyCloserReader struct {
-	body io.ReadCloser
-}
-
-func (bcr bodyCloserReader) Read(p []byte) (n int, err error) {
-	n, err = bcr.body.Read(p)
-
-	if err != nil {
-		_ = bcr.body.Close()
-	}
-
-	return n, err
 }
