@@ -26,6 +26,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - list
+  - watch
+- apiGroups:
   - '*'
   resources:
   - '*'
