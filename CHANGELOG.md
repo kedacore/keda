@@ -29,8 +29,7 @@
 
 - Graphite Scaler: use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
 - Kubernetes Workload Scaler: ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
-
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Delete the cache entry when the SO is deleted ([#2408](https://github.com/kedacore/keda/pull/2408))
 
 ### Breaking Changes
 
