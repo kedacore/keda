@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Shopify/sarama"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -406,6 +407,11 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
+type brokerOffsetResult struct {
+	offsetResp *sarama.OffsetResponse
+	err        error
+}
+
 func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, error) {
 	version := int16(0)
 	if s.client.Config().Version.IsAtLeast(sarama.V0_10_1_0) {
@@ -430,17 +436,31 @@ func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, erro
 		request.AddBlock(s.metadata.topic, partitionID, sarama.OffsetNewest, 1)
 	}
 
+	// Step 2: send requests, one per broker, and collect offsets
+	resultCh := make(chan brokerOffsetResult)
+	var wg sync.WaitGroup
+	wg.Add(len(requests))
+	for broker, request := range requests {
+		go func(brCopy *sarama.Broker, reqCopy *sarama.OffsetRequest) {
+			response, err := brCopy.GetAvailableOffsets(reqCopy)
+			resultCh <- brokerOffsetResult{response, err}
+			wg.Done()
+		}(broker, request)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
 	offsets := make(map[int32]int64)
 
-	// Step 2: send requests, one per broker, and collect offsets
-	for broker, request := range requests {
-		response, err := broker.GetAvailableOffsets(request)
-
-		if err != nil {
-			return nil, err
+	for brokerOffsetRes := range resultCh {
+		if brokerOffsetRes.err != nil {
+			return nil, brokerOffsetRes.err
 		}
 
-		for _, blocks := range response.Blocks {
+		for _, blocks := range brokerOffsetRes.offsetResp.Blocks {
 			for partitionID, block := range blocks {
 				if block.Err != sarama.ErrNoError {
 					return nil, block.Err
