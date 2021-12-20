@@ -32,8 +32,10 @@ import (
 )
 
 const (
-	mlEngineHost          = "ai-scale-dev.dysnix.org" //"0.0.0.0"
-	mlEnginePort          = 8080                      //8091
+	mlEngineHost = "ai-scale-dev.dysnix.org"
+	mlEnginePort = 8080
+	//mlEngineHost          = "0.0.0.0"
+	//mlEnginePort          = 8091
 	predictKubeMetricType = "External"
 )
 
