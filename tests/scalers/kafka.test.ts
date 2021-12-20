@@ -228,20 +228,33 @@ test.serial('Applying ScaledObject with multiple topics should scale up pods', t
         'Deploying Scaled Object should work.'
     )
     sh.exec(`sleep 5s`)
-    waitForReplicaCount(1, commandToCheckReplicas)
-    t.is('0', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 0.')
 
-    // produce a single msg to the default topic should not scale
-    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -exc 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
-    sh.exec(`sleep 20s`)
+    // when lag is 0, scaled object is not active, replica = 0
     waitForReplicaCount(0, commandToCheckReplicas)
     t.is('0', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 0.')
 
-    // produce one more msg to the different topic should trigger scale
-    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -exc 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic2}'`)
-    sh.exec(`sleep 20s`)
+    // produce a single msg to the default topic
+    // should turn scale object active, replica = 1
+    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -exc 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+    sh.exec(`sleep 5s`)
     waitForReplicaCount(1, commandToCheckReplicas)
     t.is('1', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 1.')
+
+    // produce one more msg to the different topic within the same group
+    // will turn total consumer group lag to 2.
+    // with lagThreshold as 1 -> making hpa AverageValue to 1
+    // this should turn nb of replicas to 2
+    // as desiredReplicaCount = totalLag / avgThreshold
+    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -exc 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic2}'`)
+    sh.exec(`sleep 5s`)
+    waitForReplicaCount(2, commandToCheckReplicas)
+    t.is('2', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 2.')
+
+    // make it 3 cause why not?
+    sh.exec(`kubectl exec --namespace ${defaultNamespace} ${defaultKafkaClient} -- sh -exc 'echo "{\"text\": \"foo\"}" | kafka-console-producer --broker-list ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092 --topic ${defaultTopic}'`)
+    sh.exec(`sleep 5s`)
+    waitForReplicaCount(3, commandToCheckReplicas)
+    t.is('3', sh.exec(commandToCheckReplicas).stdout, 'Replica count should be 3.')
 })
 
 test.serial('Cleanup after multiple topics test', t=> {
@@ -481,5 +494,5 @@ spec:
     metadata:
       bootstrapServers: ${defaultCluster}-kafka-bootstrap.${defaultNamespace}:9092
       consumerGroup: multiTopic
-      lagThreshold: '2'
+      lagThreshold: '1'
       offsetResetPolicy: 'latest'`
