@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/xhit/go-str2duration/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,12 +27,13 @@ import (
 	"github.com/dysnix/ai-scale-libs/external/http_transport"
 	tc "github.com/dysnix/ai-scale-libs/external/types_convertation"
 	"github.com/dysnix/ai-scale-proto/external/proto/commonproto"
+	"github.com/dysnix/ai-scale-proto/external/proto/health"
 	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
 )
 
 const (
-	mlEngineHost          = "0.0.0.0"
-	mlEnginePort          = 8091
+	mlEngineHost          = "ai-scale-dev.dysnix.org" //"0.0.0.0"
+	mlEnginePort          = 8080                      //8091
 	predictKubeMetricType = "External"
 )
 
@@ -44,6 +46,7 @@ type predictKubeScaler struct {
 	prometheusClient api.Client
 	grpcConn         *grpc.ClientConn
 	grpcClient       pb.MlEngineServiceClient
+	healthClient     health.HealthClient
 	api              v1.API
 	transport        http_transport.FastHttpTransport
 }
@@ -112,6 +115,7 @@ func (pks *predictKubeScaler) setupClientConn() error {
 	}
 
 	pks.grpcClient = pb.NewMlEngineServiceClient(pks.grpcConn)
+	pks.healthClient = health.NewHealthClient(pks.grpcConn)
 
 	return err
 }
@@ -127,6 +131,8 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*predictKu
 	}
 
 	s.metadata = meta
+
+	predictKubeLog.Info(fmt.Sprintf("CLUSTER NAME: %v", ctx.Value("cluster_name")))
 
 	err = s.initPredictKubePrometheusConn(ctx, meta)
 	if err != nil {
@@ -146,11 +152,18 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*predictKu
 // IsActive returns true if we are able to get metrics from PredictKube
 func (pks *predictKubeScaler) IsActive(ctx context.Context) (bool, error) {
 	results, err := pks.doQuery(ctx)
+	// TODO:
 	if err != nil {
 		return false, err
 	}
 
-	return len(results) > 0, nil
+	resp, err := pks.healthClient.Check(ctx, &health.HealthCheckRequest{})
+
+	if resp == nil || err != nil {
+		err = fmt.Errorf("can't connect grpc server: %v, code: %v\n", err, status.Code(err))
+	}
+
+	return len(results) > 0 && err == nil, err
 }
 
 func (pks *predictKubeScaler) Close(_ context.Context) error {

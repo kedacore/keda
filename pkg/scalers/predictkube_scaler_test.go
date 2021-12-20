@@ -113,11 +113,13 @@ func TestNewPredictKubeScaler_doPredictRequest(t *testing.T) {
 			"queryStep":  "2m",
 		},
 		AuthParams: map[string]string{
-			"apiKey": "some_key",
+			"apiKey": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0LWtlZGEiLCJleHAiOjc2ODc3NjA1MDgsImlzcyI6ImNkNWYxM2NjLTVmNWEtMTFlYy05MDhmLWFjZGU0ODAwMTEyMiJ9.1Fd7caVMPCLYYuKggr6qSmM-k9gqfDg3rSBmdATmwbJZOrzkOLN-9h39N6FEGsQZVA1-NHX1NKhXO2qC8oBEJA",
 		},
 	})
 
 	assert.NoError(t, err)
+
+	defer predictScaler.Close(context.Background())
 
 	response, err := predictScaler.doPredictRequest(context.Background())
 	assert.NoError(t, err)
