@@ -39,8 +39,6 @@ const (
 var (
 	mlEngineHost = "ai-scale-dev.dysnix.org"
 	mlEnginePort = 8080
-	//mlEngineHost          = "0.0.0.0"
-	//mlEnginePort          = 8091
 
 	defaultStep = time.Minute * 5
 )
