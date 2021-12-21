@@ -25,7 +25,7 @@ let datadogSite = process.env['DATADOG_SITE']
 const testNamespace = 'datadog-test'
 const datadogNamespace = 'datadog'
 const datadogHelmRepo = 'https://helm.datadoghq.com'
-const datadogHelmRelease = 'datadogkeda' 
+const datadogHelmRelease = 'datadogkeda'
 const kuberneteClusterName = 'keda-datadog-cluster'
 
 test.before(t => {
@@ -156,12 +156,12 @@ test.after.always.cb('clean up datadog resources', t => {
 })
 
 const generateRequestsYaml = `apiVersion: v1
-kind: Pod 
+kind: Pod
 metadata:
   name: fake-traffic
 spec:
   containers:
-  - image: busybox 
+  - image: busybox
     name: test
     command: ["/bin/sh"]
     args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://nginx/; sleep 0.1; done"]`
@@ -212,12 +212,12 @@ spec:
         name: nginx
         ports:
         - containerPort: 80
-        - containerPort: 81 
+        - containerPort: 81
         volumeMounts:
-        - mountPath: /etc/nginx/conf.d/status.conf 
+        - mountPath: /etc/nginx/conf.d/status.conf
           subPath: status.conf
           readOnly: true
-          name: "config" 
+          name: "config"
       volumes:
       - name: "config"
         configMap:
@@ -237,7 +237,7 @@ spec:
     name: default
   - port: 81
     protocol: TCP
-    targetPort: 81 
+    targetPort: 81
     name: status
   selector:
     app: nginx
@@ -254,9 +254,9 @@ spec:
   - parameter: appKey
     name: datadog-secrets
     key: appKey
-  - parameter: datadogSite 
+  - parameter: datadogSite
     name: datadog-secrets
-    key: datadogSite 
+    key: datadogSite
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -264,11 +264,11 @@ metadata:
   name: datadog-scaledobject
 spec:
   scaleTargetRef:
-    name: nginx 
+    name: nginx
   minReplicaCount: 1
-  maxReplicaCount: 3 
+  maxReplicaCount: 3
   pollingInterval: 5
-  cooldownPeriod:  10
+  cooldownPeriod: 10
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:

@@ -91,7 +91,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 
 	// For all the points in a given window, we take the rollup to the window size
 	rollup := fmt.Sprintf(".rollup(avg, %d)", meta.age)
-	meta.query = meta.query + rollup
+	meta.query += rollup
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		val = strings.ToLower(val)
@@ -135,7 +135,6 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 
 // newDatddogConnection tests a connection to the Datadog API
 func newDatadogConnection(ctx context.Context, meta *datadogMetadata) (*datadog.APIClient, error) {
-
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
@@ -173,7 +172,6 @@ func (s *datadogScaler) Close(context.Context) error {
 
 // IsActive returns true if we are able to get metrics from Datadog
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
-
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
@@ -216,7 +214,6 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 
 // getQueryResult returns result of the scaler query
 func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
-
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
