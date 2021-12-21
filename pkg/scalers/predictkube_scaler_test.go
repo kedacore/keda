@@ -2,115 +2,224 @@ package scalers
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
+	"fmt"
+	"log"
+	"math/rand"
+	"net"
 	"testing"
+	"time"
+
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"k8s.io/apimachinery/pkg/api/resource"
+
+	libsSrv "github.com/dysnix/ai-scale-libs/external/grpc/server"
+	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
 )
 
-func TestNewPredictKubeScaler_doPredictRequest(t *testing.T) {
-	//svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	//	if r.RequestURI == "/api/v1/status/runtimeinfo" {
-	//		w.WriteHeader(http.StatusOK)
-	//		w.Header().Set("Content-Type", "application/json")
-	//
-	//		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-	//			"startTime":           "2020-05-18T15:52:53.4503113Z",
-	//			"CWD":                 "/prometheus",
-	//			"reloadConfigSuccess": true,
-	//			"lastConfigTime":      "2020-05-18T15:52:56Z",
-	//			"chunkCount":          72692,
-	//			"timeSeriesCount":     18476,
-	//			"corruptionCount":     0,
-	//			"goroutineCount":      217,
-	//			"GOMAXPROCS":          2,
-	//			"GOGC":                "100",
-	//			"GODEBUG":             "allocfreetrace",
-	//			"storageRetention":    "1d",
-	//		}); err != nil {
-	//			http.Error(w, "encode response body error", fasthttp.StatusInternalServerError)
-	//		}
-	//
-	//		return
-	//	}
-	//
-	//	w.WriteHeader(http.StatusOK)
-	//	w.Header().Set("Content-Type", "application/json")
-	//
-	//	type resp struct {
-	//		Status    string          `json:"status"`
-	//		Data      json.RawMessage `json:"data"`
-	//		ErrorType v1.ErrorType    `json:"errorType"`
-	//		Error     string          `json:"error"`
-	//		Warnings  []string        `json:"warnings,omitempty"`
-	//	}
-	//
-	//	raw, err := json.Marshal([]*model.SampleStream{
-	//		{
-	//			Values: []model.SamplePair{
-	//				{
-	//					Timestamp: model.Time(time.Date(2021, time.December, 15, 16, 01, 30, 0, time.UTC).Unix()),
-	//					Value:     16043,
-	//				},
-	//				{
-	//					Timestamp: model.Time(time.Date(2021, time.December, 15, 16, 02, 30, 0, time.UTC).Unix()),
-	//					Value:     15000,
-	//				},
-	//			},
-	//		},
-	//	})
-	//
-	//	if err != nil {
-	//		http.Error(w, "encode response body error", fasthttp.StatusInternalServerError)
-	//	}
-	//
-	//	bts, err := json.Marshal(&struct {
-	//		Type   model.ValueType `json:"resultType"`
-	//		Result json.RawMessage `json:"result"`
-	//	}{
-	//		Type:   model.ValMatrix,
-	//		Result: raw,
-	//	})
-	//
-	//	if err != nil {
-	//		http.Error(w, "encode response body error", fasthttp.StatusInternalServerError)
-	//	}
-	//
-	//	if err := json.NewEncoder(w).Encode(&resp{
-	//		Data:   bts,
-	//		Status: "200",
-	//	}); err != nil {
-	//		http.Error(w, "encode response body error", fasthttp.StatusInternalServerError)
-	//	}
-	//
-	//	//type queryResult struct {
-	//	//	Type   model.ValueType
-	//	//	Result []*model.SampleStream
-	//	//}
-	//	//
-	//	//fmt.Println(r.Body)
-	//}))
-	//defer svr.Close()
+type server struct {
+	grpcSrv  *grpc.Server
+	listener net.Listener
+	port     int
+	val      int64
+}
 
-	predictScaler, err := NewPredictKubeScaler(context.Background(), &ScalerConfig{
-		TriggerMetadata: map[string]string{
-			"query":             `sum(irate(nginx_http_requests_total{pod=~".*bsc.*", cluster="", namespace=~"bsc"}[2m]))`,
-			"predictHorizon":    "2h",
-			"historyTimeWindow": "7d",
-			"prometheusAddress":/*svr.URL, //*/ "https://ptmp.eu-pancakeswap.dysnix.org/",
-			"threshold":  "2000",
-			"metricName": "scaledobject",
-			"queryStep":  "2m",
-		},
-		AuthParams: map[string]string{
-			"apiKey": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0LWtlZGEiLCJleHAiOjE3MDY1MjkwODQsImlzcyI6ImNkNWYxM2NjLTVmNWEtMTFlYy05MDhmLWFjZGU0ODAwMTEyMiJ9.9VHwDc2Pa4_M6SYMAh4uAWDSjXbfyID3lzr-QkJp9xpn_AUhHF2I93Wt4P-3tlXo9hNnhIBmVcp1O7wE5FKbzA",
-		},
-	})
+func (s *server) GetPredictMetric(_ context.Context, _ *pb.ReqGetPredictMetric) (res *pb.ResGetPredictMetric, err error) {
+	s.val = int64(rand.Intn(30000-10000) + 10000)
+	return &pb.ResGetPredictMetric{
+		ResultMetric: s.val,
+	}, nil
+}
 
-	assert.NoError(t, err)
+func (s *server) start() <-chan error {
+	errCh := make(chan error, 1)
 
-	defer predictScaler.Close(context.Background())
+	go func() {
+		defer close(errCh)
 
-	response, err := predictScaler.doPredictRequest(context.Background())
-	assert.NoError(t, err)
+		var (
+			err error
+		)
 
-	t.Log(response)
+		s.port, err = freeport.GetFreePort()
+		if err != nil {
+			log.Fatalf("Could not get free port for init mock grpc server: %s", err)
+		}
+
+		serverUrl := fmt.Sprintf("0.0.0.0:%d", s.port)
+		if s.listener == nil {
+			var err error
+			s.listener, err = net.Listen("tcp4", serverUrl)
+
+			if err != nil {
+				log.Println("starting grpc server with error")
+
+				errCh <- err
+				return
+			}
+		}
+
+		log.Printf("🚀 starting mock grpc server. On host 0.0.0.0, with port: %d", s.port)
+
+		if err := s.grpcSrv.Serve(s.listener); err != nil {
+			log.Println(err, "serving grpc server with error")
+
+			errCh <- err
+			return
+		}
+	}()
+
+	return errCh
+}
+
+func (s *server) stop() error {
+	s.grpcSrv.GracefulStop()
+	return libsSrv.CheckNetErrClosing(s.listener.Close())
+}
+
+func runMockGrpcPredictServer() (*server, *grpc.Server) {
+	grpcServer := grpc.NewServer()
+
+	mockGrpcServer := &server{grpcSrv: grpcServer}
+
+	defer func() {
+		if r := recover(); r != nil {
+			_ = mockGrpcServer.stop()
+			panic(r)
+		}
+	}()
+
+	go func() {
+		for errCh := range mockGrpcServer.start() {
+			if errCh != nil {
+				log.Printf("GRPC server listen error: %3v", errCh)
+			}
+		}
+	}()
+
+	pb.RegisterMlEngineServiceServer(grpcServer, mockGrpcServer)
+
+	return mockGrpcServer, grpcServer
+}
+
+const testAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0IENyZWF0ZUNsaWVudCIsImV4cCI6MTY0NjkxNzI3Nywic3ViIjoiODM4NjY5ODAtM2UzNS0xMWVjLTlmMjQtYWNkZTQ4MDAxMTIyIn0.5QEuO6_ysdk2abGvk3Xp7Q25M4H4pIFXeqP2E7n9rKI"
+
+type predictKubeMetadataTestData struct {
+	metadata   map[string]string
+	authParams map[string]string
+	isError    bool
+}
+
+var testPredictKubeMetadata = []predictKubeMetadataTestData{
+	// all properly formed
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "2000", "query": "up"},
+		map[string]string{"apiKey": testAPIKey}, false,
+	},
+	// missing prometheusAddress
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "2000", "query": "up"},
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
+	// missing metricName
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "", "threshold": "2000", "query": "up"},
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
+	// malformed threshold
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "one", "query": "up"},
+
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
+	// missing query
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "one", "query": ""},
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
+}
+
+func TestPredictKubeParseMetadata(t *testing.T) {
+	for _, testData := range testPredictKubeMetadata {
+		_, err := parsePredictKubeMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
+}
+
+type predictKubeMetricIdentifier struct {
+	metadataTestData *predictKubeMetadataTestData
+	scalerIndex      int
+	name             string
+}
+
+var predictKubeMetricIdentifiers = []predictKubeMetricIdentifier{
+	{&testPredictKubeMetadata[0], 0, "s0-predictkube-http_requests_total"},
+	{&testPredictKubeMetadata[0], 1, "s1-predictkube-http_requests_total"},
+}
+
+func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
+	mockPredictServer, grpcServer := runMockGrpcPredictServer()
+	defer func() {
+		_ = mockPredictServer.stop()
+		grpcServer.GracefulStop()
+	}()
+
+	mlEngineHost = "0.0.0.0"
+	mlEnginePort = mockPredictServer.port
+
+	for _, testData := range predictKubeMetricIdentifiers {
+		mockPredictKubeScaler, err := NewPredictKubeScaler(
+			context.Background(), &ScalerConfig{
+				TriggerMetadata: testData.metadataTestData.metadata,
+				AuthParams:      testData.metadataTestData.authParams,
+				ScalerIndex:     testData.scalerIndex,
+			},
+		)
+		assert.NoError(t, err)
+
+		metricSpec := mockPredictKubeScaler.GetMetricSpecForScaling(context.Background())
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+			return
+		}
+
+		t.Log(metricSpec)
+	}
+}
+
+func TestPredictKubeGetMetrics(t *testing.T) {
+	mockPredictServer, grpcServer := runMockGrpcPredictServer()
+	<-time.After(time.Second * 3)
+	defer func() {
+		_ = mockPredictServer.stop()
+		grpcServer.GracefulStop()
+	}()
+
+	mlEngineHost = "0.0.0.0"
+	mlEnginePort = mockPredictServer.port
+
+	for _, testData := range predictKubeMetricIdentifiers {
+		mockPredictKubeScaler, err := NewPredictKubeScaler(
+			context.Background(), &ScalerConfig{
+				TriggerMetadata: testData.metadataTestData.metadata,
+				AuthParams:      testData.metadataTestData.authParams,
+				ScalerIndex:     testData.scalerIndex,
+			},
+		)
+		assert.NoError(t, err)
+
+		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), testData.metadataTestData.metadata["metricName"], nil)
+		assert.NoError(t, err)
+		assert.Equal(t, len(result), 1)
+		assert.Equal(t, result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI))
+
+		t.Logf("get: %v, want: %v, predictMetric: %d", result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI), mockPredictServer.val)
+	}
 }

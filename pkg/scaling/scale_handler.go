@@ -328,7 +328,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	// TRIGGERS-START
 	switch triggerType {
 	case "predictkube":
-		return scalers.NewPredictKubeScaler(context.WithValue(ctx, "is_not_test", true), config)
+		return scalers.NewPredictKubeScaler(ctx, config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
