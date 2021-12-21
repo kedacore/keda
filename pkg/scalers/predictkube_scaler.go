@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -32,14 +33,15 @@ import (
 )
 
 const (
-	mlEngineHost = "ai-scale-dev.dysnix.org"
-	mlEnginePort = 8080
-	//mlEngineHost          = "0.0.0.0"
-	//mlEnginePort          = 8091
 	predictKubeMetricType = "External"
 )
 
 var (
+	mlEngineHost = "ai-scale-dev.dysnix.org"
+	mlEnginePort = 8080
+	//mlEngineHost          = "0.0.0.0"
+	//mlEnginePort          = 8091
+
 	defaultStep = time.Minute * 5
 )
 
@@ -76,7 +78,7 @@ func (pks *predictKubeScaler) setupClientConn() error {
 		},
 		Conn: &libs.Connection{
 			Host:            mlEngineHost,
-			Port:            mlEnginePort,
+			Port:            uint16(mlEnginePort),
 			ReadBufferSize:  50 << 20,
 			WriteBufferSize: 50 << 20,
 			MaxMessageSize:  50 << 20,
@@ -123,7 +125,7 @@ func (pks *predictKubeScaler) setupClientConn() error {
 }
 
 // NewPredictKubeScaler creates a new PredictKube scaler
-func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*predictKubeScaler, error) {
+func NewPredictKubeScaler(_ context.Context, config *ScalerConfig) (*predictKubeScaler, error) {
 	s := &predictKubeScaler{}
 
 	meta, err := parsePredictKubeMetadata(config)
@@ -134,9 +136,7 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*predictKu
 
 	s.metadata = meta
 
-	predictKubeLog.Info(fmt.Sprintf("CLUSTER NAME: %v", ctx.Value("cluster_name")))
-
-	err = s.initPredictKubePrometheusConn(ctx, meta)
+	err = s.initPredictKubePrometheusConn()
 	if err != nil {
 		predictKubeLog.Error(err, "error create Prometheus client and API objects")
 		return nil, fmt.Errorf("error create Prometheus client and API objects: %3s", err)
@@ -259,7 +259,6 @@ func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (int64, erro
 func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {
 	currentTime := time.Now().UTC()
 
-	// TODO: parse from query...
 	if pks.metadata.stepDuration == 0 {
 		pks.metadata.stepDuration = defaultStep
 	}
@@ -355,15 +354,25 @@ func (pks *predictKubeScaler) parsePrometheusResult(result model.Value) (out []*
 }
 
 func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata, err error) {
+	validate := validator.New()
 	meta := predictKubeMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
+		if len(val) == 0 {
+			return nil, fmt.Errorf("no query given")
+		}
+
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no query given")
 	}
 
 	if val, ok := config.TriggerMetadata["prometheusAddress"]; ok {
+		err = validate.Var(val, "url")
+		if err != nil {
+			return nil, fmt.Errorf("invalid prometheusAddress")
+		}
+
 		meta.prometheusAddress = val
 	} else {
 		return nil, fmt.Errorf("no prometheusAddress given")
@@ -406,15 +415,28 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = val //GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", val)))
+		if len(val) == 0 {
+			return nil, fmt.Errorf("no metric name given")
+		}
+
+		err = validate.Var(val, "ascii")
+		if err != nil {
+			return nil, fmt.Errorf("invalid apiKey")
+		}
+
+		meta.metricName = val
 	} else {
 		return nil, fmt.Errorf("no metric name given")
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
-	// TODO: check AuthParams...
 	if val, ok := config.AuthParams["apiKey"]; ok {
+		err = validate.Var(val, "jwt")
+		if err != nil {
+			return nil, fmt.Errorf("invalid apiKey")
+		}
+
 		meta.apiKey = val
 	} else {
 		return nil, fmt.Errorf("no api key given")
@@ -429,7 +451,7 @@ func (pks *predictKubeScaler) ping(ctx context.Context) (err error) {
 }
 
 // initPredictKubePrometheusConn init prometheus client and setup connection to API
-func (pks *predictKubeScaler) initPredictKubePrometheusConn(ctx context.Context, meta *predictKubeMetadata) (err error) {
+func (pks *predictKubeScaler) initPredictKubePrometheusConn() (err error) {
 	pks.transport = http_transport.NewTransport(&libs.HTTPTransport{
 		MaxIdleConnDuration: 10,
 		ReadTimeout:         time.Second * 15,
@@ -448,11 +470,5 @@ func (pks *predictKubeScaler) initPredictKubePrometheusConn(ctx context.Context,
 
 	pks.api = v1.NewAPI(pks.prometheusClient)
 
-	if isNotTest := ctx.Value("is_not_test"); isNotTest != nil {
-		if t, ok := isNotTest.(bool); ok && t {
-			err = pks.ping(context.Background())
-		}
-	}
-
-	return err
+	return pks.ping(context.Background())
 }

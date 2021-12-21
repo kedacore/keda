@@ -66,9 +66,12 @@ replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 require (
 	github.com/dysnix/ai-scale-libs v0.0.0-20211217063709-f888549b2d75
 	github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1
+	github.com/go-playground/validator/v10 v10.9.0
+	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/prometheus/common v0.32.1
 	github.com/spf13/afero v1.6.0 // indirect
-	github.com/valyala/fasthttp v1.31.0
 	github.com/xdg/stringprep v1.0.3 // indirect
 	github.com/xhit/go-str2duration/v2 v2.0.0
+	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 )
