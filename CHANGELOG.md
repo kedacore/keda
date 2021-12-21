@@ -25,6 +25,7 @@
 
 - Add New Relic Scaler ([#2387](https://github.com/kedacore/keda/pull/2387))
 - Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
+- Add New Datadog Scaler ([#2354](https://github.com/kedacore/keda/pull/2354))
 
 ### Improvements
 
