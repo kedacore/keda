@@ -247,7 +247,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 	points := series[0].GetPointlist()
 
 	if len(points) == 0 || len(points[0]) < 2 {
-
 		return 0, fmt.Errorf("no Datadog metrics returned")
 	}
 
@@ -262,7 +261,6 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
 
 	switch s.metadata.vType {
-
 	case average:
 		externalMetric = &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{

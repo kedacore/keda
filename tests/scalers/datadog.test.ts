@@ -57,7 +57,7 @@ test.before(t => {
     'deploying the Datadog Helm chart should work.'
   )
 
-//  sh.config.silent = true
+  sh.config.silent = true
 
   // Let's wait until the Datadog agent is ready
   let datadogDesired = sh.exec(`kubectl get daemonset ${datadogHelmRelease} \
@@ -65,7 +65,7 @@ test.before(t => {
 
   let datadogReady = sh.exec(`kubectl get daemonset ${datadogHelmRelease} \
     --namespace ${datadogNamespace} -o jsonpath="{.status.numberReady}"`).stdout
-  
+
   while (datadogReady != datadogDesired) {
     sh.exec('sleep 2')
     datadogDesired = sh.exec(`kubectl get daemonset ${datadogHelmRelease} \
@@ -205,7 +205,7 @@ spec:
             {
               "nginx_status_url":"http://%%host%%:81/nginx_status/"
             }
-          ]      
+          ]
     spec:
       containers:
       - image: nginx
