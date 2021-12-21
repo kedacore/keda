@@ -437,7 +437,7 @@ func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, erro
 	}
 
 	// Step 2: send requests, one per broker, and collect offsets
-	resultCh := make(chan brokerOffsetResult)
+	resultCh := make(chan brokerOffsetResult, len(requests))
 	var wg sync.WaitGroup
 	wg.Add(len(requests))
 	for broker, request := range requests {
