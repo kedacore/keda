@@ -309,6 +309,10 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		return nil, fmt.Errorf("error describing topics: %s", err)
 	}
 
+	if s.metadata.topic != "" && len(topicsMetadata) != 1 {
+		return nil, fmt.Errorf("expected only 1 topic metadata, got %d", len(topicsMetadata))
+	}
+
 	topicPartitions := make(map[string][]int32, len(topicsMetadata))
 	for _, topicMetadata := range topicsMetadata {
 		partitionMetadata := topicMetadata.Partitions
