@@ -442,9 +442,9 @@ func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, erro
 	wg.Add(len(requests))
 	for broker, request := range requests {
 		go func(brCopy *sarama.Broker, reqCopy *sarama.OffsetRequest) {
+			defer wg.Done()
 			response, err := brCopy.GetAvailableOffsets(reqCopy)
 			resultCh <- brokerOffsetResult{response, err}
-			wg.Done()
 		}(broker, request)
 	}
 
