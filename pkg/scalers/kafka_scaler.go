@@ -448,10 +448,8 @@ func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, erro
 		}(broker, request)
 	}
 
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
+	wg.Wait()
+	close(resultCh)
 
 	offsets := make(map[int32]int64)
 
