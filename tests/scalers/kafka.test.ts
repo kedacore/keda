@@ -212,7 +212,7 @@ metadata:
 spec:
   kafka:
     version: 2.5.0
-    replicas: 1
+    replicas: 3
     listeners:
       plain: {}
       tls: {}
