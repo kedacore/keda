@@ -256,6 +256,8 @@ github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dysnix/ai-scale-libs v0.0.0-20211217063709-f888549b2d75 h1:sJ+bkXZuLiFNQXqrtgd2M94LeqM/mN8axGtsI1gAjzQ=
 github.com/dysnix/ai-scale-libs v0.0.0-20211217063709-f888549b2d75/go.mod h1:Lo/FPlq70Whx4GgUrk/7dO7N/pYt6tZY6T9rL3Xmf9E=
+github.com/dysnix/ai-scale-libs v0.0.0-20211223101057-4dd8b11d619c h1:h4TIyGxsa7GFeCOfCGLXRU83brWiHHLKoFhJnZKA1GI=
+github.com/dysnix/ai-scale-libs v0.0.0-20211223101057-4dd8b11d619c/go.mod h1:Lo/FPlq70Whx4GgUrk/7dO7N/pYt6tZY6T9rL3Xmf9E=
 github.com/dysnix/ai-scale-proto v0.0.0-20211206170911-3997d204d1bf/go.mod h1:0OBdfoSxRR23bHvhDPy7op8V9QVTo9yuN3Nb8UcFKk0=
 github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1 h1:23TA86ZyAuKKN+Xb03k8ZH426d4grG0hvaK6ry7CvEc=
 github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1/go.mod h1:0OBdfoSxRR23bHvhDPy7op8V9QVTo9yuN3Nb8UcFKk0=

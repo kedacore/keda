@@ -64,7 +64,7 @@ require (
 replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
 require (
-	github.com/dysnix/ai-scale-libs v0.0.0-20211217063709-f888549b2d75
+	github.com/dysnix/ai-scale-libs v0.0.0-20211223101057-4dd8b11d619c
 	github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2

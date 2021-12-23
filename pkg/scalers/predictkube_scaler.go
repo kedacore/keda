@@ -28,8 +28,8 @@ import (
 	"github.com/dysnix/ai-scale-libs/external/http_transport"
 	tc "github.com/dysnix/ai-scale-libs/external/types_convertation"
 	"github.com/dysnix/ai-scale-proto/external/proto/commonproto"
-	"github.com/dysnix/ai-scale-proto/external/proto/health"
 	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
+	health "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
