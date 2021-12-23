@@ -215,18 +215,13 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	offsets, err := s.getOffsets(partitions)
-	if err != nil {
-		return false, err
-	}
-
-	topicOffsets, err := s.getTopicOffsets(partitions)
+	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(partitions)
 	if err != nil {
 		return false, err
 	}
 
 	for _, partition := range partitions {
-		lag, err := s.getLagForPartition(partition, offsets, topicOffsets)
+		lag, err := s.getLagForPartition(partition, consumerOffsets, producerOffsets)
 		if err != nil && lag == invalidOffset {
 			return true, nil
 		}
@@ -308,7 +303,7 @@ func (s *kafkaScaler) getPartitions() ([]int32, error) {
 	return partitions, nil
 }
 
-func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchResponse, error) {
+func (s *kafkaScaler) getConsumerOffsets(partitions []int32) (*sarama.OffsetFetchResponse, error) {
 	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, map[string][]int32{
 		s.metadata.topic: partitions,
 	})
@@ -365,6 +360,42 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
+type consumerOffsetResult struct {
+	consumerOffsets *sarama.OffsetFetchResponse
+	err             error
+}
+
+type producerOffsetResult struct {
+	producerOffsets map[int32]int64
+	err             error
+}
+
+func (s *kafkaScaler) getConsumerAndProducerOffsets(partitions []int32) (*sarama.OffsetFetchResponse, map[int32]int64, error) {
+	consumerChan := make(chan consumerOffsetResult, 1)
+	go func() {
+		consumerOffsets, err := s.getConsumerOffsets(partitions)
+		consumerChan <- consumerOffsetResult{consumerOffsets, err}
+	}()
+
+	producerChan := make(chan producerOffsetResult, 1)
+	go func() {
+		producerOffsets, err := s.getProducerOffsets(partitions)
+		producerChan <- producerOffsetResult{producerOffsets, err}
+	}()
+
+	consumerRes := <-consumerChan
+	if consumerRes.err != nil {
+		return nil, nil, consumerRes.err
+	}
+
+	producerRes := <-producerChan
+	if producerRes.err != nil {
+		return nil, nil, producerRes.err
+	}
+
+	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
+}
+
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	partitions, err := s.getPartitions()
@@ -372,19 +403,14 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	offsets, err := s.getOffsets(partitions)
-	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
-	}
-
-	topicOffsets, err := s.getTopicOffsets(partitions)
+	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(partitions)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	totalLag := int64(0)
 	for _, partition := range partitions {
-		lag, _ := s.getLagForPartition(partition, offsets, topicOffsets)
+		lag, _ := s.getLagForPartition(partition, consumerOffsets, producerOffsets)
 
 		totalLag += lag
 	}
@@ -412,7 +438,7 @@ type brokerOffsetResult struct {
 	err        error
 }
 
-func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, error) {
+func (s *kafkaScaler) getProducerOffsets(partitions []int32) (map[int32]int64, error) {
 	version := int16(0)
 	if s.client.Config().Version.IsAtLeast(sarama.V0_10_1_0) {
 		version = 1
