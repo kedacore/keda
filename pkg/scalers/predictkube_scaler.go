@@ -205,30 +205,15 @@ func (pks *predictKubeScaler) GetMetrics(ctx context.Context, metricName string,
 		predictKubeLog.Info(fmt.Sprintf("predict value is: %d", value))
 	}
 
+	val := *resource.NewQuantity(value, resource.DecimalSI)
+
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
+		Value:      val,
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-func max(array []*commonproto.Item) (max int64) {
-	if len(array) > 0 {
-		max = int64(array[0].Value)
-		var min = int64(array[0].Value)
-		for _, value := range array {
-			if max < int64(value.Value) {
-				max = int64(value.Value)
-			}
-			if min > int64(value.Value) {
-				min = int64(value.Value)
-			}
-		}
-	}
-
-	return max
 }
 
 func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (int64, error) {
@@ -246,12 +231,19 @@ func (pks *predictKubeScaler) doPredictRequest(ctx context.Context) (int64, erro
 		return 0, err
 	}
 
+	var y int64
+	if len(results) > 0 {
+		y = int64(results[len(results)-1].Value)
+	}
+
+	x := resp.GetResultMetric() //max(results)
+
 	return func(x, y int64) int64 {
 		if x < y {
 			return y
 		}
 		return x
-	}(resp.GetResultMetric(), max(results)), nil
+	}(x, y), nil
 }
 
 func (pks *predictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {
