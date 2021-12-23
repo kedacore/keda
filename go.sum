@@ -261,6 +261,10 @@ github.com/dysnix/ai-scale-libs v0.0.0-20211223101057-4dd8b11d619c/go.mod h1:Lo/
 github.com/dysnix/ai-scale-proto v0.0.0-20211206170911-3997d204d1bf/go.mod h1:0OBdfoSxRR23bHvhDPy7op8V9QVTo9yuN3Nb8UcFKk0=
 github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1 h1:23TA86ZyAuKKN+Xb03k8ZH426d4grG0hvaK6ry7CvEc=
 github.com/dysnix/ai-scale-proto v0.0.0-20211216191415-a75682995da1/go.mod h1:0OBdfoSxRR23bHvhDPy7op8V9QVTo9yuN3Nb8UcFKk0=
+github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e h1:4IEmV5r8U2RcvYcxT9SLpEUEyzTAbPE6if3z9q7aWZo=
+github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e/go.mod h1:dGl9trkmU8Cvh2ClgG68P8hBZRDoHmEynXt745J/T4U=
+github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f h1:56GoyLUD9Z3+Ko0iC8hGPq2RPvjceQEdbio78i5mhvQ=
+github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f/go.mod h1:zTsQdEyzxs3OHHtrjf8WpmexujIMTYyCVz/38VCt0uo=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-resiliency v1.2.0 h1:v7g92e/KSN71Rq7vSThKaWIq68fL4YHvWyiUKorFR1Q=
 github.com/eapache/go-resiliency v1.2.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=

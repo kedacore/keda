@@ -23,12 +23,12 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	libs "github.com/dysnix/ai-scale-libs/external/configs"
-	pc "github.com/dysnix/ai-scale-libs/external/grpc/client"
-	"github.com/dysnix/ai-scale-libs/external/http_transport"
-	tc "github.com/dysnix/ai-scale-libs/external/types_convertation"
-	"github.com/dysnix/ai-scale-proto/external/proto/commonproto"
-	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
+	libs "github.com/dysnix/predictkube-libs/external/configs"
+	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
+	"github.com/dysnix/predictkube-libs/external/http_transport"
+	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
+	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	health "google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	mlEngineHost = "ai-scale-dev.dysnix.org"
+	mlEngineHost = "predictkube-dev.dysnix.org"
 	mlEnginePort = 8080
 
 	defaultStep = time.Minute * 5

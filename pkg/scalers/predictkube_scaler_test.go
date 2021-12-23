@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	libsSrv "github.com/dysnix/ai-scale-libs/external/grpc/server"
-	pb "github.com/dysnix/ai-scale-proto/external/proto/services"
+	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 )
 
 type server struct {
