@@ -1,6 +1,6 @@
 module github.com/kedacore/keda/v2
 
-go 1.16
+go 1.17
 
 require (
 	cloud.google.com/go v0.97.0
