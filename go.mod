@@ -64,8 +64,8 @@ require (
 replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
 require (
-	github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e // indirect
-	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f // indirect
+	github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e
+	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/prometheus/common v0.32.1
