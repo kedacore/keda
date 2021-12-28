@@ -47,10 +47,10 @@ func (s *server) start() <-chan error {
 			log.Fatalf("Could not get free port for init mock grpc server: %s", err)
 		}
 
-		serverUrl := fmt.Sprintf("0.0.0.0:%d", s.port)
+		serverURL := fmt.Sprintf("0.0.0.0:%d", s.port)
 		if s.listener == nil {
 			var err error
-			s.listener, err = net.Listen("tcp4", serverUrl)
+			s.listener, err = net.Listen("tcp4", serverURL)
 
 			if err != nil {
 				log.Println("starting grpc server with error")
