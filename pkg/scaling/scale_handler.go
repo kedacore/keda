@@ -327,8 +327,6 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
-	case "predictkube":
-		return scalers.NewPredictKubeScaler(ctx, config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
@@ -395,6 +393,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewOpenstackSwiftScaler(ctx, config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
+	case "predictkube":
+		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(config)
 	case "rabbitmq":
