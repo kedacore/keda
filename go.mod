@@ -5,7 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go v0.97.0
 	cloud.google.com/go/monitoring v1.1.0
-	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
+	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
 	github.com/Azure/azure-sdk-for-go v59.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.11.5
@@ -65,7 +65,7 @@ replace github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
-	github.com/Azure/go-amqp v0.16.4 // indirect
+	github.com/Azure/go-amqp v0.17.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.14 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2 // indirect
