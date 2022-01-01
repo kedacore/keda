@@ -3,7 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.17
 
 require (
-	cloud.google.com/go v0.97.0
+	cloud.google.com/go v0.99.0
 	cloud.google.com/go/monitoring v1.1.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
@@ -42,8 +42,8 @@ require (
 	github.com/tidwall/gjson v1.12.1
 	github.com/xdg/scram v1.0.3
 	go.mongodb.org/mongo-driver v1.8.0
-	google.golang.org/api v0.60.0
-	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
+	google.golang.org/api v0.63.0
+	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.4
@@ -204,9 +204,9 @@ require (
 	golang.org/x/crypto v0.0.0-20211115234514-b4de73f9ece8 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
-	golang.org/x/oauth2 v0.0.0-20211028175245-ba495a64dcb5 // indirect
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c // indirect
+	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
