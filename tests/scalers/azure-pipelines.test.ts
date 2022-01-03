@@ -33,21 +33,24 @@ test.before(async t => {
 
   sh.config.silent = true
   const base64Token = Buffer.from(personalAccessToken).toString('base64')
-  const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml
+  const deployFile = tmp.fileSync()
+  fs.writeFileSync(deployFile.name, deployYaml
       .replace('{{AZP_TOKEN_BASE64}}', base64Token)
-      .replace('{{AZP_URL}}', organizationURL)
       .replace('{{AZP_POOL}}', poolName)
-      .replace('{{AZP_POOL_ID}}', poolID.toString()))
+      .replace('{{AZP_URL}}', organizationURL))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
-  t.is(0, sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
+  t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
+  const scaledObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject
+      .replace('{{AZP_POOL_ID}}', poolID.toString()))
+  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
 })
 
 test.serial('Deployment should have 1 replicas on start', async t => {
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should start out as 1')
 })
 
-test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
+test.serial('PoolID: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
   let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
   let build: ba.IBuildApi = await connection.getBuildApi();
@@ -63,7 +66,30 @@ test.serial('Deployment should scale to 3 replicas after queueing 3 jobs', async
   t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
 })
 
-test.serial('Deployment should scale to 1 replica after finishing 3 jobs', async t => {
+test.serial('PoolID: Deployment should scale to 1 replica after finishing 3 jobs', async t => {
+  // wait 10 minutes for the jobs to finish and scale down
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
+})
+
+test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
+  const poolNameScaledObjectFile = tmp.fileSync()
+  fs.writeFileSync(poolNameScaledObjectFile.name, poolNameScaledObject
+        .replace('{{AZP_POOL}}', poolName))
+  t.is(0, sh.exec(`kubectl apply -f ${poolNameScaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'updating ScaledObject with poolName should work.')
+
+  let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
+  let connection = new azdev.WebApi(organizationURL, authHandler);
+  let build: ba.IBuildApi = await connection.getBuildApi();
+  var definitionID = parseInt(buildDefinitionID)
+
+  for(let i = 0; i < 3; i++) {
+    await build.queueBuild(null, projectName, null, null, null, definitionID)
+  }
+
+  t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
+})
+
+test.serial('PoolName: should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
@@ -123,9 +149,8 @@ spec:
       volumes:
       - name: docker-volume
         hostPath:
-          path: /var/run/docker.sock
----
-apiVersion: keda.sh/v1alpha1
+          path: /var/run/docker.sock`
+const poolIdScaledObject =`apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: azure-pipelines-scaledobject
@@ -136,9 +161,36 @@ spec:
   maxReplicaCount: 3
   pollingInterval: 50
   cooldownPeriod: 60
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: azure-pipelines
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
       poolID: "{{AZP_POOL_ID}}"`
+const poolNameScaledObject =`apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: azure-pipelines-scaledobject
+spec:
+  scaleTargetRef:
+    name: test-deployment
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  pollingInterval: 50
+  cooldownPeriod: 60
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
+  triggers:
+  - type: azure-pipelines
+    metadata:
+      organizationURLFromEnv: "AZP_URL"
+      personalAccessTokenFromEnv: "AZP_TOKEN"
+      poolName: "{{AZP_POOL}}"`

@@ -344,7 +344,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(config)
 	case "azure-pipelines":
-		return scalers.NewAzurePipelinesScaler(config)
+		return scalers.NewAzurePipelinesScaler(ctx, config)
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
@@ -387,6 +387,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
+	case "new-relic":
+		return scalers.NewNewRelicScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
