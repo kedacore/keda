@@ -34,6 +34,7 @@
 - Azure EventHub Scaler: don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
 - `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
 - Kafka Scaler: concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
+- Delete the cache entry when a ScaledObject is deleted ([#2408](https://github.com/kedacore/keda/pull/2408))
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
