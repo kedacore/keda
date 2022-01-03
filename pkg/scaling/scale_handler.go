@@ -327,6 +327,8 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
+	case "activemq":
+		return scalers.NewActiveMQScaler(config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
