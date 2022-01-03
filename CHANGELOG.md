@@ -30,7 +30,7 @@
 - Graphite Scaler: use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
 - Kubernetes Workload Scaler: ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
 - `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
-- PostgreSQL Scaler: Assign PostgreSQL userName to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))
+- PostgreSQL Scaler: Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))
 
 - TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
