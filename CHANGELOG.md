@@ -23,7 +23,7 @@
 
 ### New
 
-- Support `poolName` or `poolID` validation in Azure Pipelines Scaler ([#2370](https://github.com/kedacore/keda/pull/2370))
+- Azure Pipelines Scaler: support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
 
 ### Improvements
 
