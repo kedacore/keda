@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,5 +91,5 @@ func (t *WithTriggers) GetPollingInterval() time.Duration {
 
 // GenerateIdenitifier returns identifier for the object in for "kind.namespace.name"
 func (t *WithTriggers) GenerateIdenitifier() string {
-	return fmt.Sprintf("%s.%s.%s", t.Kind, t.Namespace, t.Name)
+	return strings.ToLower(fmt.Sprintf("%s.%s.%s", t.Kind, t.Namespace, t.Name))
 }
