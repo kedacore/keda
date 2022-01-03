@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/Shopify/sarama"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -215,13 +214,18 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(partitions)
+	offsets, err := s.getOffsets(partitions)
+	if err != nil {
+		return false, err
+	}
+
+	topicOffsets, err := s.getTopicOffsets(partitions)
 	if err != nil {
 		return false, err
 	}
 
 	for _, partition := range partitions {
-		lag, err := s.getLagForPartition(partition, consumerOffsets, producerOffsets)
+		lag, err := s.getLagForPartition(partition, offsets, topicOffsets)
 		if err != nil && lag == invalidOffset {
 			return true, nil
 		}
@@ -303,7 +307,7 @@ func (s *kafkaScaler) getPartitions() ([]int32, error) {
 	return partitions, nil
 }
 
-func (s *kafkaScaler) getConsumerOffsets(partitions []int32) (*sarama.OffsetFetchResponse, error) {
+func (s *kafkaScaler) getOffsets(partitions []int32) (*sarama.OffsetFetchResponse, error) {
 	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, map[string][]int32{
 		s.metadata.topic: partitions,
 	})
@@ -360,42 +364,6 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-type consumerOffsetResult struct {
-	consumerOffsets *sarama.OffsetFetchResponse
-	err             error
-}
-
-type producerOffsetResult struct {
-	producerOffsets map[int32]int64
-	err             error
-}
-
-func (s *kafkaScaler) getConsumerAndProducerOffsets(partitions []int32) (*sarama.OffsetFetchResponse, map[int32]int64, error) {
-	consumerChan := make(chan consumerOffsetResult, 1)
-	go func() {
-		consumerOffsets, err := s.getConsumerOffsets(partitions)
-		consumerChan <- consumerOffsetResult{consumerOffsets, err}
-	}()
-
-	producerChan := make(chan producerOffsetResult, 1)
-	go func() {
-		producerOffsets, err := s.getProducerOffsets(partitions)
-		producerChan <- producerOffsetResult{producerOffsets, err}
-	}()
-
-	consumerRes := <-consumerChan
-	if consumerRes.err != nil {
-		return nil, nil, consumerRes.err
-	}
-
-	producerRes := <-producerChan
-	if producerRes.err != nil {
-		return nil, nil, producerRes.err
-	}
-
-	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
-}
-
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	partitions, err := s.getPartitions()
@@ -403,14 +371,19 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(partitions)
+	offsets, err := s.getOffsets(partitions)
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, err
+	}
+
+	topicOffsets, err := s.getTopicOffsets(partitions)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	totalLag := int64(0)
 	for _, partition := range partitions {
-		lag, _ := s.getLagForPartition(partition, consumerOffsets, producerOffsets)
+		lag, _ := s.getLagForPartition(partition, offsets, topicOffsets)
 
 		totalLag += lag
 	}
@@ -433,12 +406,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-type brokerOffsetResult struct {
-	offsetResp *sarama.OffsetResponse
-	err        error
-}
-
-func (s *kafkaScaler) getProducerOffsets(partitions []int32) (map[int32]int64, error) {
+func (s *kafkaScaler) getTopicOffsets(partitions []int32) (map[int32]int64, error) {
 	version := int16(0)
 	if s.client.Config().Version.IsAtLeast(sarama.V0_10_1_0) {
 		version = 1
@@ -462,29 +430,17 @@ func (s *kafkaScaler) getProducerOffsets(partitions []int32) (map[int32]int64, e
 		request.AddBlock(s.metadata.topic, partitionID, sarama.OffsetNewest, 1)
 	}
 
-	// Step 2: send requests, one per broker, and collect offsets
-	resultCh := make(chan brokerOffsetResult, len(requests))
-	var wg sync.WaitGroup
-	wg.Add(len(requests))
-	for broker, request := range requests {
-		go func(brCopy *sarama.Broker, reqCopy *sarama.OffsetRequest) {
-			defer wg.Done()
-			response, err := brCopy.GetAvailableOffsets(reqCopy)
-			resultCh <- brokerOffsetResult{response, err}
-		}(broker, request)
-	}
-
-	wg.Wait()
-	close(resultCh)
-
 	offsets := make(map[int32]int64)
 
-	for brokerOffsetRes := range resultCh {
-		if brokerOffsetRes.err != nil {
-			return nil, brokerOffsetRes.err
+	// Step 2: send requests, one per broker, and collect offsets
+	for broker, request := range requests {
+		response, err := broker.GetAvailableOffsets(request)
+
+		if err != nil {
+			return nil, err
 		}
 
-		for _, blocks := range brokerOffsetRes.offsetResp.Blocks {
+		for _, blocks := range response.Blocks {
 			for partitionID, block := range blocks {
 				if block.Err != sarama.ErrNoError {
 					return nil, block.Err

@@ -11,7 +11,7 @@ const defaultKafkaClient = 'kafka-client'
 const strimziOperatorVersion = '0.18.0'
 const commandToCheckReplicas = `kubectl get deployments/kafka-consumer --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
 
-const strimziOperatorYamlFile = tmp.fileSync()
+const strimziOperatroYamlFile = tmp.fileSync()
 const kafkaClusterYamlFile = tmp.fileSync()
 const kafkaTopicYamlFile = tmp.fileSync()
 const kafkaClientYamlFile = tmp.fileSync()
@@ -25,10 +25,10 @@ test.before('Set up, create necessary resources.', t => {
 	sh.exec(`kubectl create namespace ${defaultNamespace}`)
 
   const strimziOperatorYaml = sh.exec(`curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimziOperatorVersion}/strimzi-cluster-operator-${strimziOperatorVersion}.yaml`).stdout
-  fs.writeFileSync(strimziOperatorYamlFile.name, strimziOperatorYaml.replace(/myproject/g, `${defaultNamespace}`))
+  fs.writeFileSync(strimziOperatroYamlFile.name, strimziOperatorYaml.replace(/myproject/g, `${defaultNamespace}`))
 	t.is(
 		0,
-		sh.exec(`kubectl apply -f ${strimziOperatorYamlFile.name} --namespace ${defaultNamespace}`).code,
+		sh.exec(`kubectl apply -f ${strimziOperatroYamlFile.name} --namespace ${defaultNamespace}`).code,
 		'Deploying Strimzi operator should work.'
 	)
 
@@ -195,7 +195,7 @@ test.after.always('Clean up, delete created resources.', t => {
     `${kafkaClientYamlFile.name}`,
     `${kafkaTopicYamlFile.name}`,
     `${kafkaClusterYamlFile.name}`,
-    `${strimziOperatorYamlFile}`
+    `${strimziOperatroYamlFile}`
   ]
 
   for (const resource of resources) {
@@ -212,7 +212,7 @@ metadata:
 spec:
   kafka:
     version: 2.5.0
-    replicas: 3
+    replicas: 1
     listeners:
       plain: {}
       tls: {}
