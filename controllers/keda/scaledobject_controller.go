@@ -57,6 +57,7 @@ import (
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
+// +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"

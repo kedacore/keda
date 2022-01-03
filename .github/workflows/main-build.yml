@@ -63,23 +63,26 @@ jobs:
 
       - name: Run end to end tests
         env:
-          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
-          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
-          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
-          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
-          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
-          OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
-          OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
-          OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
-          OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
           AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY}}
+          DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY}}
+          DATADOG_SITE: ${{ secrets.DATADOG_SITE}}
           NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
           NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
           NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
+          OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
+          OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
+          OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
+          OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
+          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
+          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
         run: make e2e-test
