@@ -93,7 +93,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 			return nil, err
 		}
 
-		meta.port, err = GetFromAuthOrMeta(config, "userName")
+		meta.userName, err = GetFromAuthOrMeta(config, "userName")
 		if err != nil {
 			return nil, err
 		}
