@@ -236,7 +236,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	// timer, to release background resources.
 	retryBackoff := func() *time.Timer {
 		tmr := time.NewTimer(retryDuration)
-		retryDuration *= time.Second * 2
+		retryDuration *= 2
 		if retryDuration > time.Minute*1 {
 			retryDuration = time.Minute * 1
 		}
