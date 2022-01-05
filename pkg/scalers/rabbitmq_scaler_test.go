@@ -111,6 +111,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "-1"}, true, map[string]string{}},
 	// invalid pageSize
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
+	// CreateQueue
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host, "createQueue": "true"}, false, map[string]string{}},
+	// invalide CreateQueue useRegex
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host, "createQueue": "true", "useRegex": "true"}, true, map[string]string{}},
+	// binding
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host, "createQueue": "true", "createBindingsRoutingKeys": "*.sample.# *.sample2.#", "bindingsRoutingExchange": "exchange"}, false, map[string]string{}},
+	// missing binding exchange
+	{map[string]string{"queueLength": "10", "queueName": "sample", "hostFromEnv": host, "createQueue": "true", "createBindingsRoutingKeys": "*.sample.# *.sample2.#"}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{

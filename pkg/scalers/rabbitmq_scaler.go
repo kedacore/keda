@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -52,6 +53,13 @@ const (
 	defaultOperation = sumOperation
 )
 
+const (
+	durableQueue    = true
+	autoDeleteQueue = false
+	exclusiveQueue  = false
+	noWaitQueue     = false
+)
+
 type rabbitMQScaler struct {
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
@@ -60,18 +68,21 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	mode        string        // QueueLength or MessageRate
-	value       int           // trigger value (queue length or publish/sec. rate)
-	host        string        // connection string for either HTTP or AMQP protocol
-	protocol    string        // either http or amqp protocol
-	vhostName   *string       // override the vhost from the connection info
-	useRegex    bool          // specify if the queueName contains a rexeg
-	pageSize    int64         // specify the page size if useRegex is enabled
-	operation   string        // specify the operation to apply in case of multiples queues
-	metricName  string        // custom metric name for trigger
-	timeout     time.Duration // custom http timeout for a specific trigger
-	scalerIndex int           // scaler index
+	queueName               string
+	mode                    string        // QueueLength or MessageRate
+	value                   int           // trigger value (queue length or publish/sec. rate)
+	host                    string        // connection string for either HTTP or AMQP protocol
+	protocol                string        // either http or amqp protocol
+	vhostName               *string       // override the vhost from the connection info
+	useRegex                bool          // specify if the queueName contains a rexeg
+	pageSize                int64         // specify the page size if useRegex is enabled
+	operation               string        // specify the operation to apply in case of multiples queues
+	metricName              string        // custom metric name for trigger
+	timeout                 time.Duration // custom http timeout for a specific trigger
+	scalerIndex             int           // scaler index
+	createQueue             bool          // optional create the queue for queueName
+	bindingsRoutingKeys     []string      // optional create bindings routing topic for queueName
+	bindingsRoutingExchange string        // optional Exchange to use for the bindingsRoutingKeys
 }
 
 type queueInfo struct {
@@ -125,6 +136,20 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	conn, ch, err := getConnectionAndChannel(host)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+	}
+
+	if meta.createQueue {
+		err = createQueue(ch, meta.queueName)
+		if err != nil {
+			return nil, fmt.Errorf("error while creating rabbitmq queues: %s", err)
+		}
+	}
+
+	if len(meta.bindingsRoutingKeys) > 0 {
+		err = createQueueBindings(ch, meta.queueName, meta.bindingsRoutingKeys, meta.bindingsRoutingExchange)
+		if err != nil {
+			return nil, fmt.Errorf("error while creating rabbitmq queue bindings: %s", err)
+		}
 	}
 
 	return &rabbitMQScaler{
@@ -314,6 +339,35 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
 	}
 
+	// Resolve createQueue
+	if val, ok := config.TriggerMetadata["createQueue"]; ok {
+		createQueue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("createQueue has invalid value")
+		}
+		if meta.useRegex && createQueue {
+			return nil, fmt.Errorf("configure only createQueue with useRegex set to false")
+		}
+		meta.createQueue = createQueue
+	}
+
+	// Resolve bindingsRoutingExchange
+	if val, ok := config.TriggerMetadata["bindingsRoutingExchange"]; ok {
+		meta.bindingsRoutingExchange = strings.TrimSpace(val)
+	}
+
+	// Resolve createBindingsRoutingKeys
+	if val, ok := config.TriggerMetadata["createBindingsRoutingKeys"]; ok {
+		bindings := strings.Fields(val)
+		if meta.useRegex && len(bindings) > 0 {
+			return nil, fmt.Errorf("configure only createBindingsRoutingKeys with useRegex set to false")
+		}
+		if meta.bindingsRoutingExchange == "" {
+			return nil, fmt.Errorf("configure only createBindingsRoutingKeys with a confgured bindingsRoutingExchange")
+		}
+		meta.bindingsRoutingKeys = bindings
+	}
+
 	return meta, nil
 }
 
@@ -338,6 +392,24 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 		if err != nil {
 			rabbitmqLog.Error(err, "Error closing rabbitmq connection")
 			return err
+		}
+	}
+	return nil
+}
+
+func createQueue(ch *amqp.Channel, queueName string) error {
+	_, err := ch.QueueDeclare(queueName, durableQueue, autoDeleteQueue, exclusiveQueue, noWaitQueue, amqp.Table{})
+	if err != nil {
+		return fmt.Errorf("error creating queues: %s", err)
+	}
+	return nil
+}
+
+func createQueueBindings(ch *amqp.Channel, queueName string, queueBindings []string, exchange string) error {
+	for _, bindingKey := range queueBindings {
+		err := ch.QueueBind(queueName, bindingKey, exchange, noWaitQueue, amqp.Table{})
+		if err != nil {
+			return fmt.Errorf("error creating queue binding: %s", err)
 		}
 	}
 	return nil
