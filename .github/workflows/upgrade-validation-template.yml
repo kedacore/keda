@@ -18,7 +18,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build current version
-      run : IMAGE_REPO=jorturfer make publish
+      run : make publish
       env:
         E2E_IMAGE_TAG: "${{ github.sha }}"
 
@@ -79,7 +79,7 @@ jobs:
       run: kubectl apply -f .github/assets/test-manifest.yml
 
     - name: Deploy current version
-      run : IMAGE_REPO=jorturfer make deploy
+      run : make deploy
       env:
         E2E_IMAGE_TAG: "${{ github.sha }}"
 
