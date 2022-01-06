@@ -5,8 +5,8 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 
-const defaultNamespace = 'azure-queue-auth-test'
-const queueName = 'auth-queue-name'
+const testNamespace = 'azure-queue-auth-test'
+const queueName = 'queue-name'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
 
 test.before(t => {
@@ -18,17 +18,17 @@ test.before(t => {
   const base64ConStr = Buffer.from(connectionString).toString('base64')
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace(/{{CONNECTION_STRING_BASE64}}/g, base64ConStr))
-  sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  sh.exec(`kubectl create namespace ${testNamespace}`)
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code,
+    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating a deployment should work.'
   )
 })
 
 test.serial('Deployment should have 0 replicas on start', t => {
   const replicaCount = sh.exec(
-    `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+    `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
   ).stdout
   t.is(replicaCount, '0', 'replica count should start out as 0')
 })
@@ -48,7 +48,7 @@ test.serial.cb(
           let replicaCount = '0'
           for (let i = 0; i < 10 && replicaCount !== '1'; i++) {
             replicaCount = sh.exec(
-              `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+              `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
             ).stdout
             if (replicaCount !== '1') {
               sh.exec('sleep 1s')
@@ -60,7 +60,7 @@ test.serial.cb(
             t.falsy(err, `unable to delete queue ${queueName}`)
             for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
               replicaCount = sh.exec(
-                `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
+                `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
               ).stdout
               if (replicaCount !== '0') {
                 sh.exec('sleep 5s')
@@ -79,14 +79,15 @@ test.serial.cb(
 test.after.always.cb('clean up azure-queue deployment', t => {
   const resources = [
     'scaledobject.keda.sh/test-scaledobject',
-    'secret/test-secrets',
+    'triggerauthentications.keda.sh/azure-queue-auth',
+    'secret/test-auth-secrets',
     'deployment.apps/test-deployment',
   ]
 
   for (const resource of resources) {
-    sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
+    sh.exec(`kubectl delete ${resource} --namespace ${testNamespace}`)
   }
-  sh.exec(`kubectl delete namespace ${defaultNamespace}`)
+  sh.exec(`kubectl delete namespace ${testNamespace}`)
 
   // delete test queue
   const queueSvc = azure.createQueueService(connectionString)
@@ -96,15 +97,7 @@ test.after.always.cb('clean up azure-queue deployment', t => {
   })
 })
 
-const deployYaml = `apiVersion: v1
-kind: Secret
-metadata:
-  name: test-auth-secrets
-  labels:
-data:
-  connectionString: {{CONNECTION_STRING_BASE64}}
----
-apiVersion: apps/v1
+const deployYaml = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-deployment
@@ -131,6 +124,34 @@ spec:
         - name: FUNCTIONS_WORKER_RUNTIME
           value: node
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-auth-secrets
+  labels:
+data:
+  connectionString: {{CONNECTION_STRING_BASE64}}
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-queue-auth
+spec:
+  secretTargetRef:
+  - parameter: connection
+    name: test-auth-secrets
+    key: connectionString
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-queue-auth
+spec:
+  secretTargetRef:
+  - parameter: connection
+    name: test-auth-secrets
+    key: connectionString
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -147,14 +168,4 @@ spec:
       name: azure-queue-auth
     metadata:
       queueName: ${queueName}
----
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: azure-queue-auth
-spec:
-  secretTargetRef:
-  - parameter: connection
-    name: test-auth-secrets
-    key: connectionString
 `
