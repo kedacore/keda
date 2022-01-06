@@ -5,6 +5,9 @@ on:
       - main
 concurrency: e2e-tests
 jobs:
+  validate-upgrade:
+    uses: kedacore/keda/.github/workflows/upgrade-validation-template.yml@main
+
   validate:
     name: Validate
     runs-on: ubuntu-latest
