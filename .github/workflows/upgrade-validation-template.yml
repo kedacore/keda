@@ -29,6 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        kubernetesVersion: [v1.22, v1.21, v1.20, v1.19, v1.18, v1.17]
         include:
           # Images are defined on every Kind release
           # See https://github.com/kubernetes-sigs/kind/releases
