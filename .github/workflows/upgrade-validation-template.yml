@@ -76,7 +76,7 @@ jobs:
         helm install keda kedacore/keda --namespace keda --create-namespace --wait
 
     - name: Deploy workloads
-      run: kubectl apply -f .github/assets/test-manifest.yml
+      run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
 
     - name: Deploy current version
       run : make deploy
@@ -84,8 +84,8 @@ jobs:
         E2E_IMAGE_TAG: "${{ github.sha }}"
 
     - name: Redeploy workloads
-      run: kubectl apply -f .github/assets/test-manifest.yml
+      run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
 
     - name: Clean resources
-      run: kubectl delete -f .github/assets/test-manifest.yml 
+      run: kubectl delete -f .github/assets/test-upgrade-manifest.yml 
       if: always()

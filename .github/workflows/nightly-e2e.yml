@@ -40,3 +40,6 @@ jobs:
           TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
           TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
         run: make e2e-test
+
+  validate-upgrade:
+    uses: kedacore/keda/.github/workflows/upgrade-validation-template.yml@main

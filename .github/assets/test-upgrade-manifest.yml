@@ -108,4 +108,3 @@ spec:
       start: 0 7 * * *
       end: 59 6 * * *
       desiredReplicas: "3"
----

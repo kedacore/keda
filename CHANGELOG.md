@@ -37,7 +37,6 @@
 - **PostgreSQL Scaler:** Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))|([#2433](https://github.com/kedacore/keda/pull/2433))
 - **Kafka Scaler:** concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
 - **External Scaler:** fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
-- **General:** Add workflow for testing breaking changes on CRDs (`Scaled{Object|Job}`) ([#2450](https://github.com/kedacore/keda/pull/2450))
 
 ### Breaking Changes
 
@@ -45,7 +44,7 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- **General:** Add workflow for testing breaking changes on CRDs (`Scaled{Object|Job}`) ([#2450](https://github.com/kedacore/keda/pull/2450))
 
 ## v2.5.0
 
