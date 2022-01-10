@@ -50,7 +50,7 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 		return nil, fmt.Errorf("error parsing Datadog metadata: %s", err)
 	}
 
-	apiClient, err := newDatadogConnection(ctx, meta)
+	apiClient, err := newDatadogConnection(ctx, meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing Datadog connection: %s", err)
 	}
@@ -134,7 +134,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 }
 
 // newDatddogConnection tests a connection to the Datadog API
-func newDatadogConnection(ctx context.Context, meta *datadogMetadata) (*datadog.APIClient, error) {
+func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *ScalerConfig) (*datadog.APIClient, error) {
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
@@ -155,6 +155,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata) (*datadog.
 		})
 
 	configuration := datadog.NewConfiguration()
+	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
 	_, _, err := apiClient.AuthenticationApi.Validate(ctx)
