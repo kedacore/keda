@@ -29,10 +29,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kubernetesVersion: [v1.22, v1.21, v1.20, v1.19, v1.18, v1.17]
+        kubernetesVersion: [v1.23, v1.22, v1.21, v1.20, v1.19, v1.18, v1.17]
         include:
           # Images are defined on every Kind release
           # See https://github.com/kubernetes-sigs/kind/releases
+        - kubernetesVersion: v1.23
+          kindImage: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
         - kubernetesVersion: v1.22
           kindImage: kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047
         - kubernetesVersion: v1.21
