@@ -51,7 +51,6 @@ test.before(t => {
 		  --create-namespace \
 		  --namespace ${datadogNamespace} \
         ${datadogHelmRelease} datadog/datadog`).code
-  sh.echo(`${helmInstallStatus}`)
   t.is(0,
     helmInstallStatus,
     'deploying the Datadog Helm chart should work.'
@@ -75,20 +74,25 @@ test.before(t => {
       --namespace ${datadogNamespace} -o jsonpath="{.status.numberReady}"`).stdout
   }
 
-  const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml)
   sh.exec(`kubectl create namespace ${testNamespace}`)
-  t.is(
-    0,
-    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
-    'creating a deployment should work.'
-  )
+
+  var create_secret =  sh.exec(`kubectl create secret generic datadog-secrets --from-literal=apiKey=${datadogApiKey} \
+  --from-literal=appKey=${datadogAppKey} --from-literal=datadogSite=${datadogSite} --namespace ${testNamespace}`)
 
   t.is(
     0,
-    sh.exec(`kubectl create secret generic datadog-secrets --from-literal=apiKey=${datadogApiKey} \
-      --from-literal=appKey=${datadogAppKey} --from-literal=datadogSite=${datadogSite} --namespace ${testNamespace}`).code,
-    'creating a generic secret should work.'
+   create_secret.code,
+    'creating a generic secret should work: '.concat(create_secret.stderr)
+  )
+
+  const tmpFile = tmp.fileSync()
+  fs.writeFileSync(tmpFile.name, deployYaml)
+
+  var create_deploy = sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`)
+  t.is(
+    0,
+    create_deploy.code,
+    'creating a deployment should work: '.concat(create_deploy.stderr)
   )
 
   // Sleeping 1m to make sure we are already sending nginx metrics to Datadog
@@ -107,10 +111,12 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   // generate fake traffic to the NGINX pod to for scaling up
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, generateRequestsYaml)
+
+  var create_traffic = sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`)
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
-    'creating fake-traffic should work.'
+    create_traffic.code,
+    'creating fake-traffic should work: '.concat(create_traffic.stderr)
   )
 
   // keda based deployment should start scaling up with http requests issued
@@ -129,10 +135,11 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   t.is('3', replicaCount, 'Replica count should be maxed at 3')
 
   // Delete fake-traffic to force scaling down
+  var delete_traffic = sh.exec(`kubectl delete -f ${tmpFile.name} --namespace ${testNamespace}`)
   t.is(
     0,
-    sh.exec(`kubectl delete -f ${tmpFile.name} --namespace ${testNamespace}`).code,
-    'deleting fake-traffic should work.'
+    delete_traffic.code,
+    'deleting fake-traffic should work: '.concat(delete_traffic.stderr)
   )
 
   for (let i = 0; i < 50 && replicaCount !== '1'; i++) {
