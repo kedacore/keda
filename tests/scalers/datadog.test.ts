@@ -39,8 +39,16 @@ test.before(t => {
     datadogSite = 'datadoghq.com'
   }
 
+  sh.config.silent = true
+
+  sh.exec(`kubectl delete namespace ${datadogNamespace} --force`)
+  sh.exec(`kubectl delete namespace ${testNamespace} --force`)
+
   sh.exec(`helm repo add datadog ${datadogHelmRepo}`)
   sh.exec(`helm repo update`)
+
+  sh.config.silent = false
+
   let helmInstallStatus = sh.exec(`helm upgrade \
   		--install \
   		--set datadog.apiKey=${datadogApiKey} \
