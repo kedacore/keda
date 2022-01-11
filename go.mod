@@ -17,7 +17,7 @@ require (
 	github.com/Shopify/sarama v1.30.0
 	github.com/aws/aws-sdk-go v1.42.16
 	github.com/denisenkom/go-mssqldb v0.11.0
-	github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e
+	github.com/dysnix/predictkube-libs v0.0.0-20220110175435-6a14c5918e22
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/elastic/go-elasticsearch/v7 v7.15.1
 	github.com/go-logr/logr v0.4.0
@@ -179,6 +179,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -28,11 +29,11 @@ import (
 
 	libs "github.com/dysnix/predictkube-libs/external/configs"
 	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
-	"github.com/dysnix/predictkube-libs/external/http_transport"
 	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
 	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
 	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -81,7 +82,6 @@ type PredictKubeScaler struct {
 	grpcClient       pb.MlEngineServiceClient
 	healthClient     health.HealthClient
 	api              v1.API
-	transport        http_transport.FastHttpTransport
 }
 
 type predictKubeMetadata struct {
@@ -90,6 +90,7 @@ type predictKubeMetadata struct {
 	stepDuration      time.Duration
 	apiKey            string
 	prometheusAddress string
+	prometheusAuth    *authentication.AuthMeta
 	metricName        string
 	query             string
 	threshold         int64
@@ -98,7 +99,7 @@ type predictKubeMetadata struct {
 
 var predictKubeLog = logf.Log.WithName("predictkube_scaler")
 
-func (pks *PredictKubeScaler) setupClientConn() error {
+func (s *PredictKubeScaler) setupClientConn() error {
 	clientOpt, err := pc.SetGrpcClientOptions(grpcConf,
 		&libs.Base{
 			Monitoring: libs.Monitoring{
@@ -111,7 +112,7 @@ func (pks *PredictKubeScaler) setupClientConn() error {
 				Enabled: false,
 			},
 		},
-		pc.InjectPublicClientMetadataInterceptor(pks.metadata.apiKey),
+		pc.InjectPublicClientMetadataInterceptor(s.metadata.apiKey),
 	)
 
 	if !grpcConf.Conn.Insecure {
@@ -126,13 +127,13 @@ func (pks *PredictKubeScaler) setupClientConn() error {
 		return err
 	}
 
-	pks.grpcConn, err = grpc.Dial(fmt.Sprintf("%s:%d", mlEngineHost, mlEnginePort), clientOpt...)
+	s.grpcConn, err = grpc.Dial(fmt.Sprintf("%s:%d", mlEngineHost, mlEnginePort), clientOpt...)
 	if err != nil {
 		return err
 	}
 
-	pks.grpcClient = pb.NewMlEngineServiceClient(pks.grpcConn)
-	pks.healthClient = health.NewHealthClient(pks.grpcConn)
+	s.grpcClient = pb.NewMlEngineServiceClient(s.grpcConn)
+	s.healthClient = health.NewHealthClient(s.grpcConn)
 
 	return err
 }
@@ -165,13 +166,13 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKu
 }
 
 // IsActive returns true if we are able to get metrics from PredictKube
-func (pks *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
-	results, err := pks.doQuery(ctx)
+func (s *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
+	results, err := s.doQuery(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	resp, err := pks.healthClient.Check(ctx, &health.HealthCheckRequest{})
+	resp, err := s.healthClient.Check(ctx, &health.HealthCheckRequest{})
 
 	if resp == nil {
 		return len(results) > 0, fmt.Errorf("can't connect grpc server: empty server response, code: %v", codes.Unknown)
@@ -184,17 +185,16 @@ func (pks *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
 	return len(results) > 0, nil
 }
 
-func (pks *PredictKubeScaler) Close(_ context.Context) error {
-	pks.transport.Close()
-	return pks.grpcConn.Close()
+func (s *PredictKubeScaler) Close(_ context.Context) error {
+	return s.grpcConn.Close()
 }
 
-func (pks *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(pks.metadata.threshold, resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", pks.metadata.metricName))
+func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(pks.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -208,8 +208,8 @@ func (pks *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (pks *PredictKubeScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	value, err := pks.doPredictRequest(ctx)
+func (s *PredictKubeScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+	value, err := s.doPredictRequest(ctx)
 	if err != nil {
 		predictKubeLog.Error(err, "error executing query to predict controller service")
 		return []external_metrics.ExternalMetricValue{}, err
@@ -234,14 +234,14 @@ func (pks *PredictKubeScaler) GetMetrics(ctx context.Context, metricName string,
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (pks *PredictKubeScaler) doPredictRequest(ctx context.Context) (int64, error) {
-	results, err := pks.doQuery(ctx)
+func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (int64, error) {
+	results, err := s.doQuery(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	resp, err := pks.grpcClient.GetPredictMetric(ctx, &pb.ReqGetPredictMetric{
-		ForecastHorizon: uint64(math.Round(float64(pks.metadata.predictHorizon / pks.metadata.stepDuration))),
+	resp, err := s.grpcClient.GetPredictMetric(ctx, &pb.ReqGetPredictMetric{
+		ForecastHorizon: uint64(math.Round(float64(s.metadata.predictHorizon / s.metadata.stepDuration))),
 		Observations:    results,
 	})
 
@@ -264,20 +264,20 @@ func (pks *PredictKubeScaler) doPredictRequest(ctx context.Context) (int64, erro
 	}(x, y), nil
 }
 
-func (pks *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {
+func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {
 	currentTime := time.Now().UTC()
 
-	if pks.metadata.stepDuration == 0 {
-		pks.metadata.stepDuration = defaultStep
+	if s.metadata.stepDuration == 0 {
+		s.metadata.stepDuration = defaultStep
 	}
 
 	r := v1.Range{
-		Start: currentTime.Add(-pks.metadata.historyTimeWindow),
+		Start: currentTime.Add(-s.metadata.historyTimeWindow),
 		End:   currentTime,
-		Step:  pks.metadata.stepDuration,
+		Step:  s.metadata.stepDuration,
 	}
 
-	val, warns, err := pks.api.QueryRange(ctx, pks.metadata.query, r)
+	val, warns, err := s.api.QueryRange(ctx, s.metadata.query, r)
 
 	if len(warns) > 0 {
 		predictKubeLog.V(1).Info("warnings", warns)
@@ -287,11 +287,11 @@ func (pks *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item,
 		return nil, err
 	}
 
-	return pks.parsePrometheusResult(val)
+	return s.parsePrometheusResult(val)
 }
 
-func (pks *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
-	metricName := GenerateMetricNameWithIndex(pks.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", pks.metadata.metricName)))
+func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
+	metricName := GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", s.metadata.metricName)))
 	switch result.Type() {
 	case model.ValVector:
 		if res, ok := result.(model.Vector); ok {
@@ -452,33 +452,39 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		return nil, fmt.Errorf("no api key given")
 	}
 
+	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return nil, err
+	}
+
 	return &meta, nil
 }
 
-func (pks *PredictKubeScaler) ping(ctx context.Context) (err error) {
-	_, err = pks.api.Runtimeinfo(ctx)
+func (s *PredictKubeScaler) ping(ctx context.Context) (err error) {
+	_, err = s.api.Runtimeinfo(ctx)
 	return err
 }
 
 // initPredictKubePrometheusConn init prometheus client and setup connection to API
-func (pks *PredictKubeScaler) initPredictKubePrometheusConn(ctx context.Context) (err error) {
-	pks.transport = http_transport.NewTransport(&libs.HTTPTransport{
-		MaxIdleConnDuration: 10,
-		ReadTimeout:         time.Second * 15,
-		WriteTimeout:        time.Second * 15,
-	})
+func (s *PredictKubeScaler) initPredictKubePrometheusConn(ctx context.Context) (err error) {
+	var roundTripper http.RoundTripper
+	if roundTripper, err = authentication.CreateHTTPRoundTripper(
+		authentication.FastHTTP,
+		s.metadata.prometheusAuth,
+	); err != nil {
+		predictKubeLog.V(1).Error(err, "init Prometheus client http transport")
+		return err
+	}
 
-	pks.prometheusClient, err = api.NewClient(api.Config{
-		Address:      pks.metadata.prometheusAddress,
-		RoundTripper: pks.transport,
-	})
-
-	if err != nil {
+	if s.prometheusClient, err = api.NewClient(api.Config{
+		Address:      s.metadata.prometheusAddress,
+		RoundTripper: roundTripper,
+	}); err != nil {
 		predictKubeLog.V(1).Error(err, "init Prometheus client")
 		return err
 	}
 
-	pks.api = v1.NewAPI(pks.prometheusClient)
+	s.api = v1.NewAPI(s.prometheusClient)
 
-	return pks.ping(ctx)
+	return s.ping(ctx)
 }

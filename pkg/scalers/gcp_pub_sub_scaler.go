@@ -183,7 +183,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 }
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
-func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	var value int64
 	var err error
 
@@ -244,7 +244,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 func getSubscriptionData(s *pubsubScaler) (string, string) {
 	var subscriptionID string
 	var projectID string
-	regexpExpression, _ := regexp.Compile(compositeSubscriptionIDPrefix)
+	regexpExpression := regexp.MustCompile(compositeSubscriptionIDPrefix)
 	if regexpExpression.MatchString(s.metadata.subscriptionName) {
 		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
 		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
