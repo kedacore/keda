@@ -3,6 +3,7 @@ on:
     inputs:
       registryUser:
         required: true
+        type: string
     secrets:
       registryPAT:
         required: true
