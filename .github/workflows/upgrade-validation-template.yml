@@ -17,7 +17,7 @@ jobs:
       with:
         context: .
         file: Dockerfile
-        tags: ghcr.io/upgrade-test/keda-test:${{ github.sha }}
+        tags: ghcr.io/kedacore/keda:main
         outputs: type=docker,dest=/tmp/operator.tar
     
     - name: Build and export (metrics-server)
@@ -25,7 +25,7 @@ jobs:
       with:
         context: .
         file: Dockerfile.adapter
-        tags: ghcr.io/upgrade-test/keda-metrics-apiserver-test:${{ github.sha }}
+        tags: ghcr.io/kedacore/keda-metrics-apiserver:main
         outputs: type=docker,dest=/tmp/metrics-server.tar
 
     - name: Upload artifact (operator)
@@ -121,9 +121,7 @@ jobs:
       run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
 
     - name: Deploy current version
-      run : IMAGE_REPO=upgrade-test make deploy
-      env:
-        E2E_IMAGE_TAG: "${{ github.sha }}"
+      run : make deploy
 
     - name: Redeploy workloads
       run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
