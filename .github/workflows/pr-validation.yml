@@ -149,3 +149,6 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+
+  validate-upgrade:
+    uses: kedacore/keda/.github/workflows/upgrade-validation-template.yml@upgrade
