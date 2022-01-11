@@ -65,7 +65,7 @@ jobs:
 
     - name: Helm install
       uses: Azure/setup-helm@v1
-      
+
     - name: Create k8s ${{ matrix.kubernetesVersion }} Kind Cluster
       uses: helm/kind-action@v1.2.0
       with:
@@ -96,5 +96,5 @@ jobs:
       run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
 
     - name: Clean resources
-      run: kubectl delete -f .github/assets/test-upgrade-manifest.yml 
+      run: kubectl delete -f .github/assets/test-upgrade-manifest.yml
       if: always()

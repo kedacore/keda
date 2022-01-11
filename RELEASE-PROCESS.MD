@@ -63,7 +63,7 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 ### Other
 
 - <list items>
-  
+
 ### New Contributors
 
 <generated new contributors info>
@@ -75,7 +75,7 @@ In order to generate a list of new contributors, use the `Auto-generate release 
 
 <details>
   <summary>Screenshot</summary>
-  
+
 ![image](https://user-images.githubusercontent.com/4345663/148563945-ad75816d-739b-4e8d-a063-aa0e77f6e98d.png)
 </details>
 
