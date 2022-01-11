@@ -8,7 +8,6 @@ on:
       registryPAT:
         required: true
 
-
 jobs:
   validate-upgrade-build:
     name: Image generation
