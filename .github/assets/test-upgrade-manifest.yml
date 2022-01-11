@@ -48,7 +48,7 @@ spec:
   fallback:
     failureThreshold: 3
     replicas: 5
-  advanced: 
+  advanced:
     restoreToOriginalReplicaCount: true
     horizontalPodAutoscalerConfig:
       behavior:
