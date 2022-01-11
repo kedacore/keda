@@ -152,3 +152,7 @@ jobs:
 
   validate-upgrade:
     uses: kedacore/keda/.github/workflows/upgrade-validation-template.yml@main
+    with:
+      registryUser: ${{ github.repository_owner }}
+    secrets:
+      registryPAT: ${{ secrets.GHCR_AUTH_PAT }}

@@ -1,11 +1,17 @@
 on:
   workflow_call:
+    inputs:
+      registryUser:
+        required: true
+        type: string
+    secrets:
+      registryPAT:
+        required: true
 
 jobs:
   validate-upgrade-build:
     name: Image generation
     runs-on: ubuntu-latest
-
     steps:
     - name: Check out code
       uses: actions/checkout@v2
@@ -13,11 +19,8 @@ jobs:
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
       with:
-        # Username used to log in to a Docker registry. If not set then no login will occur
-        username: ${{ github.repository_owner }}
-        # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
-        password: ${{ secrets.GHCR_AUTH_PAT }}
-        # Server address of Docker registry. If not set then will default to Docker Hub
+        username: ${{ inputs.registryUser }}
+        password: ${{ secrets.registryPAT }}
         registry: ghcr.io
 
     - name: Build current version
