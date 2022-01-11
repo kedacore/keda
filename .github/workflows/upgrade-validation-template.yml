@@ -1,10 +1,5 @@
 on:
   workflow_call:
-
-jobs:
-  validate-upgrade-build:
-    name: Image generation
-    runs-on: ubuntu-latest
     inputs:
       registryUser:
         required: true
@@ -12,6 +7,11 @@ jobs:
       registryPAT:
         required: true
 
+
+jobs:
+  validate-upgrade-build:
+    name: Image generation
+    runs-on: ubuntu-latest
     steps:
     - name: Check out code
       uses: actions/checkout@v2
