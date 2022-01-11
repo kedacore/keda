@@ -120,6 +120,10 @@ jobs:
     - name: Deploy workloads
       run: kubectl apply -f .github/assets/test-upgrade-manifest.yml
 
+    - name: Uninstall latest KEDA release
+      run: |
+        helm uninstall keda --namespace keda --wait
+
     - name: Deploy current version
       run : make deploy
 
