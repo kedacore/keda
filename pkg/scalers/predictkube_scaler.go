@@ -452,6 +452,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		return nil, fmt.Errorf("no api key given")
 	}
 
+	// parse auth configs from ScalerConfig
 	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
@@ -468,6 +469,7 @@ func (s *PredictKubeScaler) ping(ctx context.Context) (err error) {
 // initPredictKubePrometheusConn init prometheus client and setup connection to API
 func (s *PredictKubeScaler) initPredictKubePrometheusConn(ctx context.Context) (err error) {
 	var roundTripper http.RoundTripper
+	// create http.RoundTripper with auth settings from ScalerConfig
 	if roundTripper, err = authentication.CreateHTTPRoundTripper(
 		authentication.FastHTTP,
 		s.metadata.prometheusAuth,

@@ -66,6 +66,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	if meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS {
+		// create http.RoundTripper with auth settings from ScalerConfig
 		if httpClient.Transport, err = authentication.CreateHTTPRoundTripper(
 			authentication.NetHTTP,
 			meta.prometheusAuth,
@@ -113,6 +114,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
+	// parse auth configs from ScalerConfig
 	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
