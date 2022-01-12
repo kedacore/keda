@@ -13,6 +13,7 @@ require (
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.22
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
+	github.com/DataDog/datadog-api-client-go v1.6.0 // indirect
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.30.0
 	github.com/aws/aws-sdk-go v1.42.16
