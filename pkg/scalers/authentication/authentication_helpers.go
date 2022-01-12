@@ -22,6 +22,8 @@ const (
 )
 
 func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMeta, err error) {
+	out = &AuthMeta{}
+
 	authModes, ok := triggerMetadata[authModesKey]
 	// no authMode specified
 	if !ok {
@@ -31,8 +33,6 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 	authTypes := strings.Split(authModes, ",")
 	for _, t := range authTypes {
 		authType := Type(strings.TrimSpace(t))
-
-		out = &AuthMeta{}
 
 		switch authType {
 		case BearerAuthType:
