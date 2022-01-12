@@ -4,6 +4,7 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import {waitForRollout} from "./helpers";
 
+const predictkubeApiKey = process.env['PREDICTKUBE_API_KEY']
 const testNamespace = 'predictkube-test'
 const prometheusNamespace = 'monitoring'
 const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
@@ -20,7 +21,10 @@ test.before(t => {
     // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
     // even when the KEDA deployment is at zero - the service points to both deployments
     const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
+    fs.writeFileSync(tmpFile.name, deployYaml
+        .replace('{{PREDICTKUBE_API_KEY}}', Buffer.from(predictkubeApiKey).toString('base64'))
+        .replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace)
+    )
     sh.exec(`kubectl create namespace ${testNamespace}`)
     t.is(
         0,
@@ -172,13 +176,23 @@ spec:
   selector:
     type: keda-testing
 ---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: predictkube-trigger
+spec:
+  secretTargetRef:
+  - parameter: apiKey
+    name: predictkube-secret
+    key: apiKey
+---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: predictkube-secrets
+  name: predictkube-secret
 type: Opaque
 data:
-  apiKey: MTIzNDU2Nwo=
+  apiKey: {{PREDICTKUBE_API_KEY}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -202,8 +216,7 @@ spec:
       query: sum(rate(http_requests_total{app="test-app"}[2m]))
       queryStep: "2m"
     authenticationRef:
-      name: predictkube-trigger
-      `
+      name: predictkube-trigger`
 
 const generateRequestsYaml = `apiVersion: batch/v1
 kind: Job

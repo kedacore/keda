@@ -166,7 +166,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBearerAuth {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.prometheusAuth.BearerToken))
-	} else if s.metadata.prometheusAuth.EnableBasicAuth {
+	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
 	}
 
