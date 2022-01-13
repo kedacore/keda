@@ -182,7 +182,12 @@ func (s *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
 		return len(results) > 0, fmt.Errorf("can't connect grpc server: %v, code: %v", err, status.Code(err))
 	}
 
-	return len(results) > 0, nil
+	var y int64
+	if len(results) > 0 {
+		y = int64(results[len(results)-1].Value)
+	}
+
+	return y > 0, nil
 }
 
 func (s *PredictKubeScaler) Close(_ context.Context) error {
