@@ -46,7 +46,7 @@
 
 ### Other
 
-- **General:** Add workflow for testing breaking changes on CRDs (`Scaled{Object|Job}`) ([#2450](https://github.com/kedacore/keda/pull/2450))|([#2465](https://github.com/kedacore/keda/pull/2465))|([#2466](https://github.com/kedacore/keda/pull/2466))
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ## v2.5.0
 
