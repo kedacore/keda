@@ -61,7 +61,6 @@ func (e numericParseError) Error() string {
 // If we don't get a match, check if s looks like a float and
 // parse it as one if so, otherwise parse as an int.
 func ParseNumeric(s string, bitSize int) (interface{}, error) {
-
 	ss := []byte(s)
 	if r := hintedRegexp.Find(ss); r != nil {
 		match := hintedRegexp.FindStringSubmatch(s)
