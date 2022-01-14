@@ -40,6 +40,7 @@
 - **External Scaler:** fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
 - **Kafka Scaler:** allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
 - **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
+- **AWS SQS Scaler**: allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
 
 ### Breaking Changes
 

@@ -85,16 +85,17 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 
 	queueURL, err := url.ParseRequestURI(meta.queueURL)
 	if err != nil {
-		return nil, fmt.Errorf("queueURL is not a valid URL")
-	}
+		// queueURL is not a valid URL, using it as queueName
+		meta.queueName = meta.queueURL
+	} else {
+		queueURLPath := queueURL.Path
+		queueURLPathParts := strings.Split(queueURLPath, "/")
+		if len(queueURLPathParts) != 3 || len(queueURLPathParts[2]) == 0 {
+			return nil, fmt.Errorf("cannot get queueName from queueURL")
+		}
 
-	queueURLPath := queueURL.Path
-	queueURLPathParts := strings.Split(queueURLPath, "/")
-	if len(queueURLPathParts) != 3 || len(queueURLPathParts[2]) == 0 {
-		return nil, fmt.Errorf("cannot get queueName from queueURL")
+		meta.queueName = queueURLPathParts[2]
 	}
-
-	meta.queueName = queueURLPathParts[2]
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
