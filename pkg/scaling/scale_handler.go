@@ -316,7 +316,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			if scaler != nil {
 				scaler.Close(ctx)
 			}
-			return result, err
+			for _, builder := range result {
+				builder.Scaler.Close(ctx)
+			}
+			return nil, err
 		}
 
 		result = append(result, cache.ScalerBuilder{
