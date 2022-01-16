@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,7 +22,7 @@ import (
 
 type awsDynamoDbScaler struct {
 	metadata *awsDynamoDBMetadata
-	dbClient *dynamodb.DynamoDB
+	dbClient dynamodbiface.DynamoDBAPI
 }
 
 /*

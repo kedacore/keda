@@ -1,24 +1,22 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/labels"
 	"testing"
 )
 
 const (
-	testAWSDynamoRoleArn         = "none"
 	testAWSDynamoAccessKeyID     = "none"
 	testAWSDynamoSecretAccessKey = "none"
-	testAWSDynamoErrorMetric     = "Error"
-	testAWSDynamoNoValueMetric   = "NoValue"
+	testAWSDynamoErrorTable      = "Error"
+	testAWSDynamoNoValueTable    = "NoValue"
 )
-
-var testAWSDynamoResolvedEnv = map[string]string{
-	"AWS_ACCESS_KEY":        "none",
-	"AWS_SECRET_ACCESS_KEY": "none",
-}
 
 var testAWSDynamoAuthentication = map[string]string{
 	"awsAccessKeyId":     testAWSDynamoAccessKeyID,
@@ -32,12 +30,6 @@ type parseDynamoDbMetadataTestData struct {
 	authParams       map[string]string
 	expectedMetadata *awsDynamoDBMetadata
 	expectedError    error
-}
-
-type dynamoDbMetricIdentifier struct {
-	metadataTestData *parseDynamoDbMetadataTestData
-	scalerIndex      int
-	name             string
 }
 
 var dynamoTestCases = []parseDynamoDbMetadataTestData{
@@ -167,5 +159,72 @@ func TestParseDynamoMetadata(t *testing.T) {
 				assert.Equal(t, tc.expectedMetadata, metadata)
 			}
 		})
+	}
+}
+
+type mockDynamoDb struct {
+	dynamodbiface.DynamoDBAPI
+}
+
+var result int64 = 4
+var zero int64 = 0
+
+func (c *mockDynamoDb) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
+	switch *input.TableName {
+	case testAWSCloudwatchErrorMetric:
+		return nil, errors.New("error")
+	case testAWSCloudwatchNoValueMetric:
+		return &dynamodb.QueryOutput{
+			Count: &zero,
+		}, nil
+	}
+
+	return &dynamodb.QueryOutput{
+		Count: &result,
+	}, nil
+}
+
+var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
+	{
+		tableName:                 "test",
+		awsRegion:                 "eu-west-1",
+		keyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		targetValue:               3,
+	},
+	{
+		tableName:                 testAWSDynamoErrorTable,
+		awsRegion:                 "eu-west-1",
+		keyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		targetValue:               3,
+	},
+	{
+		tableName:                 testAWSDynamoNoValueTable,
+		awsRegion:                 "eu-west-1",
+		keyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		targetValue:               3,
+	},
+}
+
+func TestGetQueryMetrics(t *testing.T) {
+	var selector labels.Selector
+
+	for _, meta := range awsDynamoDBGetMetricTestData {
+		scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
+
+		value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
+		switch meta.tableName {
+		case testAWSDynamoErrorTable:
+			assert.Error(t, err, "expect error because of cloudwatch api error")
+		case testAWSDynamoNoValueTable:
+			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+		default:
+			assert.EqualValues(t, int64(4), value[0].Value.Value())
+		}
 	}
 }
