@@ -256,6 +256,8 @@ github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e h1:4IEmV5r8U2RcvYcxT9SLpEUEyzTAbPE6if3z9q7aWZo=
 github.com/dysnix/predictkube-libs v0.0.0-20211223143509-07a69ffd545e/go.mod h1:dGl9trkmU8Cvh2ClgG68P8hBZRDoHmEynXt745J/T4U=
+github.com/dysnix/predictkube-libs v0.0.0-20220110175435-6a14c5918e22 h1:NjwMoRvZMK2xf6Yh+sASF3oICkqSZh+bJf75DuBslZ4=
+github.com/dysnix/predictkube-libs v0.0.0-20220110175435-6a14c5918e22/go.mod h1:WrLfDUxV7bb1OiF6LFeXPO45FlPcHdG7LIQov/JPR2E=
 github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f h1:56GoyLUD9Z3+Ko0iC8hGPq2RPvjceQEdbio78i5mhvQ=
 github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f/go.mod h1:zTsQdEyzxs3OHHtrjf8WpmexujIMTYyCVz/38VCt0uo=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
