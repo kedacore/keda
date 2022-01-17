@@ -40,6 +40,7 @@
 - **External Scaler:** fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
 - **Kafka Scaler:** allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
 - **General:**  fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
+- **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
 
 ### Breaking Changes
 
