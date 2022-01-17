@@ -126,6 +126,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
+		delete(h.scalerCaches, key)
 		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
 	} else {
 		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
@@ -163,7 +164,7 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 		return nil, err
 	}
 
-	key := strings.ToLower(fmt.Sprintf("%s.%s.%s", withTriggers.Kind, withTriggers.Name, withTriggers.Namespace))
+	key := withTriggers.GenerateIdenitifier()
 
 	h.lock.RLock()
 	if cache, ok := h.scalerCaches[key]; ok && cache.Generation == withTriggers.Generation {
@@ -327,6 +328,8 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
+	case "activemq":
+		return scalers.NewActiveMQScaler(config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
@@ -344,7 +347,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-monitor":
 		return scalers.NewAzureMonitorScaler(config)
 	case "azure-pipelines":
-		return scalers.NewAzurePipelinesScaler(config)
+		return scalers.NewAzurePipelinesScaler(ctx, config)
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
@@ -355,6 +358,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
 		return scalers.NewCronScaler(config)
+	case "datadog":
+		return scalers.NewDatadogScaler(ctx, config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "external":
@@ -387,6 +392,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
+	case "new-relic":
+		return scalers.NewNewRelicScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":

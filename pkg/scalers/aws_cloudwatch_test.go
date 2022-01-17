@@ -96,7 +96,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"Missing namespace"},
 	// Missing dimensionName
 	{map[string]string{
-		"dimensionName":     "QueueName",
+		"namespace":         "AWS/SQS",
 		"dimensionValue":    "keda",
 		"metricName":        "ApproximateNumberOfMessagesVisible",
 		"targetMetricValue": "2",

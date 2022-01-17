@@ -50,9 +50,12 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
+          # Username used to log in to a Docker registry. If not set then no login will occur
+          username: ${{ github.repository_owner }}
+          # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
+          password: ${{ secrets.GHCR_AUTH_PAT }}
+          # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish on GitHub Container Registry
         run: make publish
@@ -84,6 +87,7 @@ jobs:
           OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
           OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
           OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
+          PREDICTKUBE_API_KEY: ${{ secrets.PREDICTKUBE_API_KEY }}
           TEST_CLUSTER_NAME: keda-pr-run
           TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
           TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}

@@ -62,6 +62,7 @@ body:
     label: Kubernetes Version
     description: What version of Kubernetes that are you running?
     options:
+    - "1.23"
     - "1.22"
     - "1.21"
     - "1.20"
