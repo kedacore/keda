@@ -52,8 +52,8 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{}, true, 0, nil, "", "", "", false},
 	// failure, no consumer group
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", "latest", false},
-	// failure, no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
+	// success, no topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success
@@ -118,6 +118,7 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -190,6 +191,7 @@ func TestKafkaAuthParams(t *testing.T) {
 		}
 	}
 }
+
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex})

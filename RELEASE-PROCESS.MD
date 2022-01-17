@@ -29,13 +29,13 @@ Creating a new release in the releases page (https://github.com/kedacore/keda/re
 
 KEDA Deployment YAML file (eg. keda-2.4.0.yaml) is also automatically created and attached to the Release as part of the workflow.
 
-> Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda/tags
+> Note: The container registry repo with all the different images can be seen [here](https://github.com/orgs/kedacore/packages?repo_name=keda)
 
 ### Release template
 
-Every release should use the following template to create the GitHub release.
+Every release should use the provided template below to create the GitHub release and ensure that a new GitHub Discussion is created.
 
-> 💡 Don't forget to update the version in the template
+> 💡 Don't forget to update the version & new contributors in the template
 
 Here's the template:
 
@@ -63,7 +63,21 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 ### Other
 
 - <list items>
+
+### New Contributors
+
+<generated new contributors info>
 ```
+
+### Generating new contributor's info
+
+In order to generate a list of new contributors, use the `Auto-generate release notes` GitHub feature of the release.
+
+<details>
+  <summary>Screenshot</summary>
+
+![image](https://user-images.githubusercontent.com/4345663/148563945-ad75816d-739b-4e8d-a063-aa0e77f6e98d.png)
+</details>
 
 ## 5. Setup continous container scanning with Snyk
 

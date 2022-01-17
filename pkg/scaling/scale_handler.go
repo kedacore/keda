@@ -358,6 +358,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":
 		return scalers.NewCronScaler(config)
+	case "datadog":
+		return scalers.NewDatadogScaler(ctx, config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "external":

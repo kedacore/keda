@@ -202,7 +202,7 @@ spec:
       spec:
         containers:
           - name: mongodb-update
-            image: 1314520999/mongodb-update:latest
+            image: ghcr.io/kedacore/tests-mongodb:latest
             args:
             - --connectStr={{MONGODB_CONNECTION_STRING}}
             - --dataBase={{MONGODB_DATABASE}}
