@@ -186,7 +186,7 @@ func (c *mockDynamoDb) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput,
 
 var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
-		tableName:                 "test",
+		tableName:                 "ValidTable",
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
@@ -211,20 +211,40 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	},
 }
 
-func TestGetQueryMetrics(t *testing.T) {
+func TestDynamoGetMetrics(t *testing.T) {
 	var selector labels.Selector
 
 	for _, meta := range awsDynamoDBGetMetricTestData {
-		scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
+		t.Run(meta.tableName, func(t *testing.T) {
+			scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
 
-		value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
-		switch meta.tableName {
-		case testAWSDynamoErrorTable:
-			assert.Error(t, err, "expect error because of cloudwatch api error")
-		case testAWSDynamoNoValueTable:
-			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
-		default:
-			assert.EqualValues(t, int64(4), value[0].Value.Value())
-		}
+			value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
+			switch meta.tableName {
+			case testAWSDynamoErrorTable:
+				assert.Error(t, err, "expect error because of cloudwatch api error")
+			case testAWSDynamoNoValueTable:
+				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+			default:
+				assert.EqualValues(t, int64(4), value[0].Value.Value())
+			}
+		})
+	}
+}
+
+func TestDynamoGetQueryMetrics(t *testing.T) {
+	for _, meta := range awsDynamoDBGetMetricTestData {
+		t.Run(meta.tableName, func(t *testing.T) {
+			scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
+
+			value, err := scaler.GetQueryMetrics()
+			switch meta.tableName {
+			case testAWSDynamoErrorTable:
+				assert.Error(t, err, "expect error because of cloudwatch api error")
+			case testAWSDynamoNoValueTable:
+				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+			default:
+				assert.EqualValues(t, int64(4), value)
+			}
+		})
 	}
 }
