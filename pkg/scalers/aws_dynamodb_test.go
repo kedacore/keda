@@ -24,7 +24,7 @@ var testAWSDynamoAuthentication = map[string]string{
 	"awsSecretAccessKey": testAWSDynamoSecretAccessKey,
 }
 
-type parseDynamoDbMetadataTestData struct {
+type parseDynamoDBMetadataTestData struct {
 	name             string
 	metadata         map[string]string
 	resolvedEnv      map[string]string
@@ -33,7 +33,7 @@ type parseDynamoDbMetadataTestData struct {
 	expectedError    error
 }
 
-var dynamoTestCases = []parseDynamoDbMetadataTestData{
+var dynamoTestCases = []parseDynamoDBMetadataTestData{
 	{
 		name:          "no tableName given",
 		metadata:      map[string]string{},
@@ -115,6 +115,19 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 		expectedError: errors.New("error parsing expressionAttributeNames: invalid JSON input: missing colon after key \"malformed\""),
 	},
 	{
+		name: "empty expressionAttributeNames",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{}",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams:    map[string]string{},
+		expectedError: errors.New("error parsing expressionAttributeNames: empty map"),
+	},
+	{
 		name: "malformed expressionAttributeValues",
 		metadata: map[string]string{
 			"tableName":                 "test",
@@ -189,20 +202,20 @@ func TestParseDynamoMetadata(t *testing.T) {
 	}
 }
 
-type mockDynamoDb struct {
+type mockDynamoDB struct {
 	dynamodbiface.DynamoDBAPI
 }
 
 var result int64 = 4
-var zero int64 = 0
+var empty int64
 
-func (c *mockDynamoDb) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
+func (c *mockDynamoDB) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
 	switch *input.TableName {
 	case testAWSCloudwatchErrorMetric:
 		return nil, errors.New("error")
 	case testAWSCloudwatchNoValueMetric:
 		return &dynamodb.QueryOutput{
-			Count: &zero,
+			Count: &empty,
 		}, nil
 	}
 
@@ -247,7 +260,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
+			scaler := awsDynamoDBScaler{&meta, &mockDynamoDB{}}
 
 			value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
 			switch meta.tableName {
@@ -265,16 +278,34 @@ func TestDynamoGetMetrics(t *testing.T) {
 func TestDynamoGetQueryMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDbScaler{&meta, &mockDynamoDb{}}
+			scaler := awsDynamoDBScaler{&meta, &mockDynamoDB{}}
 
 			value, err := scaler.GetQueryMetrics()
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
-				assert.Error(t, err, "expect error because of cloudwatch api error")
+				assert.Error(t, err, "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
 				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 			default:
 				assert.EqualValues(t, int64(4), value)
+			}
+		})
+	}
+}
+
+func TestDynamoIsActive(t *testing.T) {
+	for _, meta := range awsDynamoDBGetMetricTestData {
+		t.Run(meta.tableName, func(t *testing.T) {
+			scaler := awsDynamoDBScaler{&meta, &mockDynamoDB{}}
+
+			value, err := scaler.IsActive(context.Background())
+			switch meta.tableName {
+			case testAWSDynamoErrorTable:
+				assert.Error(t, err, "expect error because of cloudwatch api error")
+			case testAWSDynamoNoValueTable:
+				assert.NoError(t, err, "dont expect error when returning empty result from dynamodb")
+			default:
+				assert.EqualValues(t, true, value)
 			}
 		})
 	}

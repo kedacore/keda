@@ -21,7 +21,7 @@ import (
 	"strconv"
 )
 
-type awsDynamoDbScaler struct {
+type awsDynamoDBScaler struct {
 	metadata *awsDynamoDBMetadata
 	dbClient dynamodbiface.DynamoDBAPI
 }
@@ -51,14 +51,14 @@ type awsDynamoDBMetadata struct {
 
 var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
-func NewAwsDynamoDbScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseAwsDynamoDBMetadata(config)
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %s", err)
 	}
 
-	return &awsDynamoDbScaler{
+	return &awsDynamoDBScaler{
 		metadata: meta,
 		dbClient: createDynamoDBClient(meta),
 	}, nil
@@ -164,7 +164,7 @@ func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	return dbClient
 }
 
-func (c *awsDynamoDbScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := c.GetQueryMetrics()
 
 	if err != nil {
@@ -181,7 +181,7 @@ func (c *awsDynamoDbScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (c *awsDynamoDbScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -193,10 +193,13 @@ func (c *awsDynamoDbScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 		},
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+
+	return []v2beta2.MetricSpec{
+		metricSpec,
+	}
 }
 
-func (c *awsDynamoDbScaler) IsActive(ctx context.Context) (bool, error) {
+func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := c.GetQueryMetrics()
 	if err != nil {
 		return false, fmt.Errorf("error inspecting mssql: %s", err)
@@ -205,11 +208,11 @@ func (c *awsDynamoDbScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (c *awsDynamoDbScaler) Close(context.Context) error {
+func (c *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsDynamoDbScaler) GetQueryMetrics() (int64, error) {
+func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(c.metadata.tableName),
 		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
@@ -229,7 +232,6 @@ func (c *awsDynamoDbScaler) GetQueryMetrics() (int64, error) {
 
 // json2Map convert Json to map[string]string
 func json2Map(js string) (m map[string]*string, err error) {
-
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 
 	if err != nil {
@@ -239,17 +241,15 @@ func json2Map(js string) (m map[string]*string, err error) {
 	if len(m) == 0 {
 		return nil, errors.New("empty map")
 	}
-
 	return m, err
 }
 
+// json2DynamoMap converts Json to map[string]*dynamoDb.AttributeValue
 func json2DynamoMap(js string) (m map[string]*dynamodb.AttributeValue, err error) {
-
 	err = json.Unmarshal([]byte(js), &m)
 
 	if err != nil {
 		return nil, err
 	}
-
 	return m, err
 }
