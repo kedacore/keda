@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
@@ -86,7 +87,6 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeNames"]; ok && val != "" {
-
 		names, err := json2Map(val)
 
 		if err != nil {
@@ -94,13 +94,11 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		}
 
 		meta.expressionAttributeNames = names
-
 	} else {
 		return nil, fmt.Errorf("no expressionAttributeNames given")
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
-
 		values, err := json2DynamoMap(val)
 
 		if err != nil {
