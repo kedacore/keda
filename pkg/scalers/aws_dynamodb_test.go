@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
-	"testing"
 )
 
 const (
@@ -190,7 +191,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 		targetValue:               3,
 	},
 	{
@@ -198,7 +199,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 		targetValue:               3,
 	},
 	{
@@ -206,7 +207,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 		targetValue:               3,
 	},
 }

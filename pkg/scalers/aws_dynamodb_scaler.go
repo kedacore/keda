@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -195,7 +196,16 @@ func (c *awsDynamoDbScaler) Close(context.Context) error {
 func (c *awsDynamoDbScaler) GetQueryMetrics() (int64, error) {
 
 	names, err := json2Map(c.metadata.expressionAttributeNames)
+
+	if err != nil {
+		return 0, fmt.Errorf("error parsing expressionAttributeNames: %s", err)
+	}
+
 	values, err := json2DynamoMap(c.metadata.expressionAttributeValues)
+
+	if err != nil {
+		return 0, fmt.Errorf("error parsing expressionAttributeValues: %s", err)
+	}
 
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(c.metadata.tableName),
@@ -218,6 +228,7 @@ func (c *awsDynamoDbScaler) GetQueryMetrics() (int64, error) {
 func json2Map(js string) (m map[string]*string, err error) {
 
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
+
 	if err != nil {
 		return nil, err
 	}
@@ -226,19 +237,16 @@ func json2Map(js string) (m map[string]*string, err error) {
 		return nil, errors.New("empty map")
 	}
 
-	return m, nil
+	return m, err
 }
 
 func json2DynamoMap(js string) (m map[string]*dynamodb.AttributeValue, err error) {
-	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
+
+	err = json.Unmarshal([]byte(js), &m)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(m) == 0 {
-		return nil, errors.New("empty map")
-	}
-
-	return m, nil
+	return m, err
 }
