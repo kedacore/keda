@@ -71,7 +71,7 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			"tableName":                "test",
 			"awsRegion":                "eu-west-1",
 			"keyConditionExpression":   "#yr = :yyyy",
-			"expressionAttributeNames": "\"{ \"#yr\" : \"year\" }\"",
+			"expressionAttributeNames": "{ \"#yr\" : \"year\" }",
 		},
 		authParams:    map[string]string{},
 		expectedError: errors.New("no expressionAttributeValues given"),
@@ -83,7 +83,7 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			"awsRegion":                 "eu-west-1",
 			"keyConditionExpression":    "#yr = :yyyy",
 			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
-			"expressionAttributeValues": "{\":yyyy\": {\"N\": 1994}}",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
 		},
 		authParams:    map[string]string{},
 		expectedError: errors.New("no targetValue given"),
@@ -95,11 +95,37 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			"awsRegion":                 "eu-west-1",
 			"keyConditionExpression":    "#yr = :yyyy",
 			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
-			"expressionAttributeValues": "{\":yyyy\": {\"N\": 1994}}",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
 			"targetValue":               "no-valid",
 		},
 		authParams:    map[string]string{},
 		expectedError: errors.New("error parsing metadata targetValue"),
+	},
+	{
+		name: "malformed expressionAttributeNames",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"malformed\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams:    map[string]string{},
+		expectedError: errors.New("error parsing expressionAttributeNames: invalid JSON input: missing colon after key \"malformed\""),
+	},
+	{
+		name: "malformed expressionAttributeValues",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": 1994 }}", // This should not be an JSON int.
+			"targetValue":               "3",
+		},
+		authParams:    map[string]string{},
+		expectedError: errors.New("error parsing expressionAttributeValues: json: cannot unmarshal number into Go struct field AttributeValue.N of type string"),
 	},
 	{
 		name: "no aws given",
@@ -108,7 +134,7 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			"awsRegion":                 "eu-west-1",
 			"keyConditionExpression":    "#yr = :yyyy",
 			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
-			"expressionAttributeValues": "{\":yyyy\": {\"N\": 1994}}",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
@@ -121,7 +147,7 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			"awsRegion":                 "eu-west-1",
 			"keyConditionExpression":    "#yr = :yyyy",
 			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
-			"expressionAttributeValues": "{\":yyyy\": {\"N\": 1994}}",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
 			"targetValue":               "3",
 		},
 		authParams:    testAWSDynamoAuthentication,
@@ -130,8 +156,8 @@ var dynamoTestCases = []parseDynamoDbMetadataTestData{
 			tableName:                 "test",
 			awsRegion:                 "eu-west-1",
 			keyConditionExpression:    "#yr = :yyyy",
-			expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-			expressionAttributeValues: "{\":yyyy\": {\"N\": 1994}}",
+			expressionAttributeNames:  map[string]*string{"#yr": &year},
+			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 			targetValue:               3,
 			scalerIndex:               0,
 			metricName:                "",
@@ -185,29 +211,33 @@ func (c *mockDynamoDb) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput,
 	}, nil
 }
 
+var year = "year"
+var target = "1994"
+var yearAttr = dynamodb.AttributeValue{N: &target}
+
 var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
 		tableName:                 "ValidTable",
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
+		expressionAttributeNames:  map[string]*string{"#yr": &year},
+		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 		targetValue:               3,
 	},
 	{
 		tableName:                 testAWSDynamoErrorTable,
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
+		expressionAttributeNames:  map[string]*string{"#yr": &year},
+		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 		targetValue:               3,
 	},
 	{
 		tableName:                 testAWSDynamoNoValueTable,
 		awsRegion:                 "eu-west-1",
 		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  "{ \"#yr\" : \"year\" }",
-		expressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
+		expressionAttributeNames:  map[string]*string{"#yr": &year},
+		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 		targetValue:               3,
 	},
 }
@@ -222,9 +252,9 @@ func TestDynamoGetMetrics(t *testing.T) {
 			value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
-				assert.Error(t, err, "expect error because of cloudwatch api error")
+				assert.Error(t, err, "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
-				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+				assert.NoError(t, err, "dont expect error when returning empty result from dynamodb")
 			default:
 				assert.EqualValues(t, int64(4), value[0].Value.Value())
 			}

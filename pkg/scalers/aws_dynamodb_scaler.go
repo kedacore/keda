@@ -41,8 +41,8 @@ type awsDynamoDBMetadata struct {
 	tableName                 string
 	awsRegion                 string
 	keyConditionExpression    string
-	expressionAttributeNames  string
-	expressionAttributeValues string
+	expressionAttributeNames  map[string]*string
+	expressionAttributeValues map[string]*dynamodb.AttributeValue
 	targetValue               int
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
@@ -86,13 +86,28 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeNames"]; ok && val != "" {
-		meta.expressionAttributeNames = val
+
+		names, err := json2Map(val)
+
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expressionAttributeNames: %s", err)
+		}
+
+		meta.expressionAttributeNames = names
+
 	} else {
 		return nil, fmt.Errorf("no expressionAttributeNames given")
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
-		meta.expressionAttributeValues = val
+
+		values, err := json2DynamoMap(val)
+
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expressionAttributeValues: %s", err)
+		}
+
+		meta.expressionAttributeValues = values
 	} else {
 		return nil, fmt.Errorf("no expressionAttributeValues given")
 	}
@@ -109,6 +124,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	}
 
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+
 	if err != nil {
 		return nil, err
 	}
@@ -194,24 +210,11 @@ func (c *awsDynamoDbScaler) Close(context.Context) error {
 }
 
 func (c *awsDynamoDbScaler) GetQueryMetrics() (int64, error) {
-
-	names, err := json2Map(c.metadata.expressionAttributeNames)
-
-	if err != nil {
-		return 0, fmt.Errorf("error parsing expressionAttributeNames: %s", err)
-	}
-
-	values, err := json2DynamoMap(c.metadata.expressionAttributeValues)
-
-	if err != nil {
-		return 0, fmt.Errorf("error parsing expressionAttributeValues: %s", err)
-	}
-
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(c.metadata.tableName),
 		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
-		ExpressionAttributeNames:  names,
-		ExpressionAttributeValues: values,
+		ExpressionAttributeNames:  c.metadata.expressionAttributeNames,
+		ExpressionAttributeValues: c.metadata.expressionAttributeValues,
 	}
 
 	res, err := c.dbClient.Query(&dimensions)
