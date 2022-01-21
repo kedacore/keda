@@ -77,6 +77,8 @@ jobs:
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: make sign-images
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Publish KEDA images on Docker Hub
         run: make publish-dockerhub
