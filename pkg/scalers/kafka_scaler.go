@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	perrors "github.com/pkg/errors"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +35,7 @@ type kafkaMetadata struct {
 	offsetResetPolicy  offsetResetPolicy
 	allowIdleConsumers bool
 	version            sarama.KafkaVersion
+	useRegex   		   bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -123,6 +126,21 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = ""
 		kafkaLog.V(1).Info(fmt.Sprintf("cosumer group %s has no topic specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
+	}
+
+	if val, ok := config.TriggerMetadata["useRegex"]; ok {
+		useRegex, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("useRegex has invalid value")
+		}
+		meta.useRegex = useRegex
+		if meta.topic == ""  {
+			return meta, fmt.Errorf("no regexp supplied")
+		}
+		_, err = regexp.Compile(meta.topic)
+		if err != nil {
+			return meta, perrors.Wrap(err, fmt.Sprintf("invalid regexp supplied: %s", meta.topic))
+		}
 	}
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
@@ -292,13 +310,20 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	var topicsToDescribe = make([]string, 0)
 
 	// when no topic is specified, query to cg group to fetch all subscribed topics
-	if s.metadata.topic == "" {
+	if s.metadata.topic == "" || s.metadata.useRegex {
 		listCGOffsetResponse, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error listing cg offset: %s", err)
 		}
+
 		for topicName := range listCGOffsetResponse.Blocks {
-			topicsToDescribe = append(topicsToDescribe, topicName)
+			if s.metadata.useRegex {
+				if match, _ := regexp.MatchString(s.metadata.topic, topicName); match {
+					topicsToDescribe = append(topicsToDescribe, topicName)
+				}
+			} else {
+				topicsToDescribe = append(topicsToDescribe, topicName)
+			}
 		}
 	} else {
 		topicsToDescribe = []string{s.metadata.topic}
