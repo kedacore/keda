@@ -60,7 +60,7 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Publish KEDA images on GitHub Container Registry
-        run: make publish
+        run: make publish-multiarch
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 

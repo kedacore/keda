@@ -3,10 +3,9 @@ on:
   push:
     branches:
       - main
-concurrency: e2e-tests
 jobs:
-  validate:
-    name: Validate
+  build:
+    name: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,7 +54,7 @@ jobs:
           registry: ghcr.io
 
       - name: Publish on GitHub Container Registry
-        run: make publish
+        run: make publish-multiarch
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
@@ -69,6 +68,19 @@ jobs:
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: make sign-images
+        
+  validate:
+    needs: build
+    name: validate
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: ghcr.io/kedacore/build-tools:main
+    concurrency: e2e-tests
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
       - name: Run end to end tests
         env:
@@ -111,3 +123,27 @@ jobs:
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+
+  validate-arm64:
+    needs: build
+    name: validate-arm64
+    runs-on: ARM64
+    container: arm64v8/ubuntu:focal
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Create k8s v1.23 Kind Cluster
+        uses: helm/kind-action@v1.2.0
+        with:
+          node_image: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
+
+      - name: Install dependecies
+        run : |
+          apt update
+          apt install npm -y
+
+      - name: Run smoke test
+        run: make arm-smoke-test

@@ -30,7 +30,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- **General:** Automatically release container image for ARM ([#2457](https://github.com/kedacore/keda/pull/2457))
 
 ### Improvements
 
