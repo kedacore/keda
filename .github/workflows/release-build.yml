@@ -7,6 +7,12 @@ jobs:
   build:
     name: Push Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+      id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
+
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: ghcr.io/kedacore/build-tools:main
     steps:

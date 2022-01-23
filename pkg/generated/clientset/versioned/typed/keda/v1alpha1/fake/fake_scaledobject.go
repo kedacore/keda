@@ -117,7 +117,7 @@ func (c *FakeScaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1al
 // Delete takes name of the scaledObject and deletes it. Returns an error if one occurs.
 func (c *FakeScaledObjects) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(scaledobjectsResource, c.ns, name), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewDeleteActionWithOptions(scaledobjectsResource, c.ns, name, opts), &v1alpha1.ScaledObject{})
 
 	return err
 }

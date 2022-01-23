@@ -26,12 +26,14 @@
 - Add New Relic Scaler ([#2387](https://github.com/kedacore/keda/pull/2387))
 - Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
 - Add New Datadog Scaler ([#2354](https://github.com/kedacore/keda/pull/2354))
+- Add PredictKube Scaler ([#2418](https://github.com/kedacore/keda/pull/2418))
+- Add Azure Application Insights Scaler ([2506](https://github.com/kedacore/keda/pull/2506))
 
 ### Improvements
 
 - **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
-- **General:** Delete the cache entry when a ScaledObject is deleted ([#2408](https://github.com/kedacore/keda/pull/2408))
-- **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))
+- **General:** Delete the cache entry when a ScaledObject is deleted ([#2564](https://github.com/kedacore/keda/pull/2564))
+- **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
 - **Azure Pipelines Scaler:** support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
 - **Graphite Scaler:** use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
 - **Kubernetes Workload Scaler:** ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
@@ -42,6 +44,7 @@
 - **Kafka Scaler:** allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
 - **General:**  fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
 - **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
+- **AWS SQS Scaler**: allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
 
 ### Breaking Changes
 

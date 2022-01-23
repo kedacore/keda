@@ -57,9 +57,12 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-
-			r.removeFromCache(req.NamespacedName.String())
-			return ctrl.Result{}, nil
+			err := r.ScaleHandler.ClearScalersCache(ctx, scaledObject)
+			if err != nil {
+				reqLogger.Error(err, "error clearing scalers cache")
+			}
+			r.removeFromMetricsCache(req.NamespacedName.String())
+			return ctrl.Result{}, err
 		}
 		// Error reading the object - requeue the request.
 		reqLogger.Error(err, "Failed to get ScaledObject")
@@ -70,8 +73,12 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 	// indicated by the deletion timestamp being set.
 	// This depends on the preexisting finalizer setup in ScaledObjectController.
 	if scaledObject.GetDeletionTimestamp() != nil {
-		r.removeFromCache(req.NamespacedName.String())
-		return ctrl.Result{}, nil
+		err := r.ScaleHandler.ClearScalersCache(ctx, scaledObject)
+		if err != nil {
+			reqLogger.Error(err, "error clearing scalers cache")
+		}
+		r.removeFromMetricsCache(req.NamespacedName.String())
+		return ctrl.Result{}, err
 	}
 
 	reqLogger.V(1).Info("Reconciling ScaledObject", "externalMetricNames", scaledObject.Status.ExternalMetricNames)
@@ -82,8 +89,11 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	r.addToMetricsCache(req.NamespacedName.String(), scaledObject.Status.ExternalMetricNames)
-	r.ScaleHandler.ClearScalersCache(ctx, req.Name, req.Namespace)
-	return ctrl.Result{}, nil
+	err = r.ScaleHandler.ClearScalersCache(ctx, scaledObject)
+	if err != nil {
+		reqLogger.Error(err, "error clearing scalers cache")
+	}
+	return ctrl.Result{}, err
 }
 
 func (r *MetricsScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
@@ -105,7 +115,7 @@ func (r *MetricsScaledObjectReconciler) addToMetricsCache(namespacedName string,
 	(*r.ExternalMetricsInfo) = extMetrics
 }
 
-func (r *MetricsScaledObjectReconciler) removeFromCache(namespacedName string) {
+func (r *MetricsScaledObjectReconciler) removeFromMetricsCache(namespacedName string) {
 	scaledObjectsMetricsLock.Lock()
 	defer scaledObjectsMetricsLock.Unlock()
 	delete(scaledObjectsMetrics, namespacedName)

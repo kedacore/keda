@@ -179,11 +179,11 @@ func main() {
 	}()
 
 	defer klog.Flush()
+	klog.InitFlags(nil)
 
 	printVersion()
 
 	cmd := &Adapter{}
-
 	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(scheme.Scheme))
 	cmd.OpenAPIConfig.Info.Title = "keda-adapter"
 	cmd.OpenAPIConfig.Info.Version = "1.0.0"

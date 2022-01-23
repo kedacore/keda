@@ -19,7 +19,6 @@ package scaling
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -46,7 +45,7 @@ type ScaleHandler interface {
 	HandleScalableObject(ctx context.Context, scalableObject interface{}) error
 	DeleteScalableObject(ctx context.Context, scalableObject interface{}) error
 	GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error)
-	ClearScalersCache(ctx context.Context, name, namespace string)
+	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 }
 
 type scaleHandler struct {
@@ -126,7 +125,10 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
-		delete(h.scalerCaches, key)
+		err := h.ClearScalersCache(ctx, scalableObject)
+		if err != nil {
+			h.logger.Error(err, "error clearing scalers cache")
+		}
 		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
 	} else {
 		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
@@ -151,7 +153,10 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 			tmr.Stop()
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
-			h.ClearScalersCache(ctx, withTriggers.Name, withTriggers.Namespace)
+			err := h.ClearScalersCache(ctx, scalableObject)
+			if err != nil {
+				logger.Error(err, "error clearing scalers cache")
+			}
 			tmr.Stop()
 			return
 		}
@@ -201,15 +206,23 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 	return h.scalerCaches[key], nil
 }
 
-func (h *scaleHandler) ClearScalersCache(ctx context.Context, name, namespace string) {
+func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject interface{}) error {
+	withTriggers, err := asDuckWithTriggers(scalableObject)
+	if err != nil {
+		return err
+	}
+
+	key := withTriggers.GenerateIdenitifier()
+
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	key := strings.ToLower(fmt.Sprintf("%s.%s", name, namespace))
 	if cache, ok := h.scalerCaches[key]; ok {
 		cache.Close(ctx)
 		delete(h.scalerCaches, key)
 	}
+
+	return nil
 }
 
 func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
@@ -344,6 +357,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
 		return scalers.NewAwsSqsQueueScaler(config)
+	case "azure-app-insights":
+		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
 	case "azure-eventhub":
@@ -406,6 +421,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewOpenstackSwiftScaler(ctx, config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
+	case "predictkube":
+		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(config)
 	case "rabbitmq":
