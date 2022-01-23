@@ -35,7 +35,7 @@ type kafkaMetadata struct {
 	offsetResetPolicy  offsetResetPolicy
 	allowIdleConsumers bool
 	version            sarama.KafkaVersion
-	useRegex   		   bool
+	useRegex           bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -134,7 +134,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 			return meta, fmt.Errorf("useRegex has invalid value")
 		}
 		meta.useRegex = useRegex
-		if meta.topic == ""  {
+		if meta.topic == "" {
 			return meta, fmt.Errorf("no regexp supplied")
 		}
 		_, err = regexp.Compile(meta.topic)

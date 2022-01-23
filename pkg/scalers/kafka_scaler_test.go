@@ -15,7 +15,7 @@ type parseKafkaMetadataTestData struct {
 	topic              string
 	offsetResetPolicy  offsetResetPolicy
 	allowIdleConsumers bool
-	useRegex		   bool
+	useRegex           bool
 }
 
 type parseKafkaAuthParamsTestData struct {
