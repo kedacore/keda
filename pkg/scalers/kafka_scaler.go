@@ -2,15 +2,14 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	perrors "github.com/pkg/errors"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/Shopify/sarama"
+	"github.com/pkg/errors"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,7 +138,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		}
 		_, err = regexp.Compile(meta.topic)
 		if err != nil {
-			return meta, perrors.Wrap(err, fmt.Sprintf("invalid regexp supplied: %s", meta.topic))
+			return meta, errors.Wrap(err, fmt.Sprintf("invalid regexp supplied: %s", meta.topic))
 		}
 	}
 
