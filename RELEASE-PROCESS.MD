@@ -98,13 +98,6 @@ Before we can release our new Helm chart version, we need to prepare it:
 
 Guidance on how to release it can be found in our [contribution guide](https://github.com/kedacore/charts/blob/master/CONTRIBUTING.md#shipping-a-new-version).
 
-### Deploy KEDA through Azure Functions Core Tools (optional)
-
-Update the following files with the release artifact (YAML):
-
-- https://github.com/Azure/azure-functions-core-tools/blob/v3.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
-- https://github.com/Azure/azure-functions-core-tools/blob/v4.x/src/Azure.Functions.Cli/StaticResources/keda-v2.yaml
-
 ## 8. Prepare next release
 
 Prepare next release by creating a [new GitHub milestone](https://github.com/kedacore/keda/milestones/new) called `v{upcoming-semver-version}` with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
