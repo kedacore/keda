@@ -186,7 +186,10 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 		return nil, err
 	}
 
-	scalers := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
+	scalers, err := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
+	if err != nil {
+		return nil, err
+	}
 
 	h.scalerCaches[key] = &cache.ScalersCache{
 		Generation: withTriggers.Generation,
@@ -273,7 +276,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 }
 
 // buildScalers returns list of Scalers for the specified triggers
-func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) []cache.ScalerBuilder {
+func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]cache.ScalerBuilder, error) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var err error
 	resolvedEnv := make(map[string]string)
@@ -313,7 +316,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			if scaler != nil {
 				scaler.Close(ctx)
 			}
-			continue
+			for _, builder := range result {
+				builder.Scaler.Close(ctx)
+			}
+			return nil, err
 		}
 
 		result = append(result, cache.ScalerBuilder{
@@ -322,7 +328,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		})
 	}
 
-	return result
+	return result, nil
 }
 
 func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {

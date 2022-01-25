@@ -114,28 +114,28 @@ type predictKubeMetadataTestData struct {
 var testPredictKubeMetadata = []predictKubeMetadataTestData{
 	// all properly formed
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "threshold": "2000", "query": "up"},
 		map[string]string{"apiKey": testAPIKey}, false,
 	},
 	// missing prometheusAddress
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "threshold": "2000", "query": "up"},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 	// missing metricName
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "2000", "query": "up"},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 	// malformed threshold
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "one", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "up"},
 
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 	// missing query
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "metricName": "http_requests_total", "threshold": "one", "query": ""},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": ""},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 }
@@ -217,7 +217,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), testData.metadataTestData.metadata["metricName"], nil)
+		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), predictKubeMetricPrefix, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI))
