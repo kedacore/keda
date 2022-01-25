@@ -122,11 +122,6 @@ var testPredictKubeMetadata = []predictKubeMetadataTestData{
 		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "threshold": "2000", "query": "up"},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
-	// missing metricName
-	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "2000", "query": "up"},
-		map[string]string{"apiKey": testAPIKey}, true,
-	},
 	// malformed threshold
 	{
 		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "up"},
