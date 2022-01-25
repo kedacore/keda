@@ -16,7 +16,6 @@ const (
 	BearerAuthType Type = "bearer"
 )
 
-//go:generate go-enum -type=TransportType -transform=lower
 // TransportType is type of http transport
 type TransportType int
 
