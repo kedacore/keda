@@ -212,7 +212,6 @@ spec:
       predictHorizon: "2h"
       historyTimeWindow: "7d"
       prometheusAddress: http://prometheus-server.{{PROMETHEUS_NAMESPACE}}.svc
-      metricName: http_requests_total
       threshold: '100'
       query: sum(rate(http_requests_total{app="test-app"}[2m]))
       queryStep: "2m"

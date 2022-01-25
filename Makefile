@@ -91,6 +91,12 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 
 ##@ Development
 
+install-go-enum:
+	$(GOROOT)/bin/go get github.com/searKing/golang/tools/cmd/go-enum
+
+enums-gen: install-go-enum
+	$(GOROOT)/bin/go generate ./...
+
 manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
@@ -98,7 +104,7 @@ manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition o
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-generate: controller-gen mockgen-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API) and mocks.
+generate: controller-gen mockgen-gen enums-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API) and mocks.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum ## Generate OpenAPI for KEDA Metrics Adapter.

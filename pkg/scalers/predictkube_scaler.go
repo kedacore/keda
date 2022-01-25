@@ -38,7 +38,8 @@ import (
 )
 
 const (
-	predictKubeMetricType = "External"
+	predictKubeMetricType   = "External"
+	predictKubeMetricPrefix = "predictkube_metric"
 
 	invalidMetricTypeErr = "metric type is invalid"
 )
@@ -91,7 +92,6 @@ type predictKubeMetadata struct {
 	apiKey            string
 	prometheusAddress string
 	prometheusAuth    *authentication.AuthMeta
-	metricName        string
 	query             string
 	threshold         int64
 	scalerIndex       int
@@ -196,7 +196,7 @@ func (s *PredictKubeScaler) Close(_ context.Context) error {
 
 func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", s.metadata.metricName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -296,7 +296,7 @@ func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, e
 }
 
 func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
-	metricName := GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", s.metadata.metricName)))
+	metricName := GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix)))
 	switch result.Type() {
 	case model.ValVector:
 		if res, ok := result.(model.Vector); ok {
@@ -427,21 +427,6 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		}
 	} else {
 		return nil, fmt.Errorf("no threshold given")
-	}
-
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		if len(val) == 0 {
-			return nil, fmt.Errorf("no metric name given")
-		}
-
-		err = validate.Var(val, "ascii")
-		if err != nil {
-			return nil, fmt.Errorf("invalid metricName")
-		}
-
-		meta.metricName = val
-	} else {
-		return nil, fmt.Errorf("no metric name given")
 	}
 
 	meta.scalerIndex = config.ScalerIndex
