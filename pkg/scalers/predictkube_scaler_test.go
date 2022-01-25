@@ -154,8 +154,8 @@ type predictKubeMetricIdentifier struct {
 }
 
 var predictKubeMetricIdentifiers = []predictKubeMetricIdentifier{
-	{&testPredictKubeMetadata[0], 0, "s0-predictkube-http_requests_total"},
-	{&testPredictKubeMetadata[0], 1, "s1-predictkube-http_requests_total"},
+	{&testPredictKubeMetadata[0], 0, fmt.Sprintf("s0-predictkube-%s", predictKubeMetricPrefix)},
+	{&testPredictKubeMetadata[0], 1, fmt.Sprintf("s1-predictkube-%s", predictKubeMetricPrefix)},
 }
 
 func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
