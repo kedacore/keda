@@ -5,6 +5,7 @@
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.6.0](#v260)
 - [v2.5.0](#v250)
 - [v2.4.0](#v240)
 - [v2.3.0](#v230)
@@ -20,6 +21,24 @@
 - [v1.0.0](#v100)
 
 ## Unreleased
+
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+
+## v2.6.0
 
 ### New
 
@@ -43,14 +62,6 @@
 - **General:**  fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
 - **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
 - **AWS SQS Scaler**: allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
-
-### Other
-
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ## v2.5.0
 
