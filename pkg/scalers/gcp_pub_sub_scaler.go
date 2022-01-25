@@ -30,6 +30,8 @@ const (
 	pubsubModeOldestUnackedMessageAge = "OldestUnackedMessageAge"
 )
 
+var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
+
 type gcpAuthorizationMetadata struct {
 	GoogleApplicationCredentials string
 	podIdentityOwner             bool
@@ -244,8 +246,8 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 func getSubscriptionData(s *pubsubScaler) (string, string) {
 	var subscriptionID string
 	var projectID string
-	regexpExpression, _ := regexp.Compile(compositeSubscriptionIDPrefix)
-	if regexpExpression.MatchString(s.metadata.subscriptionName) {
+
+	if regexpCompositeSubscriptionIDPrefix.MatchString(s.metadata.subscriptionName) {
 		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
 		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
 	} else {

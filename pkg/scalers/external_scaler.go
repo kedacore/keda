@@ -8,16 +8,17 @@ import (
 	"time"
 
 	"github.com/mitchellh/hashstructure"
-
-	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
 
 type externalScaler struct {
@@ -293,7 +294,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
-		return grpc.Dial(metadata.scalerAddress, grpc.WithInsecure())
+		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
