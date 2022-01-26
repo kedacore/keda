@@ -18,6 +18,8 @@ require (
 	github.com/Shopify/sarama v1.31.0
 	github.com/aws/aws-sdk-go v1.42.40
 	github.com/denisenkom/go-mssqldb v0.12.0
+	github.com/dysnix/predictkube-libs v0.0.0-20220125103715-5502104557b3
+	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/elastic/go-elasticsearch/v7 v7.16.0
 	github.com/go-logr/logr v1.2.2
 	github.com/go-playground/assert/v2 v2.0.1
@@ -47,7 +49,7 @@ require (
 	github.com/tidwall/gjson v1.13.0
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
-	go.mongodb.org/mongo-driver v1.8.3
+	go.mongodb.org/mongo-driver v1.8.0
 	google.golang.org/api v0.65.0
 	google.golang.org/genproto v0.0.0-20220118154757-00ab72f36ad5
 	google.golang.org/grpc v1.43.0
