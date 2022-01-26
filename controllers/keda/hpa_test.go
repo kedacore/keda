@@ -51,7 +51,7 @@ var _ = Describe("hpa", func() {
 		scaleHandler = mock_scaling.NewMockScaleHandler(ctrl)
 		scaler = mock_scalers.NewMockScaler(ctrl)
 		statusWriter = mock_client.NewMockStatusWriter(ctrl)
-		logger = logr.DiscardLogger{}
+		logger = logr.Discard()
 		reconciler = ScaledObjectReconciler{
 			Client:       client,
 			scaleHandler: scaleHandler,
@@ -137,7 +137,7 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 				return scaler, nil
 			},
 		}},
-		Logger:   nil,
+		Logger:   logr.Discard(),
 		Recorder: nil,
 	}
 	metricSpec := v2beta2.MetricSpec{
