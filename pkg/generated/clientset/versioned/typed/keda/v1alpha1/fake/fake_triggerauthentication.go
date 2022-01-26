@@ -105,7 +105,7 @@ func (c *FakeTriggerAuthentications) Update(ctx context.Context, triggerAuthenti
 // Delete takes name of the triggerAuthentication and deletes it. Returns an error if one occurs.
 func (c *FakeTriggerAuthentications) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(triggerauthenticationsResource, c.ns, name), &v1alpha1.TriggerAuthentication{})
+		Invokes(testing.NewDeleteActionWithOptions(triggerauthenticationsResource, c.ns, name, opts), &v1alpha1.TriggerAuthentication{})
 
 	return err
 }
