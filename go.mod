@@ -16,14 +16,14 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.8.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.31.0
-	github.com/aws/aws-sdk-go v1.42.40
+	github.com/aws/aws-sdk-go v1.42.41
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dysnix/predictkube-libs v0.0.0-20220125103715-5502104557b3
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/elastic/go-elasticsearch/v7 v7.16.0
 	github.com/go-logr/logr v1.2.2
 	github.com/go-playground/assert/v2 v2.0.1
-	github.com/go-playground/validator/v10 v10.9.0
+	github.com/go-playground/validator/v10 v10.10.0
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocql/gocql v0.0.0-20211222173705-d73e6b1002a7
@@ -35,7 +35,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.7.0
 	github.com/lib/pq v1.10.4
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.70.0
+	github.com/newrelic/newrelic-client-go v0.71.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
@@ -52,19 +52,19 @@ require (
 	go.mongodb.org/mongo-driver v1.8.2
 	google.golang.org/api v0.65.0
 	google.golang.org/genproto v0.0.0-20220118154757-00ab72f36ad5
-	google.golang.org/grpc v1.43.0
+	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
-	k8s.io/api v0.23.2
-	k8s.io/apimachinery v0.23.2
-	k8s.io/apiserver v0.23.2
-	k8s.io/client-go v0.23.2
-	k8s.io/code-generator v0.23.2
+	k8s.io/api v0.23.3
+	k8s.io/apimachinery v0.23.3
+	k8s.io/apiserver v0.23.3
+	k8s.io/client-go v0.23.3
+	k8s.io/code-generator v0.23.3
 	k8s.io/klog/v2 v2.40.1
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
-	k8s.io/metrics v0.23.2
+	k8s.io/metrics v0.23.3
 	knative.dev/pkg v0.0.0-20220121092305-3ba5d72e310a
 	sigs.k8s.io/controller-runtime v0.11.0
-	sigs.k8s.io/custom-metrics-apiserver v1.22.0
+	sigs.k8s.io/custom-metrics-apiserver v1.23.0
 )
 
 replace (
@@ -119,7 +119,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -246,9 +246,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiextensions-apiserver v0.23.0 // indirect
-	k8s.io/component-base v0.23.2 // indirect
+	k8s.io/component-base v0.23.3 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
+	k8s.io/utils v0.0.0-20211208161948-7d6a63dca704 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.27 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
