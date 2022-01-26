@@ -295,6 +295,7 @@ func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, e
 	return s.parsePrometheusResult(val)
 }
 
+// parsePrometheusResult parsing response from prometheus server.
 func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
 	metricName := GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix)))
 	switch result.Type() {
