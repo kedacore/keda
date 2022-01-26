@@ -176,12 +176,6 @@ publish: docker-build ## Push images on to Container Registry (default: ghcr.io)
 	docker push $(IMAGE_CONTROLLER)
 	docker push $(IMAGE_ADAPTER)
 
-publish-dockerhub: ## Mirror images on Docker Hub.
-	docker tag $(IMAGE_CONTROLLER) docker.io/$(IMAGE_REPO)/keda:$(VERSION)
-	docker tag $(IMAGE_ADAPTER) docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
-	docker push docker.io/$(IMAGE_REPO)/keda:$(VERSION)
-	docker push docker.io/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
-
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
