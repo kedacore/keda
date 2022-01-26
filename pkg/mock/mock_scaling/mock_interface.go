@@ -36,15 +36,17 @@ func (m *MockScaleHandler) EXPECT() *MockScaleHandlerMockRecorder {
 }
 
 // ClearScalersCache mocks base method.
-func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, name, namespace string) {
+func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, scalableObject interface{}) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ClearScalersCache", ctx, name, namespace)
+	ret := m.ctrl.Call(m, "ClearScalersCache", ctx, scalableObject)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // ClearScalersCache indicates an expected call of ClearScalersCache.
-func (mr *MockScaleHandlerMockRecorder) ClearScalersCache(ctx, name, namespace interface{}) *gomock.Call {
+func (mr *MockScaleHandlerMockRecorder) ClearScalersCache(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).ClearScalersCache), ctx, name, namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearScalersCache", reflect.TypeOf((*MockScaleHandler)(nil).ClearScalersCache), ctx, scalableObject)
 }
 
 // DeleteScalableObject mocks base method.
