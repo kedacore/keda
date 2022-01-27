@@ -17,6 +17,7 @@ const (
 	testAWSCloudwatchRoleArn         = "none"
 	testAWSCloudwatchAccessKeyID     = "none"
 	testAWSCloudwatchSecretAccessKey = "none"
+	testAWSCloudwatchSessionToken    = "none"
 	testAWSCloudwatchErrorMetric     = "Error"
 	testAWSCloudwatchNoValueMetric   = "NoValue"
 )
@@ -127,7 +128,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication,
 		true,
 		"Missing metricName"},
-	// with "aws_credentials" from TriggerAuthentication
+	// with static "aws_credentials" from TriggerAuthentication
 	{map[string]string{
 		"namespace":            "AWS/SQS",
 		"dimensionName":        "QueueName",
@@ -142,6 +143,25 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		map[string]string{
 			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+		},
+		false,
+		"with AWS Credentials from TriggerAuthentication"},
+	// with temporary "aws_credentials" from TriggerAuthentication
+	{map[string]string{
+		"namespace":            "AWS/SQS",
+		"dimensionName":        "QueueName",
+		"dimensionValue":       "keda",
+		"metricName":           "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":    "2",
+		"minMetricValue":       "0",
+		"metricCollectionTime": "300",
+		"metricStat":           "Average",
+		"metricStatPeriod":     "300",
+		"awsRegion":            "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
+			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+			"awsSessionToken":    testAWSCloudwatchSessionToken,
 		},
 		false,
 		"with AWS Credentials from TriggerAuthentication"},

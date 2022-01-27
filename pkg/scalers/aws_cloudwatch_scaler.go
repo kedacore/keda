@@ -112,7 +112,7 @@ func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWa
 
 	var cloudwatchClient *cloudwatch.CloudWatch
 	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
 
 		if metadata.awsAuthorization.awsRoleArn != "" {
 			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)

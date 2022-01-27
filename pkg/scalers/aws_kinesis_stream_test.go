@@ -17,6 +17,7 @@ const (
 	testAWSKinesisRoleArn         = "none"
 	testAWSKinesisAccessKeyID     = "none"
 	testAWSKinesisSecretAccessKey = "none"
+	testAWSKinesisSessionToken    = "none"
 	testAWSKinesisStreamName      = "test"
 	testAWSRegion                 = "eu-west-1"
 	testAWSKinesisErrorStream     = "Error"
@@ -161,7 +162,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		},
 		expected:    &awsKinesisStreamMetadata{},
 		isError:     true,
-		comment:     "with AWS Credentials from TriggerAuthentication, missing Access Key Id",
+		comment:     "with AWS static credentials from TriggerAuthentication, missing Access Key Id",
 		scalerIndex: 5,
 	},
 	{metadata: map[string]string{
@@ -174,7 +175,62 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		},
 		expected:    &awsKinesisStreamMetadata{},
 		isError:     true,
-		comment:     "with AWS Credentials from TriggerAuthentication, missing Secret Access Key",
+		comment:     "with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
+		scalerIndex: 6,
+	},
+	{
+		metadata: map[string]string{
+			"streamName": testAWSKinesisStreamName,
+			"shardCount": "2",
+			"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     testAWSKinesisAccessKeyID,
+			"awsSecretAccessKey": testAWSKinesisSecretAccessKey,
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected: &awsKinesisStreamMetadata{
+			targetShardCount: 2,
+			streamName:       testAWSKinesisStreamName,
+			awsRegion:        testAWSRegion,
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     testAWSKinesisAccessKeyID,
+				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				awsSessionToken:    testAWSKinesisSessionToken,
+				podIdentityOwner:   true,
+			},
+			scalerIndex: 5,
+		},
+		isError:     false,
+		comment:     "with AWS temporary credentials from TriggerAuthentication",
+		scalerIndex: 5,
+	},
+	{
+		metadata: map[string]string{
+			"streamName": testAWSKinesisStreamName,
+			"shardCount": "2",
+			"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     "",
+			"awsSecretAccessKey": testAWSKinesisSecretAccessKey,
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected:    &awsKinesisStreamMetadata{},
+		isError:     true,
+		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
+		scalerIndex: 5,
+	},
+	{metadata: map[string]string{
+		"streamName": testAWSKinesisStreamName,
+		"shardCount": "2",
+		"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     testAWSKinesisAccessKeyID,
+			"awsSecretAccessKey": "",
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected:    &awsKinesisStreamMetadata{},
+		isError:     true,
+		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
 		scalerIndex: 6,
 	},
 	{metadata: map[string]string{
