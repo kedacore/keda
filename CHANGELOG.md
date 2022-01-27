@@ -31,7 +31,7 @@
 ### Improvements
 
 - **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
-- **General:** Delete the cache entry when a ScaledObject is deleted ([#2408](https://github.com/kedacore/keda/pull/2408))
+- **General:** Delete the cache entry when a ScaledObject is deleted ([#2564](https://github.com/kedacore/keda/pull/2564))
 - **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
 - **Azure Pipelines Scaler:** support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
 - **Graphite Scaler:** use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
