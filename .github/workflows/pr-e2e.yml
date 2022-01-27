@@ -91,6 +91,8 @@ jobs:
           TEST_CLUSTER_NAME: keda-pr-run
           TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
           TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
+          TEST_APP_INSIGHTS_APP_ID: ${{ secrets.TEST_APP_INSIGHTS_APP_ID }}
+          TEST_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.TEST_APP_INSIGHTS_INSTRUMENTATION_KEY }}
         run: |
           MESSAGE="${{ github.event.comment.body }}"
           REGEX='/run-e2e (.+)'
