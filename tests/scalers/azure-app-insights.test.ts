@@ -128,7 +128,7 @@ test.serial.cb('Auth trigger deployment should scale to 2 replicas', t => {
       )
     }
 
-    assert_replicas(t, auth_trigger_test_data.namespace, auth_trigger_test_data.name, 2, 180)
+    assert_replicas(t, auth_trigger_test_data.namespace, auth_trigger_test_data.name, 2, 240)
     t.end()
   })
 })
