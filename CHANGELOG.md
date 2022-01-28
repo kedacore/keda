@@ -45,6 +45,7 @@
 - **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
 - **AWS SQS Scaler:** allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
 - **AWS Scalers:** Support temporary AWS credentials using session tokens ([#2573](https://github.com/kedacore/keda/pull/2573))
+- **Prometheus Scaler:** Support namespaced Prometheus queries ([#2575](https://github.com/kedacore/keda/issues/2575))
 
 ### Breaking Changes
 
