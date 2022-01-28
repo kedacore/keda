@@ -10,9 +10,9 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
