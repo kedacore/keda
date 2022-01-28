@@ -26,6 +26,7 @@ const (
 	promMetricName    = "metricName"
 	promQuery         = "query"
 	promThreshold     = "threshold"
+	promNamespace     = "namespace"
 )
 
 type prometheusScaler struct {
@@ -39,6 +40,7 @@ type prometheusMetadata struct {
 	query          string
 	threshold      int
 	prometheusAuth *authentication.AuthMeta
+	namespace      string
 	scalerIndex    int
 }
 
@@ -112,6 +114,10 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.threshold = t
 	}
 
+	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
+		meta.namespace = val
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 
 	// parse auth configs from ScalerConfig
@@ -159,6 +165,12 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	t := time.Now().UTC().Format(time.RFC3339)
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
+
+	// set 'namespace' parameter for namespaced Prometheus requests (eg. for Thanos Querier)
+	if s.metadata.namespace != "" {
+		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
