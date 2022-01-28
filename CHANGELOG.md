@@ -48,7 +48,8 @@
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- No longer push to Docker Hub as of v2.5 as per our [announcement in March 2021](https://github.com/kedacore/keda/discussions/1700).
+  - Learn more about the background on [kedacore/governance#16](https://github.com/kedacore/governance/issues/16)
 
 ### Other
 
