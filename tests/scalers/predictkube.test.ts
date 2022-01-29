@@ -68,7 +68,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
     // keda based deployment should start scaling up with http requests issued
     let replicaCount = '0'
     for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
-        t.log(`Waited ${5 * i} seconds for predictkube-based deployments to scale up`)
+        t.log(`Waited ${10 * i} seconds for predictkube-based deployments to scale up`)
         const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
         t.log(`Logs from the generate requests: ${jobLogs}`)
 
@@ -76,7 +76,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
             `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         if (replicaCount !== '5') {
-            sh.exec('sleep 5s')
+            sh.exec('sleep 10s')
         }
     }
 
