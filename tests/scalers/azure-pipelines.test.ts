@@ -68,7 +68,7 @@ test.serial('PoolID: Deployment should scale to 3 replicas after queueing 3 jobs
 
 test.serial('PoolID: Deployment should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
 
 test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
@@ -91,7 +91,7 @@ test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jo
 
 test.serial('PoolName: should scale to 1 replica after finishing 3 jobs', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 1 after finishing 3 jobs')
 })
 
 test.after.always('clean up azure-pipelines deployment', t => {
