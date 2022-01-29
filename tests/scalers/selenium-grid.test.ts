@@ -151,7 +151,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
       break;
     }
     console.log('Waiting for chrome 91 to scale down to 0 pods')
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   const seleniumGridTestDeployTmpFile = tmp.fileSync();
