@@ -29,7 +29,7 @@ function run_tests {
         pids+=($pid)
         lookup[$pid]=$test_case
         # limit concurrent runs
-        if [[ "$counter" -gt "$concurrent_tests_limit" ]]; then
+        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
             wait_for_jobs
             counter=0
             pids=()
