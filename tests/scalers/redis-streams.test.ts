@@ -66,17 +66,17 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   }
   // with messages published, the consumer deployment should start receiving the messages
   let replicaCount = '0'
-  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
+  for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployment/redis-streams-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     t.log('(scale up) replica count is:' + replicaCount)
     if (replicaCount !== '5') {
-      sh.exec('sleep 3s')
+      sh.exec('sleep 10s')
     }
   }
 
-  t.is('5', replicaCount, 'Replica count should be 5 within 180 seconds')
+  t.is('5', replicaCount, 'Replica count should be 5 within 300 seconds')
 
   for (let i = 0; i < 60 && replicaCount !== '1'; i++) {
     replicaCount = sh.exec(
