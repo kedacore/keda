@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -152,20 +151,28 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
 
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
+		t, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
 		}
-		lagThreshold = t
+		typedValue, ok := t.(int64)
+		if !ok {
+			return nil, fmt.Errorf("provided value for LagThreshold (%d) was not a valid integer", t)
+		}
+		lagThreshold = typedValue
 	}
 
 	groupVersion := uint32(0)
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
-		t, err := strconv.ParseInt(val, 10, 32)
+		t, err := kedautil.ParseNumeric(val, 32)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
 		}
-		groupVersion = uint32(t)
+		typedValue, ok := t.(int64)
+		if !ok {
+			return nil, fmt.Errorf("provided value for groupVersion (%d) was not a valid integer", t)
+		}
+		groupVersion = uint32(typedValue)
 	}
 
 	switch {

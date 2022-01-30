@@ -60,6 +60,11 @@ func (e numericParseError) Error() string {
 //
 // If we don't get a match, check if s looks like a float and
 // parse it as one if so, otherwise parse as an int.
+//
+// Examples:
+// ParseNumeric("i(50)", 32) returns an int64 containing 50
+// ParseNumeric("d(32)", 32) returns a float64 containing 32.0
+// ParseNumeric("30.1", 32) returns a float64 containing 30.1
 func ParseNumeric(s string, bitSize int) (interface{}, error) {
 	ss := []byte(s)
 	if r := hintedRegexp.Find(ss); r != nil {

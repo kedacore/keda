@@ -146,13 +146,17 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 
 	if val, ok := triggerMetadata["threshold"]; ok && val != "" {
 		// converts the string to float64 but its value is convertible to float32 without changing
-		_threshold, err := strconv.ParseFloat(val, 32)
+		_threshold, err := kedautil.ParseNumeric(val, 32)
 		if err != nil {
 			openstackMetricLog.Error(err, "error parsing openstack metric metadata", "threshold", "threshold")
 			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
 		}
+		typedValue, ok := _threshold.(float64)
+		if !ok {
+			return nil, fmt.Errorf("provided value for threshold (%f) was not a valid float", _threshold)
+		}
 
-		meta.threshold = _threshold
+		meta.threshold = typedValue
 	}
 
 	if val, ok := triggerMetadata["timeout"]; ok && val != "" {

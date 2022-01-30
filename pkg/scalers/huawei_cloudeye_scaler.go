@@ -117,22 +117,30 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
-		targetMetricValue, err := strconv.ParseFloat(val, 64)
+		targetMetricValue, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing targetMetricValue metadata")
 		} else {
-			meta.targetMetricValue = targetMetricValue
+			typedValue, ok := targetMetricValue.(float64)
+			if !ok {
+				return nil, fmt.Errorf("provided value for targetMetricValue (%f) was not a valid float", targetMetricValue)
+			}
+			meta.targetMetricValue = typedValue
 		}
 	} else {
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
-		minMetricValue, err := strconv.ParseFloat(val, 64)
+		minMetricValue, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
 		} else {
-			meta.minMetricValue = minMetricValue
+			typedValue, ok := minMetricValue.(float64)
+			if !ok {
+				return nil, fmt.Errorf("provided value for minMetricValue (%f) was not a valid float", minMetricValue)
+			}
+			meta.minMetricValue = typedValue
 		}
 	} else {
 		return nil, fmt.Errorf("min Metric Value not given")

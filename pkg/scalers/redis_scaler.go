@@ -206,11 +206,15 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 
 	meta.databaseIndex = defaultDBIdx
 	if val, ok := config.TriggerMetadata["databaseIndex"]; ok {
-		dbIndex, err := strconv.ParseInt(val, 10, 32)
+		dbIndex, err := kedautil.ParseNumeric(val, 32)
 		if err != nil {
 			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())
 		}
-		meta.databaseIndex = int(dbIndex)
+		typedValue, ok := dbIndex.(int64)
+		if !ok {
+			return nil, fmt.Errorf("provided value for databaseIndex (%d) was not a valid integer", dbIndex)
+		}
+		meta.databaseIndex = int(typedValue)
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil

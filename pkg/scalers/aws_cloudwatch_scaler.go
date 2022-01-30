@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -75,11 +74,11 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 
 func getIntMetadataValue(metadata map[string]string, key string, required bool, defaultValue int64) (int64, error) {
 	if val, ok := metadata[key]; ok && val != "" {
-		value, err := strconv.Atoi(val)
+		value, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
 		}
-		return int64(value), nil
+		return value.(int64), nil
 	}
 
 	if required {
@@ -91,11 +90,11 @@ func getIntMetadataValue(metadata map[string]string, key string, required bool, 
 
 func getFloatMetadataValue(metadata map[string]string, key string, required bool, defaultValue float64) (float64, error) {
 	if val, ok := metadata[key]; ok && val != "" {
-		value, err := strconv.ParseFloat(val, 64)
+		value, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
 		}
-		return value, nil
+		return value.(float64), nil
 	}
 
 	if required {

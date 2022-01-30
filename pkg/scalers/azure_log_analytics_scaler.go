@@ -26,7 +26,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -173,11 +172,15 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	if err != nil {
 		return nil, err
 	}
-	threshold, err := strconv.ParseInt(val, 10, 64)
+	threshold, err := kedautil.ParseNumeric(val, 64)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 	}
-	meta.threshold = threshold
+	typedValue, ok := threshold.(int64)
+	if !ok {
+		return nil, fmt.Errorf("provided value for threshold (%d) was not a valid integer", threshold)
+	}
+	meta.threshold = typedValue
 
 	// Resolve metricName
 	if val, ok := config.TriggerMetadata["metricName"]; ok {

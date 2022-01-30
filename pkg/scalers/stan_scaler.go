@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -100,11 +99,15 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta.lagThreshold = defaultStanLagThreshold
 
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
+		t, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
 		}
-		meta.lagThreshold = t
+		typedValue, ok := t.(int64)
+		if !ok {
+			return meta, fmt.Errorf("provided value for lagThreshold (%d) was not a valid integer", t)
+		}
+		meta.lagThreshold = typedValue
 	}
 
 	meta.scalerIndex = config.ScalerIndex

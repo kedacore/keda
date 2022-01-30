@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -248,8 +247,11 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadResponse, partitionID 
 			}
 		}
 
-		if sn, err := strconv.ParseInt(sequencenumber, 10, 64); err == nil {
-			checkpoint.SequenceNumber = sn
+		if sn, err := util.ParseNumeric(sequencenumber, 64); err == nil {
+			checkpoint.SequenceNumber, ok = sn.(int64)
+			if !ok {
+				return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
+			}
 		} else {
 			return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
 		}

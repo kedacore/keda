@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -55,8 +54,13 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
 	}
-	meta.value, err = strconv.ParseInt(config.TriggerMetadata[valueKey], 10, 64)
-	if err != nil || meta.value == 0 {
+  valueNum, err := kedautil.ParseNumeric(config.TriggerMetadata[valueKey], 64)
+	if err != nil {
+		return nil, err
+	}
+  var ok bool
+  meta.value, ok = valueNum.(int64)
+	if !ok || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
 	meta.scalerIndex = config.ScalerIndex

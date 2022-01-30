@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"strconv"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -88,12 +87,16 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
-		threshold, err := strconv.ParseInt(val, 10, 64)
+		threshold, err := kedautil.ParseNumeric(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
 		}
+		typedValue, ok := threshold.(int64)
+		if !ok {
+			return nil, fmt.Errorf("provided value for threshold (%d) was not a valid integer", threshold)
+		}
 
-		meta.threshold = threshold
+		meta.threshold = typedValue
 	}
 
 	if config.AuthParams["storageConnection"] != "" {
