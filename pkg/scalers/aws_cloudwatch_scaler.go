@@ -74,7 +74,7 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 
 func getIntMetadataValue(metadata map[string]string, key string, required bool, defaultValue int64) (int64, error) {
 	if val, ok := metadata[key]; ok && val != "" {
-		value, err := kedautil.ParseNumeric(val, 64, true)
+		value, err := kedautil.ParseNumeric(val, 64, false)
 		if err != nil {
 			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
 		}
