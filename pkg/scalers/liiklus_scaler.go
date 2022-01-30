@@ -151,7 +151,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
 
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
-		t, err := kedautil.ParseNumeric(val, 64)
+		t, err := kedautil.ParseNumeric(val, 64, false)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
 		}
@@ -164,7 +164,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 
 	groupVersion := uint32(0)
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
-		t, err := kedautil.ParseNumeric(val, 32)
+		t, err := kedautil.ParseNumeric(val, 32, false)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
 		}

@@ -55,7 +55,7 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
 	case v2beta2.UtilizationMetricType:
-		valueNum, err := kedautil.ParseNumeric(value, 32)
+		valueNum, err := kedautil.ParseNumeric(value, 32, false)
 		if err != nil {
 			return nil, err
 		}

@@ -201,7 +201,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve pageSize
 	if val, ok := config.TriggerMetadata["pageSize"]; ok {
-		pageSize, err := kedautil.ParseNumeric(val, 64)
+		pageSize, err := kedautil.ParseNumeric(val, 64, false)
 		if err != nil {
 			return nil, fmt.Errorf("pageSize has invalid value")
 		}

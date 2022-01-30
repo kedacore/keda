@@ -135,7 +135,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	meta.lagThreshold = defaultKafkaLagThreshold
 
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
-		t, err := kedautil.ParseNumeric(val, 64)
+		t, err := kedautil.ParseNumeric(val, 64, false)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
 		}

@@ -117,7 +117,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
-		value, err := kedautil.ParseNumeric(val, 64)
+		value, err := kedautil.ParseNumeric(val, 64, true)
 		if err != nil {
 			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %s", err.Error())
 		}

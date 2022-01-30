@@ -146,7 +146,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 
 	if val, ok := triggerMetadata["threshold"]; ok && val != "" {
 		// converts the string to float64 but its value is convertible to float32 without changing
-		_threshold, err := kedautil.ParseNumeric(val, 32)
+		_threshold, err := kedautil.ParseNumeric(val, 32, true)
 		if err != nil {
 			openstackMetricLog.Error(err, "error parsing openstack metric metadata", "threshold", "threshold")
 			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())

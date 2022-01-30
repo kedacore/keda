@@ -190,7 +190,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 
 	meta.databaseIndex = defaultDBIndex
 	if val, ok := config.TriggerMetadata[databaseIndexMetadata]; ok {
-		dbIndex, err := kedautil.ParseNumeric(val, 32)
+		dbIndex, err := kedautil.ParseNumeric(val, 32, false)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis database index %v", err)
 		}

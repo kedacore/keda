@@ -61,11 +61,17 @@ func (e numericParseError) Error() string {
 // If we don't get a match, check if s looks like a float and
 // parse it as one if so, otherwise parse as an int.
 //
+// As a safety mechanism, if we want to be certain a float will
+// be returned even if the user provides something which appears
+// to be an int, the ensureFloat argument can be set to true.
+// This will forcefully call ParseFloat against a non-hinted value
+// even if it looked like an int.
+//
 // Examples:
 // ParseNumeric("i(50)", 32) returns an int64 containing 50
 // ParseNumeric("d(32)", 32) returns a float64 containing 32.0
 // ParseNumeric("30.1", 32) returns a float64 containing 30.1
-func ParseNumeric(s string, bitSize int) (interface{}, error) {
+func ParseNumeric(s string, bitSize int, ensureFloat bool) (interface{}, error) {
 	ss := []byte(s)
 	if r := hintedRegexp.Find(ss); r != nil {
 		match := hintedRegexp.FindStringSubmatch(s)
@@ -84,6 +90,9 @@ func ParseNumeric(s string, bitSize int) (interface{}, error) {
 	} else if r := floatRegexp.Find(ss); r != nil {
 		return strconv.ParseFloat(s, bitSize)
 	} else if r := intRegexp.Find(ss); r != nil {
+		if ensureFloat {
+			return strconv.ParseFloat(s, bitSize)
+		}
 		return strconv.ParseInt(s, 10, bitSize)
 	}
 	return int64(0), numericParseError{value: s}

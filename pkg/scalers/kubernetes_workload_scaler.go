@@ -54,12 +54,12 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
 	}
-  valueNum, err := kedautil.ParseNumeric(config.TriggerMetadata[valueKey], 64)
+	valueNum, err := kedautil.ParseNumeric(config.TriggerMetadata[valueKey], 64, false)
 	if err != nil {
 		return nil, err
 	}
-  var ok bool
-  meta.value, ok = valueNum.(int64)
+	var ok bool
+	meta.value, ok = valueNum.(int64)
 	if !ok || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}

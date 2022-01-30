@@ -34,6 +34,7 @@ type testNumericMetadata struct {
 	expectedFloat float64
 	expectedErr   error
 	expectedType  reflect.Type
+	ensureFloat   bool
 }
 
 var testNumericMetadatas = []testNumericMetadata{
@@ -44,6 +45,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 1.0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing -1.0",
@@ -52,6 +54,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: -1.0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing d(1.0)",
@@ -60,6 +63,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 1.0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing d(-1.0)",
@@ -68,6 +72,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: -1.0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing foo",
@@ -76,6 +81,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   numericParseError{value: "foo"},
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing x(1)",
@@ -84,6 +90,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   typeHintError{value: "x"},
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing i(1.1)",
@@ -92,6 +99,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   &strconv.NumError{Func: "ParseInt", Num: "1.1", Err: strconv.ErrSyntax},
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing d(1)",
@@ -100,6 +108,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 1,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing i(1)",
@@ -108,6 +117,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing i(-1)",
@@ -116,6 +126,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing 1",
@@ -124,6 +135,7 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
 	},
 	{
 		comment:       "Testing -1",
@@ -132,6 +144,16 @@ var testNumericMetadatas = []testNumericMetadata{
 		expectedFloat: 0,
 		expectedErr:   nil,
 		expectedType:  reflect.TypeOf(defaultInt),
+		ensureFloat:   false,
+	},
+	{
+		comment:       "Testing 1 (ensureFloat)",
+		input:         "1",
+		expectedInt:   0,
+		expectedFloat: 1,
+		expectedErr:   nil,
+		expectedType:  reflect.TypeOf(defaultFloat),
+		ensureFloat:   true,
 	},
 }
 
@@ -139,7 +161,7 @@ func TestParseNumeric(t *testing.T) {
 	for _, testData := range testNumericMetadatas {
 		t.Log(testData.comment)
 
-		r, err := ParseNumeric(testData.input, 64)
+		r, err := ParseNumeric(testData.input, 64, testData.ensureFloat)
 
 		if reflect.ValueOf(testData.expectedErr).Kind() == reflect.Ptr {
 			if reflect.TypeOf(err) != reflect.TypeOf(testData.expectedErr) {

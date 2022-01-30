@@ -172,7 +172,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	if err != nil {
 		return nil, err
 	}
-	threshold, err := kedautil.ParseNumeric(val, 64)
+	threshold, err := kedautil.ParseNumeric(val, 64, false)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 	}

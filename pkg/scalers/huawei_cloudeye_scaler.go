@@ -117,7 +117,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
-		targetMetricValue, err := kedautil.ParseNumeric(val, 64)
+		targetMetricValue, err := kedautil.ParseNumeric(val, 64, true)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing targetMetricValue metadata")
 		} else {
@@ -132,7 +132,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
-		minMetricValue, err := kedautil.ParseNumeric(val, 64)
+		minMetricValue, err := kedautil.ParseNumeric(val, 64, true)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
 		} else {

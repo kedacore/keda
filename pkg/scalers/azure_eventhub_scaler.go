@@ -87,7 +87,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
-		threshold, err := kedautil.ParseNumeric(val, 64)
+		threshold, err := kedautil.ParseNumeric(val, 64, false)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
 		}
