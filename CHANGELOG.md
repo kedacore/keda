@@ -34,7 +34,7 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 
 ### Breaking Changes
 
