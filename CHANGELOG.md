@@ -27,6 +27,7 @@
 - Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
 - Add New Datadog Scaler ([#2354](https://github.com/kedacore/keda/pull/2354))
 - Add PredictKube Scaler ([#2418](https://github.com/kedacore/keda/pull/2418))
+- Add Azure Application Insights Scaler ([2506](https://github.com/kedacore/keda/pull/2506))
 
 ### Improvements
 

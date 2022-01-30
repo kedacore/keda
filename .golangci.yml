@@ -76,7 +76,11 @@ issues:
     - linters:
        - stylecheck
       text: "ST1000:"
-
+  # The call to autorest.Send() in scalers/azure_app_insights.go is marked as not closing the response body. However, autorest.DoCloseIfError()
+  # and autorest.ByClosing() should ensure that the response body is closed.
+    - path: azure/azure_app_insights.go
+      linters:
+        - bodyclose
 linters-settings:
   funlen:
     lines: 80

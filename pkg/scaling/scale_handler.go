@@ -357,6 +357,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
 		return scalers.NewAwsSqsQueueScaler(config)
+	case "azure-app-insights":
+		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
 	case "azure-eventhub":
