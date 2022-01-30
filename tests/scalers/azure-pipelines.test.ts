@@ -41,7 +41,7 @@ test.before(async t => {
       .replace('{{AZP_POOL}}', poolName)
       .replace('{{AZP_URL}}', organizationURL))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
-  t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.') 
+  t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 })
 
 test.serial('Deployment should have 1 replicas on start', async t => {
