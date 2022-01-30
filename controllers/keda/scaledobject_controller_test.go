@@ -407,6 +407,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Ω(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA
+			time.Sleep(30 * time.Second)
 			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)

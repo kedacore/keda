@@ -6,7 +6,7 @@ E2E_REGEX=${E2E_TEST_REGEX:-*.test.ts}
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=3
+concurrent_tests_limit=4
 pids=()
 lookup=()
 failed_count=0
