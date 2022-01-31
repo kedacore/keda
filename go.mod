@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/monitoring v1.2.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
-	github.com/Azure/azure-sdk-for-go v61.3.0+incompatible
+	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.11.5
 	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
@@ -16,9 +16,9 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.8.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.31.0
-	github.com/aws/aws-sdk-go v1.42.41
+	github.com/aws/aws-sdk-go v1.42.44
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dysnix/predictkube-libs v0.0.0-20220125103715-5502104557b3
+	github.com/dysnix/predictkube-libs v0.0.3
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/elastic/go-elasticsearch/v7 v7.16.0
 	github.com/go-logr/logr v1.2.2
@@ -37,10 +37,10 @@ require (
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/newrelic/newrelic-client-go v0.71.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.18.0
+	github.com/onsi/gomega v1.18.1
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.12.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/common v0.32.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/robfig/cron/v3 v3.0.1
@@ -50,8 +50,8 @@ require (
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.mongodb.org/mongo-driver v1.8.2
-	google.golang.org/api v0.65.0
-	google.golang.org/genproto v0.0.0-20220118154757-00ab72f36ad5
+	google.golang.org/api v0.66.0
+	google.golang.org/genproto v0.0.0-20220126215142-9970aeb2e350
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.23.3
@@ -62,7 +62,7 @@ require (
 	k8s.io/klog/v2 v2.40.1
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
 	k8s.io/metrics v0.23.3
-	knative.dev/pkg v0.0.0-20220121092305-3ba5d72e310a
+	knative.dev/pkg v0.0.0-20220129160148-ca64d3b3ea8c
 	sigs.k8s.io/controller-runtime v0.11.0
 	sigs.k8s.io/custom-metrics-apiserver v1.23.0
 )
@@ -74,6 +74,9 @@ replace (
 	// Needed for CVE-2020-28483 https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	// we need version github.com/gin-gonic/gin >= 1.7.0
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
+
+	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-43565
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
 	golang.org/x/text => golang.org/x/text v0.3.7
@@ -226,7 +229,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
+	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
