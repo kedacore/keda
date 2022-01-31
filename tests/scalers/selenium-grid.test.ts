@@ -19,13 +19,13 @@ test.before(t => {
 
   let seleniumHubReplicaCount = '0';
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumHubReplicaCount = sh.exec(`kubectl get deploy/selenium-hub -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     if (seleniumHubReplicaCount == '1') {
       break;
     }
     console.log('Waiting for selenium hub to be ready');
-    sh.exec('sleep 2s')
+    sh.exec('sleep 5s')
   }
   t.is('1', seleniumHubReplicaCount, 'Selenium Hub is not in a ready state')
 });
@@ -33,14 +33,14 @@ test.before(t => {
 test.serial('should have one node for chrome and firefox each at start', t => {
   let seleniumChromeNodeReplicaCount = '0';
   let seleniumFireFoxReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumChromeNodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     seleniumFireFoxReplicaCount = sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1') {
       break;
     }
     console.log('Waiting for chrome and firefox node to be ready');
-    sh.exec('sleep 2s')
+    sh.exec('sleep 5s')
   }
 
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pods')
@@ -84,7 +84,7 @@ test.serial('should create one chrome and firefox node', t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
   // wait for selenium grid tests to start running
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
     if (running == '1') {
       break;
@@ -94,14 +94,14 @@ test.serial('should create one chrome and firefox node', t => {
 
   let seleniumChromeNodeReplicaCount = '0';
   let seleniumFireFoxReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumChromeNodeReplicaCount = seleniumChromeNodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChromeNodeReplicaCount;
     seleniumFireFoxReplicaCount = seleniumFireFoxReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumFireFoxReplicaCount;
     if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1') {
       break;
     }
     console.log('Waiting for chrome to scale up 1 pod and firefox to 1 pod');
-    sh.exec('sleep 2s')
+    sh.exec('sleep 5s')
   }
 
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pod')
@@ -114,7 +114,7 @@ test.serial('should create one chrome and firefox node', t => {
     if (succeeded == '1') {
       break;
     }
-    sh.exec('sleep 1s')
+    sh.exec('sleep 5s')
   }
 
   sh.exec(`kubectl delete job/${seleniumGridTestName} --namespace ${seleniumGridNamespace}`)
@@ -124,14 +124,14 @@ test.serial('should scale down chrome and firefox nodes to 0', t => {
 
   let seleniumChromeNodeReplicaCount = '1';
   let seleniumFireFoxReplicaCount = '1';
-  for (let i = 0; i < 65; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumChromeNodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout;
     seleniumFireFoxReplicaCount = sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout;
     if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0') {
       break;
     }
     console.log('Waiting for chrome and firefox to scale down to 0 pod');
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   t.is('0', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale down to 0 pod')
@@ -179,7 +179,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
   let seleniumChromeNodeReplicaCount = '0';
   let seleniumFireFoxReplicaCount = '0';
   seleniumChrome91NodeReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumChromeNodeReplicaCount = seleniumChromeNodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChromeNodeReplicaCount;
     seleniumFireFoxReplicaCount = seleniumFireFoxReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumFireFoxReplicaCount;
     seleniumChrome91NodeReplicaCount = seleniumChrome91NodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node-91 -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChrome91NodeReplicaCount;
@@ -187,7 +187,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
       break;
     }
     console.log('Waiting for chrome to scale up 2 pods and firefox to 1 pod');
-    sh.exec('sleep 2s')
+    sh.exec('sleep 5s')
   }
 
   sh.exec(`kubectl delete job/${seleniumGridTestName} --namespace ${seleniumGridNamespace}`)
