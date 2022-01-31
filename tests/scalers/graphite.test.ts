@@ -62,7 +62,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
       `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '5') {
-      sh.exec('sleep 5s')
+      sh.exec('sleep 10s')
     }
   }
 
@@ -73,7 +73,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
       `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
+      sh.exec('sleep 10s')
     }
   }
 

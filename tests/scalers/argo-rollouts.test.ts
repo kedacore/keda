@@ -83,7 +83,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
       `kubectl get rollouts.argoproj.io/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '5') {
-      await sleep(5000)
+      await sleep(10000)
     }
   }
 
@@ -94,7 +94,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
       `kubectl get rollouts.argoproj.io/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      await sleep(5000)
+      await sleep(10000)
     }
   }
 
