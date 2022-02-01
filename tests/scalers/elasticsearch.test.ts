@@ -247,11 +247,6 @@ spec:
           name: transport
           protocol: TCP
         resources:
-          requests:
-            cpu: 100m
-            memory: 1Gi
-          limits:
-            memory: 1Gi
         readinessProbe:
           exec:
             command:

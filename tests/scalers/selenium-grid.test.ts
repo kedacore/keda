@@ -353,12 +353,6 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
       volumes:
         - name: dshm
           emptyDir:
@@ -404,12 +398,6 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
       volumes:
         - name: dshm
           emptyDir:
@@ -508,12 +496,6 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
       volumes:
         - name: dshm
           emptyDir:
