@@ -40,7 +40,7 @@ test.serial('should have one node for chrome and firefox each at start', t => {
       break;
     }
     console.log('Waiting for chrome and firefox node to be ready');
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pods')
@@ -62,7 +62,7 @@ test.serial('should scale down browser nodes to 0', t => {
       break;
     }
     console.log('Waiting for chrome and firefox to scale down to 0 pods')
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   t.is('0', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale down to 0 pods')
@@ -101,7 +101,7 @@ test.serial('should create one chrome and firefox node', t => {
       break;
     }
     console.log('Waiting for chrome to scale up 1 pod and firefox to 1 pod');
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pod')
@@ -114,7 +114,7 @@ test.serial('should create one chrome and firefox node', t => {
     if (succeeded == '1') {
       break;
     }
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   sh.exec(`kubectl delete job/${seleniumGridTestName} --namespace ${seleniumGridNamespace}`)
@@ -168,7 +168,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
   // wait for selenium grid tests to start running
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
     if (running == '1') {
       break;
@@ -187,7 +187,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
       break;
     }
     console.log('Waiting for chrome to scale up 2 pods and firefox to 1 pod');
-    sh.exec('sleep 5s')
+    sh.exec('sleep 10s')
   }
 
   sh.exec(`kubectl delete job/${seleniumGridTestName} --namespace ${seleniumGridNamespace}`)
