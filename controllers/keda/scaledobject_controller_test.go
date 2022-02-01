@@ -419,7 +419,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
-			}, 20*time.Second).Should(Equal(metav1.ConditionTrue))
+			}, 60*time.Second).Should(Equal(metav1.ConditionTrue))
 		})
 
 		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {
