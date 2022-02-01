@@ -57,7 +57,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   )
 
   // wait for the producer job to complete
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const succeeded = sh.exec(`kubectl get job  --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
     if (succeeded == '1') {
       break
@@ -66,7 +66,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   }
   // with messages published, the consumer deployment should start receiving the messages
   let replicaCount = '0'
-  for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployment/redis-streams-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
@@ -76,7 +76,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
     }
   }
 
-  t.is('5', replicaCount, 'Replica count should be 5 within 300 seconds')
+  t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
   for (let i = 0; i < 60 && replicaCount !== '1'; i++) {
     replicaCount = sh.exec(
