@@ -534,7 +534,9 @@ metadata:
   labels:
     deploymentName: selenium-chrome-node-91
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-chrome-node-91
   triggers:
@@ -555,7 +557,9 @@ metadata:
   labels:
     deploymentName: selenium-chrome-node
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-chrome-node
   triggers:
@@ -573,7 +577,9 @@ metadata:
   labels:
     deploymentName: selenium-firefox-node
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-firefox-node
   triggers:
