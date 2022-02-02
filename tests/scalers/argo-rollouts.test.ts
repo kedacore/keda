@@ -74,8 +74,8 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
 
   // keda based rollout should start scaling up with http requests issued
   let replicaCount = '0'
-  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
-    t.log(`Waited ${5 * i} seconds for prometheus-based rollout to scale up`)
+  for (let i = 0; i < 120 && replicaCount !== '5'; i++) {
+    t.log(`Waited ${10 * i} seconds for prometheus-based rollout to scale up`)
     const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
     t.log(`Logs from the generate requests: ${jobLogs}`)
 
@@ -89,7 +89,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
 
   t.is('5', replicaCount, 'Replica count should be maxed at 5')
 
-  for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
+  for (let i = 0; i < 90 && replicaCount !== '0'; i++) {
     replicaCount = sh.exec(
       `kubectl get rollouts.argoproj.io/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
@@ -98,7 +98,7 @@ test.serial(`Rollouts should scale to 5 (the max) with HTTP Requests exceeding i
     }
   }
 
-  t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+  t.is('0', replicaCount, 'Replica count should be 0 after 15 minutes')
 })
 
 test.after.always.cb('clean up argo-rollouts testing deployment', t => {
