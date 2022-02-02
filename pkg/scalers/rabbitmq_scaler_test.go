@@ -328,7 +328,7 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	for _, testData := range testRegexQueueInfoTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=%5Eevaluate_trials%24&page_size=100"
+			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", testData.vhostPath)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -399,7 +399,7 @@ var testRegexPageSizeTestData = []getRegexPageSizeTestData{
 func TestGetPageSizeWithRegex(t *testing.T) {
 	for _, testData := range testRegexPageSizeTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.pageSize)
+			expectedPath := fmt.Sprintf("/api/queues/%%2F?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.pageSize)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -521,7 +521,7 @@ var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
 func TestRegexQueueMissingError(t *testing.T) {
 	for _, testData := range testRegexQueueInfoNavigationTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
+			expectedPath := "/api/queues/%2F?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
