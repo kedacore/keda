@@ -84,7 +84,7 @@ test.serial('should create one chrome and firefox node', t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
   // wait for selenium grid tests to start running
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 20; i++) {
     const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
     if (running == '1') {
       break;
@@ -168,7 +168,7 @@ test.serial('should create two chrome and one firefox nodes', t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
   // wait for selenium grid tests to start running
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 20; i++) {
     const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
     if (running == '1') {
       break;
