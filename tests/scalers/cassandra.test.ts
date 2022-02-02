@@ -108,7 +108,7 @@ test.serial('Should start off deployment with 0 replicas', t => {
 
 })
 
-test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
+test.serial(`Replicas should scale to 2 (the max) then back to 0`, t => {
     // insert data to cassandra
     console.log("insert data to cassandra")
     const insertData = `BEGIN BATCH
@@ -130,7 +130,7 @@ test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
     )
 
     let replicaCount = '0'
-    const maxReplicaCount = '4'
+    const maxReplicaCount = '2'
 
     for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
       replicaCount = sh.exec(
@@ -279,7 +279,7 @@ metadata:
   name: cassandra-scaledobject
 spec:
   minReplicaCount: 0
-  maxReplicaCount: 4
+  maxReplicaCount: 2
   pollingInterval: 1  # Optional. Default: 30 seconds
   cooldownPeriod: 1 # Optional. Default: 300 seconds
   scaleTargetRef:
