@@ -1,5 +1,10 @@
 # Changelog
 
+<!--
+    New changelog entries must be inline with our changelog guidelines.
+    Please refer to https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog to learn more.
+-->
+
 ## Deprecations
 
 ## History
