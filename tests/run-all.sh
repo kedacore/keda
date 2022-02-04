@@ -23,9 +23,36 @@ function run_tests {
     for test_case in $(find scalers -name "$E2E_REGEX" | shuf)
     do
         counter=$((counter+1))
-        ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
+        ./node_modules/.bin/ava $test_case > "${test_case}.1.log" 2>&1 &
         pid=$!
         echo "Running $test_case with pid: $pid"
+        pids+=($pid)
+        lookup[$pid]=$test_case
+        # limit concurrent runs
+        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
+            wait_for_jobs
+            counter=0
+            pids=()
+        fi
+    done
+
+    printf "\n\n##############################################\n"
+    printf "##############################################\n\n"
+    printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS"
+    printf "\n\n##############################################\n"
+    printf "##############################################\n\n"
+
+    retry_lookup=failed_lookup
+    failed_count=0
+    failed_lookup=()
+
+    #Retry failing tests
+    for test_case in $(retry_lookup | shuf)
+    do
+        counter=$((counter+1))
+        ./node_modules/.bin/ava $test_case > "${test_case}.2.log" 2>&1 &
+        pid=$!
+        echo "Rerunning $test_case with pid: $pid"
         pids+=($pid)
         lookup[$pid]=$test_case
         # limit concurrent runs
