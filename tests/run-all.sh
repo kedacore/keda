@@ -36,6 +36,8 @@ function run_tests {
         fi
     done
 
+    wait_for_jobs
+
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
 
@@ -46,6 +48,8 @@ function run_tests {
         printf "##############################################\n\n"
 
         retry_lookup=("${failed_lookup[@]}")
+        counter=0
+        pids=()
         failed_count=0
         failed_lookup=()
 
