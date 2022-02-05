@@ -31,7 +31,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
   const replicaCount = sh.exec(
     `kubectl get deployment.apps/sut-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
   ).stdout
-  t.is(replicaCount, '0', 'replica count should start out as 0')
+  t.is(replicaCount, '10', 'replica count should start out as 0')
 })
 
 test.serial(`Deployment should scale to fit the amount of pods which match the selector`, async t => {
