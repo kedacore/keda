@@ -33,7 +33,7 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- **General:** Fix generation of metric names if any of ScaledObject's triggers is unavailable ([#2592](https://github.com/kedacore/keda/issues/2592))
 
 ### Breaking Changes
 
