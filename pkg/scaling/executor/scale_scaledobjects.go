@@ -109,6 +109,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 			// Scale to the fallback replicas count
 			e.doFallbackScaling(ctx, scaledObject, currentScale, logger, currentReplicas)
+		case isError && scaledObject.Spec.Fallback == nil:
+			// there are no active triggers, but a scaler responded with an error
+			// AND
+			// there is not a fallback defined
+
+			// Do nothing
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount,
 			// there are no active triggers, Idle Replicas mode is enabled
 			// AND
