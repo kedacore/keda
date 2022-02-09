@@ -6,7 +6,6 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import {waitForDeploymentReplicaCount} from "./helpers";
 
-
 const defaultNamespace = 'azure-queue-idle-replicas-test'
 const queueName = 'idle-replicas-queue-name'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
@@ -64,9 +63,9 @@ test.serial.cb(
       async () => {
          // Scaling out when messages available
         t.true(await waitForDeploymentReplicaCount(2, 'test-deployment', defaultNamespace, 60, 1000), 'replica count should be 3 after 1 minute')
-        
+
         queueSvc.clearMessages(queueName, _ => {})
-        
+
         // Scaling in when no available messages
         t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 300, 1000), 'replica count should be 0 after 5 minute')
 
