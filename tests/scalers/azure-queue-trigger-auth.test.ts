@@ -128,7 +128,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: test-deployment
-  pollingInterval: 5  
+  pollingInterval: 5
   cooldownPeriod: 10
   minReplicaCount: 0
   maxReplicaCount: 1
