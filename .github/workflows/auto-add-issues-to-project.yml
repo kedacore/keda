@@ -31,7 +31,6 @@ jobs:
             }' -f org=$ORGANIZATION -F number=$PROJECT_NUMBER > project_data.json
 
           echo 'PROJECT_ID='$(jq '.data.organization.projectNext.id' project_data.json) >> $GITHUB_ENV
-                    
       - name: Add issue to project
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PROJECT_AUTOMATION_AUTH }}
