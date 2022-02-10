@@ -35,6 +35,10 @@ type kafkaMetadata struct {
 	allowIdleConsumers bool
 	version            sarama.KafkaVersion
 
+	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
+	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
+	scaleToZeroOnInvalidOffset bool
+
 	// SASL
 	saslType kafkaSaslType
 	username string
@@ -204,6 +208,15 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.allowIdleConsumers = t
 	}
 
+	meta.scaleToZeroOnInvalidOffset = false
+	if val, ok := config.TriggerMetadata["scaleToZeroOnInvalidOffset"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %s", err)
+		}
+		meta.scaleToZeroOnInvalidOffset = t
+	}
+
 	meta.version = sarama.V1_0_0_0
 	if val, ok := config.TriggerMetadata["version"]; ok {
 		val = strings.TrimSpace(val)
@@ -349,9 +362,15 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	}
 	consumerOffset := block.Offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
-		errMsg := fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", topic, s.metadata.group, partitionID)
+		retVal := 1;
+		if s.metadata.scaleToZeroOnInvalidOffset {
+			retVal = 0;
+		}
+		errMsg := fmt.Errorf(
+			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Scaling to %d",
+			topic, s.metadata.group, partitionID, retVal)
 		kafkaLog.V(0).Info(errMsg.Error())
-		return 0, errMsg
+		return retVal, errMsg
 	}
 
 	if _, found := topicPartitionOffsets[topic]; !found {
