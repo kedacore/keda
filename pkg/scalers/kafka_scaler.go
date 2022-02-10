@@ -362,7 +362,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	}
 	consumerOffset := block.Offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
-		retVal := 1;
+		retVal := int64(1)
 		if s.metadata.scaleToZeroOnInvalidOffset {
 			retVal = 0;
 		}
