@@ -4,15 +4,20 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {waitForDeploymentReplicaCount} from "./helpers";
 
 const testNamespace = 'azure-queue-auth-test'
 const queueName = 'queue-name'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
 
-test.before(t => {
+test.before(async t => {
   if (!connectionString) {
     t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
+
+  const queueSvc = azure.createQueueService(connectionString)
+  queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+  queueSvc.createQueueIfNotExists(queueName, _ => {})
 
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
@@ -24,55 +29,24 @@ test.before(t => {
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating a deployment should work.'
   )
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 0 after 1 minute')
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-  const replicaCount = sh.exec(
-    `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-  ).stdout
-  t.is(replicaCount, '0', 'replica count should start out as 0')
-})
-
-test.serial.cb(
+test.serial(
   'Deployment should scale with messages on storage defined through trigger auth',
-  t => {
+  async t => {
     const queueSvc = azure.createQueueService(connectionString)
     queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
-    queueSvc.createQueueIfNotExists(queueName, err => {
-      t.falsy(err, 'unable to create queue')
-      async.mapLimit(
-        Array(1000).keys(),
-        20,
-        (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb),
-        () => {
-          let replicaCount = '0'
-          for (let i = 0; i < 10 && replicaCount !== '1'; i++) {
-            replicaCount = sh.exec(
-              `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-            ).stdout
-            if (replicaCount !== '1') {
-              sh.exec('sleep 1s')
-            }
-          }
+    await async.mapLimit(
+      Array(1000).keys(),
+      20,
+      (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb)
+    )
 
-          t.is('1', replicaCount, 'Replica count should be 1 after 10 seconds')
-          queueSvc.deleteQueueIfExists(queueName, err => {
-            t.falsy(err, `unable to delete queue ${queueName}`)
-            for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-              replicaCount = sh.exec(
-                `kubectl get deployment.apps/test-deployment --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-              ).stdout
-              if (replicaCount !== '0') {
-                sh.exec('sleep 5s')
-              }
-            }
-
-            t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
-            t.end()
-          })
-        }
-      )
-    })
+    // Scaling out when messages available
+    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 3 after 1 minute')
+    // Scaling in when no available messages
+    t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 300, 1000), 'replica count should be 0 after 5 minute')
   }
 )
 
@@ -104,7 +78,7 @@ metadata:
   labels:
     app: test-deployment
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: test-deployment
@@ -123,6 +97,11 @@ spec:
         env:
         - name: FUNCTIONS_WORKER_RUNTIME
           value: node
+        - name: AzureWebJobsStorage
+          valueFrom:
+            secretKeyRef:
+              name: test-auth-secrets
+              key: connectionString
 ---
 apiVersion: v1
 kind: Secret
@@ -143,16 +122,6 @@ spec:
     key: connectionString
 ---
 apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: azure-queue-auth
-spec:
-  secretTargetRef:
-  - parameter: connection
-    name: test-auth-secrets
-    key: connectionString
----
-apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: test-scaledobject
@@ -160,12 +129,12 @@ spec:
   scaleTargetRef:
     name: test-deployment
   pollingInterval: 5
-  maxReplicaCount: 1
   cooldownPeriod: 10
+  minReplicaCount: 0
+  maxReplicaCount: 1
   triggers:
   - type: azure-queue
     authenticationRef:
       name: azure-queue-auth
     metadata:
-      queueName: ${queueName}
-`
+      queueName: ${queueName}`

@@ -34,6 +34,7 @@
 ### Improvements
 
 - **General:** Fix generation of metric names if any of ScaledObject's triggers is unavailable ([#2592](https://github.com/kedacore/keda/issues/2592))
+- **General:** Fix failing tests based on the scale to zero bug ([#2603](https://github.com/kedacore/keda/issues/2603))
 
 ### Breaking Changes
 
