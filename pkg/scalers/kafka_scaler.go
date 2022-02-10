@@ -364,7 +364,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
 		retVal := int64(1)
 		if s.metadata.scaleToZeroOnInvalidOffset {
-			retVal = 0;
+			retVal = 0
 		}
 		errMsg := fmt.Errorf(
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Scaling to %d",
