@@ -4,14 +4,20 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-queue-test'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const queueName = 'queue-name'
 
-test.before(t => {
+test.before(async t => {
   if (!connectionString) {
     t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
+
+  const queueSvc = azure.createQueueService(connectionString)
+  queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+  queueSvc.createQueueIfNotExists(queueName, _ => {})
 
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
@@ -23,54 +29,27 @@ test.before(t => {
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code,
     'creating a deployment should work.'
   )
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 60, 1000), 'replica count should be 0 after 1 minute')
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-  const replicaCount = sh.exec(
-    `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-  ).stdout
-  t.is(replicaCount, '0', 'replica count should start out as 0')
-})
-
-test.serial.cb(
+test.serial(
   'Deployment should scale to 4 with 10,000 messages on the queue then back to 0',
-  t => {
+  async t => {
     // add 10,000 messages
     const queueSvc = azure.createQueueService(connectionString)
     queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
-    queueSvc.createQueueIfNotExists('queue-name', err => {
-      t.falsy(err, 'unable to create queue')
-      async.mapLimit(
-        Array(10000).keys(),
-        200,
-        (n, cb) => queueSvc.createMessage('queue-name', `test ${n}`, cb),
-        () => {
-          let replicaCount = '0'
-          for (let i = 0; i < 60 && replicaCount !== '4'; i++) {
-            replicaCount = sh.exec(
-              `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-            ).stdout
-            if (replicaCount !== '4') {
-              sh.exec('sleep 5s')
-            }
-          }
+    await async.mapLimit(
+      Array(10000).keys(),
+      20,
+      (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb)
+    )
 
-          t.is('4', replicaCount, 'Replica count should be 4 after 300 seconds')
+    // Scaling out when messages available
+    t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', defaultNamespace, 300, 1000), 'replica count should be 4 after 5 minutes')
 
-          for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
-            replicaCount = sh.exec(
-              `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-            ).stdout
-            if (replicaCount !== '0') {
-              sh.exec('sleep 10s')
-            }
-          }
 
-          t.is('0', replicaCount, 'Replica count should be 0 after 6 minutes')
-          t.end()
-        }
-      )
-    })
+    // Scaling in when no available messages
+    t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 360, 1000), 'replica count should be 0 after 6 minute')
   }
 )
 
@@ -88,7 +67,7 @@ test.after.always.cb('clean up azure-queue deployment', t => {
 
   // delete test queue
   const queueSvc = azure.createQueueService(connectionString)
-  queueSvc.deleteQueueIfExists('queue-name', err => {
+  queueSvc.deleteQueueIfExists(queueName, err => {
     t.falsy(err, 'should delete test queue successfully')
     t.end()
   })
