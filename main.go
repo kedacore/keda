@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -29,11 +28,13 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -96,16 +97,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
-	if globalHTTPTimeoutStr == "" {
-		// default to 3 seconds if they don't pass the env var
-		globalHTTPTimeoutStr = "3000"
-	}
-
-	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	// default to 3 seconds if they don't pass the env var
+	globalHTTPTimeoutMS, err := kedautil.ResolveOsEnvInt("KEDA_HTTP_DEFAULT_TIMEOUT", 3000)
 	if err != nil {
 		setupLog.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
-		return
+		os.Exit(1)
+	}
+
+	scaledObjectMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES", 5)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
+		os.Exit(1)
+	}
+
+	scaledJobMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDJOB_CTRL_MAX_RECONCILES", 1)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
+		os.Exit(1)
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
@@ -116,7 +124,7 @@ func main() {
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		Recorder:          eventRecorder,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledObjectMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
@@ -125,7 +133,7 @@ func main() {
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		Recorder:          eventRecorder,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledJobMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)
 	}

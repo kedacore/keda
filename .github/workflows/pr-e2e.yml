@@ -7,32 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Comment evaluate
     outputs:
-      run-e2e: ${{ steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission }}
+      run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
     steps:
-      - uses: khan/pull-request-comment-trigger@master
-        id: check-comment
-        with:
-          trigger: '/run-e2e'
-          prefix_only: true
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-
       - name: Check user permission
-        if: steps.check-comment.outputs.triggered == 'true'
+        if: startsWith(github.event.comment.body,'/run-e2e')
         id: check-permission
         uses: scherermichael-oss/action-has-permission@master
         with:
           required-permission: write
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: React to comment with rocket
-        uses: dkershner6/reaction-action@v1
-        if: steps.check-comment.outputs.triggered == 'true' && steps.check-permission.outputs.has-permission
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "rocket"
 
   run-test:
     needs: check
@@ -43,6 +27,14 @@ jobs:
     if: needs.check.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v2
+
+      - name: Update comment with the execution url
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: |
+            **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+          reactions: rocket
 
       - name: Checkout Pull Request
         env:
@@ -58,9 +50,12 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
+          # Username used to log in to a Docker registry. If not set then no login will occur
+          username: ${{ github.repository_owner }}
+          # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
+          password: ${{ secrets.GHCR_AUTH_PAT }}
+          # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish on GitHub Container Registry
         run: make publish
@@ -71,24 +66,33 @@ jobs:
         continue-on-error: true
         id: test
         env:
-          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
-          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
-          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
-          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
-          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
-          OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
-          OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
-          OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
-          OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
           AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY}}
+          DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY}}
+          DATADOG_SITE: ${{ secrets.DATADOG_SITE}}
           E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
+          NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
+          NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
+          OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
+          OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
+          OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
+          OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
+          PREDICTKUBE_API_KEY: ${{ secrets.PREDICTKUBE_API_KEY }}
           TEST_CLUSTER_NAME: keda-pr-run
+          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
+          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
+          TEST_APP_INSIGHTS_APP_ID: ${{ secrets.TEST_APP_INSIGHTS_APP_ID }}
+          TEST_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.TEST_APP_INSIGHTS_INSTRUMENTATION_KEY }}
         run: |
           MESSAGE="${{ github.event.comment.body }}"
           REGEX='/run-e2e (.+)'

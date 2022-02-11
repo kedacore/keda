@@ -17,6 +17,7 @@ const (
 	testAWSCloudwatchRoleArn         = "none"
 	testAWSCloudwatchAccessKeyID     = "none"
 	testAWSCloudwatchSecretAccessKey = "none"
+	testAWSCloudwatchSessionToken    = "none"
 	testAWSCloudwatchErrorMetric     = "Error"
 	testAWSCloudwatchNoValueMetric   = "NoValue"
 )
@@ -96,7 +97,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"Missing namespace"},
 	// Missing dimensionName
 	{map[string]string{
-		"dimensionName":     "QueueName",
+		"namespace":         "AWS/SQS",
 		"dimensionValue":    "keda",
 		"metricName":        "ApproximateNumberOfMessagesVisible",
 		"targetMetricValue": "2",
@@ -127,7 +128,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication,
 		true,
 		"Missing metricName"},
-	// with "aws_credentials" from TriggerAuthentication
+	// with static "aws_credentials" from TriggerAuthentication
 	{map[string]string{
 		"namespace":            "AWS/SQS",
 		"dimensionName":        "QueueName",
@@ -142,6 +143,25 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		map[string]string{
 			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+		},
+		false,
+		"with AWS Credentials from TriggerAuthentication"},
+	// with temporary "aws_credentials" from TriggerAuthentication
+	{map[string]string{
+		"namespace":            "AWS/SQS",
+		"dimensionName":        "QueueName",
+		"dimensionValue":       "keda",
+		"metricName":           "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":    "2",
+		"minMetricValue":       "0",
+		"metricCollectionTime": "300",
+		"metricStat":           "Average",
+		"metricStatPeriod":     "300",
+		"awsRegion":            "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
+			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+			"awsSessionToken":    testAWSCloudwatchSessionToken,
 		},
 		false,
 		"with AWS Credentials from TriggerAuthentication"},
@@ -360,7 +380,23 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 	},
 	{
 		namespace:            "Custom",
-		metricsName:          "Error",
+		metricsName:          testAWSCloudwatchErrorMetric,
+		dimensionName:        []string{"DIM"},
+		dimensionValue:       []string{"DIM_VALUE"},
+		targetMetricValue:    100,
+		minMetricValue:       0,
+		metricCollectionTime: 60,
+		metricStat:           "Average",
+		metricUnit:           "",
+		metricStatPeriod:     60,
+		metricEndTimeOffset:  60,
+		awsRegion:            "us-west-2",
+		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		scalerIndex:          0,
+	},
+	{
+		namespace:            "Custom",
+		metricsName:          testAWSCloudwatchNoValueMetric,
 		dimensionName:        []string{"DIM"},
 		dimensionValue:       []string{"DIM_VALUE"},
 		targetMetricValue:    100,
@@ -436,7 +472,7 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")
 		case testAWSCloudwatchNoValueMetric:
-			assert.Error(t, err, "expect error because of no data return from cloudwatch")
+			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 		default:
 			assert.EqualValues(t, int64(10.0), value[0].Value.Value())
 		}

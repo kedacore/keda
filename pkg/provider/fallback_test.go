@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
@@ -64,15 +63,13 @@ var _ = Describe("fallback", func() {
 		scaleHandler = mock_scaling.NewMockScaleHandler(ctrl)
 		client = mock_client.NewMockClient(ctrl)
 		providerUnderTest = &KedaProvider{
-			values:           make(map[provider.CustomMetricInfo]int64),
-			externalMetrics:  make([]externalMetric, 2, 10),
 			client:           client,
 			scaleHandler:     scaleHandler,
 			watchedNamespace: "",
 		}
 		scaler = mock_scalers.NewMockScaler(ctrl)
 
-		logger = logr.DiscardLogger{}
+		logger = logr.Discard()
 	})
 
 	AfterEach(func() {

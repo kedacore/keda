@@ -25,6 +25,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
+	// all properly formed, with namespace
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName
@@ -114,9 +116,9 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if (meta.enableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
-				(meta.enableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
-				(meta.enableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) {
+			if (meta.prometheusAuth.EnableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
+				(meta.prometheusAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
+				(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) {
 				t.Error("wrong auth mode detected")
 			}
 		}

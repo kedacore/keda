@@ -76,7 +76,7 @@ func TestIsScaledJobActive(t *testing.T) {
 
 	cache := ScalersCache{
 		Scalers:  scalerSingle,
-		Logger:   logr.DiscardLogger{},
+		Logger:   logr.Discard(),
 		Recorder: recorder,
 	}
 
@@ -96,7 +96,7 @@ func TestIsScaledJobActive(t *testing.T) {
 
 	cache = ScalersCache{
 		Scalers:  scalerSingle,
-		Logger:   logr.DiscardLogger{},
+		Logger:   logr.Discard(),
 		Recorder: recorder,
 	}
 
@@ -141,7 +141,7 @@ func TestIsScaledJobActive(t *testing.T) {
 
 		cache = ScalersCache{
 			Scalers:  scalersToTest,
-			Logger:   logr.DiscardLogger{},
+			Logger:   logr.Discard(),
 			Recorder: recorder,
 		}
 		fmt.Printf("index: %d", index)

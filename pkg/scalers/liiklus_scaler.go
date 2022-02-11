@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +50,7 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(lm.address, grpc.WithInsecure())
+	conn, err := grpc.Dial(lm.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

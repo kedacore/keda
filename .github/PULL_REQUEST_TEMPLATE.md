@@ -12,6 +12,6 @@ _Provide a description of what has been changed_
 - [ ] Tests have been added
 - [ ] A PR is opened to update our Helm chart ([repo](https://github.com/kedacore/charts)) *(if applicable, ie. when deployment manifests are modified)*
 - [ ] A PR is opened to update the documentation on ([repo](https://github.com/kedacore/keda-docs)) *(if applicable)*
-- [ ] Changelog has been updated
+- [ ] Changelog has been updated and is aligned with our [changelog requirements](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog)
 
 Fixes #

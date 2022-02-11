@@ -40,6 +40,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -56,6 +57,7 @@ import (
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
+// +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
@@ -75,18 +77,17 @@ type ScaledObjectReconciler struct {
 }
 
 // A cache mapping "resource.group" to true or false if we know if this resource is scalable.
-var isScalableCache map[string]bool
+var isScalableCache *sync.Map
 
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
-	isScalableCache = map[string]bool{
-		"deployments.apps":  true,
-		"statefulsets.apps": true,
-	}
+	isScalableCache = &sync.Map{}
+	isScalableCache.Store("deployments.apps", true)
+	isScalableCache.Store("statefulsets.apps", true)
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
-func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	setupLog := log.Log.WithName("setup")
 
 	// create Discovery clientset
@@ -117,6 +118,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(options).
 		// predicate.GenerationChangedPredicate{} ignore updates to ScaledObject Status
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
@@ -188,7 +190,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "ScaledObject is ready for scaling")
 		}
 		reqLogger.V(1).Info(msg)
-		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
+		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
 	}
 
 	if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
@@ -246,7 +248,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-	return "ScaledObject is defined correctly and is ready for scaling", nil
+	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
 
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
@@ -284,7 +286,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	// check if we already know.
 	var scale *autoscalingv1.Scale
 	gr := gvkr.GroupResource()
-	isScalable := isScalableCache[gr.String()]
+	_, isScalable := isScalableCache.Load(gr.String())
 	if !isScalable || wantStatusUpdate {
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
@@ -303,7 +305,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			logger.Error(errScale, "Target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			return gvkr, errScale
 		}
-		isScalableCache[gr.String()] = true
+		isScalableCache.Store(gr.String(), true)
 	}
 
 	// if it is not already present in ScaledObject Status:

@@ -110,6 +110,13 @@ func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, ob
 	return err
 }
 
+func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
+		conditions.SetReadyCondition(status, reason, message)
+	}
+	return e.setCondition(ctx, logger, object, status, reason, message, active)
+}
+
 func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
 	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
 		conditions.SetActiveCondition(status, reason, message)

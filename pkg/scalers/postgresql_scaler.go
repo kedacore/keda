@@ -26,13 +26,7 @@ type postgreSQLScaler struct {
 type postgreSQLMetadata struct {
 	targetQueryValue int
 	connection       string
-	userName         string
-	password         string
-	host             string
-	port             string
 	query            string
-	dbName           string
-	sslmode          string
 	metricName       string
 	scalerIndex      int
 }
@@ -81,38 +75,47 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	case config.TriggerMetadata["connectionFromEnv"] != "":
 		meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 	default:
-		meta.connection = ""
-		var err error
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.port, err = GetFromAuthOrMeta(config, "userName")
+		userName, err := GetFromAuthOrMeta(config, "userName")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+		dbName, err := GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, err
 		}
 
-		meta.sslmode, err = GetFromAuthOrMeta(config, "sslmode")
+		sslmode, err := GetFromAuthOrMeta(config, "sslmode")
 		if err != nil {
 			return nil, err
 		}
 
+		var password string
 		if config.AuthParams["password"] != "" {
-			meta.password = config.AuthParams["password"]
+			password = config.AuthParams["password"]
 		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+			password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
+
+		meta.connection = fmt.Sprintf(
+			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
+			host,
+			port,
+			userName,
+			dbName,
+			sslmode,
+			password,
+		)
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -125,21 +128,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 }
 
 func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
-	var connStr string
-	if meta.connection != "" {
-		connStr = meta.connection
-	} else {
-		connStr = fmt.Sprintf(
-			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
-			meta.host,
-			meta.port,
-			meta.userName,
-			meta.dbName,
-			meta.sslmode,
-			meta.password,
-		)
-	}
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", meta.connection)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err

@@ -1,4 +1,4 @@
-## Prerequisits
+## Prerequisites
 
 - [node](https://nodejs.org/en/)
 - `kubectl` logged into a Kubernetes cluster.

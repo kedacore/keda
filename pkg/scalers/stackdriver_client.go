@@ -62,7 +62,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 }
 
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
-func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64, error) {
+func (s StackDriverClient) GetMetrics(ctx context.Context, filter string, projectID string) (int64, error) {
 	// Set the start time to 1 minute ago
 	startTime := time.Now().UTC().Add(time.Minute * -2)
 
@@ -70,34 +70,25 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string) (int64
 	endTime := time.Now().UTC()
 
 	// Create a request with the filter and the GCP project ID
-	var req *monitoringpb.ListTimeSeriesRequest
-	if len(s.projectID) > 0 {
-		req = &monitoringpb.ListTimeSeriesRequest{
-			Name:   "projects/" + s.projectID,
-			Filter: filter,
-			Interval: &monitoringpb.TimeInterval{
-				StartTime: &timestamp.Timestamp{
-					Seconds: startTime.Unix(),
-				},
-				EndTime: &timestamp.Timestamp{
-					Seconds: endTime.Unix(),
-				},
-			},
-		}
-	} else {
-		req = &monitoringpb.ListTimeSeriesRequest{
-			Name:   "projects/" + s.credentials.ProjectID,
-			Filter: filter,
-			Interval: &monitoringpb.TimeInterval{
-				StartTime: &timestamp.Timestamp{
-					Seconds: startTime.Unix(),
-				},
-				EndTime: &timestamp.Timestamp{
-					Seconds: endTime.Unix(),
-				},
-			},
-		}
+	var req = &monitoringpb.ListTimeSeriesRequest{
+		Filter: filter,
+		Interval: &monitoringpb.TimeInterval{
+			StartTime: &timestamp.Timestamp{Seconds: startTime.Unix()},
+			EndTime:   &timestamp.Timestamp{Seconds: endTime.Unix()},
+		},
 	}
+
+	switch projectID {
+	case "":
+		if len(s.projectID) > 0 {
+			req.Name = "projects/" + s.projectID
+		} else {
+			req.Name = "projects/" + s.credentials.ProjectID
+		}
+	default:
+		req.Name = "projects/" + projectID
+	}
+
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
 
