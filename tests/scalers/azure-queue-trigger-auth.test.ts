@@ -45,9 +45,9 @@ test.serial(
 
     // Scaling out when messages available
     t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 3 after 1 minute')
-    
+
     queueSvc.clearMessages(queueName, _ => {})
-    
+
     // Scaling in when no available messages
     t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 300, 1000), 'replica count should be 0 after 5 minute')
   }

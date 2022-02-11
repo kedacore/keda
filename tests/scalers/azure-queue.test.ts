@@ -126,5 +126,5 @@ spec:
   triggers:
   - type: azure-queue
     metadata:
-      queueName: queue-name
+      queueName: ${queueName}
       connectionFromEnv: AzureWebJobsStorage`
