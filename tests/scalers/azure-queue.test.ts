@@ -8,7 +8,7 @@ import {waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-queue-test'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
-const queueName = 'queue-name'
+const queueName = 'queue-single-name'
 
 test.before(async t => {
   if (!connectionString) {
@@ -35,21 +35,21 @@ test.before(async t => {
 test.serial(
   'Deployment should scale to 4 with 10,000 messages on the queue then back to 0',
   async t => {
-    // add 10,000 messages
     const queueSvc = azure.createQueueService(connectionString)
     queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
     await async.mapLimit(
-      Array(10000).keys(),
+      Array(1000).keys(),
       20,
       (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb)
     )
 
     // Scaling out when messages available
-    t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', defaultNamespace, 300, 1000), 'replica count should be 4 after 5 minutes')
+    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 1000), 'replica count should be 1 after 1 minutes')
 
+    queueSvc.clearMessages(queueName, _ => {})
 
     // Scaling in when no available messages
-    t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 360, 1000), 'replica count should be 0 after 6 minute')
+    t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 300, 1000), 'replica count should be 0 after 5 minute')
   }
 )
 
@@ -121,7 +121,8 @@ spec:
   scaleTargetRef:
     name: test-deployment
   pollingInterval: 5
-  maxReplicaCount: 4
+  minReplicaCount: 0
+  maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
   - type: azure-queue
