@@ -20,9 +20,10 @@ import (
 )
 
 type kafkaScaler struct {
-	metadata kafkaMetadata
-	client   sarama.Client
-	admin    sarama.ClusterAdmin
+	metricType v2beta2.MetricTargetType
+	metadata   kafkaMetadata
+	client     sarama.Client
+	admin      sarama.ClusterAdmin
 }
 
 type kafkaMetadata struct {
@@ -77,6 +78,11 @@ var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	kafkaMetadata, err := parseKafkaMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
@@ -88,9 +94,10 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &kafkaScaler{
-		client:   client,
-		admin:    admin,
-		metadata: kafkaMetadata,
+		client:     client,
+		admin:      admin,
+		metricType: metricType,
+		metadata:   kafkaMetadata,
 	}, nil
 }
 
@@ -378,7 +385,7 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.lagThreshold),
+		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

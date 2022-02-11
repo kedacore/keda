@@ -308,7 +308,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -321,7 +321,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsKinesisGetMetricTestData {
-		scaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:

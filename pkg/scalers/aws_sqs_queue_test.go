@@ -239,7 +239,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{meta, &mockSqs{}}
+		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -252,7 +252,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsSQSGetMetricTestData {
-		scaler := awsSqsQueueScaler{meta, &mockSqs{}}
+		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:

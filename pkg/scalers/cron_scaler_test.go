@@ -118,7 +118,7 @@ func TestCronGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockCronScaler := cronScaler{meta}
+		mockCronScaler := cronScaler{"", meta}
 
 		metricSpec := mockCronScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

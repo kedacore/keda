@@ -111,15 +111,15 @@ func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
 }
 
 // GetExternalMetricTargetType helps getting the metric target type of the scaler
-func GetExternalMetricTargetType(metricType v2beta2.MetricTargetType) (v2beta2.MetricTargetType, error) {
-	switch metricType {
+func GetExternalMetricTargetType(config *ScalerConfig) (v2beta2.MetricTargetType, error) {
+	switch config.MetricType {
 	case v2beta2.UtilizationMetricType:
 		return "", fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
 	case "":
 		// Use AverageValue if no metric type was provided
 		return v2beta2.AverageValueMetricType, nil
 	default:
-		return metricType, nil
+		return config.MetricType, nil
 	}
 }
 

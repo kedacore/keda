@@ -51,7 +51,7 @@ var externalLog = logf.Log.WithName("external_scaler")
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config.MetricType)
+	metricType, err := GetExternalMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
 	}
@@ -74,7 +74,7 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 
 // NewExternalPushScaler creates a new externalPushScaler push scaler
 func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
-	metricType, err := GetExternalMetricTargetType(config.MetricType)
+	metricType, err := GetExternalMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
 	}

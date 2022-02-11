@@ -24,8 +24,9 @@ import (
 
 // mongoDBScaler is support for mongoDB in keda.
 type mongoDBScaler struct {
-	metadata *mongoDBMetadata
-	client   *mongo.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *mongoDBMetadata
+	client     *mongo.Client
 }
 
 // mongoDBMetadata specify mongoDB scaler params.
@@ -76,6 +77,11 @@ var mongoDBLog = logf.Log.WithName("mongodb_scaler")
 
 // NewMongoDBScaler creates a new mongoDB scaler
 func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
@@ -95,8 +101,9 @@ func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}
 
 	return &mongoDBScaler{
-		metadata: meta,
-		client:   client,
+		metricType: metricType,
+		metadata:   meta,
+		client:     client,
 	}, nil
 }
 
@@ -249,7 +256,7 @@ func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.queryValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.queryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

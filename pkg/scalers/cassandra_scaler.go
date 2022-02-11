@@ -19,8 +19,9 @@ import (
 
 // cassandraScaler exposes a data pointer to CassandraMetadata and gocql.Session connection.
 type cassandraScaler struct {
-	metadata *CassandraMetadata
-	session  *gocql.Session
+	metricType v2beta2.MetricTargetType
+	metadata   *CassandraMetadata
+	session    *gocql.Session
 }
 
 // CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
@@ -42,6 +43,11 @@ var cassandraLog = logf.Log.WithName("cassandra_scaler")
 
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := ParseCassandraMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
@@ -53,8 +59,9 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &cassandraScaler{
-		metadata: meta,
-		session:  session,
+		metricType: metricType,
+		metadata:   meta,
+		session:    session,
 	}, nil
 }
 
@@ -179,7 +186,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetQueryValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -18,8 +18,9 @@ import (
 )
 
 type influxDBScaler struct {
-	client   influxdb2.Client
-	metadata *influxDBMetadata
+	client     influxdb2.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *influxDBMetadata
 }
 
 type influxDBMetadata struct {
@@ -37,6 +38,11 @@ var influxDBLog = logf.Log.WithName("influxdb_scaler")
 
 // NewInfluxDBScaler creates a new influx db scaler
 func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseInfluxDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing influxdb metadata: %s", err)
@@ -49,8 +55,9 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl}))
 
 	return &influxDBScaler{
-		client:   client,
-		metadata: meta,
+		client:     client,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -213,7 +220,7 @@ func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.thresholdValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.thresholdValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

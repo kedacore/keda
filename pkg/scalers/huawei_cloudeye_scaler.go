@@ -29,7 +29,8 @@ const (
 )
 
 type huaweiCloudeyeScaler struct {
-	metadata *huaweiCloudeyeMetadata
+	metricType v2beta2.MetricTargetType
+	metadata   *huaweiCloudeyeMetadata
 }
 
 type huaweiCloudeyeMetadata struct {
@@ -75,13 +76,19 @@ var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
 func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseHuaweiCloudeyeMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
 	}
 
 	return &huaweiCloudeyeScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -246,7 +253,7 @@ func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", h.metadata.metricsName))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(h.metadata.targetMetricValue)),
+		Target: GetExternalMetricTarget(h.metricType, int64(h.metadata.targetMetricValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

@@ -39,8 +39,9 @@ type gcpAuthorizationMetadata struct {
 }
 
 type pubsubScaler struct {
-	client   *StackDriverClient
-	metadata *pubsubMetadata
+	client     *StackDriverClient
+	metricType v2beta2.MetricTargetType
+	metadata   *pubsubMetadata
 }
 
 type pubsubMetadata struct {
@@ -56,13 +57,19 @@ var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
 
 // NewPubSubScaler creates a new pubsubScaler
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
 	}
 
 	return &pubsubScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -166,7 +173,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.value)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.value)),
 	}
 
 	// Create the metric spec for the HPA

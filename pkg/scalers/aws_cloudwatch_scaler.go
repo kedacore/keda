@@ -32,8 +32,9 @@ const (
 )
 
 type awsCloudwatchScaler struct {
-	metadata *awsCloudwatchMetadata
-	cwClient cloudwatchiface.CloudWatchAPI
+	metricType v2beta2.MetricTargetType
+	metadata   *awsCloudwatchMetadata
+	cwClient   cloudwatchiface.CloudWatchAPI
 }
 
 type awsCloudwatchMetadata struct {
@@ -62,14 +63,20 @@ var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
 func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsCloudwatchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cloudwatch metadata: %s", err)
 	}
 
 	return &awsCloudwatchScaler{
-		metadata: meta,
-		cwClient: createCloudwatchClient(meta),
+		metricType: metricType,
+		metadata:   meta,
+		cwClient:   createCloudwatchClient(meta),
 	}, nil
 }
 
@@ -293,7 +300,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-cloudwatch-%s", c.metadata.dimensionName[0]))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(c.metadata.targetMetricValue)),
+		Target: GetExternalMetricTarget(c.metricType, int64(c.metadata.targetMetricValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

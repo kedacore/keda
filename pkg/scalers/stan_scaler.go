@@ -40,6 +40,7 @@ type monitorSubscriberInfo struct {
 
 type stanScaler struct {
 	channelInfo *monitorChannelInfo
+	metricType  v2beta2.MetricTargetType
 	metadata    stanMetadata
 	httpClient  *http.Client
 }
@@ -62,6 +63,11 @@ var stanLog = logf.Log.WithName("stan_scaler")
 
 // NewStanScaler creates a new stanScaler
 func NewStanScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	stanMetadata, err := parseStanMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stan metadata: %s", err)
@@ -69,6 +75,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
+		metricType:  metricType,
 		metadata:    stanMetadata,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
@@ -202,7 +209,7 @@ func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSp
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.lagThreshold),
+		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: stanMetricType,

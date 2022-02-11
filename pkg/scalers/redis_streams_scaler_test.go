@@ -145,7 +145,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 		}
 		closeFn := func() error { return nil }
 		getPendingEntriesCountFn := func(ctx context.Context) (int64, error) { return -1, nil }
-		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
+		mockRedisStreamsScaler := redisStreamsScaler{"", meta, closeFn, getPendingEntriesCountFn}
 
 		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

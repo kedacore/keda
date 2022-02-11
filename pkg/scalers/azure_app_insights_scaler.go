@@ -37,18 +37,25 @@ type azureAppInsightsMetadata struct {
 var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
 
 type azureAppInsightsScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureAppInsightsMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
 func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureAppInsightsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %s", err)
 	}
 
 	return &azureAppInsightsScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 	}, nil
@@ -139,15 +146,11 @@ func (s *azureAppInsightsScaler) Close(context.Context) error {
 }
 
 func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

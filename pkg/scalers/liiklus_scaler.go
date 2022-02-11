@@ -20,6 +20,7 @@ import (
 )
 
 type liiklusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *liiklusMetadata
 	connection *grpc.ClientConn
 	client     liiklus_service.LiiklusServiceClient
@@ -45,6 +46,11 @@ const (
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	lm, err := parseLiiklusMetadata(config)
 	if err != nil {
 		return nil, err
@@ -59,6 +65,7 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	scaler := liiklusScaler{
 		connection: conn,
 		client:     c,
+		metricType: metricType,
 		metadata:   lm,
 	}
 	return &scaler, nil
@@ -88,7 +95,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.lagThreshold),
+		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: liiklusMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

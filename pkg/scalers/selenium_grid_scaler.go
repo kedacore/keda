@@ -22,8 +22,9 @@ import (
 )
 
 type seleniumGridScaler struct {
-	metadata *seleniumGridScalerMetadata
-	client   *http.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *seleniumGridScalerMetadata
+	client     *http.Client
 }
 
 type seleniumGridScalerMetadata struct {
@@ -66,6 +67,11 @@ const (
 var seleniumGridLog = logf.Log.WithName("selenium_grid_scaler")
 
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseSeleniumGridScalerMetadata(config)
 
 	if err != nil {
@@ -75,8 +81,9 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	return &seleniumGridScaler{
-		metadata: meta,
-		client:   httpClient,
+		metricType: metricType,
+		metadata:   meta,
+		client:     httpClient,
 	}, nil
 }
 
@@ -141,7 +148,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.targetValue),
+		Target: GetExternalMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

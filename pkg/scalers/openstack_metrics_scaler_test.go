@@ -114,7 +114,7 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 			t.Fatal("could not parse openstack metric authentication metadata")
 		}
 
-		mockMetricsScaler := openstackMetricScaler{meta, openstack.Client{}}
+		mockMetricsScaler := openstackMetricScaler{"", meta, openstack.Client{}}
 		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricsSpec[0].External.Metric.Name
 

@@ -23,6 +23,7 @@ import (
 )
 
 type activeMQScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *activeMQMetadata
 	httpClient *http.Client
 }
@@ -54,6 +55,11 @@ var activeMQLog = logf.Log.WithName("activeMQ_scaler")
 
 // NewActiveMQScaler creates a new activeMQ Scaler
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseActiveMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing ActiveMQ metadata: %s", err)
@@ -61,6 +67,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &activeMQScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -242,15 +249,11 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.targetQueueSize), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueueSize)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

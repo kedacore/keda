@@ -53,6 +53,7 @@ const (
 )
 
 type rabbitMQScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
 	channel    *amqp.Channel
@@ -98,6 +99,11 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
@@ -128,6 +134,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &rabbitMQScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 		channel:    ch,
@@ -447,7 +454,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.value)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.value)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,

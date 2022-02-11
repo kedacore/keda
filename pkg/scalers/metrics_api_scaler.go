@@ -24,8 +24,9 @@ import (
 )
 
 type metricsAPIScaler struct {
-	metadata *metricsAPIScalerMetadata
-	client   *http.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *metricsAPIScalerMetadata
+	client     *http.Client
 }
 
 type metricsAPIScalerMetadata struct {
@@ -67,6 +68,11 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMetricsAPIMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
@@ -84,8 +90,9 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &metricsAPIScaler{
-		metadata: meta,
-		client:   httpClient,
+		metricType: metricType,
+		metadata:   meta,
+		client:     httpClient,
 	}, nil
 }
 
@@ -250,7 +257,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

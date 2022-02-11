@@ -30,6 +30,7 @@ const (
 )
 
 type prometheusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *prometheusMetadata
 	httpClient *http.Client
 }
@@ -60,6 +61,11 @@ var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
@@ -79,6 +85,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -149,7 +156,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.threshold)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.threshold)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

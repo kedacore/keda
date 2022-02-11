@@ -27,6 +27,7 @@ const (
 )
 
 type awsKinesisStreamScaler struct {
+	metricType    v2beta2.MetricTargetType
 	metadata      *awsKinesisStreamMetadata
 	kinesisClient kinesisiface.KinesisAPI
 }
@@ -43,12 +44,18 @@ var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
 func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsKinesisStreamMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
 
 	return &awsKinesisStreamScaler{
+		metricType:    metricType,
 		metadata:      meta,
 		kinesisClient: createKinesisClient(meta),
 	}, nil
@@ -137,7 +144,7 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2be
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetShardCount)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetShardCount)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

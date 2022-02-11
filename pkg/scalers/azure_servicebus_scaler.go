@@ -51,6 +51,7 @@ var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 
 type azureServiceBusScaler struct {
 	ctx         context.Context
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 	httpClient  *http.Client
@@ -70,6 +71,11 @@ type azureServiceBusMetadata struct {
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
 func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
@@ -77,6 +83,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 
 	return &azureServiceBusScaler{
 		ctx:         ctx,
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -192,7 +199,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetLength)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

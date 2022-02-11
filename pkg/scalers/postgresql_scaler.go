@@ -19,6 +19,7 @@ import (
 )
 
 type postgreSQLScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *postgreSQLMetadata
 	connection *sql.DB
 }
@@ -35,6 +36,11 @@ var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
@@ -45,6 +51,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
 	}
 	return &postgreSQLScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -177,7 +184,7 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetQueryValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -17,6 +17,7 @@ import (
 )
 
 type kubernetesWorkloadScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *kubernetesWorkloadMetadata
 	kubeClient client.Client
 }
@@ -41,12 +42,18 @@ type kubernetesWorkloadMetadata struct {
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
 func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, parseErr := parseWorkloadMetadata(config)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %s", parseErr)
 	}
 
 	return &kubernetesWorkloadScaler{
+		metricType: metricType,
 		metadata:   meta,
 		kubeClient: kubeClient,
 	}, nil
@@ -90,7 +97,7 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, s.metadata.value),
+		Target: GetExternalMetricTarget(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kubernetesWorkloadMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

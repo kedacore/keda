@@ -24,7 +24,8 @@ const (
 )
 
 type cronScaler struct {
-	metadata *cronMetadata
+	metricType v2beta2.MetricTargetType
+	metadata   *cronMetadata
 }
 
 type cronMetadata struct {
@@ -39,13 +40,19 @@ var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
 func NewCronScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, parseErr := parseCronMetadata(config)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
 	}
 
 	return &cronScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -158,7 +165,7 @@ func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSp
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(specReplicas)),
+		Target: GetExternalMetricTarget(s.metricType, int64(specReplicas)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

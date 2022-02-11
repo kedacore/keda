@@ -40,6 +40,7 @@ const (
 )
 
 type azureMonitorScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureMonitorMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 }
@@ -54,12 +55,18 @@ var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
 func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureMonitorMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %s", err)
 	}
 
 	return &azureMonitorScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 	}, nil
@@ -195,7 +202,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

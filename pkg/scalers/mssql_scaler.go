@@ -21,6 +21,7 @@ import (
 
 // mssqlScaler exposes a data pointer to mssqlMetadata and sql.DB connection
 type mssqlScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *mssqlMetadata
 	connection *sql.DB
 }
@@ -64,6 +65,11 @@ var mssqlLog = logf.Log.WithName("mssql_scaler")
 
 // NewMSSQLScaler creates a new mssql scaler
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetExternalMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing mssql metadata: %s", err)
@@ -75,6 +81,7 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &mssqlScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -214,7 +221,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(v2beta2.AverageValueMetricType, int64(s.metadata.targetValue)),
+		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
