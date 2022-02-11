@@ -15,6 +15,8 @@ const projectName = process.env['AZURE_DEVOPS_PROJECT']
 const buildDefinitionID = process.env['AZURE_DEVOPS_BUILD_DEFINITON_ID']
 const poolName = process.env['AZURE_DEVOPS_POOL_NAME']
 
+let poolID: number
+
 test.before(async t => {
   if (!organizationURL || !personalAccessToken || !projectName || !buildDefinitionID || !poolName) {
     t.fail('AZURE_DEVOPS_ORGANIZATION_URL, AZURE_DEVOPS_PAT, AZURE_DEVOPS_PROJECT, AZURE_DEVOPS_BUILD_DEFINITON_ID and AZURE_DEVOPS_POOL_NAME environment variables are required for azure pipelines tests')
@@ -25,7 +27,7 @@ test.before(async t => {
 
   let taskAgent: ta.ITaskAgentApiBase = await connection.getTaskAgentApi();
   let agentPool: ti.TaskAgentPool[] = await taskAgent.getAgentPools(poolName)
-  let poolID: number = agentPool[0].id
+  poolID = agentPool[0].id
 
   if(!poolID) {
     t.fail("failed to convert poolName to poolID")
@@ -40,38 +42,43 @@ test.before(async t => {
       .replace('{{AZP_URL}}', organizationURL))
   sh.exec(`kubectl create namespace ${defaultNamespace}`)
   t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
-  const scaledObjectFile = tmp.fileSync()
-  fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject
-      .replace('{{AZP_POOL_ID}}', poolID.toString()))
-  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
 })
 
 test.serial('Deployment should have 1 replicas on start', async t => {
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should start out as 1')
 })
 
-test.serial('PoolID: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
+
+test.serial('Deployment should have 0 replicas after scale', async t => {
+  // wait for the first agent to be registered in the agent pool
+  await sleep(20 * 1000)
+
+  const scaledObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaledObjectFile.name, poolIdScaledObject
+      .replace('{{AZP_POOL_ID}}', poolID.toString()))
+  t.is(0, sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${defaultNamespace}`).code, 'creating ScaledObject with poolId should work.')
+
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should be 0 if no pending jobs')
+})
+
+
+test.serial('PoolID: Deployment should scale to 1 replica after queueing job', async t => {
   let authHandler = azdev.getPersonalAccessTokenHandler(personalAccessToken);
   let connection = new azdev.WebApi(organizationURL, authHandler);
   let build: ba.IBuildApi = await connection.getBuildApi();
   var definitionID = parseInt(buildDefinitionID)
 
-  // wait for the first agent to be registered in the agent pool
-  await sleep(20 * 1000)
+  await build.queueBuild(null, projectName, null, null, null, definitionID)
 
-  for(let i = 0; i < 3; i++) {
-    await build.queueBuild(null, projectName, null, null, null, definitionID)
-  }
-
-  t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 1 after starting a job')
 })
 
-test.serial('PoolID: Deployment should scale to 1 replica after finishing 3 jobs', async t => {
+test.serial('PoolID: Deployment should scale to 0 replicas after finishing job', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 0 after finishing')
 })
 
-test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jobs', async t => {
+test.serial('PoolName: Deployment should scale to 1 replica after queueing job', async t => {
   const poolNameScaledObjectFile = tmp.fileSync()
   fs.writeFileSync(poolNameScaledObjectFile.name, poolNameScaledObject
         .replace('{{AZP_POOL}}', poolName))
@@ -82,16 +89,14 @@ test.serial('PoolName: Deployment should scale to 3 replicas after queueing 3 jo
   let build: ba.IBuildApi = await connection.getBuildApi();
   var definitionID = parseInt(buildDefinitionID)
 
-  for(let i = 0; i < 3; i++) {
-    await build.queueBuild(null, projectName, null, null, null, definitionID)
-  }
+  await build.queueBuild(null, projectName, null, null, null, definitionID)
 
-  t.true(await waitForDeploymentReplicaCount(3, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 3 after starting 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 1 after starting a job')
 })
 
-test.serial('PoolName: should scale to 1 replica after finishing 3 jobs', async t => {
+test.serial('PoolName: should scale to 0 replicas after finishing job', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 60, 10000), 'replica count should be 1 after finishing 3 jobs')
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 0 after finishing')
 })
 
 test.after.always('clean up azure-pipelines deployment', t => {
@@ -157,9 +162,9 @@ metadata:
 spec:
   scaleTargetRef:
     name: test-deployment
-  minReplicaCount: 1
-  maxReplicaCount: 3
-  pollingInterval: 50
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  pollingInterval: 30
   cooldownPeriod: 60
   advanced:
     horizontalPodAutoscalerConfig:
@@ -179,9 +184,9 @@ metadata:
 spec:
   scaleTargetRef:
     name: test-deployment
-  minReplicaCount: 1
-  maxReplicaCount: 3
-  pollingInterval: 50
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  pollingInterval: 30
   cooldownPeriod: 60
   advanced:
     horizontalPodAutoscalerConfig:

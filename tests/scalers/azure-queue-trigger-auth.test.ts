@@ -7,7 +7,7 @@ import test from 'ava'
 import {waitForDeploymentReplicaCount} from "./helpers";
 
 const testNamespace = 'azure-queue-auth-test'
-const queueName = 'queue-name'
+const queueName = 'queue-name-trigger'
 const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
 
 test.before(async t => {
@@ -44,7 +44,10 @@ test.serial(
     )
 
     // Scaling out when messages available
-    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 3 after 1 minute')
+    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 1 after 1 minute')
+
+    queueSvc.clearMessages(queueName, _ => {})
+
     // Scaling in when no available messages
     t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 300, 1000), 'replica count should be 0 after 5 minute')
   }

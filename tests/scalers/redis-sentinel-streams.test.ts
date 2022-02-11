@@ -19,14 +19,14 @@ test.before(t => {
     sh.exec(`kubectl create namespace ${redisNamespace}`)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let sentinelStatus = sh.exec(`helm install --timeout 600s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
+    let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
     t.is(0,
         sentinelStatus,
         'creating a Redis Sentinel setup should work.'
     )
 
     // Wait for Redis Sentinel to be ready.
-    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 300)
+    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 600)
     t.is(0, exitCode, 'expected rollout status for redis to finish successfully')
 
     // Get Redis Sentinel address.
@@ -68,7 +68,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   )
 
   // Wait for producer job to finish.
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 60; i++) {
     const succeeded = sh.exec(`kubectl get job  --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
     if (succeeded == '1') {
       break
@@ -76,7 +76,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
     sh.exec('sleep 1s')
   }
   // With messages published, the consumer deployment should start receiving the messages.
-  t.true(await waitForDeploymentReplicaCount(5, 'redis-streams-consumer', testNamespace, 30, 3000), 'Replica count should be 5 within 60 seconds')
+  t.true(await waitForDeploymentReplicaCount(5, 'redis-streams-consumer', testNamespace, 30, 10000), 'Replica count should be 5 within 5 minutes')
   t.true(await waitForDeploymentReplicaCount(1, 'redis-streams-consumer', testNamespace, 60, 10000), 'Replica count should be 1 within 10 minutes')
 })
 
