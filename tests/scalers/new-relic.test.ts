@@ -102,14 +102,14 @@ test.serial('Deployment should have 1 replicas on start', t => {
   t.is(replicaCount, '1', 'replica count should start out as 0')
 })
 
-test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, t => {
+test.serial(`Deployment should scale to 3 (the max) with HTTP Requests exceeding in the rate then back to 0`, t => {
   // generate a large number of HTTP requests (using Apache Bench) that will take some time
   // so prometheus has some time to scrape it
-  const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
+  const loadGeneratorFile = tmp.fileSync()
+  fs.writeFileSync(loadGeneratorFile.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${loadGeneratorFile.name} --namespace ${testNamespace}`).code,
     'creating job should work.'
   )
 
@@ -123,7 +123,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
 
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '0'
-  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
+  for (let i = 0; i < 60 && replicaCount !== '3'; i++) {
     t.log(`Waited ${5 * i} seconds for new-relic-based deployments to scale up`)
     const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
     t.log(`Logs from the generate requests: ${jobLogs}`)
@@ -131,23 +131,29 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
-    if (replicaCount !== '5') {
-      sh.exec('sleep 5s')
+    if (replicaCount !== '3') {
+      sh.exec('sleep 10s')
     }
   }
 
-  t.is('5', replicaCount, 'Replica count should be maxed at 5')
+  t.is('3', replicaCount, 'Replica count should be maxed at 3')
 
-  for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
+  t.is(
+    0,
+    sh.exec(`kubectl delete -f ${loadGeneratorFile.name} --namespace ${testNamespace}`).code,
+    'deleting job should work.'
+  )
+
+  for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
+      sh.exec('sleep 10s')
     }
   }
 
-  t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+  t.is('0', replicaCount, 'Replica count should be 0 after 6 minutes')
   sh.exec('sleep 10s')
 })
 
@@ -171,9 +177,9 @@ spec:
       - image: jordi/ab
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;ab -c 5 -n 1000 -v 2 http://test-app/;sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 60);do echo $i;ab -c 5 -n 10000 -v 2 http://test-app/;sleep 1;done"]
       restartPolicy: Never
-  activeDeadlineSeconds: 120
+  activeDeadlineSeconds: 600
   backoffLimit: 2`
 
 const deployYaml = `apiVersion: apps/v1
@@ -263,7 +269,7 @@ spec:
   scaleTargetRef:
     name: keda-test-app
   minReplicaCount: 0
-  maxReplicaCount: 5
+  maxReplicaCount: 3
   pollingInterval: 5
   cooldownPeriod:  10
   triggers:
@@ -271,7 +277,7 @@ spec:
     metadata:
       account: '{{NEWRELIC_ACCOUNT_ID}}'
       region: '{{NEWRELIC_REGION}}'
-      threshold: '100'
+      threshold: '10'
       nrql: SELECT average(\`http_requests_total\`) FROM Metric where serviceName='test-app' and namespaceName='new-relic-test' since 60 seconds ago
     authenticationRef:
         name: newrelic-trigger

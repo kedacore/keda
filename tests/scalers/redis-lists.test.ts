@@ -33,7 +33,7 @@ test.before(t => {
     t.is(0, sh.exec(`kubectl apply --namespace ${redisNamespace} -f ${redisDeployTmpFile.name}`).code, 'creating a Redis deployment should work.')
 
     // wait for redis to be ready
-    t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 300), 'Redis is not in a ready state')
+    t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 600), 'Redis is not in a ready state')
 
     sh.exec(`kubectl create namespace ${testNamespace}`)
 
@@ -124,19 +124,19 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -146,7 +146,7 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 test.serial('Deployment for redis address env var should have 0 replica on start', t => {
@@ -164,19 +164,19 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -186,7 +186,7 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 
@@ -204,19 +204,19 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
-    for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -226,7 +226,7 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 

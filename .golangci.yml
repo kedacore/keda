@@ -54,6 +54,9 @@ issues:
     - path: scale_handler.go
       linters:
         - gocyclo
+    - path: scale_scaledobjects.go
+      linters:
+        - gocyclo
   # Exclude for clustertriggerauthentication_controller and triggerauthentication_controller, reason:
   # controllers/clustertriggerauthentication_controller.go:1: 1-59 lines are duplicate of `controllers/triggerauthentication_controller.go:1-58` (dupl)
     - path: triggerauthentication_controller.go
