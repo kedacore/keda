@@ -48,7 +48,7 @@ check the [test documentation](./tests/README.md). Those tests are run nightly o
 
 ## Changelog
 
-Every change should bve added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
+Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
 
 Here are some guidelines to follow:
 - Always use `General: ` or `<Scaler Name>: ` as a prefix and sort them alphabetically

@@ -34,7 +34,7 @@
 
 ### Improvements
 
-- Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
+- **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
 
 ### Breaking Changes
 
@@ -42,7 +42,7 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 
 ## v.2.6.1
 
