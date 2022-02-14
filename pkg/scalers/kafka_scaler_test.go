@@ -89,6 +89,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, SASL + TLS explicitly disabled
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
 	// failure, SASL incorrect type
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false},
 	// failure, SASL missing username
