@@ -110,7 +110,7 @@ spec:
   - port: 80
   selector:
     run: php-apache
----    
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
