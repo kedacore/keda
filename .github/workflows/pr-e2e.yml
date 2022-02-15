@@ -66,6 +66,8 @@ jobs:
         continue-on-error: true
         id: test
         env:
+          AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}
+          AZURE_DATA_EXPLORER_ENDPOINT: ${{ secrets.AZURE_DATA_EXPLORER_ENDPOINT }}
           AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
