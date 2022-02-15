@@ -35,8 +35,9 @@
 ### Improvements
 
 - **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
-- **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
 - **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
+- **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **Memory Scaler** Adding e2e test for the memory scaler ([#2220](https://github.com/kedacore/keda/issues/2220))
 
 ### Breaking Changes
 
@@ -77,7 +78,7 @@
 - **AWS SQS Scaler:** Allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
 - **Azure EventHub Scaler:** Don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
 - **Azure Pipelines Scaler:** Support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
-- **CPU Scaler:** AAding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
+- **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
 - **External Scaler:** Fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
 - **Graphite Scaler:** Use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
 - **Kafka Scaler:** Allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
