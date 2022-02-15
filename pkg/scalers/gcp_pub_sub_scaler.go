@@ -15,7 +15,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -32,12 +31,6 @@ const (
 
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
 
-type gcpAuthorizationMetadata struct {
-	GoogleApplicationCredentials string
-	podIdentityOwner             bool
-	podIdentityProviderEnabled   bool
-}
-
 type pubsubScaler struct {
 	client   *StackDriverClient
 	metadata *pubsubMetadata
@@ -48,7 +41,7 @@ type pubsubMetadata struct {
 	value int
 
 	subscriptionName string
-	gcpAuthorization gcpAuthorizationMetadata
+	gcpAuthorization *gcpAuthorizationMetadata
 	scalerIndex      int
 }
 
@@ -121,7 +114,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta.gcpAuthorization = *auth
+	meta.gcpAuthorization = auth
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -254,29 +247,4 @@ func getSubscriptionData(s *pubsubScaler) (string, string) {
 		subscriptionID = s.metadata.subscriptionName
 	}
 	return subscriptionID, projectID
-}
-
-func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
-	metadata := config.TriggerMetadata
-	authParams := config.AuthParams
-	meta := gcpAuthorizationMetadata{}
-	if metadata["identityOwner"] == "operator" {
-		meta.podIdentityOwner = false
-	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
-		meta.podIdentityOwner = true
-		switch {
-		case config.PodIdentity == kedav1alpha1.PodIdentityProviderGCP:
-			// do nothing, rely on underneath metadata google
-			meta.podIdentityProviderEnabled = true
-		case authParams["GoogleApplicationCredentials"] != "":
-			meta.GoogleApplicationCredentials = authParams["GoogleApplicationCredentials"]
-		default:
-			if metadata["credentialsFromEnv"] != "" {
-				meta.GoogleApplicationCredentials = resolvedEnv[metadata["credentialsFromEnv"]]
-			} else {
-				return nil, fmt.Errorf("GoogleApplicationCredentials not found")
-			}
-		}
-	}
-	return &meta, nil
 }
