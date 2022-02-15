@@ -68,6 +68,9 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no query given")
 	}
+	if !strings.Contains(meta.query, "{") {
+		return nil, fmt.Errorf("expecting query to contain `{`, got %s", meta.query)
+	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.Atoi(val)
