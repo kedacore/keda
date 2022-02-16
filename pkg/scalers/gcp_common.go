@@ -7,10 +7,10 @@ import (
 )
 
 type gcpAuthorizationMetadata struct {
-	GoogleApplicationCredentials string
+	GoogleApplicationCredentials     string
 	GoogleApplicationCredentialsFile string
-	podIdentityOwner             bool
-	podIdentityProviderEnabled   bool
+	podIdentityOwner                 bool
+	podIdentityProviderEnabled       bool
 }
 
 func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {

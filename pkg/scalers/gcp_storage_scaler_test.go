@@ -21,13 +21,6 @@ type gcpGcsMetricIdentifier struct {
 	name             string
 }
 
-type gcpGcsSubscription struct {
-	metadataTestData *parseGcsMetadataTestData
-	bucketName       string
-	targetLength     int
-	scalerIndex      int
-}
-
 var testGcsMetadata = []parseGcsMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed

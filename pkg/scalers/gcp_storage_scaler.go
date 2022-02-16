@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -20,7 +21,10 @@ import (
 )
 
 const (
-	defaultTargetLength = 1000
+	// Default for how many objects per a single scaled processor
+	defaultTargetObjectCount = 100
+	// A limit on iterating bucket objects
+	defaultMaxBucketItemsToScan = 1000
 )
 
 type gcsScaler struct {
@@ -30,10 +34,13 @@ type gcsScaler struct {
 }
 
 type gcsMetadata struct {
-	bucketName       string
-	gcpAuthorization *gcpAuthorizationMetadata
-	targetLength     int
-	scalerIndex      int
+	bucketName           string
+	endpoint             string // Alternate GCS endpoint for testing
+	gcpAuthorization     *gcpAuthorizationMetadata
+	maxBucketItemsToScan int
+	metricName           string
+	targetObjectCount    int
+	scalerIndex          int
 }
 
 var gcsLog = logf.Log.WithName("gcp_storage_scaler")
@@ -49,8 +56,10 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 
 	var client *storage.Client
 
-	if meta.gcpAuthorization.podIdentityProviderEnabled {
-		client, err = storage.NewClient(ctx, option.WithScopes("ScopeReadOnly"))
+	if meta.endpoint != "" {
+		client, err = storage.NewClient(ctx, option.WithEndpoint(meta.endpoint), option.WithoutAuthentication())
+	} else if meta.gcpAuthorization.podIdentityProviderEnabled {
+		client, err = storage.NewClient(ctx)
 	} else if meta.gcpAuthorization.GoogleApplicationCredentialsFile != "" {
 		client, err = storage.NewClient(
 			ctx, option.WithCredentialsFile(meta.gcpAuthorization.GoogleApplicationCredentialsFile))
@@ -65,8 +74,10 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 
 	bucket := client.Bucket(meta.bucketName)
 	if bucket == nil {
-		return nil, fmt.Errorf("Failed to create a handle to bucket %s", meta.bucketName)
+		return nil, fmt.Errorf("failed to create a handle to bucket %s", meta.bucketName)
 	}
+
+	gcsLog.Info(fmt.Sprintf("Metadata %v", meta))
 
 	return &gcsScaler{
 		client:   client,
@@ -77,7 +88,8 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 	meta := gcsMetadata{}
-	meta.targetLength = defaultTargetLength
+	meta.targetObjectCount = defaultTargetObjectCount
+	meta.maxBucketItemsToScan = defaultMaxBucketItemsToScan
 
 	if val, ok := config.TriggerMetadata["bucketName"]; ok {
 		if val == "" {
@@ -91,21 +103,46 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 		return nil, fmt.Errorf("no bucket name given")
 	}
 
-	if val, ok := config.TriggerMetadata["targetLength"]; ok {
-		targetLength, err := strconv.Atoi(val)
+	if val, ok := config.TriggerMetadata["targetObjectCount"]; ok {
+		targetObjectCount, err := strconv.Atoi(val)
 		if err != nil {
-			gcsLog.Error(err, "Error parsing targetLength")
-			return nil, fmt.Errorf("error parsing targetLength: %s", err.Error())
+			gcsLog.Error(err, "Error parsing targetObjectCount")
+			return nil, fmt.Errorf("error parsing targetObjectCount: %s", err.Error())
 		}
 
-		meta.targetLength = targetLength
+		meta.targetObjectCount = targetObjectCount
 	}
 
-	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
-	if err != nil {
-		return nil, err
+	if val, ok := config.TriggerMetadata["maxBucketItemsToScan"]; ok {
+		maxBucketItemsToScan, err := strconv.Atoi(val)
+		if err != nil {
+			gcsLog.Error(err, "Error parsing maxBucketItemsToScan")
+			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %s", err.Error())
+		}
+
+		meta.maxBucketItemsToScan = maxBucketItemsToScan
 	}
-	meta.gcpAuthorization = auth
+
+	if val, ok := config.TriggerMetadata["endpoint"]; ok {
+		if val != "" {
+			meta.endpoint = val
+		}
+	}
+
+	if meta.endpoint == "" {
+		auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+		if err != nil {
+			return nil, err
+		}
+		meta.gcpAuthorization = auth
+	}
+
+	if val, ok := config.TriggerMetadata["metricName"]; ok {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", val))
+	} else {
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -129,33 +166,25 @@ func (s *gcsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(int64(s.metadata.targetLength), resource.DecimalSI)
-
+	targetValueQty := resource.NewQuantity(int64(s.metadata.targetObjectCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", s.metadata.bucketName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
 			AverageValue: targetValueQty,
 		},
 	}
-
-	// Create the metric spec for the HPA
-	metricSpec := v2beta2.MetricSpec{
-		External: externalMetric,
-		Type:     externalMetricType,
-	}
-
+	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-// GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
+// GetMetrics returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
 func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	items, err := s.getItemCount(ctx, s.metadata.targetLength)
+	items, err := s.getItemCount(ctx, s.metadata.maxBucketItemsToScan)
 	if err != nil {
-		return nil, err
+		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	metric := external_metrics.ExternalMetricValue{
@@ -180,11 +209,16 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error)
 			break
 		}
 		if err != nil {
-			gcsLog.Error(err, "Failed to enumerate items in bucket")
+			if strings.Contains(err.Error(), "bucket doesn't exist") {
+				gcsLog.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
+				return 0, nil
+			}
+			gcsLog.Error(err, "failed to enumerate items in bucket "+s.metadata.bucketName)
 			return count, err
 		}
 		count++
 	}
 
+	gcsLog.Info(fmt.Sprintf("Counted %d items with a limit of %d", count, maxCount))
 	return count, nil
 }
