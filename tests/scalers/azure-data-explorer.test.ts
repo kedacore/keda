@@ -3,8 +3,8 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 
-const dataExplorerDb = process.env['AZURE_TEST_DATA_EXPLORER_DB']
-const dataExplorerEndpoint = process.env['AZURE_TEST_DATA_EXPLORER_ENDPOINT']
+const dataExplorerDb = process.env['AZURE_DATA_EXPLORER_DB']
+const dataExplorerEndpoint = process.env['AZURE_DATA_EXPLORER_ENDPOINT']
 const spId = process.env['AZURE_SP_ID']
 const spSecret = process.env['AZURE_SP_KEY']
 const spTenantId = process.env['AZURE_SP_TENANT']
