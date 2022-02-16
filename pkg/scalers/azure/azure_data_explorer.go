@@ -62,13 +62,13 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.Authorizer
 
 	if metadata.PodIdentity != "" {
 		authConfig = auth.NewMSIConfig()
-		azureDataExplorerLogger.Info("Creating Azure Data Explorer Client using Pod Identity")
+		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
 		return &authConfig, nil
 	}
 
 	if metadata.ClientID != "" && metadata.ClientSecret != "" && metadata.TenantID != "" {
 		authConfig = auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
-		azureDataExplorerLogger.Info("Creating Azure Data Explorer Client using clientID, clientSecret and tenantID")
+		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using clientID, clientSecret and tenantID")
 		return &authConfig, nil
 	}
 
@@ -76,7 +76,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.Authorizer
 }
 
 func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, db string, query string) (int64, error) {
-	azureDataExplorerLogger.Info("Querying Azure Data Explorer", "db", db, "query", query)
+	azureDataExplorerLogger.V(1).Info("Querying Azure Data Explorer", "db", db, "query", query)
 
 	iter, err := client.Query(ctx, db, kusto.NewStmt("", kusto.UnsafeStmt(unsafe.Stmt{Add: true, SuppressWarning: false})).UnsafeAdd(query))
 	if err != nil {
@@ -114,17 +114,18 @@ func extractDataExplorerMetricValue(row *table.Row) (int64, error) {
 
 	// Query result validation.
 	dataType := row.ColumnTypes[0].Type
-	if dataType == "real" || dataType == "int" || dataType == "long" {
-		value, err := strconv.Atoi(row.Values[0].String())
-		if err != nil {
-			return -1, fmt.Errorf("failed to convert result %s to int", row.Values[0].String())
-		}
-		if value < 0 {
-			return -1, fmt.Errorf("query result must be >= 0 but received: %d", value)
-		}
-		azureDataExplorerLogger.Info("Query Result", "value", value, "dataType", dataType)
-		return int64(value), nil
+	if dataType != "real" && dataType != "int" && dataType != "long" {
+		return -1, fmt.Errorf("data type %s is not valid", dataType)
 	}
 
-	return -1, fmt.Errorf("failed to extract metric value from Data Explorer request")
+	value, err := strconv.Atoi(row.Values[0].String())
+	if err != nil {
+		return -1, fmt.Errorf("failed to convert result %s to int", row.Values[0].String())
+	}
+	if value < 0 {
+		return -1, fmt.Errorf("query result must be >= 0 but received: %d", value)
+	}
+
+	azureDataExplorerLogger.V(1).Info("Query Result", "value", value, "dataType", dataType)
+	return int64(value), nil
 }

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type parseDataExplorerMetadataTestData struct {
@@ -43,7 +44,6 @@ var (
 	dataExplorerQuery     = "print 3"
 	dataExplorerThreshold = "1"
 	dataExplorerEndpoint  = "https://test-keda-e2e.eastus.kusto.windows.net"
-	metricName            = "test_metric"
 )
 
 // Valid auth params with aad application and passwd
@@ -84,12 +84,12 @@ var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestDat
 	// Missing threshold - fail
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
 	// All parameters set - pass
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold, "metricName": metricName}, false},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
 }
 
 var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
-	{&testDataExplorerMetadataWithClientAndSecret[len(testDataExplorerMetadataWithClientAndSecret)-1], 0, GenerateMetricNameWithIndex(0, fmt.Sprintf("%s-%s", adxName, databaseName))},
-	{&testDataExplorerMetadataWithPodIdentity[len(testDataExplorerMetadataWithPodIdentity)-1], 1, fmt.Sprintf("%s-%s", adxName, metricName)},
+	{&testDataExplorerMetadataWithClientAndSecret[len(testDataExplorerMetadataWithClientAndSecret)-1], 0, GenerateMetricNameWithIndex(0, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
+	{&testDataExplorerMetadataWithPodIdentity[len(testDataExplorerMetadataWithPodIdentity)-1], 1, GenerateMetricNameWithIndex(1, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
 }
 
 func TestDataExplorerParseMetadata(t *testing.T) {

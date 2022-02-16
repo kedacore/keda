@@ -100,14 +100,10 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 		metadata.Threshold = threshold
 	}
 
-	// Resolve metricName.
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metadata.MetricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, val))
-	} else {
-		metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
-	}
+	// Generate metricName.
+	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 
-	dataExplorerLogger.Info("Parsed azureDataExplorerMetadata",
+	dataExplorerLogger.V(1).Info("Parsed azureDataExplorerMetadata",
 		"database", metadata.DatabaseName,
 		"endpoint", metadata.Endpoint,
 		"metricName", metadata.MetricName,
@@ -124,14 +120,7 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorer
 	case kedav1alpha1.PodIdentityProviderAzure:
 		metadata.PodIdentity = string(config.PodIdentity)
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		// Check whether pod identity is provided through metadata instead of TriggerAuthentication object
-		podIdentity, err := getParameterFromConfig(config, "podIdentity", true)
-		if err != nil {
-			dataExplorerLogger.Info("pod identity is not provided. trying to resolve clientId, clientSecret and tenantId.")
-		} else {
-			metadata.PodIdentity = podIdentity
-			return &metadata, nil
-		}
+		dataExplorerLogger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 
 		tenantID, err := getParameterFromConfig(config, "tenantId", true)
 		if err != nil {
