@@ -24,13 +24,17 @@ type gcpGcsMetricIdentifier struct {
 var testGcsMetadata = []parseGcsMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{nil, map[string]string{"bucketName": "test-bucket", "targetLength": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"bucketName": "test-bucket", "targetObjectCount": "7", "maxBucketItemsToScan": "100", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// all properly formed while using defaults
+	{nil, map[string]string{"bucketName": "test-bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing bucketName
-	{nil, map[string]string{"bucketName": "", "targetLength": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"bucketName": "", "targetObjectCount": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{nil, map[string]string{"bucketName": "test-bucket", "targetLength": "7", "credentialsFromEnv": ""}, true},
-	// malformed targetLength
-	{nil, map[string]string{"bucketName": "test-bucket", "targetLength": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"bucketName": "test-bucket", "targetObjectCount": "7", "credentialsFromEnv": ""}, true},
+	// malformed targetObjectCount
+	{nil, map[string]string{"bucketName": "test-bucket", "targetObjectCount": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// malformed maxBucketItemsToScan
+	{nil, map[string]string{"bucketName": "test-bucket", "targetObjectCount": "7", "maxBucketItemsToScan": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"bucketName": "test-bucket", "targetLength": "7"}, false},
 	// Credentials from AuthParams with empty creds
