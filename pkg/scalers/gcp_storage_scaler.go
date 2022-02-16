@@ -56,14 +56,15 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 
 	var client *storage.Client
 
-	if meta.endpoint != "" {
+	switch {
+	case meta.endpoint != "":
 		client, err = storage.NewClient(ctx, option.WithEndpoint(meta.endpoint), option.WithoutAuthentication())
-	} else if meta.gcpAuthorization.podIdentityProviderEnabled {
+	case meta.gcpAuthorization.podIdentityProviderEnabled:
 		client, err = storage.NewClient(ctx)
-	} else if meta.gcpAuthorization.GoogleApplicationCredentialsFile != "" {
+	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
 		client, err = storage.NewClient(
 			ctx, option.WithCredentialsFile(meta.gcpAuthorization.GoogleApplicationCredentialsFile))
-	} else {
+	default:
 		client, err = storage.NewClient(
 			ctx, option.WithCredentialsJSON([]byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
 	}
@@ -199,7 +200,12 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 // getItemCount gets the number of items in the bucket, up to maxCount
 func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error) {
 	query := &storage.Query{Prefix: ""}
-	query.SetAttrSelection([]string{"Name"})
+	err := query.SetAttrSelection([]string{"Name"})
+	if err != nil {
+		gcsLog.Error(err, "failed to set attribute selection")
+		return 0, err
+	}
+
 	it := s.bucket.Objects(ctx, query)
 	count := 0
 

@@ -28,11 +28,12 @@ func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*
 		case authParams["GoogleApplicationCredentials"] != "":
 			meta.GoogleApplicationCredentials = authParams["GoogleApplicationCredentials"]
 		default:
-			if metadata["credentialsFromEnv"] != "" {
+			switch {
+			case metadata["credentialsFromEnv"] != "":
 				meta.GoogleApplicationCredentials = resolvedEnv[metadata["credentialsFromEnv"]]
-			} else if metadata["credentialsFromEnvFile"] != "" {
+			case metadata["credentialsFromEnvFile"] != "":
 				meta.GoogleApplicationCredentialsFile = resolvedEnv[metadata["credentialsFromEnvFile"]]
-			} else {
+			default:
 				return nil, fmt.Errorf("GoogleApplicationCredentials not found")
 			}
 		}
