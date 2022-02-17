@@ -160,7 +160,7 @@ func (s *gcsScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *gcsScaler) Close(context.Context) error {
 	if s.client != nil {
-		s.client.Close()
+		return s.client.Close()
 	}
 	return nil
 }
@@ -225,6 +225,6 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error)
 		count++
 	}
 
-	gcsLog.Info(fmt.Sprintf("Counted %d items with a limit of %d", count, maxCount))
+	gcsLog.V(1).Info(fmt.Sprintf("Counted %d items with a limit of %d", count, maxCount))
 	return count, nil
 }
