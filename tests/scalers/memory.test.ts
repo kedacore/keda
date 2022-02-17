@@ -5,18 +5,19 @@ import test from 'ava'
 import { waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'memory-test'
-const deployMentFile = tmp.fileSync()
-const ScaledObjFile = tmp.fileSync()
-
+const scaleUpValue = 1
+const scaleDownValue = 45
+const deploymentFile = tmp.fileSync()
+const ScaledObjectFile = tmp.fileSync()
 
 test.before(t => {
   sh.config.silent = true
   sh.exec(`kubectl create namespace ${testNamespace}`)
 
-  fs.writeFileSync(deployMentFile.name, deployMentYaml)
+  fs.writeFileSync(deploymentFile.name, deploymentYaml)
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${deployMentFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${deploymentFile.name} --namespace ${testNamespace}`).code,
     'Deploying php deployment should work.'
   )
   t.is(0, sh.exec(`kubectl rollout status deploy/php-apache -n ${testNamespace}`).code, 'Deployment php rolled out succesfully')
@@ -29,31 +30,35 @@ test.serial('Deployment should have 1 replica on start', t => {
   t.is(replicaCount, '1', 'replica count should start out as 1')
 })
 
+test.serial(`Creating ScaledObject should work`, async t => {
+  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml.
+    replace('{{UTILIZATION_VALUE}}', scaleUpValue.toString()))
+  t.is(
+    0,
+    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
+    'creating new ScaledObject should work.'
+  )
+})
+
 test.serial(`Deployment should scale in next 3 minutes`, async t => {
   // check for increased replica count on constant triggering :
   t.true(await waitForDeploymentReplicaCount(2, 'php-apache', testNamespace, 18, 10000), 'Replica count should scale up in next 3 minutes')
 })
 
-test.serial(`Deleting old Scaled Object should work`, async t => {
+test.serial(`Updsating ScaledObject should work`, async t => {
+  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml.replace('{{UTILIZATION_VALUE}}', scaleDownValue.toString()))
   t.is(
     0,
-    sh.exec(`kubectl delete scaledobject memory-scaledobject --namespace ${testNamespace}`).code,
-    'Deleting Scaled Object should work.'
+    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
+    'Updating ScaledObject should work.'
   )
 })
-test.serial(`Creating ScaledObject should work`, async t => {
-  fs.writeFileSync(ScaledObjFile.name, scaledObject2)
-  t.is(
-    0,
-    sh.exec(`kubectl apply -f ${ScaledObjFile.name} --namespace ${testNamespace}`).code,
-    'creating new ScaledObject should work.'
-  )
-})
+
 test.serial(`Deployment should scale back to 1 in next 3 minutes`, async t => {
-  fs.writeFileSync(ScaledObjFile.name, scaledObject2)
+  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml)
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${ScaledObjFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
     'creating Scaled Object should work.'
   )
   // check for the scale down :
@@ -63,7 +68,7 @@ test.serial(`Deployment should scale back to 1 in next 3 minutes`, async t => {
 test.after.always.cb('clean up workload test related deployments', t => {
   const resources = [
     'deployment.apps/php-apache',
-    'scaledobject.keda.sh/memory-scaledobject-scaledown',
+    'scaledobject.keda.sh/memory-scaledobject',
     'service/php-apache',
   ]
   for (const resource of resources) {
@@ -73,7 +78,7 @@ test.after.always.cb('clean up workload test related deployments', t => {
   t.end()
 })
 
-const deployMentYaml = `apiVersion: apps/v1
+const deploymentYaml = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: php-apache
@@ -109,34 +114,12 @@ spec:
   ports:
   - port: 80
   selector:
-    run: php-apache
----
-apiVersion: keda.sh/v1alpha1
+    run: php-apache`
+
+const scaledObjectYaml = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: memory-scaledobject
-  labels:
-    run: php-apache
-spec:
-  advanced:
-    horizontalPodAutoscalerConfig:
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 0
-  maxReplicaCount: 2
-  minReplicaCount: 1
-  scaleTargetRef:
-    name: php-apache
-  triggers:
-  - type: memory
-    metadata:
-      type: Utilization
-      value: "5"`
-
-const scaledObject2 =`apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: memory-scaledobject-scaledown
   labels:
     run: php-apache
 spec:
@@ -157,4 +140,4 @@ spec:
   - type: memory
     metadata:
       type: Utilization
-      value: "40"`
+      value: "{{UTILIZATION_VALUE}}"`
