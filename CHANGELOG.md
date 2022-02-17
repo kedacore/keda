@@ -34,7 +34,9 @@
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
+- **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 
 ### Breaking Changes
 
@@ -42,7 +44,7 @@
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 
 ## v.2.6.1
 

@@ -190,7 +190,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 			meta.cert = config.AuthParams["cert"]
 			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
-		} else {
+		} else if val != "disable" {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
 	}

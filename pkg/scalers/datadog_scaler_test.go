@@ -48,6 +48,8 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"}, map[string]string{"appKey": "appKey"}, true},
 	// missing appKey
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"}, map[string]string{"apiKey": "apiKey"}, true},
+	// invalid query missing {
+	{"", map[string]string{"query": "sum:trace.redis.command.hits.as_count()", "queryValue": "7"}, map[string]string{}, true},
 }
 
 func TestDatadogScalerAuthParams(t *testing.T) {

@@ -135,12 +135,6 @@ spec:
           name: mqtt
           protocol: TCP
         resources:
-          requests:
-            memory: 500Mi
-            cpu: 200m
-          limits:
-            memory: 1000Mi
-            cpu: 400m
         volumeMounts:
         - name: activemq-config
           mountPath: /opt/apache-activemq-5.16.3/webapps/api/WEB-INF/classes/jolokia-access.xml
