@@ -76,7 +76,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
 
     const maxReplicaCount = '5'
 
-    for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
+    for (let i = 0; i < 60 && replicaCount !== maxReplicaCount; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -85,7 +85,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
         }
     }
 
-    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 60 seconds`)
+    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 120 seconds`)
 
     for (let i = 0; i < 36 && replicaCount !== '0'; i++) {
       replicaCount = sh.exec(

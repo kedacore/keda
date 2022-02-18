@@ -1,10 +1,17 @@
 # Changelog
 
+<!--
+    New changelog entries must be inline with our changelog guidelines.
+    Please refer to https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog to learn more.
+-->
+
 ## Deprecations
 
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.6.1](#v261)
+- [v2.6.0](#v260)
 - [v2.5.0](#v250)
 - [v2.4.0](#v240)
 - [v2.3.0](#v230)
@@ -23,30 +30,66 @@
 
 ### New
 
-- Add New Relic Scaler ([#2387](https://github.com/kedacore/keda/pull/2387))
-- Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
-- Add New Datadog Scaler ([#2354](https://github.com/kedacore/keda/pull/2354))
+- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 
 ### Improvements
 
-- **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
-- **General:** Delete the cache entry when a ScaledObject is deleted ([#2408](https://github.com/kedacore/keda/pull/2408))
-- **Azure Pipelines Scaler:** support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
-- **Graphite Scaler:** use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
-- **Kubernetes Workload Scaler:** ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
-- **Azure EventHub Scaler:** don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
-- **PostgreSQL Scaler:** Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))|([#2433](https://github.com/kedacore/keda/pull/2433))
-- **Kafka Scaler:** concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
-- **External Scaler:** fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
-- **Kafka Scaler:** allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
+- **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
+- **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
+
+## v.2.6.1
+
+### Improvements
+
+- **General**: Fix generation of metric names if any of ScaledObject's triggers is unavailable ([#2592](https://github.com/kedacore/keda/issues/2592))
+- **General**: Fix logging in KEDA operator and properly set `ScaledObject.Status` in case there is a problem in a ScaledObject's trigger ([#2603](https://github.com/kedacore/keda/issues/2603))
+
+### Other
+
+- **General:** Fix failing tests based on the scale to zero bug ([#2603](https://github.com/kedacore/keda/issues/2603))
+
+## v2.6.0
+
+### New
+
+- Add ActiveMQ Scaler ([#2305](https://github.com/kedacore/keda/pull/2305))
+- Add Azure Application Insights Scaler ([2506](https://github.com/kedacore/keda/pull/2506))
+- Add New Datadog Scaler ([#2354](https://github.com/kedacore/keda/pull/2354))
+- Add New Relic Scaler ([#2387](https://github.com/kedacore/keda/pull/2387))
+- Add PredictKube Scaler ([#2418](https://github.com/kedacore/keda/pull/2418))
+
+### Improvements
+
+- **General:** Delete the cache entry when a ScaledObject is deleted ([#2564](https://github.com/kedacore/keda/pull/2564))
+- **General:** Fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
+- **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
+- **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
+- **AWS Scalers:** Support temporary AWS credentials using session tokens ([#2573](https://github.com/kedacore/keda/pull/2573))
+- **AWS SQS Scaler:** Allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
+- **Azure EventHub Scaler:** Don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
+- **Azure Pipelines Scaler:** Support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
+- **CPU Scaler:** AAding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
+- **External Scaler:** Fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
+- **Graphite Scaler:** Use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
+- **Kafka Scaler:** Allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
+- **Kafka Scaler:** Concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
+- **Kubernetes Workload Scaler:** Ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
+- **PostgreSQL Scaler:** Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))|([#2433](https://github.com/kedacore/keda/pull/2433))
+- **Prometheus Scaler:** Support namespaced Prometheus queries ([#2575](https://github.com/kedacore/keda/issues/2575))
+
+### Breaking Changes
+
+- No longer push to Docker Hub as of v2.5 as per our [announcement in March 2021](https://github.com/kedacore/keda/discussions/1700)
+  - Learn more about the background on [kedacore/governance#16](https://github.com/kedacore/governance/issues/16)
 
 ## v2.5.0
 

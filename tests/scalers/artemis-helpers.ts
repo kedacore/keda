@@ -159,9 +159,6 @@ spec:
           image: docker.io/vromero/activemq-artemis:2.6.2
           imagePullPolicy:
           resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
           env:
             - name: ARTEMIS_PASSWORD
               valueFrom:

@@ -66,6 +66,8 @@ jobs:
         continue-on-error: true
         id: test
         env:
+          AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}
+          AZURE_DATA_EXPLORER_ENDPOINT: ${{ secrets.AZURE_DATA_EXPLORER_ENDPOINT }}
           AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
@@ -91,6 +93,8 @@ jobs:
           TEST_CLUSTER_NAME: keda-pr-run
           TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
           TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
+          TEST_APP_INSIGHTS_APP_ID: ${{ secrets.TEST_APP_INSIGHTS_APP_ID }}
+          TEST_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.TEST_APP_INSIGHTS_INSTRUMENTATION_KEY }}
         run: |
           MESSAGE="${{ github.event.comment.body }}"
           REGEX='/run-e2e (.+)'

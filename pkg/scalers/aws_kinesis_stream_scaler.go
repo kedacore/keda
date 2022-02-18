@@ -99,7 +99,7 @@ func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
 
 	var kinesisClinent *kinesis.Kinesis
 	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
 
 		if metadata.awsAuthorization.awsRoleArn != "" {
 			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)

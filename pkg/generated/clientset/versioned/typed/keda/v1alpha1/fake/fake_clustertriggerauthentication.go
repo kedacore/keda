@@ -99,7 +99,7 @@ func (c *FakeClusterTriggerAuthentications) Update(ctx context.Context, clusterT
 // Delete takes name of the clusterTriggerAuthentication and deletes it. Returns an error if one occurs.
 func (c *FakeClusterTriggerAuthentications) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clustertriggerauthenticationsResource, name), &v1alpha1.ClusterTriggerAuthentication{})
+		Invokes(testing.NewRootDeleteActionWithOptions(clustertriggerauthenticationsResource, name, opts), &v1alpha1.ClusterTriggerAuthentication{})
 	return err
 }
 
