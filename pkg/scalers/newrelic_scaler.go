@@ -47,7 +47,7 @@ type newrelicMetadata struct {
 var newrelicLog = logf.Log.WithName(fmt.Sprintf("%s_scaler", scalerName))
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -185,7 +185,7 @@ func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.threshold)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.threshold)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

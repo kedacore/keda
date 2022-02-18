@@ -115,7 +115,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -255,7 +255,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.msgCountTarget)),
+			Target: GetMetricTarget(s.metricType, int64(s.metadata.msgCountTarget)),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
@@ -267,7 +267,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.msgSpoolUsageTarget)),
+			Target: GetMetricTarget(s.metricType, int64(s.metadata.msgSpoolUsageTarget)),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)

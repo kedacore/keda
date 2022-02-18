@@ -143,7 +143,7 @@ func (s *PredictKubeScaler) setupClientConn() error {
 func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKubeScaler, error) {
 	s := &PredictKubeScaler{}
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		predictKubeLog.Error(err, "error getting scaler metric type")
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
@@ -209,7 +209,7 @@ func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.metadata.threshold),
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

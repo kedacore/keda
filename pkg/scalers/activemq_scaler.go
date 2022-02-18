@@ -55,7 +55,7 @@ var activeMQLog = logf.Log.WithName("activeMQ_scaler")
 
 // NewActiveMQScaler creates a new activeMQ Scaler
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -253,7 +253,7 @@ func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueueSize)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetQueueSize)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

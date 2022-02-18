@@ -65,7 +65,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 	var keystoneAuth *openstack.KeystoneAuthRequest
 	var metricsClient openstack.Client
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -209,7 +209,7 @@ func (a *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(a.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(a.metricType, int64(a.metadata.threshold)),
+		Target: GetMetricTarget(a.metricType, int64(a.metadata.threshold)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

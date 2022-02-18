@@ -57,7 +57,7 @@ For example:
 >		Metric: v2beta2.MetricIdentifier{
 >			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
->		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.queueLength)),
+>		Target: GetMetricTarget(s.metricType, int64(s.metadata.queueLength)),
 >	}
 >	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 >	return []v2beta2.MetricSpec{metricSpec}

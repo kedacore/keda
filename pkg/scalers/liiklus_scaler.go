@@ -46,7 +46,7 @@ const (
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -95,7 +95,7 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
+		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: liiklusMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

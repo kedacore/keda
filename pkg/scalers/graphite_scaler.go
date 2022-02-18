@@ -57,7 +57,7 @@ var graphiteLog = logf.Log.WithName("graphite_scaler")
 
 // NewGraphiteScaler creates a new graphiteScaler
 func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -155,7 +155,7 @@ func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.threshold)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.threshold)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -77,7 +77,7 @@ var mongoDBLog = logf.Log.WithName("mongodb_scaler")
 
 // NewMongoDBScaler creates a new mongoDB scaler
 func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -256,7 +256,7 @@ func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.queryValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.queryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

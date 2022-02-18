@@ -53,7 +53,7 @@ var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -249,7 +249,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetPipelinesQueueLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetPipelinesQueueLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

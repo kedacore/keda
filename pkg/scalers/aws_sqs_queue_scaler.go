@@ -53,7 +53,7 @@ type awsSqsQueueMetadata struct {
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -167,7 +167,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueueLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetQueueLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

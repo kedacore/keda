@@ -63,7 +63,7 @@ var cloudwatchLog = logf.Log.WithName("aws_cloudwatch_scaler")
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
 func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -300,7 +300,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-cloudwatch-%s", c.metadata.dimensionName[0]))),
 		},
-		Target: GetExternalMetricTarget(c.metricType, int64(c.metadata.targetMetricValue)),
+		Target: GetMetricTarget(c.metricType, int64(c.metadata.targetMetricValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

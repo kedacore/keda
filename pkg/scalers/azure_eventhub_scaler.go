@@ -64,7 +64,7 @@ type eventHubMetadata struct {
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
 func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -263,7 +263,7 @@ func (scaler *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", scaler.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
-		Target: GetExternalMetricTarget(scaler.metricType, scaler.metadata.threshold),
+		Target: GetMetricTarget(scaler.metricType, scaler.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

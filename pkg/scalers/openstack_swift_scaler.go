@@ -183,7 +183,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 
 	var swiftClient openstack.Client
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -403,7 +403,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.objectCount)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.objectCount)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

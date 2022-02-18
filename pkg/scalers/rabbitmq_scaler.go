@@ -99,7 +99,7 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -454,7 +454,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.value)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.value)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,

@@ -64,7 +64,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// the global client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -262,7 +262,7 @@ func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.M
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.queueLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.queueLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

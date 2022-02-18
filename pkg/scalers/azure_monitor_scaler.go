@@ -55,7 +55,7 @@ var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
 func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -202,7 +202,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

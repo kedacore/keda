@@ -61,7 +61,7 @@ var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
 // NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -174,7 +174,7 @@ func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-queue-%s", s.metadata.queueName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetQueueLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetQueueLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

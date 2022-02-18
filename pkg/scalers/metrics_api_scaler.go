@@ -68,7 +68,7 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -257,7 +257,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

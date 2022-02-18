@@ -65,7 +65,7 @@ var mssqlLog = logf.Log.WithName("mssql_scaler")
 
 // NewMSSQLScaler creates a new mssql scaler
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -221,7 +221,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

@@ -67,7 +67,7 @@ const (
 var seleniumGridLog = logf.Log.WithName("selenium_grid_scaler")
 
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -148,7 +148,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

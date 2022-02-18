@@ -50,7 +50,7 @@ var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
 func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -231,7 +231,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetPendingEntriesCount)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetPendingEntriesCount)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

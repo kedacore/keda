@@ -64,7 +64,7 @@ var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
 
 // NewAzureBlobScaler creates a new azureBlobScaler
 func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -192,7 +192,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Met
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetBlobCount)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetBlobCount)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

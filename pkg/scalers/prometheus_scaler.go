@@ -61,7 +61,7 @@ var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -156,7 +156,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.threshold)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.threshold)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

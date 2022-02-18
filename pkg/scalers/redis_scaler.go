@@ -71,7 +71,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 		return redis.call(cmd[listType], listName)
 	`
 
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -231,7 +231,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetListLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetListLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -44,7 +44,7 @@ type azureAppInsightsScaler struct {
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
 func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -150,7 +150,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2be
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

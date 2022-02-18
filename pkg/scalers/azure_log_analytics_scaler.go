@@ -109,7 +109,7 @@ var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
 func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -234,7 +234,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) [
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.cache.metricThreshold),
+		Target: GetMetricTarget(s.metricType, s.cache.metricThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

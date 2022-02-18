@@ -71,7 +71,7 @@ type azureServiceBusMetadata struct {
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
 func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -199,7 +199,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.targetLength)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetLength)),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

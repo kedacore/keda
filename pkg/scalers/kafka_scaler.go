@@ -78,7 +78,7 @@ var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -385,7 +385,7 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
+		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

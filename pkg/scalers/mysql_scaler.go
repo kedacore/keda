@@ -40,7 +40,7 @@ var mySQLLog = logf.Log.WithName("mysql_scaler")
 
 // NewMySQLScaler creates a new MySQL scaler
 func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -210,7 +210,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.queryValue)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.queryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

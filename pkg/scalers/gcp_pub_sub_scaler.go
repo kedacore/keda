@@ -57,7 +57,7 @@ var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
 
 // NewPubSubScaler creates a new pubsubScaler
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -173,7 +173,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
-		Target: GetExternalMetricTarget(s.metricType, int64(s.metadata.value)),
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.value)),
 	}
 
 	// Create the metric spec for the HPA

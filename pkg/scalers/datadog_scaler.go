@@ -90,6 +90,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	meta.query += rollup
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
+		datadogLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
 			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 		}
@@ -103,7 +104,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 			return nil, fmt.Errorf("type has to be global or average")
 		}
 	} else {
-		metricType, err := GetExternalMetricTargetType(config)
+		metricType, err := GetMetricTargetType(config)
 		if err != nil {
 			return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 		}
@@ -263,7 +264,7 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetExternalMetricTarget(s.metadata.vType, int64(s.metadata.queryValue)),
+		Target: GetMetricTarget(s.metadata.vType, int64(s.metadata.queryValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

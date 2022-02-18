@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func TestGetExternalMetricTargetType(t *testing.T) {
+func TestGetMetricTargetType(t *testing.T) {
 	cases := []struct {
 		name           string
 		config         *ScalerConfig
@@ -45,7 +45,7 @@ func TestGetExternalMetricTargetType(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			metricType, err := GetExternalMetricTargetType(c.config)
+			metricType, err := GetMetricTargetType(c.config)
 			if c.wantErr != nil {
 				assert.Contains(t, err.Error(), c.wantErr.Error())
 			} else {
@@ -56,7 +56,7 @@ func TestGetExternalMetricTargetType(t *testing.T) {
 	}
 }
 
-func TestGetExternalMetricTarget(t *testing.T) {
+func TestGetMetricTarget(t *testing.T) {
 	cases := []struct {
 		name             string
 		metricType       v2beta2.MetricTargetType
@@ -80,7 +80,7 @@ func TestGetExternalMetricTarget(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			metricTarget := GetExternalMetricTarget(c.metricType, c.metricValue)
+			metricTarget := GetMetricTarget(c.metricType, c.metricValue)
 			assert.Equal(t, c.wantmetricTarget, metricTarget)
 		})
 	}

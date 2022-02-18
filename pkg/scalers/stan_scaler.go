@@ -63,7 +63,7 @@ var stanLog = logf.Log.WithName("stan_scaler")
 
 // NewStanScaler creates a new stanScaler
 func NewStanScaler(config *ScalerConfig) (Scaler, error) {
-	metricType, err := GetExternalMetricTargetType(config)
+	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
@@ -209,7 +209,7 @@ func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSp
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetExternalMetricTarget(s.metricType, s.metadata.lagThreshold),
+		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: stanMetricType,
