@@ -64,8 +64,10 @@ test.serial(`Value deployment should scale to 8, average value deployment should
 
 test.after.always.cb('clean up prometheus deployment', t => {
   const resources = [
-    'scaledobject.keda.sh/test-scaledobject',
-    'deployment.apps/test-app',
+    'scaledobject.keda.sh/average-value-test-scaledobject',
+    'scaledobject.keda.sh/value-test-scaledobject',
+    'deployment.apps/average-value-test-app',
+    'deployment.apps/value-test-app',
   ]
 
   for (const resource of resources) {
