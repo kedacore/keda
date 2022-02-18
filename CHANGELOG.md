@@ -45,6 +45,7 @@
 ### Other
 
 - **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
+- **General:** Syncronize HPA annotations from ScaledObject ([#2659](https://github.com/kedacore/keda/pull/2659))
 
 ## v.2.6.1
 
