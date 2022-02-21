@@ -157,7 +157,8 @@ spec:
           image: google/cloud-sdk:slim
           # Consume a message
           command: [ "/bin/bash", "-c", "--" ]
-          args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && gcloud pubsub subscriptions pull ${subscriptionId} --auto-ack" ]
+          args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && \
+          while true; do gcloud pubsub subscriptions pull ${subscriptionId} --auto-ack; sleep 30; done" ]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
@@ -232,4 +233,4 @@ spec:
 `
 
 const serviceAccountJson = `{
-  }` // Json key with \n converted to \\n
+}` // Json key with \n converted to \\n
