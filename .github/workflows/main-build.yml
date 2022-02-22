@@ -87,6 +87,7 @@ jobs:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY}}
           DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY}}
           DATADOG_SITE: ${{ secrets.DATADOG_SITE}}
+          GCP_SP_KEY: ${{ secrets.GCP_SP_KEY }}
           NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
           NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
           NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
