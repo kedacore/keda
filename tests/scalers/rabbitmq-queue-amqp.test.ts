@@ -105,4 +105,5 @@ spec:
     metadata:
       queueName: {{QUEUE_NAME}}
       hostFromEnv: RabbitMqHost
-      queueLength: '50'`
+      mode: QueueLength
+      value: '50'`
