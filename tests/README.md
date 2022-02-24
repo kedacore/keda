@@ -43,7 +43,7 @@ import test from 'ava';
 test.before(t => {
     // this runs once before all tests.
     // do setup here. e.g:
-    //  - Create a namespace for your tests (using kubectl or kubernetes node-client)
+    //  - Create a namespace for your tests using the function createNamespace(namespace: string) available in helpers file
     //  - Create deployment (using kubectl or kubernetes node-client)
     //  - Setup event source (deploy redis, or configure azure storage, etc)
     //  - etc
@@ -71,6 +71,8 @@ test.after.always.cb('clean up always after all tests', t => {
     t.end();
 });
 ```
+>⚠⚠ **Important:** ⚠⚠ Even do the cleaning of the resources is expected inside each e2e test file, all test namespaces are cleaned up to ensure not having dangling resources after global e2e execution finishes. For not breaking this behavior, it's mandatory the usage of the function `createNamespace(namespace: string)` instead of creating them manually.
+
 * **Example test:** for example if I want to add a test for redis
 
 ```ts
