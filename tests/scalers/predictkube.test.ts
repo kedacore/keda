@@ -107,7 +107,7 @@ test.after.always.cb('clean up predictkube deployment', t => {
 
     // uninstall prometheus
     PrometheusServerHelper.uninstallPrometheusServer(prometheusNamespace)
-    
+
     sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
 
     t.end()

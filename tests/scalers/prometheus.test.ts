@@ -12,7 +12,7 @@ const loadGeneratorJob = tmp.fileSync()
 test.before(async t => {
   // install prometheus
   PrometheusServerHelper.installPrometheusServer(t, prometheusNamespace)
-  
+
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
   // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics

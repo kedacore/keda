@@ -7,9 +7,9 @@ export class PrometheusServerHelper {
 
     static installPrometheusServer(t, prometheusServerNamespace: string) {
         const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
-        
+
         sh.exec(`kubectl create namespace ${prometheusServerNamespace}`)
-        
+
         t.is(0, sh.exec(`kubectl apply -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`).code, 'creating a Prometheus Server deployment should work.')
         // wait for prometheus server
         t.is(0, waitForRollout('deployment', 'prometheus-server', prometheusServerNamespace))
@@ -18,7 +18,7 @@ export class PrometheusServerHelper {
     static uninstallPrometheusServer(prometheusServerNamespace: string) {
       const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
       sh.exec(`kubectl delete -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`)
-        
+
       sh.exec(`kubectl delete namespace ${prometheusServerNamespace}`)
     }
 
