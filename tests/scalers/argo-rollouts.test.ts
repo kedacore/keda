@@ -2,7 +2,8 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {sleep, waitForRollout} from "./helpers";
+import {sleep} from "./helpers";
+import { PrometheusServerHelper } from './prometheus-server-helpers'
 
 const testNamespace = 'argo-rollouts-test'
 const prometheusNamespace = 'argo-monitoring'
@@ -12,10 +13,7 @@ const argoRolloutsYamlFile = tmp.fileSync()
 
 test.before(async t => {
   // install prometheus
-  sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-  t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
-  // wait for prometheus to load
-  t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
+  PrometheusServerHelper.installPrometheusServer(t, prometheusNamespace)
 
   // install argo-rollouts
   sh.exec(`kubectl create namespace ${argoRolloutsNamespace}`)
@@ -116,8 +114,7 @@ test.after.always.cb('clean up argo-rollouts testing deployment', t => {
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
   // uninstall prometheus
-  sh.exec(`kubectl delete --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`)
-  sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
+  PrometheusServerHelper.uninstallPrometheusServer(prometheusNamespace)
 
   // uninstall argo-rollouts
   sh.exec(`kubectl delete --namespace ${argoRolloutsNamespace} -f ${argoRolloutsYamlFile}`)
