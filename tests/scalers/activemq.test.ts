@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from './helpers'
+import {createNamespace, waitForRollout} from './helpers'
 
 const activeMQNamespace = 'activemq-test'
 const activemqConf = '/opt/apache-activemq-5.16.3/conf'
@@ -15,7 +15,7 @@ const nginxDeploymentName = 'nginx-deployment'
 
 test.before(t => {
 	// install ActiveMQ
-	sh.exec(`kubectl create namespace ${activeMQNamespace}`)
+  createNamespace(activeMQNamespace)
 	const activeMQTmpFile = tmp.fileSync()
 	fs.writeFileSync(activeMQTmpFile.name, activeMQDeployYaml)
 
