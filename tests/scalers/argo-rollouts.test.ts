@@ -7,7 +7,6 @@ import { PrometheusServerHelper } from './prometheus-server-helpers'
 
 const testNamespace = 'argo-rollouts-test'
 const prometheusNamespace = 'argo-monitoring'
-const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
 const argoRolloutsNamespace = 'argo-rollouts'
 const argoRolloutsYamlFile = tmp.fileSync()
 
