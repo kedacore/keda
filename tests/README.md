@@ -76,6 +76,7 @@ test.after.always.cb('clean up always after all tests', t => {
 ```ts
 import * as sh from 'shelljs';
 import test from 'ava';
+import { createNamespace } from './helpers';
 
 // you can include template in the file or in another file.
 const deployYaml = `apiVersion: apps/v1
@@ -96,7 +97,7 @@ test.before('install redis and create deployment' t => {
     }
 
     sh.exec('helm install redis ......'); // install redis to the cluster
-    sh.exec('kubectl create namespace redis-test-deployment');
+    createNamespace("redis-test-deployment")
     sh.exec('kubectl apply -f ....'); // create your deployment
 });
 

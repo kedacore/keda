@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForDeploymentReplicaCount} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
 
 const testNamespace = 'azure-queue-auth-test'
 const queueName = 'queue-name-trigger'
@@ -23,7 +23,7 @@ test.before(async t => {
   const base64ConStr = Buffer.from(connectionString).toString('base64')
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace(/{{CONNECTION_STRING_BASE64}}/g, base64ConStr))
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,

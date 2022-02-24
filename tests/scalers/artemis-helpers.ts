@@ -1,13 +1,14 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { createNamespace } from './helpers'
 
 export class ArtemisHelper {
     static installArtemis(t, artemisNamespace: string) {
         const tmpFile = tmp.fileSync()
         // deploy artemis
         fs.writeFileSync(tmpFile.name, artemisYaml)
-        sh.exec('kubectl create namespace artemis')
+        createNamespace("artemis")
         t.is(
             0,
             sh.exec(`kubectl -n ${artemisNamespace} apply -f ${tmpFile.name}`).code, 'creating artemis deployment should work.'

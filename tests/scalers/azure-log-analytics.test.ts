@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const defaultNamespace = 'azure-log-analytics-test'
 const la_workspace_id = process.env['TEST_LOG_ANALYTICS_WORKSPACE_ID']
@@ -16,7 +17,7 @@ test.before(t => {
 
   sh.config.silent = true
 
-  sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  createNamespace(defaultNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${createYamlFile(deployYaml)}`).code,
