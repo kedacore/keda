@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const mongoDBNamespace = 'mongodb'
 const testNamespace = 'mongodb-test'
@@ -13,7 +14,7 @@ const mongoJobName = "mongodb-job"
 
 test.before(t => {
     // install mongoDB
-    sh.exec(`kubectl create namespace ${mongoDBNamespace}`)
+    createNamespace(mongoDBNamespace)
     const mongoDBTmpFile = tmp.fileSync()
     fs.writeFileSync(mongoDBTmpFile.name, mongoDBdeployYaml)
 
@@ -38,7 +39,7 @@ test.before(t => {
 
     sh.config.silent = true
     // create test namespace
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // deploy streams consumer app, scaled job etc.
     const tmpFile = tmp.fileSync()

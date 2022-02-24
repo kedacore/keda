@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
 
 const redisNamespace = 'redis-sentinel-streams'
 const redisSentinelName = 'redis-sentinel-streams'
@@ -16,7 +16,7 @@ const numMessages = 100
 
 test.before(t => {
     // Deploy Redis Sentinel.
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
+    createNamespace(redisNamespace)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
     let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
@@ -33,7 +33,7 @@ test.before(t => {
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
 
     // Create test namespace.
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // Deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()

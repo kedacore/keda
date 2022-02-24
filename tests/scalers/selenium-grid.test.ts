@@ -2,6 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { createNamespace } from './helpers';
 
 const seleniumGridNamespace = 'selenium-grid';
 const seleniumGridHostName = `selenium-hub.${seleniumGridNamespace}`;
@@ -10,7 +11,7 @@ const seleniumGridGraphQLUrl = `http://${seleniumGridHostName}:${seleniumGridPor
 const seleniumGridTestName = 'selenium-random-tests';
 
 test.before(t => {
-  sh.exec(`kubectl create namespace ${seleniumGridNamespace}`);
+  createNamespace(seleniumGridNamespace)
 
   const seleniumGridDeployTmpFile = tmp.fileSync();
   fs.writeFileSync(seleniumGridDeployTmpFile.name, seleniumGridYaml.replace(/{{NAMESPACE}}/g, seleniumGridNamespace));
