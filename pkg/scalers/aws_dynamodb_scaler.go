@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -48,7 +48,6 @@ type awsDynamoDBMetadata struct {
 	targetValue               int
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
-	metricName                string
 }
 
 var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
@@ -184,7 +183,7 @@ func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, c.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-%s", c.metadata.tableName))),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
@@ -201,7 +200,7 @@ func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := c.GetQueryMetrics()
 	if err != nil {
-		return false, fmt.Errorf("error inspecting mssql: %s", err)
+		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
 	}
 
 	return messages > 0, nil

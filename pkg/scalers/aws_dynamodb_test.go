@@ -173,7 +173,6 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 			targetValue:               3,
 			scalerIndex:               0,
-			metricName:                "",
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     "none",
 				awsSecretAccessKey: "none",
@@ -262,7 +261,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{&meta, &mockDynamoDB{}}
 
-			value, err := scaler.GetMetrics(context.Background(), meta.metricName, selector)
+			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb", selector)
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.Error(t, err, "expect error because of dynamodb api error")
