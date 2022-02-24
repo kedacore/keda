@@ -46,3 +46,7 @@ jobs:
           TEST_APP_INSIGHTS_APP_ID: ${{ secrets.TEST_APP_INSIGHTS_APP_ID }}
           TEST_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.TEST_APP_INSIGHTS_INSTRUMENTATION_KEY }}
         run: make e2e-test
+
+      - name: Delete all e2e related namespaces
+        if: always()
+        run: make e2e-test-clean
