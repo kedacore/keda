@@ -174,45 +174,7 @@ func (s *datadogScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive returns true if we are able to get metrics from Datadog
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
-	ctx = context.WithValue(
-		ctx,
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
-			"apiKeyAuth": {
-				Key: s.metadata.apiKey,
-			},
-			"appKeyAuth": {
-				Key: s.metadata.appKey,
-			},
-		},
-	)
-
-	ctx = context.WithValue(ctx,
-		datadog.ContextServerVariables,
-		map[string]string{
-			"site": s.metadata.datadogSite,
-		})
-
-	resp, _, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
-
-	if err != nil {
-		return false, err
-	}
-
-	series := resp.GetSeries()
-
-	if len(series) == 0 {
-		return false, nil
-	}
-
-	points := series[0].GetPointlist()
-
-	if len(points) == 0 {
-		return false, nil
-	}
-
 	return true, nil
 }
 
