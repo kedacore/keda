@@ -179,7 +179,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
+func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
@@ -254,7 +254,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 	}
 
-	return int(*points[0][1]), nil
+	return float64(*points[0][1]), nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -301,7 +301,7 @@ func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metri
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: s.metadata.metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewMilliQuantity(int64(num*1000), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
