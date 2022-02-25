@@ -217,15 +217,41 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 	}
 
 	series := resp.GetSeries()
+	tries := 0
+
+	// Sometimes Datadog won't be returning a series for a particular call, if the data is not there yet, let's retry 5 times before giving up
+	for len(series) == 0 && tries < 5 {
+		time.Sleep(5 * time.Second)
+
+		resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
+
+		if r.StatusCode == 429 {
+			rateLimit := r.Header.Get("X-Ratelimit-Limit")
+			rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
+
+			return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds: %s", rateLimit, rateLimitReset, err)
+		}
+
+		if r.StatusCode != 200 {
+			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+		}
+
+		if err != nil {
+			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+		}
+
+		series = resp.GetSeries()
+		tries++
+	}
 
 	if len(series) == 0 {
-		return 0, fmt.Errorf("no Datadog metrics returned")
+		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 	}
 
 	points := series[0].GetPointlist()
 
 	if len(points) == 0 || len(points[0]) < 2 {
-		return 0, fmt.Errorf("no Datadog metrics returned")
+		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 	}
 
 	return int(*points[0][1]), nil
