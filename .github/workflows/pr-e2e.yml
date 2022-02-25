@@ -108,7 +108,7 @@ jobs:
           make e2e-test
 
       - name: Delete all e2e related namespaces
-        if: always()
+        if: ${{ always() }}
         run: make e2e-test-clean
 
       - name: React to comment with success
