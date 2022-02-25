@@ -199,7 +199,19 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (int, error) {
 			"site": s.metadata.datadogSite,
 		})
 
-	resp, _, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
+
+	if r.StatusCode == 429 {
+		rateLimit := r.Header.Get("X-Ratelimit-Limit")
+		rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
+
+		return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds: %s", rateLimit, rateLimitReset, err)
+	}
+
+	if r.StatusCode != 200 {
+		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+	}
+
 	if err != nil {
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
 	}
