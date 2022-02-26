@@ -422,6 +422,53 @@ var _ = Describe("ScaledObjectController", func() {
 			}, 20*time.Second).Should(Equal(metav1.ConditionTrue))
 		})
 
+		It("deploys ScaledObject and creates HPA, when metadata.Annotations is configured", func() {
+
+			deploymentName := "annotations"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      soName,
+					Namespace: "default",
+					Annotations: map[string]string{
+						"annotation-email": "email@example.com",
+						"annotation-url":   "https://example.com",
+					}},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+
+			Ω(hpa.Annotations).To(Equal(so.Annotations))
+		})
+
 		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {
 			deploymentName := "minmax"
 			soName := "so-" + deploymentName
