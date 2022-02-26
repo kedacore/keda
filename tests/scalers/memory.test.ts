@@ -8,7 +8,7 @@ const testNamespace = 'memory-test'
 const scaleUpValue = 1
 const scaleDownValue = 45
 const deploymentFile = tmp.fileSync()
-const ScaledObjectFile = tmp.fileSync()
+const scaledObjectFile = tmp.fileSync()
 
 test.before(t => {
   sh.config.silent = true
@@ -31,11 +31,11 @@ test.serial('Deployment should have 1 replica on start', t => {
 })
 
 test.serial(`Creating ScaledObject should work`, async t => {
-  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml.
+  fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.
     replace('{{UTILIZATION_VALUE}}', scaleUpValue.toString()))
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${testNamespace}`).code,
     'creating new ScaledObject should work.'
   )
 })
@@ -46,19 +46,19 @@ test.serial(`Deployment should scale in next 3 minutes`, async t => {
 })
 
 test.serial(`Updsating ScaledObject should work`, async t => {
-  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml.replace('{{UTILIZATION_VALUE}}', scaleDownValue.toString()))
+  fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace('{{UTILIZATION_VALUE}}', scaleDownValue.toString()))
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${testNamespace}`).code,
     'Updating ScaledObject should work.'
   )
 })
 
 test.serial(`Deployment should scale back to 1 in next 3 minutes`, async t => {
-  fs.writeFileSync(ScaledObjectFile.name, scaledObjectYaml)
+  fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml)
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${ScaledObjectFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${scaledObjectFile.name} --namespace ${testNamespace}`).code,
     'creating Scaled Object should work.'
   )
   // check for the scale down :
