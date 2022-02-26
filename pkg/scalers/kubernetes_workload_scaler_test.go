@@ -66,7 +66,7 @@ var isActiveWorkloadTestDataset = []workloadIsActiveTestData{
 func TestWorkloadIsActive(t *testing.T) {
 	for _, testData := range isActiveWorkloadTestDataset {
 		s, _ := NewKubernetesWorkloadScaler(
-			fake.NewFakeClient(createPodlist(testData.podCount)),
+			fake.NewClientBuilder().WithRuntimeObjects(createPodlist(testData.podCount)).Build(),
 			&ScalerConfig{
 				TriggerMetadata:   testData.metadata,
 				AuthParams:        map[string]string{},
@@ -105,7 +105,7 @@ var getMetricSpecForScalingTestDataset = []workloadGetMetricSpecForScalingTestDa
 func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range getMetricSpecForScalingTestDataset {
 		s, _ := NewKubernetesWorkloadScaler(
-			fake.NewFakeClient(),
+			fake.NewClientBuilder().Build(),
 			&ScalerConfig{
 				TriggerMetadata:   testData.metadata,
 				AuthParams:        map[string]string{},
