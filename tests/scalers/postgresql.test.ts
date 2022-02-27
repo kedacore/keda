@@ -39,7 +39,7 @@ test.before(t => {
     sh.exec( `kubectl exec -n ${postgreSQLNamespace} ${postgresqlPod} -- psql -U ${postgreSQLUsername} -d ${postgreSQLDatabase} -c "${createTableSQL}"`)
 
     sh.config.silent = true
-    createNamespace(testNamespace) 
+    createNamespace(testNamespace)
     // deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
     const base64ConnectionString = Buffer.from(`postgresql://${postgreSQLUsername}:${postgreSQLPassword}@postgresql.${postgreSQLNamespace}.svc.cluster.local:5432/${postgreSQLDatabase}?sslmode=disable`).toString('base64')
