@@ -20,7 +20,7 @@ test.before(async t => {
     queueSvc.createQueueIfNotExists(queueName, _ => {
       resolve(undefined);
     })
-  })  
+  })
   await createQueueAsync()
 
   sh.config.silent = true
