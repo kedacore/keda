@@ -15,9 +15,14 @@ test.before(async t => {
     t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
 
-  const queueSvc = azure.createQueueService(connectionString)
-  queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
-  queueSvc.createQueueIfNotExists(queueName, _ => {})
+  const createQueueAsync = () => new Promise((resolve, _) => {
+    const queueSvc = azure.createQueueService(connectionString)
+    queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+    queueSvc.createQueueIfNotExists(queueName, _ => {
+      resolve(undefined);
+    })
+  })  
+  await createQueueAsync()
 
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
