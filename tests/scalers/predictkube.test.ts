@@ -2,19 +2,15 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import { PrometheusServer } from './prometheus-server-helpers'
 
 const predictkubeApiKey = process.env['PREDICTKUBE_API_KEY']
 const testNamespace = 'predictkube-test'
-const prometheusNamespace = 'monitoring'
-const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
+const prometheusNamespace = 'predictkube-test-monitoring'
 
 test.before(t => {
     // install prometheus
-    sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-    t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
-    // wait for prometheus to load
-    t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
+    PrometheusServer.install(t, prometheusNamespace)
 
     sh.config.silent = true
     // create deployments - there are two deployments - both using the same image but one deployment
@@ -110,7 +106,8 @@ test.after.always.cb('clean up predictkube deployment', t => {
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
     // uninstall prometheus
-    sh.exec(`kubectl delete --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`)
+    PrometheusServer.uninstall(prometheusNamespace)
+
     sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
 
     t.end()
