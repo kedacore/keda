@@ -164,7 +164,6 @@ func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 
 func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := c.GetQueryMetrics()
-
 	if err != nil {
 		dynamoDBLog.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, err
