@@ -54,7 +54,6 @@ var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseAwsDynamoDBMetadata(config)
-
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %s", err)
 	}
