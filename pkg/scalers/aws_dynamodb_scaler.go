@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type awsDynamoDBScaler struct {
