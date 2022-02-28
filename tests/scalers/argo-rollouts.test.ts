@@ -2,8 +2,8 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {sleep} from "./helpers";
 import { PrometheusServer } from './prometheus-server-helpers'
+import { createNamespace, sleep} from "./helpers";
 
 const testNamespace = 'argo-rollouts-test'
 const prometheusNamespace = 'argo-monitoring'
@@ -15,7 +15,7 @@ test.before(async t => {
   PrometheusServer.install(t, prometheusNamespace)
 
   // install argo-rollouts
-  sh.exec(`kubectl create namespace ${argoRolloutsNamespace}`)
+  createNamespace(argoRolloutsNamespace)
   sh.exec(`curl -L https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml > ${argoRolloutsYamlFile.name}`)
 	t.is(
 		0,
@@ -29,7 +29,7 @@ test.before(async t => {
   // even when the KEDA deployment is at zero - the service points to both rollouts
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, rollout.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,

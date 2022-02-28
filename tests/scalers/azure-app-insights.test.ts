@@ -6,10 +6,11 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 import * as appinsights from 'applicationinsights'
+import { createNamespace } from './helpers'
 
 const namespacePrefix = 'azure-ai-test-'
-const app_insights_app_id = process.env['TEST_APP_INSIGHTS_APP_ID']
-const app_insights_instrumentation_key = process.env['TEST_APP_INSIGHTS_INSTRUMENTATION_KEY']
+const app_insights_app_id = process.env['AZURE_APP_INSIGHTS_APP_ID']
+const app_insights_instrumentation_key = process.env['AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY']
 const sp_id = process.env['AZURE_SP_ID']
 const sp_key = process.env['AZURE_SP_KEY']
 const sp_tenant = process.env['AZURE_SP_TENANT']
@@ -86,7 +87,7 @@ test.before(t => {
   }
 
   for (let data of test_data) {
-    sh.exec(`kubectl create namespace ${data.namespace}`)
+    createNamespace(data.namespace)
     t.is(
       0,
       sh.exec(`kubectl apply -f ${createYamlFile(data.deploymentYaml, data)}`).code,

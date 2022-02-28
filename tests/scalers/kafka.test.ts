@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava';
+import { createNamespace } from './helpers';
 
 const defaultNamespace = 'kafka-test'
 const defaultCluster = 'kafka-cluster'
@@ -24,8 +25,8 @@ const scaledObjectLatestYamlFile = tmp.fileSync()
 const scaledObjectMultipleTopicsYamlFile = tmp.fileSync()
 
 test.before('Set up, create necessary resources.', t => {
-    sh.config.silent = true
-	sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  sh.config.silent = true
+	createNamespace(defaultNamespace)
 
   const strimziOperatorYaml = sh.exec(`curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimziOperatorVersion}/strimzi-cluster-operator-${strimziOperatorVersion}.yaml`).stdout
   fs.writeFileSync(strimziOperatorYamlFile.name, strimziOperatorYaml.replace(/myproject/g, `${defaultNamespace}`))

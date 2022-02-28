@@ -4,14 +4,15 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const defaultNamespace = 'azure-blob-test'
-const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 // const blobSubPath = process.env['BLOB_SUB_PATH'];
 
 test.before(t => {
     if (!connectionString) {
-        t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for blob tests')
+        t.fail('AZURE_STORAGE_CONNECTION_STRING environment variable is required for blob tests')
     }
     // if (!blobSubPath) {
     //   t.fail('BLOB_SUB_PATH environment variable is required for blob tests');
@@ -22,7 +23,7 @@ test.before(t => {
     const base64ConStr = Buffer.from(connectionString).toString('base64')
     const tmpFile = tmp.fileSync()
     fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr))
-    sh.exec(`kubectl create namespace ${defaultNamespace}`)
+    createNamespace(defaultNamespace)
     t.is(0, sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 })
 
@@ -116,7 +117,7 @@ spec:
             secretKeyRef:
               name: test-secrets
               key: AzureWebJobsStorage
-        - name: TEST_STORAGE_CONNECTION_STRING
+        - name: AZURE_STORAGE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
               name: test-secrets

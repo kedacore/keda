@@ -4,6 +4,7 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 import { StanHelper } from './stan-helpers'
+import { createNamespace } from './helpers'
 
 const testNamespace = 'gonuts'
 const stanNamespace = 'stan'
@@ -11,7 +12,7 @@ const queueName = 'test'
 
 test.before(t => {
   sh.config.silent = true
-  sh.exec(`kubectl create namespace gonuts`)
+  createNamespace("gonuts")
   StanHelper.install(t, stanNamespace);
   StanHelper.installConsumer(t, testNamespace)
   StanHelper.publishMessages(t, testNamespace)

@@ -22,6 +22,11 @@ function run_tests {
     # randomize tests order using shuf
     for test_case in $(find scalers -name "$E2E_REGEX" | shuf)
     do
+        if [[ $test_case != *.test.ts ]] # Skip helper files
+        then
+            continue
+        fi
+
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.1.log" 2>&1 &
         pid=$!

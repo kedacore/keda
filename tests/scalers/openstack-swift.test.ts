@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import test from 'ava';
 
 import SwiftClient from './openstack/openstack-swift-helper';
+import { createNamespace } from './helpers';
 
 var swiftClient: SwiftClient
 
@@ -98,7 +99,7 @@ test.serial.before(async t => {
     .replace('{{CONTAINER_NAME}}', swiftContainerName)
   )
 
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   t.is(
     0,

@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import { waitForRollout } from './helpers'
+import { createNamespace, waitForRollout } from './helpers'
 
 const redisNamespace = 'redis-ns'
 const testNamespace = 'redis-streams-ns'
@@ -13,7 +13,7 @@ const numMessages = 100
 
 test.before(t => {
   // setup Redis
-  sh.exec(`kubectl create namespace ${redisNamespace}`)
+  createNamespace(redisNamespace)
 
   const tmpFile1 = tmp.fileSync()
   fs.writeFileSync(tmpFile1.name, redisDeployYaml.replace('{{REDIS_PASSWORD}}', redisPassword))
@@ -23,7 +23,7 @@ test.before(t => {
   // wait for redis to be ready
   t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 600), 'Redis is not in a ready state')
 
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   // deploy streams consumer app, scaled object etc.
   const tmpFile = tmp.fileSync()

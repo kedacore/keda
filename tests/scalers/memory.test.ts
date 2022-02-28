@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { waitForDeploymentReplicaCount } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'memory-test'
 const scaleUpValue = 1
@@ -12,7 +12,7 @@ const scaledObjectFile = tmp.fileSync()
 
 test.before(t => {
   sh.config.silent = true
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   fs.writeFileSync(deploymentFile.name, deploymentYaml)
   t.is(

@@ -1,7 +1,7 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 export class RabbitMQHelper {
 
@@ -11,7 +11,7 @@ export class RabbitMQHelper {
         fs.writeFileSync(rabbitMqTmpFile.name, rabbitmqDeployYaml.replace('{{USERNAME}}', username)
             .replace('{{PASSWORD}}', password)
             .replace('{{VHOST}}', vhost))
-        sh.exec(`kubectl create namespace ${rabbitmqNamespace}`)
+        createNamespace(rabbitmqNamespace)
         t.is(0, sh.exec(`kubectl apply -f ${rabbitMqTmpFile.name} --namespace ${rabbitmqNamespace}`).code, 'creating a Rabbit MQ deployment should work.')
         // wait for rabbitmq to load
         t.is(0, waitForRollout('deployment', 'rabbitmq', rabbitmqNamespace))
@@ -27,7 +27,7 @@ export class RabbitMQHelper {
         fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr)
             .replace('{{CONNECTION_STRING}}', amqpURI)
             .replace('{{QUEUE_NAME}}', queueName))
-        sh.exec(`kubectl create namespace ${namespace}`)
+        createNamespace(namespace)
         t.is(
             0,
             sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,

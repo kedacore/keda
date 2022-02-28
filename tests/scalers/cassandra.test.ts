@@ -2,6 +2,7 @@ import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import { createNamespace } from './helpers'
 
 const cassandraNamespace = 'cassandra-test'
 const cassandraKeyspace = 'test_keyspace'
@@ -13,7 +14,7 @@ const nginxDeploymentName = 'nginx-deployment'
 test.before(t => {
     // install cassandra
     console.log("Install cassandra")
-    sh.exec(`kubectl create namespace ${cassandraNamespace}`)
+    createNamespace(cassandraNamespace)
     const cassandraTmpFile = tmp.fileSync()
     fs.writeFileSync(cassandraTmpFile.name, cassandraDeployYaml)
 

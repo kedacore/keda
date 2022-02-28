@@ -87,6 +87,10 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 	npm install --prefix tests
 	./tests/run-all.sh
 
+.PHONY: e2e-test-clean
+e2e-test-clean: ## Delete all namespaces labeled with type=e2e
+	kubectl delete ns -l type=e2e
+
 ##################################################
 # Development                                    #
 ##################################################

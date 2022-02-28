@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { waitForDeploymentReplicaCount } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'cpu-test'
 const deployMentFile = tmp.fileSync()
@@ -11,7 +11,7 @@ const triggerFile = tmp.fileSync()
 
 test.before(t => {
   sh.config.silent = true
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   fs.writeFileSync(deployMentFile.name, deployMentYaml)
   t.is(

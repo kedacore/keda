@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import { waitForRollout } from './helpers'
+import { createNamespace, waitForRollout } from './helpers'
 
 const redisNamespace = 'redis'
 const testNamespace = 'redis-lists-test'
@@ -25,7 +25,7 @@ const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-aut
 
 test.before(t => {
     // setup Redis
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
+    createNamespace(redisNamespace)
 
     const redisDeployTmpFile = tmp.fileSync()
     fs.writeFileSync(redisDeployTmpFile.name, redisDeployYaml.replace('{{REDIS_PASSWORD}}', redisPassword))
@@ -35,7 +35,7 @@ test.before(t => {
     // wait for redis to be ready
     t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 600), 'Redis is not in a ready state')
 
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
