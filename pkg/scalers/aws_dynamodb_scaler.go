@@ -219,7 +219,6 @@ func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
 	}
 
 	res, err := c.dbClient.Query(&dimensions)
-
 	if err != nil {
 		dynamoDBLog.Error(err, "Failed to get output")
 		return 0, err
