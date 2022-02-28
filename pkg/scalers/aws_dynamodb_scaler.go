@@ -228,7 +228,6 @@ func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
 // json2Map convert Json to map[string]string
 func json2Map(js string) (m map[string]*string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
-
 	if err != nil {
 		return nil, err
 	}
