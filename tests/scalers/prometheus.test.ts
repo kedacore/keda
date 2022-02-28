@@ -3,7 +3,7 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 import { PrometheusServer } from './prometheus-server-helpers'
-import { waitForDeploymentReplicaCount } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'prometheus-test'
 const prometheusNamespace = 'prometheus-test-monitoring'
@@ -19,7 +19,7 @@ test.before(async t => {
   // even when the KEDA deployment is at zero - the service points to both deployments
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,

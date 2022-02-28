@@ -1,14 +1,13 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 export class PrometheusServer {
 
     static install(t, prometheusServerNamespace: string) {
         const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
-
-        sh.exec(`kubectl create namespace ${prometheusServerNamespace}`)
+        createNamespace(prometheusServerNamespace)
 
         t.is(0, sh.exec(`kubectl apply -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`).code, 'creating a Prometheus Server deployment should work.')
         // wait for prometheus server
