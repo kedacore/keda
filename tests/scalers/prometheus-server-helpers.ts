@@ -3,9 +3,9 @@ import * as tmp from 'tmp'
 import * as fs from 'fs'
 import {waitForRollout} from "./helpers";
 
-export class PrometheusServerHelper {
+export class PrometheusServer {
 
-    static installPrometheusServer(t, prometheusServerNamespace: string) {
+    static install(t, prometheusServerNamespace: string) {
         const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
 
         sh.exec(`kubectl create namespace ${prometheusServerNamespace}`)
@@ -15,7 +15,7 @@ export class PrometheusServerHelper {
         t.is(0, waitForRollout('deployment', 'prometheus-server', prometheusServerNamespace))
     }
 
-    static uninstallPrometheusServer(prometheusServerNamespace: string) {
+    static uninstall(prometheusServerNamespace: string) {
       const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
       sh.exec(`kubectl delete -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`)
 

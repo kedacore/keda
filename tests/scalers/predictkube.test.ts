@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { PrometheusServerHelper } from './prometheus-server-helpers'
+import { PrometheusServer } from './prometheus-server-helpers'
 
 const predictkubeApiKey = process.env['PREDICTKUBE_API_KEY']
 const testNamespace = 'predictkube-test'
@@ -10,7 +10,7 @@ const prometheusNamespace = 'predictkube-test-monitoring'
 
 test.before(t => {
     // install prometheus
-    PrometheusServerHelper.installPrometheusServer(t, prometheusNamespace)
+    PrometheusServer.install(t, prometheusNamespace)
 
     sh.config.silent = true
     // create deployments - there are two deployments - both using the same image but one deployment
@@ -106,7 +106,7 @@ test.after.always.cb('clean up predictkube deployment', t => {
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
     // uninstall prometheus
-    PrometheusServerHelper.uninstallPrometheusServer(prometheusNamespace)
+    PrometheusServer.uninstall(prometheusNamespace)
 
     sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
 
