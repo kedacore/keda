@@ -2,7 +2,7 @@
 
 - [node](https://nodejs.org/en/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `TEST_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 

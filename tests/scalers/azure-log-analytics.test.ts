@@ -5,7 +5,7 @@ import test from 'ava'
 import { createNamespace } from './helpers'
 
 const defaultNamespace = 'azure-log-analytics-test'
-const la_workspace_id = process.env['TEST_LOG_ANALYTICS_WORKSPACE_ID']
+const la_workspace_id = process.env['AZURE_LOG_ANALYTICS_WORKSPACE_ID']
 const sp_id = process.env['AZURE_SP_ID']
 const sp_key = process.env['AZURE_SP_KEY']
 const sp_tenant = process.env['AZURE_SP_TENANT']

@@ -7,11 +7,11 @@ import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-queue-restore-original-replicas-test'
 const queueName = 'queue-name-restore'
-const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 
 test.before(async t => {
   if (!connectionString) {
-    t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
+    t.fail('AZURE_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
 
   const createQueueAsync = () => new Promise((resolve, _) => {
