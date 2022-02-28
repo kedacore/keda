@@ -28,8 +28,14 @@ test.before(t => {
 
     sh.config.silent = true
 
-    // Create namespace if it doesn't exist
-    if (sh.exec(`kubectl get namespace ${dataExplorerNamespace}`).code != 0) {
+    // Clean namespace if it exists. Otherwise, create new one.
+    if (sh.exec(`kubectl get namespace ${dataExplorerNamespace}`).code === 0) {
+        t.is(
+            0,
+            sh.exec(`kubectl delete all --all -n ${dataExplorerNamespace}`).code,
+            'Clean namespace should work.')
+    }
+    else {
         t.is(
             0,
             sh.exec(`kubectl create namespace ${dataExplorerNamespace}`).code,
