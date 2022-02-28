@@ -29,10 +29,12 @@ test.before(t => {
     sh.config.silent = true
 
     // Create namespace if it doesn't exist
-    t.is(
-        0,
-        sh.exec(`kubectl create namespace ${dataExplorerNamespace} --dry-run=client -o yaml | kubectl apply -f -`).code,
-        'Create namespace should work.')
+    if (sh.exec(`kubectl get namespace ${dataExplorerNamespace}`).code != 0) {
+        t.is(
+            0,
+            sh.exec(`kubectl create namespace ${dataExplorerNamespace}`).code,
+            'Create namespace should work.')
+    }
 
     // Create secret
     const secretFile = tmp.fileSync()
