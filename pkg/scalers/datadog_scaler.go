@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -63,13 +64,26 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
+	if val, ok := config.TriggerMetadata["age"]; ok {
+		age, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("age parsing error %s", err.Error())
+		}
+		meta.age = age
+	} else {
+		meta.age = 90 // Default window 90 seconds
+	}
+
 	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
+		query, err := parseAndTransformDatadogQuery(val, meta.age)
+
+		if err != nil {
+			return nil, fmt.Errorf("error in query: %s", err.Error())
+		} else {
+			meta.query = query
+		}
 	} else {
 		return nil, fmt.Errorf("no query given")
-	}
-	if !strings.Contains(meta.query, "{") {
-		return nil, fmt.Errorf("expecting query to contain `{`, got %s", meta.query)
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
@@ -81,20 +95,6 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
 	}
-
-	if val, ok := config.TriggerMetadata["age"]; ok {
-		age, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("age parsing error %s", err.Error())
-		}
-		meta.age = age
-	} else {
-		meta.age = 90 // Default window 90 seconds
-	}
-
-	// For all the points in a given window, we take the rollup to the window size
-	rollup := fmt.Sprintf(".rollup(avg, %d)", meta.age)
-	meta.query += rollup
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		val = strings.ToLower(val)
@@ -176,6 +176,31 @@ func (s *datadogScaler) Close(context.Context) error {
 
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	return true, nil
+}
+
+// parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
+func parseAndTransformDatadogQuery(q string, age int) (string, error) {
+
+	aggregator, _ := regexp.Compile(`^(avg|sum|min|max):.*`)
+
+	if !aggregator.MatchString(q) {
+		q = "avg:" + q
+	}
+
+	filter, _ := regexp.Compile(`.*\{.*\}.*`)
+
+	if !filter.MatchString(q) {
+		return "", fmt.Errorf("malformed Datadog query")
+	}
+
+	rollup, _ := regexp.Compile(`.*\.rollup\(.*\)`)
+
+	if !rollup.MatchString(q) {
+		s := fmt.Sprintf(".rollup(avg, %d)", age)
+		q += s
+	}
+
+	return q, nil
 }
 
 // getQueryResult returns result of the scaler query
