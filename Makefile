@@ -69,15 +69,18 @@ all: build
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
-.PHONY: e2e-test
-e2e-test: ## Run e2e tests against Azure cluster.
-	TERMINFO=/etc/terminfo
-	TERM=linux
+.PHONY: get-cluster-context
+get-cluster-context: ## Get Azure cluster context.
 	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
+
+.PHONY: e2e-test
+e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
+	TERMINFO=/etc/terminfo
+	TERM=linux
 	npm install --prefix tests
 
 	./tests/run-all.sh
@@ -88,7 +91,7 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 	./tests/run-all.sh
 
 .PHONY: e2e-test-clean
-e2e-test-clean: ## Delete all namespaces labeled with type=e2e
+e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
 
 ##################################################
