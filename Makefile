@@ -94,6 +94,11 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
 
+.PHONY: arm-smoke-test
+arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	npm install --prefix tests
+	./tests/run-arm-smoke-tests.sh
+
 ##################################################
 # Development                                    #
 ##################################################
@@ -182,6 +187,10 @@ docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
 publish: docker-build ## Push images on to Container Registry (default: ghcr.io).
 	docker push $(IMAGE_CONTROLLER)
 	docker push $(IMAGE_ADAPTER)
+
+publish-multiarch:
+	docker buildx build --push --platform=linux/amd64,linux/arm64 . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	docker buildx build --push --platform=linux/amd64,linux/arm64 -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \

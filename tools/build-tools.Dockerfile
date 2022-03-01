@@ -29,7 +29,8 @@ RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03
     echo "$docker_sha256 docker-19.03.2.tgz" | sha256sum -c - && \
     tar xvzf docker-19.03.2.tgz && \
     mv docker/* /usr/local/bin && \
-    rm -rf docker docker-19.03.2.tgz
+    rm -rf docker docker-19.03.2.tgz && \
+    docker buildx create --use
 
 # Install golang
 RUN GO_VERSION=1.17.3 && \
