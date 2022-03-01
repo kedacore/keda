@@ -40,7 +40,6 @@ type gcsMetadata struct {
 	maxBucketItemsToScan int
 	metricName           string
 	targetObjectCount    int
-	scalerIndex          int
 }
 
 var gcsLog = logf.Log.WithName("gcp_storage_scaler")
@@ -138,13 +137,15 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 		meta.gcpAuthorization = auth
 	}
 
+	var metricName = ""
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", val))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", val))
 	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
+		metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, metricName)
+
 	return &meta, nil
 }
 
@@ -170,7 +171,7 @@ func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpe
 	targetValueQty := resource.NewQuantity(int64(s.metadata.targetObjectCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
