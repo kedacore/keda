@@ -2,167 +2,195 @@ name: CI
 on:
   - pull_request
 jobs:
-  validate:
-    name: Validate PR
-    runs-on: ubuntu-latest
-    container: ubuntu:focal
-    steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install necessary packages
-        run: apt update && apt install -y make ca-certificates gcc
-
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-
-      - name: Set Go paths
-        id: go-paths
-        run: |
-          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
-          echo ::set-output name=build_cache::$(go env GOCACHE)
-
-      - name: Go modules cache
-        uses: actions/cache@v2.1.7
-        with:
-          path: ${{ steps.go-paths.outputs.mod_cache }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Go build cache
-        uses: actions/cache@v2.1.7
-        with:
-          path: ${{ steps.go-paths.outputs.build_cache }}
-          key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
-
-      - name: Go modules sync
-        run: go mod tidy
-
-      - name: Verify Generated clientset is up to date
-        run: make clientset-verify
-
-      - name: Build
-        run: make build
-
-      - name: Test
-        run: make test
-
   validate-arm64:
-    name: Validate PR on ARM64
+    needs: build
+    name: validate-arm64
     runs-on: ARM64
     container: arm64v8/ubuntu:focal
-    env:
-      ARCH: arm64
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install necessary packages
-        run: apt update && apt install -y make ca-certificates gcc
-
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
-
-      - name: Set Go paths
-        id: go-paths
+      - name: Install prerequisites
         run: |
-          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
-          echo ::set-output name=build_cache::$(go env GOCACHE)
+          apt update
+          apt install curl -y
 
-      - name: Go modules cache
-        uses: actions/cache@v2.1.7
+      - name: Create k8s v1.23 Kind Cluster
+        uses: helm/kind-action@v1.2.0
         with:
-          path: ${{ steps.go-paths.outputs.mod_cache }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          node_image: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
 
-      - name: Go build cache
-        uses: actions/cache@v2.1.7
-        with:
-          path: ${{ steps.go-paths.outputs.build_cache }}
-          key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
+      - name: Install dependecies
+        run : |
+          apt update
+          apt install npm -y
 
-      - name: Go modules sync
-        run: go mod tidy
+      - name: Run smoke test
+        run: make arm-smoke-test
 
-      - name: Verify Generated clientset is up to date
-        run: make clientset-verify
+  # validate:
+  #   name: Validate PR
+  #   runs-on: ubuntu-latest
+  #   container: ubuntu:focal
+  #   steps:
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v3
+  #       with:
+  #         go-version: 1.17
 
-      - name: Build
-        run: make build
+  #     - name: Install necessary packages
+  #       run: apt update && apt install -y make ca-certificates gcc
 
-      - name: Test
-        run: make test
+  #     - name: Check out code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 1
 
-  validate-build-tools:
-    name: Validate build-tools
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+  #     - name: Set Go paths
+  #       id: go-paths
+  #       run: |
+  #         echo ::set-output name=mod_cache::$(go env GOMODCACHE)
+  #         echo ::set-output name=build_cache::$(go env GOCACHE)
 
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            tools:
-              - 'tools/**'
+  #     - name: Go modules cache
+  #       uses: actions/cache@v2.1.7
+  #       with:
+  #         path: ${{ steps.go-paths.outputs.mod_cache }}
+  #         key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-      - name: Build tools
-        if: steps.filter.outputs.tools == 'true'
-        run: make docker-build-tools
+  #     - name: Go build cache
+  #       uses: actions/cache@v2.1.7
+  #       with:
+  #         path: ${{ steps.go-paths.outputs.build_cache }}
+  #         key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
-  statics:
-    name: Static Checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3.0.0
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-      - name: Get golangci
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
-      - uses: pre-commit/action@v2.0.3
+  #     - name: Go modules sync
+  #       run: go mod tidy
 
-  codeScanning:
-    name: Code Scanning
-    runs-on: ubuntu-latest
+  #     - name: Verify Generated clientset is up to date
+  #       run: make clientset-verify
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ['go']
-        # Learn more... https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
+  #     - name: Build
+  #       run: make build
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
-        fetch-depth: 2
+  #     - name: Test
+  #       run: make test
 
-    # If this run was triggered by a pull request event, then checkout
-    # the head of the pull request instead of the merge commit.
-    - run: git checkout HEAD^2
-      if: ${{ github.event_name == 'pull_request' }}
+  # validate-arm64:
+  #   name: Validate PR on ARM64
+  #   runs-on: ARM64
+  #   container: arm64v8/ubuntu:focal
+  #   env:
+  #     ARCH: arm64
+  #   steps:
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v3
+  #       with:
+  #         go-version: 1.17
 
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1
-      with:
-        languages: ${{ matrix.language }}
+  #     - name: Install necessary packages
+  #       run: apt update && apt install -y make ca-certificates gcc
 
-    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-    # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v1
+  #     - name: Check out code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 1
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v1
+  #     - name: Set Go paths
+  #       id: go-paths
+  #       run: |
+  #         echo ::set-output name=mod_cache::$(go env GOMODCACHE)
+  #         echo ::set-output name=build_cache::$(go env GOCACHE)
+
+  #     - name: Go modules cache
+  #       uses: actions/cache@v2.1.7
+  #       with:
+  #         path: ${{ steps.go-paths.outputs.mod_cache }}
+  #         key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+  #     - name: Go build cache
+  #       uses: actions/cache@v2.1.7
+  #       with:
+  #         path: ${{ steps.go-paths.outputs.build_cache }}
+  #         key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
+
+  #     - name: Go modules sync
+  #       run: go mod tidy
+
+  #     - name: Verify Generated clientset is up to date
+  #       run: make clientset-verify
+
+  #     - name: Build
+  #       run: make build
+
+  #     - name: Test
+  #       run: make test
+
+  # validate-build-tools:
+  #   name: Validate build-tools
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+
+  #     - uses: dorny/paths-filter@v2
+  #       id: filter
+  #       with:
+  #         filters: |
+  #           tools:
+  #             - 'tools/**'
+
+  #     - name: Build tools
+  #       if: steps.filter.outputs.tools == 'true'
+  #       run: make docker-build-tools
+
+  # statics:
+  #   name: Static Checks
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v3.0.0
+  #     - uses: actions/setup-go@v3
+  #       with:
+  #         go-version: 1.17
+  #     - name: Get golangci
+  #       run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
+  #     - uses: pre-commit/action@v2.0.3
+
+  # codeScanning:
+  #   name: Code Scanning
+  #   runs-on: ubuntu-latest
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       language: ['go']
+  #       # Learn more... https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
+
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v3
+  #     with:
+  #       # We must fetch at least the immediate parents so that if this is
+  #       # a pull request then we can checkout the head.
+  #       fetch-depth: 2
+
+  #   # If this run was triggered by a pull request event, then checkout
+  #   # the head of the pull request instead of the merge commit.
+  #   - run: git checkout HEAD^2
+  #     if: ${{ github.event_name == 'pull_request' }}
+
+  #   # Initializes the CodeQL tools for scanning.
+  #   - name: Initialize CodeQL
+  #     uses: github/codeql-action/init@v1
+  #     with:
+  #       languages: ${{ matrix.language }}
+
+  #   # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+  #   # If this step fails, then you should remove it and run the build manually (see below)
+  #   - name: Autobuild
+  #     uses: github/codeql-action/autobuild@v1
+
+  #   - name: Perform CodeQL Analysis
+  #     uses: github/codeql-action/analyze@v1
