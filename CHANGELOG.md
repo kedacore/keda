@@ -30,7 +30,7 @@
 
 ### New
 
-- **General:** Automatically release container image for ARM ([#2457](https://github.com/kedacore/keda/pull/2457))
+- **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
 
 ### Improvements
 
