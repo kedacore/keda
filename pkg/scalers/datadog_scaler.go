@@ -269,6 +269,10 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		tries++
 	}
 
+	if len(series) > 1 {
+		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series")
+	}
+
 	if len(series) == 0 {
 		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 	}
@@ -279,7 +283,9 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 	}
 
-	return float64(*points[0][1]), nil
+	// Return the last point from the series
+	index := len(points) - 1
+	return float64(*points[index][1]), nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
