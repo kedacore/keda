@@ -4,8 +4,10 @@ import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 
+
+const gcpKey = process.env['GCP_SP_KEY']
+const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-pubsub-test'
-const projectId = 'nth-hybrid-341214'
 const topicId = `projects/${projectId}/topics/keda-test-topic-` + crypto.randomBytes(6).toString('hex')
 const subscriptionName = `keda-test-topic-sub-` + crypto.randomBytes(6).toString('hex')
 const subscriptionId = `projects/${projectId}/subscriptions/${subscriptionName}`
@@ -18,7 +20,7 @@ test.before(t => {
 
     // deploy dummy consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, deployYaml.replace("{{GCP_CREDS}}", Buffer.from(serviceAccountJson).toString("base64")))
+    fs.writeFileSync(tmpFile.name, deployYaml.replace("{{GCP_CREDS}}", Buffer.from(gcpKey).toString("base64")))
 
     t.is(
         0,
@@ -231,6 +233,3 @@ spec:
           secret:
             secretName: pubsub-secrets
 `
-
-const serviceAccountJson = `{
-}` // Json key with \n converted to \\n
