@@ -103,7 +103,6 @@ jobs:
   validate-build-tools:
     name: Validate build-tools
     runs-on: ubuntu-latest
-    container: ubuntu:focal
     steps:
       - uses: actions/checkout@v2
         with:
