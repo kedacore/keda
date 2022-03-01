@@ -2,21 +2,18 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
 
+const gcpKey = process.env['GCP_SP_KEY']
+const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
 const deploymentName = 'dummy-consumer'
 const maxReplicaCount = '3'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
-const gcpKey = process.env['GCP_SP_KEY']
-
-var projectId: string
 
 test.before(t => {
-    sh.exec(`kubectl create namespace ${testNamespace}`)
-
-    const creds = JSON.parse(gcpKey)
-    projectId = creds.project_id
+    createNamespace(testNamespace)
 
     // deploy dummy consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
@@ -30,14 +27,11 @@ test.before(t => {
 
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-    const replicaCount = sh.exec(
-        `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    t.is(replicaCount, '0', 'replica count should start out as 0')
+test.serial('Deployment should have 0 replicas on start', async t => {
+    t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 30, 2000), 'replica count should start out as 0')
 })
 
-test.serial('creating the gcp-sdk pod should work..', t => {
+test.serial('creating the gcp-sdk pod should work..', async t => {
     let tmpFile = tmp.fileSync()
     fs.writeFileSync(tmpFile.name, gcpSdkYaml)
     t.is(
@@ -46,15 +40,8 @@ test.serial('creating the gcp-sdk pod should work..', t => {
         'creating the gcp-sdk pod should work..'
     )
 
-    // wait for the gcp-sdkpod to be ready
-    let gcpSdkReadyReplicaCount = '0'
-    for (let i = 0; i < 30; i++) {
-        gcpSdkReadyReplicaCount = sh.exec(`kubectl get deploy/gcp-sdk -n ${testNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
-        if (gcpSdkReadyReplicaCount != '1') {
-            sh.exec('sleep 2s')
-        }
-    }
-    t.is('1', gcpSdkReadyReplicaCount, 'GCP-SDK pod is not in a ready state')
+    // wait for the gcp-sdk pod to be ready
+    t.true(await waitForDeploymentReplicaCount(1, 'gcp-sdk', testNamespace, 30, 2000), 'GCP-SDK pod is not in a ready state')
 })
 
 test.serial('initializing the gcp-sdk pod should work..', t => {
@@ -72,41 +59,30 @@ test.serial('initializing the gcp-sdk pod should work..', t => {
     sh.exec(gsPrefix + `gsutil mb gs://${bucketName}`)
 })
 
-test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back to 0`, t => {
-    let replicaCount = '0'
-
+test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back to 0`, async t => {
     // Wait for the number of replicas to be scaled up to maxReplicaCount
-    for (let i = 0; i < 60 && replicaCount != maxReplicaCount; i++) {
+    var haveAllReplicas = false
+    for (let i = 0; i < 60 && !haveAllReplicas; i++) {
         // Upload a file to generate traffic
         t.is(
             0,
             sh.exec(gsPrefix + `gsutil cp /usr/lib/google-cloud-sdk/bin/gsutil gs://${bucketName}`).code,
             'Copying an object should work..'
         )
-        replicaCount = sh.exec(
-            `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-        ).stdout
-        if (replicaCount != maxReplicaCount) {
-            sh.exec('sleep 2s')
+        if (await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 1, 2000)) {
+          haveAllReplicas = true
         }
     }
 
-    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 120 seconds but is ${replicaCount}`)
+    t.true(haveAllReplicas, `Replica count should be ${maxReplicaCount} after 120 seconds`)
 
     // Wait for the number of replicas to be scaled down to 0
-    for (let i = 0; i < 30 && replicaCount !== '0'; i++) {
-      replicaCount = sh.exec(
-        `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-      ).stdout
-      if (replicaCount != '0') {
-        sh.exec('sleep 10s')
-      }
-    }
-
-    t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+    t.true(
+      await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 30, 10000),
+      `Replica count should be 0 after 5 minutes`)
 })
 
-test.after.always.cb('clean up fake GCS deployment', t => {
+test.after.always.cb('clean up', t => {
     // Cleanup the bucket
     sh.exec(gsPrefix + `gsutil rm -r gs://${bucketName}`)
 
