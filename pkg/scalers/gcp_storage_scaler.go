@@ -35,7 +35,6 @@ type gcsScaler struct {
 
 type gcsMetadata struct {
 	bucketName           string
-	endpoint             string // Alternate GCS endpoint for testing
 	gcpAuthorization     *gcpAuthorizationMetadata
 	maxBucketItemsToScan int
 	metricName           string
@@ -56,8 +55,6 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	var client *storage.Client
 
 	switch {
-	case meta.endpoint != "":
-		client, err = storage.NewClient(ctx, option.WithEndpoint(meta.endpoint), option.WithoutAuthentication())
 	case meta.gcpAuthorization.podIdentityProviderEnabled:
 		client, err = storage.NewClient(ctx)
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
@@ -123,19 +120,11 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 		meta.maxBucketItemsToScan = maxBucketItemsToScan
 	}
 
-	if val, ok := config.TriggerMetadata["endpoint"]; ok {
-		if val != "" {
-			meta.endpoint = val
-		}
+	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+	if err != nil {
+		return nil, err
 	}
-
-	if meta.endpoint == "" {
-		auth, err := getGcpAuthorization(config, config.ResolvedEnv)
-		if err != nil {
-			return nil, err
-		}
-		meta.gcpAuthorization = auth
-	}
+	meta.gcpAuthorization = auth
 
 	var metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, metricName)
