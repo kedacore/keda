@@ -31,6 +31,7 @@
 ### New
 
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
+- Add GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
 
 ### Improvements
 
