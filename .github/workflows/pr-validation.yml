@@ -3,7 +3,6 @@ on:
   - pull_request
 jobs:
   validate-arm64:
-    needs: build
     name: validate-arm64
     runs-on: ARM64
     container: arm64v8/ubuntu:focal
