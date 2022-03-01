@@ -100,6 +100,24 @@ jobs:
       - name: Test
         run: make test
 
+  validate-build-tools:
+    name: Validate build-tools
+    runs-on: ubuntu-latest
+    container: ubuntu:focal
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 100
+
+      - uses: marceloprado/has-changed-path@v1
+        id: changed-front
+        with:
+          paths: tools
+
+      - name: Build tools
+        if: steps.changed-front.outputs.changed == 'true'
+        run: make docker-build-tools
+
   statics:
     name: Static Checks
     runs-on: ubuntu-latest
