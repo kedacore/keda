@@ -70,7 +70,6 @@ RUN apt-get update \
     && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" \
     && apt-get update \
     && apt-get install -y docker-ce-cli \
-    && docker buildx create --use \
     #
     # Install pip & pre-commit
     && apt-get -y install python3-pip \
