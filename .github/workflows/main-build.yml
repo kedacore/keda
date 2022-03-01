@@ -16,7 +16,7 @@ jobs:
     container: ghcr.io/kedacore/build-tools:main
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -81,7 +81,7 @@ jobs:
     concurrency: e2e-tests
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -134,7 +134,7 @@ jobs:
     container: arm64v8/ubuntu:focal
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 

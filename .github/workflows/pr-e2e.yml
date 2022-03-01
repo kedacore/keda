@@ -35,7 +35,7 @@ jobs:
     concurrency: pr-e2e-tests
     if: needs.check.outputs.run-e2e == '1'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Checkout Pull Request
         env:
