@@ -105,16 +105,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 100
 
-      - uses: marceloprado/has-changed-path@v1
-        id: changed-front
+      - uses: dorny/paths-filter@v2
+        id: filter
         with:
-          paths: tools
+          filters: |
+            tools:
+              - 'tools/**'
 
       - name: Build tools
-        if: steps.changed-front.outputs.changed == 'true'
+        if: steps.filter.outputs.tools == 'true'
         run: make docker-build-tools
 
   statics:
