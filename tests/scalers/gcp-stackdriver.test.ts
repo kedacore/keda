@@ -1,7 +1,4 @@
-import * as async from 'async'
 import * as fs from 'fs'
-import * as http from 'http'
-import fetch from 'node-fetch'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
@@ -10,15 +7,20 @@ const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
 const deploymentName = 'dummy-consumer'
 const maxReplicaCount = '3'
-const projectId = 'nth-hybrid-341214'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
+const gcpKey = process.env['GCP_SP_KEY']
+
+var projectId: string
 
 test.before(t => {
     sh.exec(`kubectl create namespace ${testNamespace}`)
 
+    const creds = JSON.parse(gcpKey)
+    projectId = creds.project_id
+
     // deploy dummy consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
-    fs.writeFileSync(tmpFile.name, deployYaml.replace("{{GCP_CREDS}}", Buffer.from(serviceAccountJson).toString("base64")))
+    fs.writeFileSync(tmpFile.name, deployYaml.replace("{{GCP_CREDS}}", Buffer.from(gcpKey).toString("base64")))
 
     t.is(
         0,
@@ -203,8 +205,3 @@ spec:
           secret:
             secretName: stackdriver-secrets
 `
-
-const serviceAccountJson = `
-{
-    "type": "service_account",
-}`
