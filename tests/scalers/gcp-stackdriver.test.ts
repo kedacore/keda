@@ -11,15 +11,9 @@ const bucketName = 'keda-test-stackdriver-bucket'
 const deploymentName = 'dummy-consumer'
 const maxReplicaCount = '3'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
-const gcpKey = process.env['GCP_SP_KEY']
-
-var projectId: string
 
 test.before(t => {
     createNamespace(testNamespace)
-
-    const creds = JSON.parse(gcpKey)
-    projectId = creds.project_id
 
     // deploy dummy consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
