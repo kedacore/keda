@@ -79,9 +79,8 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 
 		if err != nil {
 			return nil, fmt.Errorf("error in query: %s", err.Error())
-		} else {
-			meta.query = query
 		}
+		meta.query = query
 	} else {
 		return nil, fmt.Errorf("no query given")
 	}
@@ -180,20 +179,19 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 
 // parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
 func parseAndTransformDatadogQuery(q string, age int) (string, error) {
-
-	aggregator, _ := regexp.Compile(`^(avg|sum|min|max):.*`)
+	aggregator := regexp.MustCompile(`^(avg|sum|min|max):.*`)
 
 	if !aggregator.MatchString(q) {
 		q = "avg:" + q
 	}
 
-	filter, _ := regexp.Compile(`.*\{.*\}.*`)
+	filter := regexp.MustCompile(`.*\{.*\}.*`)
 
 	if !filter.MatchString(q) {
 		return "", fmt.Errorf("malformed Datadog query")
 	}
 
-	rollup, _ := regexp.Compile(`.*\.rollup\(.*\)`)
+	rollup := regexp.MustCompile(`.*\.rollup\(.*\)`)
 
 	if !rollup.MatchString(q) {
 		s := fmt.Sprintf(".rollup(avg, %d)", age)
@@ -285,7 +283,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	// Return the last point from the series
 	index := len(points) - 1
-	return float64(*points[index][1]), nil
+	return *points[index][1], nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
