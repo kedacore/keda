@@ -61,6 +61,30 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}, nil
 }
 
+// parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
+func parseAndTransformDatadogQuery(q string, age int) (string, error) {
+	aggregator := regexp.MustCompile(`^(avg|sum|min|max):.*`)
+
+	if !aggregator.MatchString(q) {
+		q = "avg:" + q
+	}
+
+	filter := regexp.MustCompile(`.*\{.*\}.*`)
+
+	if !filter.MatchString(q) {
+		return "", fmt.Errorf("malformed Datadog query")
+	}
+
+	rollup := regexp.MustCompile(`.*\.rollup\(.*\)`)
+
+	if !rollup.MatchString(q) {
+		s := fmt.Sprintf(".rollup(avg, %d)", age)
+		q += s
+	}
+
+	return q, nil
+}
+
 func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
@@ -175,30 +199,6 @@ func (s *datadogScaler) Close(context.Context) error {
 
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	return true, nil
-}
-
-// parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
-func parseAndTransformDatadogQuery(q string, age int) (string, error) {
-	aggregator := regexp.MustCompile(`^(avg|sum|min|max):.*`)
-
-	if !aggregator.MatchString(q) {
-		q = "avg:" + q
-	}
-
-	filter := regexp.MustCompile(`.*\{.*\}.*`)
-
-	if !filter.MatchString(q) {
-		return "", fmt.Errorf("malformed Datadog query")
-	}
-
-	rollup := regexp.MustCompile(`.*\.rollup\(.*\)`)
-
-	if !rollup.MatchString(q) {
-		s := fmt.Sprintf(".rollup(avg, %d)", age)
-		q += s
-	}
-
-	return q, nil
 }
 
 // getQueryResult returns result of the scaler query
