@@ -100,6 +100,27 @@ jobs:
       - name: Test
         run: make test
 
+  validate-dockerfiles:
+    name: Validate Dockerfiles
+    runs-on: ubuntu-latest
+    container: ghcr.io/kedacore/build-tools:main
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            dockerfiles:
+              - 'Dockerfile*'
+
+      - name: Build images
+        if: steps.filter.outputs.dockerfiles == 'true'
+        run: make docker-build
+
   validate-build-tools:
     name: Validate build-tools
     runs-on: ubuntu-latest
