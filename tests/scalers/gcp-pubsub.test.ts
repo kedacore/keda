@@ -3,17 +3,18 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
+import { createNamespace, sleep, waitForDeploymentReplicaCount } from './helpers';
 
 const gcpKey = process.env['GCP_SP_KEY']
 const projectId = JSON.parse(gcpKey).project_id
+const gcpAccount = JSON.parse(gcpKey).client_email
 const testNamespace = 'gcp-pubsub-test'
 const topicId = `projects/${projectId}/topics/keda-test-topic-` + crypto.randomBytes(6).toString('hex')
 const subscriptionName = `keda-test-topic-sub-` + crypto.randomBytes(6).toString('hex')
 const subscriptionId = `projects/${projectId}/subscriptions/${subscriptionName}`
 const deploymentName = 'dummy-consumer'
 const maxReplicaCount = '4'
-const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
+const gsPrefix = `kubectl exec --namespace ${testNamespace} deployment.apps/gcp-sdk -- `
 
 test.before(t => {
     createNamespace(testNamespace)
@@ -43,28 +44,27 @@ test.serial('creating the gcp-sdk pod should work..', async t => {
     )
 
     // wait for the gcp-sdk pod to be ready
-    t.true(await waitForDeploymentReplicaCount(1, 'gcp-sdk', testNamespace, 30, 2000), 'GCP-SDK pod is not in a ready state')
+    t.true(await waitForDeploymentReplicaCount(1, 'gcp-sdk', testNamespace, 60, 2000), 'GCP-SDK pod is not in a ready state')
 })
 
 test.serial('initializing the gcp-sdk pod should work..', t => {
-    // Authenticate to GCP
-    t.is(
-        0,
-        sh.exec(gsPrefix + `gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json`).code,
-        'Executing remote command on gcp-sdk should work..'
-    )
+    sh.exec(`kubectl wait --for=condition=ready --namespace ${testNamespace} pod -l app=gcp-sdk --timeout=30s`)
+    sh.exec('sleep 5s')
 
-    // Set project id
-    sh.exec(gsPrefix + `gcloud config set project ${projectId}`)
+    // Authenticate to GCP
+    t.is(0,
+      sh.exec(gsPrefix + `gcloud auth activate-service-account ${gcpAccount} --key-file /etc/secret-volume/creds.json --project=${projectId}`).code,
+      'Setting GCP authentication on gcp-sdk should work..')
 
     // Create topic and subscription
     t.is(
         0,
         sh.exec(gsPrefix + `gcloud pubsub topics create ${topicId}`).code,
-        'Creating a topic should work..'
+        'Creating a topic and subscription should work..'
     )
 
-    t.is(0,
+    t.is(
+        0,
         sh.exec(gsPrefix + `gcloud pubsub subscriptions create ${subscriptionId} --topic=${topicId}`).code,
         'Creating a subscription should work..'
     )
@@ -72,13 +72,12 @@ test.serial('initializing the gcp-sdk pod should work..', t => {
 
 test.serial(`Publishing to pubsub`, t => {
     // Publish 30 messages
+    var cmd = gsPrefix + ' /bin/bash -c -- "cd .'
     for (let i = 0; i < 30; i++) {
-        t.is(
-            0,
-            sh.exec(gsPrefix + `gcloud pubsub topics publish ${topicId} --message="AAAAAAAAAA"`).code,
-            'Publishing a message to pub/sub should work..'
-        )
+        cmd += ` && gcloud pubsub topics publish ${topicId} --message=AAAAAAAAAA`
     }
+    cmd += '"'
+    t.is(0,sh.exec(cmd).code,'Publishing messages to pub/sub should work..')
 })
 
 test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back to 0`, async t => {
@@ -88,7 +87,7 @@ test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back t
       `Replica count should be ${maxReplicaCount} after 120 seconds`)
 
     // Purge all messages
-    sh.exec(gsPrefix + `gcloud pubsub subscriptions seek ${subscriptionId} --time=-p1s`)
+    sh.exec(gsPrefix + `gcloud pubsub subscriptions seek ${subscriptionId} --time=p0s`)
 
     // Wait for the number of replicas to be scaled down to 0
     t.true(
@@ -104,7 +103,7 @@ test.after.always.cb('clean up', t => {
     sh.exec(`kubectl delete deployment.apps/${deploymentName} --namespace ${testNamespace}`)
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
-  t.end()
+    t.end()
 })
 
 
@@ -131,7 +130,7 @@ spec:
           # Consume a message
           command: [ "/bin/bash", "-c", "--" ]
           args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && \
-          while true; do gcloud pubsub subscriptions pull ${subscriptionId} --auto-ack; sleep 30; done" ]
+          while true; do gcloud pubsub subscriptions pull ${subscriptionId} --auto-ack; sleep 20; done" ]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
