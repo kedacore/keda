@@ -242,10 +242,8 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 			if s.metadata.parent == "" {
 				// keep the old template working
 				count++
-			} else {
-				if getCanAgentFulfilJob(v, s.metadata) {
-					count++
-				}
+			} else if getCanAgentFulfilJob(v, s.metadata) {
+				count++
 			}
 		}
 	}
