@@ -5,12 +5,13 @@ jobs:
   validate-arm64:
     name: validate-arm64
     runs-on: ARM64
-    container: arm64v8/ubuntu:focal
+    container: codefresh/dind
     steps:
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
+
       - name: Install prerequisites
         run: |
           apt update
