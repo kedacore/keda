@@ -41,6 +41,8 @@ type azurePipelinesMetadata struct {
 	organizationURL            string
 	organizationName           string
 	personalAccessToken        string
+	parent                     string
+	scalarName                 string
 	poolID                     int
 	targetPipelinesQueueLength int
 	scalerIndex                int
@@ -100,6 +102,12 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		return nil, fmt.Errorf("no personalAccessToken given")
 	}
 
+	if val, ok := config.TriggerMetadata["parent"]; ok && val != "" {
+		meta.parent = config.TriggerMetadata["parent"]
+	} else {
+		meta.parent = ""
+	}
+
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
 		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
@@ -119,6 +127,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	}
 
 	meta.scalerIndex = config.ScalerIndex
+	meta.scalarName = config.Name
 
 	return &meta, nil
 }
@@ -230,11 +239,34 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	for _, value := range jobs {
 		v := value.(map[string]interface{})
 		if v["result"] == nil {
-			count++
+			if s.metadata.parent == "" {
+				// keep the old template working
+				count++
+			} else {
+				if getCanAgentFulfilJob(v, s.metadata) {
+					count++
+				}
+			}
 		}
 	}
-
 	return count, err
+}
+
+// Determine if the Job and Agent have matching capabilities
+func getCanAgentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	matchedAgents, ok := v["matchedAgents"].([]interface{})
+	if !ok {
+		// ADO is already processing
+		return false
+	}
+
+	for _, m := range matchedAgents {
+		n := m.(map[string]interface{})
+		if metadata.parent == n["name"].(string) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
