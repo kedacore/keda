@@ -412,18 +412,28 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 		return nil, err
 	}
 
+	// Extract vhost from URL's path.
 	vhost := parsedURL.Path
+
+	// If the URL's path only contains a slash, it represents the trailing slash and
+	// must be ignored because it may cause confusion with the '/' vhost.
+	if vhost == "/" {
+		vhost = ""
+	}
 
 	// Override vhost if requested.
 	if s.metadata.vhostName != nil {
 		vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
 	}
 
-	if vhost == "" || vhost == "/" || vhost == "//" {
+	// Encode the '/' vhost if necessary.
+	if vhost == "//" {
 		vhost = "/%2F"
 	}
 
+	// Clear URL path to get the correct host.
 	parsedURL.Path = ""
+
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
 		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues%s?page=1&use_regex=true&pagination=false&name=%s&page_size=%d", parsedURL.String(), vhost, url.QueryEscape(s.metadata.queueName), s.metadata.pageSize)
