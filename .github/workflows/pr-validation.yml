@@ -30,6 +30,10 @@ jobs:
         with:
           node_image: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
 
+      - name: Show Kubernetes version
+        run: |
+          kubectl version
+
       - name: Run smoke test
         run: make arm-smoke-test
 
