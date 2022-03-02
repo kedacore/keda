@@ -18,8 +18,8 @@ jobs:
           apt install curl npm --no-install-recommends -y
           curl -fsSL test.docker.com -o get-docker.sh && sh get-docker.sh
         env:
-          DEBIAN_FRONTEND=noninteractive
-          
+          DEBIAN_FRONTEND: noninteractive
+
       - name: Create k8s v1.23 Kind Cluster
         uses: JorTurFer/kind-action@main
         with:
