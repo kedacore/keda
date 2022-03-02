@@ -5,7 +5,7 @@ jobs:
   validate-arm64:
     name: validate-arm64
     runs-on: ARM64
-    container: codefresh/dind
+    container: arm64v8/ubuntu:focal
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -16,6 +16,7 @@ jobs:
         run: |
           apt update
           apt install curl -y
+          curl -fsSL test.docker.com -o get-docker.sh && sh get-docker.sh
 
       - name: Create k8s v1.23 Kind Cluster
         uses: JorTurFer/kind-action@main
