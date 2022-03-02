@@ -60,10 +60,10 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
 
 * **Meeting time:** Bi-weekly Tues 15:00 UTC (does follow US daylight savings).
-([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
+([Subscribe to Google Agenda](https://aka.ms/keda/standup/calendar) |
  [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
-* **Zoom link:** [https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09](https://us02web.zoom.us/j/150360492?pwd=eUVtQzBPMzFoQUR2K1dqUWhENjJJdz09)  (Password: keda)
-* **Meeting agenda:** [https://hackmd.io/s/r127ErYiN](https://hackmd.io/s/r127ErYiN)
+* **Zoom link:** [aka.ms/keda/standup/meeting](https://aka.ms/keda/standup/meeting)  (Password: keda)
+* **Meeting agenda:** [Google Docs](https://aka.ms/keda/standup/agenda)
 
 Just want to learn or chat about KEDA? Feel free to join the conversation in
 **[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
