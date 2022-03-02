@@ -5,7 +5,7 @@ jobs:
   validate-arm64:
     name: validate-arm64
     runs-on: ARM64
-    container: ubuntu
+    container: arm64v8/ubuntu:focal
     steps:
       - name: Check out code
         uses: actions/checkout@v3
