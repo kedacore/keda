@@ -14,11 +14,19 @@ Here's an overview:
 
 ## Prevention
 
-Container images are scanned in every pull request (PR) with [Snyk](https://snyk.io/) to detect new vulnerabilities.
+We have a few preventive measures in place to detect security vulnerabilities:
+
+- [Renovate](https://renovatebot.com) helps us keep our dependencies up-to-date to patch vulnerabilities as soon as possible.
+- [Snyk](https://snyk.io/) helps us ship secure container images:
+  - Images are scanned in every pull request (PR) to detect new vulnerabilities.
+  - Published images on GitHub Container Registry are monitored to detect new vulnerabilities so we can ship patches
+- [Whitesource Bolt for GitHub](https://www.whitesourcesoftware.com/free-developer-tools/bolt/) helps us with identifying vulnerabilities in our dependencies to raise awareness.
+- [GitHub's security features](https://github.com/features/security) are constantly monitoring our repo and dependencies:
+  - All pull requests (PRs) are using CodeQL to scan our source code for vulnerabilities
+  - Dependabot will automatically identify vulnerabilities based on GitHub Advisory Database and open PRs with patches
 
 KEDA maintainers are working to improve our prevention by adding additional measures:
 
-- Scan published container images on GitHub Container Registry ([issue](https://github.com/kedacore/keda/issues/1041))
 - Scan changes to Helm charts in PRs ([issue](https://github.com/kedacore/charts/issues/64))
 
 ## Disclosures
