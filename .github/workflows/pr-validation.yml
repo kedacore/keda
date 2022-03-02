@@ -15,9 +15,11 @@ jobs:
       - name: Install prerequisites
         run: |
           apt update
-          apt install curl -y
+          apt install curl npm --no-install-recommends -y
           curl -fsSL test.docker.com -o get-docker.sh && sh get-docker.sh
-
+        env:
+          DEBIAN_FRONTEND=noninteractive
+          
       - name: Create k8s v1.23 Kind Cluster
         uses: JorTurFer/kind-action@main
         with:
@@ -26,7 +28,7 @@ jobs:
       - name: Install dependecies
         run : |
           apt update
-          apt install npm -y
+          
 
       - name: Run smoke test
         run: make arm-smoke-test
