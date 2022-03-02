@@ -1,4 +1,5 @@
 # Build the adapter binary
+ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM golang:1.17.3 as builder
 
 ARG BUILD_VERSION=main
@@ -29,7 +30,8 @@ RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.loc
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
-ARG TARGETOS TARGETARCH
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH make adapter
 
 # Use distroless as minimal base image to package the manager binary
