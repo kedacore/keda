@@ -25,9 +25,10 @@ We are a Cloud Native Computing Foundation (CNCF) incubation project.
 - [Getting started](#getting-started)
   - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
-- [Governance & Policies](#governance--policies)
 - [Community](#community)
-  - [Become a listed KEDA user!](#become-a-listed-keda-user)
+- [Adopters - Become a listed KEDA user!](#adopters---become-a-listed-keda-user)
+- [Governance & Policies](#governance--policies)
+- [Roadmap](#roadmap)
 - [Releases](#releases)
 - [Contributing](#contributing)
   - [Building & deploying locally](#building--deploying-locally)
@@ -51,10 +52,6 @@ There are many ways to [deploy KEDA including Helm, Operator Hub and YAML files]
 
 Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
-## Governance & Policies
-
-You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
-
 ## Community
 
 If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
@@ -68,9 +65,17 @@ If interested in contributing or participating in the direction of KEDA, you can
 Just want to learn or chat about KEDA? Feel free to join the conversation in
 **[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
 
-### Become a listed KEDA user!
+## Adopters - Become a listed KEDA user!
 
 We are always happy to [list users](https://keda.sh/community/#users) who run KEDA in production, learn more about it [here](https://github.com/kedacore/keda-docs#become-a-listed-keda-user).
+
+## Governance & Policies
+
+You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
+
+## Roadmap
+
+We use GitHub issues to build our backlog, a complete overview of all open items and our planning is available [here](https://github.com/orgs/kedacore/projects/2).
 
 ## Releases
 
