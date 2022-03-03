@@ -192,14 +192,14 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
 
-var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
+var vhostPathes = []string{"/myhost", "", "/", "//", rabbitRootVhostPath}
 
 var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "//"},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, ""},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/%2F"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, rabbitRootVhostPath},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
 }
 
@@ -221,8 +221,8 @@ func TestGetQueueInfo(t *testing.T) {
 		switch testData.vhostPath {
 		case "/myhost":
 			expectedVhostPath = "/myhost"
-		case "/%2F", "//":
-			expectedVhostPath = "/%2F"
+		case rabbitRootVhostPath, "//":
+			expectedVhostPath = rabbitRootVhostPath
 		default:
 			expectedVhostPath = ""
 		}
@@ -330,7 +330,7 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
 }
 
-var vhostPathesForRegex = []string{"", "/test-vh", "/%2F"}
+var vhostPathesForRegex = []string{"", "/test-vh", rabbitRootVhostPath}
 
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	allTestData := []getQueueInfoTestData{}

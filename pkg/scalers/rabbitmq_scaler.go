@@ -36,6 +36,7 @@ const (
 	rabbitModeMessageRate        = "MessageRate"
 	defaultRabbitMQQueueLength   = 20
 	rabbitMetricType             = "External"
+	rabbitRootVhostPath          = "/%2F"
 )
 
 const (
@@ -433,7 +434,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 	// Encode the '/' vhost if necessary.
 	if vhost == "//" {
-		vhost = "/%2F"
+		vhost = rabbitRootVhostPath
 	}
 
 	// Clear URL path to get the correct host.
