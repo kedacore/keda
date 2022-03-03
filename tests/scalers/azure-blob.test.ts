@@ -41,7 +41,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
 test.serial.cb('Deployment should scale to 2 with 150 blobs on the blob container then back to 0', t => {
     // add 2000 files
     const blobSvc = azure.createBlobService(connectionString)
-   
+
     async.mapLimit(Array(350).keys(), 50, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), async () => {
         t.is(await waitForDeploymentReplicaCount(2,"test-deployment", defaultNamespace, 180, 1000),true, "Replica count should be 2 after 3 minute")
 
