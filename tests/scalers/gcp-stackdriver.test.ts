@@ -45,15 +45,16 @@ test.serial('creating the gcp-sdk pod should work..', async t => {
 })
 
 test.serial('initializing the gcp-sdk pod should work..', t => {
+    sh.exec(`kubectl wait --for=condition=ready --namespace ${testNamespace} pod -l app=gcp-sdk --timeout=30s`)
+    sh.exec('sleep 5s')
+
     // Authenticate to GCP
+    const creds = JSON.parse(gcpKey)
     t.is(
         0,
-        sh.exec(gsPrefix + `gcloud auth activate-service-account --key-file /etc/secret-volume/GOOGLE_APPLICATION_CREDENTIALS_JSON`).code,
-        'Executing remote command on gc-sdk should work..'
+        sh.exec(gsPrefix + `gcloud auth activate-service-account ${creds.client_email} --key-file /etc/secret-volume/creds.json --project=${creds.project_id}`).code,
+        'Setting GCP authentication on gcp-sdk should work..'
     )
-
-    // Set project id
-    sh.exec(gsPrefix + `gcloud config set project ${projectId}`)
 
     // Create bucket
     sh.exec(gsPrefix + `gsutil mb gs://${bucketName}`)
@@ -84,12 +85,12 @@ test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back t
 
 test.after.always.cb('clean up', t => {
     // Cleanup the bucket
-    sh.exec(gsPrefix + `gsutil rm -r gs://${bucketName}`)
+    sh.exec(gsPrefix + `gsutil -m rm -r gs://${bucketName}`)
 
     sh.exec(`kubectl delete deployment.apps/${deploymentName} --namespace ${testNamespace}`)
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
-  t.end()
+    t.end()
 })
 
 
@@ -120,7 +121,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: stackdriver-secrets
-                  key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+                  key: creds.json
 ---
 apiVersion: v1
 kind: Secret
@@ -128,7 +129,7 @@ metadata:
   name: stackdriver-secrets
 type: Opaque
 data:
-  GOOGLE_APPLICATION_CREDENTIALS_JSON: {{GCP_CREDS}}
+  creds.json: {{GCP_CREDS}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
