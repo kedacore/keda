@@ -23,7 +23,6 @@ test.before(t => {
         sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
         'creating a deployment should work..'
     )
-
 })
 
 test.serial('Deployment should have 0 replicas on start', async t => {
@@ -44,6 +43,9 @@ test.serial('creating the gcp-sdk pod should work..', async t => {
 })
 
 test.serial('initializing the gcp-sdk pod should work..', t => {
+    sh.exec(`kubectl wait --for=condition=ready --namespace ${testNamespace} pod -l app=gcp-sdk --timeout=30s`)
+    sh.exec('sleep 5s')
+
     // Authenticate to GCP
     const creds = JSON.parse(gcpKey)
     t.is(
@@ -132,7 +134,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: gcp-storage-secrets
-                  key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+                  key: creds.json
 ---
 apiVersion: v1
 kind: Secret
@@ -140,7 +142,7 @@ metadata:
   name: gcp-storage-secrets
 type: Opaque
 data:
-  GOOGLE_APPLICATION_CREDENTIALS_JSON: {{GCP_CREDS}}
+  creds.json: {{GCP_CREDS}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
