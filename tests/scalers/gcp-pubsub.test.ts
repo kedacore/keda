@@ -60,7 +60,7 @@ test.serial('initializing the gcp-sdk pod should work..', t => {
     t.is(
         0,
         sh.exec(gsPrefix + `gcloud pubsub topics create ${topicId}`).code,
-        'Creating a topic and subscription should work..'
+        'Creating a topic should work..'
     )
 
     t.is(
