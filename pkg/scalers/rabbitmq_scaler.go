@@ -423,7 +423,12 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 	// Override vhost if requested.
 	if s.metadata.vhostName != nil {
-		vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
+		// If the desired vhost is "All" vhosts, no path is necessary
+		if *s.metadata.vhostName == "" {
+			vhost = ""
+		} else {
+			vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
+		}
 	}
 
 	// Encode the '/' vhost if necessary.
