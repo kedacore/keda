@@ -6,8 +6,8 @@ import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
 import {waitForDeploymentReplicaCount} from "./helpers";
 
-const testNamespace = 'rabbitmq-queue-http-regex-test'
-const rabbitmqNamespace = 'rabbitmq-http-regex-test'
+const testNamespace = 'rabbitmq-queue-http-regex-vhost-test'
+const rabbitmqNamespace = 'rabbitmq-http-regex-vhost-test'
 const queueName = 'hello'
 const dummyQueueName1 = 'hello-1'
 const dummyQueueName2 = 'hellohellohello'
@@ -22,7 +22,7 @@ test.before(t => {
 
   sh.config.silent = true
   // create deployment
-  const httpConnectionString = `http://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local`
+  const httpConnectionString = `http://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local/${vhost}`
 
   RabbitMQHelper.createDeployment(t, testNamespace, deployYaml, connectionString, httpConnectionString, queueName)
 })
