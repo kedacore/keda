@@ -107,7 +107,7 @@ spec:
             secretKeyRef:
               name: test-secrets
               key: AzureWebJobsStorage
-        - name: AZURE_STORAGE_CONNECTION_STRING
+        - name: TEST_STORAGE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
               name: test-secrets
