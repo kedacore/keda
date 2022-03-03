@@ -45,22 +45,22 @@ test.serial('creating the gcp-sdk pod should work..', async t => {
 
 test.serial('initializing the gcp-sdk pod should work..', t => {
     // Authenticate to GCP
+    const creds = JSON.parse(gcpKey)
     t.is(
         0,
-        sh.exec(gsPrefix + `gcloud auth activate-service-account --key-file /etc/secret-volume/GOOGLE_APPLICATION_CREDENTIALS_JSON`).code,
-        'Executing remote command on gcp-sdk should work..'
+        sh.exec(gsPrefix + `gcloud auth activate-service-account ${creds.client_email} --key-file /etc/secret-volume/creds.json --project=${creds.project_id}`).code,
+        'Setting GCP authentication on gcp-sdk should work..'
     )
-
-    const creds = JSON.parse(gcpKey)
-
-    // Set project id
-    sh.exec(gsPrefix + `gcloud config set project ${creds.project_id}`)
 
     // Cleanup the bucket
     sh.exec(gsPrefix + `gsutil -m rm -r gs://${bucketName}`)
 
     // Create bucket
-    sh.exec(gsPrefix + `gsutil mb gs://${bucketName}`)
+    t.is(
+      0,
+      sh.exec(gsPrefix + `gsutil mb gs://${bucketName}`).code,
+      'Creating GCS bucket should work'
+    )
 })
 
 test.serial(`Uploading objects to GCS bucket`, t => {
