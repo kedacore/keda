@@ -75,16 +75,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		minReplicas = *scaledObject.Spec.MinReplicaCount
 	}
 
-	// if the ScaledObject's triggers aren't in the error state,
-	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
-	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
-	if !isError && !readyCondition.IsTrue() {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
-			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
-			logger.Error(err, "error setting ready condition")
-		}
-	}
-
 	if isActive {
 		switch {
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
@@ -99,17 +89,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 			// Scale the ScaleTarget up
 			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, currentScale)
-		case isError:
-			// some triggers are active, but some responded with error
-
-			// Set ScaledObject.Status.ReadyCondition to Unknown
-			msg := "Some triggers defined in ScaledObject are not working correctly"
-			logger.V(1).Info(msg)
-			if !readyCondition.IsUnknown() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
-					logger.Error(err, "error setting ready condition")
-				}
-			}
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
 
@@ -130,19 +109,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 			// Scale to the fallback replicas count
 			e.doFallbackScaling(ctx, scaledObject, currentScale, logger, currentReplicas)
-		case isError && scaledObject.Spec.Fallback == nil:
-			// there are no active triggers, but a scaler responded with an error
-			// AND
-			// there is not a fallback replicas count defined
-
-			// Set ScaledObject.Status.ReadyCondition to false
-			msg := "Triggers defined in ScaledObject are not working correctly"
-			logger.V(1).Info(msg)
-			if !readyCondition.IsFalse() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "TriggerError", msg); err != nil {
-					logger.Error(err, "error setting ready condition")
-				}
-			}
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount,
 			// there are no active triggers, Idle Replicas mode is enabled
 			// AND
@@ -216,10 +182,17 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
+	// if scaledObject.Spec.AllowInitScale is not set, then set the default value (true)
+	allowInitScale := true
+	if scaledObject.Spec.AllowInitScale != nil {
+		allowInitScale = *scaledObject.Spec.AllowInitScale
+	}
+
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
-	// In this case we will ignore the cooldown period and scale it down
-	if scaledObject.Status.LastActiveTime == nil ||
-		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
+	// In this case we will ignore the cooldown period and scale it down if allowInitScale to true
+	if scaledObject.Status.LastActiveTime == nil && allowInitScale ||
+		scaledObject.Status.LastActiveTime != nil &&
+			scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
 		// or last time a trigger was active was > cooldown period, so scale down.
 
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)

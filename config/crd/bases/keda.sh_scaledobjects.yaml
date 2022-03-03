@@ -216,6 +216,8 @@ spec:
                 - failureThreshold
                 - replicas
                 type: object
+              allowInitScale:
+                type: boolean
               idleReplicaCount:
                 format: int32
                 type: integer
