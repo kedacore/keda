@@ -192,14 +192,14 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
 
-var vhostPathes = []string{"/myhost", "", "/", "//", "/%2F"}
+var vhostPathes = []string{"/myhost", "", "/", "//", rabbitRootVhostPath}
 
 var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "//"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, ""},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "/"},
+	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, rabbitRootVhostPath},
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
 }
 
@@ -216,14 +216,19 @@ func TestGetQueueInfo(t *testing.T) {
 
 	for _, testData := range allTestData {
 		testData := testData
-		expectedVhost := "myhost"
 
-		if testData.vhostPath != "/myhost" {
-			expectedVhost = "%2F"
+		var expectedVhostPath string
+		switch testData.vhostPath {
+		case "/myhost":
+			expectedVhostPath = "/myhost"
+		case rabbitRootVhostPath, "//":
+			expectedVhostPath = rabbitRootVhostPath
+		default:
+			expectedVhostPath = ""
 		}
 
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues/" + expectedVhost + "/evaluate_trials"
+			expectedPath := fmt.Sprintf("/api/queues%s/evaluate_trials", expectedVhostPath)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -325,10 +330,21 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
 }
 
+var vhostPathesForRegex = []string{"", "/test-vh", rabbitRootVhostPath}
+
 func TestGetQueueInfoWithRegex(t *testing.T) {
+	allTestData := []getQueueInfoTestData{}
 	for _, testData := range testRegexQueueInfoTestData {
+		for _, vhostPath := range vhostPathesForRegex {
+			testData := testData
+			testData.vhostPath = vhostPath
+			allTestData = append(allTestData, testData)
+		}
+	}
+
+	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=%5Eevaluate_trials%24&page_size=100"
+			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", testData.vhostPath)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -397,9 +413,18 @@ var testRegexPageSizeTestData = []getRegexPageSizeTestData{
 }
 
 func TestGetPageSizeWithRegex(t *testing.T) {
+	allTestData := []getRegexPageSizeTestData{}
 	for _, testData := range testRegexPageSizeTestData {
+		for _, vhostPath := range vhostPathesForRegex {
+			testData := testData
+			testData.queueInfo.vhostPath = vhostPath
+			allTestData = append(allTestData, testData)
+		}
+	}
+
+	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.pageSize)
+			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.queueInfo.vhostPath, testData.pageSize)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
