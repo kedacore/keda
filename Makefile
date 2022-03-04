@@ -69,15 +69,18 @@ all: build
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
-.PHONY: e2e-test
-e2e-test: ## Run e2e tests against Azure cluster.
-	TERMINFO=/etc/terminfo
-	TERM=linux
+.PHONY: get-cluster-context
+get-cluster-context: ## Get Azure cluster context.
 	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
+
+.PHONY: e2e-test
+e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
+	TERMINFO=/etc/terminfo
+	TERM=linux
 	npm install --prefix tests
 
 	./tests/run-all.sh
@@ -88,8 +91,13 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 	./tests/run-all.sh
 
 .PHONY: e2e-test-clean
-e2e-test-clean: ## Delete all namespaces labeled with type=e2e
+e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
+
+.PHONY: arm-smoke-test
+arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	npm install --prefix tests
+	./tests/run-arm-smoke-tests.sh
 
 ##################################################
 # Development                                    #
@@ -179,6 +187,10 @@ docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
 publish: docker-build ## Push images on to Container Registry (default: ghcr.io).
 	docker push $(IMAGE_CONTROLLER)
 	docker push $(IMAGE_ADAPTER)
+
+publish-multiarch:
+	docker buildx build --push --platform=linux/amd64,linux/arm64 . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	docker buildx build --push --platform=linux/amd64,linux/arm64 -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
@@ -277,7 +289,10 @@ endef
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: publish-build-tools
-publish-build-tools: ## Publish build-tools image
+.PHONY: docker-build-tools
+docker-build-tools: ## Build build-tools image
 	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+
+.PHONY: publish-build-tools
+publish-build-tools: docker-build-tools ## Publish build-tools image
 	docker push $(IMAGE_BUILD_TOOLS)
