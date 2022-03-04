@@ -14,12 +14,12 @@ const dummyQueueName2 = 'hellohellohello'
 const username = "test-user"
 const password = "test-password"
 const vhost = "test-vh-regex"
-const dummyVhost = "test-vh-regex-dummy"
+const dummyVhost1 = "test-vh-regex-dummy-one"
 const dummyVhost2 = "test-vh-regex-dummy-two"
 const connectionHost = `rabbitmq.${rabbitmqNamespace}.svc.cluster.local`
 const connectionHostWithAuth = `${username}:${password}@${connectionHost}`
 const connectionString = `amqp://${connectionHostWithAuth}/${vhost}`
-const connectionStringDummy = `amqp://${connectionHostWithAuth}/${dummyVhost}`
+const connectionStringDummy1 = `amqp://${connectionHostWithAuth}/${dummyVhost1}`
 const connectionStringDummy2 = `amqp://${connectionHostWithAuth}/${dummyVhost2}`
 const messageCount = 500
 
@@ -32,7 +32,7 @@ test.before(t => {
 
   RabbitMQHelper.createDeployment(t, testNamespace, deployYaml, connectionString, httpConnectionString, queueName)
 
-  RabbitMQHelper.createVhost(t, testNamespace, connectionHost, username, password, dummyVhost)
+  RabbitMQHelper.createVhost(t, testNamespace, connectionHost, username, password, dummyVhost1)
   RabbitMQHelper.createVhost(t, testNamespace, connectionHost, username, password, dummyVhost2)
 })
 
@@ -44,7 +44,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
 })
 
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionStringDummy, messageCount, dummyQueueName1)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionStringDummy1, messageCount, dummyQueueName1)
   RabbitMQHelper.publishMessages(t, testNamespace, connectionStringDummy2, messageCount, dummyQueueName2)
   RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
