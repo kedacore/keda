@@ -44,6 +44,14 @@ type datadogMetadata struct {
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
 
+var aggregator, filter, rollup *regexp.Regexp
+
+func init() {
+	aggregator = regexp.MustCompile(`^(avg|sum|min|max):.*`)
+	filter = regexp.MustCompile(`.*\{.*\}.*`)
+	rollup = regexp.MustCompile(`.*\.rollup\(([a-z]+,)?\s*(\d+)\)`)
+}
+
 // NewDatadogScaler creates a new Datadog scaler
 func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	meta, err := parseDatadogMetadata(config)
@@ -63,22 +71,26 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 // parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
 func parseAndTransformDatadogQuery(q string, age int) (string, error) {
-	aggregator := regexp.MustCompile(`^(avg|sum|min|max):.*`)
-
 	if !aggregator.MatchString(q) {
 		q = "avg:" + q
 	}
-
-	filter := regexp.MustCompile(`.*\{.*\}.*`)
 
 	if !filter.MatchString(q) {
 		return "", fmt.Errorf("malformed Datadog query")
 	}
 
-	rollup := regexp.MustCompile(`.*\.rollup\(.*\)`)
+	match := rollup.FindStringSubmatch(q)
+	if match != nil {
+		rollupAgg, err := strconv.Atoi(match[2])
+		if err != nil {
+			return "", fmt.Errorf("malformed Datadog query")
+		}
 
-	if !rollup.MatchString(q) {
-		s := fmt.Sprintf(".rollup(avg, %d)", age)
+		if rollupAgg > age {
+			return "", fmt.Errorf("rollup cannot be bigger than time window")
+		}
+	} else {
+		s := fmt.Sprintf(".rollup(avg, %d)", age/5)
 		q += s
 	}
 
@@ -94,6 +106,10 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 			return nil, fmt.Errorf("age parsing error %s", err.Error())
 		}
 		meta.age = age
+
+		if age < 60 {
+			datadogLog.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
+		}
 	} else {
 		meta.age = 90 // Default window 90 seconds
 	}
@@ -240,32 +256,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	series := resp.GetSeries()
-	tries := 0
-
-	// Sometimes Datadog won't be returning a series for a particular call, if the data is not there yet, let's retry 5 times before giving up
-	for len(series) == 0 && tries < 5 {
-		time.Sleep(5 * time.Second)
-
-		resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
-
-		if r.StatusCode == 429 {
-			rateLimit := r.Header.Get("X-Ratelimit-Limit")
-			rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
-
-			return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds: %s", rateLimit, rateLimitReset, err)
-		}
-
-		if r.StatusCode != 200 {
-			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
-		}
-
-		if err != nil {
-			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
-		}
-
-		series = resp.GetSeries()
-		tries++
-	}
 
 	if len(series) > 1 {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series")
