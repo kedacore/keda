@@ -40,6 +40,8 @@ type datadogMetadata struct {
 	vType       valueType
 	metricName  string
 	age         int
+	useFiller   bool
+	fillValue   float64
 }
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
@@ -133,6 +135,15 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		meta.queryValue = queryValue
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
+	}
+
+	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+		fillValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("metricUnavailableValue parsing error %s", err.Error())
+		}
+		meta.fillValue = fillValue
+		meta.useFiller = true
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
@@ -262,13 +273,19 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	if len(series) == 0 {
-		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+		if !s.metadata.useFiller {
+			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+		}
+		return s.metadata.fillValue, nil
 	}
 
 	points := series[0].GetPointlist()
 
 	if len(points) == 0 || len(points[0]) < 2 {
-		return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+		if !s.metadata.useFiller {
+			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+		}
+		return s.metadata.fillValue, nil
 	}
 
 	// Return the last point from the series
