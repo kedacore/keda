@@ -27,7 +27,6 @@ test.before(t => {
   RabbitMQHelper.installRabbit(t, username, password, vhost, rabbitmqNamespace)
 
   sh.config.silent = true
-  
   // create deployment
   const httpConnectionString = `http://${connectionHostWithAuth}/${vhost}`
 
