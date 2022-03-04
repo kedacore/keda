@@ -35,6 +35,19 @@ export class RabbitMQHelper {
         )
     }
 
+    static createVhost(t, namespace: string, host: string, username: string, password: string, vhostName: string) {
+      const tmpFile = tmp.fileSync()
+      fs.writeFileSync(tmpFile.name, createVhostYaml.replace('{{HOST}}', host)
+          .replace('{{USERNAME_PASSWORD}}', `${username}:${password}`)
+          .replace('{{VHOST_NAME}}', vhostName)
+          .replace('{{VHOST_NAME}}', vhostName))
+      t.is(
+          0,
+          sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,
+          'creating a vhost should work.'
+      )
+  }
+
     static publishMessages(t, namespace: string, connectionString: string, messageCount: number, queueName: string) {
         // publish messages
         const tmpFile = tmp.fileSync()
@@ -64,6 +77,20 @@ spec:
         image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}", "{{QUEUE_NAME}}"]
+      restartPolicy: Never`
+
+const createVhostYaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-create-vhost-{{VHOST_NAME}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: curl-client
+        image: curlimages/curl
+        imagePullPolicy: Always
+        command: ["curl", "-u", "{{USERNAME_PASSWORD}}", "-X", "PUT", "http://{{HOST}}/api/vhosts/{{VHOST_NAME}}"]
       restartPolicy: Never`
 
 const rabbitmqDeployYaml = `apiVersion: v1
