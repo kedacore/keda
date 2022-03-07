@@ -173,6 +173,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 			targetValue:               3,
 			scalerIndex:               0,
+			metricName:                "s0-aws-dynamodb-test",
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     "none",
 				awsSecretAccessKey: "none",

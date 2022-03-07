@@ -29,16 +29,6 @@ type awsDynamoDBScaler struct {
 	dbClient dynamodbiface.DynamoDBAPI
 }
 
-/*
-
-triggers:
-  - type: dynamodb
-    metadata:
-      tableName: 'Movie'
-      keyConditionExpression: "#yr = :yyyy"
-      expressionAttributeNames: "{ "#yr" : "year" }"
-
-*/
 
 type awsDynamoDBMetadata struct {
 	tableName                 string
@@ -49,6 +39,7 @@ type awsDynamoDBMetadata struct {
 	targetValue               int
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
+	metricName                string
 }
 
 var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
@@ -129,6 +120,9 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	meta.awsAuthorization = auth
 	meta.scalerIndex = config.ScalerIndex
 
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex,
+		kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-%s", meta.tableName)))
+
 	return &meta, nil
 }
 
@@ -181,7 +175,7 @@ func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-%s", c.metadata.tableName))),
+			Name: c.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
