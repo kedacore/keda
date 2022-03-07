@@ -29,7 +29,6 @@ type awsDynamoDBScaler struct {
 	dbClient dynamodbiface.DynamoDBAPI
 }
 
-
 type awsDynamoDBMetadata struct {
 	tableName                 string
 	awsRegion                 string
