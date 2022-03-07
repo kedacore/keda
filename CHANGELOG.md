@@ -30,7 +30,7 @@
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/pull/XXX))
+- Add DynamoDB Scaler ([#2486](https://github.com/kedacore/keda/pull/2486))
 
 ### Improvements
 
