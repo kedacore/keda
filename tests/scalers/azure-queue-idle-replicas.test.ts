@@ -4,26 +4,31 @@ import * as azure from 'azure-storage'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForDeploymentReplicaCount} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-queue-idle-replicas-test'
 const queueName = 'idle-replicas-queue-name'
-const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 
 test.before(async t => {
   if (!connectionString) {
-    t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
+    t.fail('AZURE_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
 
-  const queueSvc = azure.createQueueService(connectionString)
-  queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
-  queueSvc.createQueueIfNotExists(queueName, _ => {})
+  const createQueueAsync = () => new Promise((resolve, _) => {
+    const queueSvc = azure.createQueueService(connectionString)
+    queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+    queueSvc.createQueueIfNotExists(queueName, _ => {
+      resolve(undefined);
+    })
+  })
+  await createQueueAsync()
 
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr))
-  sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  createNamespace(defaultNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code,

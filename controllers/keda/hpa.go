@@ -102,9 +102,10 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 				APIVersion: gvkr.GroupVersion().String(),
 			}},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getHPAName(scaledObject),
-			Namespace: scaledObject.Namespace,
-			Labels:    labels,
+			Name:        getHPAName(scaledObject),
+			Namespace:   scaledObject.Namespace,
+			Labels:      labels,
+			Annotations: scaledObject.Annotations,
 		},
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v2beta2",

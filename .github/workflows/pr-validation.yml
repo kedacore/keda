@@ -8,7 +8,7 @@ jobs:
     container: ubuntu:focal
     steps:
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.17
 
@@ -16,7 +16,7 @@ jobs:
         run: apt update && apt install -y make ca-certificates gcc
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -58,7 +58,7 @@ jobs:
       ARCH: arm64
     steps:
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.17
 
@@ -66,7 +66,7 @@ jobs:
         run: apt update && apt install -y make ca-certificates gcc
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -100,13 +100,51 @@ jobs:
       - name: Test
         run: make test
 
+  validate-dockerfiles:
+    name: Validate Dockerfiles
+    runs-on: ubuntu-latest
+    container: ghcr.io/kedacore/build-tools:main
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            dockerfiles:
+              - 'Dockerfile*'
+
+      - name: Build images
+        if: steps.filter.outputs.dockerfiles == 'true'
+        run: make docker-build
+
+  validate-build-tools:
+    name: Validate build-tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            tools:
+              - 'tools/**'
+
+      - name: Build tools
+        if: steps.filter.outputs.tools == 'true'
+        run: make docker-build-tools
+
   statics:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2.3.2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3.0.0
+      - uses: actions/setup-go@v3
         with:
           go-version: 1.17
       - name: Get golangci
@@ -125,7 +163,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.

@@ -1,14 +1,41 @@
----
-# Source: prometheus/templates/server-configmap.yaml
-apiVersion: v1
+import * as sh from 'shelljs'
+import * as tmp from 'tmp'
+import * as fs from 'fs'
+import {createNamespace, waitForRollout} from "./helpers";
+
+export class PrometheusServer {
+
+    static install(t, prometheusServerNamespace: string) {
+        const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
+        createNamespace(prometheusServerNamespace)
+
+        t.is(0, sh.exec(`kubectl apply -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`).code, 'creating a Prometheus Server deployment should work.')
+        // wait for prometheus server
+        t.is(0, waitForRollout('deployment', 'prometheus-server', prometheusServerNamespace))
+    }
+
+    static uninstall(prometheusServerNamespace: string) {
+      const prometheusServerTmpFile = this.getPrometheusFile(prometheusServerNamespace)
+      sh.exec(`kubectl delete -f ${prometheusServerTmpFile.name} --namespace ${prometheusServerNamespace}`)
+
+      sh.exec(`kubectl delete namespace ${prometheusServerNamespace}`)
+    }
+
+    static getPrometheusFile(prometheusServerNamespace: string){
+      let prometheusServerTmpFile = tmp.fileSync()
+      fs.writeFileSync(prometheusServerTmpFile.name, prometheusServerYaml
+        .replace(/{{NAMESPACE}}/g, prometheusServerNamespace))
+        return prometheusServerTmpFile;
+    }
+}
+
+const prometheusServerYaml = `apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
     component: "server"
     app: prometheus
     release: prometheus
-    chart: prometheus-11.1.0
-    heritage: Tiller
   name: prometheus-server
 data:
   alerting_rules.yml: |
@@ -270,8 +297,6 @@ data:
     {}
 
 ---
-# Source: prometheus/templates/server-serviceaccount.yaml
-
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -280,14 +305,10 @@ metadata:
     app: prometheus
     release: prometheus
     chart: prometheus-11.1.0
-    heritage: Tiller
-  name: prometheus-server
+  name: prometheus-server-{{NAMESPACE}}
   annotations:
     {}
-
-
 ---
-# Source: prometheus/templates/server-clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -296,8 +317,7 @@ metadata:
     app: prometheus
     release: prometheus
     chart: prometheus-11.1.0
-    heritage: Tiller
-  name: prometheus-server
+  name: prometheus-server-{{NAMESPACE}}
 rules:
   - apiGroups:
       - ""
@@ -327,9 +347,7 @@ rules:
       - "/metrics"
     verbs:
       - get
-
 ---
-# Source: prometheus/templates/server-clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -338,22 +356,19 @@ metadata:
     app: prometheus
     release: prometheus
     chart: prometheus-11.1.0
-    heritage: Tiller
-  name: prometheus-server
+  name: prometheus-server-{{NAMESPACE}}
 subjects:
   - kind: ServiceAccount
-    name: prometheus-server
-    namespace: monitoring
+    name: prometheus-server-{{NAMESPACE}}
+    namespace: {{NAMESPACE}}
   - kind: ServiceAccount
     name: prometheus-server
     namespace: argo-monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: prometheus-server
-
+  name: prometheus-server-{{NAMESPACE}}
 ---
-# Source: prometheus/templates/server-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -362,7 +377,6 @@ metadata:
     app: prometheus
     release: prometheus
     chart: prometheus-11.1.0
-    heritage: Tiller
   name: prometheus-server
 spec:
   ports:
@@ -377,7 +391,6 @@ spec:
   sessionAffinity: None
   type: "ClusterIP"
 ---
-# Source: prometheus/templates/server-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -386,7 +399,6 @@ metadata:
     app: prometheus
     release: prometheus
     chart: prometheus-11.1.0
-    heritage: Tiller
   name: prometheus-server
 spec:
   selector:
@@ -402,9 +414,8 @@ spec:
         app: prometheus
         release: prometheus
         chart: prometheus-11.1.0
-        heritage: Tiller
     spec:
-      serviceAccountName: prometheus-server
+      serviceAccountName: prometheus-server-{{NAMESPACE}}
       containers:
         - name: prometheus-server-configmap-reload
           image: "jimmidyson/configmap-reload:v0.3.0"
@@ -469,132 +480,4 @@ spec:
           configMap:
             name: prometheus-server
         - name: storage-volume
-          emptyDir: {}
----
-# Source: prometheus/templates/alertmanager-clusterrole.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-clusterrolebinding.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-configmap.yaml
-
----
-# Source: prometheus/templates/alertmanager-deployment.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-ingress.yaml
-
----
-# Source: prometheus/templates/alertmanager-networkpolicy.yaml
-
----
-# Source: prometheus/templates/alertmanager-pdb.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-podsecuritypolicy.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-pvc.yaml
-
----
-# Source: prometheus/templates/alertmanager-service-headless.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-service.yaml
-
-
----
-# Source: prometheus/templates/alertmanager-serviceaccount.yaml
-
----
-# Source: prometheus/templates/alertmanager-statefulset.yaml
-
-
----
-# Source: prometheus/templates/node-exporter-daemonset.yaml
-
----
-# Source: prometheus/templates/node-exporter-podsecuritypolicy.yaml
-
-
----
-# Source: prometheus/templates/node-exporter-role.yaml
-
-
----
-# Source: prometheus/templates/node-exporter-rolebinding.yaml
-
-
----
-# Source: prometheus/templates/node-exporter-service.yaml
-
----
-# Source: prometheus/templates/node-exporter-serviceaccount.yaml
-
----
-# Source: prometheus/templates/pushgateway-clusterrole.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-clusterrolebinding.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-deployment.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-ingress.yaml
-
----
-# Source: prometheus/templates/pushgateway-networkpolicy.yaml
-
----
-# Source: prometheus/templates/pushgateway-pdb.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-podsecuritypolicy.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-pvc.yaml
-
----
-# Source: prometheus/templates/pushgateway-service.yaml
-
-
----
-# Source: prometheus/templates/pushgateway-serviceaccount.yaml
-
----
-# Source: prometheus/templates/server-ingress.yaml
-
----
-# Source: prometheus/templates/server-networkpolicy.yaml
-
-
----
-# Source: prometheus/templates/server-pdb.yaml
-
-
----
-# Source: prometheus/templates/server-podsecuritypolicy.yaml
-
-
----
-# Source: prometheus/templates/server-service-headless.yaml
-
----
-# Source: prometheus/templates/server-statefulset.yaml
-
-
----
-# Source: prometheus/templates/server-vpa.yaml
+          emptyDir: {}`

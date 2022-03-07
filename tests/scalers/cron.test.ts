@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { waitForDeploymentReplicaCount } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'crontest'
 const deployFile = tmp.fileSync()
@@ -16,7 +16,7 @@ let end = now.getMinutes()
 
 test.before(t => {
   sh.config.silent = true
-	sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   fs.writeFileSync(deployFile.name, deployYaml.replace('{{START_MIN}}', start.toString())
                                 .replace('{{END_MIN}}', end.toString()))

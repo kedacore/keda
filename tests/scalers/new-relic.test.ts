@@ -19,6 +19,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const newRelicApiKey = process.env['NEWRELIC_API_KEY']
 const newRelicAccountId = process.env['NEWRELIC_ACCOUNT_ID']
@@ -44,7 +45,7 @@ test.before(t => {
   if (!newRelicRegion) {
     newRelicRegion = 'EU'
   }
-  sh.exec(`kubectl create namespace ${newRelicNamespace}`)
+  createNamespace(newRelicNamespace)
   sh.exec(`helm repo add ${newRelicHelmRepoName} ${newRelicRepoUrl}`)
   sh.exec(`helm repo update`)
   let helmInstallStatus = sh.exec(`helm upgrade \
@@ -72,7 +73,7 @@ test.before(t => {
     .replace('{{NEWRELIC_ACCOUNT_ID}}', newRelicAccountId)
     .replace('{{NEWRELIC_REGION}}', newRelicRegion)
   )
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
   sh.exec(`cp ${tmpFile.name} /tmp/paso.yaml`)
   t.is(
     0,
