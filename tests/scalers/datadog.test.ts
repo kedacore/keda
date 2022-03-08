@@ -164,6 +164,7 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
 })
 
 test.after.always.cb('clean up datadog resources', t => {
+  sh.exec(`kubectl delete scaledobject -n ${testNamespace} --all`)
   sh.exec(`helm repo rm datadog`)
   sh.exec(`kubectl delete namespace ${datadogNamespace} --force`)
   sh.exec(`kubectl delete namespace ${testNamespace} --force`)
@@ -282,7 +283,6 @@ spec:
     name: nginx
   minReplicaCount: 1
   maxReplicaCount: 3
-  pollingInterval: 5
   cooldownPeriod: 10
   advanced:
     horizontalPodAutoscalerConfig:
@@ -295,7 +295,7 @@ spec:
       query: "avg:nginx.net.request_per_s{cluster_name:keda-datadog-cluster}"
       queryValue: "2"
       type: "global"
-      age: "60"
+      age: "120"
     authenticationRef:
       name: keda-trigger-auth-datadog-secret
 `
