@@ -130,7 +130,7 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '1'
   for (let i = 0; i < 60 && replicaCount !== '3'; i++) {
-    t.log(`Waited ${5 * i} seconds for nginx deployment to scale up`)
+    t.log(`Waited ${15 * i} seconds for nginx deployment to scale up`)
 
     replicaCount = sh.exec(
       `kubectl get deployment nginx --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
@@ -151,11 +151,12 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   )
 
   for (let i = 0; i < 50 && replicaCount !== '1'; i++) {
+    t.log(`Waited ${15 * i} seconds for nginx deployment to scale down`)
     replicaCount = sh.exec(
       `kubectl get deployment nginx --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '1') {
-      sh.exec('sleep 5')
+      sh.exec('sleep 15')
     }
   }
 
