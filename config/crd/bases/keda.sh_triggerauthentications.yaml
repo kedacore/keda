@@ -52,6 +52,52 @@ spec:
           spec:
             description: TriggerAuthenticationSpec defines the various ways to authenticate
             properties:
+              azureKeyVault:
+                description: AzureKeyVault is used to authenticate using Azure Key
+                  Vault
+                properties:
+                  credentials:
+                    properties:
+                      clientId:
+                        type: string
+                      clientSecret:
+                        properties:
+                          key:
+                            type: string
+                          kubeSecret:
+                            type: string
+                        required:
+                        - key
+                        - kubeSecret
+                        type: object
+                      tenantId:
+                        type: string
+                    required:
+                    - clientId
+                    - clientSecret
+                    - tenantId
+                    type: object
+                  secrets:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        parameter:
+                          type: string
+                        version:
+                          type: string
+                      required:
+                      - name
+                      - parameter
+                      type: object
+                    type: array
+                  vaultUri:
+                    type: string
+                required:
+                - credentials
+                - secrets
+                - vaultUri
+                type: object
               env:
                 items:
                   description: AuthEnvironment is used to authenticate using environment
