@@ -28,7 +28,7 @@ function run_tests {
         fi
 
         counter=$((counter+1))
-        ./node_modules/.bin/ava $test_case > "${test_case}.1.log" 2>&1 &
+        ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
         echo "Running $test_case with pid: $pid"
         pids+=($pid)
@@ -61,7 +61,7 @@ function run_tests {
         for test_case in "${retry_lookup[@]}"
         do
             counter=$((counter+1))
-            ./node_modules/.bin/ava $test_case > "${test_case}.2.log" 2>&1 &
+            ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
             pid=$!
             echo "Rerunning $test_case with pid: $pid"
             pids+=($pid)

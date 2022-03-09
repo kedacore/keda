@@ -1,7 +1,4 @@
-import * as async from 'async'
-import * as fs from 'fs'
 import * as sh from 'shelljs'
-import * as tmp from 'tmp'
 import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
 
