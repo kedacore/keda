@@ -171,7 +171,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		err = errors.Unwrap(err)
 		if stErr, ok := err.(azblob.StorageError); ok {
 			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound || stErr.ServiceCode() == azblob.ServiceCodeContainerNotFound {
-				eventhubLog.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, Getting unprocessed event count without checkpoint", scaler.metadata.eventHubInfo.BlobContainer))
+				eventhubLog.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, getting unprocessed event count without checkpoint", scaler.metadata.eventHubInfo.BlobContainer))
 				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
 			}
 		}
