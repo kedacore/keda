@@ -31,6 +31,7 @@
 ### New
 
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
+- **General:** Provide support for authentication via Azure Key Vault  ([#900](https://github.com/kedacore/keda/issues/900))
 
 ### Improvements
 
