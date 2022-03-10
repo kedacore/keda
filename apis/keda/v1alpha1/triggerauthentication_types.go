@@ -192,8 +192,16 @@ type AzureKeyVaultCredentials struct {
 }
 
 type AzureKeyVaultClientSecret struct {
-	KubeSecret string `json:"kubeSecret"`
-	Key        string `json:"key"`
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type ValueFromSecret struct {
+	SecretKeyRef SecretKeyRef `json:"secretKeyRef"`
+}
+
+type SecretKeyRef struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 type AzureKeyVaultSecret struct {

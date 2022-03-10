@@ -46,8 +46,10 @@ func NewAzureKeyVaultHandler(v *kedav1alpha1.AzureKeyVault) *AzureKeyVaultHandle
 func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string) error {
 	clientID := vh.vault.Credentials.ClientID
 	tenantID := vh.vault.Credentials.TenantID
-	clientSecret := resolveAuthSecret(ctx, client, logger, vh.vault.Credentials.ClientSecret.KubeSecret,
-		triggerNamespace, vh.vault.Credentials.ClientSecret.Key)
+
+	clientSecretName := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Name
+	clientSecretKey := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
+	clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
 
 	clientCredentialsConfig := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
 	clientCredentialsConfig.Resource = azureKeyVaultResource

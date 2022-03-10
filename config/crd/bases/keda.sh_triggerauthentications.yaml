@@ -62,13 +62,23 @@ spec:
                         type: string
                       clientSecret:
                         properties:
-                          key:
-                            type: string
-                          kubeSecret:
-                            type: string
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
                         required:
-                        - key
-                        - kubeSecret
+                        - valueFrom
                         type: object
                       tenantId:
                         type: string
