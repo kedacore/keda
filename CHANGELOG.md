@@ -31,6 +31,7 @@
 ### New
 
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
+- **General:** Improve logging in Event hubs scaler when blob container not found ([#2363]https://github.com/kedacore/keda/issues/2363)
 
 ### Improvements
 
