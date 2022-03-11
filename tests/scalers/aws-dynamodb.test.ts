@@ -8,7 +8,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from '@aws-sdk/client-dynamodb'
-import { waitForDeploymentReplicaCount } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 
 const awsRegion = 'eu-west-2'
@@ -35,8 +35,7 @@ test.before(async t => {
     }
   });
 
-  // create namespace
-  sh.exec(`kubectl create namespace ${dynamoDBNamespace}`)
+  createNamespace(dynamoDBNamespace)
 
   // create table
   let params = {
@@ -55,7 +54,7 @@ test.before(async t => {
     },
   }
 
-  let createTableCmd = new CreateTableCommand(params);
+  let createTableCmd = new CreateTableCommand(params)
   await dynamoClient.send(createTableCmd)
 
   sh.exec('sleep 10s')
