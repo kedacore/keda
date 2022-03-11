@@ -456,8 +456,12 @@ func resolveVaultSecret(logger logr.Logger, data map[string]interface{}, key str
 			logger.Error(fmt.Errorf("key '%s' not found", key), "Error trying to get key from Vault secret")
 			return ""
 		}
+	} else if v1Data, ok := data[key]; ok {
+		if s, ok := v1Data.(string); ok {
+			return s
+		}
 	}
 
-	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "Error trying to convert Data secret vaule")
+	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "Error trying to convert Data secret value")
 	return ""
 }
