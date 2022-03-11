@@ -124,6 +124,7 @@ jobs:
   validate-build-tools:
     name: Validate build-tools
     runs-on: ubuntu-latest
+    container: ghcr.io/kedacore/build-tools:main
     steps:
       - uses: actions/checkout@v3
 
