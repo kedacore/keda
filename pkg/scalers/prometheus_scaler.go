@@ -38,7 +38,7 @@ type prometheusMetadata struct {
 	serverAddress  string
 	metricName     string
 	query          string
-	threshold      int
+	threshold      float64
 	prometheusAuth *authentication.AuthMeta
 	namespace      string
 	scalerIndex    int
@@ -106,7 +106,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
 		}

@@ -37,6 +37,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
 	// all properly formed, default disableScaleToZero
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
+	// able to parse float value of threshold
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "0.5", "query": "up"}, false},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
