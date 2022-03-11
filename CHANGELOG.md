@@ -32,6 +32,7 @@
 
 - Add DynamoDB Scaler ([#2486](https://github.com/kedacore/keda/pull/2486))
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
+- **General:** Automatically run end-to-end tests on ARM ([#2262]https://github.com/kedacore/keda/issues/2262))
 
 ### Improvements
 

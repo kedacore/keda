@@ -5,8 +5,9 @@ DIR=$(dirname "$0")
 cd $DIR
 
 test_files=(
-    "influxdb.test.ts" #ScaledObject
-    "mongodb.test.ts" #ScaledJob
+    "kubernetes-workload.test.ts"
+    "activemq.test.ts"
+    "cron.test.ts"
 )
 
 concurrent_tests_limit=5
@@ -33,12 +34,46 @@ function run_tests {
         pids+=($pid)
         lookup[$pid]=$test_case
         # limit concurrent runs
-        if [[ "$counter" -gt "$concurrent_tests_limit" ]]; then
+        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
             wait_for_jobs
             counter=0
             pids=()
         fi
     done
+
+     wait_for_jobs
+
+    # Retry failing tests
+    if [ ${#failed_lookup[@]} -ne 0 ]; then
+
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS"
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+
+        retry_lookup=("${failed_lookup[@]}")
+        counter=0
+        pids=()
+        failed_count=0
+        failed_lookup=()
+
+        for test_case in "${retry_lookup[@]}"
+        do
+            counter=$((counter+1))
+            ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
+            pid=$!
+            echo "Rerunning $test_case with pid: $pid"
+            pids+=($pid)
+            lookup[$pid]=$test_case
+            # limit concurrent runs
+            if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
+                wait_for_jobs
+                counter=0
+                pids=()
+            fi
+        done
+    fi
 }
 
 function mark_failed {
