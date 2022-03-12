@@ -32,7 +32,7 @@
 
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
 - **General:** Automatically run end-to-end tests on ARM ([#2262]https://github.com/kedacore/keda/issues/2262))
-- **Azure Data Explorer Scaler:** Add Azure Data Explorer Scaler ([#2627](https://github.com/kedacore/keda/pull/2627))
+- **General:** Introduce new Azure Data Explorer Scaler ([#1488](https://github.com/kedacore/keda/issues/1488))
 
 ### Improvements
 
