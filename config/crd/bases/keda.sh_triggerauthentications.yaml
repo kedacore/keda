@@ -122,6 +122,9 @@ spec:
                   provider:
                     description: PodIdentityProvider contains the list of providers
                     type: string
+                  identityId:
+                    description: Allows users to specify the identity which should be used by the operator to authenticate against the source
+                    type: string
                 required:
                 - provider
                 type: object
