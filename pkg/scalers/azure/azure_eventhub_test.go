@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/go-playground/assert/v2"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // Add a valid Storage account connection string here
@@ -294,7 +295,7 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
 	ctx := context.Background()
 
-	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", StorageConnectionString, "", "")
+	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient, kedav1alpha1.AuthPodIdentity{Provider: "none"}, StorageConnectionString, "", "")
 
 	// Create container
 	path, _ := url.Parse(containerName)

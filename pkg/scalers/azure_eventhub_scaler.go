@@ -33,7 +33,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -121,7 +121,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.BlobContainer = val
 	}
 
-	if config.PodIdentity == "" || config.PodIdentity == v1alpha1.PodIdentityProviderNone {
+	if (config.PodIdentity == kedav1alpha1.AuthPodIdentity{}) || (config.PodIdentity == kedav1alpha1.AuthPodIdentity{Provider: "none"}) {
 		if config.AuthParams["connection"] != "" {
 			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
 		} else if config.TriggerMetadata["connectionFromEnv"] != "" {

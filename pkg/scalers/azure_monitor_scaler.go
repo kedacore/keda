@@ -41,7 +41,7 @@ const (
 
 type azureMonitorScaler struct {
 	metadata    *azureMonitorMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 type azureMonitorMetadata struct {
@@ -153,7 +153,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 
 // parseAzurePodIdentityParams gets the activeDirectory clientID and password
 func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientPassword string, err error) {
-	if config.PodIdentity == "" || config.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	if (config.PodIdentity == kedav1alpha1.AuthPodIdentity{}) || (config.PodIdentity == kedav1alpha1.AuthPodIdentity{Provider: "none"}) {
 		clientID, err = getParameterFromConfig(config, "activeDirectoryClientId", true)
 		if err != nil || clientID == "" {
 			return "", "", fmt.Errorf("no activeDirectoryClientId given")
@@ -168,7 +168,7 @@ func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientP
 		if len(clientPassword) == 0 {
 			return "", "", fmt.Errorf("no activeDirectoryClientPassword given")
 		}
-	} else if config.PodIdentity != kedav1alpha1.PodIdentityProviderAzure {
+	} else if config.PodIdentity.Provider != kedav1alpha1.PodIdentityProviderAzure {
 		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity)
 	}
 

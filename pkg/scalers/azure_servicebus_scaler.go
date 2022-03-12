@@ -52,7 +52,7 @@ var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 type azureServiceBusScaler struct {
 	ctx         context.Context
 	metadata    *azureServiceBusMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
 }
 
@@ -136,7 +136,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
 		if config.AuthParams["connection"] != "" {
@@ -229,8 +229,9 @@ type azureTokenProvider struct {
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 	ctx := a.ctx
+
 	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
+	token, err := azure.GetAzureServiceBusADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
 	if err != nil {
 		return nil, err
 	}
@@ -265,12 +266,12 @@ func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*se
 	var namespace *servicebus.Namespace
 	var err error
 
-	if s.podIdentity == "" || s.podIdentity == kedav1alpha1.PodIdentityProviderNone {
+	if s.podIdentity.Provider == "" || s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderNone {
 		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
 		if err != nil {
 			return namespace, err
 		}
-	} else if s.podIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	} else if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
 		namespace, err = servicebus.NewNamespace()
 		if err != nil {
 			return namespace, err

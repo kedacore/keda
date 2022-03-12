@@ -65,10 +65,10 @@ type MonitorInfo struct {
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (int32, error) {
 	var podIdentityEnabled = true
 
-	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
+	if podIdentity.Provider == "" || podIdentity.Provider == kedav1alpha1.PodIdentityProviderNone {
 		podIdentityEnabled = false
 	}
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
@@ -93,7 +94,7 @@ func TestParseEventHubMetadata(t *testing.T) {
 	}
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: "Azure"})
+		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: "azure"}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -111,11 +112,11 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
-	storageConnectionString := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, kedav1alpha1.AuthPodIdentity{Provider: "none"}, storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -197,7 +198,7 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
-	storageConnectionString := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)

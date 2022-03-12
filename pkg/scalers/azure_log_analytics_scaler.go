@@ -125,7 +125,7 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMetadata, error) {
 	meta := azureLogAnalyticsMetadata{}
 	switch config.PodIdentity {
-	case "", kedav1alpha1.PodIdentityProviderNone:
+	case kedav1alpha1.AuthPodIdentity{}, kedav1alpha1.AuthPodIdentity{Provider: "none"}:
 		// Getting tenantId
 		tenantID, err := getParameterFromConfig(config, "tenantId", true)
 		if err != nil {
@@ -148,8 +148,8 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
-	case kedav1alpha1.PodIdentityProviderAzure:
-		meta.podIdentity = string(config.PodIdentity)
+	case kedav1alpha1.AuthPodIdentity{Provider: "azure"}:
+		meta.podIdentity = "azure"
 	default:
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}

@@ -43,7 +43,7 @@ const (
 
 type azureBlobScaler struct {
 	metadata    *azureBlobMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
 }
 
@@ -75,7 +75,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alpha1.PodIdentityProvider, error) {
+func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azureBlobMetadata{}
 	meta.targetBlobCount = defaultTargetBlobCount
 	meta.blobDelimiter = defaultBlobDelimiter
@@ -85,7 +85,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		blobCount, err := strconv.Atoi(val)
 		if err != nil {
 			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, "", fmt.Errorf("error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
 		}
 
 		meta.targetBlobCount = blobCount
@@ -94,7 +94,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	if val, ok := config.TriggerMetadata["blobContainerName"]; ok && val != "" {
 		meta.blobContainerName = val
 	} else {
-		return nil, "", fmt.Errorf("no blobContainerName given")
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no blobContainerName given")
 	}
 
 	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok && val != "" {
@@ -107,14 +107,14 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.BlobEndpoint)
 	if err != nil {
-		return nil, "", err
+		return nil, kedav1alpha1.AuthPodIdentity{}, err
 	}
 
 	meta.endpointSuffix = endpointSuffix
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" && val == "true" {
-		config.PodIdentity = kedav1alpha1.PodIdentityProviderAzure
+	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" && val == "true" {
+		config.PodIdentity = kedav1alpha1.AuthPodIdentity{}
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -125,7 +125,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// Azure Blob Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
@@ -136,17 +136,17 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 		}
 
 		if len(meta.connection) == 0 {
-			return nil, "", fmt.Errorf("no connection setting given")
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no connection setting given")
 		}
 	case kedav1alpha1.PodIdentityProviderAzure:
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
-			return nil, "", fmt.Errorf("no accountName given")
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")
 		}
 	default:
-		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
 	}
 
 	meta.scalerIndex = config.ScalerIndex

@@ -52,8 +52,8 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) auth.AuthorizerConfig {
-	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
+func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
+	if podIdentity.Provider == "" || podIdentity.Provider == kedav1alpha1.PodIdentityProviderNone {
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
 		config.Resource = appInsightsResource
 		return config
@@ -102,7 +102,7 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (int32, error) {
 	config := getAuthConfig(info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {
