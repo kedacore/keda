@@ -31,6 +31,7 @@
 ### New
 
 - **General:** Automatically release container image for ARM ([#2263]https://github.com/kedacore/keda/issues/2263))
+- **General:** Automatically run end-to-end tests on ARM ([#2262]https://github.com/kedacore/keda/issues/2262))
 - **General:** Introduce new GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
 
 ### Improvements
@@ -38,6 +39,7 @@
 - **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
 - **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 - **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 
 ### Breaking Changes
 

@@ -1,4 +1,3 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'

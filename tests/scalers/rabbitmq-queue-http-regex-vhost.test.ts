@@ -3,15 +3,21 @@ import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
 import {waitForDeploymentReplicaCount} from "./helpers";
 
-const testNamespace = 'rabbitmq-queue-http-regex-test'
-const rabbitmqNamespace = 'rabbitmq-http-regex-test'
+const testNamespace = 'rabbitmq-queue-http-regex-vhost-test'
+const rabbitmqNamespace = 'rabbitmq-http-regex-vhost-test'
 const queueName = 'hello'
 const dummyQueueName1 = 'hello-1'
 const dummyQueueName2 = 'hellohellohello'
 const username = "test-user"
 const password = "test-password"
 const vhost = "test-vh-regex"
-const connectionString = `amqp://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local/${vhost}`
+const dummyVhost1 = "test-vh-regex-dummy-one"
+const dummyVhost2 = "test-vh-regex-dummy-two"
+const connectionHost = `rabbitmq.${rabbitmqNamespace}.svc.cluster.local`
+const connectionHostWithAuth = `${username}:${password}@${connectionHost}`
+const connectionString = `amqp://${connectionHostWithAuth}/${vhost}`
+const connectionStringDummy1 = `amqp://${connectionHostWithAuth}/${dummyVhost1}`
+const connectionStringDummy2 = `amqp://${connectionHostWithAuth}/${dummyVhost2}`
 const messageCount = 500
 
 test.before(t => {
@@ -19,9 +25,12 @@ test.before(t => {
 
   sh.config.silent = true
   // create deployment
-  const httpConnectionString = `http://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local`
+  const httpConnectionString = `http://${connectionHostWithAuth}/${vhost}`
 
   RabbitMQHelper.createDeployment(t, testNamespace, deployYaml, connectionString, httpConnectionString, queueName)
+
+  RabbitMQHelper.createVhost(t, testNamespace, connectionHost, username, password, dummyVhost1)
+  RabbitMQHelper.createVhost(t, testNamespace, connectionHost, username, password, dummyVhost2)
 })
 
 test.serial('Deployment should have 0 replicas on start', t => {
@@ -32,8 +41,8 @@ test.serial('Deployment should have 0 replicas on start', t => {
 })
 
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, dummyQueueName1)
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, dummyQueueName2)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionStringDummy1, messageCount, dummyQueueName1)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionStringDummy2, messageCount, dummyQueueName2)
   RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
   // with messages published, the consumer deployment should start receiving the messages

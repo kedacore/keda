@@ -181,8 +181,8 @@ run: manifests generate ## Run a controller from your host.
 	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
 
 docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
-	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
-	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 publish: docker-build ## Push images on to Container Registry (default: ghcr.io).
 	docker push $(IMAGE_CONTROLLER)
