@@ -25,7 +25,7 @@ type stackdriverScaler struct {
 }
 
 type stackdriverMetadata struct {
-	projectId   string
+	projectID   string
 	filter      string
 	targetValue int
 	metricName  string
@@ -56,7 +56,7 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 			return nil, fmt.Errorf("no projectId name given")
 		}
 
-		meta.projectId = val
+		meta.projectID = val
 	} else {
 		return nil, fmt.Errorf("no projectId name given")
 	}
@@ -188,10 +188,10 @@ func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
 		}
 	}
 
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectId)
+	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectId, s.metadata.filter, val))
+			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectID, s.metadata.filter, val))
 	}
 
 	return val, err
