@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/monitoring v1.2.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
+	github.com/Azure/azure-kusto-go v0.5.0
 	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.11.5
 	github.com/Azure/azure-storage-blob-go v0.14.0
@@ -35,7 +36,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.7.0
 	github.com/lib/pq v1.10.4
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.71.0
+	github.com/newrelic/newrelic-client-go v0.74.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
