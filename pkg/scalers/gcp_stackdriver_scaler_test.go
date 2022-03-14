@@ -26,28 +26,26 @@ var sdFilter = "metric.type=\"storage.googleapis.com/storage/object_count\" reso
 var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "metricName": "gcs_bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all required properly formed
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "metricName": "gcs_bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing projectId
-	{nil, map[string]string{"filter": sdFilter, "targetValue": "7", "metricName": "gcs_bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing filter
-	{nil, map[string]string{"projectId": "myProject", "targetValue": "7", "metricName": "gcs_bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
-	// missing metric name
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"projectId": "myProject", "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "metricName": "gcs_bucket"}, true},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7"}, true},
 	// malformed targetValue
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "aa", "metricName": "gcs_bucket", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "aa", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// Credentials from AuthParams
-	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter, "metricName": "gcs_bucket"}, false},
+	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter, "metricName": "gcs_bucket"}, true},
+	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, true},
 }
 
 var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{
-	{&testStackdriverMetadata[1], 0, "s0-gcp-stackdriver-gcs_bucket"},
-	{&testStackdriverMetadata[1], 1, "s1-gcp-stackdriver-gcs_bucket"},
+	{&testStackdriverMetadata[1], 0, "s0-gcp-stackdriver-myProject"},
+	{&testStackdriverMetadata[1], 1, "s1-gcp-stackdriver-myProject"},
 }
 
 func TestStackdriverParseMetadata(t *testing.T) {

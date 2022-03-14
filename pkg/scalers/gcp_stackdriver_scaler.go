@@ -71,16 +71,8 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 		return nil, fmt.Errorf("no filter given")
 	}
 
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		if val == "" {
-			return nil, fmt.Errorf("no metricName given")
-		}
-
-		name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", val))
-		meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
-	} else {
-		return nil, fmt.Errorf("no metricName given")
-	}
+	name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", meta.projectID))
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.Atoi(val)
