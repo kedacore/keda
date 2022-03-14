@@ -30,8 +30,7 @@ type stackdriverMetadata struct {
 	targetValue int
 	metricName  string
 
-	gcpAuthorization gcpAuthorizationMetadata
-	scalerIndex      int
+	gcpAuthorization *gcpAuthorizationMetadata
 }
 
 var gcpStackdriverLog = logf.Log.WithName("gcp_stackdriver_scaler")
@@ -77,7 +76,8 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 			return nil, fmt.Errorf("no metricName given")
 		}
 
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", val))
+		name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", val))
+		meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
 	} else {
 		return nil, fmt.Errorf("no metricName given")
 	}
@@ -96,8 +96,7 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 	if err != nil {
 		return nil, err
 	}
-	meta.gcpAuthorization = *auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.gcpAuthorization = auth
 	return &meta, nil
 }
 
@@ -129,7 +128,7 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
