@@ -10,9 +10,9 @@ const testNamespace = 'azure-keyvault-queue-test'
 const queueName = 'queue-name-trigger'
 const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 const keyvaultURI = process.env['AZURE_KEYVAULT_URI']
-const azureADClientID = process.env['AZURE_AD_CLIENT_ID']
-const azureADClientSecret = process.env['AZURE_AD_CLIENT_SECRET']
-const azureADTenantID = process.env['AZURE_AD_TENANT_ID']
+const azureADClientID = process.env['AZURE_SP_ID']
+const azureADClientSecret = process.env['AZURE_SP_KEY']
+const azureADTenantID = process.env['AZURE_SP_TENANT']
 
 test.before(async t => {
   if (!connectionString) {
@@ -24,15 +24,15 @@ test.before(async t => {
   }
 
   if (!azureADClientID) {
-    t.fail('AZURE_AD_CLIENT_ID environment variable is required for keyvault tests')
+    t.fail('AZURE_SP_ID environment variable is required for keyvault tests')
   }
 
   if (!azureADClientSecret) {
-    t.fail('AZURE_AD_CLIENT_SECRET environment variable is required for keyvault tests')
+    t.fail('AZURE_SP_KEY environment variable is required for keyvault tests')
   }
 
   if (!azureADTenantID) {
-    t.fail('AZURE_AD_TENANT_ID environment variable is required for keyvault tests')
+    t.fail('AZURE_SP_TENANT environment variable is required for keyvault tests')
   }
 
   const createQueueAsync = () => new Promise((resolve, _) => {
@@ -161,7 +161,7 @@ spec:
             key: clientSecret
     secrets:
     - parameter: connection
-      name: storageConnectionString
+      name: E2E-Storage-ConnectionString
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
