@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+type datadogQueries struct {
+	input   string
+	age     int
+	output  string
+	isError bool
+}
+
 type datadogMetricIdentifier struct {
 	metadataTestData *datadogAuthMetadataTestData
 	scalerIndex      int
@@ -15,6 +22,43 @@ type datadogAuthMetadataTestData struct {
 	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
+}
+
+var testParseQueries = []datadogQueries{
+	{"", 0, "", true},
+	// All properly formed
+	{"avg:system.cpu.user{*}.rollup(sum, 30)", 120, "avg:system.cpu.user{*}.rollup(sum, 30)", false},
+	{"sum:system.cpu.user{*}.rollup(30)", 30, "sum:system.cpu.user{*}.rollup(30)", false},
+	{"avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", 120, "avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", false},
+
+	// Default aggregator
+	{"system.cpu.user{*}.rollup(sum, 30)", 120, "avg:system.cpu.user{*}.rollup(sum, 30)", false},
+
+	// Default rollup
+	{"min:system.cpu.user{*}", 120, "min:system.cpu.user{*}.rollup(avg, 24)", false},
+
+	// Missing filter
+	{"min:system.cpu.user", 120, "", true},
+
+	// Malformed rollup
+	{"min:system.cpu.user{*}.rollup(avg)", 120, "", true},
+}
+
+func TestDatadogScalerParseQueries(t *testing.T) {
+	for _, testData := range testParseQueries {
+		output, err := parseAndTransformDatadogQuery(testData.input, testData.age)
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+
+		if output != testData.output {
+			t.Errorf("Expected %s, got %s", testData.output, output)
+		}
+	}
 }
 
 var testDatadogMetadata = []datadogAuthMetadataTestData{
