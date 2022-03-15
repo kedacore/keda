@@ -230,7 +230,7 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
 			serverAddress: server.URL,
-			cortexOrgId:   cortexOrgValue,
+			cortexOrgID:   cortexOrgValue,
 		},
 		httpClient: http.DefaultClient,
 	}
@@ -238,5 +238,4 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 	_, err := scaler.ExecutePromQuery(context.TODO())
 
 	assert.NoError(t, err)
-
 }

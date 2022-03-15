@@ -27,7 +27,7 @@ const (
 	promQuery            = "query"
 	promThreshold        = "threshold"
 	promNamespace        = "namespace"
-	promCortexScopeOrgId = "cortexOrgId"
+	promCortexScopeOrgID = "cortexOrgID"
 	promCortexHeaderKey  = "X-Scope-OrgID"
 )
 
@@ -44,7 +44,7 @@ type prometheusMetadata struct {
 	prometheusAuth *authentication.AuthMeta
 	namespace      string
 	scalerIndex    int
-	cortexOrgId    string
+	cortexOrgID    string
 }
 
 type promQueryResult struct {
@@ -121,8 +121,8 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.namespace = val
 	}
 
-	if val, ok := config.TriggerMetadata[promCortexScopeOrgId]; ok && val != "" {
-		meta.cortexOrgId = val
+	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
+		meta.cortexOrgID = val
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -189,8 +189,8 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
 	}
 
-	if s.metadata.cortexOrgId != "" {
-		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgId)
+	if s.metadata.cortexOrgID != "" {
+		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
 	}
 
 	r, err := s.httpClient.Do(req)
