@@ -1,5 +1,4 @@
 # Build the manager binary
-ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM golang:1.17.3 AS builder
 
 ARG BUILD_VERSION=main
@@ -28,8 +27,8 @@ COPY pkg/ pkg/
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH make manager
 
 # Use distroless as minimal base image to package the manager binary
