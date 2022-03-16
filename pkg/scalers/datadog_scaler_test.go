@@ -49,6 +49,7 @@ var testParseQueries = []datadogQueries{
 
 	// Malformed function wrapper -- missing end bracket
 	{"per_second(sum:system.cpu.user{*}.rollup(avg, 30)", 120, "", true},
+	{"top(per_second(abs(sum:http.requests{*}.rollup(max, 2))), 5, 'mean', 'desc'", 120, "", true},
 }
 
 func TestDatadogScalerParseQueries(t *testing.T) {

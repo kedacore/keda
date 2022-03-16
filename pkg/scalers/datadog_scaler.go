@@ -75,8 +75,8 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 // parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
 func parseAndTransformDatadogQuery(q string, age int) (string, error) {
-	// Queries should start with a valid aggregator. If not found, prepend avg as default
-	if !aggregator.MatchString(q) {
+	// Queries should start with a valid aggregator. If not found, prepend avg as default, if no functions used
+	if !aggregator.MatchString(q) && !ddfuncpresent.MatchString(q) {
 		q = "avg:" + q
 	}
 
