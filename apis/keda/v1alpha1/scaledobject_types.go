@@ -150,6 +150,8 @@ type ScaledObjectStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
+	// +optional
+	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true
