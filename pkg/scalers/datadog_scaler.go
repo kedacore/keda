@@ -46,12 +46,14 @@ type datadogMetadata struct {
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
 
-var aggregator, filter, rollup *regexp.Regexp
+var aggregator, filter, rollup, ddfuncpresent, ddfunc *regexp.Regexp
 
 func init() {
-	aggregator = regexp.MustCompile(`^(avg|sum|min|max):.*`)
+	aggregator = regexp.MustCompile(`^([\w]+\()?(avg|sum|min|max):.*`)
 	filter = regexp.MustCompile(`.*\{.*\}.*`)
-	rollup = regexp.MustCompile(`.*\.rollup\(([a-z]+,)?\s*(.+)\)`)
+	rollup = regexp.MustCompile(`.*\.rollup\(([a-z]+,)?\s*(\w+)\)(\))?`)
+	ddfuncpresent = regexp.MustCompile(`^[\w]+\(`)
+	ddfunc = regexp.MustCompile(`^[\w]+\(.*\.rollup\(.*\)\)$`)
 }
 
 // NewDatadogScaler creates a new Datadog scaler
@@ -80,7 +82,7 @@ func parseAndTransformDatadogQuery(q string, age int) (string, error) {
 
 	// Wellformed Datadog queries require a filter (between curly brackets)
 	if !filter.MatchString(q) {
-		return "", fmt.Errorf("malformed Datadog query")
+		return "", fmt.Errorf("malformed Datadog query - invalid filter")
 	}
 
 	// Queries can contain rollup functions.
@@ -89,7 +91,7 @@ func parseAndTransformDatadogQuery(q string, age int) (string, error) {
 		// If added, check that the number of seconds is an int
 		rollupAgg, err := strconv.Atoi(match[2])
 		if err != nil {
-			return "", fmt.Errorf("malformed Datadog query")
+			return "", fmt.Errorf("malformed Datadog query - invalid rollup")
 		}
 
 		if rollupAgg > age {
@@ -98,6 +100,13 @@ func parseAndTransformDatadogQuery(q string, age int) (string, error) {
 	} else { // If not added, use a default rollup based on the time window size
 		s := fmt.Sprintf(".rollup(avg, %d)", age/5)
 		q += s
+	}
+
+	// Optional datadog function wrappers
+	if ddfuncpresent.MatchString(q) {
+		if !ddfunc.MatchString(q) {
+		    return "", fmt.Errorf("malformed Datadog query - invalid function wrapper")
+		}
 	}
 
 	return q, nil
