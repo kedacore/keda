@@ -105,7 +105,7 @@ func parseAndTransformDatadogQuery(q string, age int) (string, error) {
 	// Optional datadog function wrappers
 	if ddfuncpresent.MatchString(q) {
 		if !ddfunc.MatchString(q) {
-		    return "", fmt.Errorf("malformed Datadog query - invalid function wrapper")
+			return "", fmt.Errorf("malformed Datadog query - invalid function wrapper")
 		}
 	}
 
