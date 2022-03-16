@@ -49,11 +49,11 @@ var datadogLog = logf.Log.WithName("datadog_scaler")
 var aggregator, filter, rollup, ddfuncpresent, ddfunc *regexp.Regexp
 
 func init() {
-	aggregator = regexp.MustCompile(`^([\w]+\()?(avg|sum|min|max):.*`)
+	aggregator = regexp.MustCompile(`^([\w]+\((.*()?))?(avg|sum|min|max):.*`)
 	filter = regexp.MustCompile(`.*\{.*\}.*`)
 	rollup = regexp.MustCompile(`.*\.rollup\(([a-z]+,)?\s*(\w+)\)(\))?`)
 	ddfuncpresent = regexp.MustCompile(`^[\w]+\(`)
-	ddfunc = regexp.MustCompile(`^[\w]+\(.*\.rollup\(.*\)\)$`)
+	ddfunc = regexp.MustCompile(`^[\w]+\(.*\.rollup\(.*\).*\)$`)
 }
 
 // NewDatadogScaler creates a new Datadog scaler

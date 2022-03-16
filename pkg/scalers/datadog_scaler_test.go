@@ -32,6 +32,8 @@ var testParseQueries = []datadogQueries{
 	{"avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", 120, "avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", false},
 	{"per_second(sum:system.cpu.user{*}.rollup(avg, 30))", 120, "per_second(sum:system.cpu.user{*}.rollup(avg, 30))", false},
 	{"log10(sum:system.cpu.user{*}.rollup(avg, 30))", 120, "log10(sum:system.cpu.user{*}.rollup(avg, 30))", false},
+	// Multiple functions
+	{"top(per_second(abs(sum:http.requests{*}.rollup(max, 2))), 5, 'mean', 'desc')", 120, "top(per_second(abs(sum:http.requests{*}.rollup(max, 2))), 5, 'mean', 'desc')", false},
 
 	// Default aggregator
 	{"system.cpu.user{*}.rollup(sum, 30)", 120, "avg:system.cpu.user{*}.rollup(sum, 30)", false},
