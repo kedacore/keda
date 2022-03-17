@@ -36,14 +36,17 @@
 - **General:** Introduce new Azure Data Explorer Scaler ([#1488](https://github.com/kedacore/keda/issues/1488))
 - **General:** Introduce new GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
 - **General:** Introduce ARM-based container image for KEDA ([#2263](https://github.com/kedacore/keda/issues/2263) & [#2262](https://github.com/kedacore/keda/issues/2262))
+- **General:** Provide support for authentication via Azure Key Vault  ([#900](https://github.com/kedacore/keda/issues/900))
 
 ### Improvements
 
+- **Azure Event Hub Scaler:** Improve logging in Event hubs scaler when blob container not found ([#2363]https://github.com/kedacore/keda/issues/2363)
 - **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
 - **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 - **Datadog Scaler:** Several improvements, including a new optional parameter `metricUnavailableValue` to fill data when no Datadog metric was returned ([#2657](https://github.com/kedacore/keda/issues/2657))
 - **GCP Pubsub Scaler** Adding e2e test for GCP PubSub scaler ([#1528](https://github.com/kedacore/keda/issues/1528))
 - **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **Prometheus Scaler:** Support for `X-Scope-OrgID` header in Prometheus scaler ([#2667](https://github.com/kedacore/keda/issues/2667))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 
 ### Breaking Changes
@@ -55,6 +58,7 @@
 - **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 - **General:** Syncronize HPA annotations from ScaledObject ([#2659](https://github.com/kedacore/keda/pull/2659))
 - **General:** Improve e2e tests to always cleanup resources in cluster ([#2584](https://github.com/kedacore/keda/issues/2584))
+- **General:** Fix mismatched errors for updating HPA ([#2719](https://github.com/kedacore/keda/issues/2719))
 - **Memory Scaler** Adding e2e test for the memory scaler ([#2220](https://github.com/kedacore/keda/issues/2220))
 
 ## v.2.6.1
