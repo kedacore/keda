@@ -71,7 +71,6 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 // parseDatadogQuery checks correctness of the user query
 func parseDatadogQuery(q string) (bool, error) {
-
 	// Wellformed Datadog queries require a filter (between curly brackets)
 	if !filter.MatchString(q) {
 		return false, fmt.Errorf("malformed Datadog query: missing query scope")
@@ -257,7 +256,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	if resp.GetStatus() == "error" {
 		if msg, ok := resp.GetErrorOk(); ok {
 			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", *msg)
-
 		}
 		return -1, fmt.Errorf("error when retrieving Datadog metrics")
 	}
