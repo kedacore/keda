@@ -172,8 +172,8 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]*string{"#yr": &year},
 			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
 			targetValue:               3,
-			scalerIndex:               0,
-			metricName:                "s0-aws-dynamodb-test",
+			scalerIndex:               1,
+			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     "none",
 				awsSecretAccessKey: "none",
@@ -190,6 +190,7 @@ func TestParseDynamoMetadata(t *testing.T) {
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 				ResolvedEnv:     tc.resolvedEnv,
+				ScalerIndex:     1,
 			})
 			if tc.expectedError != nil {
 				assert.Contains(t, err.Error(), tc.expectedError.Error())
