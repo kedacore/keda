@@ -1,5 +1,7 @@
 /*
-TODO: Enable when the AWS account is available.
+
+Enable when the AWS account is available.
+
 import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
