@@ -210,13 +210,13 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (*resource.Quanti
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf("api returned %d", r.StatusCode)
+		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
 		return nil, errors.New(msg)
 	}
 
-	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
