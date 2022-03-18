@@ -42,6 +42,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			args: args{
 				b: []byte(`{
 					"data": {
+						"grid":{
+							"maxSession": 1
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": [],
 							"sessions": []
@@ -58,6 +61,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			args: args{
 				b: []byte(`{
 					"data": {
+						"grid":{
+							"maxSession": 1
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
@@ -81,6 +87,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			args: args{
 				b: []byte(`{
 					"data": {
+						"grid":{
+							"maxSession": 1
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": []
@@ -94,11 +103,34 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "active sessions with matching browsername and maxSession=2 should return count as 1",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 2
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
+							"sessions": []
+						}
+					}
+				}`),
+				browserName:    "chrome",
+				browserVersion: "latest",
+			},
+			want:    resource.NewQuantity(1, resource.DecimalSI),
+			wantErr: false,
+		},
+		{
 			name: "active sessions with matching browsername should return count as 3",
 			args: args{
 				b: []byte(`{
 					"data": {
 						"sessionsInfo": {
+							"grid":{
+								"maxSession": 1
+							},
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
 								{
@@ -121,6 +153,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			args: args{
 				b: []byte(`{
 					"data": {
+						"grid":{
+							"maxSession": 1
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
