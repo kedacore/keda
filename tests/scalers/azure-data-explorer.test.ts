@@ -5,6 +5,7 @@ import test from 'ava'
 
 const dataExplorerDb = process.env['AZURE_DATA_EXPLORER_DB']
 const dataExplorerEndpoint = process.env['AZURE_DATA_EXPLORER_ENDPOINT']
+const msiClientId = process.env['AZURE_MSI_CLIENT_ID']
 const spId = process.env['AZURE_SP_ID']
 const spSecret = process.env['AZURE_SP_KEY']
 const spTenantId = process.env['AZURE_SP_TENANT']
@@ -197,6 +198,7 @@ spec:
     metadata:
       databaseName: ${dataExplorerDb}
       endpoint: ${dataExplorerEndpoint}
+      msiClientId: ${msiClientId}
       query: print result = ${scaleOutMetricValue}
       threshold: "5"
     authenticationRef:

@@ -37,6 +37,7 @@ type testGetDataExplorerAuthConfig struct {
 
 var (
 	clientID                 = "test_client_id"
+	msiClientID              = "test_msi_client_id"
 	rowName                  = "result"
 	rowType     types.Column = "long"
 	rowValue    int64        = 3
@@ -64,9 +65,11 @@ var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	// Auth with aad app - pass
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID}, isError: false},
 	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: podIdentity}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: podIdentity, MSIClientID: msiClientID}, isError: false},
 	// Empty metadata - fail
 	{testMetadata: &DataExplorerMetadata{}, isError: true},
+	// Empty msiClientID - fail
+	{testMetadata: &DataExplorerMetadata{PodIdentity: podIdentity}, isError: true},
 	// Empty tenantID - fail
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret}, isError: true},
 	// Empty clientID - fail

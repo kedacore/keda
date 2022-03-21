@@ -35,6 +35,7 @@ type DataExplorerMetadata struct {
 	DatabaseName string
 	Endpoint     string
 	MetricName   string
+	MSIClientID  string
 	PodIdentity  string
 	Query        string
 	TenantID     string
@@ -60,9 +61,11 @@ func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata) (*kusto.Clien
 func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.AuthorizerConfig, error) {
 	var authConfig auth.AuthorizerConfig
 
-	if metadata.PodIdentity != "" {
-		authConfig = auth.NewMSIConfig()
-		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
+	if metadata.PodIdentity != "" && metadata.MSIClientID != "" {
+		msiConfig := auth.NewMSIConfig()
+		msiConfig.ClientID = metadata.MSIClientID
+		authConfig = msiConfig
+		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity and managedIdentityClientID")
 		return &authConfig, nil
 	}
 
