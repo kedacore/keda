@@ -7,8 +7,7 @@ import (
 
 type datadogQueries struct {
 	input   string
-	age     int
-	output  string
+	output  bool
 	isError bool
 }
 
@@ -25,28 +24,22 @@ type datadogAuthMetadataTestData struct {
 }
 
 var testParseQueries = []datadogQueries{
-	{"", 0, "", true},
+	{"", false, true},
 	// All properly formed
-	{"avg:system.cpu.user{*}.rollup(sum, 30)", 120, "avg:system.cpu.user{*}.rollup(sum, 30)", false},
-	{"sum:system.cpu.user{*}.rollup(30)", 30, "sum:system.cpu.user{*}.rollup(30)", false},
-	{"avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", 120, "avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", false},
-
-	// Default aggregator
-	{"system.cpu.user{*}.rollup(sum, 30)", 120, "avg:system.cpu.user{*}.rollup(sum, 30)", false},
-
-	// Default rollup
-	{"min:system.cpu.user{*}", 120, "min:system.cpu.user{*}.rollup(avg, 24)", false},
+	{"avg:system.cpu.user{*}.rollup(sum, 30)", true, false},
+	{"sum:system.cpu.user{*}.rollup(30)", true, false},
+	{"avg:system.cpu.user{automatic-restart:false,bosh_address:192.168.101.12}.rollup(avg, 30)", true, false},
+	{"top(per_second(abs(sum:http.requests{service:myapp,dc:us-west-2}.rollup(max, 2))), 5, 'mean', 'desc')", true, false},
+	{"system.cpu.user{*}.rollup(sum, 30)", true, false},
+	{"min:system.cpu.user{*}", true, false},
 
 	// Missing filter
-	{"min:system.cpu.user", 120, "", true},
-
-	// Malformed rollup
-	{"min:system.cpu.user{*}.rollup(avg)", 120, "", true},
+	{"min:system.cpu.user", false, true},
 }
 
 func TestDatadogScalerParseQueries(t *testing.T) {
 	for _, testData := range testParseQueries {
-		output, err := parseAndTransformDatadogQuery(testData.input, testData.age)
+		output, err := parseDatadogQuery(testData.input)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -56,7 +49,7 @@ func TestDatadogScalerParseQueries(t *testing.T) {
 		}
 
 		if output != testData.output {
-			t.Errorf("Expected %s, got %s", testData.output, output)
+			t.Errorf("Expected %v, got %v", testData.output, output)
 		}
 	}
 }
