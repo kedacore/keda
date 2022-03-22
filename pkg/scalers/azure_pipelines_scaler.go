@@ -42,7 +42,6 @@ type azurePipelinesMetadata struct {
 	organizationName           string
 	personalAccessToken        string
 	parent                     string
-	scalarName                 string
 	poolID                     int
 	targetPipelinesQueueLength int
 	scalerIndex                int
@@ -127,7 +126,6 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	}
 
 	meta.scalerIndex = config.ScalerIndex
-	meta.scalarName = config.Name
 
 	return &meta, nil
 }
