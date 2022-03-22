@@ -158,3 +158,41 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
+	meta := azurePipelinesMetadata{}
+	meta.organizationName = "test"
+	meta.organizationURL = url
+	meta.parent = "test-keda-template"
+	meta.personalAccessToken = "test"
+	meta.poolID = 1
+	meta.targetPipelinesQueueLength = 1
+
+	return &meta
+}
+
+func TestAzurePipelinesMatchedAgent(t *testing.T) {
+	var response = `{"count":1,"value":[{"demands":["Agent.Version -gtVersion 2.144.0"],"matchedAgents":[{"id":1,"name":"test-keda-template"}]}]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
