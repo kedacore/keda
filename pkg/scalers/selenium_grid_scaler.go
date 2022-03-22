@@ -40,7 +40,12 @@ type seleniumResponse struct {
 }
 
 type data struct {
+	Grid         grid         `json:"grid"`
 	SessionsInfo sessionsInfo `json:"sessionsInfo"`
+}
+
+type grid struct {
+	MaxSession int `json:"maxSession"`
 }
 
 type sessionsInfo struct {
@@ -164,7 +169,7 @@ func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (*resource.Quantity, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
 
 	if err != nil {
@@ -236,6 +241,12 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 		} else {
 			seleniumGridLog.Error(err, fmt.Sprintf("Error when unmarshaling sessions info: %s", err))
 		}
+	}
+
+	var gridMaxSession = int64(seleniumResponse.Data.Grid.MaxSession)
+
+	if gridMaxSession > 0 {
+		count = (count + gridMaxSession - 1) / gridMaxSession
 	}
 
 	return resource.NewQuantity(count, resource.DecimalSI), nil
