@@ -24,7 +24,7 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue int
+	targetQueryValue int64
 	connection       string
 	query            string
 	metricName       string
@@ -60,7 +60,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.Atoi(val)
+		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -161,8 +161,8 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int, error) {
-	var id int
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
+	var id int64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
@@ -173,7 +173,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(s.metadata.targetQueryValue, resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -199,7 +199,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

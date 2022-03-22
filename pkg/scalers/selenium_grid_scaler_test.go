@@ -3,8 +3,6 @@ package scalers
 import (
 	"reflect"
 	"testing"
-
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
@@ -16,7 +14,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *resource.Quantity
+		want    int64
 		wantErr bool
 	}{
 		{
@@ -25,7 +23,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				b:           []byte(nil),
 				browserName: "",
 			},
-			// want:    resource.NewQuantity(0, resource.DecimalSI),
+			// want:    0,
 			wantErr: true,
 		},
 		{
@@ -53,7 +51,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName: "",
 			},
-			want:    resource.NewQuantity(0, resource.DecimalSI),
+			want:    0,
 			wantErr: false,
 		},
 		{
@@ -79,7 +77,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserName:    "",
 				browserVersion: "latest",
 			},
-			want:    resource.NewQuantity(0, resource.DecimalSI),
+			want:    0,
 			wantErr: false,
 		},
 		{
@@ -99,7 +97,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserName:    "chrome",
 				browserVersion: "latest",
 			},
-			want:    resource.NewQuantity(2, resource.DecimalSI),
+			want:    2,
 			wantErr: false,
 		},
 		{
@@ -119,7 +117,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserName:    "chrome",
 				browserVersion: "latest",
 			},
-			want:    resource.NewQuantity(1, resource.DecimalSI),
+			want:    1,
 			wantErr: false,
 		},
 		{
@@ -145,7 +143,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserName:    "chrome",
 				browserVersion: "latest",
 			},
-			want:    resource.NewQuantity(3, resource.DecimalSI),
+			want:    3,
 			wantErr: false,
 		},
 		{
@@ -171,7 +169,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserName:    "chrome",
 				browserVersion: "91.0",
 			},
-			want:    resource.NewQuantity(2, resource.DecimalSI),
+			want:    2,
 			wantErr: false,
 		},
 	}

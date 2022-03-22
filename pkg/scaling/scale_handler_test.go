@@ -134,8 +134,8 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, true, isError)
 }
 
-func createMetricSpec(averageValue int) v2beta2.MetricSpec {
-	qty := resource.NewQuantity(int64(averageValue), resource.DecimalSI)
+func createMetricSpec(averageValue int64) v2beta2.MetricSpec {
+	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
 	return v2beta2.MetricSpec{
 		External: &v2beta2.ExternalMetricSource{
 			Target: v2beta2.MetricTarget{

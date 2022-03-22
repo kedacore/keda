@@ -40,7 +40,7 @@ type prometheusMetadata struct {
 	serverAddress  string
 	metricName     string
 	query          string
-	threshold      int
+	threshold      int64
 	prometheusAuth *authentication.AuthMeta
 	namespace      string
 	scalerIndex    int
@@ -109,7 +109,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
 		}
@@ -153,7 +153,7 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

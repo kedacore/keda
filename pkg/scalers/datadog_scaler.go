@@ -36,7 +36,7 @@ type datadogMetadata struct {
 	appKey      string
 	datadogSite string
 	query       string
-	queryValue  int
+	queryValue  int64
 	vType       valueType
 	metricName  string
 	age         int
@@ -108,7 +108,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -290,7 +290,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := new(v2beta2.ExternalMetricSource)
 
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
 
 	switch s.metadata.vType {
 	case average:

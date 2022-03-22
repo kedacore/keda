@@ -35,7 +35,7 @@ type awsDynamoDBMetadata struct {
 	keyConditionExpression    string
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
-	targetValue               int
+	targetValue               int64
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
 	metricName                string
@@ -101,7 +101,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok && val != "" {
-		n, err := strconv.Atoi(val)
+		n, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metadata targetValue")
 		}
@@ -171,7 +171,7 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 }
 
 func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(c.metadata.targetValue), resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(c.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: c.metadata.metricName,

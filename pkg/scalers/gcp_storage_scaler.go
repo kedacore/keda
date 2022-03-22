@@ -38,7 +38,7 @@ type gcsMetadata struct {
 	gcpAuthorization     *gcpAuthorizationMetadata
 	maxBucketItemsToScan int
 	metricName           string
-	targetObjectCount    int
+	targetObjectCount    int64
 }
 
 var gcsLog = logf.Log.WithName("gcp_storage_scaler")
@@ -101,7 +101,7 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["targetObjectCount"]; ok {
-		targetObjectCount, err := strconv.Atoi(val)
+		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			gcsLog.Error(err, "Error parsing targetObjectCount")
 			return nil, fmt.Errorf("error parsing targetObjectCount: %s", err.Error())
@@ -151,7 +151,7 @@ func (s *gcsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValueQty := resource.NewQuantity(int64(s.metadata.targetObjectCount), resource.DecimalSI)
+	targetValueQty := resource.NewQuantity(s.metadata.targetObjectCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
@@ -174,7 +174,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(items), resource.DecimalSI),
+		Value:      *resource.NewQuantity(items, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -182,7 +182,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 }
 
 // getItemCount gets the number of items in the bucket, up to maxCount
-func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error) {
+func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int64, error) {
 	query := &storage.Query{Prefix: ""}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
@@ -191,9 +191,9 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error)
 	}
 
 	it := s.bucket.Objects(ctx, query)
-	count := 0
+	var count int64
 
-	for count < maxCount {
+	for count < int64(maxCount) {
 		_, err := it.Next()
 		if err == iterator.Done {
 			break

@@ -45,7 +45,7 @@ type redisConnectionInfo struct {
 }
 
 type redisMetadata struct {
-	targetListLength int
+	targetListLength int64
 	listName         string
 	databaseIndex    int
 	connectionInfo   redisConnectionInfo
@@ -191,7 +191,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	meta.targetListLength = defaultTargetListLength
 
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
-		listLength, err := strconv.Atoi(val)
+		listLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("list length parsing error %s", err.Error())
 		}
@@ -234,7 +234,7 @@ func (s *redisScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetListLengthQty := resource.NewQuantity(int64(s.metadata.targetListLength), resource.DecimalSI)
+	targetListLengthQty := resource.NewQuantity(s.metadata.targetListLength, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
