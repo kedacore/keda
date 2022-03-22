@@ -395,7 +395,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
 	case "gcp-stackdriver":
-		return scalers.NewStackdriverScaler(config)
+		return scalers.NewStackdriverScaler(ctx, config)
 	case "gcp-storage":
 		return scalers.NewGcsScaler(config)
 	case "graphite":

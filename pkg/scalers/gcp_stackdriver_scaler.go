@@ -36,14 +36,21 @@ type stackdriverMetadata struct {
 var gcpStackdriverLog = logf.Log.WithName("gcp_stackdriver_scaler")
 
 // NewStackdriverScaler creates a new stackdriverScaler
-func NewStackdriverScaler(config *ScalerConfig) (Scaler, error) {
+func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	meta, err := parseStackdriverMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %s", err)
 	}
 
+	client, err := initializeStackdriverClient(ctx, meta.gcpAuthorization)
+	if err != nil {
+		gcpStackdriverLog.Error(err, "Failed to create stack driver client")
+		return nil, err
+	}
+
 	return &stackdriverScaler{
 		metadata: meta,
+		client:   client,
 	}, nil
 }
 
@@ -90,6 +97,22 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 	}
 	meta.gcpAuthorization = auth
 	return &meta, nil
+}
+
+func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcpAuthorizationMetadata) (*StackDriverClient, error) {
+	var client *StackDriverClient
+	var err error
+	if gcpAuthorization.podIdentityProviderEnabled {
+		client, err = NewStackDriverClientPodIdentity(ctx)
+	} else {
+		client, err = NewStackDriverClient(ctx, gcpAuthorization.GoogleApplicationCredentials)
+	}
+
+	if err != nil {
+		gcpStackdriverLog.Error(err, "Failed to create stack driver client")
+		return nil, err
+	}
+	return client, nil
 }
 
 func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
@@ -154,32 +177,8 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *stackdriverScaler) setStackdriverClient(ctx context.Context) error {
-	var client *StackDriverClient
-	var err error
-	if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
-		client, err = NewStackDriverClientPodIdentity(ctx)
-	} else {
-		client, err = NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
-	}
-
-	if err != nil {
-		gcpStackdriverLog.Error(err, "Failed to create stack driver client")
-		return err
-	}
-	s.client = client
-	return nil
-}
-
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
-	if s.client == nil {
-		err := s.setStackdriverClient(ctx)
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
