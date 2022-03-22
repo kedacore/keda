@@ -21,13 +21,13 @@ const (
 type EnvironmentPropertyProvider func(env az.Environment) (string, error)
 
 // ParseEnvironmentProperty parses cloud metadata and returns the resolved property
-func ParseEnvironmentProperty(metadata map[string]string, endpointKey string, envPropertyProvider EnvironmentPropertyProvider) (string, error) {
+func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, envPropertyProvider EnvironmentPropertyProvider) (string, error) {
 	if val, ok := metadata["cloud"]; ok && val != "" {
 		if strings.EqualFold(val, PrivateCloud) {
-			if val, ok := metadata[endpointKey]; ok && val != "" {
+			if val, ok := metadata[propertyKey]; ok && val != "" {
 				return val, nil
 			}
-			return "", fmt.Errorf("%s must be provided for %s cloud type", endpointKey, PrivateCloud)
+			return "", fmt.Errorf("%s must be provided for %s cloud type", propertyKey, PrivateCloud)
 		}
 
 		env, err := az.EnvironmentFromName(val)
