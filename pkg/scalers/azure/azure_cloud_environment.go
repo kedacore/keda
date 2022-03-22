@@ -8,6 +8,8 @@ import (
 )
 
 const (
+	DefaultCloud = "azurePublicCloud"
+
 	// PrivateCloud cloud type
 	PrivateCloud string = "Private"
 

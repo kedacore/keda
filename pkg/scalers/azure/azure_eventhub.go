@@ -12,13 +12,16 @@ import (
 
 // EventHubInfo to keep event hub connection and resources
 type EventHubInfo struct {
-	EventHubConnection    string
-	EventHubConsumerGroup string
-	StorageConnection     string
-	BlobContainer         string
-	Namespace             string
-	EventHubName          string
-	CheckpointStrategy    string
+	EventHubConnection       string
+	EventHubConsumerGroup    string
+	StorageConnection        string
+	BlobContainer            string
+	Namespace                string
+	EventHubName             string
+	CheckpointStrategy       string
+	Cloud                    string
+	ServiceBusEndpointSuffix string
+	ActiveDirectoryEndpoint  string
 }
 
 // GetEventHubClient returns eventhub client
@@ -32,17 +35,21 @@ func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
 		return hub, nil
 	}
 
+	env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
+
 	// Since there is no connectionstring, then user wants to use pod identity
 	// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
 	provider, aadErr := aad.NewJWTProvider(func(config *aad.TokenProviderConfiguration) error {
 		if config.Env == nil {
-			config.Env = &azure.PublicCloud
+			config.Env = &env
 		}
 		return nil
 	})
 
+	hubEnvOptions := eventhub.HubWithEnvironment(env)
+
 	if aadErr == nil {
-		return eventhub.NewHub(info.Namespace, info.EventHubName, provider)
+		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 	}
 
 	return nil, aadErr
@@ -88,7 +95,7 @@ func getHubAndNamespace(info EventHubInfo) (string, string, error) {
 			return "", "", err
 		}
 	} else {
-		eventHubNamespace = info.Namespace
+		eventHubNamespace = fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix)
 		eventHubName = info.EventHubName
 	}
 
