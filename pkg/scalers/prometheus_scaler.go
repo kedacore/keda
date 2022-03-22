@@ -115,6 +115,8 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		}
 
 		meta.threshold = t
+	} else {
+		return nil, fmt.Errorf("no %s given", promThreshold)
 	}
 
 	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
