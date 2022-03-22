@@ -204,7 +204,7 @@ func (s *datadogScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive checks whether the value returned by Datadog is higher than the target value
+// IsActive checks whether the scaler is active
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	num, err := s.getQueryResult(ctx)
 
@@ -212,7 +212,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return num > float64(s.metadata.queryValue), nil
+	return num > 0, nil
 }
 
 // getQueryResult returns result of the scaler query
