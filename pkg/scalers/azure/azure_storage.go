@@ -48,9 +48,6 @@ const (
 	TableEndpoint
 	// FileEndpoint storage type
 	FileEndpoint
-
-	// PrivateCloud cloud type
-	PrivateCloud string = "Private"
 )
 
 // Prefix returns prefix for a StorageEndpointType
@@ -74,7 +71,7 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 		return endpointType.GetEndpointSuffix(env), nil
 	}
 
-	return ParseEndpointSuffix(metadata, envSuffixProvider)
+	return ParseEnvironmentProperty(metadata, DefaultEndpointSuffixKey, envSuffixProvider)
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url

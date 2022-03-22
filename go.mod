@@ -5,6 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go/compute v1.3.0
 	cloud.google.com/go/monitoring v1.2.0
+	cloud.google.com/go/storage v1.21.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
 	github.com/Azure/azure-kusto-go v0.5.0
@@ -86,7 +87,6 @@ replace (
 require (
 	cloud.google.com/go v0.100.2 // indirect
 	cloud.google.com/go/iam v0.2.0 // indirect
-	cloud.google.com/go/storage v1.21.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-amqp v0.16.4 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -203,6 +203,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect

@@ -7,17 +7,25 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 )
 
-// EnvironmentSuffixProvider for different types of Azure scalers
-type EnvironmentSuffixProvider func(env az.Environment) (string, error)
+const (
+	// PrivateCloud cloud type
+	PrivateCloud string = "Private"
 
-// ParseEndpointSuffix parses cloud and endpointSuffix metadata and returns the resolved endpoint suffix
-func ParseEndpointSuffix(metadata map[string]string, suffixProvider EnvironmentSuffixProvider) (string, error) {
+	// Default Endpoint key in trigger metadata
+	DefaultEndpointSuffixKey string = "endpointSuffix"
+)
+
+// EnvironmentPropertyProvider for different types of Azure scalers
+type EnvironmentPropertyProvider func(env az.Environment) (string, error)
+
+// ParseEnvironmentProperty parses cloud metadata and returns the resolved property
+func ParseEnvironmentProperty(metadata map[string]string, endpointKey string, envPropertyProvider EnvironmentPropertyProvider) (string, error) {
 	if val, ok := metadata["cloud"]; ok && val != "" {
 		if strings.EqualFold(val, PrivateCloud) {
-			if val, ok := metadata["endpointSuffix"]; ok && val != "" {
+			if val, ok := metadata[endpointKey]; ok && val != "" {
 				return val, nil
 			}
-			return "", fmt.Errorf("endpointSuffix must be provided for %s cloud type", PrivateCloud)
+			return "", fmt.Errorf("%s must be provided for %s cloud type", endpointKey, PrivateCloud)
 		}
 
 		env, err := az.EnvironmentFromName(val)
@@ -25,9 +33,9 @@ func ParseEndpointSuffix(metadata map[string]string, suffixProvider EnvironmentS
 			return "", fmt.Errorf("invalid cloud environment %s", val)
 		}
 
-		return suffixProvider(env)
+		return envPropertyProvider(env)
 	}
 
 	// Use public cloud suffix if `cloud` isn't specified
-	return suffixProvider(az.PublicCloud)
+	return envPropertyProvider(az.PublicCloud)
 }

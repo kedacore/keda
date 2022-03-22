@@ -127,7 +127,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		return env.ServiceBusEndpointSuffix, nil
 	}
 
-	endpointSuffix, err := azure.ParseEndpointSuffix(config.TriggerMetadata, envSuffixProvider)
+	endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
 	if err != nil {
 		return nil, err
 	}
