@@ -1,7 +1,3 @@
-/*
-
-Enable when the AWS account is available.
-
 import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
@@ -206,4 +202,3 @@ spec:
         - containerPort: 80
 ---
 `
-*/
