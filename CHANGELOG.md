@@ -60,6 +60,7 @@
 ### Other
 
 - **General:** Clean go.mod to fix golangci-lint ([#2783](https://github.com/kedacore/keda/issues/2783))
+- **General:** Consistent file naming in `pkg/scalers/` ([#2806](https://github.com/kedacore/keda/issues/2806))
 - **General:** Fix mismatched errors for updating HPA ([#2719](https://github.com/kedacore/keda/issues/2719))
 - **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 - **General:** Improve e2e tests to always cleanup resources in cluster ([#2584](https://github.com/kedacore/keda/issues/2584))
