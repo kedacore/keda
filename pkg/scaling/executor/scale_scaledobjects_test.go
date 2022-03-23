@@ -433,16 +433,17 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
 
 	pausedReplicaCount := int32(0)
+	replicaCount := int32(2)
 
 	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &pausedReplicaCount,
+			Replicas: &replicaCount,
 		},
 	})
 
 	scale := &autoscalingv1.Scale{
 		Spec: autoscalingv1.ScaleSpec{
-			Replicas: pausedReplicaCount,
+			Replicas: replicaCount,
 		},
 	}
 

@@ -89,10 +89,10 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
-		logger.Error(err, "Error getting the paused replica count on the current ScaledObject.")
+		logger.Error(err, "error getting the paused replica count on the current ScaledObject.")
 		return
 	}
-	if pausedCount != nil {
+	if pausedCount != nil && *pausedCount != currentReplicas {
 		_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *pausedCount)
 		if err != nil {
 			logger.Error(err, "Error scaling target to paused replicas count", "paused replicas", *pausedCount)
