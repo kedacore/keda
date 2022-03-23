@@ -27,7 +27,7 @@ type stackdriverScaler struct {
 type stackdriverMetadata struct {
 	projectID   string
 	filter      string
-	targetValue int
+	targetValue int64
 	metricName  string
 
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -82,7 +82,7 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.Atoi(val)
+		targetValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			gcpStackdriverLog.Error(err, "Error parsing targetValue")
 			return nil, fmt.Errorf("error parsing targetValue: %s", err.Error())
@@ -139,7 +139,7 @@ func (s *stackdriverScaler) Close(context.Context) error {
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+	targetValueQty := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
