@@ -39,9 +39,9 @@ KEDA Deployment YAML file (eg. keda-2.4.0.yaml) is also automatically created an
 Every release should use the template provided below to create the GitHub release and ensure that a new GitHub Discussion is created.
 
 > ### 💡 IMPORTANT
-> 
+>
 > Remember to make the following changes to the template:
-> 
+>
 > - Replace `INSERT-CORRECT-VERSION` (there are **two** occurrences in the template) with the new-release ID
 > - Update the list of new contributors
 
