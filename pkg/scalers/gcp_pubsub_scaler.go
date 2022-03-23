@@ -38,7 +38,7 @@ type pubsubScaler struct {
 
 type pubsubMetadata struct {
 	mode  string
-	value int
+	value int64
 
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -72,7 +72,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		}
 		gcpPubSubLog.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
-		subSizeValue, err := strconv.Atoi(subSize)
+		subSizeValue, err := strconv.ParseInt(subSize, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %s", err.Error())
 		}
@@ -92,7 +92,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		}
 
 		if valuePresent {
-			triggerValue, err := strconv.Atoi(value)
+			triggerValue, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("value parsing error %s", err.Error())
 			}
@@ -156,7 +156,7 @@ func (s *pubsubScaler) Close(context.Context) error {
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
+	targetValueQty := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{

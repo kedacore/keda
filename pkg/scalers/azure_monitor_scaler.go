@@ -46,7 +46,7 @@ type azureMonitorScaler struct {
 
 type azureMonitorMetadata struct {
 	azureMonitorInfo azure.MonitorInfo
-	targetValue      int
+	targetValue      int64
 	scalerIndex      int
 }
 
@@ -71,7 +71,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	}
 
 	if val, ok := config.TriggerMetadata[targetValueName]; ok && val != "" {
-		targetValue, err := strconv.Atoi(val)
+		targetValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
 			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
@@ -191,7 +191,7 @@ func (s *azureMonitorScaler) Close(context.Context) error {
 }
 
 func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+	targetMetricVal := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
@@ -215,7 +215,7 @@ func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, 
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
+		Value:      *resource.NewQuantity(val, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

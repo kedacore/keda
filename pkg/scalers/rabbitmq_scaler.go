@@ -63,7 +63,7 @@ type rabbitMQScaler struct {
 type rabbitMQMetadata struct {
 	queueName   string
 	mode        string        // QueueLength or MessageRate
-	value       int           // trigger value (queue length or publish/sec. rate)
+	value       int64         // trigger value (queue length or publish/sec. rate)
 	host        string        // connection string for either HTTP or AMQP protocol
 	protocol    string        // either http or amqp protocol
 	vhostName   *string       // override the vhost from the connection info
@@ -279,7 +279,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	// Parse deprecated `queueLength` value
 	if deprecatedQueueLengthPresent {
-		queueLength, err := strconv.Atoi(deprecatedQueueLengthValue)
+		queueLength, err := strconv.ParseInt(deprecatedQueueLengthValue, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
 		}
@@ -305,7 +305,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	default:
 		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", mode, rabbitModeQueueLength, rabbitModeMessageRate)
 	}
-	triggerValue, err := strconv.Atoi(value)
+	triggerValue, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
 	}
@@ -357,7 +357,7 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	return publishRate > 0 || messages > 0, nil
 }
 
-func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
+func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 	if s.metadata.protocol == httpProtocol {
 		info, err := s.getQueueInfoViaHTTP()
 		if err != nil {
@@ -365,7 +365,7 @@ func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 		}
 
 		// messages count includes count of ready and unack-ed
-		return info.Messages, info.MessageStat.PublishDetail.Rate, nil
+		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
 	}
 
 	items, err := s.channel.QueueInspect(s.metadata.queueName)
@@ -373,7 +373,7 @@ func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
 		return -1, -1, err
 	}
 
-	return items.Messages, 0, nil
+	return int64(items.Messages), 0, nil
 }
 
 func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
@@ -459,7 +459,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	metricValue := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
+	metricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
@@ -485,7 +485,7 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 	var metricValue resource.Quantity
 	if s.metadata.mode == rabbitModeQueueLength {
-		metricValue = *resource.NewQuantity(int64(messages), resource.DecimalSI)
+		metricValue = *resource.NewQuantity(messages, resource.DecimalSI)
 	} else {
 		metricValue = *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI)
 	}
