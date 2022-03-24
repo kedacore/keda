@@ -7635,9 +7635,6 @@ spec:
                       required:
                       - name
                       type: object
-                    fallback:
-                      format: int32
-                      type: integer
                     metadata:
                       additionalProperties:
                         type: string
