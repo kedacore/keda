@@ -67,6 +67,8 @@ jobs:
         continue-on-error: true
         id: test
         env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
           AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
           AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY }}
           AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}

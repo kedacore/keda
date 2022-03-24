@@ -27,12 +27,6 @@ function run_tests {
             continue
         fi
 
-        # Disable until AWS account is available.
-        if [[ $test_case == *aws-dynamodb.test.ts ]]
-        then
-            continue
-        fi
-
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
