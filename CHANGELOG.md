@@ -53,6 +53,7 @@
 - **Prometheus Scaler:** Support for `X-Scope-OrgID` header ([#2667](https://github.com/kedacore/keda/issues/2667))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 - **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
+- **Azure Data Explorer Scaler:** Adding managed identity client id parameter ([#2770](https://github.com/kedacore/keda/issues/2770))
 
 ### Breaking Changes
 
