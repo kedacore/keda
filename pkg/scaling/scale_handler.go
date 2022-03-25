@@ -295,8 +295,9 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	resolvedEnv := make(map[string]string)
 	result := make([]cache.ScalerBuilder, 0, len(withTriggers.Spec.Triggers))
 
-	for scalerIndex, t := range withTriggers.Spec.Triggers {
-		triggerName, trigger := scalerIndex, t
+	for i, t := range withTriggers.Spec.Triggers {
+		triggerIndex, trigger := i, t
+
 		factory := func() (scalers.Scaler, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
@@ -311,7 +312,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ResolvedEnv:       resolvedEnv,
 				AuthParams:        make(map[string]string),
 				GlobalHTTPTimeout: h.globalHTTPTimeout,
-				ScalerIndex:       scalerIndex,
+				ScalerIndex:       triggerIndex,
 			}
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
@@ -325,7 +326,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		scaler, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			h.logger.Error(err, "error resolving auth params", "scalerIndex", scalerIndex, "object", withTriggers, "trigger", triggerName)
+			h.logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex, "object", withTriggers)
 			if scaler != nil {
 				scaler.Close(ctx)
 			}
@@ -353,6 +354,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(config)
+	case "aws-dynamodb":
+		return scalers.NewAwsDynamoDBScaler(config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
@@ -361,6 +364,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
+	case "azure-data-explorer":
+		return scalers.NewAzureDataExplorerScaler(config)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":
@@ -389,6 +394,10 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
+	case "gcp-stackdriver":
+		return scalers.NewStackdriverScaler(ctx, config)
+	case "gcp-storage":
+		return scalers.NewGcsScaler(config)
 	case "graphite":
 		return scalers.NewGraphiteScaler(config)
 	case "huawei-cloudeye":

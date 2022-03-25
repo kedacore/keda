@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 const testNamespace = 'elasticsearch-test'
 const elasticsearchNamespace = 'elasticsearch'
@@ -14,7 +14,7 @@ const kubectlExecCurl = `kubectl exec -n ${elasticsearchNamespace} elasticsearch
 
 test.before(t => {
     // install elasticsearch
-    sh.exec(`kubectl create namespace ${elasticsearchNamespace}`)
+    createNamespace(elasticsearchNamespace)
     const elasticsearchTmpFile = tmp.fileSync()
     fs.writeFileSync(elasticsearchTmpFile.name, elasticsearchStatefulsetYaml.replace('{{ELASTIC_PASSWORD}}', elasticPassword))
 
@@ -25,8 +25,7 @@ test.before(t => {
     sh.exec(`${kubectlExecCurl} -XPUT http://localhost:9200/${indexName} -d '${elastisearchCreateIndex}'`)
     sh.exec(`${kubectlExecCurl} -XPUT http://localhost:9200/_scripts/${searchTemplateName} -d '${elasticsearchSearchTemplate}'`)
 
-
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // deploy dummy app and scaled object
     const tmpFile = tmp.fileSync()
@@ -247,11 +246,6 @@ spec:
           name: transport
           protocol: TCP
         resources:
-          requests:
-            cpu: 100m
-            memory: 1Gi
-          limits:
-            memory: 1Gi
         readinessProbe:
           exec:
             command:

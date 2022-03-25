@@ -15,7 +15,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -32,12 +31,6 @@ const (
 
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
 
-type gcpAuthorizationMetadata struct {
-	GoogleApplicationCredentials string
-	podIdentityOwner             bool
-	podIdentityProviderEnabled   bool
-}
-
 type pubsubScaler struct {
 	client   *StackDriverClient
 	metadata *pubsubMetadata
@@ -45,10 +38,10 @@ type pubsubScaler struct {
 
 type pubsubMetadata struct {
 	mode  string
-	value int
+	value int64
 
 	subscriptionName string
-	gcpAuthorization gcpAuthorizationMetadata
+	gcpAuthorization *gcpAuthorizationMetadata
 	scalerIndex      int
 }
 
@@ -79,7 +72,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		}
 		gcpPubSubLog.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
-		subSizeValue, err := strconv.Atoi(subSize)
+		subSizeValue, err := strconv.ParseInt(subSize, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %s", err.Error())
 		}
@@ -99,7 +92,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		}
 
 		if valuePresent {
-			triggerValue, err := strconv.Atoi(value)
+			triggerValue, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("value parsing error %s", err.Error())
 			}
@@ -121,7 +114,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta.gcpAuthorization = *auth
+	meta.gcpAuthorization = auth
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -163,7 +156,7 @@ func (s *pubsubScaler) Close(context.Context) error {
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(int64(s.metadata.value), resource.DecimalSI)
+	targetValueQty := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -254,29 +247,4 @@ func getSubscriptionData(s *pubsubScaler) (string, string) {
 		subscriptionID = s.metadata.subscriptionName
 	}
 	return subscriptionID, projectID
-}
-
-func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*gcpAuthorizationMetadata, error) {
-	metadata := config.TriggerMetadata
-	authParams := config.AuthParams
-	meta := gcpAuthorizationMetadata{}
-	if metadata["identityOwner"] == "operator" {
-		meta.podIdentityOwner = false
-	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
-		meta.podIdentityOwner = true
-		switch {
-		case config.PodIdentity == kedav1alpha1.PodIdentityProviderGCP:
-			// do nothing, rely on underneath metadata google
-			meta.podIdentityProviderEnabled = true
-		case authParams["GoogleApplicationCredentials"] != "":
-			meta.GoogleApplicationCredentials = authParams["GoogleApplicationCredentials"]
-		default:
-			if metadata["credentialsFromEnv"] != "" {
-				meta.GoogleApplicationCredentials = resolvedEnv[metadata["credentialsFromEnv"]]
-			} else {
-				return nil, fmt.Errorf("GoogleApplicationCredentials not found")
-			}
-		}
-	}
-	return &meta, nil
 }

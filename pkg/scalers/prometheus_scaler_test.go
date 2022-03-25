@@ -31,12 +31,12 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "", "threshold": "100", "query": "up"}, true},
+	// missing threshold
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "query": "up"}, true},
 	// malformed threshold
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "one", "query": "up"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
-	// all properly formed, default disableScaleToZero
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -207,4 +207,35 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrometheusScalerCortexHeader(t *testing.T) {
+	testData := prometheusQromQueryResultTestData{
+		name:           "no values",
+		bodyStr:        `{"data":{"result":[]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        false,
+	}
+	cortexOrgValue := "my-org"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		reqHeader := request.Header.Get(promCortexHeaderKey)
+		assert.Equal(t, reqHeader, cortexOrgValue)
+		writer.WriteHeader(testData.responseStatus)
+		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			serverAddress: server.URL,
+			cortexOrgID:   cortexOrgValue,
+		},
+		httpClient: http.DefaultClient,
+	}
+
+	_, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
 }

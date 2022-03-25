@@ -1,4 +1,6 @@
 import * as sh from "shelljs";
+import * as tmp from 'tmp';
+import * as fs from 'fs';
 
 export function waitForRollout(type: 'deployment' | 'statefulset', name: string, namespace: string, timeoutSeconds = 180): number {
     return sh.exec(`kubectl rollout status ${type}/${name} -n ${namespace} --timeout ${timeoutSeconds}s`).code
@@ -22,3 +24,16 @@ export async function waitForDeploymentReplicaCount(target: number, name: string
     }
     return false
 }
+
+export async function createNamespace(namespace: string) {
+    const namespaceFile = tmp.fileSync()
+    fs.writeFileSync(namespaceFile.name, namespaceTemplate.replace('{{NAMESPACE}}', namespace))
+    sh.exec(`kubectl apply -f ${namespaceFile.name}`)
+}
+
+const namespaceTemplate = `apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    type: e2e
+  name: {{NAMESPACE}}`

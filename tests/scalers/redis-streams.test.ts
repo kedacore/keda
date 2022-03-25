@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import { waitForRollout } from './helpers'
+import { createNamespace, waitForRollout } from './helpers'
 
 const redisNamespace = 'redis-ns'
 const testNamespace = 'redis-streams-ns'
@@ -13,7 +13,7 @@ const numMessages = 100
 
 test.before(t => {
   // setup Redis
-  sh.exec(`kubectl create namespace ${redisNamespace}`)
+  createNamespace(redisNamespace)
 
   const tmpFile1 = tmp.fileSync()
   fs.writeFileSync(tmpFile1.name, redisDeployYaml.replace('{{REDIS_PASSWORD}}', redisPassword))
@@ -21,9 +21,9 @@ test.before(t => {
   t.is(0, sh.exec(`kubectl apply --namespace ${redisNamespace} -f ${tmpFile1.name}`).code, 'creating a Redis deployment should work.')
 
   // wait for redis to be ready
-  t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 300), 'Redis is not in a ready state')
+  t.is(0, waitForRollout('deployment', redisDeploymentName, redisNamespace, 600), 'Redis is not in a ready state')
 
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   // deploy streams consumer app, scaled object etc.
   const tmpFile = tmp.fileSync()
@@ -57,7 +57,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   )
 
   // wait for the producer job to complete
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const succeeded = sh.exec(`kubectl get job  --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
     if (succeeded == '1') {
       break
@@ -66,17 +66,17 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   }
   // with messages published, the consumer deployment should start receiving the messages
   let replicaCount = '0'
-  for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
+  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
     replicaCount = sh.exec(
       `kubectl get deployment/redis-streams-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     t.log('(scale up) replica count is:' + replicaCount)
     if (replicaCount !== '5') {
-      sh.exec('sleep 3s')
+      sh.exec('sleep 10s')
     }
   }
 
-  t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+  t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
   for (let i = 0; i < 60 && replicaCount !== '1'; i++) {
     replicaCount = sh.exec(

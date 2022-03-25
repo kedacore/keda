@@ -3,10 +3,9 @@ on:
   push:
     branches:
       - main
-concurrency: e2e-tests
 jobs:
-  validate:
-    name: Validate
+  build:
+    name: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,7 +16,7 @@ jobs:
     container: ghcr.io/kedacore/build-tools:main
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -27,13 +26,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3.0.0
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3.0.0
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -54,8 +53,11 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
       - name: Publish on GitHub Container Registry
-        run: make publish
+        run: make publish-multiarch
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
@@ -70,21 +72,44 @@ jobs:
         # against the sigstore community Fulcio instance.
         run: make sign-images
 
+  validate:
+    needs: build
+    name: validate
+    runs-on: ubuntu-latest
+    # build-tools is built from ../../tools/build-tools.Dockerfile
+    container: ghcr.io/kedacore/build-tools:main
+    concurrency: e2e-tests
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
       - name: Run end to end tests
         env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
+          AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY }}
+          AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}
+          AZURE_DATA_EXPLORER_ENDPOINT: ${{ secrets.AZURE_DATA_EXPLORER_ENDPOINT }}
           AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          AZURE_KEYVAULT_URI:  ${{ secrets.AZURE_KEYVAULT_URI }}
+          AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY}}
           DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY}}
           DATADOG_SITE: ${{ secrets.DATADOG_SITE}}
+          GCP_SP_KEY: ${{ secrets.GCP_SP_KEY }}
           NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
           NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
           NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
@@ -93,8 +118,46 @@ jobs:
           OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
           OPENSTACK_USER_ID: ${{ secrets.OPENSTACK_USER_ID }}
           PREDICTKUBE_API_KEY: ${{ secrets.PREDICTKUBE_API_KEY }}
-          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
-          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
-          TEST_APP_INSIGHTS_APP_ID: ${{ secrets.TEST_APP_INSIGHTS_APP_ID }}
-          TEST_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.TEST_APP_INSIGHTS_INSTRUMENTATION_KEY }}
         run: make e2e-test
+
+      - name: Delete all e2e related namespaces
+        if: ${{ always() }}
+        run: make e2e-test-clean
+        env:
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+
+  validate-arm64:
+    needs: build
+    name: validate-arm64
+    runs-on: ARM64
+    concurrency: arm-smoke-tests
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+
+      - name: Install prerequisites
+        run: |
+          apt update
+          apt install curl npm make ca-certificates gcc libc-dev -y
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Create k8s v1.23 Kind Cluster
+        uses: JorTurFer/kind-action@main
+        with:
+          node_image: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
+          cluster_name: smoke-tests-cluster
+
+      - name: Run smoke test
+        run: make arm-smoke-test

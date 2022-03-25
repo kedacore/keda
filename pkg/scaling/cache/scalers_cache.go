@@ -82,6 +82,7 @@ func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricNa
 func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, []external_metrics.ExternalMetricValue) {
 	isActive := false
 	isError := false
+	// Let's collect status of all scalers, no matter if any scaler raises error or is active
 	for i, s := range c.Scalers {
 		isTriggerActive, err := s.Scaler.IsActive(ctx)
 		if err != nil {
@@ -92,19 +93,21 @@ func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *k
 			}
 		}
 
+		logger := c.Logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace,
+			"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
+
 		if err != nil {
-			c.Logger.V(1).Info("Error getting scale decision", "Error", err)
 			isError = true
+			logger.Error(err, "Error getting scale decision")
 			c.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		} else if isTriggerActive {
 			isActive = true
 			if externalMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
-				c.Logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
+				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
 			if resourceMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
-				c.Logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
+				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
-			break
 		}
 	}
 

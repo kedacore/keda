@@ -1,7 +1,7 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 export class RabbitMQHelper {
 
@@ -11,7 +11,7 @@ export class RabbitMQHelper {
         fs.writeFileSync(rabbitMqTmpFile.name, rabbitmqDeployYaml.replace('{{USERNAME}}', username)
             .replace('{{PASSWORD}}', password)
             .replace('{{VHOST}}', vhost))
-        sh.exec(`kubectl create namespace ${rabbitmqNamespace}`)
+        createNamespace(rabbitmqNamespace)
         t.is(0, sh.exec(`kubectl apply -f ${rabbitMqTmpFile.name} --namespace ${rabbitmqNamespace}`).code, 'creating a Rabbit MQ deployment should work.')
         // wait for rabbitmq to load
         t.is(0, waitForRollout('deployment', 'rabbitmq', rabbitmqNamespace))
@@ -27,13 +27,26 @@ export class RabbitMQHelper {
         fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr)
             .replace('{{CONNECTION_STRING}}', amqpURI)
             .replace('{{QUEUE_NAME}}', queueName))
-        sh.exec(`kubectl create namespace ${namespace}`)
+        createNamespace(namespace)
         t.is(
             0,
             sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,
             'creating a deployment should work.'
         )
     }
+
+    static createVhost(t, namespace: string, host: string, username: string, password: string, vhostName: string) {
+      const tmpFile = tmp.fileSync()
+      fs.writeFileSync(tmpFile.name, createVhostYaml.replace('{{HOST}}', host)
+          .replace('{{USERNAME_PASSWORD}}', `${username}:${password}`)
+          .replace('{{VHOST_NAME}}', vhostName)
+          .replace('{{VHOST_NAME}}', vhostName))
+      t.is(
+          0,
+          sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${namespace}`).code,
+          'creating a vhost should work.'
+      )
+  }
 
     static publishMessages(t, namespace: string, connectionString: string, messageCount: number, queueName: string) {
         // publish messages
@@ -64,6 +77,20 @@ spec:
         image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command: ["send",  "{{CONNECTION_STRING}}", "{{MESSAGE_COUNT}}", "{{QUEUE_NAME}}"]
+      restartPolicy: Never`
+
+const createVhostYaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-create-vhost-{{VHOST_NAME}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: curl-client
+        image: curlimages/curl
+        imagePullPolicy: Always
+        command: ["curl", "-u", "{{USERNAME_PASSWORD}}", "-X", "PUT", "http://{{HOST}}/api/vhosts/{{VHOST_NAME}}"]
       restartPolicy: Never`
 
 const rabbitmqDeployYaml = `apiVersion: v1

@@ -2,19 +2,16 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import { PrometheusServer } from './prometheus-server-helpers'
+import { createNamespace } from './helpers'
 
 const predictkubeApiKey = process.env['PREDICTKUBE_API_KEY']
 const testNamespace = 'predictkube-test'
-const prometheusNamespace = 'monitoring'
-const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
+const prometheusNamespace = 'predictkube-test-monitoring'
 
 test.before(t => {
     // install prometheus
-    sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-    t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
-    // wait for prometheus to load
-    t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
+    PrometheusServer.install(t, prometheusNamespace)
 
     sh.config.silent = true
     // create deployments - there are two deployments - both using the same image but one deployment
@@ -25,7 +22,7 @@ test.before(t => {
         .replace('{{PREDICTKUBE_API_KEY}}', Buffer.from(predictkubeApiKey).toString('base64'))
         .replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace)
     )
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
     t.is(
         0,
         sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
@@ -68,7 +65,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
     // keda based deployment should start scaling up with http requests issued
     let replicaCount = '0'
     for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
-        t.log(`Waited ${5 * i} seconds for predictkube-based deployments to scale up`)
+        t.log(`Waited ${10 * i} seconds for predictkube-based deployments to scale up`)
         const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
         t.log(`Logs from the generate requests: ${jobLogs}`)
 
@@ -76,7 +73,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
             `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         if (replicaCount !== '5') {
-            sh.exec('sleep 5s')
+            sh.exec('sleep 10s')
         }
     }
 
@@ -88,7 +85,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
             `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         if (replicaCount !== '0') {
-            sh.exec('sleep 5s')
+            sh.exec('sleep 10s')
         }
     }
 
@@ -110,7 +107,8 @@ test.after.always.cb('clean up predictkube deployment', t => {
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
     // uninstall prometheus
-    sh.exec(`kubectl delete --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`)
+    PrometheusServer.uninstall(prometheusNamespace)
+
     sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
 
     t.end()

@@ -26,7 +26,7 @@ import (
 )
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, blobContainerName string, accountName string, blobDelimiter string, blobPrefix string, endpointSuffix string) (int, error) {
+func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, blobContainerName string, accountName string, blobDelimiter string, blobPrefix string, endpointSuffix string) (int64, error) {
 	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, connectionString, accountName, endpointSuffix)
 	if err != nil {
 		return -1, err
@@ -44,5 +44,5 @@ func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podId
 		return -1, err
 	}
 
-	return len(props.Segment.BlobItems), nil
+	return int64(len(props.Segment.BlobItems)), nil
 }

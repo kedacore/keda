@@ -30,7 +30,7 @@ const (
 
 type azureAppInsightsMetadata struct {
 	azureAppInsightsInfo azure.AppInsightsInfo
-	targetValue          int
+	targetValue          int64
 	scalerIndex          int
 }
 
@@ -63,7 +63,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.Atoi(val)
+	meta.targetValue, err = strconv.ParseInt(val, 10, 64)
 	if err != nil {
 		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", "targetValue", targetValueName)
 		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", targetValueName, err.Error())
@@ -139,7 +139,7 @@ func (s *azureAppInsightsScaler) Close(context.Context) error {
 }
 
 func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+	targetMetricVal := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
@@ -163,7 +163,7 @@ func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName stri
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
+		Value:      *resource.NewQuantity(val, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

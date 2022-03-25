@@ -3,7 +3,7 @@ import * as eol from 'eol'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
-import { waitForRollout } from './helpers'
+import { createNamespace, waitForRollout } from './helpers'
 
 const influxdbJobName = 'influx-client-job'
 const influxdbNamespaceName = 'influxdb'
@@ -54,6 +54,7 @@ test.before((t) => {
     fs.writeFileSync(influxdbDeployTmpFile.name, influxdbDeployYaml)
 
     // Deploy influxdb instance
+    createNamespace(influxdbNamespaceName)
     t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${influxdbDeployTmpFile.name}`).code)
 
     // Wait for influxdb instance to be ready
@@ -124,11 +125,6 @@ test.after.always((t) => {
 })
 
 const influxdbDeployYaml = `
----
-apiVersion: v1
-kind: Namespace
-metadata:
-    name: influxdb
 ---
 apiVersion: apps/v1
 kind: StatefulSet

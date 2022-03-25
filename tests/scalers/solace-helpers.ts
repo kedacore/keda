@@ -1,6 +1,7 @@
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { createNamespace } from './helpers'
 
 export class SolaceHelper {
 
@@ -18,10 +19,7 @@ export class SolaceHelper {
     }
 
     static installSolaceBroker(t, testNamespace: string) {
-        t.is(
-          0,
-          sh.exec(`kubectl create namespace ${testNamespace}`).code, 'Should create solace namespace'
-        )
+        createNamespace(testNamespace)
         t.is(
             0,
             sh.exec(`helm install kedalab solacecharts/pubsubplus-dev --namespace ${testNamespace} --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false`).code, 'Solace Broker should install'

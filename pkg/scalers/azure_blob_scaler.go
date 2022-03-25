@@ -48,7 +48,7 @@ type azureBlobScaler struct {
 }
 
 type azureBlobMetadata struct {
-	targetBlobCount   int
+	targetBlobCount   int64
 	blobContainerName string
 	blobDelimiter     string
 	blobPrefix        string
@@ -82,7 +82,7 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azureBlobMetadata, kedav1alp
 	meta.blobPrefix = defaultBlobPrefix
 
 	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
-		blobCount, err := strconv.Atoi(val)
+		blobCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureBlobLog.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
 			return nil, "", fmt.Errorf("error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
@@ -181,7 +181,7 @@ func (s *azureBlobScaler) Close(context.Context) error {
 }
 
 func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetBlobCount := resource.NewQuantity(int64(s.metadata.targetBlobCount), resource.DecimalSI)
+	targetBlobCount := resource.NewQuantity(s.metadata.targetBlobCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
@@ -216,7 +216,7 @@ func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, met
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(bloblen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(bloblen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

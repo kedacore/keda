@@ -40,7 +40,12 @@ type seleniumResponse struct {
 }
 
 type data struct {
+	Grid         grid         `json:"grid"`
 	SessionsInfo sessionsInfo `json:"sessionsInfo"`
+}
+
+type grid struct {
+	MaxSession int `json:"maxSession"`
 }
 
 type sessionsInfo struct {
@@ -128,7 +133,7 @@ func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, 
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *v,
+		Value:      *resource.NewQuantity(v, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -159,51 +164,51 @@ func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return v.AsApproximateFloat64() > 0.0, nil
+	return v > 0, nil
 }
 
-func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (*resource.Quantity, error) {
+func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
 
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.url, bytes.NewBuffer(body))
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	res, err := s.client.Do(req)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		msg := fmt.Sprintf("selenium grid returned %d", res.StatusCode)
-		return nil, errors.New(msg)
+		return -1, errors.New(msg)
 	}
 
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string) (*resource.Quantity, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string) (int64, error) {
 	var count int64
 	var seleniumResponse = seleniumResponse{}
 
 	if err := json.Unmarshal(b, &seleniumResponse); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	var sessionQueueRequests = seleniumResponse.Data.SessionsInfo.SessionQueueRequests
@@ -238,5 +243,11 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 		}
 	}
 
-	return resource.NewQuantity(count, resource.DecimalSI), nil
+	var gridMaxSession = int64(seleniumResponse.Data.Grid.MaxSession)
+
+	if gridMaxSession > 0 {
+		count = (count + gridMaxSession - 1) / gridMaxSession
+	}
+
+	return count, nil
 }

@@ -65,7 +65,7 @@ type MonitorInfo struct {
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
 	var podIdentityEnabled = true
 
 	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
@@ -121,14 +121,14 @@ func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error)
 	return &metricRequest, nil
 }
 
-func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (int32, error) {
+func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (int64, error) {
 	metricResponse, err := getAzureMetric(ctx, client, *request)
 	if err != nil {
 		return -1, fmt.Errorf("error getting azure monitor metric %s: %w", request.MetricName, err)
 	}
 
 	// casting drops everything after decimal, so round first
-	metricValue := int32(math.Round(metricResponse))
+	metricValue := int64(math.Round(metricResponse))
 
 	return metricValue, nil
 }

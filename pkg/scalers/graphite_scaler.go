@@ -36,7 +36,7 @@ type graphiteMetadata struct {
 	serverAddress string
 	metricName    string
 	query         string
-	threshold     int
+	threshold     int64
 	from          string
 
 	// basic auth
@@ -97,7 +97,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata[grapThreshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", grapThreshold, err)
 		}
@@ -130,7 +130,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 }
 
 func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecuteGrapQuery(ctx)
+	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
 		graphiteLog.Error(err, "error executing graphite query")
 		return false, err
@@ -144,7 +144,7 @@ func (s *graphiteScaler) Close(context.Context) error {
 }
 
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
@@ -160,7 +160,7 @@ func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *graphiteScaler) ExecuteGrapQuery(ctx context.Context) (float64, error) {
+func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) {
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.serverAddress, s.metadata.from, queryEscaped)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -205,7 +205,7 @@ func (s *graphiteScaler) ExecuteGrapQuery(ctx context.Context) (float64, error) 
 }
 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := s.ExecuteGrapQuery(ctx)
+	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
 		graphiteLog.Error(err, "error executing graphite query")
 		return []external_metrics.ExternalMetricValue{}, err

@@ -23,13 +23,12 @@ RUN apt-get install apt-transport-https lsb-release dirmngr -y && \
     apt-get update && \
     apt-get install -y azure-cli
 
-# Install docker client
-RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.tgz && \
-    docker_sha256=865038730c79ab48dfed1365ee7627606405c037f46c9ae17c5ec1f487da1375 && \
-    echo "$docker_sha256 docker-19.03.2.tgz" | sha256sum -c - && \
-    tar xvzf docker-19.03.2.tgz && \
-    mv docker/* /usr/local/bin && \
-    rm -rf docker docker-19.03.2.tgz
+# Install docker
+RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release && \
+    curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" && \
+    apt-get update &&\
+    apt-get install -y docker-ce-cli
 
 # Install golang
 RUN GO_VERSION=1.17.3 && \

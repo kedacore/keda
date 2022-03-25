@@ -48,7 +48,7 @@ type azureQueueScaler struct {
 }
 
 type azureQueueMetadata struct {
-	targetQueueLength int
+	targetQueueLength int64
 	queueName         string
 	connection        string
 	accountName       string
@@ -77,7 +77,7 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, "", fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
@@ -163,7 +163,7 @@ func (s *azureQueueScaler) Close(context.Context) error {
 }
 
 func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
+	targetQueueLengthQty := resource.NewQuantity(s.metadata.targetQueueLength, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-queue-%s", s.metadata.queueName))),
@@ -196,7 +196,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

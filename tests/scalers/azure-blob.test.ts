@@ -4,25 +4,32 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const defaultNamespace = 'azure-blob-test'
-const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 // const blobSubPath = process.env['BLOB_SUB_PATH'];
 
-test.before(t => {
+test.before(async t => {
     if (!connectionString) {
-        t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for blob tests')
+        t.fail('AZURE_STORAGE_CONNECTION_STRING environment variable is required for blob tests')
     }
     // if (!blobSubPath) {
     //   t.fail('BLOB_SUB_PATH environment variable is required for blob tests');
   // }
-
+    const createContainerAsync = () => new Promise((resolve, _) => {
+      const blobSvc = azure.createBlobService(connectionString)
+      blobSvc.createContainerIfNotExists('container-name', err => {
+        resolve(undefined);
+      })
+    })
+    await createContainerAsync()
 
     sh.config.silent = true
     const base64ConStr = Buffer.from(connectionString).toString('base64')
     const tmpFile = tmp.fileSync()
     fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr))
-    sh.exec(`kubectl create namespace ${defaultNamespace}`)
+    createNamespace(defaultNamespace)
     t.is(0, sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 })
 
@@ -34,29 +41,13 @@ test.serial('Deployment should have 0 replicas on start', t => {
 test.serial.cb('Deployment should scale to 2 with 150 blobs on the blob container then back to 0', t => {
     // add 2000 files
     const blobSvc = azure.createBlobService(connectionString)
-    blobSvc.createContainerIfNotExists('container-name', err => {
-        t.falsy(err, 'unable to create blob')
-        async.mapLimit(Array(350).keys(), 50, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), () => {
-            let replicaCount = '0'
-            for (let i = 0; i < 40 && replicaCount !== '2'; i++) {
-                replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-                if (replicaCount !== '2') {
-                    sh.exec('sleep 1s')
-                }
-            }
 
-            t.is('2', replicaCount, 'Replica count should be 2 after 40 seconds')
+    async.mapLimit(Array(350).keys(), 50, (n, cb) => blobSvc.createBlockBlobFromText('container-name',`blobsubpath/blob-name-${n}`,'test text', cb), async () => {
+        t.is(await waitForDeploymentReplicaCount(2,"test-deployment", defaultNamespace, 180, 1000),true, "Replica count should be 2 after 3 minute")
 
-            for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-                replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-                if (replicaCount !== '0') {
-                    sh.exec('sleep 5s')
-                }
-            }
+        t.is(await waitForDeploymentReplicaCount(0,"test-deployment", defaultNamespace, 300, 1000),true, "Replica count should be 0 after 5 minute")
 
-            t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
-            t.end()
-        })
+        t.end()
     })
 })
 
@@ -139,4 +130,5 @@ spec:
     metadata:
       blobContainerName: container-name
       blobPrefix: blobsubpath
+      blobCount: '1'
       connectionFromEnv: AzureWebJobsStorage`
