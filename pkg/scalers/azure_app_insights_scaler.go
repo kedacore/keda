@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	az "github.com/Azure/go-autorest/autorest/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,6 +97,31 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	} else {
 		meta.azureAppInsightsInfo.Filter = ""
 	}
+
+	meta.azureAppInsightsInfo.AppInsightsResourceURL = azure.DefaultAppInsightsResourceURL
+
+	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := config.TriggerMetadata["appInsightsResourceURL"]; ok && resource != "" {
+				meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+			} else {
+				return nil, fmt.Errorf("appInsightsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AppInsightsResourceURLInCloud[strings.ToUpper(cloud)]; ok {
+			meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+		} else {
+			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+
+	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ActiveDirectoryEndpoint, nil
+	}
+	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureAppInsightsInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	// Required authentication parameters below
 

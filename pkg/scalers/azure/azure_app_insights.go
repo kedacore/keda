@@ -16,18 +16,26 @@ import (
 )
 
 const (
-	appInsightsResource = "https://api.applicationinsights.io"
+	DefaultAppInsightsResourceURL = "https://api.applicationinsights.io"
 )
 
+var AppInsightsResourceURLInCloud = map[string]string{
+	"AZUREPUBLICCLOUD":       "https://api.applicationinsights.io",
+	"AZUREUSGOVERNMENTCLOUD": "https://api.applicationinsights.us",
+	"AZURECHINACLOUD":        "https://api.applicationinsights.azure.cn",
+}
+
 type AppInsightsInfo struct {
-	ApplicationInsightsID string
-	TenantID              string
-	MetricID              string
-	AggregationTimespan   string
-	AggregationType       string
-	Filter                string
-	ClientID              string
-	ClientPassword        string
+	ApplicationInsightsID   string
+	TenantID                string
+	MetricID                string
+	AggregationTimespan     string
+	AggregationType         string
+	Filter                  string
+	ClientID                string
+	ClientPassword          string
+	AppInsightsResourceURL  string
+	ActiveDirectoryEndpoint string
 }
 
 type ApplicationInsightsMetric struct {
@@ -55,12 +63,13 @@ func toISO8601(time string) (string, error) {
 func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) auth.AuthorizerConfig {
 	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = appInsightsResource
+		config.Resource = info.AppInsightsResourceURL
+		config.AADEndpoint = info.ActiveDirectoryEndpoint
 		return config
 	}
 
 	config := auth.NewMSIConfig()
-	config.Resource = appInsightsResource
+	config.Resource = info.AppInsightsResourceURL
 	return config
 }
 
@@ -115,7 +124,7 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 	}
 
 	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(appInsightsResource),
+		autorest.WithBaseURL(info.AppInsightsResourceURL),
 		autorest.WithPath("v1/apps"),
 		autorest.WithPath(info.ApplicationInsightsID),
 		autorest.WithPath("metrics"),
