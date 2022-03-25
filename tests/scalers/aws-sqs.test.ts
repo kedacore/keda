@@ -80,8 +80,7 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
 
   t.true(await waitForDeploymentReplicaCount(maxReplicaCount, nginxDeploymentName, testNamespace, 180, 1000), 'Replica count should increase to the maxReplicaCount')
   
-  //Receiva and remove messages
-
+  //Purge queue
   var params = {
     QueueUrl: sqsQueue,
   };   
