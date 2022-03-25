@@ -44,7 +44,7 @@ var (
 	dataExplorerQuery     = "print 3"
 	dataExplorerThreshold = "1"
 	dataExplorerEndpoint  = "https://test-keda-e2e.eastus.kusto.windows.net"
-	msiClientId           = "b31c38ca-0a20-4770-b3ea-568acc8dec99"
+	msiClientID           = "b31c38ca-0a20-4770-b3ea-568acc8dec99"
 )
 
 // Valid auth params with aad application and passwd
@@ -79,15 +79,15 @@ var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestDat
 	// Empty metadata - fail
 	{map[string]string{}, true},
 	// Missing endpoint - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientId": msiClientId, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientID": msiClientID, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing query - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientId": msiClientId, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientID": msiClientID, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
 	// Missing threshold - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientId": msiClientId, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
-	// Missing msiClientId - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientId": "", "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientID": msiClientID, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
+	// Missing msiClientID - fail
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientID": "", "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// All parameters set - pass
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientId": msiClientId, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "msiClientID": msiClientID, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
 }
 
 var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
