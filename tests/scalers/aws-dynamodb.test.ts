@@ -93,22 +93,18 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
     };
   }
 
+  t.true(await waitForDeploymentReplicaCount(0,nginxDeploymentName,dynamoDBNamespace, 60, 1000), "Replica count should start out as 0")
+
 
   for (let i = 0; i <= 6; i++) {
     let putCommand = new PutItemCommand(buildRecord(i));
     await dynamoClient.send(putCommand)
   }
 
-  let replicaCount = sh.exec(
-    `kubectl get deploy/${nginxDeploymentName} --namespace ${dynamoDBNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-
-  t.is(replicaCount, '0', 'Replica count should start out as 0')
-
   const maxReplicaCount = 2
   const minReplicaCount = 0;
 
-  let result = await waitForDeploymentReplicaCount(maxReplicaCount, nginxDeploymentName, dynamoDBNamespace, 30)
-  t.is(result, true, 'Replica count should increase to the maxReplicaCount')
+  t.true(await waitForDeploymentReplicaCount(maxReplicaCount, nginxDeploymentName, dynamoDBNamespace, 180, 1000), 'Replica count should increase to the maxReplicaCount')
 
   for (let i = 0; i <= 40; i++) {
     let deleteItemCommand = new DeleteItemCommand({
@@ -122,8 +118,7 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
     await dynamoClient.send(deleteItemCommand)
   }
 
-  result = await waitForDeploymentReplicaCount(minReplicaCount, nginxDeploymentName, dynamoDBNamespace, 30)
-  t.is(result, true, 'Replica count should increase to the minReplicaCount')
+  t.true(await waitForDeploymentReplicaCount(minReplicaCount, nginxDeploymentName, dynamoDBNamespace, 180, 1000), 'Replica count should increase to the minReplicaCount')
 })
 
 test.after.always(async (t) => {
