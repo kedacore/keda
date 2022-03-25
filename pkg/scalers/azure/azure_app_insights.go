@@ -34,7 +34,6 @@ type AppInsightsInfo struct {
 	Filter                  string
 	ClientID                string
 	ClientPassword          string
-	Cloud                   string
 	AppInsightsResourceURL  string
 	ActiveDirectoryEndpoint string
 }

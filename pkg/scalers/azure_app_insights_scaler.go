@@ -98,11 +98,9 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 		meta.azureAppInsightsInfo.Filter = ""
 	}
 
-	meta.azureAppInsightsInfo.Cloud = azure.DefaultCloud
 	meta.azureAppInsightsInfo.AppInsightsResourceURL = azure.DefaultAppInsightsResourceURL
 
 	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
-		meta.azureAppInsightsInfo.Cloud = cloud
 		if strings.EqualFold(cloud, azure.PrivateCloud) {
 			if resource, ok := config.TriggerMetadata["appInsightsResourceURL"]; ok && resource != "" {
 				meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
