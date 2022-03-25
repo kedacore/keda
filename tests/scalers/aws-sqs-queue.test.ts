@@ -60,7 +60,7 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
   const minReplicaCount = 0;
 
   t.true(await waitForDeploymentReplicaCount(minReplicaCount, nginxDeploymentName, testNamespace, 300, 1000), 'Replica count should start out as 0')
-  
+
   //Add messages
   const sendMessage = (id: number) => new Promise((resolve, _) => {
     var params = {
@@ -73,17 +73,17 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
       resolve(undefined);
     })
   });
-  
+
   for (let i = 0; i < 10 ; i++) {
     await sendMessage(i)
   }
 
   t.true(await waitForDeploymentReplicaCount(maxReplicaCount, nginxDeploymentName, testNamespace, 180, 1000), 'Replica count should increase to the maxReplicaCount')
-  
+
   //Purge queue
   var params = {
     QueueUrl: sqsQueue,
-  };   
+  };
   sqsClient.purgeQueue(params, err => {
     if (err != null) console.log(err)
   });
