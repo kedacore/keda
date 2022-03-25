@@ -13,6 +13,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	az "github.com/Azure/go-autorest/autorest/azure"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -96,6 +97,33 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	} else {
 		meta.azureAppInsightsInfo.Filter = ""
 	}
+
+	meta.azureAppInsightsInfo.Cloud = azure.DefaultCloud
+	meta.azureAppInsightsInfo.AppInsightsResourceURL = azure.DefaultAppInsightsResourceURL
+
+	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
+		meta.azureAppInsightsInfo.Cloud = cloud
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := config.TriggerMetadata["appInsightsResourceURL"]; ok && resource != "" {
+				meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+			} else {
+				return nil, fmt.Errorf("appInsightsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AppInsightsResourceURLInCloud[strings.ToUpper(cloud)]; ok {
+			meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+		} else {
+			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+
+	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ActiveDirectoryEndpoint, nil
+	}
+	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureAppInsightsInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	// Required authentication parameters below
 

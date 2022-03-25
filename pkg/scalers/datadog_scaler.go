@@ -191,7 +191,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
+	_, _, err := apiClient.AuthenticationApi.Validate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %v", err)
 	}
@@ -236,7 +236,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			"site": s.metadata.datadogSite,
 		})
 
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query) //nolint:bodyclose
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
 	if err != nil {
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
 	}
