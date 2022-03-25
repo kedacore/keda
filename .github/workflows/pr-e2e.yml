@@ -80,6 +80,7 @@ jobs:
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
           AZURE_KEYVAULT_URI:  ${{ secrets.AZURE_KEYVAULT_URI }}
           AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
+          AZURE_MSI_CLIENT_ID: ${{ secrets.AZURE_MSI_CLIENT_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
