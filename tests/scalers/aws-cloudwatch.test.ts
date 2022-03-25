@@ -8,7 +8,6 @@ import {
 
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
-
 const awsRegion = 'eu-west-2'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
