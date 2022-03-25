@@ -319,9 +319,12 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 }
 
 func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial(host)
-	if err != nil {
-		return nil, nil, err
+	var conn *amqp.Connection
+	var err error
+	if strings.HasPrefix(host, "amqps") {
+		conn, err = amqp.DialTLS(host, &tls.Config{InsecureSkipVerify: true})
+	} else {
+		conn, err = amqp.Dial(host)
 	}
 
 	channel, err := conn.Channel()
