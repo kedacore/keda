@@ -27,6 +27,12 @@ function run_tests {
             continue
         fi
 
+        # Disable until https://github.com/kedacore/keda/issues/2770 is solved.
+        if [[ $test_case == *azure-data-explorer.test.ts ]]
+        then
+            continue
+        fi
+
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
