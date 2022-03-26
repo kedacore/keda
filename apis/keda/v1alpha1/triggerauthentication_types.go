@@ -183,6 +183,8 @@ type AzureKeyVault struct {
 	VaultURI    string                    `json:"vaultUri"`
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
 	Secrets     []AzureKeyVaultSecret     `json:"secrets"`
+	// +optional
+	CloudInfo *AzureKeyVaultCloudInfo `json:"cloudInfo"`
 }
 
 type AzureKeyVaultCredentials struct {
@@ -209,6 +211,14 @@ type AzureKeyVaultSecret struct {
 	Name      string `json:"name"`
 	// +optional
 	Version string `json:"version,omitempty"`
+}
+
+type AzureKeyVaultCloudInfo struct {
+	Type string `json:"type"`
+	// +optional
+	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
+	// +optional
+	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
 }
 
 func init() {

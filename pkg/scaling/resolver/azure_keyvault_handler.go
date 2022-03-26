@@ -18,17 +18,17 @@ package resolver
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-)
-
-const (
-	azureKeyVaultResource = "https://vault.azure.net"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 type AzureKeyVaultHandler struct {
@@ -51,7 +51,13 @@ func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Cl
 	clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
 
 	clientCredentialsConfig := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
-	clientCredentialsConfig.Resource = azureKeyVaultResource
+
+	keyvaultResourceURL, activeDirectoryEndpoint, err := vh.getPropertiesForCloud()
+	if err != nil {
+		return err
+	}
+	clientCredentialsConfig.Resource = keyvaultResourceURL
+	clientCredentialsConfig.AADEndpoint = activeDirectoryEndpoint
 
 	authorizer, err := clientCredentialsConfig.Authorizer()
 	if err != nil {
@@ -73,4 +79,29 @@ func (vh *AzureKeyVaultHandler) Read(ctx context.Context, secretName string, ver
 	}
 
 	return *result.Value, nil
+}
+
+func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) {
+	cloudInfo := vh.vault.CloudInfo
+
+	if cloudInfo == nil {
+		return az.PublicCloud.ResourceIdentifiers.KeyVault, az.PublicCloud.ActiveDirectoryEndpoint, nil
+	}
+
+	if strings.EqualFold(cloudInfo.Type, azure.PrivateCloud) {
+		if cloudInfo.KeyVaultResourceURL == "" || cloudInfo.ActiveDirectoryEndpoint == "" {
+			err := fmt.Errorf("properties keyVaultResourceURL and activeDirectoryEndpoint must be provided for cloud %s",
+				azure.PrivateCloud)
+			return "", "", err
+		}
+
+		return cloudInfo.KeyVaultResourceURL, cloudInfo.ActiveDirectoryEndpoint, nil
+	}
+
+	env, err := az.EnvironmentFromName(cloudInfo.Type)
+	if err != nil {
+		return "", "", err
+	}
+
+	return env.ResourceIdentifiers.KeyVault, env.ActiveDirectoryEndpoint, nil
 }
