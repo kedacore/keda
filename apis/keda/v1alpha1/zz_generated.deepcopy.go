@@ -105,8 +105,8 @@ func (in *AzureKeyVault) DeepCopyInto(out *AzureKeyVault) {
 		*out = make([]AzureKeyVaultSecret, len(*in))
 		copy(*out, *in)
 	}
-	if in.CloudInfo != nil {
-		in, out := &in.CloudInfo, &out.CloudInfo
+	if in.Cloud != nil {
+		in, out := &in.Cloud, &out.Cloud
 		*out = new(AzureKeyVaultCloudInfo)
 		**out = **in
 	}

@@ -42,7 +42,7 @@ var testDataset = []testData{
 		name:    "known Azure cloud",
 		isError: false,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: &kedav1alpha1.AzureKeyVaultCloudInfo{
+			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
 				Type: "azurePublicCloud",
 			},
 		},
@@ -53,7 +53,7 @@ var testDataset = []testData{
 		name:    "private cloud",
 		isError: false,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: &kedav1alpha1.AzureKeyVaultCloudInfo{
+			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
 				Type:                    "private",
 				KeyVaultResourceURL:     testResourceURL,
 				ActiveDirectoryEndpoint: testActiveDirectoryEndpoint,
@@ -66,7 +66,7 @@ var testDataset = []testData{
 		name:    "nil cloud info",
 		isError: false,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: nil,
+			Cloud: nil,
 		},
 		expectedKVResourceURL: az.PublicCloud.ResourceIdentifiers.KeyVault,
 		expectedADEndpoint:    az.PublicCloud.ActiveDirectoryEndpoint,
@@ -75,7 +75,7 @@ var testDataset = []testData{
 		name:    "invalid cloud",
 		isError: true,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: &kedav1alpha1.AzureKeyVaultCloudInfo{
+			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
 				Type: "invalid cloud",
 			},
 		},
@@ -86,7 +86,7 @@ var testDataset = []testData{
 		name:    "private cloud missing keyvault resource URL",
 		isError: true,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: &kedav1alpha1.AzureKeyVaultCloudInfo{
+			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
 				Type:                    "private",
 				ActiveDirectoryEndpoint: testActiveDirectoryEndpoint,
 			},
@@ -98,7 +98,7 @@ var testDataset = []testData{
 		name:    "private cloud missing active directory endpoint",
 		isError: true,
 		vault: kedav1alpha1.AzureKeyVault{
-			CloudInfo: &kedav1alpha1.AzureKeyVaultCloudInfo{
+			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
 				Type:                "private",
 				KeyVaultResourceURL: testResourceURL,
 			},

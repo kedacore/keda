@@ -184,7 +184,7 @@ type AzureKeyVault struct {
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
 	Secrets     []AzureKeyVaultSecret     `json:"secrets"`
 	// +optional
-	CloudInfo *AzureKeyVaultCloudInfo `json:"cloudInfo"`
+	Cloud *AzureKeyVaultCloudInfo `json:"cloud"`
 }
 
 type AzureKeyVaultCredentials struct {

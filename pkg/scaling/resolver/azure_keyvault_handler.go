@@ -82,23 +82,23 @@ func (vh *AzureKeyVaultHandler) Read(ctx context.Context, secretName string, ver
 }
 
 func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) {
-	cloudInfo := vh.vault.CloudInfo
+	cloud := vh.vault.Cloud
 
-	if cloudInfo == nil {
+	if cloud == nil {
 		return az.PublicCloud.ResourceIdentifiers.KeyVault, az.PublicCloud.ActiveDirectoryEndpoint, nil
 	}
 
-	if strings.EqualFold(cloudInfo.Type, azure.PrivateCloud) {
-		if cloudInfo.KeyVaultResourceURL == "" || cloudInfo.ActiveDirectoryEndpoint == "" {
+	if strings.EqualFold(cloud.Type, azure.PrivateCloud) {
+		if cloud.KeyVaultResourceURL == "" || cloud.ActiveDirectoryEndpoint == "" {
 			err := fmt.Errorf("properties keyVaultResourceURL and activeDirectoryEndpoint must be provided for cloud %s",
 				azure.PrivateCloud)
 			return "", "", err
 		}
 
-		return cloudInfo.KeyVaultResourceURL, cloudInfo.ActiveDirectoryEndpoint, nil
+		return cloud.KeyVaultResourceURL, cloud.ActiveDirectoryEndpoint, nil
 	}
 
-	env, err := az.EnvironmentFromName(cloudInfo.Type)
+	env, err := az.EnvironmentFromName(cloud.Type)
 	if err != nil {
 		return "", "", err
 	}

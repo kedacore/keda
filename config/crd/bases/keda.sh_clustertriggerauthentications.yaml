@@ -57,7 +57,7 @@ spec:
                 description: AzureKeyVault is used to authenticate using Azure Key
                   Vault
                 properties:
-                  cloudInfo:
+                  cloud:
                     properties:
                       activeDirectoryEndpoint:
                         type: string
