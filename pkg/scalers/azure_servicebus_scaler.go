@@ -58,7 +58,7 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
-	targetLength     int
+	targetLength     int64
 	queueName        string
 	topicName        string
 	subscriptionName string
@@ -98,7 +98,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 
 	// get target metric value
 	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
-		messageCount, err := strconv.Atoi(val)
+		messageCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
 		} else {
@@ -134,7 +134,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		return env.ServiceBusEndpointSuffix, nil
 	}
 
-	endpointSuffix, err := azure.ParseEndpointSuffix(config.TriggerMetadata, envSuffixProvider)
+	endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 
 // Returns true if the scaler's queue has messages in it, false otherwise
 func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.GetAzureServiceBusLength(ctx)
+	length, err := s.getAzureServiceBusLength(ctx)
 	if err != nil {
 		azureServiceBusLog.Error(err, "error")
 		return false, err
@@ -199,7 +199,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetLength)),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -207,7 +207,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 
 // Returns the current metrics to be served to the HPA
 func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := s.GetAzureServiceBusLength(ctx)
+	queuelen, err := s.getAzureServiceBusLength(ctx)
 
 	if err != nil {
 		azureServiceBusLog.Error(err, "error getting service bus entity length")
@@ -216,7 +216,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -245,7 +245,7 @@ func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 }
 
 // Returns the length of the queue or subscription
-func (s *azureServiceBusScaler) GetAzureServiceBusLength(ctx context.Context) (int32, error) {
+func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
 	// get namespace
 	namespace, err := s.getServiceBusNamespace(ctx)
 	if err != nil {
@@ -288,7 +288,7 @@ func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*se
 	return namespace, nil
 }
 
-func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int32, error) {
+func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int64, error) {
 	// get queue manager from namespace
 	queueManager := ns.NewQueueManager()
 
@@ -298,10 +298,10 @@ func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, 
 		return -1, err
 	}
 
-	return *queueEntity.CountDetails.ActiveMessageCount, nil
+	return int64(*queueEntity.CountDetails.ActiveMessageCount), nil
 }
 
-func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int32, error) {
+func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int64, error) {
 	// get subscription manager from namespace
 	subscriptionManager, err := ns.NewSubscriptionManager(topicName)
 	if err != nil {
@@ -314,5 +314,5 @@ func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Name
 		return -1, err
 	}
 
-	return *subscriptionEntity.CountDetails.ActiveMessageCount, nil
+	return int64(*subscriptionEntity.CountDetails.ActiveMessageCount), nil
 }

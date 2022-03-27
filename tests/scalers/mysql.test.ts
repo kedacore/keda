@@ -1,8 +1,8 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const testNamespace = 'mysql-test'
 const mySQLNamespace = 'mysql'
@@ -14,7 +14,7 @@ const deploymentName = 'worker'
 
 test.before(t => {
     // install mysql
-    sh.exec(`kubectl create namespace ${mySQLNamespace}`)
+    createNamespace(mySQLNamespace)
     const mySQLTmpFile = tmp.fileSync()
     fs.writeFileSync(mySQLTmpFile.name, mysqlDeploymentYaml.replace('{{MYSQL_USER}}', mySQLUsername)
         .replace('{{MYSQL_PASSWORD}}', mySQLPassword)
@@ -40,7 +40,7 @@ test.before(t => {
 
     sh.config.silent = true
 
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()

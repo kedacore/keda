@@ -38,7 +38,7 @@ type elasticsearchMetadata struct {
 	searchTemplateName string
 	parameters         []string
 	valueLocation      string
-	targetValue        int
+	targetValue        int64
 	metricName         string
 }
 
@@ -124,7 +124,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.Atoi(targetValue)
+	meta.targetValue, err = strconv.ParseInt(targetValue, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 	}
@@ -176,7 +176,7 @@ func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (int, error) {
+func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (int64, error) {
 	// Build the request body.
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(buildQuery(s.metadata)); err != nil {
@@ -223,11 +223,11 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 	return query
 }
 
-func getValueFromSearch(body []byte, valueLocation string) (int, error) {
+func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number but got: '%s'"
 	if r.Type == gjson.String {
-		q, err := strconv.Atoi(r.String())
+		q, err := strconv.ParseInt(r.String(), 10, 64)
 		if err != nil {
 			return 0, fmt.Errorf(errorMsg, r.String())
 		}
@@ -236,7 +236,7 @@ func getValueFromSearch(body []byte, valueLocation string) (int, error) {
 	if r.Type != gjson.Number {
 		return 0, fmt.Errorf(errorMsg, r.Type.String())
 	}
-	return int(r.Num), nil
+	return int64(r.Num), nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -245,7 +245,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -262,7 +262,7 @@ func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string,
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

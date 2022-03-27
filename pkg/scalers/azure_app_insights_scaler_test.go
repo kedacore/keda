@@ -140,6 +140,56 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 			"AD_CLIENT_ID": "5678", "AD_CLIENT_PASSWORD": "pw", "APP_INSIGHTS_ID": "1234", "TENANT_ID": "1234",
 		},
 	}},
+	{name: "known Azure Cloud", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "azureChinaCloud",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "appInsightsResourceURL": "appInsightsResourceURL", "activeDirectoryEndpoint": "adEndpoint",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud - missing app insights resource URL", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "activeDirectoryEndpoint": "adEndpoint",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud - missing active directory endpoint", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "appInsightsResourceURL": "appInsightsResourceURL",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "unsupported cloud", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "azureGermanCloud",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
 }
 
 func TestNewAzureAppInsightsScaler(t *testing.T) {

@@ -33,7 +33,7 @@ const (
 type openstackSwiftMetadata struct {
 	swiftURL          string
 	containerName     string
-	objectCount       int
+	objectCount       int64
 	objectPrefix      string
 	objectDelimiter   string
 	objectLimit       string
@@ -60,7 +60,7 @@ type openstackSwiftScaler struct {
 
 var openstackSwiftLog = logf.Log.WithName("openstack_swift_scaler")
 
-func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context.Context) (int, error) {
+func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context.Context) (int64, error) {
 	var containerName = s.metadata.containerName
 	var swiftURL = s.metadata.swiftURL
 
@@ -126,7 +126,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 
 		// If onlyFiles is set to "true", return the total amount of files (excluding empty objects/folders)
 		if s.metadata.onlyFiles {
-			var count = 0
+			var count int64
 			for i := 0; i < len(objectsList); i++ {
 				if !strings.HasSuffix(objectsList[i], "/") {
 					count++
@@ -134,7 +134,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 			}
 
 			if s.metadata.objectLimit != defaultObjectLimit {
-				objectLimit, conversionError := strconv.Atoi(s.metadata.objectLimit)
+				objectLimit, conversionError := strconv.ParseInt(s.metadata.objectLimit, 10, 64)
 
 				if conversionError != nil {
 					openstackSwiftLog.Error(err, fmt.Sprintf("the objectLimit value provided is invalid: %v", s.metadata.objectLimit))
@@ -151,11 +151,11 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 
 		// Otherwise, if either prefix and/or delimiter are provided, return the total amount of objects
 		if s.metadata.objectPrefix != defaultObjectPrefix || s.metadata.objectDelimiter != defaultObjectDelimiter {
-			return len(objectsList), nil
+			return int64(len(objectsList)), nil
 		}
 
 		// Finally, if nothing is set, return the standard total amount of objects inside the container
-		objectCount, conversionError := strconv.Atoi(resp.Header["X-Container-Object-Count"][0])
+		objectCount, conversionError := strconv.ParseInt(resp.Header["X-Container-Object-Count"][0], 10, 64)
 		return objectCount, conversionError
 	}
 
@@ -261,7 +261,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["objectCount"]; ok {
-		targetObjectCount, err := strconv.Atoi(val)
+		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("objectCount parsing error: %s", err.Error())
 		}
@@ -381,7 +381,7 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(objectCount), resource.DecimalSI),
+		Value:      *resource.NewQuantity(objectCount, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -403,7 +403,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.objectCount)),
+		Target: GetMetricTarget(s.metricType, s.metadata.objectCount),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

@@ -58,7 +58,7 @@ type mongoDBMetadata struct {
 	query string
 	// A threshold that is used as targetAverageValue in HPA
 	// +required
-	queryValue int
+	queryValue int64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
 	// +optional
 	metricName string
@@ -127,7 +127,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
 		}
@@ -215,7 +215,7 @@ func (s *mongoDBScaler) Close(ctx context.Context) error {
 }
 
 // getQueryResult query mongoDB by meta.query
-func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int, error) {
+func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
@@ -231,7 +231,7 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	return int(docsNum), nil
+	return docsNum, nil
 }
 
 // GetMetrics query from mongoDB,and return to external metrics
@@ -243,7 +243,7 @@ func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metri
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -256,7 +256,7 @@ func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.queryValue)),
+		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

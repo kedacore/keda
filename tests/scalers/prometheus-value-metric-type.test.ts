@@ -1,73 +1,78 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import { PrometheusServer } from './prometheus-server-helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
-const testNamespace = 'prometheus-test'
-const prometheusNamespace = 'monitoring'
-const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
+const testNamespace = 'prometheus-test-metric-type'
+const prometheusNamespace = 'prometheus-test-monitoring-metric-type'
+const loadGeneratorJob = tmp.fileSync()
 
-test.before(t => {
+test.before(async t => {
   // install prometheus
-  sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-  t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
-  // wait for prometheus to load
-  t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
+  PrometheusServer.install(t, prometheusNamespace)
 
   sh.config.silent = true
-  // create deployments - there are two deployments - one triggered with
-  // AverageValue metric type, and the other one with Value metric type
+  // create deployments - there are two deployments - both using the same image but one deployment
+  // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
+  // even when the KEDA deployment is at zero - the service points to both deployments
   const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, deployYaml)
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
+  createNamespace(testNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating a deployment should work.'
   )
+  t.true(await waitForDeploymentReplicaCount(1, 'test-app', testNamespace, 60, 1000), 'test-app replica count should be 1 after 1 minute')
+
+  fs.writeFileSync(loadGeneratorJob.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
 })
 
-test.serial(`Value deployment should scale to 8, average value deployment should only scale to 2`, t => {
-  // we use a constant vector so that the current metric value is always 2.
-
-  // for Value metric type, we expect the replica count to double itself every time:
-  // desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]
-  // = currentReplicas * 2 / 1
-
-  // for AverageValue metric type, we expect the deployment to scale to 2 and stay there,
-  // since the currentReplicas isn't part of the equation:
-  // desiredReplicas = ceil[currentReplicas * ( (currentMetricValue / currentReplicas) / desiredMetricValue )]
-  // = ceil[currentMetricValue / desiredMetricValue] = 2 / 1 = 2
-  let averageValueReplicaCount = '0', valueReplicaCount = '0'
-  for (let i = 0; i < 60 && (averageValueReplicaCount !== '2' || valueReplicaCount !== '8'); i++) {
-    t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
-
-    averageValueReplicaCount = sh.exec(
-      `kubectl get deployment.apps/average-value-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    valueReplicaCount = sh.exec(
-      `kubectl get deployment.apps/value-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-
-    // replica count should always double itself for value metric type
-    t.assert(['1', '2', '4', '8'].includes(valueReplicaCount))
-    if (averageValueReplicaCount !== '2' || valueReplicaCount !== '8') {
-      sh.exec('sleep 10s')
-    }
-  }
-
-  t.is('2', averageValueReplicaCount, 'Average value replica count should be 2')
-  t.is('8', valueReplicaCount, 'Value replica count should be maxed at 8')
+test.serial('Metric type should be "Value"',async t => {
+  const metricType = sh.exec(
+    `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
+  ).stdout
+  t.is('Value', metricType, 'prometheus-scaledobject trigger metric type should be "Value"')
 })
+
+test.serial('Deployment should have 0 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 60, 1000), 'keda-test-app replica count should be 0 after 1 minute')
+})
+
+test.serial(`Deployment should scale to 2 (the max) with HTTP Requests exceeding in the rate`, async t => {
+  // generate a large number of HTTP requests (using Apache Bench) that will take some time
+  // so prometheus has some time to scrape it
+  t.is(
+    0,
+    sh.exec(`kubectl apply -f ${loadGeneratorJob.name} --namespace ${testNamespace}`).code,
+    'creating job should work.'
+  )
+
+  t.true(await waitForDeploymentReplicaCount(2, 'keda-test-app', testNamespace, 600, 1000), 'keda-test-app replica count should be 2 after 10 minutes')
+})
+
+test.serial(`Deployment should scale to 0`, async t => {
+  // Stop the load
+  t.is(
+    0,
+    sh.exec(`kubectl delete -f ${loadGeneratorJob.name} --namespace ${testNamespace}`).code,
+    'deleting job should work.'
+  )
+
+  t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 300, 1000), 'keda-test-app replica count should be 0 after 5 minutes')
+
+})
+
 
 test.after.always.cb('clean up prometheus deployment', t => {
   const resources = [
-    'scaledobject.keda.sh/average-value-test-scaledobject',
-    'scaledobject.keda.sh/value-test-scaledobject',
-    'deployment.apps/average-value-test-app',
-    'deployment.apps/value-test-app',
+    'scaledobject.keda.sh/prometheus-scaledobject',
+    'deployment.apps/test-app',
+    'deployment.apps/keda-test-app',
+    'service/test-app',
+    'job/generate-requests',
   ]
 
   for (const resource of resources) {
@@ -76,8 +81,7 @@ test.after.always.cb('clean up prometheus deployment', t => {
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
   // uninstall prometheus
-  sh.exec(`kubectl delete --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`)
-  sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
+  PrometheusServer.uninstall(prometheusNamespace)
 
   t.end()
 })
@@ -86,80 +90,95 @@ const deployYaml = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: average-value-test-app
-  name: average-value-test-app
+    app: test-app
+  name: test-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: average-value-test-app
+      app: test-app
   template:
     metadata:
       labels:
-        app: average-value-test-app
+        app: test-app
+        type: keda-testing
     spec:
       containers:
-      - name: prom-average-value-test-app
-        image: nginx:1.16.1
+      - name: prom-test-app
+        image: tbickford/simple-web-app-prometheus:a13ade9
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: value-test-app
-  name: value-test-app
+    app: keda-test-app
+  name: keda-test-app
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
-      app: value-test-app
+      app: keda-test-app
   template:
     metadata:
       labels:
-        app: value-test-app
+        app: keda-test-app
+        type: keda-testing
     spec:
       containers:
-      - name: prom-value-test-app
-        image: nginx:1.16.1
+      - name: prom-test-app
+        image: tbickford/simple-web-app-prometheus:a13ade9
         imagePullPolicy: IfNotPresent
 ---
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
+apiVersion: v1
+kind: Service
 metadata:
-  name: average-value-test-scaledobject
+  labels:
+    app: test-app
+  annotations:
+    prometheus.io/scrape: "true"
+  name: test-app
 spec:
-  scaleTargetRef:
-    name: average-value-test-app
-  minReplicaCount: 1
-  maxReplicaCount: 8
-  pollingInterval: 5
-  cooldownPeriod:  10
-  triggers:
-  - type: prometheus
-    metricType: AverageValue
-    metadata:
-      serverAddress: http://prometheus-server.${prometheusNamespace}.svc
-      metricName: two
-      threshold: '1'
-      query: vector(2)
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    type: keda-testing
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: value-test-scaledobject
+  name: prometheus-scaledobject
 spec:
   scaleTargetRef:
-    name: value-test-app
-  minReplicaCount: 1
-  maxReplicaCount: 8
+    name: keda-test-app
+  minReplicaCount: 0
+  maxReplicaCount: 2
   pollingInterval: 5
   cooldownPeriod:  10
   triggers:
   - type: prometheus
     metricType: Value
     metadata:
-      serverAddress: http://prometheus-server.${prometheusNamespace}.svc
-      metricName: two
-      threshold: '1'
-      query: vector(2)`
+      serverAddress: http://prometheus-server.{{PROMETHEUS_NAMESPACE}}.svc
+      metricName: http_requests_total
+      threshold: '100'
+      query: sum(rate(http_requests_total{app="test-app"}[2m]))`
+
+const generateRequestsYaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-requests
+spec:
+  template:
+    spec:
+      containers:
+      - image: jordi/ab
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "for i in $(seq 1 600);do echo $i;ab -c 5 -n 1000 -v 2 http://test-app.{{NAMESPACE}}.svc/;sleep 1;done"]
+      restartPolicy: Never
+  activeDeadlineSeconds: 600
+  backoffLimit: 5`

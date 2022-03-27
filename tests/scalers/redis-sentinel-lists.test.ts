@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 const redisNamespace = 'redis-sentinel'
 const redisService = 'redis-sentinel'
@@ -28,7 +28,7 @@ const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-aut
 
 test.before(t => {
     // Deploy Redis sentinel.
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
+    createNamespace(redisNamespace)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
     let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
@@ -45,7 +45,7 @@ test.before(t => {
     redisAddress = `${redisHost}:${redisPort}`
 
     // Create test namespace.
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')

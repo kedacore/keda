@@ -6,7 +6,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {sleep, waitForDeploymentReplicaCount} from "./helpers";
+import {createNamespace, sleep, waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-pipelines-test'
 const organizationURL = process.env['AZURE_DEVOPS_ORGANIZATION_URL']
@@ -40,7 +40,7 @@ test.before(async t => {
       .replace('{{AZP_TOKEN_BASE64}}', base64Token)
       .replace('{{AZP_POOL}}', poolName)
       .replace('{{AZP_URL}}', organizationURL))
-  sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  createNamespace(defaultNamespace)
   t.is(0, sh.exec(`kubectl apply -f ${deployFile.name} --namespace ${defaultNamespace}`).code, 'creating a deployment should work.')
 })
 

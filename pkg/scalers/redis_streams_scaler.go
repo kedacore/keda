@@ -38,7 +38,7 @@ type redisStreamsScaler struct {
 }
 
 type redisStreamsMetadata struct {
-	targetPendingEntriesCount int
+	targetPendingEntriesCount int64
 	streamName                string
 	consumerGroupName         string
 	databaseIndex             int
@@ -176,7 +176,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	meta.targetPendingEntriesCount = defaultTargetPendingEntriesCount
 
 	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
-		pendingEntriesCount, err := strconv.Atoi(val)
+		pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing pending entries count %v", err)
 		}
@@ -231,7 +231,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetPendingEntriesCount)),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetPendingEntriesCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

@@ -1,21 +1,18 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
 import { ArtemisHelper } from './artemis-helpers'
+import { createNamespace } from './helpers'
 
 const testNamespace = 'kedartemis'
 const artemisNamespace = 'artemis'
-const queueName = 'test'
-const username = "artemis"
-const password = "artemis"
 
 test.before(t => {
   sh.config.silent = true
   ArtemisHelper.installArtemis(t, artemisNamespace)
 
-  sh.exec(`kubectl create namespace kedartemis`)
+  createNamespace("kedartemis")
 
   ArtemisHelper.installArtemisSecret(t, testNamespace)
   ArtemisHelper.installConsumer(t, testNamespace)

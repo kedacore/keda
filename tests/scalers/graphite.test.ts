@@ -2,14 +2,14 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 const graphiteNamespace = 'graphite'
 const graphiteDeploymentFile = 'scalers/graphite-deployment.yaml'
 
 test.before(t => {
   // install graphite
-  sh.exec(`kubectl create namespace ${graphiteNamespace}`)
+  createNamespace(graphiteNamespace)
   t.is(0,
     sh.exec(`kubectl apply --namespace ${graphiteNamespace} -f ${graphiteDeploymentFile}`).code,
     'creating a Graphite deployment should work.'

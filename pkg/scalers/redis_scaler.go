@@ -46,7 +46,7 @@ type redisConnectionInfo struct {
 }
 
 type redisMetadata struct {
-	targetListLength int
+	targetListLength int64
 	listName         string
 	databaseIndex    int
 	connectionInfo   redisConnectionInfo
@@ -183,7 +183,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	meta.targetListLength = defaultTargetListLength
 
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
-		listLength, err := strconv.Atoi(val)
+		listLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("list length parsing error %s", err.Error())
 		}
@@ -231,7 +231,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetListLength)),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetListLength),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

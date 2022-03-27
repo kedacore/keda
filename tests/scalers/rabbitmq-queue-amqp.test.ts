@@ -1,7 +1,4 @@
-import * as async from 'async'
-import * as fs from 'fs'
 import * as sh from 'shelljs'
-import * as tmp from 'tmp'
 import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
 import {waitForDeploymentReplicaCount} from "./helpers";
@@ -105,4 +102,5 @@ spec:
     metadata:
       queueName: {{QUEUE_NAME}}
       hostFromEnv: RabbitMqHost
-      queueLength: '50'`
+      mode: QueueLength
+      value: '50'`

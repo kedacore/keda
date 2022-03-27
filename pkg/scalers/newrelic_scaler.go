@@ -40,7 +40,7 @@ type newrelicMetadata struct {
 	queryKey    string
 	noDataError bool
 	nrql        string
-	threshold   int
+	threshold   int64
 	scalerIndex int
 }
 
@@ -106,7 +106,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s", threshold)
 		}
@@ -131,7 +131,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 }
 
 func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecuteNewRelicQuery(ctx)
+	val, err := s.executeNewRelicQuery(ctx)
 	if err != nil {
 		newrelicLog.Error(err, "error executing NRQL")
 		return false, err
@@ -143,7 +143,7 @@ func (s *newrelicScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, error) {
+func (s *newrelicScaler) executeNewRelicQuery(ctx context.Context) (float64, error) {
 	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
 	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
 	if err != nil {
@@ -163,7 +163,7 @@ func (s *newrelicScaler) ExecuteNewRelicQuery(ctx context.Context) (float64, err
 }
 
 func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	val, err := s.ExecuteNewRelicQuery(ctx)
+	val, err := s.executeNewRelicQuery(ctx)
 	if err != nil {
 		newrelicLog.Error(err, "error executing NRQL query")
 		return []external_metrics.ExternalMetricValue{}, err
@@ -185,7 +185,7 @@ func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.threshold)),
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

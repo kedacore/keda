@@ -2,6 +2,7 @@ import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import { createNamespace } from './helpers'
 
 const mssqlns = "mssql"
 const testns = "mssql-app"
@@ -18,7 +19,7 @@ test.before(t => {
     sh.config.silent = true
 
     // deploy the mssql container
-    sh.exec(`kubectl create namespace ${mssqlns}`)
+    createNamespace(mssqlns)
     const mssqlDeploymentYamlFile = tmp.fileSync()
     fs.writeFileSync(mssqlDeploymentYamlFile.name, mssqlDeploymentYaml)
     t.is(0, sh.exec(`kubectl apply -n ${mssqlns} -f ${mssqlDeploymentYamlFile.name}`).code, 'creating the mssql deployment should work.')
@@ -43,7 +44,7 @@ test.before(t => {
     sh.exec(`kubectl exec -n ${mssqlns} ${mssqlPod} -- /opt/mssql-tools/bin/sqlcmd -S . -U sa -P "${password}" -d "${database}" -Q "${createTableSQL}"`)
 
     // deploy the test app
-    sh.exec(`kubectl create namespace ${testns}`)
+    createNamespace(testns)
     const testAppYamlFile = tmp.fileSync()
     fs.writeFileSync(testAppYamlFile.name, testAppDeployYaml)
     t.is(0, sh.exec(`kubectl apply -n ${testns} -f ${testAppYamlFile.name}`).code, 'creating the test app deployment should work.')

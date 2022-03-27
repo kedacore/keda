@@ -1,8 +1,8 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const testNamespace = 'postgresql-test'
 const postgreSQLNamespace = 'postgresql'
@@ -13,7 +13,7 @@ const deploymentName = 'worker'
 
 test.before(t => {
     // install postgresql
-    sh.exec(`kubectl create namespace ${postgreSQLNamespace}`)
+    createNamespace(postgreSQLNamespace)
     const postgreSQLTmpFile = tmp.fileSync()
     fs.writeFileSync(postgreSQLTmpFile.name, postgresqlDeploymentYaml.replace('{{POSTGRES_USER}}', postgreSQLUsername)
         .replace('{{POSTGRES_PASSWORD}}', postgreSQLPassword)
@@ -38,7 +38,7 @@ test.before(t => {
     sh.exec( `kubectl exec -n ${postgreSQLNamespace} ${postgresqlPod} -- psql -U ${postgreSQLUsername} -d ${postgreSQLDatabase} -c "${createTableSQL}"`)
 
     sh.config.silent = true
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
     // deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
     const base64ConnectionString = Buffer.from(`postgresql://${postgreSQLUsername}:${postgreSQLPassword}@postgresql.${postgreSQLNamespace}.svc.cluster.local:5432/${postgreSQLDatabase}?sslmode=disable`).toString('base64')

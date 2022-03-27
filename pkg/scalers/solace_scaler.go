@@ -74,8 +74,8 @@ type SolaceMetadata struct {
 	// Basic Auth Password
 	password string
 	// Target Message Count
-	msgCountTarget      int
-	msgSpoolUsageTarget int // Spool Use Target in Megabytes
+	msgCountTarget      int64
+	msgSpoolUsageTarget int64 // Spool Use Target in Megabytes
 	// Scaler index
 	scalerIndex int
 }
@@ -159,7 +159,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	//	GET METRIC TARGET VALUES
 	//	GET msgCountTarget
 	if val, ok := config.TriggerMetadata[solaceMetaMsgCountTarget]; ok && val != "" {
-		if msgCount, err := strconv.Atoi(val); err == nil {
+		if msgCount, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgCountTarget = msgCount
 		} else {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgCountTarget, err)
@@ -167,7 +167,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	}
 	//	GET msgSpoolUsageTarget
 	if val, ok := config.TriggerMetadata[solaceMetaMsgSpoolUsageTarget]; ok && val != "" {
-		if msgSpoolUsage, err := strconv.Atoi(val); err == nil {
+		if msgSpoolUsage, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgSpoolUsageTarget = msgSpoolUsage * 1024 * 1024
 		} else {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgSpoolUsageTarget, err)
@@ -255,7 +255,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, int64(s.metadata.msgCountTarget)),
+			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
@@ -267,7 +267,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, int64(s.metadata.msgSpoolUsageTarget)),
+			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)

@@ -149,6 +149,14 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 		return "Failed to ensure ScaledJob is correctly created", err
 	}
 
+	for _, trigger := range scaledJob.Spec.Triggers {
+		if trigger.MetricType != "" {
+			err := fmt.Errorf("metricType is set in one of the ScaledJob scaler")
+			logger.Error(err, "metricType cannot be set in ScaledJob triggers")
+			return "Cannot set metricType in ScaledJob triggers", err
+		}
+	}
+
 	// scaledJob was created or modified - let's start a new ScaleLoop
 	err = r.requestScaleLoop(ctx, logger, scaledJob)
 	if err != nil {

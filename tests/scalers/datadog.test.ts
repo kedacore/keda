@@ -18,6 +18,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const datadogApiKey = process.env['DATADOG_API_KEY']
 const datadogAppKey = process.env['DATADOG_APP_KEY']
@@ -48,7 +49,7 @@ test.before(t => {
   sh.exec(`helm repo update`)
 
   sh.config.silent = false
-
+  createNamespace(datadogNamespace)
   let helmInstallStatus = sh.exec(`helm upgrade \
   		--install \
   		--set datadog.apiKey=${datadogApiKey} \
@@ -56,7 +57,6 @@ test.before(t => {
 		  --set datadog.site=${datadogSite} \
 		  --set datadog.clusterName=${kuberneteClusterName} \
 		  --set datadog.kubelet.tlsVerify=false \
-		  --create-namespace \
 		  --namespace ${datadogNamespace} \
         ${datadogHelmRelease} datadog/datadog`).code
   t.is(0,
@@ -82,7 +82,7 @@ test.before(t => {
       --namespace ${datadogNamespace} -o jsonpath="{.status.numberReady}"`).stdout
   }
 
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   var create_secret =  sh.exec(`kubectl create secret generic datadog-secrets --from-literal=apiKey=${datadogApiKey} \
   --from-literal=appKey=${datadogAppKey} --from-literal=datadogSite=${datadogSite} --namespace ${testNamespace}`)
@@ -130,7 +130,7 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   // keda based deployment should start scaling up with http requests issued
   let replicaCount = '1'
   for (let i = 0; i < 60 && replicaCount !== '3'; i++) {
-    t.log(`Waited ${5 * i} seconds for nginx deployment to scale up`)
+    t.log(`Waited ${15 * i} seconds for nginx deployment to scale up`)
 
     replicaCount = sh.exec(
       `kubectl get deployment nginx --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
@@ -151,11 +151,12 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
   )
 
   for (let i = 0; i < 50 && replicaCount !== '1'; i++) {
+    t.log(`Waited ${15 * i} seconds for nginx deployment to scale down`)
     replicaCount = sh.exec(
       `kubectl get deployment nginx --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '1') {
-      sh.exec('sleep 5')
+      sh.exec('sleep 15')
     }
   }
 
@@ -164,6 +165,7 @@ test.serial(`NGINX deployment should scale to 3 (the max) when getting too many 
 })
 
 test.after.always.cb('clean up datadog resources', t => {
+  sh.exec(`kubectl delete scaledobject -n ${testNamespace} --all`)
   sh.exec(`helm repo rm datadog`)
   sh.exec(`kubectl delete namespace ${datadogNamespace} --force`)
   sh.exec(`kubectl delete namespace ${testNamespace} --force`)
@@ -282,7 +284,6 @@ spec:
     name: nginx
   minReplicaCount: 1
   maxReplicaCount: 3
-  pollingInterval: 5
   cooldownPeriod: 10
   advanced:
     horizontalPodAutoscalerConfig:
@@ -295,7 +296,7 @@ spec:
       query: "avg:nginx.net.request_per_s{cluster_name:keda-datadog-cluster}"
       queryValue: "2"
       type: "global"
-      age: "60"
+      age: "120"
     authenticationRef:
       name: keda-trigger-auth-datadog-secret
 `
