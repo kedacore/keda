@@ -11,7 +11,7 @@ const password = "test-password"
 const vhost = "test-vh"
 const connectionString = `amqp://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local/${vhost}`
 const messageCount = 500
-
+const minMetricValue = 10
 test.before(t => {
   RabbitMQHelper.installRabbit(t, username, password, vhost, rabbitmqNamespace)
 
@@ -33,6 +33,13 @@ test.serial(`Deployment should scale to 4 with ${messageCount} messages on the q
   // with messages published, the consumer deployment should start receiving the messages
   t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', testNamespace, 20, 5000), 'Replica count should be 4 after 10 seconds')
   t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 50, 5000), 'Replica count should be 0 after 3 minutes')
+})
+
+test.serial(`Deployment shouldn't scale because the 5 messages on the queue are less than ${minMetricValue}(minMetricValue)`, async t => {
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, 5, queueName)
+
+  // with messages published, the consumer deployment should start receiving the messages
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 20, 5000), 'Replica count remain 0 after 10 seconds')
 })
 
 test.after.always.cb('clean up rabbitmq-queue deployment', t => {
@@ -103,4 +110,5 @@ spec:
       queueName: {{QUEUE_NAME}}
       hostFromEnv: RabbitMqHost
       mode: QueueLength
-      value: '50'`
+      value: '50'
+      minMetricValue: '10'`

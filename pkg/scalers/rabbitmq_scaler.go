@@ -29,14 +29,15 @@ func init() {
 }
 
 const (
-	rabbitQueueLengthMetricName  = "queueLength"
-	rabbitModeTriggerConfigName  = "mode"
-	rabbitValueTriggerConfigName = "value"
-	rabbitModeQueueLength        = "QueueLength"
-	rabbitModeMessageRate        = "MessageRate"
-	defaultRabbitMQQueueLength   = 20
-	rabbitMetricType             = "External"
-	rabbitRootVhostPath          = "/%2F"
+	rabbitQueueLengthMetricName           = "queueLength"
+	rabbitModeTriggerConfigName           = "mode"
+	rabbitValueTriggerConfigName          = "value"
+	rabbitMinMetricValueTriggerConfigName = "minMetricValue"
+	rabbitModeQueueLength                 = "QueueLength"
+	rabbitModeMessageRate                 = "MessageRate"
+	defaultRabbitMQQueueLength            = 20
+	rabbitMetricType                      = "External"
+	rabbitRootVhostPath                   = "/%2F"
 )
 
 const (
@@ -61,18 +62,19 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	mode        string        // QueueLength or MessageRate
-	value       int           // trigger value (queue length or publish/sec. rate)
-	host        string        // connection string for either HTTP or AMQP protocol
-	protocol    string        // either http or amqp protocol
-	vhostName   *string       // override the vhost from the connection info
-	useRegex    bool          // specify if the queueName contains a rexeg
-	pageSize    int64         // specify the page size if useRegex is enabled
-	operation   string        // specify the operation to apply in case of multiples queues
-	metricName  string        // custom metric name for trigger
-	timeout     time.Duration // custom http timeout for a specific trigger
-	scalerIndex int           // scaler index
+	queueName      string
+	mode           string        // QueueLength or MessageRate
+	value          int           // trigger value (queue length or publish/sec. rate)
+	host           string        // connection string for either HTTP or AMQP protocol
+	protocol       string        // either http or amqp protocol
+	vhostName      *string       // override the vhost from the connection info
+	useRegex       bool          // specify if the queueName contains a rexeg
+	pageSize       int64         // specify the page size if useRegex is enabled
+	operation      string        // specify the operation to apply in case of multiples queues
+	metricName     string        // custom metric name for trigger
+	timeout        time.Duration // custom http timeout for a specific trigger
+	scalerIndex    int           // scaler index
+	minMetricValue float64       // min metric value
 }
 
 type queueInfo struct {
@@ -262,6 +264,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
 	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
 	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]
+	minMetricValueStr, minMetricValuePresent := config.TriggerMetadata[rabbitMinMetricValueTriggerConfigName]
 
 	// Initialize to default trigger settings
 	meta.mode = rabbitModeQueueLength
@@ -275,6 +278,15 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	// Only allow one of `queueLength` or `mode`/`value`
 	if deprecatedQueueLengthPresent && (modePresent || valuePresent) {
 		return nil, fmt.Errorf("queueLength is deprecated; configure only %s and %s", rabbitModeTriggerConfigName, rabbitValueTriggerConfigName)
+	}
+
+	// Parse minMetricValue
+	if minMetricValuePresent {
+		minMetricValue, err := strconv.ParseFloat(minMetricValueStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse %s: %s", rabbitMinMetricValueTriggerConfigName, err)
+		}
+		meta.minMetricValue = minMetricValue
 	}
 
 	// Parse deprecated `queueLength` value
@@ -352,9 +364,9 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if s.metadata.mode == rabbitModeQueueLength {
-		return messages > 0, nil
+		return float64(messages) > s.metadata.minMetricValue, nil
 	}
-	return publishRate > 0 || messages > 0, nil
+	return publishRate > s.metadata.minMetricValue || float64(messages) > s.metadata.minMetricValue, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {

@@ -44,7 +44,7 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// missing queueName
 	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{}},
 	// host defined in authParams
-	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
+	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{"host": host}},
 	// properly formed metadata with http protocol
 	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 	// queue name with slashes
@@ -111,6 +111,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "-1"}, true, map[string]string{}},
 	// invalid pageSize
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
+	// minMetricValue passed
+	{map[string]string{"minMetricValue": "10.0", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
+	// malformed minMetricValue
+	{map[string]string{"minMetricValue": "AA", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
