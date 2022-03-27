@@ -17,14 +17,14 @@ const nginxDeploymentName = 'nginx-deployment'
 
 let kinesisClient: Kinesis;
 
-const updateShardCountAsync = (count: number) => new Promise<boolean>((resolve, _) => {
+const updateShardCountAsync = (count: number) => new Promise((resolve, _) => {
   kinesisClient.updateShardCount({
     StreamName:streamName,
     TargetShardCount: count,
     ScalingType:'UNIFORM_SCALING'
   }, err => {
     if (err != null) console.log(err)
-    resolve(err != null);
+    resolve(undefined);
   })
 });
 
