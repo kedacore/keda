@@ -36,7 +36,7 @@ test.before(async t => {
     credentials: {
       accessKeyId: awsAccessKey,
       secretAccessKey: awsSecretKey
-    }    
+    }
   });
 
   createNamespace(testNamespace)
@@ -44,7 +44,7 @@ test.before(async t => {
   // create the stream
   const createStreamAsync = () => new Promise((resolve, _) => {
     var params = {
-      'ShardCount': 1, 
+      'ShardCount': 1,
       'StreamName': streamName
     };
     kinesisClient.createStream(params, err => {
@@ -70,7 +70,7 @@ test.serial(`Replicas should scale to 2 (the max) then back to 0`, async t => {
   const minReplicaCount = 1;
 
   t.true(await waitForDeploymentReplicaCount(minReplicaCount, nginxDeploymentName, testNamespace, 300, 1000), 'Replica count should start out as 1')
-  
+
   await updateShardCountAsync(2)
 
   t.true(await waitForDeploymentReplicaCount(maxReplicaCount, nginxDeploymentName, testNamespace, 180, 1000), 'Replica count should increase to the maxReplicaCount')
