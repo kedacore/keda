@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.56.0",
+    "@aws-sdk/client-kinesis": "^3.56.0",
     "@aws-sdk/client-sqs": "^3.56.0",
     "@kubernetes/client-node": "^0.15.0",
     "@types/async": "^3.0.3",
