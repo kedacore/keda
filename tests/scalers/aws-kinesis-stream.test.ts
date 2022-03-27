@@ -22,8 +22,10 @@ const updateShardCountAsync = (count: number) => new Promise((resolve, _) => {
     StreamName:streamName,
     TargetShardCount: count,
     ScalingType:'UNIFORM_SCALING'
-  }, err => {
+  }, async err => {
     if (err != null) console.log(err)
+    // Wait till the stream is updated and ready
+    await sleep(30000)
     resolve(undefined);
   })
 });
@@ -47,15 +49,15 @@ test.before(async t => {
       'ShardCount': 1,
       'StreamName': streamName
     };
-    kinesisClient.createStream(params, err => {
+    kinesisClient.createStream(params, async err => {
       if (err != null) console.log(err)
+      // Wait till the stream is created and ready
+      await sleep(30000)
       resolve(undefined);
     })
   });
   await createStreamAsync()
 
-  // Wait till the stream is created and ready
-  await sleep(30000)
 
   // deploy nginx, scaledobject etc.
   console.log('deploy nginx, scaledobject etc.')
