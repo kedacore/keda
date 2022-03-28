@@ -2,6 +2,7 @@ import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import {v4 as uuidv4} from 'uuid';
 import {
   Kinesis,
 } from '@aws-sdk/client-kinesis'
@@ -12,8 +13,8 @@ const awsRegion = 'eu-west-2'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
 const testNamespace = 'kinesis-test'
-const streamName = 'keda-steam'
 const nginxDeploymentName = 'nginx-deployment'
+const streamName = `keda-stream-${uuidv4()}`
 
 let kinesisClient: Kinesis;
 
@@ -31,7 +32,6 @@ const updateShardCountAsync = (count: number) => new Promise((resolve, _) => {
 });
 
 test.before(async t => {
-
   // setup kinesis client
   kinesisClient = new Kinesis({
     region: awsRegion,
