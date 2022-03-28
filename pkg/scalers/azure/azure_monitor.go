@@ -49,17 +49,19 @@ type azureExternalMetricRequest struct {
 
 // MonitorInfo to create metric request
 type MonitorInfo struct {
-	ResourceURI         string
-	TenantID            string
-	SubscriptionID      string
-	ResourceGroupName   string
-	Name                string
-	Namespace           string
-	Filter              string
-	AggregationInterval string
-	AggregationType     string
-	ClientID            string
-	ClientPassword      string
+	ResourceURI             string
+	TenantID                string
+	SubscriptionID          string
+	ResourceGroupName       string
+	Name                    string
+	Namespace               string
+	Filter                  string
+	AggregationInterval     string
+	AggregationType         string
+	ClientID                string
+	ClientPassword          string
+	ResourceManagerEndpoint string
+	ActiveDirectoryEndpoint string
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -82,14 +84,21 @@ func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity keda
 }
 
 func createMetricsClient(info MonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
-	client := insights.NewMetricsClient(info.SubscriptionID)
-	var config auth.AuthorizerConfig
+	client := insights.NewMetricsClientWithBaseURI(info.ResourceManagerEndpoint, info.SubscriptionID)
+	var authConfig auth.AuthorizerConfig
 	if podIdentityEnabled {
-		config = auth.NewMSIConfig()
+		config := auth.NewMSIConfig()
+		config.Resource = info.ResourceManagerEndpoint
+
+		authConfig = config
 	} else {
-		config = auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+		config.Resource = info.ResourceManagerEndpoint
+		config.AADEndpoint = info.ActiveDirectoryEndpoint
+
+		authConfig = config
 	}
-	authorizer, _ := config.Authorizer()
+	authorizer, _ := authConfig.Authorizer()
 	client.Authorizer = authorizer
 
 	return client

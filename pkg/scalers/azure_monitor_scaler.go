@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	az "github.com/Azure/go-autorest/autorest/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,6 +148,24 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
 	meta.scalerIndex = config.ScalerIndex
+
+	resourceManagerEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ResourceManagerEndpoint, nil
+	}
+	resourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "resourceManagerEndpoint", resourceManagerEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.ResourceManagerEndpoint = resourceManagerEndpoint
+
+	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ActiveDirectoryEndpoint, nil
+	}
+	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	return &meta, nil
 }
