@@ -15,6 +15,7 @@
     "test": "ava"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.56.0",
     "@aws-sdk/client-dynamodb": "^3.56.0",
     "@aws-sdk/client-sqs": "^3.56.0",
     "@kubernetes/client-node": "^0.15.0",
