@@ -160,6 +160,7 @@ spec:
   cooldownPeriod:  10
   triggers:
   - type: prometheus
+    metricType: AverageValue
     metadata:
       serverAddress: http://prometheus-server.{{PROMETHEUS_NAMESPACE}}.svc
       metricName: http_requests_total
