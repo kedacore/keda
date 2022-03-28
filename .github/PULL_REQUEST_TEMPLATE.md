@@ -14,4 +14,8 @@ _Provide a description of what has been changed_
 - [ ] A PR is opened to update the documentation on ([repo](https://github.com/kedacore/keda-docs)) *(if applicable)*
 - [ ] Changelog has been updated and is aligned with our [changelog requirements](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog)
 
-Relates to #
+<!--
+  Make sure to link the related issue for this change
+  If it requires multiple PRs and/or a PR on another repo as well, please use "Relates to" instead.
+-->
+Fixes #
