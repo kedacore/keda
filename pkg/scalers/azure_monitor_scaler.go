@@ -149,14 +149,14 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 
 	meta.scalerIndex = config.ScalerIndex
 
-	resourceManagerEndpointProvider := func(env az.Environment) (string, error) {
+	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
 		return env.ResourceManagerEndpoint, nil
 	}
-	resourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "resourceManagerEndpoint", resourceManagerEndpointProvider)
+	azureResourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "azureResourceManagerEndpoint", azureResourceManagerEndpointProvider)
 	if err != nil {
 		return nil, err
 	}
-	meta.azureMonitorInfo.ResourceManagerEndpoint = resourceManagerEndpoint
+	meta.azureMonitorInfo.AzureResourceManagerEndpoint = azureResourceManagerEndpoint
 
 	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
 		return env.ActiveDirectoryEndpoint, nil

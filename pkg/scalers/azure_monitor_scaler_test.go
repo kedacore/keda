@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	testResourceManagerEndpoint = "testResourceManagerEndpoint"
-	testActiveDirectoryEndpoint = "testActiveDirectoryEndpoint"
+	testAzureResourceManagerEndpoint = "testAzureResourceManagerEndpoint"
+	testActiveDirectoryEndpoint      = "testActiveDirectoryEndpoint"
 )
 
 type parseAzMonitorMetadataTestData struct {
@@ -88,13 +88,13 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "azureChinaCloud"}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 	// private cloud
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
-		"resourceManagerEndpoint": testResourceManagerEndpoint, "activeDirectoryEndpoint": testActiveDirectoryEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
+		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint, "activeDirectoryEndpoint": testActiveDirectoryEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 	// private cloud with missing resource manager endpoint
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
 		"activeDirectoryEndpoint": testActiveDirectoryEndpoint}, true, testAzMonitorResolvedEnv, map[string]string{}, ""},
-	// private cloud
+	// private cloud with missing active directory endpoint
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
-		"resourceManagerEndpoint": testResourceManagerEndpoint}, true, testAzMonitorResolvedEnv, map[string]string{}, ""},
+		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint}, true, testAzMonitorResolvedEnv, map[string]string{}, ""},
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
