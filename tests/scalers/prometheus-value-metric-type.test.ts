@@ -31,10 +31,15 @@ test.before(async t => {
 })
 
 test.serial('Metric type should be "Value"',async t => {
-  const metricType = sh.exec(
+  const scaledObjectMetricType = sh.exec(
     `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
   ).stdout
-  t.is('Value', metricType, 'prometheus-scaledobject trigger metric type should be "Value"')
+  const hpaMetricType = sh.exec(
+    `kubectl get hpa.v2beta2.autoscaling/keda-hpa-prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.metrics[0].external.target.type}"`
+  ).stdout
+
+  t.is('Value', scaledObjectMetricType, 'prometheus-scaledobject trigger metric type should be "Value"')
+  t.is('Value', hpaMetricType, 'keda-hpa-prometheus-scaledobject metric target type should be "Value"')
 })
 
 test.serial('Deployment should have 0 replicas on start', async t => {

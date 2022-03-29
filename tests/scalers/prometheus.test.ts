@@ -30,6 +30,19 @@ test.before(async t => {
   fs.writeFileSync(loadGeneratorJob.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
 })
 
+test.serial('Metric type should be "AverageValue"',async t => {
+  const scaledObjectMetricType = sh.exec(
+    `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
+  ).stdout
+  const hpaMetricType = sh.exec(
+    `kubectl get hpa.v2beta2.autoscaling/keda-hpa-prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.metrics[0].external.target.type}"`
+  ).stdout
+
+  // when the metric type isn't explicitly set in the ScaledObject, it should default to AverageValue in the HPA
+  t.is('', scaledObjectMetricType, 'prometheus-scaledobject trigger metric type should be ""')
+  t.is('AverageValue', hpaMetricType, 'keda-hpa-prometheus-scaledobject metric target type should be "AverageValue"')
+})
+
 test.serial('Deployment should have 0 replicas on start', async t => {
   t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 60, 1000), 'keda-test-app replica count should be 0 after 1 minute')
 })
