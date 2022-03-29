@@ -25,7 +25,6 @@ import (
 
 const (
 	testAzureResourceManagerEndpoint = "testAzureResourceManagerEndpoint"
-	testActiveDirectoryEndpoint      = "testActiveDirectoryEndpoint"
 )
 
 type parseAzMonitorMetadataTestData struct {
