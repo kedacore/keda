@@ -113,6 +113,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 	if meta.protocol == httpProtocol {
 		return &rabbitMQScaler{
+			metricType: metricType,
 			metadata:   meta,
 			httpClient: httpClient,
 		}, nil
