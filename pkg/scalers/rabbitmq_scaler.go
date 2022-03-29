@@ -115,23 +115,25 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	s.metadata = meta
 	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
 
-	// Override vhost if requested.
-	host := meta.host
-	if meta.vhostName != nil {
-		hostURI, err := amqp.ParseURI(host)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+	if meta.protocol == amqpProtocol {
+		// Override vhost if requested.
+		host := meta.host
+		if meta.vhostName != nil {
+			hostURI, err := amqp.ParseURI(host)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+			}
+			hostURI.Vhost = *meta.vhostName
+			host = hostURI.String()
 		}
-		hostURI.Vhost = *meta.vhostName
-		host = hostURI.String()
-	}
 
-	conn, ch, err := getConnectionAndChannel(host)
-	if err != nil {
-		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+		conn, ch, err := getConnectionAndChannel(host)
+		if err != nil {
+			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+		}
+		s.connection = conn
+		s.channel = ch
 	}
-	s.connection = conn
-	s.channel = ch
 
 	return s, nil
 }
