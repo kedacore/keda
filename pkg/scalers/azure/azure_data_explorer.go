@@ -30,15 +30,16 @@ import (
 )
 
 type DataExplorerMetadata struct {
-	ClientID     string
-	ClientSecret string
-	DatabaseName string
-	Endpoint     string
-	MetricName   string
-	PodIdentity  string
-	Query        string
-	TenantID     string
-	Threshold    int64
+	ClientID                string
+	ClientSecret            string
+	DatabaseName            string
+	Endpoint                string
+	MetricName              string
+	PodIdentity             string
+	Query                   string
+	TenantID                string
+	Threshold               int64
+	ActiveDirectoryEndpoint string
 }
 
 var azureDataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
@@ -61,14 +62,21 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.Authorizer
 	var authConfig auth.AuthorizerConfig
 
 	if metadata.PodIdentity != "" {
-		authConfig = auth.NewMSIConfig()
+		config := auth.NewMSIConfig()
+		config.Resource = metadata.Endpoint
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
+
+		authConfig = config
 		return &authConfig, nil
 	}
 
 	if metadata.ClientID != "" && metadata.ClientSecret != "" && metadata.TenantID != "" {
-		authConfig = auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
+		config := auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
+		config.Resource = metadata.Endpoint
+		config.AADEndpoint = metadata.ActiveDirectoryEndpoint
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using clientID, clientSecret and tenantID")
+
+		authConfig = config
 		return &authConfig, nil
 	}
 
