@@ -15,7 +15,9 @@
     "test": "ava"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.56.0",
     "@aws-sdk/client-dynamodb": "^3.56.0",
+    "@aws-sdk/client-kinesis": "^3.56.0",
     "@aws-sdk/client-sqs": "^3.56.0",
     "@kubernetes/client-node": "^0.15.0",
     "@types/async": "^3.0.3",
@@ -34,6 +36,7 @@
     "tmp": "^0.1.0",
     "ts-node": "^8.4.1",
     "typescript": "^3.6.4",
+    "uuid": "^3.4.0",
     "yargs-parser": "^20.2.0"
   }
 }
