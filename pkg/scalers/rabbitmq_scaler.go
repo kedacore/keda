@@ -100,24 +100,20 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+	s := &rabbitMQScaler{}
+
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
+	s.metricType = metricType
 
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
-	httpClient := kedautil.CreateHTTPClient(meta.timeout, false)
-
-	if meta.protocol == httpProtocol {
-		return &rabbitMQScaler{
-			metricType: metricType,
-			metadata:   meta,
-			httpClient: httpClient,
-		}, nil
-	}
+	s.metadata = meta
+	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
 
 	// Override vhost if requested.
 	host := meta.host
@@ -134,14 +130,10 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
 	}
+	s.connection = conn
+	s.channel = ch
 
-	return &rabbitMQScaler{
-		metricType: metricType,
-		metadata:   meta,
-		connection: conn,
-		channel:    ch,
-		httpClient: httpClient,
-	}, nil
+	return s, nil
 }
 
 func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
