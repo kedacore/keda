@@ -30,13 +30,6 @@ test.before(async t => {
   fs.writeFileSync(loadGeneratorJob.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
 })
 
-test.serial('Metric type should be "AverageValue"',async t => {
-  const metricType = sh.exec(
-    `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
-  ).stdout
-  t.is('AverageValue', metricType, 'prometheus-scaledobject trigger metric type should be "AverageValue"')
-})
-
 test.serial('Deployment should have 0 replicas on start', async t => {
   t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 60, 1000), 'keda-test-app replica count should be 0 after 1 minute')
 })
@@ -160,7 +153,6 @@ spec:
   cooldownPeriod:  10
   triggers:
   - type: prometheus
-    metricType: AverageValue
     metadata:
       serverAddress: http://prometheus-server.{{PROMETHEUS_NAMESPACE}}.svc
       metricName: http_requests_total
