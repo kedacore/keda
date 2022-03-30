@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/gobwas/glob"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -35,6 +36,7 @@ type BlobMetadata struct {
 	MetricName        string
 	EndpointSuffix    string
 	ScalerIndex       int
+	GlobPattern       *glob.Glob
 }
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
@@ -50,6 +52,22 @@ func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podId
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	serviceURL := azblob.NewServiceURL(*endpoint, p)
 	containerURL := serviceURL.NewContainerURL(meta.BlobContainerName)
+
+	if meta.GlobPattern != nil {
+		props, err := containerURL.ListBlobsFlatSegment(ctx, azblob.Marker{}, azblob.ListBlobsSegmentOptions{})
+		if err != nil {
+			return -1, err
+		}
+
+		var count int64
+		globPattern := *meta.GlobPattern
+		for _, blobItem := range props.Segment.BlobItems {
+			if globPattern.Match(blobItem.Name) {
+				count++
+			}
+		}
+		return count, nil
+	}
 
 	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, meta.BlobDelimiter, listBlobsSegmentOptions)
 	if err != nil {

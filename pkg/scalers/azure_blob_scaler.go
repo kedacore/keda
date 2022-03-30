@@ -29,6 +29,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/gobwas/glob"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -94,6 +95,25 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azure.BlobMetadata, kedav1al
 
 	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok && val != "" {
 		meta.BlobDelimiter = val
+	}
+
+	if val, ok := config.TriggerMetadata["recursive"]; ok && val != "" {
+		recursive, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, "", err
+		}
+
+		if recursive {
+			meta.BlobDelimiter = ""
+		}
+	}
+
+	if val, ok := config.TriggerMetadata["globPattern"]; ok && val != "" {
+		glob, err := glob.Compile(val)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid glob pattern - %s", err.Error())
+		}
+		meta.GlobPattern = &glob
 	}
 
 	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
