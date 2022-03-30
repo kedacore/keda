@@ -25,21 +25,33 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
+type BlobMetadata struct {
+	TargetBlobCount   int64
+	BlobContainerName string
+	BlobDelimiter     string
+	BlobPrefix        string
+	Connection        string
+	AccountName       string
+	MetricName        string
+	EndpointSuffix    string
+	ScalerIndex       int
+}
+
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, blobContainerName string, accountName string, blobDelimiter string, blobPrefix string, endpointSuffix string) (int64, error) {
-	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, connectionString, accountName, endpointSuffix)
+func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, meta *BlobMetadata) (int64, error) {
+	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
 	if err != nil {
 		return -1, err
 	}
 
 	listBlobsSegmentOptions := azblob.ListBlobsSegmentOptions{
-		Prefix: blobPrefix,
+		Prefix: meta.BlobPrefix,
 	}
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(blobContainerName)
+	containerURL := serviceURL.NewContainerURL(meta.BlobContainerName)
 
-	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, blobDelimiter, listBlobsSegmentOptions)
+	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, meta.BlobDelimiter, listBlobsSegmentOptions)
 	if err != nil {
 		return -1, err
 	}
