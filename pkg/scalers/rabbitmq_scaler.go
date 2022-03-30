@@ -366,7 +366,7 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	if s.metadata.mode == rabbitModeQueueLength {
 		return messages > s.metadata.actionvationValue, nil
 	}
-	return publishRate > float64(s.metadata.actionvationValue) || float64(messages) > float64(s.metadata.actionvationValue), nil
+	return publishRate > float64(s.metadata.actionvationValue) || messages > s.metadata.actionvationValue, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus() (int, float64, error) {
