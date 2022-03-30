@@ -19,6 +19,7 @@ import (
 )
 
 type mySQLScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *mySQLMetadata
 	connection *sql.DB
 }
@@ -39,6 +40,11 @@ var mySQLLog = logf.Log.WithName("mysql_scaler")
 
 // NewMySQLScaler creates a new MySQL scaler
 func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMySQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing MySQL metadata: %s", err)
@@ -49,6 +55,7 @@ func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error establishing MySQL connection: %s", err)
 	}
 	return &mySQLScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -199,16 +206,11 @@ func (s *mySQLScaler) getQueryResult(ctx context.Context) (int64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

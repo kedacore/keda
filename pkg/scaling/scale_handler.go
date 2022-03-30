@@ -313,6 +313,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				AuthParams:        make(map[string]string),
 				GlobalHTTPTimeout: h.globalHTTPTimeout,
 				ScalerIndex:       triggerIndex,
+				MetricType:        trigger.MetricType,
 			}
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)

@@ -24,20 +24,13 @@ type datadogScaler struct {
 	apiClient *datadog.APIClient
 }
 
-type valueType int
-
-const (
-	average = iota
-	global
-)
-
 type datadogMetadata struct {
 	apiKey      string
 	appKey      string
 	datadogSite string
 	query       string
 	queryValue  int64
-	vType       valueType
+	vType       v2beta2.MetricTargetType
 	metricName  string
 	age         int
 	useFiller   bool
@@ -127,17 +120,25 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
+		datadogLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		if config.MetricType != "" {
+			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+		}
 		val = strings.ToLower(val)
 		switch val {
 		case "average":
-			meta.vType = average
+			meta.vType = v2beta2.AverageValueMetricType
 		case "global":
-			meta.vType = global
+			meta.vType = v2beta2.ValueMetricType
 		default:
 			return nil, fmt.Errorf("type has to be global or average")
 		}
 	} else {
-		meta.vType = average // Default to average between pods
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		}
+		meta.vType = metricType
 	}
 
 	if val, ok := config.AuthParams["apiKey"]; ok {
@@ -288,31 +289,11 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := new(v2beta2.ExternalMetricSource)
-
-	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
-
-	switch s.metadata.vType {
-	case average:
-		externalMetric = &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
-				Name: s.metadata.metricName,
-			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetQueryValue,
-			},
-		}
-	case global:
-		externalMetric = &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
-				Name: s.metadata.metricName,
-			},
-			Target: v2beta2.MetricTarget{
-				Type:  v2beta2.ValueMetricType,
-				Value: targetQueryValue,
-			},
-		}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: s.metadata.metricName,
+		},
+		Target: GetMetricTarget(s.metadata.vType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

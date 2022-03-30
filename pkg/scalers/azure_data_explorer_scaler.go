@@ -36,10 +36,11 @@ import (
 )
 
 type azureDataExplorerScaler struct {
-	metadata  *azure.DataExplorerMetadata
-	client    *kusto.Client
-	name      string
-	namespace string
+	metricType v2beta2.MetricTargetType
+	metadata   *azure.DataExplorerMetadata
+	client     *kusto.Client
+	name       string
+	namespace  string
 }
 
 const adxName = "azure-data-explorer"
@@ -47,6 +48,11 @@ const adxName = "azure-data-explorer"
 var dataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 
 func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	metadata, err := parseAzureDataExplorerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
@@ -58,10 +64,11 @@ func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureDataExplorerScaler{
-		metadata:  metadata,
-		client:    client,
-		name:      config.Name,
-		namespace: config.Namespace,
+		metricType: metricType,
+		metadata:   metadata,
+		client:     client,
+		name:       config.Name,
+		namespace:  config.Namespace,
 	}, nil
 }
 
@@ -176,10 +183,7 @@ func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2be
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.MetricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: resource.NewQuantity(s.metadata.Threshold, resource.DecimalSI),
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

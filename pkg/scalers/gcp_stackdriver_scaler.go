@@ -20,8 +20,9 @@ const (
 )
 
 type stackdriverScaler struct {
-	client   *StackDriverClient
-	metadata *stackdriverMetadata
+	client     *StackDriverClient
+	metricType v2beta2.MetricTargetType
+	metadata   *stackdriverMetadata
 }
 
 type stackdriverMetadata struct {
@@ -37,6 +38,11 @@ var gcpStackdriverLog = logf.Log.WithName("gcp_stackdriver_scaler")
 
 // NewStackdriverScaler creates a new stackdriverScaler
 func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseStackdriverMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %s", err)
@@ -49,8 +55,9 @@ func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, er
 	}
 
 	return &stackdriverScaler{
-		metadata: meta,
-		client:   client,
+		metricType: metricType,
+		metadata:   meta,
+		client:     client,
 	}, nil
 }
 
@@ -138,17 +145,11 @@ func (s *stackdriverScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValueQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 
 	// Create the metric spec for the HPA

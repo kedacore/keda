@@ -32,6 +32,7 @@ const (
 )
 
 type prometheusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *prometheusMetadata
 	httpClient *http.Client
 }
@@ -63,6 +64,11 @@ var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
@@ -82,6 +88,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -153,16 +160,12 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

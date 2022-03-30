@@ -29,8 +29,9 @@ const (
 )
 
 type newrelicScaler struct {
-	metadata *newrelicMetadata
-	nrClient *newrelic.NewRelic
+	metricType v2beta2.MetricTargetType
+	metadata   *newrelicMetadata
+	nrClient   *newrelic.NewRelic
 }
 
 type newrelicMetadata struct {
@@ -46,6 +47,11 @@ type newrelicMetadata struct {
 var newrelicLog = logf.Log.WithName(fmt.Sprintf("%s_scaler", scalerName))
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseNewRelicMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %s", scalerName, err)
@@ -64,8 +70,9 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	newrelicLog.Info(logMsg)
 
 	return &newrelicScaler{
-		metadata: meta,
-		nrClient: nrClient}, nil
+		metricType: metricType,
+		metadata:   meta,
+		nrClient:   nrClient}, nil
 }
 
 func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
@@ -172,17 +179,13 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(scalerName)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -24,8 +24,9 @@ import (
 )
 
 type elasticsearchScaler struct {
-	metadata *elasticsearchMetadata
-	esClient *elasticsearch.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *elasticsearchMetadata
+	esClient   *elasticsearch.Client
 }
 
 type elasticsearchMetadata struct {
@@ -45,6 +46,11 @@ var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
 
 // NewElasticsearchScaler creates a new elasticsearch scaler
 func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
@@ -55,8 +61,9 @@ func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting elasticsearch client: %s", err)
 	}
 	return &elasticsearchScaler{
-		metadata: meta,
-		esClient: esClient,
+		metricType: metricType,
+		metadata:   meta,
+		esClient:   esClient,
 	}, nil
 }
 
@@ -234,16 +241,11 @@ func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

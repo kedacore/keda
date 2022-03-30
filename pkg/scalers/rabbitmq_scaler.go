@@ -54,6 +54,7 @@ const (
 )
 
 type rabbitMQScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
 	channel    *amqp.Channel
@@ -99,41 +100,42 @@ var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+	s := &rabbitMQScaler{}
+
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+	s.metricType = metricType
+
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
 	}
-	httpClient := kedautil.CreateHTTPClient(meta.timeout, false)
+	s.metadata = meta
+	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
 
-	if meta.protocol == httpProtocol {
-		return &rabbitMQScaler{
-			metadata:   meta,
-			httpClient: httpClient,
-		}, nil
-	}
-
-	// Override vhost if requested.
-	host := meta.host
-	if meta.vhostName != nil {
-		hostURI, err := amqp.ParseURI(host)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+	if meta.protocol == amqpProtocol {
+		// Override vhost if requested.
+		host := meta.host
+		if meta.vhostName != nil {
+			hostURI, err := amqp.ParseURI(host)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+			}
+			hostURI.Vhost = *meta.vhostName
+			host = hostURI.String()
 		}
-		hostURI.Vhost = *meta.vhostName
-		host = hostURI.String()
+
+		conn, ch, err := getConnectionAndChannel(host)
+		if err != nil {
+			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+		}
+		s.connection = conn
+		s.channel = ch
 	}
 
-	conn, ch, err := getConnectionAndChannel(host)
-	if err != nil {
-		return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
-	}
-
-	return &rabbitMQScaler{
-		metadata:   meta,
-		connection: conn,
-		channel:    ch,
-		httpClient: httpClient,
-	}, nil
+	return s, nil
 }
 
 func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
@@ -459,15 +461,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	metricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: metricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,

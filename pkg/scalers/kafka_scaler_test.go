@@ -200,7 +200,7 @@ func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaScaler{meta, nil, nil}
+		mockKafkaScaler := kafkaScaler{"", meta, nil, nil}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

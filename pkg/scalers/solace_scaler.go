@@ -57,6 +57,7 @@ type SolaceMetricValues struct {
 }
 
 type SolaceScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *SolaceMetadata
 	httpClient *http.Client
 }
@@ -114,6 +115,11 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	// Parse Solace Metadata
 	solaceMetadata, err := parseSolaceMetadata(config)
 	if err != nil {
@@ -122,6 +128,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &SolaceScaler{
+		metricType: metricType,
 		metadata:   solaceMetadata,
 		httpClient: httpClient,
 	}, nil
@@ -243,32 +250,24 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
-		targetMetricValue := resource.NewQuantity(s.metadata.msgCountTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
-		targetMetricValue := resource.NewQuantity(s.metadata.msgSpoolUsageTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)

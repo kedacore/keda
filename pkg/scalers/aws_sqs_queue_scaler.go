@@ -37,8 +37,9 @@ var (
 )
 
 type awsSqsQueueScaler struct {
-	metadata  *awsSqsQueueMetadata
-	sqsClient sqsiface.SQSAPI
+	metricType v2beta2.MetricTargetType
+	metadata   *awsSqsQueueMetadata
+	sqsClient  sqsiface.SQSAPI
 }
 
 type awsSqsQueueMetadata struct {
@@ -52,14 +53,20 @@ type awsSqsQueueMetadata struct {
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsSqsQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
 	}
 
 	return &awsSqsQueueScaler{
-		metadata:  meta,
-		sqsClient: createSqsClient(meta),
+		metricType: metricType,
+		metadata:   meta,
+		sqsClient:  createSqsClient(meta),
 	}, nil
 }
 
@@ -156,15 +163,11 @@ func (s *awsSqsQueueScaler) Close(context.Context) error {
 }
 
 func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(s.metadata.targetQueueLength, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

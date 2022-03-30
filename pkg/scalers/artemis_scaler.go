@@ -21,6 +21,7 @@ import (
 )
 
 type artemisScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *artemisMetadata
 	httpClient *http.Client
 }
@@ -63,12 +64,18 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// the global client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
 
 	return &artemisScaler{
+		metricType: metricType,
 		metadata:   artemisMetadata,
 		httpClient: httpClient,
 	}, nil
@@ -251,15 +258,11 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 }
 
 func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.queueLength, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

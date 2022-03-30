@@ -42,6 +42,7 @@ const (
 )
 
 type azureBlobScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureBlobMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 	httpClient  *http.Client
@@ -63,12 +64,18 @@ var azureBlobLog = logf.Log.WithName("azure_blob_scaler")
 
 // NewAzureBlobScaler creates a new azureBlobScaler
 func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, podIdentity, err := parseAzureBlobMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure blob metadata: %s", err)
 	}
 
 	return &azureBlobScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: podIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -181,15 +188,11 @@ func (s *azureBlobScaler) Close(context.Context) error {
 }
 
 func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetBlobCount := resource.NewQuantity(s.metadata.targetBlobCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetBlobCount,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetBlobCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

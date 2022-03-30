@@ -25,8 +25,9 @@ import (
 )
 
 type awsDynamoDBScaler struct {
-	metadata *awsDynamoDBMetadata
-	dbClient dynamodbiface.DynamoDBAPI
+	metricType v2beta2.MetricTargetType
+	metadata   *awsDynamoDBMetadata
+	dbClient   dynamodbiface.DynamoDBAPI
 }
 
 type awsDynamoDBMetadata struct {
@@ -44,14 +45,20 @@ type awsDynamoDBMetadata struct {
 var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsDynamoDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %s", err)
 	}
 
 	return &awsDynamoDBScaler{
-		metadata: meta,
-		dbClient: createDynamoDBClient(meta),
+		metricType: metricType,
+		metadata:   meta,
+		dbClient:   createDynamoDBClient(meta),
 	}, nil
 }
 
@@ -171,15 +178,11 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 }
 
 func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(c.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: c.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(c.metricType, c.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 

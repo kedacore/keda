@@ -28,6 +28,7 @@ const (
 )
 
 type graphiteScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *graphiteMetadata
 	httpClient *http.Client
 }
@@ -56,6 +57,11 @@ var graphiteLog = logf.Log.WithName("graphite_scaler")
 
 // NewGraphiteScaler creates a new graphiteScaler
 func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseGraphiteMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing graphite metadata: %s", err)
@@ -64,6 +70,7 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &graphiteScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -144,15 +151,11 @@ func (s *graphiteScaler) Close(context.Context) error {
 }
 
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

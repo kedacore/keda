@@ -28,9 +28,10 @@ const (
 )
 
 type gcsScaler struct {
-	client   *storage.Client
-	bucket   *storage.BucketHandle
-	metadata *gcsMetadata
+	client     *storage.Client
+	bucket     *storage.BucketHandle
+	metricType v2beta2.MetricTargetType
+	metadata   *gcsMetadata
 }
 
 type gcsMetadata struct {
@@ -45,6 +46,11 @@ var gcsLog = logf.Log.WithName("gcp_storage_scaler")
 
 // NewGcsScaler creates a new gcsScaler
 func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseGcsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing GCP storage metadata: %s", err)
@@ -77,9 +83,10 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	gcsLog.Info(fmt.Sprintf("Metadata %v", meta))
 
 	return &gcsScaler{
-		client:   client,
-		bucket:   bucket,
-		metadata: meta,
+		client:     client,
+		bucket:     bucket,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -151,15 +158,11 @@ func (s *gcsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValueQty := resource.NewQuantity(s.metadata.targetObjectCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValueQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetObjectCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

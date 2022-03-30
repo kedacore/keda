@@ -119,7 +119,7 @@ func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAzMonitorScaler := azureMonitorScaler{meta, testData.metadataTestData.podIdentity}
+		mockAzMonitorScaler := azureMonitorScaler{"", meta, testData.metadataTestData.podIdentity}
 
 		metricSpec := mockAzMonitorScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

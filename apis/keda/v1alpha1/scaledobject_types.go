@@ -125,6 +125,8 @@ type ScaleTriggers struct {
 	Metadata map[string]string `json:"metadata"`
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
+	// +optional
+	MetricType autoscalingv2beta2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true

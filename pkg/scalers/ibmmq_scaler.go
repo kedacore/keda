@@ -30,6 +30,7 @@ const (
 
 // IBMMQScaler assigns struct data pointer to metadata variable
 type IBMMQScaler struct {
+	metricType         v2beta2.MetricTargetType
 	metadata           *IBMMQMetadata
 	defaultHTTPTimeout time.Duration
 }
@@ -63,12 +64,18 @@ type Parameters struct {
 
 // NewIBMMQScaler creates a new IBM MQ scaler
 func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
 	}
 
 	return &IBMMQScaler{
+		metricType:         metricType,
 		metadata:           meta,
 		defaultHTTPTimeout: config.GlobalHTTPTimeout,
 	}, nil
@@ -202,15 +209,11 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(s.metadata.targetQueueDepth, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueDepth),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

@@ -5,8 +5,8 @@ import test from 'ava'
 import { PrometheusServer } from './prometheus-server-helpers'
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
-const testNamespace = 'prometheus-test'
-const prometheusNamespace = 'prometheus-test-monitoring'
+const testNamespace = 'prometheus-test-metric-type'
+const prometheusNamespace = 'prometheus-test-monitoring-metric-type'
 const loadGeneratorJob = tmp.fileSync()
 
 test.before(async t => {
@@ -30,7 +30,7 @@ test.before(async t => {
   fs.writeFileSync(loadGeneratorJob.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
 })
 
-test.serial('Metric type should be "AverageValue"',async t => {
+test.serial('Metric type should be "Value"',async t => {
   const scaledObjectMetricType = sh.exec(
     `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
   ).stdout
@@ -38,9 +38,8 @@ test.serial('Metric type should be "AverageValue"',async t => {
     `kubectl get hpa.v2beta2.autoscaling/keda-hpa-prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.metrics[0].external.target.type}"`
   ).stdout
 
-  // when the metric type isn't explicitly set in the ScaledObject, it should default to AverageValue in the HPA
-  t.is('', scaledObjectMetricType, 'prometheus-scaledobject trigger metric type should be ""')
-  t.is('AverageValue', hpaMetricType, 'keda-hpa-prometheus-scaledobject metric target type should be "AverageValue"')
+  t.is('Value', scaledObjectMetricType, 'prometheus-scaledobject trigger metric type should be "Value"')
+  t.is('Value', hpaMetricType, 'keda-hpa-prometheus-scaledobject metric target type should be "Value"')
 })
 
 test.serial('Deployment should have 0 replicas on start', async t => {
@@ -166,6 +165,7 @@ spec:
   cooldownPeriod:  10
   triggers:
   - type: prometheus
+    metricType: Value
     metadata:
       serverAddress: http://prometheus-server.{{PROMETHEUS_NAMESPACE}}.svc
       metricName: http_requests_total

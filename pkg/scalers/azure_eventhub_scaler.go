@@ -51,6 +51,7 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type azureEventHubScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *eventHubMetadata
 	client     *eventhub.Hub
 	httpClient *http.Client
@@ -64,6 +65,11 @@ type eventHubMetadata struct {
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
 func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	parsedMetadata, err := parseAzureEventHubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
@@ -75,6 +81,7 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureEventHubScaler{
+		metricType: metricType,
 		metadata:   parsedMetadata,
 		client:     hub,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -277,15 +284,11 @@ func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 
 // GetMetricSpecForScaling returns metric spec
 func (scaler *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", scaler.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetMetricTarget(scaler.metricType, scaler.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

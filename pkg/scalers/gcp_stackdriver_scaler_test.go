@@ -66,7 +66,7 @@ func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpStackdriverScaler := stackdriverScaler{nil, meta}
+		mockGcpStackdriverScaler := stackdriverScaler{nil, "", meta}
 
 		metricSpec := mockGcpStackdriverScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

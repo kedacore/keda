@@ -53,6 +53,7 @@ type openstackSwiftAuthenticationMetadata struct {
 }
 
 type openstackSwiftScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *openstackSwiftMetadata
 	swiftClient openstack.Client
 }
@@ -182,6 +183,11 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 
 	var swiftClient openstack.Client
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	openstackSwiftMetadata, err := parseOpenstackSwiftMetadata(config)
 
 	if err != nil {
@@ -233,6 +239,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	}
 
 	return &openstackSwiftScaler{
+		metricType:  metricType,
 		metadata:    openstackSwiftMetadata,
 		swiftClient: swiftClient,
 	}, nil
@@ -382,8 +389,6 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 }
 
 func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetObjectCount := resource.NewQuantity(s.metadata.objectCount, resource.DecimalSI)
-
 	var metricName string
 
 	if s.metadata.objectPrefix != "" {
@@ -398,10 +403,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetObjectCount,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.objectCount),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

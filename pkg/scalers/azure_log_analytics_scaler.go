@@ -52,6 +52,7 @@ const (
 )
 
 type azureLogAnalyticsScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *azureLogAnalyticsMetadata
 	cache      *sessionCache
 	name       string
@@ -119,12 +120,18 @@ var logAnalyticsResourceURLInCloud = map[string]string{
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
 func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.Name, config.Namespace, err)
 	}
 
 	return &azureLogAnalyticsScaler{
+		metricType: metricType,
 		metadata:   azureLogAnalyticsMetadata,
 		cache:      &sessionCache{metricValue: -1, metricThreshold: -1},
 		name:       config.Name,
@@ -262,10 +269,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) [
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: resource.NewQuantity(s.cache.metricThreshold, resource.DecimalSI),
-		},
+		Target: GetMetricTarget(s.metricType, s.cache.metricThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
