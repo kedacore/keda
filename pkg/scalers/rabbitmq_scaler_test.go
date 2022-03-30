@@ -111,10 +111,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "-1"}, true, map[string]string{}},
 	// invalid pageSize
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
-	// minMetricValue passed
-	{map[string]string{"minMetricValue": "10.0", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
-	// malformed minMetricValue
-	{map[string]string{"minMetricValue": "AA", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
+	// activationValue passed
+	{map[string]string{"activationValue": "10", "queueLength": "20", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
+	// malformed activationValue
+	{map[string]string{"activationValue": "AA", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{

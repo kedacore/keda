@@ -46,7 +46,7 @@
 - **Metric API Scaler:** Improve error handling on not-ok response ([#2317](https://github.com/kedacore/keda/issues/2317))
 - **Prometheus Scaler:** Support for `X-Scope-OrgID` header in Prometheus scaler ([#2667](https://github.com/kedacore/keda/issues/2667))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
-- **RabbitMQ Scaler:** Add activation threshold `minMetricValue` ([#2800](https://github.com/kedacore/keda/issues/2800))
+- **RabbitMQ Scaler:** Add activation threshold `activationValue` ([#2800](https://github.com/kedacore/keda/issues/2800))
 
 ### Breaking Changes
 

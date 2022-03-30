@@ -1,7 +1,7 @@
 import * as sh from 'shelljs'
 import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
-import {waitForDeploymentReplicaCount} from "./helpers";
+import {waitForDeploymentReplicaCount, sleep} from "./helpers";
 
 const testNamespace = 'rabbitmq-queue-amqp-test'
 const rabbitmqNamespace = 'rabbitmq-amqp-test'
@@ -11,7 +11,7 @@ const password = "test-password"
 const vhost = "test-vh"
 const connectionString = `amqp://${username}:${password}@rabbitmq.${rabbitmqNamespace}.svc.cluster.local/${vhost}`
 const messageCount = 500
-const minMetricValue = 10
+const activationValue = 10
 test.before(t => {
   RabbitMQHelper.installRabbit(t, username, password, vhost, rabbitmqNamespace)
 
@@ -35,10 +35,10 @@ test.serial(`Deployment should scale to 4 with ${messageCount} messages on the q
   t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 50, 5000), 'Replica count should be 0 after 3 minutes')
 })
 
-test.serial(`Deployment shouldn't scale because the 5 messages on the queue are less than ${minMetricValue}(minMetricValue)`, async t => {
+test.serial(`Deployment shouldn't scale because the 5 messages on the queue are less than ${activationValue}(activationValue)`, async t => {
   RabbitMQHelper.publishMessages(t, testNamespace, connectionString, 5, queueName)
-
-  // with messages published, the consumer deployment should start receiving the messages
+  await sleep(20000);
+  // since the messages are less than activationValue, the consumer deployment should not scale
   t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 20, 5000), 'Replica count remain 0 after 10 seconds')
 })
 
@@ -111,4 +111,4 @@ spec:
       hostFromEnv: RabbitMqHost
       mode: QueueLength
       value: '50'
-      minMetricValue: '10'`
+      activationValue: '10'`
