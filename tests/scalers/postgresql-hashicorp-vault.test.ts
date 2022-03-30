@@ -4,7 +4,7 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace } from './helpers'
 
-const testNamespace = 'postgresql-hashicorp-vaule'
+const testNamespace = 'postgresql-hashicorp-vault'
 const postgreSQLUsername = 'test-user'
 const postgreSQLPassword = 'test-password'
 const postgreSQLDatabase = 'test_db'
