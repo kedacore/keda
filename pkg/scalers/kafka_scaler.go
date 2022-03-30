@@ -105,6 +105,53 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
+	meta.saslType = KafkaSASLTypeNone
+	if val, ok := config.AuthParams["sasl"]; ok {
+		val = strings.TrimSpace(val)
+		mode := kafkaSaslType(val)
+
+		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
+			if config.AuthParams["username"] == "" {
+				return errors.New("no username given")
+			}
+			meta.username = strings.TrimSpace(config.AuthParams["username"])
+
+			if config.AuthParams["password"] == "" {
+				return errors.New("no password given")
+			}
+			meta.password = strings.TrimSpace(config.AuthParams["password"])
+			meta.saslType = mode
+		} else {
+			return fmt.Errorf("err SASL mode %s given", mode)
+		}
+	}
+
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+
+		if val == "enable" {
+			certGiven := config.AuthParams["cert"] != ""
+			keyGiven := config.AuthParams["key"] != ""
+			if certGiven && !keyGiven {
+				return errors.New("key must be provided with cert")
+			}
+			if keyGiven && !certGiven {
+				return errors.New("cert must be provided with key")
+			}
+			meta.ca = config.AuthParams["ca"]
+			meta.cert = config.AuthParams["cert"]
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		} else if val != "disable" {
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+
+	return nil
+}
+
 func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 	switch {
@@ -156,47 +203,8 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.lagThreshold = t
 	}
 
-	meta.saslType = KafkaSASLTypeNone
-	if val, ok := config.AuthParams["sasl"]; ok {
-		val = strings.TrimSpace(val)
-		mode := kafkaSaslType(val)
-
-		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
-			if config.AuthParams["username"] == "" {
-				return meta, errors.New("no username given")
-			}
-			meta.username = strings.TrimSpace(config.AuthParams["username"])
-
-			if config.AuthParams["password"] == "" {
-				return meta, errors.New("no password given")
-			}
-			meta.password = strings.TrimSpace(config.AuthParams["password"])
-			meta.saslType = mode
-		} else {
-			return meta, fmt.Errorf("err SASL mode %s given", mode)
-		}
-	}
-
-	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-
-		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return meta, errors.New("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return meta, errors.New("cert must be provided with key")
-			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
-			meta.enableTLS = true
-		} else if val != "disable" {
-			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
-		}
+	if err := parseKafkaAuthParams(config, &meta); err != nil {
+		return meta, err
 	}
 
 	meta.allowIdleConsumers = false
