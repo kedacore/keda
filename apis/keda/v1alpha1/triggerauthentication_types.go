@@ -75,6 +75,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	HashiCorpVault *HashiCorpVault `json:"hashiCorpVault,omitempty"`
+
+	// +optional
+	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -173,6 +176,49 @@ type VaultSecret struct {
 	Parameter string `json:"parameter"`
 	Path      string `json:"path"`
 	Key       string `json:"key"`
+}
+
+// AzureKeyVault is used to authenticate using Azure Key Vault
+type AzureKeyVault struct {
+	VaultURI    string                    `json:"vaultUri"`
+	Credentials *AzureKeyVaultCredentials `json:"credentials"`
+	Secrets     []AzureKeyVaultSecret     `json:"secrets"`
+	// +optional
+	Cloud *AzureKeyVaultCloudInfo `json:"cloud"`
+}
+
+type AzureKeyVaultCredentials struct {
+	ClientID     string                     `json:"clientId"`
+	ClientSecret *AzureKeyVaultClientSecret `json:"clientSecret"`
+	TenantID     string                     `json:"tenantId"`
+}
+
+type AzureKeyVaultClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type ValueFromSecret struct {
+	SecretKeyRef SecretKeyRef `json:"secretKeyRef"`
+}
+
+type SecretKeyRef struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
+}
+
+type AzureKeyVaultSecret struct {
+	Parameter string `json:"parameter"`
+	Name      string `json:"name"`
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+type AzureKeyVaultCloudInfo struct {
+	Type string `json:"type"`
+	// +optional
+	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
+	// +optional
+	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
 }
 
 func init() {

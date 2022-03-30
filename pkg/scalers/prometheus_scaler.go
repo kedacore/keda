@@ -22,14 +22,17 @@ import (
 )
 
 const (
-	promServerAddress = "serverAddress"
-	promMetricName    = "metricName"
-	promQuery         = "query"
-	promThreshold     = "threshold"
-	promNamespace     = "namespace"
+	promServerAddress    = "serverAddress"
+	promMetricName       = "metricName"
+	promQuery            = "query"
+	promThreshold        = "threshold"
+	promNamespace        = "namespace"
+	promCortexScopeOrgID = "cortexOrgID"
+	promCortexHeaderKey  = "X-Scope-OrgID"
 )
 
 type prometheusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *prometheusMetadata
 	httpClient *http.Client
 }
@@ -38,10 +41,11 @@ type prometheusMetadata struct {
 	serverAddress  string
 	metricName     string
 	query          string
-	threshold      int
+	threshold      int64
 	prometheusAuth *authentication.AuthMeta
 	namespace      string
 	scalerIndex    int
+	cortexOrgID    string
 }
 
 type promQueryResult struct {
@@ -60,6 +64,11 @@ var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
@@ -79,6 +88,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -106,16 +116,22 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
 		}
 
 		meta.threshold = t
+	} else {
+		return nil, fmt.Errorf("no %s given", promThreshold)
 	}
 
 	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
 		meta.namespace = val
+	}
+
+	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
+		meta.cortexOrgID = val
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -144,16 +160,12 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -180,6 +192,10 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.prometheusAuth.BearerToken))
 	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
+	}
+
+	if s.metadata.cortexOrgID != "" {
+		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
 	}
 
 	r, err := s.httpClient.Do(req)

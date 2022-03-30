@@ -7635,13 +7635,15 @@ spec:
                       required:
                       - name
                       type: object
-                    fallback:
-                      format: int32
-                      type: integer
                     metadata:
                       additionalProperties:
                         type: string
                       type: object
+                    metricType:
+                      description: MetricTargetType specifies the type of metric being
+                        targeted, and should be either "Value", "AverageValue", or
+                        "Utilization"
+                      type: string
                     name:
                       type: string
                     type:

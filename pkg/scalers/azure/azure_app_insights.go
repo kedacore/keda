@@ -16,18 +16,26 @@ import (
 )
 
 const (
-	appInsightsResource = "https://api.applicationinsights.io"
+	DefaultAppInsightsResourceURL = "https://api.applicationinsights.io"
 )
 
+var AppInsightsResourceURLInCloud = map[string]string{
+	"AZUREPUBLICCLOUD":       "https://api.applicationinsights.io",
+	"AZUREUSGOVERNMENTCLOUD": "https://api.applicationinsights.us",
+	"AZURECHINACLOUD":        "https://api.applicationinsights.azure.cn",
+}
+
 type AppInsightsInfo struct {
-	ApplicationInsightsID string
-	TenantID              string
-	MetricID              string
-	AggregationTimespan   string
-	AggregationType       string
-	Filter                string
-	ClientID              string
-	ClientPassword        string
+	ApplicationInsightsID   string
+	TenantID                string
+	MetricID                string
+	AggregationTimespan     string
+	AggregationType         string
+	Filter                  string
+	ClientID                string
+	ClientPassword          string
+	AppInsightsResourceURL  string
+	ActiveDirectoryEndpoint string
 }
 
 type ApplicationInsightsMetric struct {
@@ -55,16 +63,17 @@ func toISO8601(time string) (string, error) {
 func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) auth.AuthorizerConfig {
 	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = appInsightsResource
+		config.Resource = info.AppInsightsResourceURL
+		config.AADEndpoint = info.ActiveDirectoryEndpoint
 		return config
 	}
 
 	config := auth.NewMSIConfig()
-	config.Resource = appInsightsResource
+	config.Resource = info.AppInsightsResourceURL
 	return config
 }
 
-func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (int32, error) {
+func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (int64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
 	}
@@ -81,7 +90,7 @@ func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetr
 
 	azureAppInsightsLog.V(2).Info("value extracted from metric request", "metric type", info.AggregationType, "metric value", floatVal)
 
-	return int32(math.Round(floatVal)), nil
+	return int64(math.Round(floatVal)), nil
 }
 
 func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interface{}, error) {
@@ -102,7 +111,7 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
 	config := getAuthConfig(info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {
@@ -115,7 +124,7 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 	}
 
 	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(appInsightsResource),
+		autorest.WithBaseURL(info.AppInsightsResourceURL),
 		autorest.WithPath("v1/apps"),
 		autorest.WithPath(info.ApplicationInsightsID),
 		autorest.WithPath("metrics"),

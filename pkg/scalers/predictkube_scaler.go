@@ -77,6 +77,7 @@ var (
 )
 
 type PredictKubeScaler struct {
+	metricType       v2beta2.MetricTargetType
 	metadata         *predictKubeMetadata
 	prometheusClient api.Client
 	grpcConn         *grpc.ClientConn
@@ -142,6 +143,14 @@ func (s *PredictKubeScaler) setupClientConn() error {
 func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKubeScaler, error) {
 	s := &PredictKubeScaler{}
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		predictKubeLog.Error(err, "error getting scaler metric type")
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
+	s.metricType = metricType
+
 	meta, err := parsePredictKubeMetadata(config)
 	if err != nil {
 		predictKubeLog.Error(err, "error parsing PredictKube metadata")
@@ -195,16 +204,12 @@ func (s *PredictKubeScaler) Close(_ context.Context) error {
 }
 
 func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

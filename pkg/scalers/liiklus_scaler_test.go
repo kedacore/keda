@@ -171,7 +171,7 @@ func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockLiiklusScaler := liiklusScaler{meta, nil, nil}
+		mockLiiklusScaler := liiklusScaler{"", meta, nil, nil}
 
 		metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

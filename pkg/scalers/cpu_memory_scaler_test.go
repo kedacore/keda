@@ -10,8 +10,9 @@ import (
 )
 
 type parseCPUMemoryMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metricType v2beta2.MetricTargetType
+	metadata   map[string]string
+	isError    bool
 }
 
 // A complete valid metadata example for reference
@@ -21,19 +22,23 @@ var validCPUMemoryMetadata = map[string]string{
 }
 
 var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
-	{map[string]string{}, true},
-	{validCPUMemoryMetadata, false},
-	{map[string]string{"type": "Utilization", "value": "50"}, false},
-	{map[string]string{"type": "AverageValue", "value": "50"}, false},
-	{map[string]string{"type": "Value", "value": "50"}, true},
-	{map[string]string{"type": "AverageValue"}, true},
-	{map[string]string{"type": "xxx", "value": "50"}, true},
+	{"", map[string]string{}, true},
+	{"", validCPUMemoryMetadata, false},
+	{"", map[string]string{"type": "Utilization", "value": "50"}, false},
+	{v2beta2.UtilizationMetricType, map[string]string{"value": "50"}, false},
+	{"", map[string]string{"type": "AverageValue", "value": "50"}, false},
+	{v2beta2.AverageValueMetricType, map[string]string{"value": "50"}, false},
+	{"", map[string]string{"type": "Value", "value": "50"}, true},
+	{v2beta2.ValueMetricType, map[string]string{"value": "50"}, true},
+	{"", map[string]string{"type": "AverageValue"}, true},
+	{"", map[string]string{"type": "xxx", "value": "50"}, true},
 }
 
 func TestCPUMemoryParseMetadata(t *testing.T) {
 	for _, testData := range testCPUMemoryMetadata {
 		config := &ScalerConfig{
 			TriggerMetadata: testData.metadata,
+			MetricType:      testData.metricType,
 		}
 		_, err := parseResourceMetadata(config)
 		if err != nil && !testData.isError {
@@ -46,11 +51,24 @@ func TestCPUMemoryParseMetadata(t *testing.T) {
 }
 
 func TestGetMetricSpecForScaling(t *testing.T) {
+	// Using trigger.metadata.type field for type
 	config := &ScalerConfig{
 		TriggerMetadata: validCPUMemoryMetadata,
 	}
 	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
 	metricSpec := scaler.GetMetricSpecForScaling(context.Background())
+
+	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
+	assert.Equal(t, metricSpec[0].Resource.Name, v1.ResourceCPU)
+	assert.Equal(t, metricSpec[0].Resource.Target.Type, v2beta2.UtilizationMetricType)
+
+	// Using trigger.metricType field for type
+	config = &ScalerConfig{
+		TriggerMetadata: map[string]string{"value": "50"},
+		MetricType:      v2beta2.UtilizationMetricType,
+	}
+	scaler, _ = NewCPUMemoryScaler(v1.ResourceCPU, config)
+	metricSpec = scaler.GetMetricSpecForScaling(context.Background())
 
 	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
 	assert.Equal(t, metricSpec[0].Resource.Name, v1.ResourceCPU)
