@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
+	az "github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,12 +104,23 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 	// Generate metricName.
 	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 
+	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ActiveDirectoryEndpoint, nil
+	}
+	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	metadata.ActiveDirectoryEndpoint = activeDirectoryEndpoint
+
 	dataExplorerLogger.V(1).Info("Parsed azureDataExplorerMetadata",
 		"database", metadata.DatabaseName,
 		"endpoint", metadata.Endpoint,
 		"metricName", metadata.MetricName,
 		"query", metadata.Query,
-		"threshold", metadata.Threshold)
+		"threshold", metadata.Threshold,
+		"activeDirectoryEndpoint", metadata.ActiveDirectoryEndpoint,
+	)
 
 	return metadata, nil
 }

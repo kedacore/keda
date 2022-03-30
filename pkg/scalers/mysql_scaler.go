@@ -31,7 +31,7 @@ type mySQLMetadata struct {
 	port             string
 	dbName           string
 	query            string
-	queryValue       int
+	queryValue       int64
 	metricName       string
 }
 
@@ -64,7 +64,7 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -187,8 +187,8 @@ func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *mySQLScaler) getQueryResult(ctx context.Context) (int, error) {
-	var value int
+func (s *mySQLScaler) getQueryResult(ctx context.Context) (int64, error) {
+	var value int64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	if err != nil {
 		mySQLLog.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
@@ -199,7 +199,7 @@ func (s *mySQLScaler) getQueryResult(ctx context.Context) (int, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -225,7 +225,7 @@ func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

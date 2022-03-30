@@ -41,7 +41,7 @@ type IBMMQMetadata struct {
 	queueName        string
 	username         string
 	password         string
-	targetQueueDepth int
+	targetQueueDepth int64
 	tlsDisabled      bool
 	scalerIndex      int
 }
@@ -106,7 +106,7 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queueDepth"]; ok && val != "" {
-		queueDepth, err := strconv.Atoi(val)
+		queueDepth, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
 		}
@@ -158,7 +158,7 @@ func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueueDepthViaHTTP returns the depth of the MQ Queue from the Admin endpoint
-func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int, error) {
+func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	queue := s.metadata.queueName
 	url := s.metadata.host
 
@@ -197,12 +197,12 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int, error) {
 	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
 		return 0, fmt.Errorf("failed to parse response from REST call: %s", err)
 	}
-	return response.CommandResponse[0].Parameters.Curdepth, nil
+	return int64(response.CommandResponse[0].Parameters.Curdepth), nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueDepth), resource.DecimalSI)
+	targetQueueLengthQty := resource.NewQuantity(s.metadata.targetQueueDepth, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
@@ -225,7 +225,7 @@ func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: ibmMqQueueDepthMetricName,
-		Value:      *resource.NewQuantity(int64(queueDepth), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queueDepth, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

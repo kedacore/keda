@@ -109,14 +109,14 @@ func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName st
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(pods), resource.DecimalSI),
+		Value:      *resource.NewQuantity(pods, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, error) {
+func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {
 	podList := &corev1.PodList{}
 	listOptions := client.ListOptions{}
 	listOptions.LabelSelector = s.metadata.podSelector
@@ -130,7 +130,7 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 		return 0, err
 	}
 
-	count := 0
+	var count int64
 	for _, pod := range podList.Items {
 		count += getCountValue(pod)
 	}
@@ -138,7 +138,7 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 	return count, nil
 }
 
-func getCountValue(pod corev1.Pod) int {
+func getCountValue(pod corev1.Pod) int64 {
 	for _, ignore := range phasesCountedAsTerminated {
 		if pod.Status.Phase == ignore {
 			return 0

@@ -51,7 +51,7 @@ type mssqlMetadata struct {
 	query string
 	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
 	// +required
-	targetValue int
+	targetValue int64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
@@ -93,7 +93,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 
 	// Target query value
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.Atoi(val)
+		targetValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 		}
@@ -210,7 +210,7 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
@@ -237,7 +237,7 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -245,8 +245,8 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 }
 
 // getQueryResult returns the result of the scaler query
-func (s *mssqlScaler) getQueryResult(ctx context.Context) (int, error) {
-	var value int
+func (s *mssqlScaler) getQueryResult(ctx context.Context) (int64, error) {
+	var value int64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:

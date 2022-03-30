@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	az "github.com/Azure/go-autorest/autorest/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,13 +40,15 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	miEndpoint       = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fapi.loganalytics.io%2F"
-	aadTokenEndpoint = "https://login.microsoftonline.com/%s/oauth2/token"
-	laQueryEndpoint  = "https://api.loganalytics.io/v1/workspaces/%s/query"
+	miEndpoint                     = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
+	aadTokenEndpoint               = "%s/%s/oauth2/token"
+	laQueryEndpoint                = "%s/v1/workspaces/%s/query"
+	defaultLogAnalyticsResourceURL = "https://api.loganalytics.io"
 )
 
 type azureLogAnalyticsScaler struct {
@@ -57,15 +60,17 @@ type azureLogAnalyticsScaler struct {
 }
 
 type azureLogAnalyticsMetadata struct {
-	tenantID     string
-	clientID     string
-	clientSecret string
-	workspaceID  string
-	podIdentity  string
-	query        string
-	threshold    int64
-	metricName   string // Custom metric name for trigger
-	scalerIndex  int
+	tenantID                string
+	clientID                string
+	clientSecret            string
+	workspaceID             string
+	podIdentity             string
+	query                   string
+	threshold               int64
+	metricName              string // Custom metric name for trigger
+	scalerIndex             int
+	logAnalyticsResourceURL string
+	activeDirectoryEndpoint string
 }
 
 type sessionCache struct {
@@ -105,6 +110,12 @@ var tokenCache = struct {
 }{m: make(map[string]tokenData)}
 
 var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
+
+var logAnalyticsResourceURLInCloud = map[string]string{
+	"AZUREPUBLICCLOUD":       "https://api.loganalytics.io",
+	"AZUREUSGOVERNMENTCLOUD": "https://api.loganalytics.us",
+	"AZURECHINACLOUD":        "https://api.loganalytics.azure.cn",
+}
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
 func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
@@ -187,6 +198,30 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 
 	meta.scalerIndex = config.ScalerIndex
+
+	meta.logAnalyticsResourceURL = defaultLogAnalyticsResourceURL
+	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := config.TriggerMetadata["logAnalyticsResourceURL"]; ok && resource != "" {
+				meta.logAnalyticsResourceURL = resource
+			} else {
+				return nil, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := logAnalyticsResourceURLInCloud[strings.ToUpper(cloud)]; ok {
+			meta.logAnalyticsResourceURL = resource
+		} else {
+			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+
+	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ActiveDirectoryEndpoint, nil
+	}
+	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.activeDirectoryEndpoint = activeDirectoryEndpoint
 
 	return &meta, nil
 }
@@ -491,7 +526,7 @@ func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(ctx context.Context, q
 		return nil, 0, fmt.Errorf("can't construct JSON for request to Log Analytics API. Inner Error: %v", err)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(laQueryEndpoint, s.metadata.workspaceID), bytes.NewBuffer(jsonBytes)) // URL-encoded payload
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(laQueryEndpoint, s.metadata.logAnalyticsResourceURL, s.metadata.workspaceID), bytes.NewBuffer(jsonBytes)) // URL-encoded payload
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't construct HTTP request to Log Analytics API. Inner Error: %v", err)
 	}
@@ -508,11 +543,11 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 		"grant_type":    {"client_credentials"},
 		"client_id":     {s.metadata.clientID},
 		"redirect_uri":  {"http://"},
-		"resource":      {"https://api.loganalytics.io/"},
+		"resource":      {s.metadata.logAnalyticsResourceURL},
 		"client_secret": {s.metadata.clientSecret},
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(aadTokenEndpoint, s.metadata.tenantID), strings.NewReader(data.Encode())) // URL-encoded payload
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(aadTokenEndpoint, s.metadata.activeDirectoryEndpoint, s.metadata.tenantID), strings.NewReader(data.Encode())) // URL-encoded payload
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Active Directory. Inner Error: %v", err)
 	}
@@ -524,7 +559,7 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 }
 
 func (s *azureLogAnalyticsScaler) executeIMDSApicall(ctx context.Context) ([]byte, int, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, miEndpoint, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(miEndpoint, s.metadata.logAnalyticsResourceURL), nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Instance Metadata service. Inner Error: %v", err)
 	}

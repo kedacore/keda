@@ -125,8 +125,6 @@ type ScaleTriggers struct {
 	Metadata map[string]string `json:"metadata"`
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
-	// +optional
-	FallbackReplicas *int32 `json:"fallback,omitempty"`
 }
 
 // +k8s:openapi-gen=true

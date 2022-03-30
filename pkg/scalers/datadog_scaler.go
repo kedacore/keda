@@ -36,7 +36,7 @@ type datadogMetadata struct {
 	appKey      string
 	datadogSite string
 	query       string
-	queryValue  int
+	queryValue  int64
 	vType       valueType
 	metricName  string
 	age         int
@@ -46,12 +46,10 @@ type datadogMetadata struct {
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
 
-var aggregator, filter, rollup *regexp.Regexp
+var filter *regexp.Regexp
 
 func init() {
-	aggregator = regexp.MustCompile(`^(avg|sum|min|max):.*`)
 	filter = regexp.MustCompile(`.*\{.*\}.*`)
-	rollup = regexp.MustCompile(`.*\.rollup\(([a-z]+,)?\s*(.+)\)`)
 }
 
 // NewDatadogScaler creates a new Datadog scaler
@@ -71,36 +69,14 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}, nil
 }
 
-// parseAndTransformDatadogQuery checks correctness of the user query and adds rollup if not available
-func parseAndTransformDatadogQuery(q string, age int) (string, error) {
-	// Queries should start with a valid aggregator. If not found, prepend avg as default
-	if !aggregator.MatchString(q) {
-		q = "avg:" + q
-	}
-
+// parseDatadogQuery checks correctness of the user query
+func parseDatadogQuery(q string) (bool, error) {
 	// Wellformed Datadog queries require a filter (between curly brackets)
 	if !filter.MatchString(q) {
-		return "", fmt.Errorf("malformed Datadog query")
+		return false, fmt.Errorf("malformed Datadog query: missing query scope")
 	}
 
-	// Queries can contain rollup functions.
-	match := rollup.FindStringSubmatch(q)
-	if match != nil {
-		// If added, check that the number of seconds is an int
-		rollupAgg, err := strconv.Atoi(match[2])
-		if err != nil {
-			return "", fmt.Errorf("malformed Datadog query")
-		}
-
-		if rollupAgg > age {
-			return "", fmt.Errorf("rollup cannot be bigger than time window")
-		}
-	} else { // If not added, use a default rollup based on the time window size
-		s := fmt.Sprintf(".rollup(avg, %d)", age/5)
-		q += s
-	}
-
-	return q, nil
+	return true, nil
 }
 
 func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
@@ -121,18 +97,18 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
-		query, err := parseAndTransformDatadogQuery(val, meta.age)
+		_, err := parseDatadogQuery(val)
 
 		if err != nil {
 			return nil, fmt.Errorf("error in query: %s", err.Error())
 		}
-		meta.query = query
+		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no query given")
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -215,7 +191,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx)
+	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %v", err)
 	}
@@ -228,7 +204,7 @@ func (s *datadogScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive checks whether the value returned by Datadog is higher than the target value
+// IsActive checks whether the scaler is active
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	num, err := s.getQueryResult(ctx)
 
@@ -236,7 +212,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return num > float64(s.metadata.queryValue), nil
+	return num > 0, nil
 }
 
 // getQueryResult returns result of the scaler query
@@ -260,21 +236,27 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			"site": s.metadata.datadogSite,
 		})
 
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query) //nolint:bodyclose
+	if err != nil {
+		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+	}
 
 	if r.StatusCode == 429 {
 		rateLimit := r.Header.Get("X-Ratelimit-Limit")
 		rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
 
-		return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds: %s", rateLimit, rateLimitReset, err)
+		return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitReset)
 	}
 
 	if r.StatusCode != 200 {
-		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+		return -1, fmt.Errorf("error when retrieving Datadog metrics")
 	}
 
-	if err != nil {
-		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+	if resp.GetStatus() == "error" {
+		if msg, ok := resp.GetErrorOk(); ok {
+			return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", *msg)
+		}
+		return -1, fmt.Errorf("error when retrieving Datadog metrics")
 	}
 
 	series := resp.GetSeries()
@@ -308,7 +290,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := new(v2beta2.ExternalMetricSource)
 
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
+	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
 
 	switch s.metadata.vType {
 	case average:

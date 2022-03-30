@@ -32,7 +32,7 @@ type awsKinesisStreamScaler struct {
 }
 
 type awsKinesisStreamMetadata struct {
-	targetShardCount int
+	targetShardCount int64
 	streamName       string
 	awsRegion        string
 	awsAuthorization awsAuthorizationMetadata
@@ -59,7 +59,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 	meta.targetShardCount = targetShardCountDefault
 
 	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
-		shardCount, err := strconv.Atoi(val)
+		shardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetShardCount = targetShardCountDefault
 			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
@@ -133,7 +133,7 @@ func (s *awsKinesisStreamScaler) Close(context.Context) error {
 }
 
 func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
+	targetShardCountQty := resource.NewQuantity(s.metadata.targetShardCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),

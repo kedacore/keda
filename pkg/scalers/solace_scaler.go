@@ -73,8 +73,8 @@ type SolaceMetadata struct {
 	// Basic Auth Password
 	password string
 	// Target Message Count
-	msgCountTarget      int
-	msgSpoolUsageTarget int // Spool Use Target in Megabytes
+	msgCountTarget      int64
+	msgSpoolUsageTarget int64 // Spool Use Target in Megabytes
 	// Scaler index
 	scalerIndex int
 }
@@ -152,7 +152,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	//	GET METRIC TARGET VALUES
 	//	GET msgCountTarget
 	if val, ok := config.TriggerMetadata[solaceMetaMsgCountTarget]; ok && val != "" {
-		if msgCount, err := strconv.Atoi(val); err == nil {
+		if msgCount, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgCountTarget = msgCount
 		} else {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgCountTarget, err)
@@ -160,7 +160,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	}
 	//	GET msgSpoolUsageTarget
 	if val, ok := config.TriggerMetadata[solaceMetaMsgSpoolUsageTarget]; ok && val != "" {
-		if msgSpoolUsage, err := strconv.Atoi(val); err == nil {
+		if msgSpoolUsage, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgSpoolUsageTarget = msgSpoolUsage * 1024 * 1024
 		} else {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgSpoolUsageTarget, err)
@@ -243,7 +243,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
-		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgCountTarget), resource.DecimalSI)
+		targetMetricValue := resource.NewQuantity(s.metadata.msgCountTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
@@ -259,7 +259,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	}
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
-		targetMetricValue := resource.NewQuantity(int64(s.metadata.msgSpoolUsageTarget), resource.DecimalSI)
+		targetMetricValue := resource.NewQuantity(s.metadata.msgSpoolUsageTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
