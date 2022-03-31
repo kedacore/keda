@@ -166,7 +166,7 @@ func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
 			}
 			mockAzureAppInsightsScaler := azureAppInsightsScaler{
 				metadata:    meta,
-				podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+				podIdentity: kedav1alpha1.AuthPodIdentity{Provider: "azure"},
 			}
 
 			metricSpec := mockAzureAppInsightsScaler.GetMetricSpecForScaling(ctx)

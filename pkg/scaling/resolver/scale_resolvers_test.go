@@ -173,7 +173,7 @@ func TestResolveAuthRef(t *testing.T) {
 		soar                *kedav1alpha1.ScaledObjectAuthRef
 		podSpec             *corev1.PodSpec
 		expected            map[string]string
-		expectedPodIdentity kedav1alpha1.PodIdentityProvider
+		expectedPodIdentity kedav1alpha1.AuthPodIdentity
 	}{
 		{
 			name:     "foo",
@@ -241,7 +241,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: "none"},
 		},
 		{
 			name: "clustertriggerauth exists, podidentity nil",
@@ -293,7 +293,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: "none"},
 		},
 		{
 			name: "clustertriggerauth exists and secret in the wrong namespace",
@@ -324,7 +324,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": ""},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: "none"},
 		},
 	}
 	for _, test := range tests {

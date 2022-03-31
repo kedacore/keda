@@ -117,7 +117,7 @@ var testLogAnalyticsMetadataWithPodIdentity = []parseLogAnalyticsMetadataTestDat
 
 func TestLogAnalyticsParseMetadata(t *testing.T) {
 	for _, testData := range testLogAnalyticsMetadata {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -128,7 +128,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with missing auth params should all fail
 	for _, testData := range testLogAnalyticsMetadataWithEmptyAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyLogAnalyticsAuthParams, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyLogAnalyticsAuthParams, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -139,7 +139,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with complete auth params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -150,7 +150,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with podIdentity params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.PodIdentityProviderAzure})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -162,7 +162,7 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range LogAnalyticsMetricIdentifiers {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, PodIdentity: kedav1alpha1.AuthPodIdentity{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -198,7 +198,7 @@ var testParseMetadataMetricName = []parseMetadataMetricNameTestData{
 
 func TestLogAnalyticsParseMetadataMetricName(t *testing.T) {
 	for _, testData := range testParseMetadataMetricName {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: kedav1alpha1.AuthPodIdentity{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Error("Expected success but got error", err)
 		}

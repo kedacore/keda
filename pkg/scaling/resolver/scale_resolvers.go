@@ -130,33 +130,33 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 }
 
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
-func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider, error) {
+func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec, namespace string) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace)
 
-		if podIdentity == kedav1alpha1.PodIdentityProviderAwsEKS {
+		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
 			serviceAccount := &corev1.ServiceAccount{}
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
-				return nil, kedav1alpha1.PodIdentityProviderNone, fmt.Errorf("error getting service account: %s", err)
+				return nil, kedav1alpha1.AuthPodIdentity{Provider: "none"}, fmt.Errorf("error getting service account: %s", err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
+		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsKiam {
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		}
 		return authParams, podIdentity, nil
 	}
 
 	authParams, _ := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace)
-	return authParams, kedav1alpha1.PodIdentityProviderNone, nil
+	return authParams, kedav1alpha1.AuthPodIdentity{Provider: "none"}, nil
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
-func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.PodIdentityProvider) {
+func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec, namespace string) (map[string]string, kedav1alpha1.AuthPodIdentity) {
 	result := make(map[string]string)
-	var podIdentity kedav1alpha1.PodIdentityProvider
+	var podIdentity *kedav1alpha1.AuthPodIdentity
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
@@ -164,7 +164,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
 			if triggerAuthSpec.PodIdentity != nil {
-				podIdentity = triggerAuthSpec.PodIdentity.Provider
+				podIdentity = triggerAuthSpec.PodIdentity
 			}
 			if triggerAuthSpec.Env != nil {
 				for _, e := range triggerAuthSpec.Env {
@@ -211,9 +211,13 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 		}
+		if podIdentity != nil {
+			return result, *podIdentity
+		}
+		return result, kedav1alpha1.AuthPodIdentity{}
 	}
 
-	return result, podIdentity
+	return result, kedav1alpha1.AuthPodIdentity{}
 }
 
 var clusterObjectNamespaceCache *string

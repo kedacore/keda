@@ -80,7 +80,7 @@ type ScalerConfig struct {
 	AuthParams map[string]string
 
 	// PodIdentity
-	PodIdentity kedav1alpha1.PodIdentityProvider
+	PodIdentity kedav1alpha1.AuthPodIdentity
 
 	// ScalerIndex
 	ScalerIndex int

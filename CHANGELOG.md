@@ -39,6 +39,7 @@
 - **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 - **Kafka Scaler** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
+- **Authentication** Provide support for specifying identity to use for Azure managed identity auth ([#2656](https://github.com/kedacore/keda/issues/2656))
 
 ### Breaking Changes
 

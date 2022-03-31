@@ -38,7 +38,7 @@ var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
 
 type azureAppInsightsScaler struct {
 	metadata    *azureAppInsightsMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler

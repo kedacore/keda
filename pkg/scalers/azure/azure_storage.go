@@ -78,10 +78,10 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
-	switch podIdentity {
+func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
+	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix)
+		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity.IdentityID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -106,10 +106,10 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 }
 
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
-	switch podIdentity {
+func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
+	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix)
+		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity.IdentityID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -190,9 +190,10 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	return u, name, key, nil
 }
 
-func parseAcessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string) (string, *url.URL, error) {
+func parseAcessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string, identityID string) (string, *url.URL, error) {
 	// Azure storage resource is "https://storage.azure.com/" in all cloud environments
-	token, err := GetAzureADPodIdentityToken(ctx, httpClient, "https://storage.azure.com/")
+
+	token, err := GetAzureADPodIdentityToken(ctx, httpClient, "https://storage.azure.com/", identityID)
 	if err != nil {
 		return "", nil, err
 	}

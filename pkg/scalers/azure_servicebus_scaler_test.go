@@ -42,7 +42,7 @@ type parseServiceBusMetadataTestData struct {
 	entityType     entityType
 	endpointSuffix string
 	authParams     map[string]string
-	podIdentity    kedav1alpha1.PodIdentityProvider
+	podIdentity    kedav1alpha1.AuthPodIdentity
 }
 
 type azServiceBusMetricIdentifier struct {
@@ -62,41 +62,41 @@ var connectionResolvedEnv = map[string]string{
 }
 
 var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
-	{map[string]string{}, true, none, "", map[string]string{}, ""},
+	{map[string]string{}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// properly formed queue
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// properly formed queue with message count
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// properly formed topic & subscription
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, false, subscription, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// properly formed topic & subscription with message count
-	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "messageCount": messageCount}, false, subscription, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// queue and topic specified
-	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// queue and subscription specified
-	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// topic but no subscription specified
-	{map[string]string{"topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// subscription but no topic specified
-	{map[string]string{"subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// valid cloud
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "AzureChinaCloud"}, false, queue, "servicebus.chinacloudapi.cn", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "AzureChinaCloud"}, false, queue, "servicebus.chinacloudapi.cn", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// invalid cloud
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "InvalidCloud"}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "InvalidCloud"}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// private cloud with endpoint suffix
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private", "endpointSuffix": "servicebus.private.cloud"}, false, queue, "servicebus.private.cloud", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private", "endpointSuffix": "servicebus.private.cloud"}, false, queue, "servicebus.private.cloud", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// private cloud without endpoint suffix
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private"}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private"}, true, none, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// endpoint suffix without cloud
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "endpointSuffix": "ignored"}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "endpointSuffix": "ignored"}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// connection not set
-	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{}},
 	// connection set in auth params
-	{map[string]string{"queueName": queueName}, false, queue, defaultSuffix, map[string]string{"connection": connectionSetting}, ""},
+	{map[string]string{"queueName": queueName}, false, queue, defaultSuffix, map[string]string{"connection": connectionSetting}, kedav1alpha1.AuthPodIdentity{}},
 	// pod identity but missing namespace
-	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}},
 	// correct pod identity
-	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
@@ -130,7 +130,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			topicName:        topicName,
 			subscriptionName: subscriptionName,
 		},
-		podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: "azure"},
 		httpClient:  commonHTTPClient,
 	},
 }

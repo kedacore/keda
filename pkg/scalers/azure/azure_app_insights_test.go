@@ -74,13 +74,13 @@ type testAppInsightsAuthConfigTestData struct {
 	testName    string
 	expectMSI   bool
 	info        AppInsightsInfo
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure pod identity", true, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
+	{"client credentials", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.AuthPodIdentity{}},
+	{"client credentials - pod id none", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.AuthPodIdentity{}},
+	{"azure pod identity", true, AppInsightsInfo{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}},
 }
 
 func TestAzAppInfoGetAuthConfig(t *testing.T) {
