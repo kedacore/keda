@@ -298,6 +298,10 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 		meta.mode = rabbitModeQueueLength
 		meta.value = queueLength
 
+		if meta.activationValue > queueLength {
+			return nil, fmt.Errorf("activationValue is greater than value")
+		}
+
 		return meta, nil
 	}
 
@@ -325,6 +329,10 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	if meta.mode == rabbitModeMessageRate && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("protocol %s not supported; must be http to use mode %s", meta.protocol, rabbitModeMessageRate)
+	}
+
+	if meta.activationValue > meta.value {
+		return nil, fmt.Errorf("activationValue is greater than value")
 	}
 
 	return meta, nil

@@ -66,8 +66,6 @@ export class RabbitMQHelper {
             'publishing job should apply.'
         )
     }
-    
-
 }
 
 const publishYaml = `apiVersion: batch/v1
