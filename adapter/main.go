@@ -207,6 +207,11 @@ func main() {
 		return
 	}
 
+	kedaMinTLSVersion, found := os.LookupEnv("KEDA_MIN_TLS_VERSION")
+	if found {
+		cmd.SecureServing.MinTLSVersion = kedaMinTLSVersion
+	}
+
 	controllerMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_METRICS_CTRL_MAX_RECONCILES", 1)
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_METRICS_CTRL_MAX_RECONCILES")
