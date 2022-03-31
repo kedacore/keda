@@ -209,6 +209,7 @@ func main() {
 
 	kedaMinTLSVersion, found := os.LookupEnv("KEDA_MIN_TLS_VERSION")
 	if found {
+		// Matches to values listed here: https://pkg.go.dev/crypto/tls#pkg-constants as a string
 		cmd.SecureServing.MinTLSVersion = kedaMinTLSVersion
 	}
 
