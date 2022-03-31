@@ -10,10 +10,10 @@ const postgreSQLPassword = 'test-password'
 const postgreSQLDatabase = 'test_db'
 const deploymentName = 'worker'
 
-test.before(t => {  
+test.before(t => {
   createNamespace(testNamespace)
 
-  // install postgresql 
+  // install postgresql
   const postgreSQLTmpFile = tmp.fileSync()
   fs.writeFileSync(postgreSQLTmpFile.name, postgresqlDeploymentYaml.replace('{{POSTGRES_USER}}', postgreSQLUsername)
       .replace('{{POSTGRES_PASSWORD}}', postgreSQLPassword)
@@ -56,8 +56,8 @@ test.before(t => {
   let createSecret = sh.exec(`kubectl exec vault-0 --namespace ${testNamespace} -- vault kv put secret/keda connectionString=${connectionString}`).code
   t.is(0, createSecret,'create secret in vault should work')
   let response = JSON.parse(sh.exec(`kubectl exec vault-0 --namespace ${testNamespace} -- vault token create -format json`).stdout);
-  
-  sh.config.silent = true  
+
+  sh.config.silent = true
   // deploy streams consumer app, scaled object etc.
   const tmpFile = tmp.fileSync()
   const base64ConnectionString = Buffer.from(connectionString).toString('base64')
@@ -185,7 +185,7 @@ metadata:
 spec:
   hashiCorpVault:
     address: http://vault.{{NAMESPACE}}:8200
-    authentication: token    
+    authentication: token
     credential:
       token: {{HASHICORP_VAULT_TOKEN}}
     secrets:
