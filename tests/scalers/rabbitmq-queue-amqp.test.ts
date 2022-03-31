@@ -27,19 +27,20 @@ test.serial('Deployment should have 0 replicas on start', t => {
   t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
+test.serial(`Deployment shouldn't scale because the 5 messages on the queue are less than ${activationValue}(activationValue)`, async t => {
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, 5, queueName)
+  await sleep(20000);
+  //since the messages are less than activationValue, the consumer deployment should not scale
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 1, 1000), 'Replica count remain 0 after deployment')
+})
+
+
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, async t => {
   RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
   // with messages published, the consumer deployment should start receiving the messages
   t.true(await waitForDeploymentReplicaCount(4, 'test-deployment', testNamespace, 20, 5000), 'Replica count should be 4 after 10 seconds')
   t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 50, 5000), 'Replica count should be 0 after 3 minutes')
-})
-
-test.serial(`Deployment shouldn't scale because the 5 messages on the queue are less than ${activationValue}(activationValue)`, async t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, 5, queueName)
-  await sleep(20000);
-  // since the messages are less than activationValue, the consumer deployment should not scale
-  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 20, 5000), 'Replica count remain 0 after 10 seconds')
 })
 
 test.after.always.cb('clean up rabbitmq-queue deployment', t => {

@@ -51,6 +51,10 @@ export class RabbitMQHelper {
     static publishMessages(t, namespace: string, connectionString: string, messageCount: number, queueName: string) {
         // publish messages
         const tmpFile = tmp.fileSync()
+
+        // remove job if exits to publish messages.
+        sh.exec(`kubectl delete jobs/rabbitmq-publish-${queueName} --namespace ${namespace}`)
+
         fs.writeFileSync(tmpFile.name, publishYaml.replace('{{CONNECTION_STRING}}', connectionString)
         .replace('{{MESSAGE_COUNT}}', messageCount.toString())
         .replace('{{QUEUE_NAME}}',  queueName)
@@ -62,6 +66,7 @@ export class RabbitMQHelper {
             'publishing job should apply.'
         )
     }
+    
 
 }
 
