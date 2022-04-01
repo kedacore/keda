@@ -74,6 +74,7 @@
 - **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
 - **General:** Improve e2e tests to always cleanup resources in cluster ([#2584](https://github.com/kedacore/keda/issues/2584))
 - **General:** Internally represent value and threshold as int64 ([#2790](https://github.com/kedacore/keda/issues/2790))
+- **General:** Refactor active directory endpoint parsing for Azure scalers. ([#2853](https://github.com/kedacore/keda/pull/2853))
 - **AWS CloudWatch:** Adding e2e test ([#1525](https://github.com/kedacore/keda/issues/1525))
 - **AWS DynamoDB:** Setup AWS DynamoDB test account ([#2803](https://github.com/kedacore/keda/issues/2803))
 - **AWS Kinesis Stream:** Adding e2e test ([#1526](https://github.com/kedacore/keda/issues/1526))
