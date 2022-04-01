@@ -165,10 +165,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	}
 	meta.azureMonitorInfo.AzureResourceManagerEndpoint = azureResourceManagerEndpoint
 
-	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
-		return env.ActiveDirectoryEndpoint, nil
-	}
-	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
 		return nil, err
 	}
