@@ -31,7 +31,6 @@ import (
 	"sync"
 	"time"
 
-	az "github.com/Azure/go-autorest/autorest/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -221,10 +220,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		}
 	}
 
-	activeDirectoryEndpointProvider := func(env az.Environment) (string, error) {
-		return env.ActiveDirectoryEndpoint, nil
-	}
-	activeDirectoryEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
 		return nil, err
 	}

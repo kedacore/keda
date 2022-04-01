@@ -20,6 +20,10 @@ const (
 // EnvironmentPropertyProvider for different types of Azure scalers
 type EnvironmentPropertyProvider func(env az.Environment) (string, error)
 
+var activeDirectoryEndpointProvider = func(env az.Environment) (string, error) {
+	return env.ActiveDirectoryEndpoint, nil
+}
+
 // ParseEnvironmentProperty parses cloud metadata and returns the resolved property
 func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, envPropertyProvider EnvironmentPropertyProvider) (string, error) {
 	if val, ok := metadata["cloud"]; ok && val != "" {
@@ -40,4 +44,8 @@ func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, en
 
 	// Use public cloud suffix if `cloud` isn't specified
 	return envPropertyProvider(az.PublicCloud)
+}
+
+func ParseActiveDirectoryEndpoint(metadata map[string]string) (string, error) {
+	return ParseEnvironmentProperty(metadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
 }
