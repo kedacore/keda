@@ -137,7 +137,7 @@ spec:
         app: mysql-update-worker
     spec:
       containers:
-      - image: ghcr.io/kedacore/tests-mysql:824031e
+      - image: ghcr.io/kedacore/tests-mysql
         imagePullPolicy: Always
         name: mysql-processor-test
         command:
@@ -202,7 +202,7 @@ spec:
         app: mysql-insert-job
     spec:
       containers:
-      - image: ghcr.io/kedacore/tests-mysql:824031e
+      - image: ghcr.io/kedacore/tests-mysql
         imagePullPolicy: Always
         name: mysql-processor-test
         command:
