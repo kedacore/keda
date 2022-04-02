@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/data/table"
 	"github.com/Azure/azure-kusto-go/kusto/unsafe"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -35,7 +36,7 @@ type DataExplorerMetadata struct {
 	DatabaseName            string
 	Endpoint                string
 	MetricName              string
-	PodIdentity             string
+	PodIdentity             kedav1alpha1.AuthPodIdentity
 	Query                   string
 	TenantID                string
 	Threshold               int64
@@ -61,7 +62,7 @@ func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata) (*kusto.Clien
 func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.AuthorizerConfig, error) {
 	var authConfig auth.AuthorizerConfig
 
-	if metadata.PodIdentity != "" {
+	if metadata.PodIdentity.Provider != "" {
 		config := auth.NewMSIConfig()
 		config.Resource = metadata.Endpoint
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")

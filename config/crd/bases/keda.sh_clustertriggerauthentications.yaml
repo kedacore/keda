@@ -193,7 +193,6 @@ spec:
                     description: PodIdentityProvider contains the list of providers
                     type: string
                 required:
-                - identityId
                 - provider
                 type: object
               secretTargetRef:

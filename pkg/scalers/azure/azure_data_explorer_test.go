@@ -23,6 +23,7 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/data/table"
 	"github.com/Azure/azure-kusto-go/kusto/data/types"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type testExtractDataExplorerMetricValue struct {
@@ -40,7 +41,7 @@ var (
 	rowName                  = "result"
 	rowType     types.Column = "long"
 	rowValue    int64        = 3
-	podIdentity              = "Azure"
+	podIdentity              = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
 	secret                   = "test_secret"
 	tenantID                 = "test_tenant_id"
 )
