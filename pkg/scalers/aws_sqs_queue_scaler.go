@@ -37,12 +37,13 @@ var (
 )
 
 type awsSqsQueueScaler struct {
-	metadata  *awsSqsQueueMetadata
-	sqsClient sqsiface.SQSAPI
+	metricType v2beta2.MetricTargetType
+	metadata   *awsSqsQueueMetadata
+	sqsClient  sqsiface.SQSAPI
 }
 
 type awsSqsQueueMetadata struct {
-	targetQueueLength int
+	targetQueueLength int64
 	queueURL          string
 	queueName         string
 	awsRegion         string
@@ -52,14 +53,20 @@ type awsSqsQueueMetadata struct {
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
 func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsSqsQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
 	}
 
 	return &awsSqsQueueScaler{
-		metadata:  meta,
-		sqsClient: createSqsClient(meta),
+		metricType: metricType,
+		metadata:   meta,
+		sqsClient:  createSqsClient(meta),
 	}, nil
 }
 
@@ -68,7 +75,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetQueueLength = targetQueueLengthDefault
 			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
@@ -142,7 +149,7 @@ func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
 
 // IsActive determines if we need to scale from zero
 func (s *awsSqsQueueScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.GetAwsSqsQueueLength()
+	length, err := s.getAwsSqsQueueLength()
 
 	if err != nil {
 		return false, err
@@ -156,15 +163,11 @@ func (s *awsSqsQueueScaler) Close(context.Context) error {
 }
 
 func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -172,7 +175,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := s.GetAwsSqsQueueLength()
+	queuelen, err := s.getAwsSqsQueueLength()
 
 	if err != nil {
 		sqsQueueLog.Error(err, "Error getting queue length")
@@ -181,7 +184,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -189,7 +192,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 }
 
 // Get SQS Queue Length
-func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
+func (s *awsSqsQueueScaler) getAwsSqsQueueLength() (int64, error) {
 	input := &sqs.GetQueueAttributesInput{
 		AttributeNames: aws.StringSlice(awsSqsQueueMetricNames),
 		QueueUrl:       aws.String(s.metadata.queueURL),
@@ -209,5 +212,5 @@ func (s *awsSqsQueueScaler) GetAwsSqsQueueLength() (int32, error) {
 		approximateNumberOfMessages += metricValue
 	}
 
-	return int32(approximateNumberOfMessages), nil
+	return approximateNumberOfMessages, nil
 }

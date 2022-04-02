@@ -3,10 +3,12 @@ module github.com/kedacore/keda/v2
 go 1.17
 
 require (
-	cloud.google.com/go/compute v1.1.0
+	cloud.google.com/go/compute v1.3.0
 	cloud.google.com/go/monitoring v1.2.0
+	cloud.google.com/go/storage v1.21.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
+	github.com/Azure/azure-kusto-go v0.5.0
 	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible
 	github.com/Azure/azure-service-bus-go v0.11.5
 	github.com/Azure/azure-storage-blob-go v0.14.0
@@ -50,8 +52,8 @@ require (
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.mongodb.org/mongo-driver v1.8.2
-	google.golang.org/api v0.66.0
-	google.golang.org/genproto v0.0.0-20220126215142-9970aeb2e350
+	google.golang.org/api v0.69.0
+	google.golang.org/genproto v0.0.0-20220218161850-94dd64e39d7c
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.23.3
@@ -83,6 +85,8 @@ replace (
 )
 
 require (
+	cloud.google.com/go v0.100.2 // indirect
+	cloud.google.com/go/iam v0.2.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-amqp v0.16.4 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -127,6 +131,7 @@ require (
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
@@ -199,6 +204,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
@@ -234,7 +240,7 @@ require (
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect

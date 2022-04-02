@@ -11,7 +11,7 @@ import (
 type testExtractAzAppInsightsTestData struct {
 	testName      string
 	isError       bool
-	expectedValue int32
+	expectedValue int64
 	info          AppInsightsInfo
 	metricResult  ApplicationInsightsMetric
 }

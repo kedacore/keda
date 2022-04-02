@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type metricsAPIMetadataTestData struct {
@@ -212,4 +215,31 @@ func TestBearerAuth(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting the metric")
 	}
+}
+
+type MockHTTPRoundTripper struct {
+	mock.Mock
+}
+
+func (m *MockHTTPRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	args := m.Called(request)
+	resp := args.Get(0).(*http.Response)
+	resp.Request = request
+	return resp, args.Error(1)
+}
+
+func TestGetMetricValueErrorMessage(t *testing.T) {
+	// mock roundtripper to return non-ok status code
+	mockHTTPRoundTripper := MockHTTPRoundTripper{}
+	mockHTTPRoundTripper.On("RoundTrip", mock.Anything).Return(&http.Response{StatusCode: http.StatusTeapot}, nil)
+
+	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
+	s := metricsAPIScaler{
+		metadata: &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
+		client:   &httpClient,
+	}
+
+	_, err := s.getMetricValue(context.TODO())
+
+	assert.Equal(t, err.Error(), "/api/v1/: api returned 418")
 }

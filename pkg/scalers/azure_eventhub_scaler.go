@@ -26,6 +26,7 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	az "github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +51,7 @@ const (
 var eventhubLog = logf.Log.WithName("azure_eventhub_scaler")
 
 type azureEventHubScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *eventHubMetadata
 	client     *eventhub.Hub
 	httpClient *http.Client
@@ -63,6 +65,11 @@ type eventHubMetadata struct {
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
 func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	parsedMetadata, err := parseAzureEventHubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
@@ -74,6 +81,7 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &azureEventHubScaler{
+		metricType: metricType,
 		metadata:   parsedMetadata,
 		client:     hub,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -120,6 +128,26 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	if val, ok := config.TriggerMetadata["blobContainer"]; ok {
 		meta.eventHubInfo.BlobContainer = val
 	}
+
+	meta.eventHubInfo.Cloud = azure.DefaultCloud
+	if val, ok := config.TriggerMetadata["cloud"]; ok {
+		meta.eventHubInfo.Cloud = val
+	}
+
+	serviceBusEndpointSuffixProvider := func(env az.Environment) (string, error) {
+		return env.ServiceBusEndpointSuffix, nil
+	}
+	serviceBusEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, serviceBusEndpointSuffixProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.eventHubInfo.ServiceBusEndpointSuffix = serviceBusEndpointSuffix
+
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
+	}
+	meta.eventHubInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	if (config.PodIdentity == kedav1alpha1.AuthPodIdentity{}) || (config.PodIdentity == kedav1alpha1.AuthPodIdentity{Provider: "none"}) {
 		if config.AuthParams["connection"] != "" {
@@ -171,6 +199,7 @@ func (scaler *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx conte
 		err = errors.Unwrap(err)
 		if stErr, ok := err.(azblob.StorageError); ok {
 			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound || stErr.ServiceCode() == azblob.ServiceCodeContainerNotFound {
+				eventhubLog.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, getting unprocessed event count without checkpoint", scaler.metadata.eventHubInfo.BlobContainer))
 				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
 			}
 		}
@@ -252,15 +281,11 @@ func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 
 // GetMetricSpecForScaling returns metric spec
 func (scaler *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(scaler.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(scaler.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", scaler.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetMetricTarget(scaler.metricType, scaler.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

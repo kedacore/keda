@@ -53,15 +53,11 @@ For example:
 >**Note:** There is a naming helper function `GenerateMetricNameWithIndex(scalerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
 >```golang
 >func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
->	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 >	externalMetric := &v2beta2.ExternalMetricSource{
 >		Metric: v2beta2.MetricIdentifier{
 >			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
->		Target: v2beta2.MetricTarget{
->			Type:         v2beta2.AverageValueMetricType,
->			AverageValue: targetMetricValue,
->		},
+>		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 >	}
 >	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 >	return []v2beta2.MetricSpec{metricSpec}

@@ -51,7 +51,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
-			assert.Equal(t, strconv.Itoa(m.targetPendingEntriesCount), tc.metadata[pendingEntriesCountMetadata])
+			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingEntriesCountMetadata])
 			if authParams != nil {
 				// if authParam is used
 				assert.Equal(t, m.connectionInfo.username, authParams[usernameMetadata])
@@ -145,7 +145,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 		}
 		closeFn := func() error { return nil }
 		getPendingEntriesCountFn := func(ctx context.Context) (int64, error) { return -1, nil }
-		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
+		mockRedisStreamsScaler := redisStreamsScaler{"", meta, closeFn, getPendingEntriesCountFn}
 
 		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

@@ -164,7 +164,7 @@ func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{meta}
+		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{"", meta}
 
 		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

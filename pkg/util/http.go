@@ -41,6 +41,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		Timeout: timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
+			Proxy:           http.ProxyFromEnvironment,
 		},
 	}
 

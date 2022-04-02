@@ -168,7 +168,7 @@ func TestGetServiceBusLength(t *testing.T) {
 		if connectionString != "" {
 			// Can actually test that numbers return
 			scaler.metadata.connection = connectionString
-			length, err := scaler.GetAzureServiceBusLength(context.TODO())
+			length, err := scaler.getAzureServiceBusLength(context.TODO())
 
 			if err != nil {
 				t.Errorf("Expected success but got error: %s", err)
@@ -179,7 +179,7 @@ func TestGetServiceBusLength(t *testing.T) {
 			}
 		} else {
 			// Just test error message
-			length, err := scaler.GetAzureServiceBusLength(context.TODO())
+			length, err := scaler.getAzureServiceBusLength(context.TODO())
 
 			if length != -1 || err == nil {
 				t.Errorf("Expected error but got success")

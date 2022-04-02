@@ -7,33 +7,35 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 )
 
-type parseEndpointSuffixTestData struct {
-	metadata       map[string]string
-	endpointSuffix string
-	suffixProvider EnvironmentSuffixProvider
-	isError        bool
+type parseEnvironmentPropertyTestData struct {
+	metadata            map[string]string
+	endpointSuffix      string
+	endpointKey         string
+	envPropertyProvider EnvironmentPropertyProvider
+	isError             bool
 }
 
-var testSuffixProvider EnvironmentSuffixProvider = func(env az.Environment) (string, error) {
+var testPropertyProvider EnvironmentPropertyProvider = func(env az.Environment) (string, error) {
 	if env == az.USGovernmentCloud {
 		return "", fmt.Errorf("test endpoint is not available in %s", env.Name)
 	}
 	return fmt.Sprintf("%s.suffix", env.Name), nil
 }
 
-var parseEndpointSuffixTestDataset = []parseEndpointSuffixTestData{
-	{map[string]string{}, "AzurePublicCloud.suffix", testSuffixProvider, false},
-	{map[string]string{"cloud": "Invalid"}, "", testSuffixProvider, true},
-	{map[string]string{"cloud": "AzureUSGovernmentCloud"}, "", testSuffixProvider, true},
-	{map[string]string{"cloud": "AzureGermanCloud"}, "AzureGermanCloud.suffix", testSuffixProvider, false},
-	{map[string]string{"cloud": "Private"}, "", testSuffixProvider, true},
-	{map[string]string{"cloud": "Private", "endpointSuffix": "suffix.private.cloud"}, "suffix.private.cloud", testSuffixProvider, false},
-	{map[string]string{"endpointSuffix": "ignored"}, "AzurePublicCloud.suffix", testSuffixProvider, false},
+var parseEnvironmentPropertyTestDataset = []parseEnvironmentPropertyTestData{
+	{map[string]string{}, "AzurePublicCloud.suffix", DefaultEndpointSuffixKey, testPropertyProvider, false},
+	{map[string]string{"cloud": "Invalid"}, "", DefaultEndpointSuffixKey, testPropertyProvider, true},
+	{map[string]string{"cloud": "AzureUSGovernmentCloud"}, "", DefaultEndpointSuffixKey, testPropertyProvider, true},
+	{map[string]string{"cloud": "AzureGermanCloud"}, "AzureGermanCloud.suffix", DefaultEndpointSuffixKey, testPropertyProvider, false},
+	{map[string]string{"cloud": "Private"}, "", DefaultEndpointSuffixKey, testPropertyProvider, true},
+	{map[string]string{"cloud": "Private", "endpointSuffix": "suffix.private.cloud"}, "suffix.private.cloud", DefaultEndpointSuffixKey, testPropertyProvider, false},
+	{map[string]string{"endpointSuffix": "ignored"}, "AzurePublicCloud.suffix", DefaultEndpointSuffixKey, testPropertyProvider, false},
+	{map[string]string{"cloud": "Private", "endpointSuffixDiff": "suffix.private.cloud"}, "suffix.private.cloud", "endpointSuffixDiff", testPropertyProvider, false},
 }
 
-func TestParseEndpointSuffix(t *testing.T) {
-	for _, testData := range parseEndpointSuffixTestDataset {
-		endpointSuffix, err := ParseEndpointSuffix(testData.metadata, testData.suffixProvider)
+func TestParseEnvironmentProperty(t *testing.T) {
+	for _, testData := range parseEnvironmentPropertyTestDataset {
+		endpointSuffix, err := ParseEnvironmentProperty(testData.metadata, testData.endpointKey, testData.envPropertyProvider)
 		if !testData.isError && err != nil {
 			t.Error("Expected success but got error", err)
 		}
@@ -46,6 +48,43 @@ func TestParseEndpointSuffix(t *testing.T) {
 					"For", testData.metadata,
 					"expected endpointSuffix=", testData.endpointSuffix,
 					"but got", endpointSuffix)
+			}
+		}
+	}
+}
+
+const testADEndpoint = "testADEndpoint"
+
+type parseActiveDirectoryEndpointTestData struct {
+	metadata           map[string]string
+	expectedADEndpoint string
+	isError            bool
+}
+
+var parseActiveDirectoryEndpointTestDataset = []parseActiveDirectoryEndpointTestData{
+	{metadata: map[string]string{}, isError: false, expectedADEndpoint: az.PublicCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{"cloud": "AzureChinaCloud"}, isError: false, expectedADEndpoint: az.ChinaCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{"cloud": "private", "activeDirectoryEndpoint": testADEndpoint}, isError: false,
+		expectedADEndpoint: testADEndpoint},
+	{metadata: map[string]string{"cloud": "private"}, isError: true},
+	{metadata: map[string]string{"cloud": "invalid"}, isError: true},
+}
+
+func TestParseActiveDirectoryEndpoint(t *testing.T) {
+	for _, testData := range parseActiveDirectoryEndpointTestDataset {
+		activeDirectoryEndpoint, err := ParseActiveDirectoryEndpoint(testData.metadata)
+		if !testData.isError && err != nil {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if err == nil {
+			if activeDirectoryEndpoint != testData.expectedADEndpoint {
+				t.Error(
+					"For", testData.metadata,
+					"expected activeDirectoryEndpoint=", testData.expectedADEndpoint,
+					"but got", activeDirectoryEndpoint)
 			}
 		}
 	}
