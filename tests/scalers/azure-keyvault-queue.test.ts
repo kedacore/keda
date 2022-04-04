@@ -123,7 +123,7 @@ spec:
     spec:
       containers:
       - name: test-deployment
-        image: docker.io/kedacore/tests-azure-queue:824031e
+        image: ghcr.io/kedacore/tests-azure-queue
         resources:
         ports:
         env:
