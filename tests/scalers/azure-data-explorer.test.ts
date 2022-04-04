@@ -69,73 +69,89 @@ test.before(t => {
         `Replica count should start with ${scaleInDesiredReplicaCount} replicas.`)
 })
 
-test.serial.cb(`Replica count should be scaled out to ${scaleOutDesiredReplicaCount} replicas [Pod Identity]`, t => {
-    // Create trigger auth through Pod Identity
-    t.is(
-        0,
-        sh.exec(`kubectl apply -f ${createYamlFile(triggerAuthPodIdentityYaml)}`).code,
-        'Creating a trigger auth should work.')
-
-    // Create scaled object
-    t.is(
-        0,
-        sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml)}`).code,
-        'Creating a scaled object should work.')
-
-    // Test scale out [Pod Identity]
-    testDeploymentScale(t, scaleOutDesiredReplicaCount)
-    t.end()
-})
-
-test.serial.cb(`Replica count should be scaled in to ${scaleInDesiredReplicaCount} replicas [Pod Identity]`, t => {
-    // Edit azure data explorer query in order to scale down to 0 replicas
-    const scaledObjectFile = tmp.fileSync()
-    fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace(scaleOutMetricValue, scaleInMetricValue))
-    t.is(
-        0,
-        sh.exec(`kubectl apply -f ${scaledObjectFile.name} -n ${dataExplorerNamespace}`).code,
-        'Edit scaled object query should work.')
-
-    // Test scale in [Pod Identity]
-    testDeploymentScale(t, scaleInDesiredReplicaCount)
-    t.end()
-})
-
 test.serial.cb(`Replica count should be scaled out to ${scaleOutDesiredReplicaCount} replicas [clientId & clientSecret]`, t => {
     // Create trigger auth through clientId, clientSecret and tenantId
     t.is(
         0,
         sh.exec(`kubectl apply -f ${createYamlFile(triggerAuthClientIdAndSecretYaml)} -n ${dataExplorerNamespace}`).code,
-        'Change trigger of scaled object auth from pod identity to aad app should work.')
+        'Creating trigger auth with client and secret should work.')
 
-    // Change trigger auth of scaled object from pod identity to clientId and clientSecret
-    const scaledObjectFile = tmp.fileSync()
-    fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace(triggerAuthThroughPodIdentityName, triggerAuthThroughClientAndSecretName))
+    // Create scaled object
     t.is(
-        0,
-        sh.exec(`kubectl apply -f ${scaledObjectFile.name} -n ${dataExplorerNamespace}`).code,
-        'Change trigger of scaled object auth from pod identity to aad app should work.')
+      0,
+      sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml)}`).code,
+      'Creating a scaled object should work.')
 
     // Test scale out [clientId & clientSecret]
     testDeploymentScale(t, scaleOutDesiredReplicaCount)
     t.end()
 })
 
+test.serial.cb(`Replica count should be scaled in to ${scaleInDesiredReplicaCount} replicas [clientId & clientSecret]`, t => {
+  // Edit azure data explorer query in order to scale down to 0 replicas
+  const scaledObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace(scaleOutMetricValue, scaleInMetricValue))
+  t.is(
+      0,
+      sh.exec(`kubectl apply -f ${scaledObjectFile.name} -n ${dataExplorerNamespace}`).code,
+      'Edit scaled object query should work.')
+
+  // Test scale in [clientId & clientSecret]
+  testDeploymentScale(t, scaleInDesiredReplicaCount)
+  t.end()
+})
+
+// Disabled until pod identity is supported on test cluster.
+// Refer https://github.com/kedacore/keda/issues/2841, https://github.com/kedacore/keda/pull/2741
+// test.serial.cb(`Replica count should be scaled out to ${scaleOutDesiredReplicaCount} replicas [Pod Identity]`, t => {
+//   // Create trigger auth through Pod Identity
+//   t.is(
+//       0,
+//       sh.exec(`kubectl apply -f ${createYamlFile(triggerAuthPodIdentityYaml)}`).code,
+//       'Creating a trigger auth should work.')
+
+//   // Change trigger auth of scaled object from clientId and clientSecret to podIdentity
+//   const scaledObjectFile = tmp.fileSync()
+//   fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace(triggerAuthThroughClientAndSecretName, triggerAuthThroughPodIdentityName))
+//   t.is(
+//       0,
+//       sh.exec(`kubectl apply -f ${scaledObjectFile.name} -n ${dataExplorerNamespace}`).code,
+//       'Change trigger of scaled object auth from pod identity to aad app should work.')
+
+//   // Test scale out [Pod Identity]
+//   testDeploymentScale(t, scaleOutDesiredReplicaCount)
+//   t.end()
+// })
+
+// test.serial.cb(`Replica count should be scaled in to ${scaleInDesiredReplicaCount} replicas [Pod Identity]`, t => {
+//   // Edit azure data explorer query in order to scale down to 0 replicas
+//   const scaledObjectFile = tmp.fileSync()
+//   fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml.replace(scaleOutMetricValue, scaleInMetricValue))
+//   t.is(
+//       0,
+//       sh.exec(`kubectl apply -f ${scaledObjectFile.name} -n ${dataExplorerNamespace}`).code,
+//       'Edit scaled object query should work.')
+
+//   // Test scale in [Pod Identity]
+//   testDeploymentScale(t, scaleInDesiredReplicaCount)
+//   t.end()
+// })
+
 test.after.always.cb('Clean up E2E K8s objects', t => {
-    const resources = [
-        `scaledobject.keda.sh/${scaledObjectName}`,
-        `triggerauthentications.keda.sh/${triggerAuthThroughClientAndSecretName}`,
-        `triggerauthentications.keda.sh/${triggerAuthThroughPodIdentityName}`,
-        `statefulsets.apps/${serviceName}`,
-        `v1/${secretName}`,
-        `v1/${dataExplorerNamespace}`
-    ]
+  const resources = [
+      `scaledobject.keda.sh/${scaledObjectName}`,
+      `triggerauthentications.keda.sh/${triggerAuthThroughClientAndSecretName}`,
+      `triggerauthentications.keda.sh/${triggerAuthThroughPodIdentityName}`,
+      `statefulsets.apps/${serviceName}`,
+      `v1/${secretName}`,
+      `v1/${dataExplorerNamespace}`
+  ]
 
-    for (const resource of resources) {
-        sh.exec(`kubectl delete ${resource} -n ${dataExplorerNamespace}`)
-    }
+  for (const resource of resources) {
+      sh.exec(`kubectl delete ${resource} -n ${dataExplorerNamespace}`)
+  }
 
-    t.end()
+  t.end()
 })
 
 function testDeploymentScale(t, desiredReplicaCount: string) {
@@ -200,7 +216,7 @@ spec:
       query: print result = ${scaleOutMetricValue}
       threshold: "5"
     authenticationRef:
-      name: ${triggerAuthThroughPodIdentityName}`
+      name: ${triggerAuthThroughClientAndSecretName}`
 
 // K8s manifests for auth through Pod Identity
 const triggerAuthPodIdentityYaml =
