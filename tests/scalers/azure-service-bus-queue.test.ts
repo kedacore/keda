@@ -67,7 +67,7 @@ test.before(async t => {
 })
 
 test.serial("Deployment should scale up with messages on service bus queue", async t => {
-    // Receive messages from service bus queue
+    // Send messages to service bus queue
     const serviceBusClient = new azure.ServiceBusClient(connectionString)
     const sender = serviceBusClient.createSender(queueName)
 
@@ -88,7 +88,7 @@ test.serial("Deployment should scale up with messages on service bus queue", asy
 })
 
 test.serial("Deployment should scale down with messages on service bus queue", async t => {
-    // Send messages to service bus queue
+    // Receive messages from service bus queue
     const serviceBusClient = new azure.ServiceBusClient(connectionString)
     const receiver = serviceBusClient.createReceiver(queueName)
 
