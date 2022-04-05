@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const dataExplorerDb = process.env['AZURE_DATA_EXPLORER_DB']
 const dataExplorerEndpoint = process.env['AZURE_DATA_EXPLORER_ENDPOINT']
@@ -28,19 +29,8 @@ test.before(t => {
 
     sh.config.silent = true
 
-    // Clean namespace if it exists. Otherwise, create new one.
-    if (sh.exec(`kubectl get namespace ${dataExplorerNamespace}`).code === 0) {
-        t.is(
-            0,
-            sh.exec(`kubectl delete all --all -n ${dataExplorerNamespace}`).code,
-            'Clean namespace should work.')
-    }
-    else {
-        t.is(
-            0,
-            sh.exec(`kubectl create namespace ${dataExplorerNamespace}`).code,
-            'Create namespace should work.')
-    }
+    // Create namespace
+    createNamespace(dataExplorerNamespace)
 
     // Create secret
     const secretFile = tmp.fileSync()
@@ -78,9 +68,9 @@ test.serial.cb(`Replica count should be scaled out to ${scaleOutDesiredReplicaCo
 
     // Create scaled object
     t.is(
-      0,
-      sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml)}`).code,
-      'Creating a scaled object should work.')
+        0,
+        sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml)}`).code,
+        'Creating a scaled object should work.')
 
     // Test scale out [clientId & clientSecret]
     testDeploymentScale(t, scaleOutDesiredReplicaCount)
@@ -143,8 +133,8 @@ test.after.always.cb('Clean up E2E K8s objects', t => {
       `triggerauthentications.keda.sh/${triggerAuthThroughClientAndSecretName}`,
       `triggerauthentications.keda.sh/${triggerAuthThroughPodIdentityName}`,
       `statefulsets.apps/${serviceName}`,
-      `v1/${secretName}`,
-      `v1/${dataExplorerNamespace}`
+      `secrets/${secretName}`,
+      `namespaces/${dataExplorerNamespace}`,
   ]
 
   for (const resource of resources) {
