@@ -134,12 +134,13 @@ test.after.always.cb('Clean up E2E K8s objects', t => {
       `triggerauthentications.keda.sh/${triggerAuthThroughPodIdentityName}`,
       `statefulsets.apps/${serviceName}`,
       `secrets/${secretName}`,
-      `namespaces/${dataExplorerNamespace}`,
   ]
 
   for (const resource of resources) {
       sh.exec(`kubectl delete ${resource} -n ${dataExplorerNamespace}`)
   }
+
+  sh.exec(`kubectl delete namespace ${dataExplorerNamespace}`)
 
   t.end()
 })
