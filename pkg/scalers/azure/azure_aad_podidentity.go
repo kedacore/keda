@@ -59,15 +59,15 @@ func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, a
 		urlStr = fmt.Sprintf(msiURLWithIdentityID, url.QueryEscape(audience), identityID)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
+	TokenRequest, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
 		return token, err
 	}
-	req.Header = map[string][]string{
+	TokenRequest.Header = map[string][]string{
 		"Metadata": {"true"},
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(TokenRequest)
 	if err != nil {
 		return token, err
 	}
