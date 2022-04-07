@@ -15,8 +15,7 @@ const maxReplicaCount = 2
 const threshold = 10
 
 test.before(async t => {
-    // TODO - Uncomment
-    // sh.config.silent = true
+    sh.config.silent = true
 
     // Create Kubernetes Namespace
     createNamespace(testNamespace)
