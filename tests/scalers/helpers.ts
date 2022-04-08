@@ -31,6 +31,12 @@ export async function createNamespace(namespace: string) {
     sh.exec(`kubectl apply -f ${namespaceFile.name}`)
 }
 
+export function createYamlFile(yaml: string) {
+    const tmpFile = tmp.fileSync()
+    fs.writeFileSync(tmpFile.name, yaml)
+    return tmpFile.name
+}
+
 const namespaceTemplate = `apiVersion: v1
 kind: Namespace
 metadata:
