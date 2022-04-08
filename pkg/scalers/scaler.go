@@ -111,8 +111,8 @@ func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
 	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
 }
 
-// GenerateMetricNameWithoutIndex removes the index prefix from the metric name
-func GenerateMetricNameWithoutIndex(scalerIndex int, metricName string) (string, error) {
+// RemoveIndexFromMetricName removes the index prefix from the metric name
+func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
 	metricNameSplit := strings.SplitN(metricName, "-", 2)
 	if len(metricNameSplit) != 2 {
 		return "", fmt.Errorf("metric name without index prefix")

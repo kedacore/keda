@@ -86,7 +86,7 @@ func TestGetMetricTarget(t *testing.T) {
 	}
 }
 
-func TestGenerateMetricNameWithoutIndex(t *testing.T) {
+func TestRemoveIndexFromMetricName(t *testing.T) {
 	cases := []struct {
 		scalerIndex                          int
 		metricName                           string
@@ -104,7 +104,7 @@ func TestGenerateMetricNameWithoutIndex(t *testing.T) {
 	}
 
 	for _, testCase := range cases {
-		metricName, err := GenerateMetricNameWithoutIndex(testCase.scalerIndex, testCase.metricName)
+		metricName, err := RemoveIndexFromMetricName(testCase.scalerIndex, testCase.metricName)
 		if err != nil && !testCase.isError {
 			t.Error("Expected success but got error", err)
 		}
