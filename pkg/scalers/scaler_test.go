@@ -95,6 +95,8 @@ func TestRemoveIndexFromMetricName(t *testing.T) {
 	}{
 		// Proper input
 		{scalerIndex: 0, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
+		// Proper input with scalerIndex > 9
+		{scalerIndex: 123, metricName: "s123-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
 		// Incorrect index prefix
 		{scalerIndex: 1, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
 		// Incorrect index prefix
