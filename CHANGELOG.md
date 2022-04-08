@@ -87,6 +87,7 @@
 - **GCP Pubsub Scaler:** Adding e2e test ([#1528](https://github.com/kedacore/keda/issues/1528))
 - **Hashicorp Vault Secret Provider:** Adding e2e test ([#2842](https://github.com/kedacore/keda/issues/2842))
 - **Memory Scaler:** Adding e2e test ([#2220](https://github.com/kedacore/keda/issues/2220))
+- **Selenium Grid Scaler:** Adding e2e test ([#2791](https://github.com/kedacore/keda/issues/2791))
 
 ## v.2.6.1
 
