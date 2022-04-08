@@ -198,7 +198,11 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 	defer done()
 
 	// Remove the sX- prefix as the external scaler shouldn't have to know about it
-	metricName = strings.SplitN(metricName, "-", 2)[1]
+	metricName, err = GenerateMetricNameWithoutIndex(s.metadata.scalerIndex, metricName)
+	if err != nil {
+		return metrics, err
+	}
+
 	request := &pb.GetMetricsRequest{
 		MetricName:      metricName,
 		ScaledObjectRef: &s.scaledObjectRef,
