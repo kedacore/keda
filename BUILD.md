@@ -137,7 +137,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${file}",
+            "program": "${workspaceFolder}/main.go",
             "env": {"WATCH_NAMESPACE": ""}
         }
     ]
@@ -153,7 +153,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
 4. Set breakpoints in the code as required.
-5. Open the `main.go` file at the root of the repo. Select `Run > Start Debugging` or press `F5` to start debugging.
+5. Select `Run > Start Debugging` or press `F5` to start debugging.
 
 ## Miscellaneous
 
