@@ -60,6 +60,7 @@
 - **Prometheus Scaler:** Support for `X-Scope-OrgID` header ([#2667](https://github.com/kedacore/keda/issues/2667))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 - **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
+- **New Relic Scaler:** Support New Relic account value from authentication resources. ([#2883](https://github.com/kedacore/keda/issues/2883))
 
 ## Deprecations
 
