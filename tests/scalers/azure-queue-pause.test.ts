@@ -80,7 +80,7 @@ test.serial.cb(
       (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb),
       async () => {
          // Scaling out when messages available
-        t.true(await waitForDeploymentReplicaCount(2, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 3 after 1 minute')
+        t.true(await waitForDeploymentReplicaCount(2, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 2 after 1 minute')
         queueSvc.clearMessages(queueName, _ => {})
         t.end()
       }
@@ -101,7 +101,7 @@ test.serial(`Updsating ScaledObject (with 1 paused replica) should work`, async 
 test.serial(
   'Deployment should scale to 1 - to pausedReplicaCount',
   async t => {
-    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 0 after 1 minute')
+    t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 1 after 1 minute')
   }
 )
 
