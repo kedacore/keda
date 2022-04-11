@@ -17,6 +17,7 @@ const (
 	testAWSCloudwatchRoleArn         = "none"
 	testAWSCloudwatchAccessKeyID     = "none"
 	testAWSCloudwatchSecretAccessKey = "none"
+	testAWSCloudwatchSessionToken    = "none"
 	testAWSCloudwatchErrorMetric     = "Error"
 	testAWSCloudwatchNoValueMetric   = "NoValue"
 )
@@ -127,7 +128,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication,
 		true,
 		"Missing metricName"},
-	// with "aws_credentials" from TriggerAuthentication
+	// with static "aws_credentials" from TriggerAuthentication
 	{map[string]string{
 		"namespace":            "AWS/SQS",
 		"dimensionName":        "QueueName",
@@ -142,6 +143,25 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		map[string]string{
 			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+		},
+		false,
+		"with AWS Credentials from TriggerAuthentication"},
+	// with temporary "aws_credentials" from TriggerAuthentication
+	{map[string]string{
+		"namespace":            "AWS/SQS",
+		"dimensionName":        "QueueName",
+		"dimensionValue":       "keda",
+		"metricName":           "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":    "2",
+		"minMetricValue":       "0",
+		"metricCollectionTime": "300",
+		"metricStat":           "Average",
+		"metricStatPeriod":     "300",
+		"awsRegion":            "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
+			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+			"awsSessionToken":    testAWSCloudwatchSessionToken,
 		},
 		false,
 		"with AWS Credentials from TriggerAuthentication"},
@@ -433,7 +453,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{meta, &mockCloudwatch{}}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", meta, &mockCloudwatch{}}
 
 		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -446,7 +466,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsCloudwatchGetMetricTestData {
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{&meta, &mockCloudwatch{}}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}}
 		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName, selector)
 		switch meta.metricsName {
 		case testAWSCloudwatchErrorMetric:

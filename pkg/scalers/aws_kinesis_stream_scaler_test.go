@@ -17,6 +17,7 @@ const (
 	testAWSKinesisRoleArn         = "none"
 	testAWSKinesisAccessKeyID     = "none"
 	testAWSKinesisSecretAccessKey = "none"
+	testAWSKinesisSessionToken    = "none"
 	testAWSKinesisStreamName      = "test"
 	testAWSRegion                 = "eu-west-1"
 	testAWSKinesisErrorStream     = "Error"
@@ -161,7 +162,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		},
 		expected:    &awsKinesisStreamMetadata{},
 		isError:     true,
-		comment:     "with AWS Credentials from TriggerAuthentication, missing Access Key Id",
+		comment:     "with AWS static credentials from TriggerAuthentication, missing Access Key Id",
 		scalerIndex: 5,
 	},
 	{metadata: map[string]string{
@@ -174,7 +175,62 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		},
 		expected:    &awsKinesisStreamMetadata{},
 		isError:     true,
-		comment:     "with AWS Credentials from TriggerAuthentication, missing Secret Access Key",
+		comment:     "with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
+		scalerIndex: 6,
+	},
+	{
+		metadata: map[string]string{
+			"streamName": testAWSKinesisStreamName,
+			"shardCount": "2",
+			"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     testAWSKinesisAccessKeyID,
+			"awsSecretAccessKey": testAWSKinesisSecretAccessKey,
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected: &awsKinesisStreamMetadata{
+			targetShardCount: 2,
+			streamName:       testAWSKinesisStreamName,
+			awsRegion:        testAWSRegion,
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     testAWSKinesisAccessKeyID,
+				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				awsSessionToken:    testAWSKinesisSessionToken,
+				podIdentityOwner:   true,
+			},
+			scalerIndex: 5,
+		},
+		isError:     false,
+		comment:     "with AWS temporary credentials from TriggerAuthentication",
+		scalerIndex: 5,
+	},
+	{
+		metadata: map[string]string{
+			"streamName": testAWSKinesisStreamName,
+			"shardCount": "2",
+			"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     "",
+			"awsSecretAccessKey": testAWSKinesisSecretAccessKey,
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected:    &awsKinesisStreamMetadata{},
+		isError:     true,
+		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
+		scalerIndex: 5,
+	},
+	{metadata: map[string]string{
+		"streamName": testAWSKinesisStreamName,
+		"shardCount": "2",
+		"awsRegion":  testAWSRegion},
+		authParams: map[string]string{
+			"awsAccessKeyID":     testAWSKinesisAccessKeyID,
+			"awsSecretAccessKey": "",
+			"awsSessionToken":    testAWSKinesisSessionToken,
+		},
+		expected:    &awsKinesisStreamMetadata{},
+		isError:     true,
+		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
 		scalerIndex: 6,
 	},
 	{metadata: map[string]string{
@@ -252,7 +308,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -265,7 +321,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsKinesisGetMetricTestData {
-		scaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:

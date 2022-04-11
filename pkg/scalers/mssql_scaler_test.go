@@ -127,7 +127,7 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 			t.Errorf("Wrong query. Expected '%s' but got '%s'", expectedQuery, outputMetadata.query)
 		}
 
-		expectedTargetValue := 1
+		var expectedTargetValue int64 = 1
 		if outputMetadata.targetValue != expectedTargetValue {
 			t.Errorf("Wrong targetValue. Expected %d but got %d", expectedTargetValue, outputMetadata.targetValue)
 		}

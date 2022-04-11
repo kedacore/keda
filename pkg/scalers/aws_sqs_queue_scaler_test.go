@@ -16,10 +16,12 @@ const (
 	testAWSSQSRoleArn         = "none"
 	testAWSSQSAccessKeyID     = "none"
 	testAWSSQSSecretAccessKey = "none"
+	testAWSSQSSessionToken    = "none"
 
 	testAWSSQSProperQueueURL    = "https://sqs.eu-west-1.amazonaws.com/account_id/DeleteArtifactQ"
 	testAWSSQSImproperQueueURL1 = "https://sqs.eu-west-1.amazonaws.com/account_id"
 	testAWSSQSImproperQueueURL2 = "https://sqs.eu-west-1.amazonaws.com"
+	testAWSSimpleQueueURL       = "my-queue"
 
 	testAWSSQSErrorQueueURL   = "https://sqs.eu-west-1.amazonaws.com/account_id/Error"
 	testAWSSQSBadDataQueueURL = "https://sqs.eu-west-1.amazonaws.com/account_id/BadData"
@@ -124,7 +126,18 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
 		false,
-		"with AWS Credentials from TriggerAuthentication"},
+		"with AWS static credentials from TriggerAuthentication"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSSQSAccessKeyID,
+			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
+			"awsSessionToken":    testAWSSQSSessionToken,
+		},
+		false,
+		"with AWS temporary credentials from TriggerAuthentication"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
@@ -134,7 +147,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
 		true,
-		"with AWS Credentials from TriggerAuthentication, missing Access Key Id"},
+		"with AWS static credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
@@ -144,7 +157,29 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": "",
 		},
 		true,
-		"with AWS Credentials from TriggerAuthentication, missing Secret Access Key"},
+		"with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     "",
+			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
+			"awsSessionToken":    testAWSSQSSessionToken,
+		},
+		true,
+		"with AWS temporary credentials from TriggerAuthentication, missing Access Key Id"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSSQSAccessKeyID,
+			"awsSecretAccessKey": "",
+			"awsSessionToken":    testAWSSQSSessionToken,
+		},
+		true,
+		"with AWS static credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
@@ -165,6 +200,13 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		},
 		false,
 		"with AWS Role assigned on KEDA operator itself"},
+	{map[string]string{
+		"queueURL":    testAWSSimpleQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
@@ -197,7 +239,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{meta, &mockSqs{}}
+		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -210,7 +252,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsSQSGetMetricTestData {
-		scaler := awsSqsQueueScaler{meta, &mockSqs{}}
+		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:

@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +20,7 @@ import (
 )
 
 type liiklusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *liiklusMetadata
 	connection *grpc.ClientConn
 	client     liiklus_service.LiiklusServiceClient
@@ -44,12 +46,17 @@ const (
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	lm, err := parseLiiklusMetadata(config)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(lm.address, grpc.WithInsecure())
+	conn, err := grpc.Dial(lm.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +65,7 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	scaler := liiklusScaler{
 		connection: conn,
 		client:     c,
+		metricType: metricType,
 		metadata:   lm,
 	}
 	return &scaler, nil
@@ -83,15 +91,11 @@ func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string, metri
 }
 
 func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: liiklusMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

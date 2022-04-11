@@ -33,6 +33,7 @@ type azurePipelinesPoolIDResponse struct {
 }
 
 type azurePipelinesScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *azurePipelinesMetadata
 	httpClient *http.Client
 }
@@ -42,7 +43,7 @@ type azurePipelinesMetadata struct {
 	organizationName           string
 	personalAccessToken        string
 	poolID                     int
-	targetPipelinesQueueLength int
+	targetPipelinesQueueLength int64
 	scalerIndex                int
 }
 
@@ -52,12 +53,18 @@ var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzurePipelinesMetadata(ctx, config, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %s", err)
 	}
 
 	return &azurePipelinesScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -68,7 +75,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
 
 	if val, ok := config.TriggerMetadata["targetPipelinesQueueLength"]; ok {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing azure pipelines metadata targetPipelinesQueueLength: %s", err.Error())
 		}
@@ -200,14 +207,14 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int, error) {
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
@@ -220,7 +227,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, err
 	}
 
-	var count = 0
+	var count int64
 	jobs, ok := result["value"].([]interface{})
 
 	if !ok {
@@ -238,15 +245,11 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetPipelinesQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetPipelinesQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetPipelinesQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}

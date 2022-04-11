@@ -30,7 +30,16 @@ import (
 )
 
 func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) bool {
-	return scaledObject.Spec.Fallback != nil && metricSpec.External.Target.Type == v2beta2.AverageValueMetricType
+	if scaledObject.Spec.Fallback == nil {
+		return false
+	}
+
+	if metricSpec.External.Target.Type != v2beta2.AverageValueMetricType {
+		logger.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue")
+		return false
+	}
+
+	return true
 }
 
 func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {

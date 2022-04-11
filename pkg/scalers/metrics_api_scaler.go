@@ -24,8 +24,9 @@ import (
 )
 
 type metricsAPIScaler struct {
-	metadata *metricsAPIScalerMetadata
-	client   *http.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *metricsAPIScalerMetadata
+	client     *http.Client
 }
 
 type metricsAPIScalerMetadata struct {
@@ -67,6 +68,11 @@ var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMetricsAPIMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
@@ -84,8 +90,9 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &metricsAPIScaler{
-		metadata: meta,
-		client:   httpClient,
+		metricType: metricType,
+		metadata:   meta,
+		client:     httpClient,
 	}, nil
 }
 
@@ -210,13 +217,13 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (*resource.Quanti
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf("api returned %d", r.StatusCode)
+		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
 		return nil, errors.New(msg)
 	}
 
-	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
@@ -246,15 +253,11 @@ func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValue,
-		},
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

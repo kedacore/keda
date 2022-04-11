@@ -2,14 +2,14 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 const graphiteNamespace = 'graphite'
 const graphiteDeploymentFile = 'scalers/graphite-deployment.yaml'
 
 test.before(t => {
   // install graphite
-  sh.exec(`kubectl create namespace ${graphiteNamespace}`)
+  createNamespace(graphiteNamespace)
   t.is(0,
     sh.exec(`kubectl apply --namespace ${graphiteNamespace} -f ${graphiteDeploymentFile}`).code,
     'creating a Graphite deployment should work.'
@@ -62,7 +62,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
       `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '5') {
-      sh.exec('sleep 5s')
+      sh.exec('sleep 10s')
     }
   }
 
@@ -73,7 +73,7 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
       `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
     ).stdout
     if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
+      sh.exec('sleep 10s')
     }
   }
 

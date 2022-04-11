@@ -25,8 +25,12 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
+const (
+	maxPeekMessages int32 = 32
+)
+
 // GetAzureQueueLength returns the length of a queue in int
-func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, queueName, accountName, endpointSuffix string) (int32, error) {
+func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, queueName, accountName, endpointSuffix string) (int64, error) {
 	credential, endpoint, err := ParseAzureStorageQueueConnection(ctx, httpClient, podIdentity, connectionString, accountName, endpointSuffix)
 	if err != nil {
 		return -1, err
@@ -35,30 +39,31 @@ func GetAzureQueueLength(ctx context.Context, httpClient util.HTTPDoer, podIdent
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
 	serviceURL := azqueue.NewServiceURL(*endpoint, p)
 	queueURL := serviceURL.NewQueueURL(queueName)
+
+	visibleMessageCount, err := getVisibleCount(ctx, &queueURL, maxPeekMessages)
+	if err != nil {
+		return -1, err
+	}
+
+	// Queue has less messages than we allowed to peek for, so no need to get the approximation
+	if visibleMessageCount < int64(maxPeekMessages) {
+		return visibleMessageCount, nil
+	}
+
 	props, err := queueURL.GetProperties(ctx)
 	if err != nil {
 		return -1, err
 	}
 
-	visibleMessageCount, err := getVisibleCount(ctx, &queueURL, 32)
-	if err != nil {
-		return -1, err
-	}
-	approximateMessageCount := props.ApproximateMessagesCount()
-
-	if visibleMessageCount == 32 {
-		return approximateMessageCount, nil
-	}
-
-	return visibleMessageCount, nil
+	return int64(props.ApproximateMessagesCount()), nil
 }
 
-func getVisibleCount(ctx context.Context, queueURL *azqueue.QueueURL, maxCount int32) (int32, error) {
+func getVisibleCount(ctx context.Context, queueURL *azqueue.QueueURL, maxCount int32) (int64, error) {
 	messagesURL := queueURL.NewMessagesURL()
 	queue, err := messagesURL.Peek(ctx, maxCount)
 	if err != nil {
 		return 0, err
 	}
 	num := queue.NumMessages()
-	return num, nil
+	return int64(num), nil
 }

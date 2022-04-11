@@ -20,29 +20,59 @@ import (
 	"context"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/gobwas/glob"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
+type BlobMetadata struct {
+	TargetBlobCount   int64
+	BlobContainerName string
+	BlobDelimiter     string
+	BlobPrefix        string
+	Connection        string
+	AccountName       string
+	MetricName        string
+	EndpointSuffix    string
+	ScalerIndex       int
+	GlobPattern       *glob.Glob
+}
+
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, blobContainerName string, accountName string, blobDelimiter string, blobPrefix string, endpointSuffix string) (int, error) {
-	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, connectionString, accountName, endpointSuffix)
+func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, meta *BlobMetadata) (int64, error) {
+	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
 	if err != nil {
 		return -1, err
 	}
 
 	listBlobsSegmentOptions := azblob.ListBlobsSegmentOptions{
-		Prefix: blobPrefix,
+		Prefix: meta.BlobPrefix,
 	}
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(blobContainerName)
+	containerURL := serviceURL.NewContainerURL(meta.BlobContainerName)
 
-	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, blobDelimiter, listBlobsSegmentOptions)
+	if meta.GlobPattern != nil {
+		props, err := containerURL.ListBlobsFlatSegment(ctx, azblob.Marker{}, azblob.ListBlobsSegmentOptions{})
+		if err != nil {
+			return -1, err
+		}
+
+		var count int64
+		globPattern := *meta.GlobPattern
+		for _, blobItem := range props.Segment.BlobItems {
+			if globPattern.Match(blobItem.Name) {
+				count++
+			}
+		}
+		return count, nil
+	}
+
+	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, meta.BlobDelimiter, listBlobsSegmentOptions)
 	if err != nil {
 		return -1, err
 	}
 
-	return len(props.Segment.BlobItems), nil
+	return int64(len(props.Segment.BlobItems)), nil
 }

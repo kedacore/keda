@@ -19,9 +19,11 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -84,6 +86,9 @@ type ScalerConfig struct {
 
 	// ScalerIndex
 	ScalerIndex int
+
+	// MetricType
+	MetricType v2beta2.MetricTargetType
 }
 
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
@@ -104,4 +109,49 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 // GenerateMetricNameWithIndex helps adding the index prefix to the metric name
 func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
 	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
+}
+
+// RemoveIndexFromMetricName removes the index prefix from the metric name
+func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
+	metricNameSplit := strings.SplitN(metricName, "-", 2)
+	if len(metricNameSplit) != 2 {
+		return "", fmt.Errorf("metric name without index prefix")
+	}
+
+	indexPrefix, metricNameWithoutIndex := metricNameSplit[0], metricNameSplit[1]
+	if indexPrefix != fmt.Sprintf("s%d", scalerIndex) {
+		return "", fmt.Errorf("metric name contains incorrect index prefix")
+	}
+
+	return metricNameWithoutIndex, nil
+}
+
+// GetMetricTargetType helps getting the metric target type of the scaler
+func GetMetricTargetType(config *ScalerConfig) (v2beta2.MetricTargetType, error) {
+	switch config.MetricType {
+	case v2beta2.UtilizationMetricType:
+		return "", fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
+	case "":
+		// Use AverageValue if no metric type was provided
+		return v2beta2.AverageValueMetricType, nil
+	default:
+		return config.MetricType, nil
+	}
+}
+
+// GetMetricTarget returns a metric target for a valid given metric target type (Value or AverageValue) and value
+func GetMetricTarget(metricType v2beta2.MetricTargetType, metricValue int64) v2beta2.MetricTarget {
+	target := v2beta2.MetricTarget{
+		Type: metricType,
+	}
+
+	// Construct the target size as a quantity
+	targetQty := resource.NewQuantity(metricValue, resource.DecimalSI)
+	if metricType == v2beta2.AverageValueMetricType {
+		target.AverageValue = targetQty
+	} else {
+		target.Value = targetQty
+	}
+
+	return target
 }

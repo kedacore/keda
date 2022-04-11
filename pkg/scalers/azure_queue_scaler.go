@@ -42,13 +42,14 @@ const (
 )
 
 type azureQueueScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureQueueMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 	httpClient  *http.Client
 }
 
 type azureQueueMetadata struct {
-	targetQueueLength int
+	targetQueueLength int64
 	queueName         string
 	connection        string
 	accountName       string
@@ -60,12 +61,18 @@ var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
 // NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, podIdentity, err := parseAzureQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
 	}
 
 	return &azureQueueScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: podIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -77,7 +84,7 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, "", fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
@@ -163,15 +170,11 @@ func (s *azureQueueScaler) Close(context.Context) error {
 }
 
 func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-queue-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -196,7 +199,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

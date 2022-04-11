@@ -2,7 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {waitForRollout} from "./helpers";
+import {createNamespace, waitForRollout} from "./helpers";
 
 const redisNamespace = 'redis-sentinel'
 const redisService = 'redis-sentinel'
@@ -28,24 +28,24 @@ const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-aut
 
 test.before(t => {
     // Deploy Redis sentinel.
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
+    createNamespace(redisNamespace)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let sentinelStatus = sh.exec(`helm install --timeout 600s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
+    let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
     t.is(0,
         sentinelStatus,
         'creating a Redis sentinel setup should work.'
     )
 
     // Wait for Redis sentinel to be ready.
-   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 300), 'Redis is not in a ready state')
+   t.is(0, waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 600), 'Redis is not in a ready state')
 
     // Get Redis sentinel address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
     redisAddress = `${redisHost}:${redisPort}`
 
     // Create test namespace.
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     const triggerAuthTmpFile = tmp.fileSync()
     const base64Password = Buffer.from(redisPassword).toString('base64')
@@ -142,19 +142,19 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -164,7 +164,7 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 test.serial('Deployment for redis address env var should have 0 replica on start', t => {
@@ -182,19 +182,19 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -204,7 +204,7 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 
@@ -222,19 +222,19 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -244,7 +244,7 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 

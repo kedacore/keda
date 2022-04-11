@@ -11,12 +11,12 @@ jobs:
     container: kedacore/build-tools:v1
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
       - name: Go modules cache
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3.0.2
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -42,6 +42,6 @@ jobs:
           AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
-          TEST_STORAGE_CONNECTION_STRING: ${{ secrets.TEST_STORAGE_CONNECTION_STRING }}
-          TEST_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TEST_LOG_ANALYTICS_WORKSPACE_ID }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
         run: make e2e-test

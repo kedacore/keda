@@ -54,21 +54,14 @@ issues:
     - path: scale_handler.go
       linters:
         - gocyclo
+    - path: scale_scaledobjects.go
+      linters:
+        - gocyclo
   # Exclude for clustertriggerauthentication_controller and triggerauthentication_controller, reason:
   # controllers/clustertriggerauthentication_controller.go:1: 1-59 lines are duplicate of `controllers/triggerauthentication_controller.go:1-58` (dupl)
     - path: triggerauthentication_controller.go
       linters:
         - dupl
-  # Got "sigs.k8s.io/controller-runtime/pkg/client/fake is deprecated: please use pkg/envtest for testing"
-  # This might not be ideal, see: https://github.com/kubernetes-sigs/controller-runtime/issues/768
-    - path: scale_resolvers_test.go
-      linters:
-        - staticcheck
-  # Got "sigs.k8s.io/controller-runtime/pkg/client/fake is deprecated: please use pkg/envtest for testing"
-  # This might not be ideal, see: https://github.com/kubernetes-sigs/controller-runtime/issues/768
-    - path: kubernetes_workload_scaler_test.go
-      linters:
-        - staticcheck
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
@@ -76,7 +69,11 @@ issues:
     - linters:
        - stylecheck
       text: "ST1000:"
-
+  # The call to autorest.Send() in scalers/azure_app_insights.go is marked as not closing the response body. However, autorest.DoCloseIfError()
+  # and autorest.ByClosing() should ensure that the response body is closed.
+    - path: azure/azure_app_insights.go
+      linters:
+        - bodyclose
 linters-settings:
   funlen:
     lines: 80

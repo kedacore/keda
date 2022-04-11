@@ -18,6 +18,8 @@ const (
 	eventHubConsumerGroup     = "testEventHubConsumerGroup"
 	eventHubConnectionSetting = "testEventHubConnectionSetting"
 	storageConnectionSetting  = "testStorageConnectionSetting"
+	serviceBusEndpointSuffix  = "serviceBusEndpointSuffix"
+	activeDirectoryEndpoint   = "activeDirectoryEndpoint"
 	testEventHubNamespace     = "kedatesteventhub"
 	testEventHubName          = "eventhub1"
 	checkpointFormat          = "{\"SequenceNumber\":%d,\"PartitionId\":\"%s\"}"
@@ -63,6 +65,21 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubNamespace": testEventHubNamespace}, true},
 	// missing eventHubNamespace
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName}, true},
+	// metadata with cloud specified
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "azurePublicCloud"}, false},
+	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private"}, true},
+	// metadata with private cloud missing active directory endpoint
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix}, true},
+	// metadata with private cloud missing service bus endpoint suffix
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "activeDirectoryEndpoint": activeDirectoryEndpoint}, true},
+	// properly formed metadata with private cloud
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint}, false},
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
@@ -111,7 +128,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
-	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
+	storageConnectionString := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
@@ -197,7 +214,7 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 	t.Logf("EventHub has 1 message in partition 0 and 0 messages in partition 1")
 
 	eventHubKey := os.Getenv("AZURE_EVENTHUB_KEY")
-	storageConnectionString := os.Getenv("TEST_STORAGE_CONNECTION_STRING")
+	storageConnectionString := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)

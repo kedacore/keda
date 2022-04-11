@@ -21,6 +21,7 @@ import (
 )
 
 type artemisScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *artemisMetadata
 	httpClient *http.Client
 }
@@ -34,7 +35,7 @@ type artemisMetadata struct {
 	username           string
 	password           string
 	restAPITemplate    string
-	queueLength        int
+	queueLength        int64
 	corsHeader         string
 	scalerIndex        int
 }
@@ -63,12 +64,18 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// the global client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
 
 	return &artemisScaler{
+		metricType: metricType,
 		metadata:   artemisMetadata,
 		httpClient: httpClient,
 	}, nil
@@ -115,7 +122,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queueLength"]; ok {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse queueLength: %s", err)
 		}
@@ -214,9 +221,9 @@ func (s *artemisScaler) getMonitoringEndpoint() string {
 	return monitoringEndpoint
 }
 
-func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
+func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error) {
 	var monitoringInfo *artemisMonitoring
-	messageCount := 0
+	var messageCount int64
 
 	client := s.httpClient
 	url := s.getMonitoringEndpoint()
@@ -240,7 +247,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 		return -1, err
 	}
 	if resp.StatusCode == 200 && monitoringInfo.Status == 200 {
-		messageCount = monitoringInfo.MsgCount
+		messageCount = int64(monitoringInfo.MsgCount)
 	} else {
 		return -1, fmt.Errorf("artemis management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
@@ -251,15 +258,11 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int, error) {
 }
 
 func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.queueLength), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -276,7 +279,7 @@ func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metri
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(messages), resource.DecimalSI),
+		Value:      *resource.NewQuantity(messages, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

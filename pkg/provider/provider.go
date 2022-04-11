@@ -77,7 +77,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	logger.V(1).Info("KEDA Metrics Server received request for external metrics", "namespace", namespace, "metric name", info.Metric, "metricSelector", metricSelector.String())
 	selector, err := labels.ConvertSelectorToLabelsMap(metricSelector.String())
 	if err != nil {
-		logger.Error(err, "Error converting Selector to Labels Map")
+		logger.Error(err, "error converting Selector to Labels Map")
 		return nil, err
 	}
 
@@ -96,15 +96,14 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 
 	scaledObject := &scaledObjects.Items[0]
 	var matchingMetrics []external_metrics.ExternalMetricValue
-	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
-	if err != nil {
-		return nil, err
-	}
 
+	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
 	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
+
+	scalerError := false
 
 	for scalerIndex, scaler := range cache.GetScalers() {
 		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
@@ -121,6 +120,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
 
 				if err != nil {
+					scalerError = true
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
 				} else {
 					for _, metric := range metrics {
@@ -134,8 +134,18 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		}
 	}
 
+	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
+	// in this case we try to build all scalers (and resolve all secrets/creds) again in the next call
+	if scalerError {
+		err := p.scaleHandler.ClearScalersCache(ctx, scaledObject)
+		if err != nil {
+			logger.Error(err, "error clearing scalers cache")
+		}
+		logger.V(1).Info("scaler error encountered, clearing scaler cache")
+	}
+
 	if len(matchingMetrics) == 0 {
-		return nil, fmt.Errorf("No matching metrics found for " + info.Metric)
+		return nil, fmt.Errorf("no matching metrics found for " + info.Metric)
 	}
 
 	return &external_metrics.ExternalMetricValueList{
@@ -164,7 +174,7 @@ func (p *KedaProvider) GetMetricByName(ctx context.Context, name types.Namespace
 // GetMetricBySelector fetches a particular metric for a set of objects matching
 // the given label selector.  The namespace will be empty if the metric is root-scoped.
 func (p *KedaProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	logger.V(0).Info("Received request for custom metric", "groupresource", info.GroupResource.String(), "namespace", namespace, "metric name", info.Metric, "selector", selector.String())
+	logger.V(0).Info("Received request for custom metric, which is not supported by this adapter", "groupresource", info.GroupResource.String(), "namespace", namespace, "metric name", info.Metric, "selector", selector.String())
 	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
 }
 

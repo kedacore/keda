@@ -1,8 +1,8 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import { createNamespace } from './helpers'
 
 const testNamespace = 'mysql-test'
 const mySQLNamespace = 'mysql'
@@ -14,7 +14,7 @@ const deploymentName = 'worker'
 
 test.before(t => {
     // install mysql
-    sh.exec(`kubectl create namespace ${mySQLNamespace}`)
+    createNamespace(mySQLNamespace)
     const mySQLTmpFile = tmp.fileSync()
     fs.writeFileSync(mySQLTmpFile.name, mysqlDeploymentYaml.replace('{{MYSQL_USER}}', mySQLUsername)
         .replace('{{MYSQL_PASSWORD}}', mySQLPassword)
@@ -40,7 +40,7 @@ test.before(t => {
 
     sh.config.silent = true
 
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
@@ -76,7 +76,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
 
     const maxReplicaCount = '5'
 
-    for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
+    for (let i = 0; i < 60 && replicaCount !== maxReplicaCount; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -85,7 +85,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
         }
     }
 
-    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 60 seconds`)
+    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 120 seconds`)
 
     for (let i = 0; i < 36 && replicaCount !== '0'; i++) {
       replicaCount = sh.exec(
@@ -137,7 +137,7 @@ spec:
         app: mysql-update-worker
     spec:
       containers:
-      - image: docker.io/kedacore/tests-mysql:824031e
+      - image: ghcr.io/kedacore/tests-mysql
         imagePullPolicy: Always
         name: mysql-processor-test
         command:
@@ -202,7 +202,7 @@ spec:
         app: mysql-insert-job
     spec:
       containers:
-      - image: docker.io/kedacore/tests-mysql:824031e
+      - image: ghcr.io/kedacore/tests-mysql
         imagePullPolicy: Always
         name: mysql-processor-test
         command:

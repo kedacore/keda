@@ -69,7 +69,7 @@ var _ = Describe("fallback", func() {
 		}
 		scaler = mock_scalers.NewMockScaler(ctrl)
 
-		logger = logr.DiscardLogger{}
+		logger = logr.Discard()
 	})
 
 	AfterEach(func() {

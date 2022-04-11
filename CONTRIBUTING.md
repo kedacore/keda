@@ -12,6 +12,7 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Getting Help](#getting-help)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
+- [Changelog](#changelog)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
@@ -44,6 +45,16 @@ Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW
 It is mandatory to provide end-to-end (e2e) tests for new scaler. For more information on e2e testing in KEDA
 check the [test documentation](./tests/README.md). Those tests are run nightly on our
 [CI system](https://github.com/kedacore/keda/actions?query=workflow%3A%22nightly+e2e+test%22).
+
+## Changelog
+
+Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
+
+Here are some guidelines to follow:
+- Always use `General: ` or `<Scaler Name>: ` as a prefix and sort them alphabetically
+  - General changes, however, should always be at the top
+- Entries should always follow the `<Scaler Name / General>: <Description> (#<ID>)` where `<ID>` is preferrably the ID of an issue, otherwise a PR is OK.
+- New scalers should use `General:` and use this template: `**General:** Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`
 
 ## Including Documentation Changes
 
@@ -111,7 +122,7 @@ For more installation options visit the [pre-commits](https://pre-commit.com).
 
 Before running pre-commit, you must install the [golangci-lint](https://golangci-lint.run/) tool as a static check tool for golang code (contains a series of linter)
 ```shell script
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0
 # or
 brew install golangci/tap/golangci-lint
 ```
