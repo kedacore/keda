@@ -78,15 +78,17 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	meta := newrelicMetadata{}
 	var err error
-	if val, ok := config.TriggerMetadata[account]; ok && val != "" {
-		t, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", account, err)
-		}
-		meta.account = t
-	} else {
+
+	val, err := GetFromAuthOrMeta(config, account)
+	if err != nil {
 		return nil, fmt.Errorf("no %s given", account)
 	}
+
+	t, err := strconv.Atoi(val)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %s: %s", account, err)
+	}
+	meta.account = t
 
 	if val, ok := config.TriggerMetadata[nrql]; ok && val != "" {
 		meta.nrql = val
