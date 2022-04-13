@@ -24,7 +24,7 @@
     "@types/shelljs": "^0.8.5",
     "@types/tmp": "^0.1.0",
     "applicationinsights": "^2.1.9",
-    "async": "^3.1.0",
+    "async": "^3.2.2",
     "ava": "^3.15.0",
     "axios": "^0.21.2",
     "azure-devops-node-api": "^10.2.2",
