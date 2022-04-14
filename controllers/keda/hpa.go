@@ -31,6 +31,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	version "github.com/kedacore/keda/v2/version"
 )
 
@@ -90,10 +91,26 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		labels[key] = value
 	}
 
+	minReplicas := getHPAMinReplicas(scaledObject)
+	maxReplicas := getHPAMaxReplicas(scaledObject)
+
+	pausedCount, err := executor.GetPausedReplicaCount(scaledObject)
+	if err != nil {
+		return nil, err
+	}
+	if pausedCount != nil {
+		// MinReplicas on HPA can't be 0
+		if *pausedCount == 0 {
+			*pausedCount = 1
+		}
+		minReplicas = pausedCount
+		maxReplicas = *pausedCount
+	}
+
 	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{
 		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
-			MinReplicas: getHPAMinReplicas(scaledObject),
-			MaxReplicas: getHPAMaxReplicas(scaledObject),
+			MinReplicas: minReplicas,
+			MaxReplicas: maxReplicas,
 			Metrics:     scaledObjectMetricSpecs,
 			Behavior:    behavior,
 			ScaleTargetRef: autoscalingv2beta2.CrossVersionObjectReference{
