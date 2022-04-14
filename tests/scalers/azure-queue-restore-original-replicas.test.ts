@@ -1,21 +1,33 @@
+import * as azure from 'azure-storage'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
+import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
 
 const defaultNamespace = 'azure-queue-restore-original-replicas-test'
-const connectionString = process.env['TEST_STORAGE_CONNECTION_STRING']
+const queueName = 'queue-name-restore'
+const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 
-test.before(t => {
+test.before(async t => {
   if (!connectionString) {
-    t.fail('TEST_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
+    t.fail('AZURE_STORAGE_CONNECTION_STRING environment variable is required for queue tests')
   }
+
+  const createQueueAsync = () => new Promise((resolve, _) => {
+    const queueSvc = azure.createQueueService(connectionString)
+    queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+    queueSvc.createQueueIfNotExists(queueName, _ => {
+      resolve(undefined);
+    })
+  })
+  await createQueueAsync()
 
   sh.config.silent = true
   const base64ConStr = Buffer.from(connectionString).toString('base64')
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{CONNECTION_STRING_BASE64}}', base64ConStr))
-  sh.exec(`kubectl create namespace ${defaultNamespace}`)
+  createNamespace(defaultNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${defaultNamespace}`).code,
@@ -23,11 +35,8 @@ test.before(t => {
   )
 })
 
-test.serial('Deployment should have 2 replicas on start', t => {
-  const replicaCount = sh.exec(
-    `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-  ).stdout
-  t.is(replicaCount, '2', 'replica count should start out as 2')
+test.serial('Deployment should have 2 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(2, 'test-deployment', defaultNamespace, 15, 1000), 'replica count should be 2 after 15 seconds')
 })
 
 test.serial('Creating ScaledObject should work', t => {
@@ -44,18 +53,8 @@ test.serial('Creating ScaledObject should work', t => {
 
 test.serial(
   'Deployment should scale to 0 and then shold be back to 2 after deletion of ScaledObject',
-  t => {
-    let replicaCount = '100'
-    for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-      replicaCount = sh.exec(
-        `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-      ).stdout
-      if (replicaCount !== '0') {
-        sh.exec('sleep 5s')
-      }
-    }
-    t.is('0', replicaCount, 'Replica count should be 0')
-
+  async t => {
+    t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should be 0 after 2 minutes')
 
     t.is(
       0,
@@ -63,15 +62,7 @@ test.serial(
       'deletion of ScaledObject should work.'
     )
 
-    for (let i = 0; i < 50 && replicaCount !== '2'; i++) {
-      replicaCount = sh.exec(
-        `kubectl get deployment.apps/test-deployment --namespace ${defaultNamespace} -o jsonpath="{.spec.replicas}"`
-      ).stdout
-      if (replicaCount !== '2') {
-        sh.exec('sleep 5s')
-      }
-    }
-    t.is('2', replicaCount, 'Replica count should be back at orignal 2')
+    t.true(await waitForDeploymentReplicaCount(2, 'test-deployment', defaultNamespace, 120, 1000), 'replica count should be 2 after 2 minutes')
   }
 )
 
@@ -86,7 +77,13 @@ test.after.always.cb('clean up azure-queue deployment', t => {
     sh.exec(`kubectl delete ${resource} --namespace ${defaultNamespace}`)
   }
   sh.exec(`kubectl delete namespace ${defaultNamespace}`)
-  t.end()
+
+  // delete test queue
+  const queueSvc = azure.createQueueService(connectionString)
+  queueSvc.deleteQueueIfExists(queueName, err => {
+     t.falsy(err, 'should delete test queue successfully')
+     t.end()
+  })
 })
 
 const deployYaml = `apiVersion: v1
@@ -117,7 +114,7 @@ spec:
     spec:
       containers:
       - name: test-deployment
-        image: docker.io/kedacore/tests-azure-queue:824031e
+        image: ghcr.io/kedacore/tests-azure-queue
         resources:
         ports:
         env:
@@ -145,5 +142,5 @@ spec:
   triggers:
   - type: azure-queue
     metadata:
-      queueName: queue-name
+      queueName: ${queueName}
       connectionFromEnv: AzureWebJobsStorage`

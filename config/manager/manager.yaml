@@ -29,7 +29,7 @@ spec:
           command:
             - /keda
           args:
-            - --enable-leader-election
+            - --leader-elect
             - --zap-log-level=info
             - --zap-encoder=console
           imagePullPolicy: Always
@@ -57,6 +57,8 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: ""
       terminationGracePeriodSeconds: 10
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux

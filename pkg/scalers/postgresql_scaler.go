@@ -19,27 +19,28 @@ import (
 )
 
 type postgreSQLScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *postgreSQLMetadata
 	connection *sql.DB
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue int
+	targetQueryValue int64
 	connection       string
-	userName         string
-	password         string
-	host             string
-	port             string
 	query            string
-	dbName           string
-	sslmode          string
 	metricName       string
+	scalerIndex      int
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
@@ -50,6 +51,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
 	}
 	return &postgreSQLScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -65,7 +67,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.Atoi(val)
+		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -80,75 +82,60 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	case config.TriggerMetadata["connectionFromEnv"] != "":
 		meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 	default:
-		meta.connection = ""
-		if val, ok := config.TriggerMetadata["host"]; ok {
-			meta.host = val
-		} else {
-			return nil, fmt.Errorf("no  host given")
-		}
-		if val, ok := config.TriggerMetadata["port"]; ok {
-			meta.port = val
-		} else {
-			return nil, fmt.Errorf("no  port given")
+		host, err := GetFromAuthOrMeta(config, "host")
+		if err != nil {
+			return nil, err
 		}
 
-		if val, ok := config.TriggerMetadata["userName"]; ok {
-			meta.userName = val
-		} else {
-			return nil, fmt.Errorf("no  username given")
-		}
-		if val, ok := config.TriggerMetadata["dbName"]; ok {
-			meta.dbName = val
-		} else {
-			return nil, fmt.Errorf("no dbname given")
-		}
-		if val, ok := config.TriggerMetadata["sslmode"]; ok {
-			meta.sslmode = val
-		} else {
-			return nil, fmt.Errorf("no sslmode name given")
+		port, err := GetFromAuthOrMeta(config, "port")
+		if err != nil {
+			return nil, err
 		}
 
+		userName, err := GetFromAuthOrMeta(config, "userName")
+		if err != nil {
+			return nil, err
+		}
+
+		dbName, err := GetFromAuthOrMeta(config, "dbName")
+		if err != nil {
+			return nil, err
+		}
+
+		sslmode, err := GetFromAuthOrMeta(config, "sslmode")
+		if err != nil {
+			return nil, err
+		}
+
+		var password string
 		if config.AuthParams["password"] != "" {
-			meta.password = config.AuthParams["password"]
+			password = config.AuthParams["password"]
 		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+			password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
+
+		meta.connection = fmt.Sprintf(
+			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
+			host,
+			port,
+			userName,
+			dbName,
+			sslmode,
+			password,
+		)
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", val))
 	} else {
-		if meta.connection != "" {
-			maskedConnectionString, err := kedautil.MaskPartOfURL(meta.connection, kedautil.Password)
-			if err != nil {
-				return nil, fmt.Errorf("url parsing error %s", err.Error())
-			}
-
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", maskedConnectionString))
-		} else {
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", meta.dbName))
-		}
+		meta.metricName = kedautil.NormalizeString("postgresql")
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
 func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
-	var connStr string
-	if meta.connection != "" {
-		connStr = meta.connection
-	} else {
-		connStr = fmt.Sprintf(
-			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
-			meta.host,
-			meta.port,
-			meta.userName,
-			meta.dbName,
-			meta.sslmode,
-			meta.password,
-		)
-	}
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", meta.connection)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
@@ -162,7 +149,7 @@ func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
 }
 
 // Close disposes of postgres connections
-func (s *postgreSQLScaler) Close() error {
+func (s *postgreSQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
 		postgreSQLLog.Error(err, "Error closing postgreSQL connection")
@@ -173,7 +160,7 @@ func (s *postgreSQLScaler) Close() error {
 
 // IsActive returns true if there are pending messages to be processed
 func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getActiveNumber()
+	messages, err := s.getActiveNumber(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
@@ -181,9 +168,9 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber() (int, error) {
-	var id int
-	err := s.connection.QueryRow(s.metadata.query).Scan(&id)
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
+	var id int64
+	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
 		return 0, fmt.Errorf("could not query postgreSQL: %s", err)
@@ -192,17 +179,12 @@ func (s *postgreSQLScaler) getActiveNumber() (int, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.targetQueryValue), resource.DecimalSI)
-
+func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -212,14 +194,14 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getActiveNumber()
+	num, err := s.getActiveNumber(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.15.6 as builder
+FROM --platform=$BUILDPLATFORM golang:1.17.3 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -21,12 +21,15 @@ COPY hack/ hack/
 COPY version/ version/
 COPY main.go main.go
 COPY adapter/ adapter/
-COPY api/ api/
+COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 
 # Build
-RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make manager-dockerfile
+# https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
+ARG TARGETOS
+ARG TARGETARCH
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH make manager
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"testing"
@@ -16,14 +17,15 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 		authParams  map[string]string
 	}
 
-	authParams := map[string]string{"password": "foobarred"}
+	authParams := map[string]string{"username": "foobarred", "password": "foobarred"}
 
 	testCases := []testCase{
 		{
 			name:     "with address",
-			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
 			resolvedEnv: map[string]string{
 				"REDIS_SERVICE":  "myredis:6379",
+				"REDIS_USERNAME": "foobarred",
 				"REDIS_PASSWORD": "foobarred",
 			},
 			authParams: nil,
@@ -31,10 +33,11 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 
 		{
 			name:     "with host and port",
-			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
 			resolvedEnv: map[string]string{
 				"REDIS_HOST":     "myredis",
 				"REDIS_PORT":     "6379",
+				"REDIS_USERNAME": "foobarred",
 				"REDIS_PASSWORD": "foobarred",
 			},
 			authParams: authParams,
@@ -48,14 +51,17 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
-			assert.Equal(t, strconv.Itoa(m.targetPendingEntriesCount), tc.metadata[pendingEntriesCountMetadata])
+			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingEntriesCountMetadata])
 			if authParams != nil {
 				// if authParam is used
+				assert.Equal(t, m.connectionInfo.username, authParams[usernameMetadata])
 				assert.Equal(t, m.connectionInfo.password, authParams[passwordMetadata])
 			} else {
-				// if metadata is used to pass password env var name
+				// if metadata is used to pass credentials' env var names
+				assert.Equal(t, m.connectionInfo.username, tc.resolvedEnv[tc.metadata[usernameMetadata]])
 				assert.Equal(t, m.connectionInfo.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
 			}
+
 			assert.Equal(t, strconv.Itoa(m.databaseIndex), tc.metadata[databaseIndexMetadata])
 			b, err := strconv.ParseBool(tc.metadata[enableTLSMetadata])
 			assert.Nil(t, err)
@@ -116,6 +122,7 @@ type redisStreamsTestMetadata struct {
 func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	type redisStreamsMetricIdentifier struct {
 		metadataTestData *redisStreamsTestMetadata
+		scalerIndex      int
 		name             string
 	}
 
@@ -127,19 +134,20 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	var redisStreamMetricIdentifiers = []redisStreamsMetricIdentifier{
-		{&redisStreamsTestData[0], "redis-streams-my-stream-my-stream-consumer-group"},
+		{&redisStreamsTestData[0], 0, "s0-redis-streams-my-stream"},
+		{&redisStreamsTestData[0], 1, "s1-redis-streams-my-stream"},
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams}, parseRedisAddress)
+		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		closeFn := func() error { return nil }
-		getPendingEntriesCountFn := func() (int64, error) { return -1, nil }
-		mockRedisStreamsScaler := redisStreamsScaler{meta, closeFn, getPendingEntriesCountFn}
+		getPendingEntriesCountFn := func(ctx context.Context) (int64, error) { return -1, nil }
+		mockRedisStreamsScaler := redisStreamsScaler{"", meta, closeFn, getPendingEntriesCountFn}
 
-		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling()
+		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
@@ -243,6 +251,130 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "username given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"username": "username",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "username",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "username given in metadata",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"username":            "username",
+			},
+			authParams: map[string]string{},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "username",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "username given in metadata from env",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"usernameFromEnv":     "REDIS_USERNAME",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "password given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "password given in metadata from env",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"passwordFromEnv":     "REDIS_PASSWORD",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "none",
+				},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -254,6 +386,445 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				AuthParams:      c.authParams,
 			}
 			meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
+			if c.wantErr != nil {
+				assert.Contains(t, err.Error(), c.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, c.wantMeta, meta)
+		})
+	}
+}
+
+func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
+	cases := []struct {
+		name        string
+		metadata    map[string]string
+		resolvedEnv map[string]string
+		authParams  map[string]string
+		wantMeta    *redisStreamsMetadata
+		wantErr     error
+	}{
+		{
+			name:     "empty metadata",
+			wantMeta: nil,
+			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+		},
+		{
+			name: "unequal number of hosts/ports",
+			metadata: map[string]string{
+				"hosts": "a, b, c",
+				"ports": "1, 2",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+		},
+		{
+			name: "no stream name",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"pendingEntriesCount": "5",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("missing redis stream name"),
+		},
+		{
+			name: "missing pending entries count",
+			metadata: map[string]string{
+				"hosts":  "a, b, c",
+				"ports":  "1, 2, 3",
+				"stream": "my-stream",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("missing pending entries count"),
+		},
+		{
+			name: "invalid pending entries count",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"pendingEntriesCount": "invalid",
+			},
+			wantMeta: nil,
+			wantErr:  errors.New("error parsing pending entries count"),
+		},
+		{
+			name: "address is defined in auth params",
+			metadata: map[string]string{
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "hosts and ports given in auth params",
+			metadata: map[string]string{
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"hosts": "   a, b,    c ",
+				"ports": "1, 2, 3",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "username given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"username": "username",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "username",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "username given in metadata",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"username":            "username",
+			},
+			authParams: map[string]string{},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "username",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "username given in metadata from env",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"usernameFromEnv":     "REDIS_USERNAME",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					username:  "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "password given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "password given in metadata from env",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"passwordFromEnv":     "REDIS_PASSWORD",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelUsername given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"sentinelUsername": "sentinelUsername",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:        []string{"a:1", "b:2", "c:3"},
+					hosts:            []string{"a", "b", "c"},
+					ports:            []string{"1", "2", "3"},
+					sentinelUsername: "sentinelUsername",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelUsername given in metadata",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"sentinelUsername":    "sentinelUsername",
+			},
+			authParams: map[string]string{},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:        []string{"a:1", "b:2", "c:3"},
+					hosts:            []string{"a", "b", "c"},
+					ports:            []string{"1", "2", "3"},
+					sentinelUsername: "sentinelUsername",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelUsername given in metadata from env",
+			metadata: map[string]string{
+				"hosts":                   "a, b, c",
+				"ports":                   "1, 2, 3",
+				"stream":                  "my-stream",
+				"pendingEntriesCount":     "10",
+				"consumerGroup":           "consumer1",
+				"sentinelUsernameFromEnv": "REDIS_SENTINEL_USERNAME",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:        []string{"a:1", "b:2", "c:3"},
+					hosts:            []string{"a", "b", "c"},
+					ports:            []string{"1", "2", "3"},
+					sentinelUsername: "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelPassword given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"sentinelPassword": "sentinelPassword",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:        []string{"a:1", "b:2", "c:3"},
+					hosts:            []string{"a", "b", "c"},
+					ports:            []string{"1", "2", "3"},
+					sentinelPassword: "sentinelPassword",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelPassword given in metadata from env",
+			metadata: map[string]string{
+				"hosts":                   "a, b, c",
+				"ports":                   "1, 2, 3",
+				"stream":                  "my-stream",
+				"pendingEntriesCount":     "10",
+				"consumerGroup":           "consumer1",
+				"sentinelPasswordFromEnv": "REDIS_SENTINEL_PASSWORD",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:        []string{"a:1", "b:2", "c:3"},
+					hosts:            []string{"a", "b", "c"},
+					ports:            []string{"1", "2", "3"},
+					sentinelPassword: "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelMaster given in authParams",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"sentinelMaster": "sentinelMaster",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:      []string{"a:1", "b:2", "c:3"},
+					hosts:          []string{"a", "b", "c"},
+					ports:          []string{"1", "2", "3"},
+					sentinelMaster: "sentinelMaster",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelMaster given in metadata",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"sentinelMaster":      "sentinelMaster",
+			},
+			authParams: map[string]string{},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:      []string{"a:1", "b:2", "c:3"},
+					hosts:          []string{"a", "b", "c"},
+					ports:          []string{"1", "2", "3"},
+					sentinelMaster: "sentinelMaster",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "sentinelMaster given in metadata from env",
+			metadata: map[string]string{
+				"hosts":                 "a, b, c",
+				"ports":                 "1, 2, 3",
+				"stream":                "my-stream",
+				"pendingEntriesCount":   "10",
+				"consumerGroup":         "consumer1",
+				"sentinelMasterFromEnv": "REDIS_SENTINEL_MASTER",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:      []string{"a:1", "b:2", "c:3"},
+					hosts:          []string{"a", "b", "c"},
+					ports:          []string{"1", "2", "3"},
+					sentinelMaster: "none",
+				},
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			config := &ScalerConfig{
+				TriggerMetadata: c.metadata,
+				ResolvedEnv:     c.resolvedEnv,
+				AuthParams:      c.authParams,
+			}
+			meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
 			if c.wantErr != nil {
 				assert.Contains(t, err.Error(), c.wantErr.Error())
 			} else {

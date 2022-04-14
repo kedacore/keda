@@ -7,6 +7,7 @@ type awsAuthorizationMetadata struct {
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
+	awsSessionToken    string
 
 	podIdentityOwner bool
 }
@@ -27,6 +28,7 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 				meta.awsAccessKeyID = authParams["awsAccessKeyId"]
 			}
 			meta.awsSecretAccessKey = authParams["awsSecretAccessKey"]
+			meta.awsSessionToken = authParams["awsSessionToken"]
 		default:
 			if metadata["awsAccessKeyID"] != "" {
 				meta.awsAccessKeyID = metadata["awsAccessKeyID"]

@@ -8,19 +8,21 @@ import (
 	"time"
 
 	"github.com/mitchellh/hashstructure"
-
-	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
 
 type externalScaler struct {
+	metricType      v2beta2.MetricTargetType
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
 }
@@ -33,6 +35,7 @@ type externalScalerMetadata struct {
 	scalerAddress    string
 	tlsCertFile      string
 	originalMetadata map[string]string
+	scalerIndex      int
 }
 
 type connectionGroup struct {
@@ -48,13 +51,19 @@ var externalLog = logf.Log.WithName("external_scaler")
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+	}
+
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
 	}
 
 	return &externalScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.Name,
 			Namespace:      config.Namespace,
@@ -65,6 +74,11 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 
 // NewExternalPushScaler creates a new externalPushScaler push scaler
 func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+	}
+
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
@@ -72,7 +86,8 @@ func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 
 	return &externalPushScaler{
 		externalScaler{
-			metadata: meta,
+			metricType: metricType,
+			metadata:   meta,
 			scaledObjectRef: pb.ScaledObjectRef{
 				Name:           config.Name,
 				Namespace:      config.Namespace,
@@ -111,7 +126,7 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 			meta.originalMetadata[key] = value
 		}
 	}
-
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -132,12 +147,12 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 	return response.Result, nil
 }
 
-func (s *externalScaler) Close() error {
+func (s *externalScaler) Close(context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
 	var result []v2beta2.MetricSpec
 
 	grpcClient, done, err := getClientForConnectionPool(s.metadata)
@@ -147,24 +162,18 @@ func (s *externalScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	}
 	defer done()
 
-	response, err := grpcClient.GetMetricSpec(context.TODO(), &s.scaledObjectRef)
+	response, err := grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
 	if err != nil {
 		externalLog.Error(err, "error")
 		return nil
 	}
 
 	for _, spec := range response.MetricSpecs {
-		// Construct the target subscription size as a quantity
-		qty := resource.NewQuantity(spec.TargetSize, resource.DecimalSI)
-
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
-				Name: spec.MetricName,
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: qty,
-			},
+			Target: GetMetricTarget(s.metricType, spec.TargetSize),
 		}
 
 		// Create the metric spec for the HPA
@@ -187,6 +196,12 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return metrics, err
 	}
 	defer done()
+
+	// Remove the sX- prefix as the external scaler shouldn't have to know about it
+	metricName, err = RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
+	if err != nil {
+		return metrics, err
+	}
 
 	request := &pb.GetMetricsRequest{
 		MetricName:      metricName,
@@ -235,7 +250,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	// timer, to release background resources.
 	retryBackoff := func() *time.Timer {
 		tmr := time.NewTimer(retryDuration)
-		retryDuration *= time.Second * 2
+		retryDuration *= 2
 		if retryDuration > time.Minute*1 {
 			retryDuration = time.Minute * 1
 		}
@@ -292,7 +307,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
-		return grpc.Dial(metadata.scalerAddress, grpc.WithInsecure())
+		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties

@@ -2,6 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import {createNamespace, waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
 
 const redisNamespace = 'redis-cluster-streams'
 const redisClusterName = 'redis-cluster-streams'
@@ -14,30 +15,24 @@ const numMessages = 100
 
 test.before(t => {
     // Deploy Redis cluster.
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
+    createNamespace(redisNamespace)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let clusterStatus = sh.exec(`helm install --timeout 600s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
+    let clusterStatus = sh.exec(`helm install --timeout 900s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
     t.is(0,
         clusterStatus,
         'creating a Redis cluster should work.'
     )
 
     // Wait for Redis cluster to be ready.
-    let redisReplicaCount = '0'
-    for (let i = 0; i < 30; i++) {
-        redisReplicaCount = sh.exec(`kubectl get statefulset/${redisStatefulSetName} -n ${redisNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-        if (redisReplicaCount != '6') {
-            sh.exec('sleep 2s')
-        }
-    }
-    t.is('6', redisReplicaCount, 'Redis is not in a ready state')
+    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 600)
+    t.is(0, exitCode, 'expected rollout status for redis to finish successfully')
 
     // Get Redis cluster address.
     redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
 
     // Create test namespace.
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     // Deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
@@ -59,7 +54,7 @@ test.serial('Deployment should have 1 replica on start', t => {
   t.is(replicaCount, '1', 'replica count should start out as 1')
 })
 
-test.serial(`Deployment should scale to 5 with ${numMessages} messages and back to 1`, t => {
+test.serial(`Deployment should scale to 5 with ${numMessages} messages and back to 1`, async t => {
   // Publish messages to redis streams.
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, producerDeployYaml.replace('{{NUM_MESSAGES}}', numMessages.toString())
@@ -71,7 +66,7 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
   )
 
   // Wait for producer job to finish.
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const succeeded = sh.exec(`kubectl get job  --namespace ${testNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
     if (succeeded == '1') {
       break
@@ -79,30 +74,8 @@ test.serial(`Deployment should scale to 5 with ${numMessages} messages and back 
     sh.exec('sleep 1s')
   }
   // With messages published, the consumer deployment should start receiving the messages.
-  let replicaCount = '0'
-  for (let i = 0; i < 20 && replicaCount !== '5'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment/redis-streams-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    t.log('(scale up) replica count is:' + replicaCount)
-    if (replicaCount !== '5') {
-      sh.exec('sleep 3s')
-    }
-  }
-
-  t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
-
-  for (let i = 0; i < 60 && replicaCount !== '1'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment/redis-streams-consumer --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    t.log('(scale down) replica count is:' + replicaCount)
-    if (replicaCount !== '1') {
-      sh.exec('sleep 10s')
-    }
-  }
-
-  t.is('1', replicaCount, 'Replica count should be 1 within 10 minutes')
+  t.true(await waitForDeploymentReplicaCount(5, 'redis-streams-consumer', testNamespace, 60, 10000), 'Replica count should be 5 within 10 minutes')
+  t.true(await waitForDeploymentReplicaCount(1, 'redis-streams-consumer', testNamespace, 60, 10000), 'Replica count should be 1 within 10 minutes')
 })
 
 

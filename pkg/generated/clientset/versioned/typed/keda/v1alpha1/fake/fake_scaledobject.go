@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The KEDA Authors
+Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -117,7 +117,7 @@ func (c *FakeScaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1al
 // Delete takes name of the scaledObject and deletes it. Returns an error if one occurs.
 func (c *FakeScaledObjects) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(scaledobjectsResource, c.ns, name), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewDeleteActionWithOptions(scaledobjectsResource, c.ns, name, opts), &v1alpha1.ScaledObject{})
 
 	return err
 }

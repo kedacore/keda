@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.15.6
+FROM golang:1.17.3
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,6 +15,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+
+ENV GO111MODULE=auto
 
 # Configure apt, install packages and tools
 RUN apt-get update \
@@ -53,7 +55,7 @@ RUN apt-get update \
         github.com/mgechev/revive \
         github.com/derekparker/delve/cmd/dlv 2>&1 \
     # Install golangci-lint
-    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.39.0 \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
@@ -70,8 +72,8 @@ RUN apt-get update \
     && apt-get install -y docker-ce-cli \
     #
     # Install pip & pre-commit
-    && apt-get -y install python-pip \
-    && pip install --no-cache-dir pre-commit \
+    && apt-get -y install python3-pip \
+    && python3 -m pip install --no-cache-dir pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \

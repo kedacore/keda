@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -19,6 +20,7 @@ type openstackMetricScalerMetricIdentifier struct {
 	resolvedEnv          map[string]string
 	metadataTestData     *parseOpenstackMetricMetadataTestData
 	authMetadataTestData *parseOpenstackMetricAuthMetadataTestData
+	scalerIndex          int
 	name                 string
 }
 
@@ -88,33 +90,32 @@ var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetad
 func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 	// first, test cases with authentication based on password
 	testCases := []openstackMetricScalerMetricIdentifier{
-		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[0], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[0], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-sum"},
-		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[0], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-max"},
-		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[0], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-
-		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[1], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
-		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[1], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-sum"},
-		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[1], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-max"},
-		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[1], "openstack-metric-003bb589-166d-439d-8c31-cbf098d863de-1250-mean"},
+		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[1], 4, "s4-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[1], 5, "s5-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[1], 6, "s6-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
+		{nil, &opentsackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[1], 7, "s7-openstack-metric-003bb589-166d-439d-8c31-cbf098d863de"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
-		meta, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+		meta, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
 
 		if err != nil {
 			t.Fatal("Could not parse metadata from openstack metrics scaler")
 		}
 
-		_, err = parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+		_, err = parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
 
 		if err != nil {
 			t.Fatal("could not parse openstack metric authentication metadata")
 		}
 
-		mockMetricsScaler := openstackMetricScaler{meta, openstack.Client{}}
-		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling()
+		mockMetricsScaler := openstackMetricScaler{"", meta, openstack.Client{}}
+		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricsSpec[0].External.Metric.Name
 
 		if metricName != testData.name {
@@ -125,21 +126,21 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 
 func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 	testCases := []openstackMetricScalerMetricIdentifier{
-		{nil, &invalidOpenstackMetricMetadaTestData[0], &openstackMetricAuthMetadataTestData[0], "Missing metrics url"},
-		{nil, &invalidOpenstackMetricMetadaTestData[1], &openstackMetricAuthMetadataTestData[0], "Empty metrics url"},
-		{nil, &invalidOpenstackMetricMetadaTestData[2], &openstackMetricAuthMetadataTestData[0], "Missing metricID"},
-		{nil, &invalidOpenstackMetricMetadaTestData[3], &openstackMetricAuthMetadataTestData[0], "Empty metricID"},
-		{nil, &invalidOpenstackMetricMetadaTestData[4], &openstackMetricAuthMetadataTestData[0], "Missing aggregation method"},
-		{nil, &invalidOpenstackMetricMetadaTestData[5], &openstackMetricAuthMetadataTestData[0], "Missing granularity"},
-		{nil, &invalidOpenstackMetricMetadaTestData[6], &openstackMetricAuthMetadataTestData[0], "Missing threshold"},
-		{nil, &invalidOpenstackMetricMetadaTestData[7], &openstackMetricAuthMetadataTestData[0], "Missing threshold"},
-		{nil, &invalidOpenstackMetricMetadaTestData[8], &openstackMetricAuthMetadataTestData[0], "Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadaTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-Missing metrics url"},
+		{nil, &invalidOpenstackMetricMetadaTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-Empty metrics url"},
+		{nil, &invalidOpenstackMetricMetadaTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-Missing metricID"},
+		{nil, &invalidOpenstackMetricMetadaTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-Empty metricID"},
+		{nil, &invalidOpenstackMetricMetadaTestData[4], &openstackMetricAuthMetadataTestData[0], 4, "s4-Missing aggregation method"},
+		{nil, &invalidOpenstackMetricMetadaTestData[5], &openstackMetricAuthMetadataTestData[0], 5, "s5-Missing granularity"},
+		{nil, &invalidOpenstackMetricMetadaTestData[6], &openstackMetricAuthMetadataTestData[0], 6, "s6-Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadaTestData[7], &openstackMetricAuthMetadataTestData[0], 7, "s7-Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadaTestData[8], &openstackMetricAuthMetadataTestData[0], 8, "s8-Missing threshold"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+			_, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
 			assert.NotNil(t, err)
 		})
 	}
@@ -147,18 +148,18 @@ func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 
 func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 	testCases := []openstackMetricScalerMetricIdentifier{
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[0], "Missing userID"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[1], "Missing password"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[2], "Missing authURL"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[3], "Missing appCredentialID and appCredentialSecret"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[4], "Missing appCredentialSecret"},
-		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[5], "Missing authURL - application credential"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[0], 0, "s0-Missing userID"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[1], 1, "s1-Missing password"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[2], 2, "s2-Missing authURL"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[3], 3, "s3-Missing appCredentialID and appCredentialSecret"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[4], 4, "s4-Missing appCredentialSecret"},
+		{nil, &opentsackMetricMetadataTestData[0], &invalidOpenstackMetricAuthMetadataTestData[5], 5, "s5-Missing authURL - application credential"},
 	}
 
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(ptr *testing.T) {
-			_, err := parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata})
+			_, err := parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
 			assert.NotNil(t, err)
 		})
 	}

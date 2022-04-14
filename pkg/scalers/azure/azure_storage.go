@@ -1,6 +1,23 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package azure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -8,8 +25,9 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/azure-storage-queue-go/azqueue"
+	az "github.com/Azure/go-autorest/autorest/azure"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -42,21 +60,30 @@ func (e StorageEndpointType) Name() string {
 	return [...]string{"blob", "queue", "table", "file"}[e]
 }
 
+// GetEndpointSuffix returns the endpoint suffix for a StorageEndpointType based on the specified environment
+func (e StorageEndpointType) GetEndpointSuffix(environment az.Environment) string {
+	return fmt.Sprintf("%s.%s", e.Name(), environment.StorageEndpointSuffix)
+}
+
+// ParseAzureStorageEndpointSuffix parses cloud and endpointSuffix metadata and returns endpoint suffix
+func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType StorageEndpointType) (string, error) {
+	envSuffixProvider := func(env az.Environment) (string, error) {
+		return endpointType.GetEndpointSuffix(env), nil
+	}
+
+	return ParseEnvironmentProperty(metadata, DefaultEndpointSuffixKey, envSuffixProvider)
+}
+
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azqueue.Credential, *url.URL, error) {
+func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err := GetAzureADPodIdentityToken(httpClient, "https://storage.azure.com/")
+		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if accountName == "" {
-			return nil, nil, fmt.Errorf("accountName is required for podIdentity azure")
-		}
-
-		credential := azqueue.NewTokenCredential(token.AccessToken, nil)
-		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.queue.core.windows.net", accountName))
+		credential := azqueue.NewTokenCredential(token, nil)
 		return credential, endpoint, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, QueueEndpoint)
@@ -76,20 +103,15 @@ func ParseAzureStorageQueueConnection(httpClient util.HTTPDoer, podIdentity keda
 }
 
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName string) (azblob.Credential, *url.URL, error) {
+func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err := GetAzureADPodIdentityToken(httpClient, "https://storage.azure.com/")
+		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if accountName == "" {
-			return nil, nil, fmt.Errorf("accountName is required for podIdentity azure")
-		}
-
-		credential := azblob.NewTokenCredential(token.AccessToken, nil)
-		endpoint, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", accountName))
+		credential := azblob.NewTokenCredential(token, nil)
 		return credential, endpoint, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, BlobEndpoint)
@@ -163,4 +185,19 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	}
 
 	return u, name, key, nil
+}
+
+func parseAcessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string) (string, *url.URL, error) {
+	// Azure storage resource is "https://storage.azure.com/" in all cloud environments
+	token, err := GetAzureADPodIdentityToken(ctx, httpClient, "https://storage.azure.com/")
+	if err != nil {
+		return "", nil, err
+	}
+
+	if accountName == "" {
+		return "", nil, fmt.Errorf("accountName is required for podIdentity azure")
+	}
+
+	endpoint, _ := url.Parse(fmt.Sprintf("https://%s.%s", accountName, endpointSuffix))
+	return token.AccessToken, endpoint, nil
 }

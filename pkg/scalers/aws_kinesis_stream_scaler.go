@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,27 +27,37 @@ const (
 )
 
 type awsKinesisStreamScaler struct {
-	metadata *awsKinesisStreamMetadata
+	metricType    v2beta2.MetricTargetType
+	metadata      *awsKinesisStreamMetadata
+	kinesisClient kinesisiface.KinesisAPI
 }
 
 type awsKinesisStreamMetadata struct {
-	targetShardCount int
+	targetShardCount int64
 	streamName       string
 	awsRegion        string
 	awsAuthorization awsAuthorizationMetadata
+	scalerIndex      int
 }
 
 var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
 func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsKinesisStreamMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
 
 	return &awsKinesisStreamScaler{
-		metadata: meta,
+		metricType:    metricType,
+		metadata:      meta,
+		kinesisClient: createKinesisClient(meta),
 	}, nil
 }
 
@@ -55,7 +66,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 	meta.targetShardCount = targetShardCountDefault
 
 	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
-		shardCount, err := strconv.Atoi(val)
+		shardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetShardCount = targetShardCountDefault
 			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
@@ -83,7 +94,34 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 
 	meta.awsAuthorization = auth
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, nil
+}
+
+func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(metadata.awsRegion),
+	}))
+
+	var kinesisClinent *kinesis.Kinesis
+	if metadata.awsAuthorization.podIdentityOwner {
+		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
+
+		if metadata.awsAuthorization.awsRoleArn != "" {
+			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		}
+
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region:      aws.String(metadata.awsRegion),
+			Credentials: creds,
+		})
+	} else {
+		kinesisClinent = kinesis.New(sess, &aws.Config{
+			Region: aws.String(metadata.awsRegion),
+		})
+	}
+	return kinesisClinent
 }
 
 // IsActive determines if we need to scale from zero
@@ -97,20 +135,16 @@ func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *awsKinesisStreamScaler) Close() error {
+func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsKinesisStreamScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetShardCountQty := resource.NewQuantity(int64(s.metadata.targetShardCount), resource.DecimalSI)
+func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "AWS-Kinesis-Stream", s.metadata.streamName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetShardCountQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -140,29 +174,7 @@ func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount() (int64, error) {
 		StreamName: &s.metadata.streamName,
 	}
 
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.metadata.awsRegion),
-	}))
-
-	var kinesisClinent *kinesis.Kinesis
-	if s.metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(s.metadata.awsAuthorization.awsAccessKeyID, s.metadata.awsAuthorization.awsSecretAccessKey, "")
-
-		if s.metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, s.metadata.awsAuthorization.awsRoleArn)
-		}
-
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region:      aws.String(s.metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region: aws.String(s.metadata.awsRegion),
-		})
-	}
-
-	output, err := kinesisClinent.DescribeStreamSummary(input)
+	output, err := s.kinesisClient.DescribeStreamSummary(input)
 	if err != nil {
 		return -1, err
 	}

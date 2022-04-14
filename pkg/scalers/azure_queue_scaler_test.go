@@ -1,10 +1,27 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package scalers
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 var testAzQueueResolvedEnv = map[string]string{
@@ -21,6 +38,7 @@ type parseAzQueueMetadataTestData struct {
 
 type azQueueMetricIdentifier struct {
 	metadataTestData *parseAzQueueMetadataTestData
+	scalerIndex      int
 	name             string
 }
 
@@ -45,13 +63,23 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	{map[string]string{"accountName": "", "queueName": "sample_queue"}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without queue name
 	{map[string]string{"accountName": "sample_acc", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with cloud
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue", "cloud": "AzurePublicCloud"}, false, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with invalid cloud
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue", "cloud": "InvalidCloud"}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with private cloud and endpoint suffix
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue", "cloud": "Private", "endpointSuffix": "queue.core.private.cloud"}, false, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with private cloud and no endpoint suffix
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue", "cloud": "Private", "endpointSuffix": ""}, true, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// podIdentity = azure with endpoint suffix and no cloud
+	{map[string]string{"accountName": "sample_acc", "queueName": "sample_queue", "cloud": "", "endpointSuffix": "ignored"}, false, testAzQueueResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// connection from authParams
 	{map[string]string{"queueName": "sample", "queueLength": "5"}, false, testAzQueueResolvedEnv, map[string]string{"connection": "value"}, kedav1alpha1.PodIdentityProviderNone},
 }
 
 var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
-	{&testAzQueueMetadata[1], "azure-queue-sample"},
-	{&testAzQueueMetadata[4], "azure-queue-sample_queue"},
+	{&testAzQueueMetadata[1], 0, "s0-azure-queue-sample"},
+	{&testAzQueueMetadata[4], 1, "s1-azure-queue-sample_queue"},
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
@@ -71,7 +99,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity})
+		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -81,7 +109,7 @@ func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 			httpClient:  http.DefaultClient,
 		}
 
-		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling()
+		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)

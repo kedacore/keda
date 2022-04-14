@@ -26,6 +26,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - list
+  - watch
+- apiGroups:
   - '*'
   resources:
   - '*'
@@ -55,6 +62,12 @@ rules:
   - batch
   resources:
   - jobs
+  verbs:
+  - '*'
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
   verbs:
   - '*'
 - apiGroups:

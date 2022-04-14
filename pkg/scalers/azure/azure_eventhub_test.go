@@ -250,6 +250,35 @@ func TestShouldParseCheckpointForFunctionWithCheckpointStrategy(t *testing.T) {
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
 
+func TestShouldParseCheckpointForFunctionWithPodIdentity(t *testing.T) {
+	eventHubInfo := EventHubInfo{
+		Namespace:                "eventhubnamespace",
+		EventHubName:             "hub-test",
+		EventHubConsumerGroup:    "$Default",
+		ServiceBusEndpointSuffix: "servicebus.windows.net",
+	}
+
+	cp := newCheckpointer(eventHubInfo, "0")
+	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
+}
+
+func TestShouldParseCheckpointForFunctionWithCheckpointStrategyAndPodIdentity(t *testing.T) {
+	eventHubInfo := EventHubInfo{
+		Namespace:                "eventhubnamespace",
+		EventHubName:             "hub-test",
+		EventHubConsumerGroup:    "$Default",
+		ServiceBusEndpointSuffix: "servicebus.windows.net",
+		CheckpointStrategy:       "azureFunction",
+	}
+
+	cp := newCheckpointer(eventHubInfo, "0")
+	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
+}
+
 func TestShouldParseCheckpointForDefault(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
@@ -277,6 +306,22 @@ func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$default/checkpoint/0")
 }
 
+func TestShouldParseCheckpointForBlobMetadataWithPodIdentity(t *testing.T) {
+	eventHubInfo := EventHubInfo{
+		Namespace:                "eventhubnamespace",
+		EventHubName:             "hub-test",
+		EventHubConsumerGroup:    "$Default",
+		ServiceBusEndpointSuffix: "servicebus.windows.net",
+		BlobContainer:            "containername",
+		CheckpointStrategy:       "blobMetadata",
+	}
+
+	cp := newCheckpointer(eventHubInfo, "0")
+	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$default/checkpoint/0")
+}
+
 func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
@@ -292,10 +337,11 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 }
 
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
-	credential, endpoint, _ := ParseAzureStorageBlobConnection(http.DefaultClient, "none", StorageConnectionString, "")
+	ctx := context.Background()
+
+	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", StorageConnectionString, "", "")
 
 	// Create container
-	ctx := context.Background()
 	path, _ := url.Parse(containerName)
 	url := endpoint.ResolveReference(path)
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))

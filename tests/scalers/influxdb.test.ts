@@ -3,10 +3,11 @@ import * as eol from 'eol'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import { createNamespace, waitForRollout } from './helpers'
 
 const influxdbJobName = 'influx-client-job'
 const influxdbNamespaceName = 'influxdb'
-const influxdbPodName = 'influxdb-0'
+const influxdbStatefulsetName = 'influxdb'
 
 const authTokenPrefixConstant = 20
 const nginxDeploymentName = 'nginx-deployment'
@@ -53,23 +54,15 @@ test.before((t) => {
     fs.writeFileSync(influxdbDeployTmpFile.name, influxdbDeployYaml)
 
     // Deploy influxdb instance
+    createNamespace(influxdbNamespaceName)
     t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${influxdbDeployTmpFile.name}`).code)
 
     // Wait for influxdb instance to be ready
-    let influxdbStatus = 'false'
-    for (let i = 0; i < 25; i++) {
-        influxdbStatus = sh.exec(`kubectl get pod ${influxdbPodName} --namespace ${influxdbNamespaceName} -o jsonpath='{.status.containerStatuses[0].started}'`).stdout
-        if (influxdbStatus !== 'true') {
-            sh.exec('sleep 2s')
-        } else {
-            break
-        }
-    }
-
-    t.is('true', influxdbStatus, 'Influxdb is not in a ready state')
+    const exitCode = waitForRollout('statefulset', influxdbStatefulsetName, influxdbNamespaceName, 300)
+    t.is(0, exitCode, 'Influxdb is not in a ready state')
 })
 
-test.serial('Should start off deployment with 0 replicas and scale to 2 replicas when scaled object is applied', (t) => {
+test.serial('Should start off deployment with 0 replicas and scale to 2 replicas when scaled object with float query is applied', (t) => {
     const { authToken, orgName } = runWriteJob(t)
     const basicDeploymentTmpFile = tmp.fileSync()
     fs.writeFileSync(basicDeploymentTmpFile.name, basicDeploymentYaml)
@@ -80,7 +73,7 @@ test.serial('Should start off deployment with 0 replicas and scale to 2 replicas
     t.is(numReplicasBefore, '0', 'Number of replicas should be 0 to start with')
 
     const scaledObjectTmpFile = tmp.fileSync()
-    fs.writeFileSync(scaledObjectTmpFile.name, scaledObjectYaml.replace('{{INFLUXDB_AUTH_TOKEN}}', authToken).replace('{{INFLUXDB_ORG_NAME}}', orgName))
+    fs.writeFileSync(scaledObjectTmpFile.name, scaledObjectYamlFloat.replace('{{INFLUXDB_AUTH_TOKEN}}', authToken).replace('{{INFLUXDB_ORG_NAME}}', orgName))
 
     t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${scaledObjectTmpFile.name}`).code)
 
@@ -98,16 +91,40 @@ test.serial('Should start off deployment with 0 replicas and scale to 2 replicas
     t.is(numReplicasAfter, '2', 'Number of replicas should have scaled to 2')
 })
 
+test.serial('Should start off deployment with 0 replicas and scale to 2 replicas when scaled object with int query is applied', (t) => {
+  const { authToken, orgName } = runWriteJob(t)
+  const basicDeploymentTmpFile = tmp.fileSync()
+  fs.writeFileSync(basicDeploymentTmpFile.name, basicDeploymentYaml)
+
+  t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${basicDeploymentTmpFile.name}`).code)
+
+  const numReplicasBefore = sh.exec(`kubectl get deployment --namespace ${influxdbNamespaceName} ${nginxDeploymentName} -o jsonpath='{.spec.replicas}'`).stdout
+  t.is(numReplicasBefore, '0', 'Number of replicas should be 0 to start with')
+
+  const scaledObjectTmpFile = tmp.fileSync()
+  fs.writeFileSync(scaledObjectTmpFile.name, scaledObjectYamlInt.replace('{{INFLUXDB_AUTH_TOKEN}}', authToken).replace('{{INFLUXDB_ORG_NAME}}', orgName))
+
+  t.is(0, sh.exec(`kubectl apply --namespace ${influxdbNamespaceName} -f ${scaledObjectTmpFile.name}`).code)
+
+  // polling/waiting for deployment to scale to desired amount of replicas
+  let numReplicasAfter = '1'
+  for (let i = 0; i < 15; i++){
+      numReplicasAfter = sh.exec(`kubectl get deployment --namespace ${influxdbNamespaceName} ${nginxDeploymentName} -o jsonpath='{.spec.replicas}'`).stdout
+      if (numReplicasAfter !== '2') {
+          sh.exec('sleep 2s')
+      } else {
+          break
+      }
+  }
+
+  t.is(numReplicasAfter, '2', 'Number of replicas should have scaled to 2')
+})
+
 test.after.always((t) => {
     t.is(0, sh.exec(`kubectl delete namespace ${influxdbNamespaceName}`).code, 'Should delete influxdb namespace')
 })
 
 const influxdbDeployYaml = `
----
-apiVersion: v1
-kind: Namespace
-metadata:
-    name: influxdb
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -136,6 +153,11 @@ spec:
                 volumeMounts:
                   - mountPath: /root/.influxdbv2
                     name: data
+                readinessProbe:
+                  tcpSocket:
+                    port: 8086
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
     volumeClaimTemplates:
       - metadata:
             name: data
@@ -162,7 +184,7 @@ spec:
     type: ClusterIP
 `
 
-const scaledObjectYaml = `
+const scaledObjectYamlFloat = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -183,6 +205,31 @@ spec:
         from(bucket:"bucket")
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "stat")
+        |> map(fn: (r) => ({r with _value: float(v: r._value)}))
+`
+
+const scaledObjectYamlInt = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: influxdb-scaler
+  namespace: influxdb
+spec:
+  scaleTargetRef:
+    name: nginx-deployment
+  maxReplicaCount: 2
+  triggers:
+  - type: influxdb
+    metadata:
+      authToken: {{INFLUXDB_AUTH_TOKEN}}
+      organizationName: {{INFLUXDB_ORG_NAME}}
+      serverURL: http://influxdb.influxdb.svc:8086
+      thresholdValue: "3"
+      query: |
+        from(bucket:"bucket")
+        |> range(start: -1h)
+        |> filter(fn: (r) => r._measurement == "stat")
+        |> map(fn: (r) => ({r with _value: int(v: r._value)}))
 `
 
 const influxdbWriteJobYaml = `

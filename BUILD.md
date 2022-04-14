@@ -122,6 +122,39 @@ to deploy it as part of KEDA. Do the following:
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
     ```
 
+## Debugging
+
+### Using VS Code
+
+Follow these instructions if you want to debug the KEDA operator using VS Code.
+
+1. Create a `launch.json` file inside the `.vscode/` folder in the repo with the following configuration:
+   ```json
+   {
+    "configurations": [
+         {
+            "name": "Launch file",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/main.go",
+            "env": {"WATCH_NAMESPACE": ""}
+        }
+    ]
+   }
+   ```
+   Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
+2. Deploy CRDs and KEDA into `keda` namespace
+   ```bash
+   make deploy
+   ```
+3. Scale down `keda-operator` Deployment
+   ```bash
+   kubectl scale deployment/keda-operator --replicas=0 -n keda
+   ```
+4. Set breakpoints in the code as required.
+5. Select `Run > Start Debugging` or press `F5` to start debugging.
+
 ## Miscellaneous
 
 ### Setting log levels
