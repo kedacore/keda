@@ -108,4 +108,6 @@ Guidance on how to release it can be found in our [contribution guide](https://g
 
 ## 8. Prepare next release
 
-Prepare next release by creating a [new GitHub milestone](https://github.com/kedacore/keda/milestones/new) called `v{upcoming-semver-version}` with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
+As per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we need to create a new shipping cycle in our [project settings](https://github.com/orgs/kedacore/projects/2/settings/fields/1647216) with a target date in 3 months after the last cycle.
+
+Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
