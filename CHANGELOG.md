@@ -5,6 +5,10 @@
     Please refer to https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog to learn more.
 -->
 
+This changelog keeps track of work items that have been completed and are ready to be shipped in the next release.
+
+To learn more about our roadmap, we recommend reading [this document](ROADMAP.md).
+
 ## Deprecations
 
 ## History

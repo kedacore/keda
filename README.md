@@ -75,7 +75,9 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 
 ## Roadmap
 
-We use GitHub issues to build our backlog, a complete overview of all open items and our planning is available [here](https://github.com/orgs/kedacore/projects/2).
+We use GitHub issues to build our backlog, a complete overview of all open items and our planning.
+
+Learn more about our roadmap [here](ROADMAP.md).
 
 ## Releases
 
