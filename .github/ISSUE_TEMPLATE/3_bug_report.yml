@@ -7,7 +7,7 @@ body:
     value: |
       ## Self-help
       Thank you for considering to open a bug report!
-      
+
       Before you do, however, make sure to check our existing resources to see if it has already been discussed/reported:
       - [Reported bugs](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abug)
       - [Troubleshooting guide](https://keda.sh/docs/latest/troubleshooting/)
