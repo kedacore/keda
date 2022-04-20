@@ -32,6 +32,7 @@ jobs:
           AZURE_KEYVAULT_URI:  ${{ secrets.AZURE_KEYVAULT_URI }}
           AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_SERVICE_BUS_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}
           AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
