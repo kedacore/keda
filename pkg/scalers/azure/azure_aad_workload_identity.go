@@ -104,7 +104,7 @@ type ADWorkloadIdentityConfig struct {
 }
 
 func NewAzureADWorkloadIdentityConfig(ctx context.Context, resource string) auth.AuthorizerConfig {
-	return &ADWorkloadIdentityConfig{ctx: ctx, resource: resource}
+	return ADWorkloadIdentityConfig{ctx: ctx, resource: resource}
 }
 
 // Authorizer implements the auth.AuthorizerConfig interface
