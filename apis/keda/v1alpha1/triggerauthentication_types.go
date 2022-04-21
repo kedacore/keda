@@ -95,12 +95,13 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone    PodIdentityProvider = "none"
-	PodIdentityProviderAzure   PodIdentityProvider = "azure"
-	PodIdentityProviderGCP     PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe  PodIdentityProvider = "spiffe"
-	PodIdentityProviderAwsEKS  PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAwsKiam PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderNone          PodIdentityProvider = "none"
+	PodIdentityProviderAzure         PodIdentityProvider = "azure"
+	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
+	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
+	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
+	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider

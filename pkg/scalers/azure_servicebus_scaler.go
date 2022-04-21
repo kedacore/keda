@@ -45,6 +45,8 @@ const (
 	subscription              entityType = 2
 	messageCountMetricName               = "messageCount"
 	defaultTargetMessageCount            = 5
+	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
+	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
@@ -155,7 +157,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure:
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if val, ok := config.TriggerMetadata["namespace"]; ok {
 			meta.namespace = val
 		} else {
@@ -224,24 +226,32 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 }
 
 type azureTokenProvider struct {
-	httpClient *http.Client
-	ctx        context.Context
+	httpClient  *http.Client
+	ctx         context.Context
+	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 	ctx := a.ctx
-	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
+
+	var token azure.AADToken
+	var err error
+
+	switch a.podIdentity {
+	case kedav1alpha1.PodIdentityProviderAzure:
+		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, serviceBusResource)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		scopedResource := fmt.Sprintf("%s%s", serviceBusResource, ".default")
+		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, scopedResource)
+	default:
+		err = fmt.Errorf("unknown pod identity provider")
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &auth.Token{
-		TokenType: auth.CBSTokenTypeJWT,
-		Token:     token.AccessToken,
-		Expiry:    token.ExpiresOn,
-	}, nil
+	return auth.NewToken(auth.CBSTokenTypeJWT, token.AccessToken, token.ExpiresOn), nil
 }
 
 // Returns the length of the queue or subscription
@@ -267,19 +277,21 @@ func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*se
 	var namespace *servicebus.Namespace
 	var err error
 
-	if s.podIdentity == "" || s.podIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch s.podIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
 		if err != nil {
 			return namespace, err
 		}
-	} else if s.podIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		namespace, err = servicebus.NewNamespace()
 		if err != nil {
 			return namespace, err
 		}
 		namespace.TokenProvider = azureTokenProvider{
-			ctx:        ctx,
-			httpClient: s.httpClient,
+			ctx:         ctx,
+			httpClient:  s.httpClient,
+			podIdentity: s.podIdentity,
 		}
 		namespace.Name = s.metadata.namespace
 	}

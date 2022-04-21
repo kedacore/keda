@@ -76,6 +76,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Introduce new GCP Stackdriver Scaler ([#2661](https://github.com/kedacore/keda/issues/2661))
 - **General:** Introduce new GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
 - **General:** Provide support for authentication via Azure Key Vault ([#900](https://github.com/kedacore/keda/issues/900)|[#2733](https://github.com/kedacore/keda/issues/2733))
+- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([2487](https://github.com/kedacore/keda/issues/2487))
 - **General**: Support for `ValueMetricType` in `ScaledObject` for all scalers except CPU/Memory ([#2030](https://github.com/kedacore/keda/issues/2030))
 
 ### Improvements
