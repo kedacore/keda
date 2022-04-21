@@ -168,6 +168,17 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 	}
+
+	// test with workload identity params should not fail
+	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload})
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
 }
 
 func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {

@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,13 +80,14 @@ type sessionCache struct {
 }
 
 type tokenData struct {
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in,string"`
-	ExtExpiresIn int    `json:"ext_expires_in,string"`
-	ExpiresOn    int64  `json:"expires_on,string"`
-	NotBefore    int64  `json:"not_before,string"`
-	Resource     string `json:"resource"`
-	AccessToken  string `json:"access_token"`
+	TokenType               string `json:"token_type"`
+	ExpiresIn               int    `json:"expires_in,string"`
+	ExtExpiresIn            int    `json:"ext_expires_in,string"`
+	ExpiresOn               int64  `json:"expires_on,string"`
+	NotBefore               int64  `json:"not_before,string"`
+	Resource                string `json:"resource"`
+	AccessToken             string `json:"access_token"`
+	IsWorkloadIdentityToken bool   `json:"isWorkloadIdentityToken"`
 }
 
 type metricsData struct {
@@ -165,7 +167,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
-	case kedav1alpha1.PodIdentityProviderAzure:
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		meta.podIdentity = string(config.PodIdentity)
 	default:
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
@@ -473,6 +475,10 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken(ctx context.Context) (token
 		return tokenData{}, err
 	}
 
+	if tokenInfo.IsWorkloadIdentityToken {
+		return tokenInfo, nil
+	}
+
 	// Now, let's check we can use this token. If no, wait until we can use it
 	currentTimeSec := time.Now().Unix()
 	if currentTimeSec < tokenInfo.NotBefore {
@@ -494,9 +500,30 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 	var err error
 	var tokenInfo tokenData
 
-	if s.metadata.podIdentity == "" {
+	switch s.metadata.podIdentity {
+	case string(kedav1alpha1.PodIdentityProviderAzureWorkload):
+		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.logAnalyticsResourceURL)
+		if err != nil {
+			return tokenData{}, nil
+		}
+
+		expiresOn, err := strconv.ParseInt(aadToken.ExpiresOn, 10, 64)
+		if err != nil {
+			return tokenData{}, nil
+		}
+
+		tokenInfo = tokenData{
+			TokenType:               string(auth.CBSTokenTypeJWT),
+			AccessToken:             aadToken.AccessToken,
+			ExpiresOn:               expiresOn,
+			Resource:                s.metadata.logAnalyticsResourceURL,
+			IsWorkloadIdentityToken: true,
+		}
+
+		return tokenInfo, nil
+	case "", string(kedav1alpha1.PodIdentityProviderNone):
 		body, statusCode, err = s.executeAADApicall(ctx)
-	} else {
+	case string(kedav1alpha1.PodIdentityProviderAzure):
 		body, statusCode, err = s.executeIMDSApicall(ctx)
 	}
 
