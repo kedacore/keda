@@ -17,6 +17,7 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
@@ -36,13 +37,14 @@ type testGetDataExplorerAuthConfig struct {
 }
 
 var (
-	clientID                 = "test_client_id"
-	rowName                  = "result"
-	rowType     types.Column = "long"
-	rowValue    int64        = 3
-	podIdentity              = "Azure"
-	secret                   = "test_secret"
-	tenantID                 = "test_tenant_id"
+	clientID                      = "test_client_id"
+	rowName                       = "result"
+	rowType          types.Column = "long"
+	rowValue         int64        = 3
+	podIdentity                   = "azure"
+	workloadIdentity              = "azure-workload"
+	secret                        = "test_secret"
+	tenantID                      = "test_tenant_id"
 )
 
 var testExtractDataExplorerMetricValues = []testExtractDataExplorerMetricValue{
@@ -65,6 +67,8 @@ var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID}, isError: false},
 	// Auth with podIdentity - pass
 	{testMetadata: &DataExplorerMetadata{PodIdentity: podIdentity}, isError: false},
+	// Auth with podIdentity - pass
+	{testMetadata: &DataExplorerMetadata{PodIdentity: workloadIdentity}, isError: false},
 	// Empty metadata - fail
 	{testMetadata: &DataExplorerMetadata{}, isError: true},
 	// Empty tenantID - fail
@@ -89,7 +93,7 @@ func TestExtractDataExplorerMetricValue(t *testing.T) {
 
 func TestGetDataExplorerAuthConfig(t *testing.T) {
 	for _, testData := range testGetDataExplorerAuthConfigs {
-		_, err := getDataExplorerAuthConfig(testData.testMetadata)
+		_, err := getDataExplorerAuthConfig(context.TODO(), testData.testMetadata)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

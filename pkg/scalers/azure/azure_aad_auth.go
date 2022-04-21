@@ -28,8 +28,3 @@ type AADToken struct {
 	GrantedScopes  []string `json:"grantedScopes"`
 	DeclinedScopes []string `json:"DeclinedScopes"`
 }
-
-// OAuthToken implements the adal.OAuthTokenProvider interface. It returns the current access token.
-func (aadToken AADToken) OAuthToken() string {
-	return aadToken.AccessToken
-}

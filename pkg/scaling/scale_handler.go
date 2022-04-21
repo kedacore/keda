@@ -366,7 +366,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
 	case "azure-data-explorer":
-		return scalers.NewAzureDataExplorerScaler(config)
+		return scalers.NewAzureDataExplorerScaler(ctx, config)
 	case "azure-eventhub":
 		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":

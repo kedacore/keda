@@ -135,6 +135,23 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 	}
+
+	// Auth through Workload Identity
+	for _, testData := range testDataExplorerMetadataWithPodIdentity {
+		_, err := parseAzureDataExplorerMetadata(
+			&ScalerConfig{
+				ResolvedEnv:     dataExplorerResolvedEnv,
+				TriggerMetadata: testData.metadata,
+				AuthParams:      map[string]string{},
+				PodIdentity:     kedav1alpha1.PodIdentityProviderAzureWorkload})
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
 }
 
 func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {

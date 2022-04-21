@@ -100,19 +100,50 @@ func getScopedResource(resource string) string {
 
 type ADWorkloadIdentityConfig struct {
 	ctx      context.Context
-	resource string
+	Resource string
 }
 
 func NewAzureADWorkloadIdentityConfig(ctx context.Context, resource string) auth.AuthorizerConfig {
-	return ADWorkloadIdentityConfig{ctx: ctx, resource: resource}
+	return ADWorkloadIdentityConfig{ctx: ctx, Resource: resource}
 }
 
 // Authorizer implements the auth.AuthorizerConfig interface
 func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
-	aadToken, err := GetAzureADWorkloadIdentityToken(aadWiConfig.ctx, aadWiConfig.resource)
+	return autorest.NewBearerAuthorizer(&ADWorkloadIdentityTokenProvider{ctx: aadWiConfig.ctx, Resource: aadWiConfig.Resource}), nil
+}
+
+// ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.
+// The OAuthTokenProvider interface is used by the BearerAuthorizer to get the token when preparing the HTTP Header.
+// The Refresher interface is used by the BearerAuthorizer to refresh the token.
+type ADWorkloadIdentityTokenProvider struct {
+	ctx      context.Context
+	Resource string
+	aadToken AADToken
+}
+
+// OAuthToken is for implementing the adal.OAuthTokenProvider interface. It returns the current access token.
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) OAuthToken() string {
+	return wiTokenProvider.aadToken.AccessToken
+}
+
+// Refresh is for implementing the adal.Refresher interface
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) Refresh() error {
+	aadToken, err := GetAzureADWorkloadIdentityToken(wiTokenProvider.ctx, wiTokenProvider.Resource)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return autorest.NewBearerAuthorizer(aadToken), nil
+	wiTokenProvider.aadToken = aadToken
+	return nil
+}
+
+// RefreshExchange is for implementing the adal.Refresher interface
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) RefreshExchange(resource string) error {
+	wiTokenProvider.Resource = resource
+	return wiTokenProvider.Refresh()
+}
+
+// EnsureFresh is for implementing the adal.Refresher interface
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
+	return wiTokenProvider.Refresh()
 }
