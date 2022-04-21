@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
@@ -94,4 +96,23 @@ func getScopedResource(resource string) string {
 	}
 
 	return resource
+}
+
+type ADWorkloadIdentityConfig struct {
+	ctx      context.Context
+	resource string
+}
+
+func NewAzureADWorkloadIdentityConfig(ctx context.Context, resource string) auth.AuthorizerConfig {
+	return &ADWorkloadIdentityConfig{ctx: ctx, resource: resource}
+}
+
+// Authorizer implements the auth.AuthorizerConfig interface
+func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
+	aadToken, err := GetAzureADWorkloadIdentityToken(aadWiConfig.ctx, aadWiConfig.resource)
+	if err != nil {
+		return nil, err
+	}
+
+	return autorest.NewBearerAuthorizer(aadToken), nil
 }

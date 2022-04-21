@@ -68,13 +68,7 @@ var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
 func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
-	var podIdentityEnabled = true
-
-	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
-		podIdentityEnabled = false
-	}
-
-	client := createMetricsClient(info, podIdentityEnabled)
+	client := createMetricsClient(ctx, info, podIdentity)
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
 		return -1, err
@@ -83,21 +77,25 @@ func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity keda
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(info MonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
+func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) insights.MetricsClient {
 	client := insights.NewMetricsClientWithBaseURI(info.AzureResourceManagerEndpoint, info.SubscriptionID)
 	var authConfig auth.AuthorizerConfig
-	if podIdentityEnabled {
-		config := auth.NewMSIConfig()
-		config.Resource = info.AzureResourceManagerEndpoint
-
-		authConfig = config
-	} else {
+	switch podIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
 		config.Resource = info.AzureResourceManagerEndpoint
 		config.AADEndpoint = info.ActiveDirectoryEndpoint
 
 		authConfig = config
+	case kedav1alpha1.PodIdentityProviderAzure:
+		config := auth.NewMSIConfig()
+		config.Resource = info.AzureResourceManagerEndpoint
+
+		authConfig = config
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, info.AzureResourceManagerEndpoint)
 	}
+
 	authorizer, _ := authConfig.Authorizer()
 	client.Authorizer = authorizer
 
