@@ -153,8 +153,8 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azure.BlobMetadata, kedav1al
 		if len(meta.Connection) == 0 {
 			return nil, "", fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure:
-		// If the Use AAD Pod Identity is present then check account name
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// If the Use AAD Pod Identity / Workload Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.AccountName = val
 		} else {
