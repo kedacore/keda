@@ -16,15 +16,18 @@ limitations under the License.
 
 package azure
 
+import "time"
+
 // AADToken is the token from Azure AD
 type AADToken struct {
-	AccessToken    string   `json:"access_token"`
-	RefreshToken   string   `json:"refresh_token"`
-	ExpiresIn      string   `json:"expires_in"`
-	ExpiresOn      string   `json:"expires_on"`
-	NotBefore      string   `json:"not_before"`
-	Resource       string   `json:"resource"`
-	TokenType      string   `json:"token_type"`
-	GrantedScopes  []string `json:"grantedScopes"`
-	DeclinedScopes []string `json:"DeclinedScopes"`
+	AccessToken         string    `json:"access_token"`
+	RefreshToken        string    `json:"refresh_token"`
+	ExpiresIn           string    `json:"expires_in"`
+	ExpiresOn           string    `json:"expires_on"`
+	ExpiresOnTimeObject time.Time `json:"expires_on_object"`
+	NotBefore           string    `json:"not_before"`
+	Resource            string    `json:"resource"`
+	TokenType           string    `json:"token_type"`
+	GrantedScopes       []string  `json:"grantedScopes"`
+	DeclinedScopes      []string  `json:"DeclinedScopes"`
 }

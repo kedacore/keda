@@ -22,6 +22,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
 	"github.com/Azure/go-autorest/autorest"
@@ -75,10 +76,11 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, resource string) (AADT
 	}
 
 	return AADToken{
-		AccessToken:    result.AccessToken,
-		ExpiresOn:      strconv.FormatInt(result.ExpiresOn.Unix(), 10),
-		GrantedScopes:  result.GrantedScopes,
-		DeclinedScopes: result.DeclinedScopes,
+		AccessToken:         result.AccessToken,
+		ExpiresOn:           strconv.FormatInt(result.ExpiresOn.Unix(), 10),
+		ExpiresOnTimeObject: result.ExpiresOn,
+		GrantedScopes:       result.GrantedScopes,
+		DeclinedScopes:      result.DeclinedScopes,
 	}, nil
 }
 
@@ -133,6 +135,10 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) OAuthToken() string {
 
 // Refresh is for implementing the adal.Refresher interface
 func (wiTokenProvider *ADWorkloadIdentityTokenProvider) Refresh() error {
+	if time.Now().Before(wiTokenProvider.aadToken.ExpiresOnTimeObject) {
+		return nil
+	}
+
 	aadToken, err := GetAzureADWorkloadIdentityToken(wiTokenProvider.ctx, wiTokenProvider.Resource)
 	if err != nil {
 		return err
