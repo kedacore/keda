@@ -50,7 +50,7 @@ func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Cl
 		return err
 	}
 
-	authConfig := vh.getAuthConfig(ctx, client, logger, triggerNamespace, keyvaultResourceURL, activeDirectoryEndpoint)
+	authConfig, err := vh.getAuthConfig(ctx, client, logger, triggerNamespace, keyvaultResourceURL, activeDirectoryEndpoint)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) 
 }
 
 func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string) auth.AuthorizerConfig {
+	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string) (auth.AuthorizerConfig, error) {
 	switch vh.podIdentity {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		clientID := vh.vault.Credentials.ClientID
@@ -113,19 +113,23 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 		clientSecretKey := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
 		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
 
+		if clientID == "" || tenantID == "" || clientSecret == "" {
+			return nil, fmt.Errorf("clientID, tenantID and clientSecret are expected when not using a pod identity provider")
+		}
+
 		config := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
 		config.Resource = keyVaultResourceURL
 		config.AADEndpoint = activeDirectoryEndpoint
 
-		return config
+		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = keyVaultResourceURL
 
-		return config
+		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return azure.NewAzureADWorkloadIdentityConfig(ctx, keyVaultResourceURL)
+		return azure.NewAzureADWorkloadIdentityConfig(ctx, keyVaultResourceURL), nil
+	default:
+		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", vh.podIdentity)
 	}
-
-	return nil
 }

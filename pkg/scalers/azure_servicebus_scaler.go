@@ -242,8 +242,7 @@ func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 	case kedav1alpha1.PodIdentityProviderAzure:
 		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, serviceBusResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		scopedResource := fmt.Sprintf("%s%s", serviceBusResource, ".default")
-		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, scopedResource)
+		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, serviceBusResource)
 	default:
 		err = fmt.Errorf("unknown pod identity provider")
 	}

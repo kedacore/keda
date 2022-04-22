@@ -510,7 +510,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 			return tokenData{}, nil
 		}
 
-		expiresOn, err := strconv.ParseInt(aadToken.ExpiresOn, 10, 64)
+		expiresOn := aadToken.ExpiresOnTimeObject.Unix()
 		if err != nil {
 			return tokenData{}, nil
 		}
