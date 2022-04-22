@@ -181,9 +181,10 @@ type VaultSecret struct {
 
 // AzureKeyVault is used to authenticate using Azure Key Vault
 type AzureKeyVault struct {
-	VaultURI    string                    `json:"vaultUri"`
+	VaultURI string                `json:"vaultUri"`
+	Secrets  []AzureKeyVaultSecret `json:"secrets"`
+	// +optional
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
-	Secrets     []AzureKeyVaultSecret     `json:"secrets"`
 	// +optional
 	Cloud *AzureKeyVaultCloudInfo `json:"cloud"`
 }

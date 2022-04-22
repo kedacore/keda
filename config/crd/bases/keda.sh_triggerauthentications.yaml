@@ -115,7 +115,6 @@ spec:
                   vaultUri:
                     type: string
                 required:
-                - credentials
                 - secrets
                 - vaultUri
                 type: object
