@@ -20,6 +20,7 @@ const (
 	storageConnectionSetting  = "testStorageConnectionSetting"
 	serviceBusEndpointSuffix  = "serviceBusEndpointSuffix"
 	activeDirectoryEndpoint   = "activeDirectoryEndpoint"
+	eventHubResourceURL       = "eventHubResourceURL"
 	testEventHubNamespace     = "kedatesteventhub"
 	testEventHubName          = "eventhub1"
 	checkpointFormat          = "{\"SequenceNumber\":%d,\"PartitionId\":\"%s\"}"
@@ -68,18 +69,21 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 	// metadata with cloud specified
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
 		"eventHubNamespace": testEventHubNamespace, "cloud": "azurePublicCloud"}, false},
-	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint
+	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint and eventHubResourceURL
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
 		"eventHubNamespace": testEventHubNamespace, "cloud": "private"}, true},
-	// metadata with private cloud missing active directory endpoint
+	// metadata with private cloud missing active directory endpoint and resourceURL
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
 		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix}, true},
-	// metadata with private cloud missing service bus endpoint suffix
+	// metadata with private cloud missing service bus endpoint suffix and resource URL
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
 		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "activeDirectoryEndpoint": activeDirectoryEndpoint}, true},
+	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "eventHubResourceURL": eventHubResourceURL}, true},
 	// properly formed metadata with private cloud
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint}, false},
+		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint, "eventHubResourceURL": eventHubResourceURL}, false},
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
