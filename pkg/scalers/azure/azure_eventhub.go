@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -8,6 +9,8 @@ import (
 	"github.com/Azure/azure-amqp-common-go/v3/aad"
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/go-autorest/autorest/azure"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // EventHubInfo to keep event hub connection and resources
@@ -19,15 +22,20 @@ type EventHubInfo struct {
 	Namespace                string
 	EventHubName             string
 	CheckpointStrategy       string
-	Cloud                    string
 	ServiceBusEndpointSuffix string
 	ActiveDirectoryEndpoint  string
+	EventHubResourceURL      string
+	PodIdentity              kedav1alpha1.PodIdentityProvider
 }
 
+const (
+	DefaultEventhubResourceURL = "https://eventhubs.azure.net/"
+)
+
 // GetEventHubClient returns eventhub client
-func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
+func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, error) {
 	// The user wants to use a connectionstring, not a pod identity
-	if info.EventHubConnection != "" {
+	if info.PodIdentity == "" || info.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
 		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %s", err)
@@ -36,23 +44,25 @@ func GetEventHubClient(info EventHubInfo) (*eventhub.Hub, error) {
 	}
 
 	env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
-
-	// Since there is no connectionstring, then user wants to use pod identity
-	// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
-	provider, aadErr := aad.NewJWTProvider(func(config *aad.TokenProviderConfiguration) error {
-		if config.Env == nil {
-			config.Env = &env
-		}
-		return nil
-	})
-
 	hubEnvOptions := eventhub.HubWithEnvironment(env)
+	if info.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
+		// Since there is no connectionstring, then user wants to use pod identity
+		// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
+		envJWTProviderOption := aad.JWTProviderWithAzureEnvironment(&env)
+		resourceURLJWTProviderOption := aad.JWTProviderWithResourceURI(info.EventHubResourceURL)
+		provider, aadErr := aad.NewJWTProvider(envJWTProviderOption, resourceURLJWTProviderOption)
 
-	if aadErr == nil {
-		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
+		if aadErr == nil {
+			return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
+		}
+
+		return nil, aadErr
 	}
 
-	return nil, aadErr
+	// Workload Identity case
+	provider := NewADWorkloadIdentityTokenProvider(ctx, info.EventHubResourceURL)
+
+	return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 }
 
 // ParseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)

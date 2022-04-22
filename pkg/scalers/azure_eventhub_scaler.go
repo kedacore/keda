@@ -23,6 +23,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -64,7 +65,7 @@ type eventHubMetadata struct {
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
@@ -75,7 +76,7 @@ func NewAzureEventHubScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
 
-	hub, err := azure.GetEventHubClient(parsedMetadata.eventHubInfo)
+	hub, err := azure.GetEventHubClient(ctx, parsedMetadata.eventHubInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
 	}
@@ -129,9 +130,15 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.BlobContainer = val
 	}
 
-	meta.eventHubInfo.Cloud = azure.DefaultCloud
+	meta.eventHubInfo.EventHubResourceURL = azure.DefaultEventhubResourceURL
 	if val, ok := config.TriggerMetadata["cloud"]; ok {
-		meta.eventHubInfo.Cloud = val
+		if strings.EqualFold(val, azure.PrivateCloud) {
+			if resourceURL, ok := config.TriggerMetadata["eventHubResourceURL"]; ok {
+				meta.eventHubInfo.EventHubResourceURL = resourceURL
+			} else {
+				return nil, fmt.Errorf("eventHubResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		}
 	}
 
 	serviceBusEndpointSuffixProvider := func(env az.Environment) (string, error) {
@@ -149,7 +156,9 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	}
 	meta.eventHubInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
-	if config.PodIdentity == "" || config.PodIdentity == v1alpha1.PodIdentityProviderNone {
+	meta.eventHubInfo.PodIdentity = config.PodIdentity
+	switch config.PodIdentity {
+	case "", v1alpha1.PodIdentityProviderNone:
 		if config.AuthParams["connection"] != "" {
 			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
 		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
@@ -159,7 +168,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		if len(meta.eventHubInfo.EventHubConnection) == 0 {
 			return nil, fmt.Errorf("no event hub connection string given")
 		}
-	} else {
+	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
 		if config.TriggerMetadata["eventHubNamespace"] != "" {
 			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]
 		} else if config.TriggerMetadata["eventHubNamespaceFromEnv"] != "" {

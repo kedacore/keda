@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
@@ -121,6 +122,10 @@ type ADWorkloadIdentityTokenProvider struct {
 	aadToken AADToken
 }
 
+func NewADWorkloadIdentityTokenProvider(ctx context.Context, resource string) *ADWorkloadIdentityTokenProvider {
+	return &ADWorkloadIdentityTokenProvider{ctx: ctx, Resource: resource}
+}
+
 // OAuthToken is for implementing the adal.OAuthTokenProvider interface. It returns the current access token.
 func (wiTokenProvider *ADWorkloadIdentityTokenProvider) OAuthToken() string {
 	return wiTokenProvider.aadToken.AccessToken
@@ -146,4 +151,15 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) RefreshExchange(resource
 // EnsureFresh is for implementing the adal.Refresher interface
 func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
 	return wiTokenProvider.Refresh()
+}
+
+// GetToken is for implementing the auth.TokenProvider interface
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(uri string) (*amqpAuth.Token, error) {
+	err := wiTokenProvider.Refresh()
+	if err != nil {
+		return nil, err
+	}
+
+	return amqpAuth.NewToken(amqpAuth.CBSTokenTypeJWT, wiTokenProvider.aadToken.AccessToken,
+		wiTokenProvider.aadToken.ExpiresOn), nil
 }
