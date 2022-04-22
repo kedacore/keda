@@ -34,19 +34,18 @@ const (
 
 // GetEventHubClient returns eventhub client
 func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, error) {
-	// The user wants to use a connectionstring, not a pod identity
-	if info.PodIdentity == "" || info.PodIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch info.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		// The user wants to use a connectionstring, not a pod identity
 		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %s", err)
 		}
 		return hub, nil
-	}
-
-	env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
-	hubEnvOptions := eventhub.HubWithEnvironment(env)
-	if info.PodIdentity == kedav1alpha1.PodIdentityProviderAzure {
-		// Since there is no connectionstring, then user wants to use pod identity
+	case kedav1alpha1.PodIdentityProviderAzure:
+		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
+		hubEnvOptions := eventhub.HubWithEnvironment(env)
+		// Since there is no connectionstring, then user wants to use AAD Pod identity
 		// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
 		envJWTProviderOption := aad.JWTProviderWithAzureEnvironment(&env)
 		resourceURLJWTProviderOption := aad.JWTProviderWithResourceURI(info.EventHubResourceURL)
@@ -57,12 +56,16 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		}
 
 		return nil, aadErr
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// User wants to use AAD Workload Identity
+		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
+		hubEnvOptions := eventhub.HubWithEnvironment(env)
+		provider := NewADWorkloadIdentityTokenProvider(ctx, info.EventHubResourceURL)
+
+		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 	}
 
-	// Workload Identity case
-	provider := NewADWorkloadIdentityTokenProvider(ctx, info.EventHubResourceURL)
-
-	return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
+	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity)
 }
 
 // ParseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)

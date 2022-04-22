@@ -133,7 +133,7 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorer
 
 	switch config.PodIdentity {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		metadata.PodIdentity = string(config.PodIdentity)
+		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		dataExplorerLogger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 

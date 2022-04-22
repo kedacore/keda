@@ -24,6 +24,7 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/data/table"
 	"github.com/Azure/azure-kusto-go/kusto/data/types"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type testExtractDataExplorerMetricValue struct {
@@ -37,14 +38,12 @@ type testGetDataExplorerAuthConfig struct {
 }
 
 var (
-	clientID                      = "test_client_id"
-	rowName                       = "result"
-	rowType          types.Column = "long"
-	rowValue         int64        = 3
-	podIdentity                   = "azure"
-	workloadIdentity              = "azure-workload"
-	secret                        = "test_secret"
-	tenantID                      = "test_tenant_id"
+	clientID              = "test_client_id"
+	rowName               = "result"
+	rowType  types.Column = "long"
+	rowValue int64        = 3
+	secret                = "test_secret"
+	tenantID              = "test_tenant_id"
 )
 
 var testExtractDataExplorerMetricValues = []testExtractDataExplorerMetricValue{
@@ -66,9 +65,9 @@ var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	// Auth with aad app - pass
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID}, isError: false},
 	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: podIdentity}, isError: false},
-	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: workloadIdentity}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.PodIdentityProviderAzure}, isError: false},
+	// Auth with workload identity - pass
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload}, isError: false},
 	// Empty metadata - fail
 	{testMetadata: &DataExplorerMetadata{}, isError: true},
 	// Empty tenantID - fail
