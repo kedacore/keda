@@ -71,6 +71,8 @@ spec:
               drop:
               - ALL
             allowPrivilegeEscalation: false
+            ## Metrics server needs to write the self-signed cert so it's not possible set this
+            # readOnlyRootFilesystem: true
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
