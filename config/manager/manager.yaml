@@ -22,6 +22,11 @@ spec:
         name: keda-operator
       name: keda-operator
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
         - name: keda-operator
