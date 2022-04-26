@@ -64,6 +64,12 @@ spec:
               value: ""
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
