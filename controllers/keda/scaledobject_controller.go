@@ -202,7 +202,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-// reconcileScaledObject implements reconciler logic for ScaleObject
+// reconcileScaledObject implements reconciler logic for ScaledObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
@@ -391,7 +391,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	return false, nil
 }
 
-// startScaleLoop starts ScaleLoop handler for the respective ScaledObject
+// requestScaleLoop tries to start ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
 
@@ -411,7 +411,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger lo
 	return nil
 }
 
-// stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
+// stopScaleLoop stops ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
