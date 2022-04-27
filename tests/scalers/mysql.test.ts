@@ -63,7 +63,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
+test.serial(`Deployment should scale to 2 (the max) then back to 0`, t => {
     const tmpFile = tmp.fileSync()
     fs.writeFileSync(tmpFile.name, insertRecordsJobYaml)
     t.is(
@@ -74,7 +74,7 @@ test.serial(`Deployment should scale to 5 (the max) then back to 0`, t => {
 
     let replicaCount = '0'
 
-    const maxReplicaCount = '5'
+    const maxReplicaCount = '2'
 
     for (let i = 0; i < 60 && replicaCount !== maxReplicaCount; i++) {
         replicaCount = sh.exec(
@@ -180,7 +180,7 @@ spec:
   pollingInterval: 5
   cooldownPeriod:  10
   minReplicaCount: 0
-  maxReplicaCount: 5
+  maxReplicaCount: 2
   triggers:
   - type: mysql
     metadata:
