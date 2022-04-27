@@ -4,14 +4,13 @@ import test from "ava"
 import { createNamespace, createYamlFile, waitForDeploymentReplicaCount } from "./helpers"
 
 const connectionString = process.env["AZURE_SERVICE_BUS_CONNECTION_STRING"]
-//  Format for connection string -
+// Format for connection string -
 // Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key-val>"
 const serviceBusNameSpace = connectionString.split("//")[1].split(".")[0]
 const queueName = "sb-queue"
 
 const testName = "test-azure-service-bus-queue"
 const testNamespace = `${testName}-ns`
-const secretName = `${testName}-secret`
 const deploymentName = `${testName}-deployment`
 const triggerAuthName = `${testName}-trigger-auth`
 const scaledObjectName = `${testName}-scaled-object`
@@ -34,16 +33,6 @@ test.before(async t => {
 
     // Create Kubernetes Namespace
     createNamespace(testNamespace)
-
-    // Create Secret
-    const base64ConStr = Buffer.from(connectionString).toString("base64")
-    const secretFileName = createYamlFile(secretYaml.replace("{{CONNECTION}}", base64ConStr))
-
-    t.is(
-        sh.exec(`kubectl apply -f ${secretFileName} -n ${testNamespace}`).code,
-        0,
-        "Creating a secret should work"
-    )
 
     // Create deployment
     t.is(
@@ -119,7 +108,6 @@ test.after.always("Clean up E2E K8s objects", async t => {
         `scaledobject.keda.sh/${scaledObjectName}`,
         `triggerauthentications.keda.sh/${triggerAuthName}`,
         `deployments.apps/${deploymentName}`,
-        `secrets/${secretName}`,
     ]
 
     for (const resource of resources) {
@@ -139,18 +127,6 @@ test.after.always("Clean up E2E K8s objects", async t => {
 })
 
 // YAML Definitions for Kubernetes resources
-// Secret
-const secretYaml =
-`apiVersion: v1
-kind: Secret
-metadata:
-  name: ${secretName}
-  namespace: ${testNamespace}
-type: Opaque
-data:
-  connection: {{CONNECTION}}
-`
-
 // Deployment
 const deploymentYaml =
 `apiVersion: apps/v1
