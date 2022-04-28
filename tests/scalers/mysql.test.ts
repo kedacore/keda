@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { createNamespace } from './helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'mysql-test'
 const mySQLNamespace = 'mysql'
@@ -63,7 +63,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
     t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial(`Deployment should scale to 2 (the max) then back to 0`, t => {
+test.serial(`Deployment should scale to 2 (the max) then back to 0`, async t => {
     const tmpFile = tmp.fileSync()
     fs.writeFileSync(tmpFile.name, insertRecordsJobYaml)
     t.is(
@@ -72,31 +72,10 @@ test.serial(`Deployment should scale to 2 (the max) then back to 0`, t => {
         'creating job should work.'
     )
 
-    let replicaCount = '0'
+    const maxReplicaCount = 2
+    t.true(await waitForDeploymentReplicaCount(maxReplicaCount, deploymentName, testNamespace, 120, 1000), 'Replica count should be 0 after 2 minutes')
 
-    const maxReplicaCount = '2'
-
-    for (let i = 0; i < 60 && replicaCount !== maxReplicaCount; i++) {
-        replicaCount = sh.exec(
-            `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-        ).stdout
-        if (replicaCount !== maxReplicaCount) {
-            sh.exec('sleep 2s')
-        }
-    }
-
-    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 120 seconds`)
-
-    for (let i = 0; i < 36 && replicaCount !== '0'; i++) {
-      replicaCount = sh.exec(
-        `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-      ).stdout
-      if (replicaCount !== '0') {
-        sh.exec('sleep 5s')
-      }
-    }
-
-    t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+    t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 300, 1000), 'Replica count should be 0 after 5 minutes')
 })
 
 test.after.always.cb('clean up mysql deployment', t => {
@@ -210,7 +189,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "2000"
+            value: "1000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
