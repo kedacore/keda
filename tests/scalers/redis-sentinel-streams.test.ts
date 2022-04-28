@@ -19,7 +19,7 @@ test.before(t => {
     createNamespace(redisNamespace)
     sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
 
-    let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
+    let sentinelStatus = sh.exec(`helm install --timeout 900s ${redisSentinelName} --namespace ${redisNamespace} --set "sentinel.enabled=true" --set "master.persistence.enabled=false" --set "replica.persistence.enabled=false" --set "global.redis.password=${redisPassword}" bitnami/redis`).code
     t.is(0,
         sentinelStatus,
         'creating a Redis Sentinel setup should work.'

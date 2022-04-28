@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	neturl "net/url"
 	"strconv"
 	"strings"
-
-	neturl "net/url"
 
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"

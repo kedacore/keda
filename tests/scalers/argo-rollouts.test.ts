@@ -16,7 +16,7 @@ test.before(async t => {
 
   // install argo-rollouts
   createNamespace(argoRolloutsNamespace)
-  sh.exec(`curl -L https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml > ${argoRolloutsYamlFile.name}`)
+  sh.exec(`curl -L https://raw.githubusercontent.com/argoproj/argo-rollouts/v1.2.0/manifests/install.yaml > ${argoRolloutsYamlFile.name}`)
 	t.is(
 		0,
 		sh.exec(`kubectl apply -f ${argoRolloutsYamlFile.name} --namespace ${argoRolloutsNamespace}`).code,
