@@ -30,7 +30,6 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
-
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 

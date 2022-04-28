@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 )
 
 type parseOpenstackSwiftMetadataTestData struct {
