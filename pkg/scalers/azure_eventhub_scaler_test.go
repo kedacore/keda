@@ -8,10 +8,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 const (

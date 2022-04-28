@@ -36,6 +36,7 @@ import (
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
+	//nolint:gci
 	//+kubebuilder:scaffold:imports
 )
 
