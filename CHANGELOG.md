@@ -32,8 +32,6 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Unreleased
 
-- **Graphite Scaler**  Use the latest non-null datapoint returned by query.
-
 ### New
 
 - **General:** Introduce annotation `"autoscaling.keda.sh/paused-replicas"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
@@ -61,6 +59,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
 - **Datadog Scaler:** Several improvements, including a new optional parameter `metricUnavailableValue` to fill data when no Datadog metric was returned ([#2657](https://github.com/kedacore/keda/issues/2657))
 - **Datadog Scaler:** Rely on Datadog API to validate the query ([2761](https://github.com/kedacore/keda/issues/2761))
+- **Graphite Scaler**  Use the latest non-null datapoint returned by query.
 - **Kafka Scaler:** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
 - **Kafka Scaler:** New `scaleToZeroOnInvalidOffset` to control behavior when partitions have an invalid offset ([#2033](https://github.com/kedacore/keda/issues/2033)[#2612](https://github.com/kedacore/keda/issues/2612))
 - **Metric API Scaler:** Improve error handling on not-ok response ([#2317](https://github.com/kedacore/keda/issues/2317))
