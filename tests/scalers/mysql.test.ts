@@ -56,11 +56,8 @@ test.before(t => {
 
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-    const replicaCount = sh.exec(
-        `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    t.is(replicaCount, '0', 'replica count should start out as 0')
+test.serial('Deployment should have 0 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 60, 1000), 'replica count should start out as 0')
 })
 
 test.serial(`Deployment should scale to 2 (the max) then back to 0`, async t => {
@@ -75,7 +72,7 @@ test.serial(`Deployment should scale to 2 (the max) then back to 0`, async t => 
     const maxReplicaCount = 2
     t.true(await waitForDeploymentReplicaCount(maxReplicaCount, deploymentName, testNamespace, 120, 1000), 'Replica count should be 0 after 2 minutes')
 
-    t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 300, 1000), 'Replica count should be 0 after 5 minutes')
+    t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 360, 1000), 'Replica count should be 0 after 5 minutes')
 })
 
 test.after.always.cb('clean up mysql deployment', t => {
@@ -124,7 +121,7 @@ spec:
           - update
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "10000"
+            value: "4000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -189,7 +186,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "1000"
+            value: "4000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
