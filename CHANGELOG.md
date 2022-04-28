@@ -32,6 +32,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Unreleased
 
+- **Graphite Scaler**  Use the latest non-null datapoint returned by query.
+
 ### New
 
 - **General:** Introduce annotation `"autoscaling.keda.sh/paused-replicas"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
@@ -44,8 +46,6 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General**: Support for `ValueMetricType` in `ScaledObject` for all scalers except CPU/Memory ([#2030](https://github.com/kedacore/keda/issues/2030))
 
 ### Improvements
-
-- **Graphite Scaler**  Use the latest non-null datapoint returned by query.
 
 - **General:** Properly handle `restoreToOriginalReplicaCount` if `ScaleTarget` is missing ([#2872](https://github.com/kedacore/keda/issues/2872))
 - **General:** Synchronize HPA annotations from ScaledObject ([#2659](https://github.com/kedacore/keda/pull/2659))
