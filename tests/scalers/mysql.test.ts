@@ -124,7 +124,7 @@ spec:
           - update
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "10000"
+            value: "4000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -189,7 +189,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "1000"
+            value: "4000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
