@@ -28,13 +28,6 @@ function run_tests {
             continue
         fi
 
-        # Disable until workload identity support is added to test environment
-        # Refer - https://github.com/kedacore/keda/issues/2941
-        if [[ $test_case == *workload-identity.test.ts ]]
-        then
-            continue
-        fi
-
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
