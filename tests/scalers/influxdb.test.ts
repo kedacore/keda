@@ -150,24 +150,11 @@ spec:
                 ports:
                   - containerPort: 8086
                     name: influxdb
-                volumeMounts:
-                  - mountPath: /root/.influxdbv2
-                    name: data
                 readinessProbe:
                   tcpSocket:
                     port: 8086
                   initialDelaySeconds: 5
                   periodSeconds: 10
-    volumeClaimTemplates:
-      - metadata:
-            name: data
-            namespace: influxdb
-        spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-                requests:
-                    storage: 10G
 ---
 apiVersion: v1
 kind: Service
