@@ -6,7 +6,7 @@ import { createNamespace } from './helpers'
 
 const dataExplorerDb = process.env['AZURE_DATA_EXPLORER_DB']
 const dataExplorerEndpoint = process.env['AZURE_DATA_EXPLORER_ENDPOINT']
-const spId = process.env['AZURE_SP_ID']
+const spId = process.env['AZURE_SP_APP_ID']
 const spSecret = process.env['AZURE_SP_KEY']
 const spTenantId = process.env['AZURE_SP_TENANT']
 
