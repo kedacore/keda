@@ -8,6 +8,7 @@ kc.loadFromDefault()
 const AZURE_AD_CLIENT_ID = process.env['AZURE_SP_APP_ID']
 const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 const AZURE_AD_TENANT_ID = process.env['AZURE_SP_TENANT']
+const RUN_WORKLOAD_IDENTITY_TESTS = process.env['RUN_WORKLOAD_IDENTITY_TESTS']
 const SERVICE_ACCOUNT_ISSUER = process.env['OIDC_ISSUER_URL']
 const SERVICE_ACCOUNT_NAMESPACE = 'keda'
 const SERVICE_ACCOUNT_NAME = 'keda-operator'
@@ -15,7 +16,7 @@ const workloadIdentityNamespace = "azure-workload-identity-system"
 const federatedIdentityCredentialName = "keda-e2e-federated-credential"
 
 test.before('configure shelljs', () => {
-  sh.config.silent = true
+  sh.config.silent = false // TODO - Revert after PR workflow runs successfully
 })
 
 test.serial('Verify all commands', t => {
@@ -64,6 +65,11 @@ test.serial('setup helm', t => {
 })
 
 test.serial('setup and verify azure workload identity kubernetes components', t => {
+  if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
+    t.pass('nothing to setup')
+    return
+  }
+
   // check if helm is already installed.
   let result = sh.exec('helm version')
   if (result.code != 0) {

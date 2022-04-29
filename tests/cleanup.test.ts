@@ -3,12 +3,12 @@ import test from 'ava'
 
 const workloadIdentityNamespace = "azure-workload-identity-system"
 const federatedIdentityCredentialName = "keda-e2e-federated-credential"
+const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
+const RUN_WORKLOAD_IDENTITY_TESTS = process.env['RUN_WORKLOAD_IDENTITY_TESTS']
 
 test.before('setup shelljs', () => {
-  sh.config.silent = true
+  sh.config.silent = false // TODO - Revert after PR workflow runs successfully
 })
-
-const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 
 test.serial('Remove KEDA', t => {
   let result = sh.exec('(cd .. && make undeploy)')
@@ -19,6 +19,10 @@ test.serial('Remove KEDA', t => {
 })
 
 test.serial('remove azure workload identity kubernetes components', t => {
+  if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
+    t.pass('nothing to clean')
+    return
+  }
 
   t.is(0,
     sh.exec(`helm uninstall workload-identity-webhook --namespace ${workloadIdentityNamespace}`).code,
