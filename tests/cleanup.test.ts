@@ -8,7 +8,7 @@ test.before('setup shelljs', () => {
   sh.config.silent = true
 })
 
-const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT']
+const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 
 test.serial('Remove KEDA', t => {
   let result = sh.exec('(cd .. && make undeploy)')

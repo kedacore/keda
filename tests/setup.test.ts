@@ -5,10 +5,10 @@ import test from 'ava'
 const kc = new k8s.KubeConfig()
 kc.loadFromDefault()
 
-const AZURE_AD_CLIENT_ID = process.env['AZURE_SP_ID']
-const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT']
+const AZURE_AD_CLIENT_ID = process.env['AZURE_SP_APP_ID']
+const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 const AZURE_AD_TENANT_ID = process.env['AZURE_SP_TENANT']
-const SERVICE_ACCOUNT_ISSUER = process.env['AZURE_OIDC_ISSUER_URL']
+const SERVICE_ACCOUNT_ISSUER = process.env['OIDC_ISSUER_URL']
 const SERVICE_ACCOUNT_NAMESPACE = 'keda'
 const SERVICE_ACCOUNT_NAME = 'keda-operator'
 const workloadIdentityNamespace = "azure-workload-identity-system"
