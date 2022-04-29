@@ -28,7 +28,7 @@ jobs:
           body: |
             **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           reactions: rocket
-      
+
       - name: Get Pull Request number
         id: parser
         run: |
