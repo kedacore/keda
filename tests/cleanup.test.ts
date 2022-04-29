@@ -2,12 +2,10 @@ import * as sh from 'shelljs'
 import test from 'ava'
 
 const workloadIdentityNamespace = "azure-workload-identity-system"
-const federatedIdentityCredentialName = "keda-e2e-federated-credential"
-const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 const RUN_WORKLOAD_IDENTITY_TESTS = process.env['AZURE_RUN_WORKLOAD_IDENTITY_TESTS']
 
 test.before('setup shelljs', () => {
-  sh.config.silent = false // TODO - Revert after PR workflow runs successfully
+  sh.config.silent = true
 })
 
 test.serial('Remove KEDA', t => {
@@ -20,7 +18,7 @@ test.serial('Remove KEDA', t => {
 
 test.serial('remove azure workload identity kubernetes components', t => {
   if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
-    t.pass('nothing to clean')
+    t.pass('skipping as workload identity tests are disabled')
     return
   }
 
@@ -30,10 +28,4 @@ test.serial('remove azure workload identity kubernetes components', t => {
   )
 
   sh.exec(`kubectl delete ns ${workloadIdentityNamespace}`)
-
-  let uri = `https://graph.microsoft.com/beta/applications/${AZURE_AD_OBJECT_ID}/federatedIdentityCredentials/${federatedIdentityCredentialName}`
-  t.is(0,
-    sh.exec(`az rest --method DELETE --uri ${uri}`).code,
-    "should be able to delete federated identity credential"
-  )
 })

@@ -6,17 +6,12 @@ const kc = new k8s.KubeConfig()
 kc.loadFromDefault()
 
 const AZURE_AD_CLIENT_ID = process.env['AZURE_SP_APP_ID']
-const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
 const AZURE_AD_TENANT_ID = process.env['AZURE_SP_TENANT']
 const RUN_WORKLOAD_IDENTITY_TESTS = process.env['AZURE_RUN_WORKLOAD_IDENTITY_TESTS']
-const SERVICE_ACCOUNT_ISSUER = process.env['OIDC_ISSUER_URL']
-const SERVICE_ACCOUNT_NAMESPACE = 'keda'
-const SERVICE_ACCOUNT_NAME = 'keda-operator'
 const workloadIdentityNamespace = "azure-workload-identity-system"
-const federatedIdentityCredentialName = "keda-e2e-federated-credential"
 
 test.before('configure shelljs', () => {
-  sh.config.silent = false // TODO - Revert after PR workflow runs successfully
+  sh.config.silent = true
 })
 
 test.serial('Verify all commands', t => {
@@ -66,7 +61,7 @@ test.serial('setup helm', t => {
 
 test.serial('setup and verify azure workload identity kubernetes components', t => {
   if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
-    t.pass('nothing to setup')
+    t.pass('skipping as workload identity tests are disabled')
     return
   }
 
@@ -110,17 +105,14 @@ test.serial('setup and verify azure workload identity kubernetes components', t 
   }
 
   t.true(success, 'expected workloadd identity deployments to start 2 pods successfully')
-
-  let uri = `https://graph.microsoft.com/beta/applications/${AZURE_AD_OBJECT_ID}/federatedIdentityCredentials`
-  // Establish federated identity credential
-  t.is(
-    0,
-    sh.exec(`az rest --method POST --uri ${uri} --body '${federatedCredentialsRequestBody}'`).code,
-    "should be able to establish federated identity credential"
-  )
 })
 
 test.serial('annotate keda-operator service account for workload identity and redeploy', t => {
+  if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
+    t.pass('skipping as workload identity tests are disabled')
+    return
+  }
+
   t.is(
     0,
     sh.exec(`kubectl annotate sa keda-operator -n keda azure.workload.identity/client-id="${AZURE_AD_CLIENT_ID}" --overwrite`).code,
@@ -172,14 +164,3 @@ test.serial('verifyKeda', t => {
 
   t.true(success, 'expected keda deployments to start 2 pods successfully')
 })
-
-const federatedCredentialsRequestBody = `{
-  "name": "${federatedIdentityCredentialName}",
-  "issuer": "${SERVICE_ACCOUNT_ISSUER}",
-  "subject": "system:serviceaccount:${SERVICE_ACCOUNT_NAMESPACE}:${SERVICE_ACCOUNT_NAME}",
-  "description": "KEDA E2E service account federated credential",
-  "audiences": [
-    "api://AzureADTokenExchange"
-  ]
-}
-`
