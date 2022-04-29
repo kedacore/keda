@@ -15,6 +15,14 @@ jobs:
       - name: Install necessary packages
         run: apt update && apt install -y make ca-certificates gcc
 
+      - name: Debug and feel lucky 1
+        run: |
+          echo "AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}"
+
+      - name: Debug and feel lucky 2
+        run: |
+          echo "AZURE_SP_ID: ${{ secrets.AZURE_SP_APP_ID }} "
+
       - name: Check out code
         uses: actions/checkout@v3
         with:
