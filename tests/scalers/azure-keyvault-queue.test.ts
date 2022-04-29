@@ -10,7 +10,7 @@ const testNamespace = 'azure-keyvault-queue-test'
 const queueName = 'queue-name-trigger'
 const connectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']
 const keyvaultURI = process.env['AZURE_KEYVAULT_URI']
-const azureADClientID = process.env['AZURE_SP_ID']
+const azureADClientID = process.env['AZURE_SP_APP_ID']
 const azureADClientSecret = process.env['AZURE_SP_KEY']
 const azureADTenantID = process.env['AZURE_SP_TENANT']
 
@@ -24,7 +24,7 @@ test.before(async t => {
   }
 
   if (!azureADClientID) {
-    t.fail('AZURE_SP_ID environment variable is required for keyvault tests')
+    t.fail('AZURE_SP_APP_ID environment variable is required for keyvault tests')
   }
 
   if (!azureADClientSecret) {

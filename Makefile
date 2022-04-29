@@ -71,7 +71,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: get-cluster-context
 get-cluster-context: ## Get Azure cluster context.
-	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
+	@az login --service-principal -u $(AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
