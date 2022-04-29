@@ -98,7 +98,7 @@ jobs:
           NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
           NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
           NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
-          OIDC_ISSUER_URL_: ${{ secrets.OIDC_ISSUER_URL_PR }}
+          OIDC_ISSUER_URL: ${{ secrets.OIDC_ISSUER_URLPR }}
           OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
           OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
           OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
