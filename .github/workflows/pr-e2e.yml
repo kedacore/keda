@@ -8,8 +8,8 @@ jobs:
     name: Comment evaluate
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
-      pr_num: ${{ steps.checkout.outputs.pr_num }}
-      image_tag: "pr-${{ steps.checkout.outputs.pr_num }}-${{ github.event.comment.id }}"
+      pr_num: ${{ steps.parser.outputs.pr_num }}
+      image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ github.event.comment.id }}"
     steps:
       - name: Check user permission
         if: startsWith(github.event.comment.body,'/run-e2e')
@@ -30,7 +30,7 @@ jobs:
           reactions: rocket
       
       - name: Get Pull Request number
-        id: pull
+        id: parser
         run: |
           PR_URL="${{ github.event.issue.pull_request.url }}"
           PR_NUM=${PR_URL##*/}
