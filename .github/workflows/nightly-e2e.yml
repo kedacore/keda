@@ -37,7 +37,6 @@ jobs:
           AZURE_SERVICE_BUS_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}
           AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
           AZURE_SP_OBJECT_ID: ${{ secrets.AZURE_SP_OBJECT_ID }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }} # Deprecated, use AZURE_SP_APP_ID instead
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
@@ -63,7 +62,6 @@ jobs:
         env:
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }} # Deprecated, use AZURE_SP_APP_ID instead
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
