@@ -4,7 +4,7 @@ import test from 'ava'
 const workloadIdentityNamespace = "azure-workload-identity-system"
 const federatedIdentityCredentialName = "keda-e2e-federated-credential"
 const AZURE_AD_OBJECT_ID = process.env['AZURE_SP_OBJECT_ID']
-const RUN_WORKLOAD_IDENTITY_TESTS = process.env['RUN_WORKLOAD_IDENTITY_TESTS']
+const RUN_WORKLOAD_IDENTITY_TESTS = process.env['AZURE_RUN_WORKLOAD_IDENTITY_TESTS']
 
 test.before('setup shelljs', () => {
   sh.config.silent = false // TODO - Revert after PR workflow runs successfully
