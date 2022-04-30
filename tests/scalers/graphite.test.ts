@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {createNamespace, waitForRollout} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
 
 const graphiteNamespace = 'graphite'
 const graphiteDeploymentFile = 'scalers/graphite-deployment.yaml'
@@ -40,7 +40,7 @@ test.serial('Deployment should have 0 replica on start', t => {
   t.is(replicaCount, '0', 'replica count should start out as 0')
 })
 
-test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, t => {
+test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, async t => {
   const tmpFile = tmp.fileSync()
   t.log(tmpFile.name)
 
@@ -52,32 +52,16 @@ test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding
   )
 
   // keda based deployment should start scaling up with http requests issued
-  let replicaCount = '0'
-  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
-    t.log(`Waited ${5 * i} seconds for graphite-based deployments to scale up`)
-    const jobLogs = sh.exec(`kubectl logs -l job-name=generate-graphite-metrics -n ${graphiteNamespace}`).stdout
-    t.log(`Logs from the generate requests: ${jobLogs}`)
+  t.true(await waitForDeploymentReplicaCount(5, "php-apache-graphite", graphiteNamespace, 180, 1000), 'Replica count should be maxed at 5')
 
-    replicaCount = sh.exec(
-      `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '5') {
-      sh.exec('sleep 10s')
-    }
-  }
+  fs.writeFileSync(tmpFile.name, generateNoRequestsYaml.replace('{{GRAPHITE_NAMESPACE}}', graphiteNamespace))
+  t.is(
+    0,
+    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${graphiteNamespace}`).code,
+    'creating job should work.'
+  )
 
-  t.is('5', replicaCount, 'Replica count should be maxed at 5')
-
-  for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment php-apache-graphite --namespace ${graphiteNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '0') {
-      sh.exec('sleep 10s')
-    }
-  }
-
-  t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+  t.true(await waitForDeploymentReplicaCount(0, "php-apache-graphite", graphiteNamespace, 300, 1000), 'Replica count should be 0 after 5 minutes')
 })
 
 test.after.always.cb('clean up graphite deployment', t => {
@@ -141,7 +125,7 @@ spec:
 const generateRequestsYaml = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-graphite-metrics
+  name: generate-load-graphite-metrics
 spec:
   template:
     spec:
@@ -150,6 +134,22 @@ spec:
         name: generate-graphite-metrics
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 60);do echo $i; echo \\"https_metric 1000 $(date +%s)\\" | nc graphite.{{GRAPHITE_NAMESPACE}}.svc 2003; echo 'data sent :)'; sleep 1; done"]
+      restartPolicy: Never
+  activeDeadlineSeconds: 120
+  backoffLimit: 2`
+
+const generateNoRequestsYaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-empty-load-graphite-metrics
+spec:
+  template:
+    spec:
+      containers:
+      - image: busybox
+        name: generate-graphite-metrics
+        command: ["/bin/sh"]
+        args: ["-c", "for i in $(seq 1 60);do echo $i; echo \\"https_metric 0 $(date +%s)\\" | nc graphite.{{GRAPHITE_NAMESPACE}}.svc 2003; echo 'data sent :)'; sleep 1; done"]
       restartPolicy: Never
   activeDeadlineSeconds: 120
   backoffLimit: 2`
