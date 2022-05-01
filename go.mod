@@ -28,6 +28,7 @@ require (
 	github.com/go-playground/validator/v10 v10.10.0
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v0.0.0-20211222173705-d73e6b1002a7
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -56,8 +57,8 @@ require (
 	google.golang.org/genproto v0.0.0-20220218161850-94dd64e39d7c
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
-	k8s.io/api v0.23.3
-	k8s.io/apimachinery v0.23.3
+	k8s.io/api v0.23.6
+	k8s.io/apimachinery v0.23.6
 	k8s.io/apiserver v0.23.3
 	k8s.io/client-go v0.23.3
 	k8s.io/code-generator v0.23.3
@@ -131,7 +132,6 @@ require (
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
