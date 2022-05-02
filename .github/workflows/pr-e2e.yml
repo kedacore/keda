@@ -38,7 +38,7 @@ jobs:
           echo "::set-output name=pr_num::$PR_NUM"
 
   build-test-images:
-    needs: check
+    needs: triage
     runs-on: ubuntu-latest
     name: Build images
     container: ghcr.io/kedacore/build-tools:main
