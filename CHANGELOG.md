@@ -129,7 +129,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
 - **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
 - **AWS Scalers:** Support temporary AWS credentials using session tokens ([#2573](https://github.com/kedacore/keda/pull/2573))
-- **AWS SQS Scaler:** Allow using simple queue name instead of URL ([#2457](https://github.com/kedacore/keda/pull/2457))
+- **AWS SQS Scaler:** Allow using simple queue name instead of URL ([#2483](https://github.com/kedacore/keda/pull/2483))
 - **Azure EventHub Scaler:** Don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
 - **Azure Pipelines Scaler:** Support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
 - **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
