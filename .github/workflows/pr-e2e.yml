@@ -69,7 +69,7 @@ jobs:
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
 
   run-test:
-    needs: build-test-images
+    needs: [triage, build-test-images]
     runs-on: ubuntu-latest
     name: Execute e2e tests
     container: ghcr.io/kedacore/build-tools:main
