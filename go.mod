@@ -18,7 +18,7 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.13.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.31.1
-	github.com/aws/aws-sdk-go v1.44.4
+	github.com/aws/aws-sdk-go v1.44.5
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dysnix/predictkube-libs v0.0.3
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
@@ -35,10 +35,10 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/vault/api v1.3.1
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.7.0
+	github.com/influxdata/influxdb-client-go/v2 v2.8.2
 	github.com/lib/pq v1.10.5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.71.0
+	github.com/newrelic/newrelic-client-go v0.78.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
@@ -49,7 +49,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.13.0
+	github.com/tidwall/gjson v1.14.1
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.mongodb.org/mongo-driver v1.9.0
@@ -188,7 +188,7 @@ require (
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.2 // indirect
+	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
