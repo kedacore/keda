@@ -75,10 +75,6 @@ issues:
     - path: azure/azure_app_insights.go
       linters:
         - bodyclose
-  # remove once https://github.com/kedacore/keda/issues/2989 is fixed
-    - path: azure/azure_data_explorer.go
-      linters:
-        - staticcheck
 
 linters-settings:
   funlen:

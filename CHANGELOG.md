@@ -94,6 +94,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **AWS Kinesis Stream:** Adding e2e test ([#1526](https://github.com/kedacore/keda/issues/1526))
 - **AWS SQS Queue:** Adding e2e test ([#1527](https://github.com/kedacore/keda/issues/1527))
 - **Azure Data Explorer:** Adding e2e test ([#2841](https://github.com/kedacore/keda/issues/2841))
+- **Azure Data Explorer:** Replace deprecated function `iter.Next()` in favour of `iter.NextRowOrError()` ([#2989](https://github.com/kedacore/keda/issues/2989))
 - **Azure Service Bus:** Adding e2e test ([#2731](https://github.com/kedacore/keda/issues/2731)|[#2732](https://github.com/kedacore/keda/issues/2732))
 - **External Scaler:** Adding e2e test. ([#2697](https://github.com/kedacore/keda/issues/2697))
 - **External Scaler:** Fix issue with internal KEDA core prefix being passed to external scaler. ([#2640](https://github.com/kedacore/keda/issues/2640))
