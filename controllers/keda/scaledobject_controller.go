@@ -257,18 +257,20 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
 func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	const labelScaledObjectName = "scaledobject.keda.sh/name"
+	// label can have max 63 chars
+	scaledObjectName := kedacontrollerutil.Trim(scaledObject.Name, 63)
 
 	if scaledObject.Labels == nil {
-		scaledObject.Labels = map[string]string{labelScaledObjectName: scaledObject.Name}
+		scaledObject.Labels = map[string]string{labelScaledObjectName: scaledObjectName}
 	} else {
 		value, found := scaledObject.Labels[labelScaledObjectName]
-		if found && value == scaledObject.Name {
+		if found && value == scaledObjectName {
 			return nil
 		}
-		scaledObject.Labels[labelScaledObjectName] = scaledObject.Name
+		scaledObject.Labels[labelScaledObjectName] = scaledObjectName
 	}
 
-	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
+	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObjectName)
 	return r.Client.Update(ctx, scaledObject)
 }
 

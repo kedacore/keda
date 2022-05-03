@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
-	"unicode"
 
 	"github.com/go-logr/logr"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -73,18 +71,12 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		behavior = nil
 	}
 
-	// label can have max 63 chars
 	labelName := getHPAName(scaledObject)
-	if len(labelName) > 63 {
-		labelName = labelName[:63]
-		labelName = strings.TrimRightFunc(labelName, func(r rune) bool {
-			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-		})
-	}
+	// label can have max 63 chars
 	labels := map[string]string{
 		"app.kubernetes.io/name":       labelName,
 		"app.kubernetes.io/version":    version.Version,
-		"app.kubernetes.io/part-of":    scaledObject.Name,
+		"app.kubernetes.io/part-of":    kedacontrollerutil.Trim(scaledObject.Name, 63),
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
 	for key, value := range scaledObject.ObjectMeta.Labels {
@@ -199,7 +191,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.Metric.Selector.MatchLabels["scaledobject.keda.sh/name"] = scaledObject.Name
+			metricSpec.External.Metric.Selector.MatchLabels["scaledobject.keda.sh/name"] = kedacontrollerutil.Trim(scaledObject.Name, 63)
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
 	}
@@ -250,7 +242,8 @@ func (r *ScaledObjectReconciler) checkMinK8sVersionforHPABehavior(logger logr.Lo
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter
 func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
-	return fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
+	rawName := fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
+	return kedacontrollerutil.Trim(rawName, 63)
 }
 
 // getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
