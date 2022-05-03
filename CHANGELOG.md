@@ -54,6 +54,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **ActiveMQ Scaler:** Add CorsHeader information to ActiveMQ Scaler ([#2884](https://github.com/kedacore/keda/issues/2884))
 - **Azure Application Insights Scaler:** Provide support for non-public clouds ([#2735](https://github.com/kedacore/keda/issues/2735))
 - **Azure Blob Storage Scaler:** Add optional parameters for counting blobs recursively ([#1789](https://github.com/kedacore/keda/issues/1789))
+- **Azure Data Explorer:** Replace deprecated function `iter.Next()` in favour of `iter.NextRowOrError()` ([#2989](https://github.com/kedacore/keda/issues/2989))
 - **Azure Event Hub Scaler:** Improve logging when blob container not found ([#2363](https://github.com/kedacore/keda/issues/2363))
 - **Azure Event Hub Scaler:** Provide support for non-public clouds ([#1915](https://github.com/kedacore/keda/issues/1915))
 - **Azure Log Analytics Scaler:** Provide support for non-public clouds ([#1916](https://github.com/kedacore/keda/issues/1916))
