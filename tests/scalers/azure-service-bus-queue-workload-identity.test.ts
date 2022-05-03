@@ -9,7 +9,7 @@ const connectionString = process.env["AZURE_SERVICE_BUS_CONNECTION_STRING"]
 const serviceBusNameSpace = connectionString.split("//")[1].split(".")[0]
 const queueName = "sb-queue"
 
-const testName = "test-azure-service-bus-queue"
+const testName = "test-azure-service-bus-queue-workload-identity"
 const testNamespace = `${testName}-ns`
 const deploymentName = `${testName}-deployment`
 const triggerAuthName = `${testName}-trigger-auth`
