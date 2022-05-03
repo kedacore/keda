@@ -92,7 +92,7 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 	}
 	defer iter.Stop()
 
-	row, err := iter.Next()
+	row, err, _ := iter.NextRowOrError()
 	if err != nil {
 		return -1, fmt.Errorf("failed to get query %s result: %v", query, err)
 	}
@@ -102,7 +102,7 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 	}
 
 	// Return error if there is more than one row.
-	_, err = iter.Next()
+	_, err, _ = iter.NextRowOrError()
 	if err != io.EOF {
 		return -1, fmt.Errorf("query %s result had more than a single result row", query)
 	}
