@@ -11,12 +11,13 @@ import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 const awsRegion = 'eu-west-2'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
-const testNamespace = 'cloudwatch-test'
+const testNamespace = 'cloudwatch-expression-test'
 const cloudwatchMetricName = 'keda-metric'
-const cloudwatchMetricNamespace = 'KEDA'
+const cloudwatchMetricNamespace = 'KEDA_EXPRESSION'
 const cloudwatchMetricDimensionName = 'dimensionName'
 const cloudwatchMetricDimensionValue = 'dimensionValue'
-const nginxDeploymentName = 'nginx-deployment'
+const cloudwatchMetricExpression = `SELECT MAX("${cloudwatchMetricName}") FROM "${cloudwatchMetricNamespace}" WHERE ${cloudwatchMetricDimensionName} = '${cloudwatchMetricDimensionValue}'`
+const nginxDeploymentName = 'expression-nginx-deployment'
 
 let cloudwatchClient: CloudWatch;
 
@@ -96,7 +97,7 @@ const nginxDeployYaml = `
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-secrets
+  name: test-expression-secrets
 data:
   AWS_ACCESS_KEY_ID: '${Buffer.from(awsAccessKey, 'binary').toString('base64')}' # Required.
   AWS_SECRET_ACCESS_KEY: '${Buffer.from(awsSecretKey, 'binary').toString('base64')}' # Required.
@@ -104,22 +105,22 @@ data:
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: keda-trigger-auth-aws-credentials
+  name: keda-expression-trigger-auth-aws-credentials
 spec:
   secretTargetRef:
   - parameter: awsAccessKeyID     # Required.
-    name: test-secrets            # Required.
+    name: test-expression-secrets # Required.
     key: AWS_ACCESS_KEY_ID        # Required.
   - parameter: awsSecretAccessKey # Required.
-    name: test-secrets            # Required.
+    name: test-expression-secrets # Required.
     key: AWS_SECRET_ACCESS_KEY    # Required.
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: aws-cloudwatch-so
+  name: aws-cloudwatch-expression-so
   labels:
-    app: nginx
+    app: expression-nginx
 spec:
   scaleTargetRef:
     name: ${nginxDeploymentName}
@@ -129,12 +130,11 @@ spec:
   triggers:
     - type: aws-cloudwatch
       authenticationRef:
-        name: keda-trigger-auth-aws-credentials
+        name: keda-expression-trigger-auth-aws-credentials
       metadata:
         awsRegion: ${awsRegion}
         namespace: ${cloudwatchMetricNamespace}
-        dimensionName: ${cloudwatchMetricDimensionName}
-        dimensionValue: ${cloudwatchMetricDimensionValue}
+        expression: ${cloudwatchMetricExpression}
         metricName: ${cloudwatchMetricName}
         targetMetricValue: "1"
         minMetricValue: "0"
@@ -146,19 +146,19 @@ kind: Deployment
 metadata:
   name: ${nginxDeploymentName}
   labels:
-    app: nginx
+    app: expression-nginx
 spec:
   replicas: 0
   selector:
     matchLabels:
-      app: nginx
+      app: expression-nginx
   template:
     metadata:
       labels:
-        app: nginx
+        app: expression-nginx
     spec:
       containers:
-      - name: nginx
+      - name: expression-nginx
         image: nginx:1.14.2
         ports:
         - containerPort: 80
