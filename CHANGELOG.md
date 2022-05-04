@@ -71,6 +71,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Prometheus Scaler:** Support for `X-Scope-OrgID` header ([#2667](https://github.com/kedacore/keda/issues/2667))
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 - **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
+- **AWS CloudWatch:** Add support to use expressions([#2998](https://github.com/kedacore/keda/issues/2998))
 
 ## Deprecations
 
