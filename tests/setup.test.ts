@@ -5,13 +5,12 @@ import test from 'ava'
 const kc = new k8s.KubeConfig()
 kc.loadFromDefault()
 
-const AZURE_AD_CLIENT_ID = process.env['AZURE_SP_APP_ID']
 const AZURE_AD_TENANT_ID = process.env['AZURE_SP_TENANT']
 const RUN_WORKLOAD_IDENTITY_TESTS = process.env['AZURE_RUN_WORKLOAD_IDENTITY_TESTS']
 const workloadIdentityNamespace = "azure-workload-identity-system"
 
 test.before('configure shelljs', () => {
-  sh.config.silent = true
+  sh.config.silent = false
 })
 
 test.serial('Verify all commands', t => {
@@ -96,7 +95,7 @@ test.serial('setup and verify azure workload identity kubernetes components', t 
     }
   }
 
-  t.true(success, 'expected workloadd identity deployments to start 2 pods successfully')
+  t.true(success, 'expected workload identity deployments to start 2 pods successfully')
 })
 
 test.serial('Deploy KEDA', t => {
@@ -127,6 +126,15 @@ test.serial('verifyKeda', t => {
       break
     }
   }
+
+
+  t.log(
+    sh.exec("kubectl get sa keda-operator -n keda").stdout
+  )
+
+  t.log(
+    sh.exec("kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda describe pod").stdout
+  )
 
   t.true(success, 'expected keda deployments to start 2 pods successfully')
 })
