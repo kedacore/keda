@@ -38,14 +38,6 @@ test.serial('Get Kubernetes version', t => {
   }
 })
 
-test.serial('Deploy KEDA', t => {
-  let result = sh.exec('(cd .. && make deploy)')
-  if (result.code !== 0) {
-    t.fail('error deploying keda. ' + result)
-  }
-  t.pass('KEDA deployed successfully using make deploy command')
-})
-
 test.serial('setup helm', t => {
   // check if helm is already installed.
   let result = sh.exec('helm version')
@@ -107,38 +99,12 @@ test.serial('setup and verify azure workload identity kubernetes components', t 
   t.true(success, 'expected workloadd identity deployments to start 2 pods successfully')
 })
 
-test.serial('annotate keda-operator service account for workload identity and redeploy', t => {
-  if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
-    t.pass('skipping as workload identity tests are disabled')
-    return
+test.serial('Deploy KEDA', t => {
+  let result = sh.exec('(cd .. && make deploy)')
+  if (result.code !== 0) {
+    t.fail('error deploying keda. ' + result)
   }
-
-  t.is(
-    0,
-    sh.exec(`kubectl annotate sa keda-operator -n keda azure.workload.identity/client-id="${AZURE_AD_CLIENT_ID}" --overwrite`).code,
-    'should be able to annotate service account'
-  )
-
-  t.is(0,
-    sh.exec(`kubectl annotate sa keda-operator -n keda azure.workload.identity/tenant-id="${AZURE_AD_TENANT_ID}" --overwrite`).code,
-    'should be able to annotate service account'
-  )
-
-  t.is(0,
-    sh.exec(`kubectl label sa keda-operator -n keda azure.workload.identity/use=true --overwrite`).code,
-    'should be able to annotate service account'
-  )
-
-  // Restart keda pods so that the webhook works as expected
-  t.is(0,
-    sh.exec(`kubectl rollout restart deployments/keda-operator -n keda`).code,
-    "should be able to restart keda-operator deployment"
-  )
-
-  t.is(0,
-    sh.exec(`kubectl rollout restart deployments/keda-metrics-apiserver -n keda`).code,
-    "should be able to restart keda-operator deployment"
-  )
+  t.pass('KEDA deployed successfully using make deploy command')
 })
 
 test.serial('verifyKeda', t => {
