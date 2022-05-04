@@ -202,6 +202,30 @@ var testActiveMQMetadata = []parseActiveMQMetadataTestData{
 	},
 }
 
+func TestActiveMQDefaultCorsHeader(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8161", "destinationName": "queue1", "brokerName": "broker-activemq", "username": "myUserName", "password": "myPassword"}
+	meta, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if !(meta.corsHeader == "http://localhost:8161") {
+		t.Errorf("Expected http://localhost:8161 but got %s", meta.corsHeader)
+	}
+}
+
+func TestActiveMQCorsHeader(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8161", "destinationName": "queue1", "brokerName": "broker-activemq", "username": "myUserName", "password": "myPassword", "corsHeader": "test"}
+	meta, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if !(meta.corsHeader == "test") {
+		t.Errorf("Expected test but got %s", meta.corsHeader)
+	}
+}
+
 func TestParseActiveMQMetadata(t *testing.T) {
 	for _, testData := range testActiveMQMetadata {
 		t.Run(testData.name, func(t *testing.T) {

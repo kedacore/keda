@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 

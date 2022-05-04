@@ -36,6 +36,7 @@ type activeMQMetadata struct {
 	password           string
 	restAPITemplate    string
 	targetQueueSize    int64
+	corsHeader         string
 	metricName         string
 	scalerIndex        int
 }
@@ -121,6 +122,12 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		} else {
 			meta.username = username
 		}
+	}
+
+	if val, ok := config.TriggerMetadata["corsHeader"]; ok && val != "" {
+		meta.corsHeader = config.TriggerMetadata["corsHeader"]
+	} else {
+		meta.corsHeader = fmt.Sprintf(defaultCorsHeader, meta.managementEndpoint)
 	}
 
 	if meta.username == "" {
@@ -225,6 +232,7 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error
 	// Add HTTP Auth and Headers
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", s.metadata.corsHeader)
 
 	resp, err := client.Do(req)
 	if err != nil {

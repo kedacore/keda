@@ -12,6 +12,7 @@ lookup=()
 failed_count=0
 failed_lookup=()
 counter=0
+executed_count=0
 
 function run_setup {
     ./node_modules/.bin/ava setup.test.ts
@@ -23,12 +24,6 @@ function run_tests {
     for test_case in $(find scalers -name "$E2E_REGEX" | shuf)
     do
         if [[ $test_case != *.test.ts ]] # Skip helper files
-        then
-            continue
-        fi
-
-        # Disable until https://github.com/kedacore/keda/issues/2770 is solved.
-        if [[ $test_case == *azure-data-explorer.test.ts ]]
         then
             continue
         fi
@@ -91,6 +86,7 @@ function wait_for_jobs {
     for job in "${pids[@]}"; do
         wait $job || mark_failed $job
         echo "Job $job finished"
+        executed_count=$((executed_count+1))
     done
 
     printf "\n$failed_count jobs failed\n"
@@ -134,10 +130,14 @@ wait_for_jobs
 print_logs
 run_cleanup
 
-if [ "$failed_count" == "0" ];
+if [ "$executed_count" == "0" ];
 then
-    exit 0
-else
+    echo "No test has been executed, please review your regex: '$E2E_TEST_REGEX'"
+    exit 1
+elif [ "$failed_count" != "0" ];
+then
     print_failed
     exit 1
+else
+    exit 0
 fi

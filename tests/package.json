@@ -19,6 +19,7 @@
     "@aws-sdk/client-dynamodb": "^3.56.0",
     "@aws-sdk/client-kinesis": "^3.56.0",
     "@aws-sdk/client-sqs": "^3.56.0",
+    "@azure/service-bus": "^7.5.1",
     "@kubernetes/client-node": "^0.15.0",
     "@types/async": "^3.0.3",
     "@types/shelljs": "^0.8.5",

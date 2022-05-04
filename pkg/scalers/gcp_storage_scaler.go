@@ -9,7 +9,6 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
-
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

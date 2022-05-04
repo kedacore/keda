@@ -3,11 +3,13 @@ on:
   issue_comment:
     types: [created]
 jobs:
-  check:
+  triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
+      pr_num: ${{ steps.parser.outputs.pr_num }}
+      image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ github.event.comment.id }}"
     steps:
       - name: Check user permission
         if: startsWith(github.event.comment.body,'/run-e2e')
@@ -27,13 +29,20 @@ jobs:
             **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           reactions: rocket
 
-  run-test:
-    needs: check
+      - name: Get Pull Request number
+        id: parser
+        run: |
+          PR_URL="${{ github.event.issue.pull_request.url }}"
+          PR_NUM=${PR_URL##*/}
+          echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
+          echo "::set-output name=pr_num::$PR_NUM"
+
+  build-test-images:
+    needs: triage
     runs-on: ubuntu-latest
-    name: Execute e2e tests
+    name: Build images
     container: ghcr.io/kedacore/build-tools:main
-    concurrency: pr-e2e-tests
-    if: needs.check.outputs.run-e2e == '1'
+    if: needs.triage.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v3
 
@@ -42,11 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
         run: |
-          PR_URL="${{ github.event.issue.pull_request.url }}"
-          PR_NUM=${PR_URL##*/}
-          echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
-          hub pr checkout $PR_NUM
-          echo "::set-output name=pr_num::$PR_NUM"
+          hub pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -61,7 +66,24 @@ jobs:
       - name: Publish on GitHub Container Registry
         run: make publish
         env:
-          E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
+
+  run-test:
+    needs: [triage, build-test-images]
+    runs-on: ubuntu-latest
+    name: Execute e2e tests
+    container: ghcr.io/kedacore/build-tools:main
+    concurrency: pr-e2e-tests
+    if: needs.triage.outputs.run-e2e == '1'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          hub pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Run end to end tests
         continue-on-error: true
@@ -70,6 +92,7 @@ jobs:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
           AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
+          AZURE_APP_INSIGHTS_CONNECTION_STRING: ${{ secrets.AZURE_APP_INSIGHTS_CONNECTION_STRING }}
           AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY }}
           AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}
           AZURE_DATA_EXPLORER_ENDPOINT: ${{ secrets.AZURE_DATA_EXPLORER_ENDPOINT }}
@@ -80,8 +103,11 @@ jobs:
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
           AZURE_KEYVAULT_URI:  ${{ secrets.AZURE_KEYVAULT_URI }}
           AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
+          AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SERVICE_BUS_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}
+          AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
+          AZURE_SP_OBJECT_ID: ${{ secrets.AZURE_SP_OBJECT_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
@@ -89,11 +115,12 @@ jobs:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY}}
           DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY}}
           DATADOG_SITE: ${{ secrets.DATADOG_SITE}}
-          E2E_IMAGE_TAG: "pr-${{ steps.checkout.outputs.pr_num }}"
+          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           GCP_SP_KEY: ${{ secrets.GCP_SP_KEY }}
           NEWRELIC_ACCOUNT_ID: ${{ secrets.NEWRELIC_ACCOUNT_ID}}
           NEWRELIC_API_KEY: ${{ secrets.NEWRELIC_API_KEY}}
           NEWRELIC_LICENSE: ${{ secrets.NEWRELIC_LICENSE}}
+          OIDC_ISSUER_URL: ${{ secrets.OIDC_ISSUER_URLPR }}
           OPENSTACK_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
           OPENSTACK_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
           OPENSTACK_PROJECT_ID: ${{ secrets.OPENSTACK_PROJECT_ID }}
@@ -107,7 +134,7 @@ jobs:
           then
             export E2E_TEST_REGEX="${BASH_REMATCH[1]}"
           fi
-          echo "${{ steps.checkout.outputs.pr_num }}"
+          echo "${{ needs.triage.outputs.pr_num }}"
           make e2e-test
 
       - name: Delete all e2e related namespaces
@@ -115,7 +142,7 @@ jobs:
         run: make e2e-test-clean
         env:
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
