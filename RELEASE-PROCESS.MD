@@ -114,6 +114,6 @@ Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated
 
 ## 9. Tweet! 🐦
 
-Prepare a tweet with some highlights and send it out on @kedaorg!
+Prepare a tweet with some highlights and send it out on [@kedaorg](https://twitter.com/kedaorg)!
 
-If you don't have access, ask a maintainer.
+If you don't have access, ask a maintainer who has access to the account (see 1Password).
