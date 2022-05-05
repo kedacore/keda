@@ -129,11 +129,11 @@ test.serial('verifyKeda', t => {
 
 
   t.log(
-    sh.exec("kubectl get sa keda-operator -n keda").stdout
+    sh.exec("kubectl get sa keda-operator -n keda -o yaml").stdout
   )
 
   t.log(
-    sh.exec("kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda describe pod").stdout
+    sh.exec("kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda get pod -o yaml").stdout
   )
 
   t.true(success, 'expected keda deployments to start 2 pods successfully')
