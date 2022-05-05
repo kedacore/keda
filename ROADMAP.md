@@ -8,15 +8,21 @@ You can find our roadmap [here](https://github.com/orgs/kedacore/projects/2).
 
 ## Upcoming Release Cycles
 
-As part of our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we are planning to release a new KEDA version every 3 months.
+As part of our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we are planning to release a new KEDA version every 3 months and ship on Thursdays.
 
 Here is an overview of our current release estimations:
 
 | Version | Estimated Release Date |
 |:--------|:-----------------------|
-| v2.7    | May 8th, 2022          |
-| v2.8    | Aug 1st, 2022          |
-| v2.9    | Nov 1st, 2022          |
+| v2.8    | Aug 4th, 2022          |
+| v2.9    | Nov 3rd, 2022          |
+| v2.10   | Feb 2nd, 2023          |
+
+Here is an overview of our previous releases:
+
+| Version | Release Date  | Links             |
+|:--------|:--------------|:------------------|
+| v2.7    | May 5th, 2022 | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.7.0) |
 
 ## Using our roadmap
 
