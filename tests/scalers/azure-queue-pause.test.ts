@@ -60,6 +60,25 @@ test.serial(
   }
 )
 
+test.serial.cb(
+  'deployment should remain at pausedreplicacount (0) even with messages on storage',
+  t => {
+    const queuesvc = azure.createqueueservice(connectionstring)
+    queuesvc.messageencoder = new azure.queuemessageencoder.textbase64queuemessageencoder()
+    async.maplimit(
+      array(1000).keys(),
+      20,
+      (n, cb) => queuesvc.createmessage(queuename, `test ${n}`, cb),
+      async () => {
+         // scaling is paused even with messages in storage.
+        t.true(await waitfordeploymentreplicacount(0, 'test-deployment', testnamespace, 60, 1000), 'replica count should remain 0 after 1 minute')
+        queuesvc.clearmessages(queuename, _ => {})
+        t.end()
+      }
+    )
+  }
+)
+
 test.serial(`Updsating ScaledObject (without annotation) should work`, async t => {
   fs.writeFileSync(scaledObjectFile.name, scaledObjectYaml)
   t.is(
