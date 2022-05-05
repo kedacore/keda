@@ -85,3 +85,40 @@ func TestGetMetricTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveIndexFromMetricName(t *testing.T) {
+	cases := []struct {
+		scalerIndex                          int
+		metricName                           string
+		expectedMetricNameWithoutIndexPrefix string
+		isError                              bool
+	}{
+		// Proper input
+		{scalerIndex: 0, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
+		// Proper input with scalerIndex > 9
+		{scalerIndex: 123, metricName: "s123-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
+		// Incorrect index prefix
+		{scalerIndex: 1, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+		// Incorrect index prefix
+		{scalerIndex: 0, metricName: "0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+		// No index prefix
+		{scalerIndex: 0, metricName: "metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+	}
+
+	for _, testCase := range cases {
+		metricName, err := RemoveIndexFromMetricName(testCase.scalerIndex, testCase.metricName)
+		if err != nil && !testCase.isError {
+			t.Error("Expected success but got error", err)
+		}
+
+		if testCase.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+
+		if err == nil {
+			if metricName != testCase.expectedMetricNameWithoutIndexPrefix {
+				t.Errorf("Expected - %s, Got - %s", testCase.expectedMetricNameWithoutIndexPrefix, metricName)
+			}
+		}
+	}
+}

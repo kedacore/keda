@@ -50,7 +50,7 @@ type graphiteMetadata struct {
 type grapQueryResult []struct {
 	Target     string                 `json:"target"`
 	Tags       map[string]interface{} `json:"tags"`
-	Datapoints [][]float64            `json:"datapoints"`
+	Datapoints [][]*float64           `json:"datapoints,omitempty"`
 }
 
 var graphiteLog = logf.Log.WithName("graphite_scaler")
@@ -201,10 +201,14 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 		return 0, nil
 	}
 
-	latestDatapoint := len(result[0].Datapoints) - 1
-	datapoint := result[0].Datapoints[latestDatapoint][0]
+	// Return the most recent non-null datapoint
+	for i := len(result[0].Datapoints) - 1; i >= 0; i-- {
+		if datapoint := result[0].Datapoints[i][0]; datapoint != nil {
+			return *datapoint, nil
+		}
+	}
 
-	return datapoint, nil
+	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.query)
 }
 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {

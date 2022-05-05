@@ -35,6 +35,10 @@ type kafkaMetadata struct {
 	allowIdleConsumers bool
 	version            sarama.KafkaVersion
 
+	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
+	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
+	scaleToZeroOnInvalidOffset bool
+
 	// SASL
 	saslType kafkaSaslType
 	username string
@@ -101,6 +105,53 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
+	meta.saslType = KafkaSASLTypeNone
+	if val, ok := config.AuthParams["sasl"]; ok {
+		val = strings.TrimSpace(val)
+		mode := kafkaSaslType(val)
+
+		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
+			if config.AuthParams["username"] == "" {
+				return errors.New("no username given")
+			}
+			meta.username = strings.TrimSpace(config.AuthParams["username"])
+
+			if config.AuthParams["password"] == "" {
+				return errors.New("no password given")
+			}
+			meta.password = strings.TrimSpace(config.AuthParams["password"])
+			meta.saslType = mode
+		} else {
+			return fmt.Errorf("err SASL mode %s given", mode)
+		}
+	}
+
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+
+		if val == "enable" {
+			certGiven := config.AuthParams["cert"] != ""
+			keyGiven := config.AuthParams["key"] != ""
+			if certGiven && !keyGiven {
+				return errors.New("key must be provided with cert")
+			}
+			if keyGiven && !certGiven {
+				return errors.New("cert must be provided with key")
+			}
+			meta.ca = config.AuthParams["ca"]
+			meta.cert = config.AuthParams["cert"]
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		} else if val != "disable" {
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+
+	return nil
+}
+
 func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 	switch {
@@ -128,7 +179,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = config.TriggerMetadata["topic"]
 	default:
 		meta.topic = ""
-		kafkaLog.V(1).Info(fmt.Sprintf("cosumer group %s has no topic specified, "+
+		kafkaLog.V(1).Info(fmt.Sprintf("consumer group %s has no topic specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
@@ -152,47 +203,8 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.lagThreshold = t
 	}
 
-	meta.saslType = KafkaSASLTypeNone
-	if val, ok := config.AuthParams["sasl"]; ok {
-		val = strings.TrimSpace(val)
-		mode := kafkaSaslType(val)
-
-		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
-			if config.AuthParams["username"] == "" {
-				return meta, errors.New("no username given")
-			}
-			meta.username = strings.TrimSpace(config.AuthParams["username"])
-
-			if config.AuthParams["password"] == "" {
-				return meta, errors.New("no password given")
-			}
-			meta.password = strings.TrimSpace(config.AuthParams["password"])
-			meta.saslType = mode
-		} else {
-			return meta, fmt.Errorf("err SASL mode %s given", mode)
-		}
-	}
-
-	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-
-		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return meta, errors.New("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return meta, errors.New("cert must be provided with key")
-			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
-			meta.enableTLS = true
-		} else if val != "disable" {
-			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
-		}
+	if err := parseKafkaAuthParams(config, &meta); err != nil {
+		return meta, err
 	}
 
 	meta.allowIdleConsumers = false
@@ -202,6 +214,15 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 			return meta, fmt.Errorf("error parsing allowIdleConsumers: %s", err)
 		}
 		meta.allowIdleConsumers = t
+	}
+
+	meta.scaleToZeroOnInvalidOffset = false
+	if val, ok := config.TriggerMetadata["scaleToZeroOnInvalidOffset"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %s", err)
+		}
+		meta.scaleToZeroOnInvalidOffset = t
 	}
 
 	meta.version = sarama.V1_0_0_0
@@ -343,17 +364,25 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, error) {
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
-		kafkaLog.Error(fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID), "")
-		return 0, fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
+		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
+		kafkaLog.Error(errMsg, "")
+		return 0, errMsg
 	}
 	consumerOffset := block.Offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
-		kafkaLog.V(0).Info(fmt.Sprintf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", topic, s.metadata.group, partitionID))
-		return invalidOffset, fmt.Errorf("invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet", topic, s.metadata.group, partitionID)
+		retVal := int64(1)
+		if s.metadata.scaleToZeroOnInvalidOffset {
+			retVal = 0
+		}
+		msg := fmt.Sprintf(
+			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
+			topic, s.metadata.group, partitionID, retVal)
+		kafkaLog.V(0).Info(msg)
+		return retVal, nil
 	}
 
 	if _, found := topicPartitionOffsets[topic]; !found {
-		return 0, fmt.Errorf("error finding parition offset for topic %s", topic)
+		return 0, fmt.Errorf("error finding partition offset for topic %s", topic)
 	}
 	latestOffset := topicPartitionOffsets[topic][partitionID]
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {

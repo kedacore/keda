@@ -11,7 +11,7 @@ import { createNamespace } from './helpers'
 const namespacePrefix = 'azure-ai-test-'
 const app_insights_app_id = process.env['AZURE_APP_INSIGHTS_APP_ID']
 const app_insights_instrumentation_key = process.env['AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY']
-const sp_id = process.env['AZURE_SP_ID']
+const sp_id = process.env['AZURE_SP_APP_ID']
 const sp_key = process.env['AZURE_SP_KEY']
 const sp_tenant = process.env['AZURE_SP_TENANT']
 const test_pod_id = process.env['TEST_POD_ID'] == "true"

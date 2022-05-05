@@ -333,6 +333,9 @@ spec:
               originalReplicaCount:
                 format: int32
                 type: integer
+              pausedReplicaCount:
+                format: int32
+                type: integer
               resourceMetricNames:
                 items:
                   type: string

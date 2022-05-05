@@ -28,7 +28,6 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -36,10 +35,9 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -93,45 +91,38 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 
-	kubeclient, err := client.New(cfg, client.Options{
-		Scheme: scheme,
-	})
-	if err != nil {
-		logger.Error(err, "unable to construct new client")
-		return nil, nil, fmt.Errorf("unable to construct new client (%s)", err)
-	}
-
-	broadcaster := record.NewBroadcaster()
-	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
-	handler := scaling.NewScaleHandler(kubeclient, nil, scheme, globalHTTPTimeout, recorder)
-	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
-	externalMetricsInfoLock := &sync.RWMutex{}
-
 	namespace, err := getWatchNamespace()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
-
-	prometheusServer := &prommetrics.PrometheusMetricServer{}
-	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
-	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, scheme, namespace, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
-		return nil, nil, err
-	}
-
-	return kedaprovider.NewProvider(ctx, logger, handler, kubeclient, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
-}
-
-func runScaledObjectController(ctx context.Context, scheme *k8sruntime.Scheme, namespace string, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:    scheme,
 		Namespace: namespace,
 	})
 	if err != nil {
-		return err
+		logger.Error(err, "failed to setup manager")
+		return nil, nil, err
 	}
 
+	broadcaster := record.NewBroadcaster()
+	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
+	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder)
+	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
+	externalMetricsInfoLock := &sync.RWMutex{}
+
+	prometheusServer := &prommetrics.PrometheusMetricServer{}
+	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
+	stopCh := make(chan struct{})
+
+	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+		return nil, nil, err
+	}
+
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
+}
+
+func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
 		Client:                  mgr.GetClient(),
 		ScaleHandler:            scaleHandler,

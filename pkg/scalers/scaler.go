@@ -19,15 +19,16 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	metrics "github.com/rcrowley/go-metrics"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	metrics "github.com/rcrowley/go-metrics"
 )
 
 func init() {
@@ -108,6 +109,21 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 // GenerateMetricNameWithIndex helps adding the index prefix to the metric name
 func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
 	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
+}
+
+// RemoveIndexFromMetricName removes the index prefix from the metric name
+func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
+	metricNameSplit := strings.SplitN(metricName, "-", 2)
+	if len(metricNameSplit) != 2 {
+		return "", fmt.Errorf("metric name without index prefix")
+	}
+
+	indexPrefix, metricNameWithoutIndex := metricNameSplit[0], metricNameSplit[1]
+	if indexPrefix != fmt.Sprintf("s%d", scalerIndex) {
+		return "", fmt.Errorf("metric name contains incorrect index prefix")
+	}
+
+	return metricNameWithoutIndex, nil
 }
 
 // GetMetricTargetType helps getting the metric target type of the scaler

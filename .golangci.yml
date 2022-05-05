@@ -31,6 +31,7 @@ linters:
     - dogsled
     - errcheck
     #- funlen
+    - gci
     - goconst
     - gocritic
     - gocyclo
@@ -74,7 +75,13 @@ issues:
     - path: azure/azure_app_insights.go
       linters:
         - bodyclose
+
 linters-settings:
   funlen:
     lines: 80
     statements: 40
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/kedacore/keda)

@@ -14,8 +14,8 @@ const awsSecretKey =  process.env['AWS_SECRET_KEY'];
 const testNamespace = 'cloudwatch-test'
 const cloudwatchMetricName = 'keda-metric'
 const cloudwatchMetricNamespace = 'KEDA'
-const cloudwatchMetricDimensionName = 'dimenstionName'
-const cloudwatchMetricDimensionValue = 'dimenstionValue'
+const cloudwatchMetricDimensionName = 'dimensionName'
+const cloudwatchMetricDimensionValue = 'dimensionValue'
 const nginxDeploymentName = 'nginx-deployment'
 
 let cloudwatchClient: CloudWatch;

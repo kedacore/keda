@@ -59,6 +59,17 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication,
 		false,
 		"properly formed cloudwatch query and awsRegion"},
+	// properly formed cloudwatch expression query and awsRegion
+	{map[string]string{
+		"namespace":         "AWS/SQS",
+		"expression":        "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+		"metricName":        "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue": "2",
+		"minMetricValue":    "0",
+		"awsRegion":         "eu-west-1"},
+		testAWSAuthentication,
+		false,
+		"properly formed cloudwatch expression query and awsRegion"},
 	// Properly formed cloudwatch query with optional parameters
 	{map[string]string{
 		"namespace":            "AWS/SQS",
@@ -343,6 +354,7 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
 	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch-QueueName"},
 	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-QueueName"},
+	{&testAWSCloudwatchMetadata[2], 5, "s5-aws-cloudwatch-ApproximateNumberOfMessagesVisible"},
 }
 
 var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
@@ -410,6 +422,21 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
 		scalerIndex:          0,
 	},
+	{
+		namespace:            "Custom",
+		metricsName:          "HasDataFromExpression",
+		expression:           "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+		targetMetricValue:    100,
+		minMetricValue:       0,
+		metricCollectionTime: 60,
+		metricStat:           "Average",
+		metricUnit:           "SampleCount",
+		metricStatPeriod:     60,
+		metricEndTimeOffset:  60,
+		awsRegion:            "us-west-2",
+		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		scalerIndex:          0,
+	},
 }
 
 type mockCloudwatch struct {
@@ -417,14 +444,17 @@ type mockCloudwatch struct {
 }
 
 func (m *mockCloudwatch) GetMetricData(input *cloudwatch.GetMetricDataInput) (*cloudwatch.GetMetricDataOutput, error) {
-	switch *input.MetricDataQueries[0].MetricStat.Metric.MetricName {
-	case testAWSCloudwatchErrorMetric:
-		return nil, errors.New("error")
-	case testAWSCloudwatchNoValueMetric:
-		return &cloudwatch.GetMetricDataOutput{
-			MetricDataResults: []*cloudwatch.MetricDataResult{},
-		}, nil
+	if input.MetricDataQueries[0].MetricStat != nil {
+		switch *input.MetricDataQueries[0].MetricStat.Metric.MetricName {
+		case testAWSCloudwatchErrorMetric:
+			return nil, errors.New("error")
+		case testAWSCloudwatchNoValueMetric:
+			return &cloudwatch.GetMetricDataOutput{
+				MetricDataResults: []*cloudwatch.MetricDataResult{},
+			}, nil
+		}
 	}
+
 	return &cloudwatch.GetMetricDataOutput{
 		MetricDataResults: []*cloudwatch.MetricDataResult{
 			{

@@ -71,7 +71,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: get-cluster-context
 get-cluster-context: ## Get Azure cluster context.
-	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
+	@az login --service-principal -u $(AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
@@ -156,9 +156,9 @@ pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
 pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
-pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
+pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
-pkg/mock/mock_client/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
+pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
@@ -241,11 +241,11 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.10.0)
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.

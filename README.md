@@ -54,13 +54,7 @@ Interested to learn more? Head over to [keda.sh](https://keda.sh).
 
 ## Community
 
-If interested in contributing or participating in the direction of KEDA, you can join our community meetings.
-
-* **Meeting time:** Bi-weekly Tues 15:00 UTC (does follow US daylight savings).
-([Subscribe to Google Agenda](https://calendar.google.com/calendar?cid=bjE0bjJtNWM0MHVmam1ob2ExcTgwdXVkOThAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) |
- [Convert to your timezone](https://www.thetimezoneconverter.com/?t=04%3A00%20pm&tz=UTC))
-* **Zoom link:** [https://zoom.us/j/96655859927?pwd=cGxaWWpHOVZSMEZDY3NuWWVIMERtdz09](https://zoom.us/j/96655859927?pwd=cGxaWWpHOVZSMEZDY3NuWWVIMERtdz09)  (Password: keda)
-* **Meeting agenda:** [Google Docs](https://docs.google.com/document/d/1zdwD6j86GxcCe5S5ay9suCO77WPrEDnKSfuaI24EwM4/edit?usp=sharing)
+If interested in contributing or participating in the direction of KEDA, you can join our community meetings! Learn more about them on [our website](https://keda.sh/community/).
 
 Just want to learn or chat about KEDA? Feel free to join the conversation in
 **[#KEDA](https://kubernetes.slack.com/messages/CKZJ36A5D)** on the **[Kubernetes Slack](https://slack.k8s.io/)**!
@@ -75,7 +69,9 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 
 ## Roadmap
 
-We use GitHub issues to build our backlog, a complete overview of all open items and our planning is available [here](https://github.com/orgs/kedacore/projects/2).
+We use GitHub issues to build our backlog, a complete overview of all open items and our planning.
+
+Learn more about our roadmap [here](ROADMAP.md).
 
 ## Releases
 

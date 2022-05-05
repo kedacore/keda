@@ -9,13 +9,12 @@ import (
 	"testing"
 	"time"
 
+	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
-	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 )
 
 type server struct {

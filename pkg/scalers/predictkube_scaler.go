@@ -10,6 +10,11 @@ import (
 	"strconv"
 	"time"
 
+	libs "github.com/dysnix/predictkube-libs/external/configs"
+	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
+	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
+	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -26,12 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	libs "github.com/dysnix/predictkube-libs/external/configs"
-	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
-	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
-	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
-	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"

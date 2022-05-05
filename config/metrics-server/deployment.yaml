@@ -19,6 +19,11 @@ spec:
         app: keda-metrics-apiserver
       name: keda-metrics-apiserver
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
         - name: keda-metrics-apiserver
@@ -61,6 +66,13 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+            ## Metrics server needs to write the self-signed cert so it's not possible set this
+            # readOnlyRootFilesystem: true
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
