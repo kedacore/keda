@@ -14,6 +14,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.7.0](#v270)
 - [v2.6.1](#v261)
 - [v2.6.0](#v260)
 - [v2.5.0](#v250)
@@ -31,6 +32,24 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.0.0](#v100)
 
 ## Unreleased
+
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Deprecations
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.7.0
 
 ### New
 
@@ -73,13 +92,13 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 - **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
 
-## Deprecations
+### Deprecations
 
 - **CPU, Memory, Datadog Scalers**: `metadata.type` is deprecated in favor of the global `metricType` ([#2030](https://github.com/kedacore/keda/issues/2030))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+None.
 
 ### Other
 
@@ -104,7 +123,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Memory Scaler:** Adding e2e test ([#2220](https://github.com/kedacore/keda/issues/2220))
 - **Selenium Grid Scaler:** Adding e2e test ([#2791](https://github.com/kedacore/keda/issues/2791))
 
-## v.2.6.1
+## v2.6.1
 
 ### Improvements
 
