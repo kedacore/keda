@@ -56,6 +56,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - **General**: Don't hardcode UIDs in securityContext ([#3012](https://github.com/kedacore/keda/issues/3012))
 
+### Other
+
+- **General**: Fix CVE-2022-21221 in `github.com/valyala/fasthttp` ([#2775](https://github.com/kedacore/keda/issue/2775))
+
 ## v2.7.0
 
 ### New
