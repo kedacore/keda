@@ -14,6 +14,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.7.1](#v271)
 - [v2.7.0](#v270)
 - [v2.6.1](#v261)
 - [v2.6.0](#v260)
@@ -48,6 +49,12 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.7.1
+
+### Improvements
+
+- **General**: Don't hardcode UIDs in securityContext ([#3012](https://github.com/kedacore/keda/issues/3012))
 
 ## v2.7.0
 
