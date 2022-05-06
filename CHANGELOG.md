@@ -50,6 +50,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
 ## v2.7.1
 
 ### Improvements
