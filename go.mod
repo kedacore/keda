@@ -78,6 +78,9 @@ replace (
 	// we need version github.com/gin-gonic/gin >= 1.7.0
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
+	// version < 1.34.0 is vulnerable to Directory Traversal
+	github.com/valyala/fasthttp => github.com/valyala/fasthttp v1.36.0
+
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-43565
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
 
@@ -105,7 +108,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/andybalholm/brotli v1.0.3 // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -181,7 +184,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.14.4 // indirect
+	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
