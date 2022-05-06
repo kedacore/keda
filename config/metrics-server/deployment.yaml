@@ -20,9 +20,6 @@ spec:
       name: keda-metrics-apiserver
     spec:
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
         runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
