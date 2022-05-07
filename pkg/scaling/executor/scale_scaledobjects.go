@@ -75,7 +75,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
 	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
 	if !isError && !readyCondition.IsTrue() {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
+		if err := e.setReadyCondition(ctx, scaledObject, metav1.ConditionFalse,
 			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
@@ -84,7 +84,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// Check if we are paused, and if we are then update the scale to the desired count.
 	pausedCount, err := GetPausedReplicaCount(scaledObject)
 	if err != nil {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
+		if err := e.setReadyCondition(ctx, scaledObject, metav1.ConditionFalse,
 			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
@@ -99,7 +99,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *pausedCount)
 			if err != nil {
 				logger.Error(err, "error scaling target to paused replicas count", "paused replicas", *pausedCount)
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown,
+				if err := e.setReadyCondition(ctx, scaledObject, metav1.ConditionUnknown,
 					kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 					logger.Error(err, "error setting ready condition")
 				}
@@ -143,7 +143,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			msg := "Some triggers defined in ScaledObject are not working correctly"
 			logger.V(1).Info(msg)
 			if !readyCondition.IsUnknown() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
+				if err := e.setReadyCondition(ctx, scaledObject, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
 					logger.Error(err, "error setting ready condition")
 				}
 			}
@@ -176,7 +176,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			msg := "Triggers defined in ScaledObject are not working correctly"
 			logger.V(1).Info(msg)
 			if !readyCondition.IsFalse() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "TriggerError", msg); err != nil {
+				if err := e.setReadyCondition(ctx, scaledObject, metav1.ConditionFalse, "TriggerError", msg); err != nil {
 					logger.Error(err, "error setting ready condition")
 				}
 			}
@@ -217,12 +217,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
+			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
 		} else {
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
 			}
@@ -237,7 +237,7 @@ func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *ked
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", scaledObject.Spec.Fallback.Replicas)
 	}
-	if e := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
+	if e := e.setFallbackCondition(ctx, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
 		logger.Error(e, "Error setting fallback condition")
 	}
 }
@@ -273,7 +273,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error in setting active condition")
 				return
 			}
@@ -288,7 +288,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 		activeCondition := scaledObject.Status.Conditions.GetActiveCondition()
 		if !activeCondition.IsFalse() || activeCondition.Reason != "ScalerCooldown" {
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active"); err != nil {
+			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active"); err != nil {
 				logger.Error(err, "Error in setting active condition")
 				return
 			}

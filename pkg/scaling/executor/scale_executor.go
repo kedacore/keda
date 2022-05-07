@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/scale"
@@ -86,47 +87,35 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Lo
 	return err
 }
 
-func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string, setCondition func(kedav1alpha1.Conditions, metav1.ConditionStatus, string, string)) error {
-	var patch runtimeclient.Patch
-
-	runtimeObj := object.(runtimeclient.Object)
-	switch obj := runtimeObj.(type) {
-	case *kedav1alpha1.ScaledObject:
-		patch = runtimeclient.MergeFrom(obj.DeepCopy())
-		setCondition(obj.Status.Conditions, status, reason, message)
-	case *kedav1alpha1.ScaledJob:
-		patch = runtimeclient.MergeFrom(obj.DeepCopy())
-		setCondition(obj.Status.Conditions, status, reason, message)
-	default:
-		err := fmt.Errorf("unknown scalable object type %v", obj)
-		logger.Error(err, "Failed to patch Objects Status")
-		return err
-	}
-
-	err := e.client.Status().Patch(ctx, runtimeObj, patch)
-	if err != nil {
-		logger.Error(err, "Failed to patch Objects Status")
-	}
-	return err
+func (e *scaleExecutor) setReadyCondition(ctx context.Context, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	return util.SetStatusConditions(ctx, e.client, object, &kedav1alpha1.Conditions{
+		{
+			Type:    kedav1alpha1.ConditionReady,
+			Status:  status,
+			Reason:  reason,
+			Message: message,
+		},
+	})
 }
 
-func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetReadyCondition(status, reason, message)
-	}
-	return e.setCondition(ctx, logger, object, status, reason, message, active)
+func (e *scaleExecutor) setActiveCondition(ctx context.Context, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	return util.SetStatusConditions(ctx, e.client, object, &kedav1alpha1.Conditions{
+		{
+			Type:    kedav1alpha1.ConditionActive,
+			Status:  status,
+			Reason:  reason,
+			Message: message,
+		},
+	})
 }
 
-func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetActiveCondition(status, reason, message)
-	}
-	return e.setCondition(ctx, logger, object, status, reason, message, active)
-}
-
-func (e *scaleExecutor) setFallbackCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	fallback := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetFallbackCondition(status, reason, message)
-	}
-	return e.setCondition(ctx, logger, object, status, reason, message, fallback)
+func (e *scaleExecutor) setFallbackCondition(ctx context.Context, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+	return util.SetStatusConditions(ctx, e.client, object, &kedav1alpha1.Conditions{
+		{
+			Type:    kedav1alpha1.ConditionFallback,
+			Status:  status,
+			Reason:  reason,
+			Message: message,
+		},
+	})
 }
