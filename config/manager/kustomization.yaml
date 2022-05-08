@@ -4,6 +4,6 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: docker.io/kedacore/keda
-  newName: docker.io/kedacore/keda
+- name: ghcr.io/kedacore/keda
+  newName: ghcr.io/kedacore/keda
   newTag: main

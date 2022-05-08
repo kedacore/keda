@@ -1,11 +1,17 @@
 FROM ubuntu:18.04
 
 # Install prerequisite
-RUN apt-get update && \
-    apt-get install -y wget curl build-essential git
+RUN apt update && \
+    apt-get install software-properties-common -y
+RUN apt-add-repository ppa:git-core/ppa && \
+    apt update && \
+    apt install -y wget curl build-essential git
+
+# Use Bash instead of Dash
+RUN ln -sf bash /bin/sh
 
 # Install azure-cli
-RUN apt-get install apt-transport-https lsb-release software-properties-common dirmngr -y && \
+RUN apt-get install apt-transport-https lsb-release dirmngr -y && \
     curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
         tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null && \
     AZ_REPO=$(lsb_release -cs) && \
@@ -17,31 +23,20 @@ RUN apt-get install apt-transport-https lsb-release software-properties-common d
     apt-get update && \
     apt-get install -y azure-cli
 
-# Install docker client
-RUN curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-19.03.2.tgz && \
-    docker_sha256=865038730c79ab48dfed1365ee7627606405c037f46c9ae17c5ec1f487da1375 && \
-    echo "$docker_sha256 docker-19.03.2.tgz" | sha256sum -c - && \
-    tar xvzf docker-19.03.2.tgz && \
-    mv docker/* /usr/local/bin && \
-    rm -rf docker docker-19.03.2.tgz
+# Install docker
+RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release && \
+    curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" && \
+    apt-get update &&\
+    apt-get install -y docker-ce-cli
 
 # Install golang
-RUN GO_VERSION=1.15.6 && \
+RUN GO_VERSION=1.17.9 && \
     curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=3918e6cc85e7eaaa6f859f1bdbaac772e7a825b0eb423c63d3ae68b21f84b844 && \
+    go_sha256=9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6 && \
     echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
-
-# Install helm/tiller
-RUN HELM_VERSION=v2.16.1 && \
-    curl -LO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    helm_sha256=7eebaaa2da4734242bbcdced62cc32ba8c7164a18792c8acdf16c77abffce202 && \
-    echo "$helm_sha256 helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c - && \
-    tar xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    mv linux-amd64/helm /usr/local/bin && mv linux-amd64/tiller /usr/local/bin && \
-    rm -rf linux-amd64 helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    helm init --client-only
 
 # Install kubectl
 RUN apt-get update && apt-get install -y apt-transport-https && \
@@ -71,3 +66,8 @@ ENV PATH=${PATH}:/usr/local/go/bin \
 
 # Install FOSSA tooling
 RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+
+# Install hub
+RUN curl -LJO https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz && \
+    tar zxvf hub-linux-amd64-2.14.2.tgz
+ENV PATH="/hub-linux-amd64-2.14.2/bin:${PATH}"

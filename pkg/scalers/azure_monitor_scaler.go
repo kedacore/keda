@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package scalers
 
 import (
@@ -6,8 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-
+	az "github.com/Azure/go-autorest/autorest/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +30,8 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -25,25 +41,33 @@ const (
 )
 
 type azureMonitorScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureMonitorMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
 type azureMonitorMetadata struct {
 	azureMonitorInfo azure.MonitorInfo
-	targetValue      int
+	targetValue      int64
+	scalerIndex      int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
 func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureMonitorMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %s", err)
 	}
 
 	return &azureMonitorScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 	}, nil
@@ -55,7 +79,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	}
 
 	if val, ok := config.TriggerMetadata[targetValueName]; ok && val != "" {
-		targetValue, err := strconv.Atoi(val)
+		targetValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
 			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
@@ -119,12 +143,33 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 		return nil, fmt.Errorf("no tenantId given")
 	}
 
+	if val, ok := config.TriggerMetadata["metricNamespace"]; ok {
+		meta.azureMonitorInfo.Namespace = val
+	}
+
 	clientID, clientPassword, err := parseAzurePodIdentityParams(config)
 	if err != nil {
 		return nil, err
 	}
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
+
+	meta.scalerIndex = config.ScalerIndex
+
+	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
+		return env.ResourceManagerEndpoint, nil
+	}
+	azureResourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "azureResourceManagerEndpoint", azureResourceManagerEndpointProvider)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.AzureResourceManagerEndpoint = azureResourceManagerEndpoint
+
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	return &meta, nil
 }
@@ -164,20 +209,16 @@ func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > 0, nil
 }
 
-func (s *azureMonitorScaler) Close() error {
+func (s *azureMonitorScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *azureMonitorScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
+func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s", "azure-monitor", s.metadata.azureMonitorInfo.ResourceURI, s.metadata.azureMonitorInfo.ResourceGroupName, s.metadata.azureMonitorInfo.Name)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -193,7 +234,7 @@ func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, 
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
+		Value:      *resource.NewQuantity(val, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

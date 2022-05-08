@@ -1,7 +1,6 @@
 name: Feature request 🧭
-about: Suggest an idea for this project
+description: Suggest an idea for this project
 labels: "needs-discussion,feature-request"
-issue_body: true
 body:
 - type: textarea
   attributes:
@@ -17,3 +16,8 @@ body:
     placeholder: "Tell us more what you'd like to achieve."
   validations:
     required: false
+- type: textarea
+  id: anything-else
+  attributes:
+    label: Anything else?
+    description: "Let us know if you have anything else to share"

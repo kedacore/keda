@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The KEDA Authors
+Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,32 +21,35 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	"github.com/kedacore/keda/v2/controllers"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
-	// +kubebuilder:scaffold:imports
+	//nolint:gci
+	//+kubebuilder:scaffold:imports
 )
 
 var (
-	scheme = apimachineryruntime.NewScheme()
+	scheme   = apimachineryruntime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
+	//+kubebuilder:scaffold:scheme
 }
 
 // getWatchNamespace returns the namespace the operator should be watching for changes
@@ -62,19 +65,18 @@ func getWatchNamespace() (string, error) {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
+	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-
-	// Add the zap logger flag set to the CLI.
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	setupLog := ctrl.Log.WithName("setup")
 
 	namespace, err := getWatchNamespace()
 	if err != nil {
@@ -85,8 +87,8 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		HealthProbeBindAddress: ":8081",
 		Port:                   9443,
+		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "operator.keda.sh",
 		Namespace:              namespace,
@@ -96,64 +98,72 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add readiness probe
-	err = mgr.AddReadyzCheck("ready-ping", healthz.Ping)
-	if err != nil {
-		setupLog.Error(err, "Unable to add a readiness check")
-		os.Exit(1)
-	}
-
-	// Add liveness probe
-	err = mgr.AddHealthzCheck("health-ping", healthz.Ping)
-	if err != nil {
-		setupLog.Error(err, "Unable to add a health check")
-		os.Exit(1)
-	}
-
-	globalHTTPTimeoutStr := os.Getenv("KEDA_HTTP_DEFAULT_TIMEOUT")
-	if globalHTTPTimeoutStr == "" {
-		// default to 3 seconds if they don't pass the env var
-		globalHTTPTimeoutStr = "3000"
-	}
-
-	globalHTTPTimeoutMS, err := strconv.Atoi(globalHTTPTimeoutStr)
+	// default to 3 seconds if they don't pass the env var
+	globalHTTPTimeoutMS, err := kedautil.ResolveOsEnvInt("KEDA_HTTP_DEFAULT_TIMEOUT", 3000)
 	if err != nil {
 		setupLog.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
-		return
+		os.Exit(1)
+	}
+
+	scaledObjectMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES", 5)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDOBJECT_CTRL_MAX_RECONCILES")
+		os.Exit(1)
+	}
+
+	scaledJobMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_SCALEDJOB_CTRL_MAX_RECONCILES", 1)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_SCALEDJOB_CTRL_MAX_RECONCILES")
+		os.Exit(1)
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
-	if err = (&controllers.ScaledObjectReconciler{
+	if err = (&kedacontrollers.ScaledObjectReconciler{
 		Client:            mgr.GetClient(),
-		Log:               ctrl.Log.WithName("controllers").WithName("ScaledObject"),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		Recorder:          eventRecorder,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledObjectMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
-	if err = (&controllers.ScaledJobReconciler{
+	if err = (&kedacontrollers.ScaledJobReconciler{
 		Client:            mgr.GetClient(),
-		Log:               ctrl.Log.WithName("controllers").WithName("ScaledJob"),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		Recorder:          eventRecorder,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledJobMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)
 	}
-	if err = (&controllers.TriggerAuthenticationReconciler{
+	if err = (&kedacontrollers.TriggerAuthenticationReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("TriggerAuthentication"),
+		Scheme:   mgr.GetScheme(),
 		Recorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerAuthentication")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
+	if err = (&kedacontrollers.ClusterTriggerAuthenticationReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: eventRecorder,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
+		os.Exit(1)
+	}
+	//+kubebuilder:scaffold:builder
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("Starting manager")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))

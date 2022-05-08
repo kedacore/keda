@@ -26,6 +26,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - list
+  - watch
+- apiGroups:
   - '*'
   resources:
   - '*'
@@ -58,6 +65,19 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - '*'
+- apiGroups:
+  - keda.sh
+  resources:
+  - clustertriggerauthentications
+  - clustertriggerauthentications/status
+  verbs:
+  - '*'
+- apiGroups:
   - keda.sh
   resources:
   - scaledjobs
@@ -76,8 +96,6 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
-  - clustertriggerauthentications
-  - clustertriggerauthentications/status
   - triggerauthentications
   - triggerauthentications/status
   verbs:

@@ -1,7 +1,9 @@
 # Build the manager binary
-FROM golang:1.15.6 as builder
+FROM --platform=$BUILDPLATFORM golang:1.17.9 AS builder
 
-ARG BUILD_VERSION
+ARG BUILD_VERSION=main
+ARG GIT_COMMIT=HEAD
+ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
@@ -19,20 +21,22 @@ COPY hack/ hack/
 COPY version/ version/
 COPY main.go main.go
 COPY adapter/ adapter/
-COPY api/ api/
+COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 
-COPY .git/ .git/
-
 # Build
-RUN VERSION=${BUILD_VERSION} make manager-dockerfile
+# https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
+ARG TARGETOS
+ARG TARGETARCH
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH make manager
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/bin/keda .
-USER nonroot:nonroot
+# 65532 is numeric for nonroot
+USER 65532:65532
 
 ENTRYPOINT ["/keda", "--zap-log-level=info", "--zap-encoder=console"]

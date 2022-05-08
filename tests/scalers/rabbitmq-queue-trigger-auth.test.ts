@@ -1,7 +1,4 @@
-import * as async from 'async'
-import * as fs from 'fs'
 import * as sh from 'shelljs'
-import * as tmp from 'tmp'
 import test from 'ava'
 import { RabbitMQHelper } from './rabbitmq-helpers'
 
@@ -31,7 +28,7 @@ test.serial('Deployment should have 0 replicas on start', t => {
 })
 
 test.serial(`Deployment should scale to 4 with ${messageCount} messages on the queue then back to 0`, t => {
-  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount)
+  RabbitMQHelper.publishMessages(t, testNamespace, connectionString, messageCount, queueName)
 
   // with messages published, the consumer deployment should start receiving the messages
   let replicaCount = '0'
@@ -102,7 +99,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq-consumer
-        image: jeffhollan/rabbitmq-client:dev
+        image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
         command:
           - receive

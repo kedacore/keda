@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resolver
 
 import (
@@ -6,15 +22,15 @@ import (
 	"io/ioutil"
 
 	"github.com/go-logr/logr"
-	vaultApi "github.com/hashicorp/vault/api"
+	vaultapi "github.com/hashicorp/vault/api"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
 	vault  *kedav1alpha1.HashiCorpVault
-	client *vaultApi.Client
+	client *vaultapi.Client
 	stopCh chan struct{}
 }
 
@@ -27,8 +43,8 @@ func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHan
 
 // Initialize the Vault client
 func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
-	config := vaultApi.DefaultConfig()
-	client, err := vaultApi.NewClient(config)
+	config := vaultapi.DefaultConfig()
+	client, err := vaultapi.NewClient(config)
 	if err != nil {
 		return err
 	}
@@ -36,6 +52,10 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	err = client.SetAddress(vh.vault.Address)
 	if err != nil {
 		return err
+	}
+
+	if len(vh.vault.Namespace) > 0 {
+		client.SetNamespace(vh.vault.Namespace)
 	}
 
 	token, err := vh.token(client)
@@ -64,7 +84,7 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	return nil
 }
 
-func (vh *HashicorpVaultHandler) token(client *vaultApi.Client) (string, error) {
+func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) {
 	var token string
 
 	switch vh.vault.Authentication {
@@ -117,7 +137,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 		logger.Error(err, "Vault renew token: failed to create the payload")
 	}
 
-	renewer, err := vh.client.NewRenewer(&vaultApi.RenewerInput{
+	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
 		Secret: secret,
 		//Grace:  time.Duration(15 * time.Second),
 		//Increment: 60,
@@ -146,7 +166,7 @@ RenewWatcherLoop:
 	}
 }
 
-func (vh *HashicorpVaultHandler) Read(path string) (*vaultApi.Secret, error) {
+func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 

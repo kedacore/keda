@@ -2,12 +2,11 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import {createNamespace} from "./helpers";
+import { RedisClusterHelper } from './redis-cluster-helper';
 
-const redisNamespace = 'redis-cluster'
-const redisService = 'redis-cluster'
+const redisNamespace = 'redis-cluster-lists'
 const testNamespace = 'redis-cluster-lists-test'
-const redisStatefulSetName = 'redis-cluster'
-const redisClusterName = 'redis-cluster'
 const redisPassword = 'my-password'
 let redisHost = ''
 const redisPort = 6379
@@ -26,34 +25,17 @@ const writeJobNameForHostPortInTriggerAuth = 'redis-writer-host-port-trigger-aut
 
 test.before(t => {
     // Deploy Redis cluster.
-    sh.exec(`kubectl create namespace ${redisNamespace}`)
-    sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
-
-    let clusterStatus = sh.exec(`helm install --timeout 600s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
-    t.is(0,
-        clusterStatus,
-        'creating a Redis cluster should work.'
-    )
-
-    // Wait for Redis cluster to be ready.
-    let redisReplicaCount = '0'
-    for (let i = 0; i < 30; i++) {
-        redisReplicaCount = sh.exec(`kubectl get statefulset/${redisStatefulSetName} -n ${redisNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-        if (redisReplicaCount != '6') {
-            sh.exec('sleep 2s')
-        }
-    }
-    t.is('6', redisReplicaCount, 'Redis is not in a ready state')
+    const base64Password = Buffer.from(redisPassword).toString('base64')
+    RedisClusterHelper.install(t,base64Password, redisNamespace)
 
     // Get Redis cluster address.
-    redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
+    redisHost = sh.exec(`kubectl get svc redis-cluster -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
     redisAddress = `${redisHost}:${redisPort}`
 
     // Create test namespace.
-    sh.exec(`kubectl create namespace ${testNamespace}`)
+    createNamespace(testNamespace)
 
     const triggerAuthTmpFile = tmp.fileSync()
-    const base64Password = Buffer.from(redisPassword).toString('base64')
     fs.writeFileSync(triggerAuthTmpFile.name, scaledObjectTriggerAuthYaml.replace('{{REDIS_PASSWORD}}', base64Password))
 
     t.is(
@@ -139,19 +121,19 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
     runWriteJob(t, writeJobNameForHostPortRef, listNameForHostPortRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -161,7 +143,7 @@ test.serial(`Deployment using redis host port env vars should max and scale to 5
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 test.serial('Deployment for redis address env var should have 0 replica on start', t => {
@@ -179,19 +161,19 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
     runWriteJob(t, writeJobNameForAddressRef, listNameForAddressRef)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerAddressRefDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -201,7 +183,7 @@ test.serial(`Deployment using redis address env var should max and scale to 5 wi
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 
@@ -219,19 +201,19 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
     runWriteJob(t, writeJobNameForHostPortInTriggerAuth, listNameForHostPortTriggerAuth)
 
     let replicaCount = '0'
-    for (let i = 0; i < 30 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
         t.log('(scale up) replica count is:' + replicaCount)
         if (replicaCount !== '5') {
-            sh.exec('sleep 3s')
+            sh.exec('sleep 10s')
         }
     }
 
-    t.is('5', replicaCount, 'Replica count should be 5 within 60 seconds')
+    t.is('5', replicaCount, 'Replica count should be 5 within 10 minutes')
 
-    for (let i = 0; i < 12 && replicaCount !== '0'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '0'; i++) {
         replicaCount = sh.exec(
             `kubectl get deployment/${redisWorkerHostPortRefTriggerAuthDeploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
         ).stdout
@@ -241,7 +223,7 @@ test.serial(`Deployment using redis host port in triggerAuth should max and scal
         }
     }
 
-    t.is('0', replicaCount, 'Replica count should be 0 within 2 minutes')
+    t.is('0', replicaCount, 'Replica count should be 0 within 10 minutes')
 })
 
 
@@ -266,8 +248,7 @@ test.after.always.cb('clean up deployment', t => {
     }
     sh.exec(`kubectl delete namespace ${testNamespace}`)
 
-    sh.exec(`helm delete ${redisClusterName} --namespace ${redisNamespace}`)
-    sh.exec(`kubectl delete namespace ${redisNamespace}`)
+    RedisClusterHelper.uninstall(redisNamespace)
     t.end()
 })
 
@@ -342,6 +323,11 @@ spec:
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: redis-cluster
     metadata:
@@ -397,6 +383,11 @@ spec:
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: redis-cluster
     metadata:
@@ -452,6 +443,11 @@ spec:
   cooldownPeriod: 30
   minReplicaCount: 0
   maxReplicaCount: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
   - type: redis-cluster
     metadata:

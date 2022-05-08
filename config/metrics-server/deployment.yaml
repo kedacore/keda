@@ -19,10 +19,12 @@ spec:
         app: keda-metrics-apiserver
       name: keda-metrics-apiserver
     spec:
+      securityContext:
+        runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
         - name: keda-metrics-apiserver
-          image: docker.io/kedacore/keda-metrics-apiserver:latest
+          image: ghcr.io/kedacore/keda-metrics-apiserver:latest
           imagePullPolicy: Always
           resources:
             requests:
@@ -46,6 +48,8 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: ""
           args:
           - /usr/local/bin/keda-adapter
           - --secure-port=6443
@@ -59,8 +63,15 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+            ## Metrics server needs to write the self-signed cert so it's not possible set this
+            # readOnlyRootFilesystem: true
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       volumes:
       - name: temp-vol
         emptyDir: {}

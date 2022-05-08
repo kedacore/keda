@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package executor
 
 import (
@@ -15,11 +31,12 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 )
 
 func TestCleanUpNormalCase(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -39,7 +56,7 @@ func TestCleanUpNormalCase(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -117,6 +134,7 @@ func TestAccurateScalingStrategy(t *testing.T) {
 }
 
 func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -139,7 +157,7 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -154,6 +172,7 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 }
 
 func TestCleanUpDefaultValue(t *testing.T) {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -180,7 +199,7 @@ func TestCleanUpDefaultValue(t *testing.T) {
 
 	scaleExecutor := getMockScaleExecutor(client)
 
-	err := scaleExecutor.cleanUp(scaledJob)
+	err := scaleExecutor.cleanUp(ctx, scaledJob)
 	if err != nil {
 		t.Errorf("Unable to cleanup as: %v", err)
 		return
@@ -193,10 +212,48 @@ func TestCleanUpDefaultValue(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestGetPendingJobCount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	pendingPodConditions := []string{"Ready", "PodScheduled"}
+	readyCondition := getPodCondition(v1.PodReady)
+	podScheduledCondition := getPodCondition(v1.PodScheduled)
+
+	testPendingJobTestData := []pendingJobTestData{
+		{PodStatus: v1.PodStatus{Phase: v1.PodSucceeded}, PendingJobCount: 0},
+		{PodStatus: v1.PodStatus{Phase: v1.PodRunning}, PendingJobCount: 0},
+		{PodStatus: v1.PodStatus{Phase: v1.PodFailed}, PendingJobCount: 1},
+		{PodStatus: v1.PodStatus{Phase: v1.PodPending}, PendingJobCount: 1},
+		{PodStatus: v1.PodStatus{Phase: v1.PodUnknown}, PendingJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{}}, PendingJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition}}, PendingJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{podScheduledCondition}}, PendingJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, PendingJobCount: 0},
+	}
+
+	for _, testData := range testPendingJobTestData {
+		ctx := context.Background()
+		client := getMockClientForTestingPendingPods(t, ctrl, testData.PodStatus)
+		scaleExecutor := getMockScaleExecutor(client)
+
+		scaledJob := getMockScaledJobWithPendingPodConditions(testData.PendingPodConditions)
+		result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
+
+		assert.Equal(t, testData.PendingJobCount, result)
+	}
+}
+
 type mockJobParameter struct {
 	Name             string
 	CompletionTime   string
 	JobConditionType batchv1.JobConditionType
+}
+
+type pendingJobTestData struct {
+	PendingPodConditions []string
+	PodStatus            v1.PodStatus
+	PendingJobCount      int64
 }
 
 func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
@@ -263,8 +320,21 @@ func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 	return scaledJob
 }
 
+func getMockScaledJobWithPendingPodConditions(pendingPodConditions []string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				PendingPodConditions: pendingPodConditions,
+			},
+		},
+	}
+
+	return scaledJob
+}
+
 func getMockClient(t *testing.T, ctrl *gomock.Controller, jobs *[]mockJobParameter, deletedJobName *map[string]string) *mock_client.MockClient {
 	client := mock_client.NewMockClient(ctrl)
+
 	client.EXPECT().
 		List(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, list runtime.Object, _ ...runtimeclient.ListOption) {
 		j, ok := list.(*batchv1.JobList)
@@ -291,6 +361,42 @@ func getMockClient(t *testing.T, ctrl *gomock.Controller, jobs *[]mockJobParamet
 	return client
 }
 
+func getMockClientForTestingPendingPods(t *testing.T, ctrl *gomock.Controller, podStatus v1.PodStatus) *mock_client.MockClient {
+	client := mock_client.NewMockClient(ctrl)
+	gomock.InOrder(
+		// listing jobs
+		client.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, list runtime.Object, _ ...runtimeclient.ListOption) {
+			j, ok := list.(*batchv1.JobList)
+
+			if !ok {
+				t.Error("Cast failed on batchv1.JobList at mocking client.List()")
+			}
+
+			if ok {
+				j.Items = append(j.Items, batchv1.Job{})
+			}
+		}).
+			Return(nil),
+		// listing pods
+		client.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, list runtime.Object, _ ...runtimeclient.ListOption) {
+			p, ok := list.(*v1.PodList)
+
+			if !ok {
+				t.Error("Cast failed on v1.PodList at mocking client.List()")
+			}
+
+			if ok {
+				p.Items = append(p.Items, v1.Pod{Status: podStatus})
+			}
+		}).
+			Return(nil),
+	)
+
+	return client
+}
+
 func getJob(t *testing.T, name string, completionTime string, jobConditionType batchv1.JobConditionType) *batchv1.Job {
 	parsedCompletionTime, err := time.Parse(time.RFC3339, completionTime)
 	completionTimeT := metav1.NewTime(parsedCompletionTime)
@@ -311,5 +417,12 @@ func getJob(t *testing.T, name string, completionTime string, jobConditionType b
 			},
 			CompletionTime: &completionTimeT,
 		},
+	}
+}
+
+func getPodCondition(podConditionType v1.PodConditionType) v1.PodCondition {
+	return v1.PodCondition{
+		Type:   podConditionType,
+		Status: v1.ConditionTrue,
 	}
 }

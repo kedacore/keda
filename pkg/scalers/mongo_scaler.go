@@ -24,8 +24,9 @@ import (
 
 // mongoDBScaler is support for mongoDB in keda.
 type mongoDBScaler struct {
-	metadata *mongoDBMetadata
-	client   *mongo.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *mongoDBMetadata
+	client     *mongo.Client
 }
 
 // mongoDBMetadata specify mongoDB scaler params.
@@ -57,24 +58,31 @@ type mongoDBMetadata struct {
 	query string
 	// A threshold that is used as targetAverageValue in HPA
 	// +required
-	queryValue int
-
+	queryValue int64
+	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
+	// +optional
 	metricName string
+
+	// The index of the scaler inside the ScaledObject
+	// +internal
+	scalerIndex int
 }
 
 // Default variables and settings
 const (
 	mongoDBDefaultTimeOut = 10 * time.Second
-	defaultCollection     = "default"
-	defaultDB             = "test"
-	defaultQueryValue     = 1
 )
 
 var mongoDBLog = logf.Log.WithName("mongodb_scaler")
 
 // NewMongoDBScaler creates a new mongoDB scaler
-func NewMongoDBScaler(config *ScalerConfig) (Scaler, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), mongoDBDefaultTimeOut)
+func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
 	meta, connStr, err := parseMongoDBMetadata(config)
@@ -93,20 +101,17 @@ func NewMongoDBScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &mongoDBScaler{
-		metadata: meta,
-		client:   client,
+		metricType: metricType,
+		metadata:   meta,
+		client:     client,
 	}, nil
 }
 
 func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error) {
 	var connStr string
+	var err error
 	// setting default metadata
-	meta := mongoDBMetadata{
-		collection: defaultCollection,
-		query:      "",
-		queryValue: defaultQueryValue,
-		dbName:     defaultDB,
-	}
+	meta := mongoDBMetadata{}
 
 	// parse metaData from ScaledJob config
 	if val, ok := config.TriggerMetadata["collection"]; ok {
@@ -122,7 +127,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
 		}
@@ -131,42 +136,39 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		return nil, "", fmt.Errorf("no queryValue given")
 	}
 
-	if val, ok := config.TriggerMetadata["dbName"]; ok {
-		meta.dbName = val
-	} else {
-		return nil, "", fmt.Errorf("no dbName given")
+	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	if err != nil {
+		return nil, "", err
 	}
 
 	// Resolve connectionString
-	if c, ok := config.AuthParams["connectionString"]; ok {
-		meta.connectionString = c
-	} else if v, ok := config.TriggerMetadata["connectionStringFromEnv"]; ok {
-		meta.connectionString = config.ResolvedEnv[v]
-	} else {
+	switch {
+	case config.AuthParams["connectionString"] != "":
+		meta.connectionString = config.AuthParams["connectionString"]
+	case config.TriggerMetadata["connectionStringFromEnv"] != "":
+		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
+	default:
 		meta.connectionString = ""
-		if val, ok := config.TriggerMetadata["host"]; ok {
-			meta.host = val
-		} else {
-			return nil, "", fmt.Errorf("no host given")
-		}
-		if val, ok := config.TriggerMetadata["port"]; ok {
-			meta.port = val
-		} else {
-			return nil, "", fmt.Errorf("no port given")
+		meta.host, err = GetFromAuthOrMeta(config, "host")
+		if err != nil {
+			return nil, "", err
 		}
 
-		if val, ok := config.TriggerMetadata["username"]; ok {
-			meta.username = val
-		} else {
-			return nil, "", fmt.Errorf("no username given")
-		}
-		// get password from env or authParams
-		if v, ok := config.AuthParams["password"]; ok {
-			meta.password = v
-		} else if v, ok := config.TriggerMetadata["passwordFromEnv"]; ok {
-			meta.password = config.ResolvedEnv[v]
+		meta.port, err = GetFromAuthOrMeta(config, "port")
+		if err != nil {
+			return nil, "", err
 		}
 
+		meta.username, err = GetFromAuthOrMeta(config, "username")
+		if err != nil {
+			return nil, "", err
+		}
+
+		if config.AuthParams["password"] != "" {
+			meta.password = config.AuthParams["password"]
+		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
+			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+		}
 		if len(meta.password) == 0 {
 			return nil, "", fmt.Errorf("no password given")
 		}
@@ -178,23 +180,20 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		// Build connection str
 		addr := fmt.Sprintf("%s:%s", meta.host, meta.port)
 		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
-		connStr = "mongodb://" + auth + "@" + addr
+		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", val))
 	} else {
-		maskedURL, err := kedautil.MaskPartOfURL(connStr, kedautil.Hostname)
-		if err != nil {
-			return nil, "", fmt.Errorf("failure masking part of url")
-		}
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s-%s", maskedURL, meta.collection))
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", meta.collection))
 	}
+	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
 
 func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult()
+	result, err := s.getQueryResult(ctx)
 	if err != nil {
 		mongoDBLog.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
 		return false, err
@@ -203,9 +202,9 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // Close disposes of mongoDB connections
-func (s *mongoDBScaler) Close() error {
+func (s *mongoDBScaler) Close(ctx context.Context) error {
 	if s.client != nil {
-		err := s.client.Disconnect(context.TODO())
+		err := s.client.Disconnect(ctx)
 		if err != nil {
 			mongoDBLog.Error(err, fmt.Sprintf("failed to close mongoDB connection, because of %v", err))
 			return err
@@ -216,8 +215,8 @@ func (s *mongoDBScaler) Close() error {
 }
 
 // getQueryResult query mongoDB by meta.query
-func (s *mongoDBScaler) getQueryResult() (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), mongoDBDefaultTimeOut)
+func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
 	filter, err := json2BsonDoc(s.metadata.query)
@@ -232,19 +231,19 @@ func (s *mongoDBScaler) getQueryResult() (int, error) {
 		return 0, err
 	}
 
-	return int(docsNum), nil
+	return docsNum, nil
 }
 
 // GetMetrics query from mongoDB,and return to external metrics
 func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult()
+	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(num), resource.DecimalSI),
+		Value:      *resource.NewQuantity(num, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
@@ -252,17 +251,12 @@ func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metri
 }
 
 // GetMetricSpecForScaling get the query value for scaling
-func (s *mongoDBScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-
+func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

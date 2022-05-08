@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package scalers
 
 import (
@@ -6,8 +22,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +29,8 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -26,31 +41,40 @@ const (
 )
 
 type azureQueueScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureQueueMetadata
 	podIdentity kedav1alpha1.PodIdentityProvider
 	httpClient  *http.Client
 }
 
 type azureQueueMetadata struct {
-	targetQueueLength int
+	targetQueueLength int64
 	queueName         string
 	connection        string
 	accountName       string
+	endpointSuffix    string
+	scalerIndex       int
 }
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
 
 // NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, podIdentity, err := parseAzureQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
 	}
 
 	return &azureQueueScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout),
+		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
 }
 
@@ -59,7 +83,7 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
-		queueLength, err := strconv.Atoi(val)
+		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, "", fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
@@ -67,6 +91,13 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 
 		meta.targetQueueLength = queueLength
 	}
+
+	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.QueueEndpoint)
+	if err != nil {
+		return nil, "", err
+	}
+
+	meta.endpointSuffix = endpointSuffix
 
 	if val, ok := config.TriggerMetadata["queueName"]; ok && val != "" {
 		meta.queueName = val
@@ -108,6 +139,8 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
 	return &meta, config.PodIdentity, nil
 }
 
@@ -120,6 +153,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {
@@ -130,20 +164,16 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	return length > 0, nil
 }
 
-func (s *azureQueueScaler) Close() error {
+func (s *azureQueueScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *azureQueueScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(int64(s.metadata.targetQueueLength), resource.DecimalSI)
+func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-queue", s.metadata.queueName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-queue-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -158,6 +188,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 		s.metadata.connection,
 		s.metadata.queueName,
 		s.metadata.accountName,
+		s.metadata.endpointSuffix,
 	)
 
 	if err != nil {
@@ -167,7 +198,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queuelen), resource.DecimalSI),
+		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 

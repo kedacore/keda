@@ -7,17 +7,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"net/http"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
-	"strings"
 )
 
 type pulsarScaler struct {
@@ -26,7 +27,7 @@ type pulsarScaler struct {
 }
 
 type pulsarMetadata struct {
-	statsURL            string
+	adminURL            string
 	tenant              string
 	namespace           string
 	topic               string
@@ -147,12 +148,12 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
-	case config.TriggerMetadata["statsURLFromEnv"] != "":
-		meta.statsURL = config.ResolvedEnv[config.TriggerMetadata["statsURLFromEnv"]]
-	case config.TriggerMetadata["statsURL"] != "":
-		meta.statsURL = config.TriggerMetadata["statsURL"]
+	case config.TriggerMetadata["adminURLFromEnv"] != "":
+		meta.adminURL = config.ResolvedEnv[config.TriggerMetadata["adminURLFromEnv"]]
+	case config.TriggerMetadata["adminURL"] != "":
+		meta.adminURL = config.TriggerMetadata["adminURL"]
 	default:
-		return meta, errors.New("no statsURL given")
+		return meta, errors.New("no adminURL given")
 	}
 
 	switch {
@@ -228,7 +229,10 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 func (s *pulsarScaler) GetStats() (*pulsarStats, error) {
 	stats := new(pulsarStats)
 
-	req, err := http.NewRequest("GET", s.metadata.statsURL, nil)
+	topic := strings.ReplaceAll(s.metadata.topic, "persistent://", "")
+	statsUrl := s.metadata.adminURL + "/admin/v2/persistent/" + topic + "/stats"
+
+	req, err := http.NewRequest("GET", statsUrl, nil)
 	if err != nil {
 		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
@@ -316,7 +320,7 @@ func (s *pulsarScaler) GetMetrics(_ context.Context, metricName string, _ labels
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *pulsarScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
+func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
@@ -331,7 +335,7 @@ func (s *pulsarScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
-func (s *pulsarScaler) Close() error {
+func (s *pulsarScaler) Close(context.Context) error {
 	s.client = nil
 	return nil
 }

@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	neturl "net/url"
 	"strconv"
 	"strings"
-
-	neturl "net/url"
 
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -19,12 +18,14 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type metricsAPIScaler struct {
-	metadata *metricsAPIScalerMetadata
-	client   *http.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *metricsAPIScalerMetadata
+	client     *http.Client
 }
 
 type metricsAPIScalerMetadata struct {
@@ -50,29 +51,35 @@ type metricsAPIScalerMetadata struct {
 	cert      string
 	key       string
 	ca        string
+
+	// bearer
+	enableBearerAuth bool
+	bearerToken      string
+
+	scalerIndex int
 }
 
-type authenticationType string
-
 const (
-	apiKeyAuth       authenticationType = "apiKey"
-	basicAuth        authenticationType = "basic"
-	tlsAuth          authenticationType = "tls"
-	methodValueQuery                    = "query"
+	methodValueQuery = "query"
 )
 
 var httpLog = logf.Log.WithName("metrics_api_scaler")
 
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMetricsAPIMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if meta.enableTLS {
+	if meta.enableTLS || len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil {
 			return nil, err
@@ -82,13 +89,15 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &metricsAPIScaler{
-		metadata: meta,
-		client:   httpClient,
+		metricType: metricType,
+		metadata:   meta,
+		client:     httpClient,
 	}, nil
 }
 
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
+	meta.scalerIndex = config.ScalerIndex
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.Atoi(val)
@@ -118,9 +127,9 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		return &meta, nil
 	}
 
-	authType := authenticationType(strings.TrimSpace(authMode))
+	authType := authentication.Type(strings.TrimSpace(authMode))
 	switch authType {
-	case apiKeyAuth:
+	case authentication.APIKeyAuthType:
 		if len(config.AuthParams["apiKey"]) == 0 {
 			return nil, errors.New("no apikey provided")
 		}
@@ -137,7 +146,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		if len(config.TriggerMetadata["keyParamName"]) > 0 {
 			meta.keyParamName = config.TriggerMetadata["keyParamName"]
 		}
-	case basicAuth:
+	case authentication.BasicAuthType:
 		if len(config.AuthParams["username"]) == 0 {
 			return nil, errors.New("no username given")
 		}
@@ -147,11 +156,10 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		// username as apikey and password as empty
 		meta.password = config.AuthParams["password"]
 		meta.enableBaseAuth = true
-	case tlsAuth:
+	case authentication.TLSAuthType:
 		if len(config.AuthParams["ca"]) == 0 {
 			return nil, errors.New("no ca given")
 		}
-		meta.ca = config.AuthParams["ca"]
 
 		if len(config.AuthParams["cert"]) == 0 {
 			return nil, errors.New("no cert given")
@@ -164,79 +172,91 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 
 		meta.key = config.AuthParams["key"]
 		meta.enableTLS = true
+	case authentication.BearerAuthType:
+		if len(config.AuthParams["token"]) == 0 {
+			return nil, errors.New("no token provided")
+		}
+
+		meta.bearerToken = config.AuthParams["token"]
+		meta.enableBearerAuth = true
 	default:
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
 	}
 
+	if len(config.AuthParams["ca"]) > 0 {
+		meta.ca = config.AuthParams["ca"]
+	}
 	return &meta, nil
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
-func GetValueFromResponse(body []byte, valueLocation string) (int64, error) {
+func GetValueFromResponse(body []byte, valueLocation string) (*resource.Quantity, error) {
 	r := gjson.GetBytes(body, valueLocation)
-	if r.Type != gjson.Number {
-		msg := fmt.Sprintf("valueLocation must point to value of type number got: %s", r.Type.String())
-		return 0, errors.New(msg)
+	errorMsg := "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
+	if r.Type == gjson.String {
+		q, err := resource.ParseQuantity(r.String())
+		if err != nil {
+			return nil, fmt.Errorf(errorMsg, r.String())
+		}
+		return &q, nil
 	}
-	return int64(r.Num), nil
+	if r.Type != gjson.Number {
+		return nil, fmt.Errorf(errorMsg, r.Type.String())
+	}
+	return resource.NewQuantity(int64(r.Num), resource.DecimalSI), nil
 }
 
-func (s *metricsAPIScaler) getMetricValue() (int64, error) {
-	request, err := getMetricAPIServerRequest(s.metadata)
+func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (*resource.Quantity, error) {
+	request, err := getMetricAPIServerRequest(ctx, s.metadata)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	r, err := s.client.Do(request)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
+	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf("api returned %d", r.StatusCode)
-		return 0, errors.New(msg)
+		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
+		return nil, errors.New(msg)
 	}
 
-	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	v, err := GetValueFromResponse(b, s.metadata.valueLocation)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	return v, nil
 }
 
 // Close does nothing in case of metricsAPIScaler
-func (s *metricsAPIScaler) Close() error {
+func (s *metricsAPIScaler) Close(context.Context) error {
 	return nil
 }
 
 // IsActive returns true if there are pending messages to be processed
 func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
-	v, err := s.getMetricValue()
+	v, err := s.getMetricValue(ctx)
 	if err != nil {
 		httpLog.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
 		return false, err
 	}
 
-	return v > 0.0, nil
+	return v.AsApproximateFloat64() > 0.0, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
-	targetValue := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
-	metricName := kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "http", s.metadata.url, s.metadata.valueLocation))
+func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValue,
-		},
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -246,21 +266,21 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	v, err := s.getMetricValue()
+	v, err := s.getMetricValue(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting metrics endpoint: %s", err)
 	}
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(v, resource.DecimalSI),
+		Value:      *v,
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, error) {
+func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata) (*http.Request, error) {
 	var req *http.Request
 	var err error
 
@@ -276,13 +296,13 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 			}
 
 			url.RawQuery = queryString.Encode()
-			req, err = http.NewRequest("GET", url.String(), nil)
+			req, err = http.NewRequestWithContext(ctx, "GET", url.String(), nil)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			// default behaviour is to use header method
-			req, err = http.NewRequest("GET", meta.url, nil)
+			req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -294,14 +314,20 @@ func getMetricAPIServerRequest(meta *metricsAPIScalerMetadata) (*http.Request, e
 			}
 		}
 	case meta.enableBaseAuth:
-		req, err = http.NewRequest("GET", meta.url, nil)
+		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		req.SetBasicAuth(meta.username, meta.password)
+	case meta.enableBearerAuth:
+		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.bearerToken))
 	default:
-		req, err = http.NewRequest("GET", meta.url, nil)
+		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
 		if err != nil {
 			return nil, err
 		}

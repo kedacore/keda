@@ -1,7 +1,15 @@
 package scalers
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type metricsAPIMetadataTestData struct {
@@ -13,7 +21,7 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	// No metadata
 	{metadata: map[string]string{}, raisesError: true},
 	// OK
-	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42"}, raisesError: false},
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42"}, raisesError: false},
 	// Target not an int
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
 	// Missing metric name
@@ -53,6 +61,10 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "basic"}, map[string]string{}, true},
+	// success bearerAuth default
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{"token": "bearerTokenValue"}, false},
+	// fail bearerAuth without token
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -67,22 +79,76 @@ func TestParseMetricsAPIMetadata(t *testing.T) {
 	}
 }
 
+type metricsAPIMetricIdentifier struct {
+	metadataTestData *metricsAPIMetadataTestData
+	scalerIndex      int
+	name             string
+}
+
+var metricsAPIMetricIdentifiers = []metricsAPIMetricIdentifier{
+	{metadataTestData: &testMetricsAPIMetadata[1], scalerIndex: 1, name: "s1-metric-api-metric-test"},
+}
+
+func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range metricsAPIMetricIdentifiers {
+		s, err := NewMetricsAPIScaler(
+			&ScalerConfig{
+				ResolvedEnv:       map[string]string{},
+				TriggerMetadata:   testData.metadataTestData.metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 3000 * time.Millisecond,
+				ScalerIndex:       testData.scalerIndex,
+			},
+		)
+		if err != nil {
+			t.Errorf("Error creating the Scaler")
+		}
+
+		metricSpec := s.GetMetricSpecForScaling(context.Background())
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}
+
 func TestGetValueFromResponse(t *testing.T) {
-	d := []byte(`{"components":[{"id": "82328e93e", "tasks": 32}],"count":2.43}`)
+	d := []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`)
 	v, err := GetValueFromResponse(d, "components.0.tasks")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v != 32 {
-		t.Errorf("Expected %d got %d", 32, v)
+	if v.CmpInt64(32) != 0 {
+		t.Errorf("Expected %d got %d", 32, v.AsDec())
 	}
 
 	v, err = GetValueFromResponse(d, "count")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v != 2 {
-		t.Errorf("Expected %d got %d", 2, v)
+	if v.CmpInt64(2) != 0 {
+		t.Errorf("Expected %d got %d", 2, v.AsDec())
+	}
+
+	v, err = GetValueFromResponse(d, "components.0.str")
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if v.CmpInt64(64) != 0 {
+		t.Errorf("Expected %d got %d", 64, v.AsDec())
+	}
+
+	v, err = GetValueFromResponse(d, "components.0.k")
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if v.CmpInt64(1000) != 0 {
+		t.Errorf("Expected %d got %d", 1000, v.AsDec())
+	}
+
+	_, err = GetValueFromResponse(d, "components.0.wrong")
+	if err == nil {
+		t.Error("Expected error but got success", err)
 	}
 }
 
@@ -100,9 +166,80 @@ func TestMetricAPIScalerAuthParams(t *testing.T) {
 		if err == nil {
 			if (meta.enableAPIKeyAuth && !(testData.metadata["authMode"] == "apiKey")) ||
 				(meta.enableBaseAuth && !(testData.metadata["authMode"] == "basic")) ||
-				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) {
+				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) ||
+				(meta.enableBearerAuth && !(testData.metadata["authMode"] == "bearer")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
 	}
+}
+
+func TestBearerAuth(t *testing.T) {
+	authentication := map[string]string{
+		"token": "secure-token",
+	}
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if val, ok := r.Header["Authorization"]; ok {
+			if val[0] != fmt.Sprintf("Bearer %s", authentication["token"]) {
+				t.Errorf("Authorization header malformed")
+			}
+		} else {
+			t.Errorf("Authorization header not found")
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`))
+	}))
+
+	metadata := map[string]string{
+		"url":           apiStub.URL,
+		"valueLocation": "components.0.tasks",
+		"targetValue":   "1",
+		"authMode":      "bearer",
+	}
+
+	s, err := NewMetricsAPIScaler(
+		&ScalerConfig{
+			ResolvedEnv:       map[string]string{},
+			TriggerMetadata:   metadata,
+			AuthParams:        authentication,
+			GlobalHTTPTimeout: 3000 * time.Millisecond,
+		},
+	)
+	if err != nil {
+		t.Errorf("Error creating the Scaler")
+	}
+
+	_, err = s.GetMetrics(context.TODO(), "test-metric", nil)
+	if err != nil {
+		t.Errorf("Error getting the metric")
+	}
+}
+
+type MockHTTPRoundTripper struct {
+	mock.Mock
+}
+
+func (m *MockHTTPRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	args := m.Called(request)
+	resp := args.Get(0).(*http.Response)
+	resp.Request = request
+	return resp, args.Error(1)
+}
+
+func TestGetMetricValueErrorMessage(t *testing.T) {
+	// mock roundtripper to return non-ok status code
+	mockHTTPRoundTripper := MockHTTPRoundTripper{}
+	mockHTTPRoundTripper.On("RoundTrip", mock.Anything).Return(&http.Response{StatusCode: http.StatusTeapot}, nil)
+
+	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
+	s := metricsAPIScaler{
+		metadata: &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
+		client:   &httpClient,
+	}
+
+	_, err := s.getMetricValue(context.TODO())
+
+	assert.Equal(t, err.Error(), "/api/v1/: api returned 418")
 }

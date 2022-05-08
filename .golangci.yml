@@ -4,7 +4,7 @@ run:
   concurrency: 4
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
-  timeout: 5m
+  timeout: 10m
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
@@ -17,21 +17,21 @@ linters:
     - nolintlint
     - rowserrcheck
     - gofmt
-    - golint
+    - revive
     - goimports
     - misspell
     - bodyclose
     - unconvert
     - ineffassign
     - staticcheck
-    - interfacer
-    - scopelint
+    - exportloopref
     - structcheck
     - deadcode
     - depguard
     - dogsled
     - errcheck
     #- funlen
+    - gci
     - goconst
     - gocritic
     - gocyclo
@@ -52,14 +52,17 @@ issues:
       linters:
         - gomnd
         - dupl
-        - interfacer
     - path: scale_handler.go
       linters:
         - gocyclo
-  # Excluding interfacer for finalizers, reason: https://github.com/kedacore/keda/pull/1390
-    - path: _finalizer.go
+    - path: scale_scaledobjects.go
       linters:
-        - interfacer
+        - gocyclo
+  # Exclude for clustertriggerauthentication_controller and triggerauthentication_controller, reason:
+  # controllers/clustertriggerauthentication_controller.go:1: 1-59 lines are duplicate of `controllers/triggerauthentication_controller.go:1-58` (dupl)
+    - path: triggerauthentication_controller.go
+      linters:
+        - dupl
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
@@ -67,8 +70,18 @@ issues:
     - linters:
        - stylecheck
       text: "ST1000:"
+  # The call to autorest.Send() in scalers/azure_app_insights.go is marked as not closing the response body. However, autorest.DoCloseIfError()
+  # and autorest.ByClosing() should ensure that the response body is closed.
+    - path: azure/azure_app_insights.go
+      linters:
+        - bodyclose
 
 linters-settings:
   funlen:
     lines: 80
     statements: 40
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/kedacore/keda)

@@ -1,15 +1,34 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package scalers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	metrics "github.com/rcrowley/go-metrics"
+	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
-	metrics "github.com/rcrowley/go-metrics"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 func init() {
@@ -26,12 +45,12 @@ type Scaler interface {
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
-	GetMetricSpecForScaling() []v2beta2.MetricSpec
+	GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec
 
 	IsActive(ctx context.Context) (bool, error)
 
 	// Close any resources that need disposing when scaler is no longer used or destroyed
-	Close() error
+	Close(ctx context.Context) error
 }
 
 // PushScaler interface
@@ -64,4 +83,75 @@ type ScalerConfig struct {
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.PodIdentityProvider
+
+	// ScalerIndex
+	ScalerIndex int
+
+	// MetricType
+	MetricType v2beta2.MetricTargetType
+}
+
+// GetFromAuthOrMeta helps getting a field from Auth or Meta sections
+func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
+	var result string
+	var err error
+	if config.AuthParams[field] != "" {
+		result = config.AuthParams[field]
+	} else if config.TriggerMetadata[field] != "" {
+		result = config.TriggerMetadata[field]
+	}
+	if result == "" {
+		err = fmt.Errorf("no %s given", field)
+	}
+	return result, err
+}
+
+// GenerateMetricNameWithIndex helps adding the index prefix to the metric name
+func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
+	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
+}
+
+// RemoveIndexFromMetricName removes the index prefix from the metric name
+func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
+	metricNameSplit := strings.SplitN(metricName, "-", 2)
+	if len(metricNameSplit) != 2 {
+		return "", fmt.Errorf("metric name without index prefix")
+	}
+
+	indexPrefix, metricNameWithoutIndex := metricNameSplit[0], metricNameSplit[1]
+	if indexPrefix != fmt.Sprintf("s%d", scalerIndex) {
+		return "", fmt.Errorf("metric name contains incorrect index prefix")
+	}
+
+	return metricNameWithoutIndex, nil
+}
+
+// GetMetricTargetType helps getting the metric target type of the scaler
+func GetMetricTargetType(config *ScalerConfig) (v2beta2.MetricTargetType, error) {
+	switch config.MetricType {
+	case v2beta2.UtilizationMetricType:
+		return "", fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
+	case "":
+		// Use AverageValue if no metric type was provided
+		return v2beta2.AverageValueMetricType, nil
+	default:
+		return config.MetricType, nil
+	}
+}
+
+// GetMetricTarget returns a metric target for a valid given metric target type (Value or AverageValue) and value
+func GetMetricTarget(metricType v2beta2.MetricTargetType, metricValue int64) v2beta2.MetricTarget {
+	target := v2beta2.MetricTarget{
+		Type: metricType,
+	}
+
+	// Construct the target size as a quantity
+	targetQty := resource.NewQuantity(metricValue, resource.DecimalSI)
+	if metricType == v2beta2.AverageValueMetricType {
+		target.AverageValue = targetQty
+	} else {
+		target.Value = targetQty
+	}
+
+	return target
 }

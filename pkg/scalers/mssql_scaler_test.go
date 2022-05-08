@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -65,6 +64,14 @@ var testInputs = []mssqlTestData{
 		expectedMetricName:       "mssql-AdventureWorks",
 		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net?database=AdventureWorks",
 	},
+	// connection string generated from full authParams
+	{
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"password": "Password#2", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks", "port": "1433"},
+		expectedMetricName:       "mssql-AdventureWorks",
+		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net:1433?database=AdventureWorks",
+	},
 	// variation of previous: no database name, metricName from host
 	{
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user3"},
@@ -120,7 +127,7 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 			t.Errorf("Wrong query. Expected '%s' but got '%s'", expectedQuery, outputMetadata.query)
 		}
 
-		expectedTargetValue := 1
+		var expectedTargetValue int64 = 1
 		if outputMetadata.targetValue != expectedTargetValue {
 			t.Errorf("Wrong targetValue. Expected %d but got %d", expectedTargetValue, outputMetadata.targetValue)
 		}
@@ -128,10 +135,6 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 		outputConnectionString := getMSSQLConnectionString(outputMetadata)
 		if testData.expectedConnectionString != outputConnectionString {
 			t.Errorf("Wrong connection string. Expected '%s' but got '%s'", testData.expectedConnectionString, outputConnectionString)
-		}
-
-		if !strings.HasPrefix(outputMetadata.metricName, "mssql-") {
-			t.Errorf("Metric name '%s' was expected to start with 'mssql-' but got '%s'", outputMetadata.metricName, testData.expectedMetricName)
 		}
 
 		if testData.expectedMetricName != "" && testData.expectedMetricName != outputMetadata.metricName {

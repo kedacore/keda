@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	openstackutil "github.com/kedacore/keda/v2/pkg/scalers/openstack/utils"
-
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -100,7 +100,7 @@ type endpoint struct {
 }
 
 // IsTokenValid checks if a authentication token is valid
-func (client *Client) IsTokenValid() (bool, error) {
+func (client *Client) IsTokenValid(ctx context.Context) (bool, error) {
 	var token = client.Token
 
 	if token == "" {
@@ -115,7 +115,7 @@ func (client *Client) IsTokenValid() (bool, error) {
 
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
 
-	checkTokenRequest, err := http.NewRequest("HEAD", tokenURL.String(), nil)
+	checkTokenRequest, err := http.NewRequestWithContext(ctx, "HEAD", tokenURL.String(), nil)
 	checkTokenRequest.Header.Set("X-Subject-Token", token)
 	checkTokenRequest.Header.Set("X-Auth-Token", token)
 
@@ -139,8 +139,8 @@ func (client *Client) IsTokenValid() (bool, error) {
 }
 
 // RenewToken retrives another token from Keystone
-func (client *Client) RenewToken() error {
-	token, err := client.authMetadata.getToken()
+func (client *Client) RenewToken(ctx context.Context) error {
+	token, err := client.authMetadata.getToken(ctx)
 
 	if err != nil {
 		return err
@@ -218,13 +218,13 @@ func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout
 // If an OpenStack project name is provided as first parameter, it will try to retrieve its API URL using the current credentials.
 // If an OpenStack region or availability zone is provided as second parameter, it will retrieve the service API URL for that region.
 // Otherwise, if the service API URL was found, it retrieves the first public URL for that service.
-func (keystone *KeystoneAuthRequest) RequestClient(projectProps ...string) (Client, error) {
+func (keystone *KeystoneAuthRequest) RequestClient(ctx context.Context, projectProps ...string) (Client, error) {
 	var client = Client{
-		HTTPClient:   kedautil.CreateHTTPClient(keystone.HTTPClientTimeout),
+		HTTPClient:   kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false),
 		authMetadata: keystone,
 	}
 
-	token, err := keystone.getToken()
+	token, err := keystone.getToken(ctx)
 
 	if err != nil {
 		return client, err
@@ -236,9 +236,9 @@ func (keystone *KeystoneAuthRequest) RequestClient(projectProps ...string) (Clie
 
 	switch len(projectProps) {
 	case 2:
-		serviceURL, err = keystone.getServiceURL(token, projectProps[0], projectProps[1])
+		serviceURL, err = keystone.getServiceURL(ctx, token, projectProps[0], projectProps[1])
 	case 1:
-		serviceURL, err = keystone.getServiceURL(token, projectProps[0], "")
+		serviceURL, err = keystone.getServiceURL(ctx, token, projectProps[0], "")
 	default:
 		serviceURL = ""
 	}
@@ -252,8 +252,8 @@ func (keystone *KeystoneAuthRequest) RequestClient(projectProps ...string) (Clie
 	return client, nil
 }
 
-func (keystone *KeystoneAuthRequest) getToken() (string, error) {
-	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, error) {
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false)
 
 	jsonBody, err := json.Marshal(keystone)
 
@@ -271,7 +271,7 @@ func (keystone *KeystoneAuthRequest) getToken() (string, error) {
 
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
 
-	tokenRequest, err := http.NewRequest("POST", tokenURL.String(), jsonBodyReader)
+	tokenRequest, err := http.NewRequestWithContext(ctx, "POST", tokenURL.String(), jsonBodyReader)
 
 	if err != nil {
 		return "", err
@@ -299,8 +299,8 @@ func (keystone *KeystoneAuthRequest) getToken() (string, error) {
 }
 
 // getCatalog retrives the OpenStack catalog according to the current authorization
-func (keystone *KeystoneAuthRequest) getCatalog(token string) ([]service, error) {
-	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout)
+func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token string) ([]service, error) {
+	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false)
 
 	catalogURL, err := url.Parse(keystone.AuthURL)
 
@@ -310,7 +310,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(token string) ([]service, error)
 
 	catalogURL.Path = path.Join(catalogURL.Path, catalogEndpoint)
 
-	getCatalog, err := http.NewRequest("GET", catalogURL.String(), nil)
+	getCatalog, err := http.NewRequestWithContext(ctx, "GET", catalogURL.String(), nil)
 
 	if err != nil {
 		return nil, err
@@ -348,14 +348,14 @@ func (keystone *KeystoneAuthRequest) getCatalog(token string) ([]service, error)
 }
 
 // getServiceURL retrieves a public URL for an OpenStack project from the OpenStack catalog
-func (keystone *KeystoneAuthRequest) getServiceURL(token string, projectName string, region string) (string, error) {
-	serviceTypes, err := openstackutil.GetServiceTypes(projectName)
+func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token string, projectName string, region string) (string, error) {
+	serviceTypes, err := openstackutil.GetServiceTypes(ctx, projectName)
 
 	if err != nil {
 		return "", err
 	}
 
-	serviceCatalog, err := keystone.getCatalog(token)
+	serviceCatalog, err := keystone.getCatalog(ctx, token)
 
 	if err != nil {
 		return "", err

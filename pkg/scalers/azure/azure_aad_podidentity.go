@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,11 +17,11 @@ const (
 )
 
 // GetAzureADPodIdentityToken returns the AADToken for resource
-func GetAzureADPodIdentityToken(httpClient util.HTTPDoer, audience string) (AADToken, error) {
+func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, audience string) (AADToken, error) {
 	var token AADToken
 
 	urlStr := fmt.Sprintf(msiURL, url.QueryEscape(audience))
-	req, err := http.NewRequest("GET", urlStr, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
 		return token, err
 	}

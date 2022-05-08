@@ -1,15 +1,18 @@
 #! /bin/bash
 set -eu
 
+E2E_REGEX=${E2E_TEST_REGEX:-*.test.ts}
+
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=10
+concurrent_tests_limit=6
 pids=()
 lookup=()
 failed_count=0
 failed_lookup=()
 counter=0
+executed_count=0
 
 function run_setup {
     ./node_modules/.bin/ava setup.test.ts
@@ -18,8 +21,13 @@ function run_setup {
 function run_tests {
     counter=0
     # randomize tests order using shuf
-    for test_case in $(find scalers -name "*.test.ts" | shuf)
+    for test_case in $(find scalers -name "$E2E_REGEX" | shuf)
     do
+        if [[ $test_case != *.test.ts ]] # Skip helper files
+        then
+            continue
+        fi
+
         counter=$((counter+1))
         ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         pid=$!
@@ -27,12 +35,46 @@ function run_tests {
         pids+=($pid)
         lookup[$pid]=$test_case
         # limit concurrent runs
-        if [[ "$counter" -gt "$concurrent_tests_limit" ]]; then
+        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
             wait_for_jobs
             counter=0
             pids=()
         fi
     done
+
+    wait_for_jobs
+
+    # Retry failing tests
+    if [ ${#failed_lookup[@]} -ne 0 ]; then
+
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS"
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+
+        retry_lookup=("${failed_lookup[@]}")
+        counter=0
+        pids=()
+        failed_count=0
+        failed_lookup=()
+
+        for test_case in "${retry_lookup[@]}"
+        do
+            counter=$((counter+1))
+            ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
+            pid=$!
+            echo "Rerunning $test_case with pid: $pid"
+            pids+=($pid)
+            lookup[$pid]=$test_case
+            # limit concurrent runs
+            if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
+                wait_for_jobs
+                counter=0
+                pids=()
+            fi
+        done
+    fi
 }
 
 function mark_failed {
@@ -44,6 +86,7 @@ function wait_for_jobs {
     for job in "${pids[@]}"; do
         wait $job || mark_failed $job
         echo "Job $job finished"
+        executed_count=$((executed_count+1))
     done
 
     printf "\n$failed_count jobs failed\n"
@@ -87,10 +130,14 @@ wait_for_jobs
 print_logs
 run_cleanup
 
-if [ "$failed_count" == "0" ];
+if [ "$executed_count" == "0" ];
 then
-    exit 0
-else
+    echo "No test has been executed, please review your regex: '$E2E_TEST_REGEX'"
+    exit 1
+elif [ "$failed_count" != "0" ];
+then
     print_failed
     exit 1
+else
+    exit 0
 fi

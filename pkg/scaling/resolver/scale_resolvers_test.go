@@ -1,16 +1,34 @@
+/*
+Copyright 2021 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resolver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	kedav1alpha1 "github.com/kedacore/keda/v2/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 var (
@@ -129,7 +147,8 @@ var testMetadatas = []testMetadata{
 
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 	for _, testData := range testMetadatas {
-		_, err := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), testData.container, namespace)
+		ctx := context.Background()
+		_, err := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), testData.container, namespace)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
@@ -311,8 +330,15 @@ func TestResolveAuthRef(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			clusterObjectNamespaceCache = &clusterNamespace // Inject test cluster namespace.
-			gotMap, gotPodIdentity := ResolveAuthRef(fake.NewFakeClientWithScheme(scheme.Scheme, test.existing...), logf.Log.WithName("test"), test.soar, test.podSpec, namespace)
+			gotMap, gotPodIdentity := resolveAuthRef(
+				ctx,
+				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
+				logf.Log.WithName("test"),
+				test.soar,
+				test.podSpec,
+				namespace)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}
@@ -429,7 +455,8 @@ func TestResolveDependentEnv(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			envMap, _ := resolveEnv(fake.NewFakeClient(), logf.Log.WithName("test"), test.container, namespace)
+			ctx := context.Background()
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}

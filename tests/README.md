@@ -1,8 +1,8 @@
-## Prerequisits
+## Prerequisites
 
 - [node](https://nodejs.org/en/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `TEST_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 
@@ -20,9 +20,9 @@ npx ava scalers/prometheus.test.ts
 ## E2E test setup
 
 The test script will run 3 phases:
-- **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys [`/deploy/KedaScaleController.yaml`](../deploy/KedaScaleController.yaml) to `keda` namespace in the cluster, and updates the image to `kedacore/keda:master`
+- **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys KEDA to `keda` namespace in the cluster, and updates the image to `kedacore/keda:main`.
 
-    After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scrips"` in package.json](package.json#L14).
+    After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scripts"` in package.json](package.json#L14).
 
 - **Tests**: Currently there are only scaler tests in `tests/scalers`. All files run in parallel, but tests within the file can run either in parallel or in series. More about tests below.
 
@@ -31,7 +31,7 @@ The test script will run 3 phases:
 
 ## Adding tests:
 
-* Tests are written in TypeScript using [ava](https://github.com/avajs/ava) framework. See [ava docs here](https://github.com/avajs/ava/blob/master/docs)
+* Tests are written in TypeScript using [ava](https://github.com/avajs/ava) framework. See [ava docs here](https://github.com/avajs/ava/tree/main/docs)
 * Each scaler tests should be in a file. **e.g**: `azure-queue.tests.ts`, `kafka.tests.ts`, etc
 * All files in `scalers/**.ts` are run in parallel by default. Make sure your tests don't affect the global state of the cluster in a way that can break other tests.
 * Each test file is expected to do it's own setup and clean up for its resources.
@@ -43,7 +43,7 @@ import test from 'ava';
 test.before(t => {
     // this runs once before all tests.
     // do setup here. e.g:
-    //  - Create a namespace for your tests (using kubectl or kubernetes node-client)
+    //  - Create a namespace for your tests using the function createNamespace(namespace: string) available in helpers file
     //  - Create deployment (using kubectl or kubernetes node-client)
     //  - Setup event source (deploy redis, or configure azure storage, etc)
     //  - etc
@@ -71,11 +71,14 @@ test.after.always.cb('clean up always after all tests', t => {
     t.end();
 });
 ```
+>⚠⚠ **Important:** ⚠⚠ Even thought the cleaning of the resources is expected inside each e2e test file, all test namespaces are cleaned up to ensure not having dangling resources after global e2e execution finishes. For not breaking this behavior, it's mandatory the usage of the function `createNamespace(namespace: string)` instead of creating them manually.
+
 * **Example test:** for example if I want to add a test for redis
 
 ```ts
 import * as sh from 'shelljs';
 import test from 'ava';
+import { createNamespace } from './helpers';
 
 // you can include template in the file or in another file.
 const deployYaml = `apiVersion: apps/v1
@@ -96,7 +99,7 @@ test.before('install redis and create deployment' t => {
     }
 
     sh.exec('helm install redis ......'); // install redis to the cluster
-    sh.exec('kubectl create namespace redis-test-deployment');
+    createNamespace("redis-test-deployment")
     sh.exec('kubectl apply -f ....'); // create your deployment
 });
 
@@ -113,7 +116,7 @@ test.after.always('remove redis and my deployment', t => {
 ```
 
 * You can see [`azure-queue.test.ts`](scalers/azure-queue.test.ts) for a full example.
-* Ava has more options for asserting and writing tests. The docs are very good. https://github.com/avajs/ava/blob/master/docs/01-writing-tests.md
+* Ava has more options for asserting and writing tests. The docs are very good. https://github.com/avajs/ava/blob/main/docs/01-writing-tests.md
 * **debugging**: when debugging, you can force only 1 test to run by adding `only` to the test definition.
 
 ```ts

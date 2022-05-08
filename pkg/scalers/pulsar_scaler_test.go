@@ -10,7 +10,7 @@ type parsePulsarMetadataTestData struct {
 	metadata     map[string]string
 	isError      bool
 	isActive     bool
-	statsURL     string
+	adminURL     string
 	tenant       string
 	namespace    string
 	topic        string
@@ -33,7 +33,7 @@ type pulsarMetricIdentifier struct {
 
 // A complete valid metadata example for reference
 var validPulsarMetadata = map[string]string{
-	"statsURL":     "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats",
+	"adminURL":     "http://172.20.0.151:80",
 	"tenant":       "apache",
 	"namespace":    "pulsar",
 	"topic":        "my-topic",
@@ -52,23 +52,23 @@ var validPulsarWithAuthParams = map[string]string{
 var validPulsarWithoutAuthParams = map[string]string{}
 
 var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
-	// failure, no statsURL
+	// failure, no adminURL
 	{map[string]string{}, true, false, "", "", "", "", ""},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats"}, true, false, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "", "", "", ""},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache"}, true, false, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "", "", ""},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar"}, true, false, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "", ""},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic"}, true, false, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", ""},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", "sub1"},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", "sub2"},
-	{map[string]string{"statsURL": "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", "sub3"},
-	{map[string]string{"statsURL": "http://127.0.0.1:8080/admin/v2/persistent/apache/pulsar/my-topic/stats", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache"}, true, false, "http://172.20.0.151:80", "apache", "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar"}, true, false, "http://172.20.0.151:80", "apache", "pulsar", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic"}, true, false, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub2"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub3"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080", "apache", "pulsar", "my-topic", "sub1"},
 
 	// tls
-	{map[string]string{"statsURL": "https://localhost:8443/admin/v2/persistent/apache/pulsar/my-topic/stats", "tls": "enable", "cert": "admin.cert.pem", "key": "admin-pk8.pem", "ca": "ca.cert.pem", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443/admin/v2/persistent/apache/pulsar/my-topic/stats", "apache", "pulsar", "my-topic", "sub1"},
+	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "admin.cert.pem", "key": "admin-pk8.pem", "ca": "ca.cert.pem", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443", "apache", "pulsar", "my-topic", "sub1"},
 }
 
 var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
-	// failure, no statsURL
+	// failure, no adminURL
 	{map[string]string{"tls": "enable", "cert": "admin.cert.pem", "key": "admin-pk8.pem", "ca": "ca.cert.pem"}, false, true, "admin.cert.pem", "admin-pk8.pem", "ca.cert.pem"},
 }
 
@@ -87,8 +87,8 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.statsURL != testData.statsURL {
-			t.Errorf("Expected statsURL %s but got %s\n", testData.statsURL, meta.statsURL)
+		if meta.adminURL != testData.adminURL {
+			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
 		}
 
 		if meta.tenant != testData.tenant {
@@ -116,8 +116,8 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.statsURL != testData.statsURL {
-			t.Errorf("Expected statsURL %s but got %s\n", testData.statsURL, meta.statsURL)
+		if meta.adminURL != testData.adminURL {
+			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
 		}
 
 		if meta.tenant != testData.tenant {
@@ -174,7 +174,7 @@ func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 		}
 		mockPulsarScaler := pulsarScaler{meta, nil}
 
-		metricSpec := mockPulsarScaler.GetMetricSpecForScaling()
+		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
@@ -225,7 +225,7 @@ func TestPulsarGetMetric(t *testing.T) {
 			t.Fatal("Failed:", err)
 		}
 
-		metricSpec := mockPulsarScaler.GetMetricSpecForScaling()
+		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
 
 		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName, nil)

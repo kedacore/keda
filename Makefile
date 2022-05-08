@@ -1,12 +1,25 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION		   ?= main
-IMAGE_REGISTRY ?= docker.io
+SHELL           = /bin/bash
+
+# If E2E_IMAGE_TAG is defined, we are on pr e2e test and we have to use the new tag and append -test to the repository
+ifeq '${E2E_IMAGE_TAG}' ''
+VERSION ?= main
+# SUFIX here is intentional empty to not append nothing to the repository
+SUFFIX =
+endif
+
+ifneq '${E2E_IMAGE_TAG}' ''
+VERSION = ${E2E_IMAGE_TAG}
+SUFFIX = -test
+endif
+
+IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
-IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda:$(VERSION)
-IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver:$(VERSION)
+IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
+IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
 
 IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:main
 
@@ -14,11 +27,11 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-GIT_VERSION = $(shell git describe --always --abbrev=7)
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+GIT_VERSION ?= $(shell git describe --always --abbrev=7)
+GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run-2
+TEST_CLUSTER_NAME ?= keda-nightly-run-3
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -30,149 +43,79 @@ endif
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/v2/version.Version=$(VERSION)"
 
+COSIGN_FLAGS ?= -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.22
+
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+
 ##################################################
 # All                                            #
 ##################################################
-.PHONY: All
-all: test build
+.PHONY: all
+all: build
 
 ##################################################
 # Tests                                          #
 ##################################################
-.PHONY: test
-test: generate gofmt govet
-	go test ./... -covermode=atomic -coverprofile cover.out
 
-.PHONY: e2e-test
-e2e-test:
-	TERMINFO=/etc/terminfo
-	TERM=linux
-	@az login --service-principal -u $(AZURE_SP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
+##@ Test
+
+test: manifests generate fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+
+.PHONY: get-cluster-context
+get-cluster-context: ## Get Azure cluster context.
+	@az login --service-principal -u $(AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(AZURE_SUBSCRIPTION) \
 		--resource-group $(AZURE_RESOURCE_GROUP)
+
+.PHONY: e2e-test
+e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
+	TERMINFO=/etc/terminfo
+	TERM=linux
 	npm install --prefix tests
 
 	./tests/run-all.sh
 
-# Run e2e tests against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: e2e-test-local
-e2e-test-local:
+e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
 	npm install --prefix tests
 	./tests/run-all.sh
 
-##################################################
-# PUBLISH                                        #
-##################################################
-.PHONY: publish
-publish: docker-build
-	docker push $(IMAGE_CONTROLLER)
-	docker push $(IMAGE_ADAPTER)
+.PHONY: e2e-test-clean
+e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
+	kubectl delete ns -l type=e2e
+
+.PHONY: arm-smoke-test
+arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	npm install --prefix tests
+	./tests/run-arm-smoke-tests.sh
 
 ##################################################
-# Release                                        #
+# Development                                    #
 ##################################################
-.PHONY: release
-release: manifests kustomize set-version
-	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
-	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
-	cd config/default && \
-    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
-	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 
-.PHONY: set-version
-set-version:
-	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
-	rm -rf ./version/version.go.out
+##@ Development
 
-##################################################
-# RUN / (UN)INSTALL / DEPLOY                     #
-##################################################
-# Run against the configured Kubernetes cluster in ~/.kube/config
-.PHONY: run
-run: generate
-	go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
-
-# Install CRDs into a cluster
-.PHONY: install
-install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-.PHONY: uninstall
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
-
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-.PHONY: deploy
-deploy: manifests kustomize
-	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
-	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
-	cd config/default && \
-    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-
-# Undeploy controller
-.PHONY: undeploy
-undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
-
-##################################################
-# Build                                          #
-##################################################
-.PHONY: build
-build: manifests set-version manager adapter
-
-# Build the docker image
-docker-build:
-	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
-	docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION}
-
-# Build KEDA Operator binary
-.PHONY: manager
-manager: manager-dockerfile gofmt govet
-
-# Build the manager inside the Dockerfile. This elides
-# the gofmt and govet commands. Since code quality checks
-# are already in CI, we don't need to run them every
-# time we build the image
-.PHONY: manager-dockerfile
-manager-dockerfile: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda main.go
-
-# Build KEDA Metrics Server Adapter binary
-.PHONY: adapter
-adapter: adapter-dockerfile gofmt govet
-
-# Build the adapter inside the Dockerfile. This elides
-# the gofmt and govet commands. Since code quality checks
-# are already in CI, we don't need to run them every
-# time we build the image
-.PHONY: adapter-dockerfile
-adapter-dockerfile: generate adapter/generated/openapi/zz_generated.openapi.go
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-adapter adapter/main.go
-
-# Generate manifests e.g. CRD, RBAC etc.
-.PHONY: manifests
-manifests: controller-gen
+manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-# Generate code (API)
-.PHONY: generate
-generate: controller-gen
+generate: controller-gen mockgen-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API) and mocks.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-# Generate OpenAPI for Metrics Adapter
-adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
+adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum ## Generate OpenAPI for KEDA Metrics Adapter.
 	@OPENAPI_PATH=`go list -mod=readonly -m -f '{{.Dir}}' k8s.io/kube-openapi`; \
 	go run $${OPENAPI_PATH}/cmd/openapi-gen/openapi-gen.go --logtostderr \
 	    -i k8s.io/metrics/pkg/apis/custom_metrics,k8s.io/metrics/pkg/apis/custom_metrics/v1beta1,k8s.io/metrics/pkg/apis/custom_metrics/v1beta2,k8s.io/metrics/pkg/apis/external_metrics,k8s.io/metrics/pkg/apis/external_metrics/v1beta1,k8s.io/metrics/pkg/apis/metrics,k8s.io/metrics/pkg/apis/metrics/v1beta1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1 \
@@ -183,85 +126,173 @@ adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
 	    -o ./ \
 	    -r /dev/null
 
-# find or download controller-gen
-# download controller-gen if necessary
-.PHONY: controller-gen
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	cd / ;\
-	GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
+fmt: ## Run go fmt against code.
+	go fmt ./...
 
-# find or download kustomize
-.PHONY: kustomize
-kustomize:
-ifeq (, $(shell which kustomize))
-	@{ \
-	cd / ;\
-	GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
-	}
-KUSTOMIZE=$(GOBIN)/kustomize
-else
-KUSTOMIZE=$(shell which kustomize)
-endif
+vet: ## Run go vet against code.
+	go vet ./...
+
+golangci: ## Run golangci against code.
+	golangci-lint run
+
+clientset-verify: ## Verify that generated client-go clientset, listers and informers are up to date.
+	go mod vendor
+	./hack/verify-codegen.sh
+	rm -rf vendor
+
+clientset-generate: ## Generate client-go clientset, listers and informers.
+	go mod vendor
+	./hack/update-codegen.sh
+	rm -rf vendor
 
 # Generate Liiklus proto
 pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
-	protoc -I hack/ hack/LiiklusService.proto --go_out=plugins=grpc:pkg/scalers/liiklus
+	protoc -I hack/ hack/LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
 
+.PHONY: mockgen-gen
+mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
+
+pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
+	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
+pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
+	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
+pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
+	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
+pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
+	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
-	mockgen github.com/kedacore/keda/pkg/scalers/liiklus LiiklusServiceClient > pkg/scalers/liiklus/mocks/mock_liiklus.go
-
-# Run go fmt against code
-.PHONY: gofmt
-gofmt:
-	gofmt -l -w -s .
-
-# Run go vet against code
-.PHONY: govet
-govet:
-	go vet ./...
-
-# Run golangci against code
-.PHONY: golangci
-golangci:
-	golangci-lint run
+	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 
 ##################################################
-# Clientset                                      #
+# Build                                          #
 ##################################################
-# Kubebuilder project layout has API under 'api/v1alpha1'
-# client-go codegen expects group name (keda) in the path ie. 'api/keda/v1alpha1'
-# Because there's no way how to modify any of these settings,
-# we need to hack things a little bit (use tmp directory 'api/keda/v1alpha1' and replace the name of package)
-.PHONY: clientset-prepare
-clientset-prepare:
-	go mod vendor
-	rm -rf api/keda
-	mkdir api/keda
-	cp -r api/v1alpha1 api/keda/v1alpha1
 
-.PHONY: clientset-verify
-clientset-verify: clientset-prepare
-	./hack/verify-codegen.sh
-	rm -rf api/keda
-	rm -rf vendor
+##@ Build
 
-.PHONY: clientset-generate
-clientset-generate: clientset-prepare
-	./hack/update-codegen.sh
-	rm -rf api/keda
-	rm -rf vendor
+build: generate fmt vet manager adapter ## Build Operator (manager) and Metrics Server (adapter) binaries.
+
+manager: generate
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda main.go
+
+adapter: generate adapter/generated/openapi/zz_generated.openapi.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-adapter adapter/main.go
+
+run: manifests generate ## Run a controller from your host.
+	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
+
+docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
+	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+
+publish: docker-build ## Push images on to Container Registry (default: ghcr.io).
+	docker push $(IMAGE_CONTROLLER)
+	docker push $(IMAGE_ADAPTER)
+
+publish-multiarch:
+	docker buildx build --push --platform=linux/amd64,linux/arm64 . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	docker buildx build --push --platform=linux/amd64,linux/arm64 -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+
+release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
+	cd config/manager && \
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
+	cd config/metrics-server && \
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+	# Need this workaround to mitigate a problem with inserting labels into selectors,
+	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
+	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
+	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
+	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
+
+sign-images: ## Sign KEDA images published on GitHub Container Registry
+	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_CONTROLLER)
+	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_ADAPTER)
+
+.PHONY: set-version
+set-version:
+	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
+	rm -rf ./version/version.go.out
 
 ##################################################
-# Build Tools Image                              #
+# Deployment                                     #
 ##################################################
-.PHONY: publish-build-tools
-publish-build-tools:
+
+##@ Deployment
+
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+
+deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && \
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
+	cd config/metrics-server && \
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+	# Need this workaround to mitigate a problem with inserting labels into selectors,
+	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
+	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
+	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
+
+
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
+
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.10.0)
+
+ENVTEST = $(shell pwd)/bin/setup-envtest
+envtest: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+
+MOCKGEN = $(shell pwd)/bin/mockgen
+mockgen: ## Download mockgen locally if necessary.
+	$(call go-get-tool,$(MOCKGEN),github.com/golang/mock/mockgen@v1.6.0)
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef
+
+##################################################
+# General                                        #
+##################################################
+
+##@ General
+
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
+
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.PHONY: docker-build-tools
+docker-build-tools: ## Build build-tools image
 	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+
+.PHONY: publish-build-tools
+publish-build-tools: docker-build-tools ## Publish build-tools image
 	docker push $(IMAGE_BUILD_TOOLS)
