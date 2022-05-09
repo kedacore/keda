@@ -49,11 +49,11 @@ RUN go get -u -v \
         github.com/cweill/gotests/... \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
-        # golang.org/x/tools/gopls 
         github.com/alecthomas/gometalinter \
-        honnef.co/go/tools/... \
         github.com/mgechev/revive \
         github.com/derekparker/delve/cmd/dlv 2>&1
+RUN go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install golang.org/x/tools/gopls@latest
     # Install golangci-lint
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0
     #
