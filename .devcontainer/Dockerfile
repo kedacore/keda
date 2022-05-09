@@ -23,15 +23,15 @@ RUN apt-get update \
     && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
-    && apt-get -y install git iproute2 procps lsb-release
+    && apt-get -y install git iproute2 procps lsb-release \
     #
     # Install gocode-gomod
-RUN go get -x -d github.com/stamblerre/gocode 2>&1 \
+    && go get -x -d github.com/stamblerre/gocode 2>&1 \
     && go build -o gocode-gomod github.com/stamblerre/gocode \
-    && mv gocode-gomod $GOPATH/bin/ 
+    && mv gocode-gomod $GOPATH/bin/ \
     #
     # Install Go tools
-RUN go get -u -v \
+    && go get -u -v \
         github.com/mdempsky/gocode \
         github.com/uudashr/gopkgs/cmd/gopkgs \
         github.com/ramya-rao-a/go-outline \
@@ -51,32 +51,32 @@ RUN go get -u -v \
         golang.org/x/lint/golint \
         github.com/alecthomas/gometalinter \
         github.com/mgechev/revive \
-        github.com/derekparker/delve/cmd/dlv 2>&1
-RUN go install honnef.co/go/tools/cmd/staticcheck@latest && \
-    go install golang.org/x/tools/gopls@latest
+        github.com/derekparker/delve/cmd/dlv 2>&1 \
+    && go install honnef.co/go/tools/cmd/staticcheck@latest \
+    && go install golang.org/x/tools/gopls@latest \
     # Install golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
-RUN groupadd --gid $USER_GID $USERNAME \
+    && groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
     # [Optional] Add sudo support
     && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
     # Docker install
-RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release \
+    && apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release \
     && curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null \
     && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" \
     && apt-get update \
-    && apt-get install -y docker-ce-cli 
+    && apt-get install -y docker-ce-cli \
     #
     # Install pip & pre-commit
-RUN apt-get -y install python3-pip \
-    && python3 -m pip install --no-cache-dir pre-commit 
+    && apt-get -y install python3-pip \
+    && python3 -m pip install --no-cache-dir pre-commit \
     #
     # Clean up
-RUN apt-get autoremove -y \
+    && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
