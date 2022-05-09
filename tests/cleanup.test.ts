@@ -15,17 +15,3 @@ test.serial('Remove KEDA', t => {
   }
   t.pass('KEDA undeployed successfully using make undeploy command')
 })
-
-test.serial('remove azure workload identity kubernetes components', t => {
-  if (!RUN_WORKLOAD_IDENTITY_TESTS || RUN_WORKLOAD_IDENTITY_TESTS == 'false') {
-    t.pass('skipping as workload identity tests are disabled')
-    return
-  }
-
-  t.is(0,
-    sh.exec(`helm uninstall workload-identity-webhook --namespace ${workloadIdentityNamespace}`).code,
-    'should be able to uninstall workload identity webhook'
-  )
-
-  sh.exec(`kubectl delete ns ${workloadIdentityNamespace}`)
-})

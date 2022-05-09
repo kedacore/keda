@@ -10,7 +10,7 @@ const RUN_WORKLOAD_IDENTITY_TESTS = process.env['AZURE_RUN_WORKLOAD_IDENTITY_TES
 const workloadIdentityNamespace = "azure-workload-identity-system"
 
 test.before('configure shelljs', () => {
-  sh.config.silent = false
+  sh.config.silent = false // TODO - Remove later
 })
 
 test.serial('Verify all commands', t => {
@@ -69,7 +69,7 @@ test.serial('setup and verify azure workload identity kubernetes components', t 
     'should be able to add Azure AD workload identity helm repo'
   )
   t.is(0,
-    sh.exec(`helm repo update`).code,
+    sh.exec(`helm repo update azure-workload-identity`).code,
     "should be able to update"
   )
 
@@ -91,6 +91,7 @@ test.serial('setup and verify azure workload identity kubernetes components', t 
     } else if (parsedPods == 2) {
       t.log('Workload Identity webhook is ready')
       success = true
+      sh.exec('sleep 120s') // Sleep for some time for webhook to setup properly
       break
     }
   }
@@ -127,7 +128,7 @@ test.serial('verifyKeda', t => {
     }
   }
 
-
+  // TODO - Remove later.
   t.log(
     sh.exec("kubectl get sa keda-operator -n keda -o yaml").stdout
   )
