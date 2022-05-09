@@ -51,6 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
         run: |
+          git config --global --add safe.directory /__w/keda/keda
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Login to GitHub Container Registry
@@ -83,6 +84,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
         run: |
+          git config --global --add safe.directory /__w/keda/keda
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Run end to end tests
