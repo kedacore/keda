@@ -51,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
         run: |
-          hub pr checkout ${{ needs.triage.outputs.pr_num }}
+          gh pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -83,7 +83,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
         run: |
-          hub pr checkout ${{ needs.triage.outputs.pr_num }}
+          gh pr checkout ${{ needs.triage.outputs.pr_num }}
 
       - name: Run end to end tests
         continue-on-error: true

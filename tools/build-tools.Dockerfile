@@ -67,7 +67,8 @@ ENV PATH=${PATH}:/usr/local/go/bin \
 # Install FOSSA tooling
 RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 
-# Install hub
-RUN curl -LJO https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz && \
-    tar zxvf hub-linux-amd64-2.14.2.tgz
-ENV PATH="/hub-linux-amd64-2.14.2/bin:${PATH}"
+# Install gh
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt update && \
+    apt install -y gh
