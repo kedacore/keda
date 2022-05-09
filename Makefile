@@ -296,3 +296,7 @@ docker-build-tools: ## Build build-tools image
 .PHONY: publish-build-tools
 publish-build-tools: docker-build-tools ## Publish build-tools image
 	docker push $(IMAGE_BUILD_TOOLS)
+
+.PHONY: docker-build-dev-containers
+docker-build-dev-containers: ## Build dev-containers image
+	docker build -f .devcontainer/Dockerfile .

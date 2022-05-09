@@ -139,6 +139,24 @@ jobs:
         if: steps.filter.outputs.tools == 'true'
         run: make docker-build-tools
 
+  validate-dev-container:
+    name: Validate dev-container
+    runs-on: ubuntu-latest
+    container: ghcr.io/kedacore/build-tools:main
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            devcontainer:
+              - '.devcontainer/Dockerfile'
+
+      - name: Build tools
+        if: steps.filter.outputs.devcontainer == 'true'
+        run: make docker-build-dev-containers
+
   statics:
     name: Static Checks
     runs-on: ubuntu-latest
