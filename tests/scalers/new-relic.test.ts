@@ -70,7 +70,7 @@ test.before(t => {
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml
     .replace('{{NEWRELIC_API_KEY}}', Buffer.from(newRelicApiKey).toString('base64'))
-    .replace('{{NEWRELIC_ACCOUNT_ID}}', newRelicAccountId)
+    .replace('{{NEWRELIC_ACCOUNT_ID}}', Buffer.from(newRelicAccountId).toString('base64'))
     .replace('{{NEWRELIC_REGION}}', newRelicRegion)
   )
   createNamespace(testNamespace)
@@ -253,6 +253,9 @@ spec:
   - parameter: queryKey
     name: newrelic-secret
     key: newRelicApiKey
+  - parameter: account
+    name: newrelic-secret
+    key: account
 ---
 apiVersion: v1
 kind: Secret
@@ -261,6 +264,7 @@ metadata:
 type: Opaque
 data:
   newRelicApiKey: {{NEWRELIC_API_KEY}}
+  account: {{NEWRELIC_ACCOUNT_ID}}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -276,7 +280,6 @@ spec:
   triggers:
   - type: new-relic
     metadata:
-      account: '{{NEWRELIC_ACCOUNT_ID}}'
       region: '{{NEWRELIC_REGION}}'
       threshold: '10'
       nrql: SELECT average(\`http_requests_total\`) FROM Metric where serviceName='test-app' and namespaceName='new-relic-test' since 60 seconds ago
