@@ -14,6 +14,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.7.1](#v271)
+- [v2.7.0](#v270)
 - [v2.6.1](#v261)
 - [v2.6.0](#v260)
 - [v2.5.0](#v250)
@@ -31,6 +33,39 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.0.0](#v100)
 
 ## Unreleased
+
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Deprecations
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.7.1
+
+### Improvements
+
+- **General**: Don't hardcode UIDs in securityContext ([#3012](https://github.com/kedacore/keda/issues/3012))
+
+### Other
+
+- **General**: Fix CVE-2022-21221 in `github.com/valyala/fasthttp` ([#2775](https://github.com/kedacore/keda/issue/2775))
+- **General**: Bump Golang to 1.17.9 ([#3016](https://github.com/kedacore/keda/issues/3016))
+
+## v2.7.0
 
 ### New
 
@@ -53,6 +88,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Updated HTTPClient to be proxy-aware, if available, from environment variables. ([#2577](https://github.com/kedacore/keda/issues/2577))
 - **General:** Using manager client in KEDA Metrics Server to avoid flush request to Kubernetes Apiserver([2914](https://github.com/kedacore/keda/issues/2914))
 - **ActiveMQ Scaler:** Add CorsHeader information to ActiveMQ Scaler ([#2884](https://github.com/kedacore/keda/issues/2884))
+- **AWS CloudWatch:** Add support to use expressions([#2998](https://github.com/kedacore/keda/issues/2998))
 - **Azure Application Insights Scaler:** Provide support for non-public clouds ([#2735](https://github.com/kedacore/keda/issues/2735))
 - **Azure Blob Storage Scaler:** Add optional parameters for counting blobs recursively ([#1789](https://github.com/kedacore/keda/issues/1789))
 - **Azure Event Hub Scaler:** Improve logging when blob container not found ([#2363](https://github.com/kedacore/keda/issues/2363))
@@ -73,13 +109,13 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
 - **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
 
-## Deprecations
+### Deprecations
 
 - **CPU, Memory, Datadog Scalers**: `metadata.type` is deprecated in favor of the global `metricType` ([#2030](https://github.com/kedacore/keda/issues/2030))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+None.
 
 ### Other
 
@@ -104,7 +140,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Memory Scaler:** Adding e2e test ([#2220](https://github.com/kedacore/keda/issues/2220))
 - **Selenium Grid Scaler:** Adding e2e test ([#2791](https://github.com/kedacore/keda/issues/2791))
 
-## v.2.6.1
+## v2.6.1
 
 ### Improvements
 

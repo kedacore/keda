@@ -1,5 +1,5 @@
 # Build the adapter binary
-FROM --platform=$BUILDPLATFORM golang:1.17.3 as builder
+FROM --platform=$BUILDPLATFORM golang:1.17.9 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -39,7 +39,8 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder --chown=nonroot:nonroot /apiserver.local.config  /apiserver.local.config
 COPY --from=builder /workspace/bin/keda-adapter .
-USER nonroot:nonroot
+# 65532 is numeric for nonroot
+USER 65532:65532
 
 
 ENTRYPOINT ["/keda-adapter", "--secure-port=6443", "--logtostderr=true", "--v=0"]

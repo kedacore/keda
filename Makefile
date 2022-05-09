@@ -156,9 +156,9 @@ pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
 pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
-pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
+pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
-pkg/mock/mock_client/mock_interfaces.go: $(shell go list -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
+pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
 pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient

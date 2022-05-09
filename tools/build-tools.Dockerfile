@@ -31,9 +31,9 @@ RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent soft
     apt-get install -y docker-ce-cli
 
 # Install golang
-RUN GO_VERSION=1.17.3 && \
+RUN GO_VERSION=1.17.9 && \
     curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c && \
+    go_sha256=9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6 && \
     echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
@@ -67,7 +67,8 @@ ENV PATH=${PATH}:/usr/local/go/bin \
 # Install FOSSA tooling
 RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 
-# Install hub
-RUN curl -LJO https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz && \
-    tar zxvf hub-linux-amd64-2.14.2.tgz
-ENV PATH="/hub-linux-amd64-2.14.2/bin:${PATH}"
+# Install gh
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt update && \
+    apt install -y gh
