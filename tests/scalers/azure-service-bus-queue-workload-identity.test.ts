@@ -7,7 +7,7 @@ const connectionString = process.env["AZURE_SERVICE_BUS_CONNECTION_STRING"]
 // Format for connection string -
 // Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key-val>"
 const serviceBusNameSpace = connectionString.split("//")[1].split(".")[0]
-const queueName = "sb-queue"
+const queueName = "sb-queue-workload"
 
 const testName = "test-azure-service-bus-queue-workload-identity"
 const testNamespace = `${testName}-ns`
