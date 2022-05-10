@@ -97,6 +97,10 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// correct pod identity
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// workload identity but missing namespace
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
+	// correct workload identity
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
@@ -131,6 +135,15 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			subscriptionName: subscriptionName,
 		},
 		podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+		httpClient:  commonHTTPClient,
+	},
+	{
+		metadata: &azureServiceBusMetadata{
+			entityType:       subscription,
+			topicName:        topicName,
+			subscriptionName: subscriptionName,
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload,
 		httpClient:  commonHTTPClient,
 	},
 }

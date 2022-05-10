@@ -12,6 +12,8 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/go-playground/assert/v2"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // Add a valid Storage account connection string here
@@ -256,10 +258,17 @@ func TestShouldParseCheckpointForFunctionWithPodIdentity(t *testing.T) {
 		EventHubName:             "hub-test",
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
+		PodIdentity:              kedav1alpha1.PodIdentityProviderAzure,
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
 	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
+
+	eventHubInfo.PodIdentity = kedav1alpha1.PodIdentityProviderAzureWorkload
+	cp = newCheckpointer(eventHubInfo, "0")
+	url, _ = cp.resolvePath(eventHubInfo)
 
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
@@ -271,10 +280,17 @@ func TestShouldParseCheckpointForFunctionWithCheckpointStrategyAndPodIdentity(t 
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
 		CheckpointStrategy:       "azureFunction",
+		PodIdentity:              kedav1alpha1.PodIdentityProviderAzure,
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
 	url, _ := cp.resolvePath(eventHubInfo)
+
+	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
+
+	eventHubInfo.PodIdentity = kedav1alpha1.PodIdentityProviderAzureWorkload
+	cp = newCheckpointer(eventHubInfo, "0")
+	url, _ = cp.resolvePath(eventHubInfo)
 
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
