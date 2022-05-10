@@ -197,8 +197,7 @@ publish-controller-multiarch: ## Build and push multi-arch Docker image for KEDA
 publish-adapter-multiarch: ## Build and push multi-arch Docker image for KEDA Metrics Server.
 	docker buildx build --output=type=${OUTPUT_TYPE} --platform=${BUILD_PLATFORMS} -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
-# Push multi-arch Docker images to Container Registry (default: ghcr.io).
-publish-multiarch: publish-controller-multiarch publish-adapter-multiarch
+publish-multiarch: publish-controller-multiarch publish-adapter-multiarch ## Push multi-arch Docker images on to Container Registry (default: ghcr.io).
 
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
