@@ -42,10 +42,15 @@ jobs:
     container: ghcr.io/kedacore/build-tools:main
     if: needs.triage.outputs.run-e2e == '1'
     steps:
-      - uses: actions-ecosystem/action-remove-labels@v1
+      - uses: actions/github-script@v6
+        name: Remove ok-to-merge label
         with:
-          labels: ok-to-merge
-          number: ${{ needs.triage.outputs.pr_num }}
+          script: |
+            github.rest.issues.removeAllLabels({
+              issue_number: ${{ steps.parser.outputs.pr_num }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
 
       - uses: actions/checkout@v3
 
@@ -80,10 +85,15 @@ jobs:
     concurrency: pr-e2e-tests
     if: needs.triage.outputs.run-e2e == '1'
     steps:
-      - uses: actions-ecosystem/action-remove-labels@v1
+      - uses: actions/github-script@v6
+        name: Remove ok-to-merge label
         with:
-          labels: ok-to-merge
-          number: ${{ needs.triage.outputs.pr_num }}
+          script: |
+            github.rest.issues.removeAllLabels({
+              issue_number: ${{ steps.parser.outputs.pr_num }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
 
       - uses: actions/checkout@v3
 
@@ -166,11 +176,17 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - uses: actions-ecosystem/action-add-labels@v1
+      - uses: actions/github-script@v6
         if: steps.test.outcome == 'success'
+        name: Add ok-to-merge label
         with:
-          labels: ok-to-merge
-          number: ${{ needs.triage.outputs.pr_num }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: ${{ needs.triage.outputs.pr_num }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['ok-to-merge']
+            })
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
