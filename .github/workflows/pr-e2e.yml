@@ -2,6 +2,10 @@ name: pr-e2e-tests
 on:
   issue_comment:
     types: [created]
+
+env:
+  E2E_LABEL: ok-to-merge
+
 jobs:
   triage:
     runs-on: ubuntu-latest
@@ -185,7 +189,7 @@ jobs:
               issue_number: ${{ needs.triage.outputs.pr_num }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ['ok-to-merge']
+              labels: ['${{ env.E2E_LABEL}}']
             })
 
       - name: React to comment with failure
