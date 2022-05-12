@@ -2,26 +2,28 @@ name: pr-e2e-tests
 on:
   issue_comment:
     types: [created]
+
+env:
+  E2E_LABEL: ok-to-merge
+
 jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
     outputs:
-      run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
+      run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ github.event.comment.id }}"
     steps:
-      - name: Check user permission
-        if: startsWith(github.event.comment.body,'/run-e2e')
-        id: check-permission
-        uses: scherermichael-oss/action-has-permission@master
+      - uses: tspascoal/get-user-teams-membership@v1
+        id: checkUserMember
         with:
-          required-permission: write
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          team: 'keda-e2e-test-executors'
+          GITHUB_TOKEN: ${{ secrets.GH_CHECKING_USER_AUTH }}
 
       - name: Update comment with the execution url
-        if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.check-permission.outputs.has-permission }}
+        if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
         uses: peter-evans/create-or-update-comment@v2
         with:
           comment-id: ${{ github.event.comment.id }}
@@ -45,6 +47,13 @@ jobs:
     if: needs.triage.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v3
+
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
         env:
@@ -78,6 +87,13 @@ jobs:
     if: needs.triage.outputs.run-e2e == '1'
     steps:
       - uses: actions/checkout@v3
+
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
         env:
@@ -157,6 +173,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
+
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABEL}}'
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1

@@ -52,7 +52,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
 
 ## v2.7.1
 
