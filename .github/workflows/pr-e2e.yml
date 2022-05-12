@@ -51,7 +51,7 @@ jobs:
         with:
           script: |
             github.rest.issues.removeAllLabels({
-              issue_number: ${{ steps.parser.outputs.pr_num }},
+              issue_number: ${{ needs.triage.outputs.pr_num }},
               owner: context.repo.owner,
               repo: context.repo.repo,
             })
@@ -94,7 +94,7 @@ jobs:
         with:
           script: |
             github.rest.issues.removeAllLabels({
-              issue_number: ${{ steps.parser.outputs.pr_num }},
+              issue_number: ${{ needs.triage.outputs.pr_num }},
               owner: context.repo.owner,
               repo: context.repo.repo,
             })
