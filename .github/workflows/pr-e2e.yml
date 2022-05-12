@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build images
     container: ghcr.io/kedacore/build-tools:main
-    if: needs.triage.outputs.run-e2e == '1'
+    if: needs.triage.outputs.run-e2e
     steps:
       - uses: actions/checkout@v3
 
@@ -84,7 +84,7 @@ jobs:
     name: Execute e2e tests
     container: ghcr.io/kedacore/build-tools:main
     concurrency: pr-e2e-tests
-    if: needs.triage.outputs.run-e2e == '1'
+    if: needs.triage.outputs.run-e2e
     steps:
       - uses: actions/checkout@v3
 
