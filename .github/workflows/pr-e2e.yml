@@ -53,6 +53,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
@@ -93,6 +94,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
@@ -179,6 +181,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABEL}}'
 
       - name: React to comment with failure
