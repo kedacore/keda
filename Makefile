@@ -27,6 +27,9 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
+BUILD_PLATFORMS ?= linux/amd64,linux/arm64
+OUTPUT_TYPE     ?= registry
+
 GIT_VERSION ?= $(shell git describe --always --abbrev=7)
 GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
@@ -188,9 +191,13 @@ publish: docker-build ## Push images on to Container Registry (default: ghcr.io)
 	docker push $(IMAGE_CONTROLLER)
 	docker push $(IMAGE_ADAPTER)
 
-publish-multiarch:
-	docker buildx build --push --platform=linux/amd64,linux/arm64 . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
-	docker buildx build --push --platform=linux/amd64,linux/arm64 -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+publish-controller-multiarch: ## Build and push multi-arch Docker image for KEDA Operator.
+	docker buildx build --output=type=${OUTPUT_TYPE} --platform=${BUILD_PLATFORMS} . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+
+publish-adapter-multiarch: ## Build and push multi-arch Docker image for KEDA Metrics Server.
+	docker buildx build --output=type=${OUTPUT_TYPE} --platform=${BUILD_PLATFORMS} -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+
+publish-multiarch: publish-controller-multiarch publish-adapter-multiarch ## Push multi-arch Docker images on to Container Registry (default: ghcr.io).
 
 release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
