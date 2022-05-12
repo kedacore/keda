@@ -46,17 +46,14 @@ jobs:
     container: ghcr.io/kedacore/build-tools:main
     if: needs.triage.outputs.run-e2e == '1'
     steps:
-      - uses: actions/github-script@v6
-        name: Remove ok-to-merge label
-        with:
-          script: |
-            github.rest.issues.removeAllLabels({
-              issue_number: ${{ needs.triage.outputs.pr_num }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
-
       - uses: actions/checkout@v3
+
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
         env:
@@ -89,17 +86,14 @@ jobs:
     concurrency: pr-e2e-tests
     if: needs.triage.outputs.run-e2e == '1'
     steps:
-      - uses: actions/github-script@v6
-        name: Remove ok-to-merge label
-        with:
-          script: |
-            github.rest.issues.removeAllLabels({
-              issue_number: ${{ needs.triage.outputs.pr_num }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
-
       - uses: actions/checkout@v3
+
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
 
       - name: Checkout Pull Request
         env:
@@ -180,17 +174,12 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - uses: actions/github-script@v6
-        if: steps.test.outcome == 'success'
-        name: Add ok-to-merge label
-        with:
-          script: |
-            github.rest.issues.addLabels({
-              issue_number: ${{ needs.triage.outputs.pr_num }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['${{ env.E2E_LABEL}}']
-            })
+      - name: Remove label
+        id: remove
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABEL}}'
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
