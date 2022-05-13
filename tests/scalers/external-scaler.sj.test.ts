@@ -9,7 +9,7 @@ const serviceName = `${testName}-service`
 const deploymentName = `${testName}-deployment`
 const scaledJobName = `${testName}-scaled-job`
 
-const maxReplicaCount = 5
+const maxReplicaCount = 3
 const threshold = 10
 
 test.before(async t => {
@@ -45,7 +45,7 @@ test.before(async t => {
 test.serial("Deployment should scale up to maxReplicaCount", async t => {
     // Modify scaled job's metricValue to induce scaling
     t.is(
-        sh.exec(`kubectl apply -f ${createYamlFile(scaledJobYaml.replace("{{VALUE}}", `${threshold * 2}`))} -n ${testNamespace}`).code,
+        sh.exec(`kubectl apply -f ${createYamlFile(scaledJobYaml.replace("{{VALUE}}", `${threshold * maxReplicaCount}`))} -n ${testNamespace}`).code,
         0,
         "Modifying scaled job should work"
     )
