@@ -50,7 +50,7 @@ test.serial("Deployment should scale up to maxReplicaCount", async t => {
         "Modifying scaled job should work"
     )
 
-    t.true(await waitForJobCount(maxReplicaCount, testNamespace, 60, 1000),`Replica count should be 0 after 1 minute`)
+    t.true(await waitForJobCount(maxReplicaCount, testNamespace, 60, 1000),`Replica count should be ${maxReplicaCount} after 1 minute`)
 })
 
 test.serial("Deployment should scale back down to 0", async t => {
