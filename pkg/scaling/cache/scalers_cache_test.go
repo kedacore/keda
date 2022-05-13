@@ -232,7 +232,7 @@ func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string
 }
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool) *mock_scalers.MockScaler {
-	metricName := scaledJobMetricName
+	metricName := "queueLength"
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue)}
 	metrics := []external_metrics.ExternalMetricValue{

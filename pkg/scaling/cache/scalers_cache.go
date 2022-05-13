@@ -33,10 +33,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
-const (
-	scaledJobMetricName = "s0-queueLength"
-)
-
 type ScalersCache struct {
 	Generation int64
 	Scalers    []ScalerBuilder
