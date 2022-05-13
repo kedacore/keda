@@ -21,40 +21,44 @@ import (
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
 	specs := []v2beta2.MetricSpec{}
+	metricName := "s0-queueLength"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, int64(0), targetAverageValue)
 	// 1 1
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(1),
-		createMetricSpec(1),
+		createMetricSpec(1, metricName),
+		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(1), targetAverageValue)
 	// 5 5 3
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(4), targetAverageValue)
 
 	// 5 5 4
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(4), targetAverageValue)
 }
 
-func createMetricSpec(averageValue int64) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int64, metricName string) v2beta2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
 	return v2beta2.MetricSpec{
 		External: &v2beta2.ExternalMetricSource{
 			Target: v2beta2.MetricTarget{
 				AverageValue: qty,
+			},
+			Metric: v2beta2.MetricIdentifier{
+				Name: metricName,
 			},
 		},
 	}
@@ -232,9 +236,10 @@ func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string
 }
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool) *mock_scalers.MockScaler {
-	metricName := "queueLength"
+	metricName := "s0-queueLength"
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue)}
+	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue, metricName)}
+
 	metrics := []external_metrics.ExternalMetricValue{
 		{
 			MetricName: metricName,
@@ -243,7 +248,7 @@ func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64
 	}
 	scaler.EXPECT().IsActive(gomock.Any()).Return(isActive, nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-	scaler.EXPECT().GetMetrics(gomock.Any(), metricName, nil).Return(metrics, nil)
+	scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Any(), nil).Return(metrics, nil)
 	scaler.EXPECT().Close(gomock.Any())
 	return scaler
 }
