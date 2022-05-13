@@ -137,7 +137,7 @@ spec:
           - name: external-executor
             image: busybox
             command:
-            - sleep 
+            - sleep
             - "30"
             imagePullPolicy: IfNotPresent
         restartPolicy: Never

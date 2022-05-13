@@ -83,12 +83,11 @@ test.serial(`Job should scale to 5 then back to 0`, async t => {
         'insert 5 mongo record'
     )
 
-    let jobCount = '0'
     // maxJobCount = real Job + first line of output
     const maxJobCount = 6
 
     t.true(await waitForJobCount(maxJobCount, testNamespace, 60, 1000), `Job count should be ${maxJobCount} after 60 seconds`)
-    
+
     // Process elements
 
     t.true(await waitForJobCount(0, testNamespace, 180, 1000), `Job count should be 0 after 3 minutes`)
