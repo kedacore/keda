@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Remove label
+      - name: Remove '${{ env.E2E_LABEL}}' label
         id: remove-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Remove label
+      - name: Remove '${{ env.E2E_LABEL}}' label
         id: remove-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -176,8 +176,9 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - name: Add label
+      - name: Add '${{ env.E2E_LABEL}}' label
         id: add-label
+        if: steps.test.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
