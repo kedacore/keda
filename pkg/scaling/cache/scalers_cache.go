@@ -275,7 +275,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-		metrics, err := s.Scaler.GetMetrics(ctx, scaledJobMetricName, nil)
+		metrics, err := s.Scaler.GetMetrics(ctx, metricSpecs[0].External.Metric.Name, nil)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
 			c.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -285,12 +285,12 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		var metricValue int64
 
 		for _, m := range metrics {
-			if m.MetricName == scaledJobMetricName {
+			if m.MetricName == metricSpecs[0].External.Metric.Name {
 				metricValue, _ = m.Value.AsInt64()
 				queueLength += metricValue
 			}
 		}
-		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, scaledJobMetricName, queueLength, "targetAverageValue", targetAverageValue)
+		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
 
 		if isTriggerActive {
 			isActive = true
