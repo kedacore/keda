@@ -2,7 +2,7 @@ import * as sh from "shelljs"
 import test from "ava"
 import { createNamespace, createYamlFile, waitForDeploymentReplicaCount } from "./helpers"
 
-const testName = "test-external-scaler"
+const testName = "test-external-scaler-so"
 const testNamespace = `${testName}-ns`
 const scalerName = `${testName}-scaler`
 const serviceName = `${testName}-service`

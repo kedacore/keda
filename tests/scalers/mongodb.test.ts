@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import { createNamespace } from './helpers'
+import { createNamespace, waitForJobCount } from './helpers'
 
 const mongoDBNamespace = 'mongodb'
 const testNamespace = 'mongodb-test'
@@ -61,14 +61,11 @@ test.before(t => {
 
 })
 
-test.serial('Job should have 0 job on start', t => {
-    const jobCount = sh.exec(
-        `kubectl get job --namespace ${testNamespace}`
-    ).stdout
-    t.is(jobCount, '', 'job count should start out as 0')
+test.serial('Job should have 0 job on start', async t => {
+    t.true(await waitForJobCount(0, testNamespace, 10, 1000), `job count should start out as 0`)
 })
 
-test.serial(`Job should scale to 5 then back to 0`, t => {
+test.serial(`Job should scale to 5 then back to 0`, async t => {
     // insert data to mongodb
     const InsertJS = `db.${mongodbCollection}.insert([
     {"region":"eu-1","state":"running","plan":"planA","goods":"apple"},
@@ -88,30 +85,13 @@ test.serial(`Job should scale to 5 then back to 0`, t => {
 
     let jobCount = '0'
     // maxJobCount = real Job + first line of output
-    const maxJobCount = '6'
+    const maxJobCount = 6
 
-    for (let i = 0; i < 30 && jobCount !== maxJobCount; i++) {
-        jobCount = sh.exec(
-            `kubectl get job --namespace ${testNamespace} | wc -l`
-        ).stdout.replace(/[\r\n]/g,"")
+    t.true(await waitForJobCount(maxJobCount, testNamespace, 60, 1000), `Job count should be ${maxJobCount} after 60 seconds`)
+    
+    // Process elements
 
-        if (jobCount !== maxJobCount) {
-            sh.exec('sleep 2s')
-        }
-    }
-
-    t.is(maxJobCount, jobCount, `Job count should be ${maxJobCount} after 60 seconds`)
-
-    for (let i = 0; i < 36 && jobCount !== '0'; i++) {
-        jobCount = sh.exec(
-            `kubectl get job --namespace ${testNamespace} | wc -l`
-        ).stdout.replace(/[\r\n]/g,"")
-        if (jobCount !== '0') {
-            sh.exec('sleep 5s')
-        }
-    }
-
-    t.is('0', jobCount, 'Job count should be 0 after 3 minutes')
+    t.true(await waitForJobCount(0, testNamespace, 180, 1000), `Job count should be 0 after 3 minutes`)
 })
 
 test.after.always.cb('clean up mongodb deployment', t => {
