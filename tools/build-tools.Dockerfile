@@ -5,7 +5,7 @@ RUN apt update && \
     apt-get install software-properties-common -y
 RUN apt-add-repository ppa:git-core/ppa && \
     apt update && \
-    apt install -y wget curl build-essential git
+    apt install -y wget curl build-essential git git-lfs
 
 # Use Bash instead of Dash
 RUN ln -sf bash /bin/sh
