@@ -33,6 +33,10 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
+const (
+	scaledJobMetricName = "s0-queueLength"
+)
+
 type ScalersCache struct {
 	Generation int64
 	Scalers    []ScalerBuilder
@@ -271,7 +275,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-		metrics, err := s.Scaler.GetMetrics(ctx, "queueLength", nil)
+		metrics, err := s.Scaler.GetMetrics(ctx, scaledJobMetricName, nil)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
 			c.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -281,12 +285,12 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		var metricValue int64
 
 		for _, m := range metrics {
-			if m.MetricName == "queueLength" {
+			if m.MetricName == scaledJobMetricName {
 				metricValue, _ = m.Value.AsInt64()
 				queueLength += metricValue
 			}
 		}
-		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
+		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, scaledJobMetricName, queueLength, "targetAverageValue", targetAverageValue)
 
 		if isTriggerActive {
 			isActive = true
