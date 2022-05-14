@@ -82,8 +82,8 @@ test.serial(`Job should scale to 5 then back to 0`, async t => {
         sh.exec(`kubectl exec -n ${mongoDBNamespace} ${mongoDBPod} -- mongo --eval \'${InsertJS}\'`).code,
         'insert 5 mongo record'
     )
-
-    t.true(await waitForJobCount(5, testNamespace, 60, 1000), `Job count should be ${maxJobCount} after 60 seconds`)
+    let maxJobCount = 5
+    t.true(await waitForJobCount(maxJobCount, testNamespace, 60, 1000), `Job count should be ${maxJobCount} after 60 seconds`)
 
     // Process elements
 
