@@ -174,7 +174,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedautil.SetStatusConditions(ctx, r.Client, scaledObject, conditions); err != nil {
-			reqLogger.Error(err, "Failed to patch Objects Status with Conditions")
+			reqLogger.Error(err, "failed to patch Objects Status with Conditions")
 			return ctrl.Result{}, err
 		}
 	}
@@ -197,7 +197,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	if err := kedautil.SetStatusConditions(ctx, r.Client, scaledObject, &conditions); err != nil {
-		reqLogger.Error(err, "Failed to patch Objects Status with Conditions")
+		reqLogger.Error(err, "failed to patch Objects Status with Conditions")
 		return ctrl.Result{}, err
 	}
 

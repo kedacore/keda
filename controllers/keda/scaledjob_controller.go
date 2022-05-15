@@ -102,7 +102,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := util.SetStatusConditions(ctx, r.Client, scaledJob, conditions); err != nil {
-			reqLogger.Error(err, "Failed to patch Objects Status with Conditions")
+			reqLogger.Error(err, "failed to patch Objects Status with Conditions")
 			return ctrl.Result{}, err
 		}
 	}
@@ -131,7 +131,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if err := util.SetStatusConditions(ctx, r.Client, scaledJob, &conditions); err != nil {
-		reqLogger.Error(err, "Failed to patch Objects Status with Conditions")
+		reqLogger.Error(err, "failed to patch Objects Status with Conditions")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, err

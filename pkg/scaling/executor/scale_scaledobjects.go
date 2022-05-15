@@ -218,12 +218,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
 			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are active")
+				logger.Error(err, "error setting active condition when triggers are active")
 				return
 			}
 		} else {
 			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are not active")
+				logger.Error(err, "error setting active condition when triggers are not active")
 				return
 			}
 		}
@@ -238,7 +238,7 @@ func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *ked
 			"New Replicas Count", scaledObject.Spec.Fallback.Replicas)
 	}
 	if e := e.setFallbackCondition(ctx, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
-		logger.Error(e, "Error setting fallback condition")
+		logger.Error(e, "error setting fallback condition")
 	}
 }
 
@@ -274,7 +274,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
-				logger.Error(err, "Error in setting active condition")
+				logger.Error(err, "error in setting active condition")
 				return
 			}
 		} else {
@@ -289,7 +289,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		activeCondition := scaledObject.Status.Conditions.GetActiveCondition()
 		if !activeCondition.IsFalse() || activeCondition.Reason != "ScalerCooldown" {
 			if err := e.setActiveCondition(ctx, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active"); err != nil {
-				logger.Error(err, "Error in setting active condition")
+				logger.Error(err, "error in setting active condition")
 				return
 			}
 		}

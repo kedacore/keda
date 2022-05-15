@@ -69,12 +69,12 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
 			if err := e.setActiveCondition(ctx, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are active")
+				logger.Error(err, "error setting active condition when triggers are active")
 				return
 			}
 		} else {
 			if err := e.setActiveCondition(ctx, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are not active")
+				logger.Error(err, "error setting active condition when triggers are not active")
 				return
 			}
 		}
