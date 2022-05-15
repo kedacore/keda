@@ -16,10 +16,28 @@ func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient,
 	switch obj := runtimeObj.(type) {
 	case *kedav1alpha1.ScaledObject:
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
-		obj.Status.Conditions = *conditions
+		for _, c := range *conditions {
+			switch c.Type {
+			case kedav1alpha1.ConditionActive:
+				obj.Status.Conditions.SetActiveCondition(c.Status, c.Reason, c.Message)
+			case kedav1alpha1.ConditionReady:
+				obj.Status.Conditions.SetReadyCondition(c.Status, c.Reason, c.Message)
+			case kedav1alpha1.ConditionFallback:
+				obj.Status.Conditions.SetFallbackCondition(c.Status, c.Reason, c.Message)
+			}
+		}
 	case *kedav1alpha1.ScaledJob:
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
-		obj.Status.Conditions = *conditions
+		for _, c := range *conditions {
+			switch c.Type {
+			case kedav1alpha1.ConditionActive:
+				obj.Status.Conditions.SetActiveCondition(c.Status, c.Reason, c.Message)
+			case kedav1alpha1.ConditionReady:
+				obj.Status.Conditions.SetReadyCondition(c.Status, c.Reason, c.Message)
+			case kedav1alpha1.ConditionFallback:
+				obj.Status.Conditions.SetFallbackCondition(c.Status, c.Reason, c.Message)
+			}
+		}
 	default:
 		err := fmt.Errorf("unknown scalable object type %v", obj)
 		return err
