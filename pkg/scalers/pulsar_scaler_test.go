@@ -11,8 +11,6 @@ type parsePulsarMetadataTestData struct {
 	isError      bool
 	isActive     bool
 	adminURL     string
-	tenant       string
-	namespace    string
 	topic        string
 	subscription string
 }
@@ -34,18 +32,16 @@ type pulsarMetricIdentifier struct {
 // A complete valid metadata example for reference
 var validPulsarMetadata = map[string]string{
 	"adminURL":     "http://172.20.0.151:80",
-	"tenant":       "apache",
-	"namespace":    "pulsar",
-	"topic":        "my-topic",
+	"topic":        "persistent://public/default/my-topic",
 	"subscription": "sub1",
+	"tls":          "enable",
 }
 
 // A complete valid authParams example for sasl, with username and passwd
 var validPulsarWithAuthParams = map[string]string{
-	"tls":  "enable",
-	"cert": "admin.cert.pem",
-	"key":  "admin-pk8.pem",
-	"ca":   "ca.cert.pem",
+	"cert": "certdata",
+	"key":  "keydata",
+	"ca":   "cadata",
 }
 
 // A complete valid authParams example for sasl, without username and passwd
@@ -53,23 +49,23 @@ var validPulsarWithoutAuthParams = map[string]string{}
 
 var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	// failure, no adminURL
-	{map[string]string{}, true, false, "", "", "", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", "", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache"}, true, false, "http://172.20.0.151:80", "apache", "", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar"}, true, false, "http://172.20.0.151:80", "apache", "pulsar", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic"}, true, false, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub1"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub2"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80", "apache", "pulsar", "my-topic", "sub3"},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080", "apache", "pulsar", "my-topic", "sub1"},
+	{map[string]string{}, true, false, "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 
 	// tls
-	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "admin.cert.pem", "key": "admin-pk8.pem", "ca": "ca.cert.pem", "tenant": "apache", "namespace": "pulsar", "topic": "my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443", "apache", "pulsar", "my-topic", "sub1"},
+	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
 }
 
 var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
 	// failure, no adminURL
-	{map[string]string{"tls": "enable", "cert": "admin.cert.pem", "key": "admin-pk8.pem", "ca": "ca.cert.pem"}, false, true, "admin.cert.pem", "admin-pk8.pem", "ca.cert.pem"},
+	{map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata"},
 }
 
 var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
@@ -91,14 +87,6 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
 		}
 
-		if meta.tenant != testData.tenant {
-			t.Errorf("Expected tenant %s but got %s\n", testData.tenant, meta.tenant)
-		}
-
-		if meta.namespace != testData.namespace {
-			t.Errorf("Expected namespace %s but got %s\n", testData.namespace, meta.namespace)
-		}
-
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
 		}
@@ -107,7 +95,12 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.subscription)
 		}
 
-		meta, err = parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithoutAuthParams})
+		authParams := validPulsarWithoutAuthParams
+		if k, ok := testData.metadata["tls"]; ok && k == "enable" {
+			authParams = validPulsarWithAuthParams
+		}
+
+		meta, err = parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -118,14 +111,6 @@ func TestParsePulsarMetadata(t *testing.T) {
 
 		if meta.adminURL != testData.adminURL {
 			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
-		}
-
-		if meta.tenant != testData.tenant {
-			t.Errorf("Expected tenant %s but got %s\n", testData.tenant, meta.tenant)
-		}
-
-		if meta.namespace != testData.namespace {
-			t.Errorf("Expected namespace %s but got %s\n", testData.namespace, meta.namespace)
 		}
 
 		if meta.topic != testData.topic {
@@ -170,6 +155,9 @@ func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
 		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams})
 		if err != nil {
+			if testData.metadataTestData.isError {
+				continue
+			}
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockPulsarScaler := pulsarScaler{meta, nil}
@@ -186,6 +174,9 @@ func TestPulsarIsActive(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
 		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
 		if err != nil {
+			if testData.metadataTestData.isError {
+				continue
+			}
 			t.Fatal("Failed:", err)
 		}
 
@@ -204,11 +195,14 @@ func TestPulsarIsActiveWithAuthParams(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
 		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithAuthParams})
 		if err != nil {
+			if testData.metadataTestData.isError {
+				continue
+			}
 			t.Fatal("Failed:", err)
 		}
 
 		active, err := mockPulsarScaler.IsActive(context.TODO())
-		if err != nil {
+		if err != nil && !testData.metadataTestData.isError {
 			t.Fatal("Failed:", err)
 		}
 
@@ -222,6 +216,9 @@ func TestPulsarGetMetric(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
 		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
 		if err != nil {
+			if testData.metadataTestData.isError {
+				continue
+			}
 			t.Fatal("Failed:", err)
 		}
 

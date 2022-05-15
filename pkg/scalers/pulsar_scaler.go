@@ -28,8 +28,6 @@ type pulsarScaler struct {
 
 type pulsarMetadata struct {
 	adminURL            string
-	tenant              string
-	namespace           string
 	topic               string
 	subscription        string
 	msgBacklogThreshold int64
@@ -107,17 +105,10 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	// If TLS Authentication enabled, do
 	if pulsarMetadata.enableTLS {
 		// Load client certificate (PEM format)
-		cert, err := tls.LoadX509KeyPair(pulsarMetadata.cert, pulsarMetadata.key)
+		cert, err := tls.X509KeyPair([]byte(pulsarMetadata.cert), []byte(pulsarMetadata.key))
 		if err != nil {
 			pulsarLog.Error(err, "unable to load cert or key file")
 			return nil, fmt.Errorf("unable to load cert or key file: %s", err)
-		}
-
-		// Load CA certificate (PEM format)
-		caCert, err := ioutil.ReadFile(pulsarMetadata.ca)
-		if err != nil {
-			pulsarLog.Error(err, "unable to load ca cert file")
-			return nil, fmt.Errorf("unable to load ca cert file: %s", err)
 		}
 
 		rootCAs, _ := x509.SystemCertPool()
@@ -126,7 +117,7 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 		}
 
 		// Append our cert to the system pool
-		if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
+		if ok := rootCAs.AppendCertsFromPEM([]byte(pulsarMetadata.ca)); !ok {
 			pulsarLog.Info("No certs appended, using system certs only")
 		}
 		// Setup HTTPS client
@@ -135,6 +126,7 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 			Certificates:       []tls.Certificate{cert},
 			RootCAs:            rootCAs,
 		}
+
 		transport := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: transport}
 	}
@@ -154,24 +146,6 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		meta.adminURL = config.TriggerMetadata["adminURL"]
 	default:
 		return meta, errors.New("no adminURL given")
-	}
-
-	switch {
-	case config.TriggerMetadata["tenantFromEnv"] != "":
-		meta.tenant = config.ResolvedEnv[config.TriggerMetadata["tenantFromEnv"]]
-	case config.TriggerMetadata["tenant"] != "":
-		meta.tenant = config.TriggerMetadata["tenant"]
-	default:
-		return meta, errors.New("no tenant given")
-	}
-
-	switch {
-	case config.TriggerMetadata["namespaceFromEnv"] != "":
-		meta.namespace = config.ResolvedEnv[config.TriggerMetadata["namespaceFromEnv"]]
-	case config.TriggerMetadata["namespace"] != "":
-		meta.namespace = config.TriggerMetadata["namespace"]
-	default:
-		return meta, errors.New("no namespace given")
 	}
 
 	switch {
@@ -203,21 +177,18 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	}
 
 	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
+	if val, ok := config.TriggerMetadata["tls"]; ok {
 		val = strings.TrimSpace(val)
 
 		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return meta, errors.New("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return meta, errors.New("cert must be provided with key")
+			cert := config.AuthParams["cert"]
+			key := config.AuthParams["key"]
+			if key == "" || cert == "" {
+				return meta, errors.New("must be provided cert and key")
 			}
 			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
+			meta.cert = cert
+			meta.key = key
 			meta.enableTLS = true
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -230,9 +201,9 @@ func (s *pulsarScaler) GetStats() (*pulsarStats, error) {
 	stats := new(pulsarStats)
 
 	topic := strings.ReplaceAll(s.metadata.topic, "persistent://", "")
-	statsUrl := s.metadata.adminURL + "/admin/v2/persistent/" + topic + "/stats"
+	statsURL := s.metadata.adminURL + "/admin/v2/persistent/" + topic + "/stats"
 
-	req, err := http.NewRequest("GET", statsUrl, nil)
+	req, err := http.NewRequest("GET", statsURL, nil)
 	if err != nil {
 		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
@@ -324,7 +295,8 @@ func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "pulsar", s.metadata.tenant, s.metadata.namespace, s.metadata.topic, s.metadata.subscription)),
+			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "pulsar", s.metadata.topic, s.metadata.subscription)),
+			// Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "pulsar", s.metadata.tenant, s.metadata.namespace, s.metadata.topic, s.metadata.subscription)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
