@@ -6,6 +6,8 @@ on:
 env:
   E2E_LABELS_NOTRUN: e2e-tests/not-run
   E2E_LABELS_PASSED: e2e-tests/ok-to-merge
+  E2E_LABELS_FAILED: e2e-tests/failed
+  E2E_LABELS_RUNNING: e2e-tests/running
 
 jobs:
   triage:
@@ -49,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Remove '${{ env.E2E_LABELS_PASSED}}' label
+      - name: Remove '${{ env.E2E_LABELS_PASSED }}' label
         id: remove-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -91,7 +93,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Remove '${{ env.E2E_LABELS_NOTRUN}}' label
-        id: remove-label
+        id: remove-not-run-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -99,12 +101,28 @@ jobs:
           gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_NOTRUN}}'
 
       - name: Remove '${{ env.E2E_LABELS_PASSED}}' label
-        id: remove-label
+        id: remove-pass-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_PASSED}}'
+
+      - name: Remove '${{ env.E2E_LABELS_FAILED }}' label
+        id: remove-failed-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_FAILED }}'
+
+      - name: Add '${{ env.E2E_LABELS_RUNNING }}' label
+        id: add-running-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABELS_RUNNING }}'
 
       - name: Checkout Pull Request
         env:
@@ -177,6 +195,14 @@ jobs:
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
           TEST_CLUSTER_NAME: keda-pr-run
 
+      - name: Remove '${{ env.E2E_LABELS_RUNNING }}' label
+        id: remove-running-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_RUNNING }}'
+
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
         if: steps.test.outcome == 'success'
@@ -185,14 +211,14 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - name: Add '${{ env.E2E_LABELS_PASSED}}' label
-        id: add-label
+      - name: Add '${{ env.E2E_LABELS_PASSED }}' label
+        id: add-pass-label
         if: steps.test.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABELS_PASSED}}'
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABELS_PASSED }}'
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
@@ -201,3 +227,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
           reaction: "-1"
+
+      - name: Add '${{ env.E2E_LABELS_FAILED }}' label
+        id: add-failure-label
+        if: steps.test.outcome != 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABELS_FAILED }}'
