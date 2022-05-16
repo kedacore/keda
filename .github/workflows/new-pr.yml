@@ -1,0 +1,21 @@
+name: new-pr-opened
+on:
+  pull_request:
+    types:
+      - opened
+
+env:
+  DEFAULT_LABEL: e2e-tests/not-run
+
+jobs:
+  prepare_pr:
+    name: Prepare new PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add '${{ env.DEFAULT_LABEL}}' label
+        id: add-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ github.event.number }} --add-label '${{ env.DEFAULT_LABEL}}'
