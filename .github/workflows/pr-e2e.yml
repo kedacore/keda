@@ -4,7 +4,8 @@ on:
     types: [created]
 
 env:
-  E2E_LABEL: e2e-tests/ok-to-merge
+  E2E_LABELS_NOTRUN: e2e-tests/not-run
+  E2E_LABELS_PASSED: e2e-tests/ok-to-merge
 
 jobs:
   triage:
@@ -48,13 +49,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Remove '${{ env.E2E_LABEL}}' label
+      - name: Remove '${{ env.E2E_LABELS_PASSED}}' label
         id: remove-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_PASSED}}'
 
       - name: Checkout Pull Request
         env:
@@ -89,13 +90,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Remove '${{ env.E2E_LABEL}}' label
+      - name: Remove '${{ env.E2E_LABELS_NOTRUN}}' label
         id: remove-label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_NOTRUN}}'
+
+      - name: Remove '${{ env.E2E_LABELS_PASSED}}' label
+        id: remove-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABELS_PASSED}}'
 
       - name: Checkout Pull Request
         env:
@@ -176,14 +185,14 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - name: Add '${{ env.E2E_LABEL}}' label
+      - name: Add '${{ env.E2E_LABELS_PASSED}}' label
         id: add-label
         if: steps.test.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABEL}}'
+          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABELS_PASSED}}'
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
