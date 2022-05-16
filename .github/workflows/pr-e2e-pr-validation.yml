@@ -18,5 +18,5 @@ jobs:
     steps:
       - uses: docker://agilepathway/pull-request-label-checker:latest
         with:
-          any_of: ok-to-merge
+          any_of: ${{ env.E2E_LABEL}}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
