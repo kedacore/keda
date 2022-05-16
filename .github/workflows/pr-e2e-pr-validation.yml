@@ -10,7 +10,7 @@ on:
 
 env:
   E2E_LABEL: e2e-tests/ok-to-merge
-  
+
 jobs:
   validate-e2e-labels:
     name: Check e2e labels
