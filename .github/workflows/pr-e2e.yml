@@ -4,7 +4,7 @@ on:
     types: [created]
 
 env:
-  E2E_LABEL: ok-to-merge
+  E2E_LABEL: e2e-tests/ok-to-merge
 
 jobs:
   triage:
