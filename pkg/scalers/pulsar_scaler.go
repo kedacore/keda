@@ -37,6 +37,8 @@ type pulsarMetadata struct {
 	ca        string
 
 	statsURL string
+
+	scalerIndex int
 }
 
 const (
@@ -177,6 +179,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
 	}
+	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
 
@@ -185,13 +188,11 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.statsURL, nil)
 	if err != nil {
-		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
 
 	res, err := s.client.Do(req)
 	if res == nil || err != nil {
-		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
 
@@ -201,19 +202,16 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	case 200:
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			pulsarLog.Error(err, "error requesting stats from url")
 			return nil, fmt.Errorf("error requesting stats from url: %s", err)
 		}
 		err = json.Unmarshal(body, stats)
 		if err != nil {
-			pulsarLog.Error(err, "error unmarshalling response")
 			return nil, fmt.Errorf("error unmarshalling response: %s", err)
 		}
 		return stats, nil
 	case 404:
 		return nil, nil
 	default:
-		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
 }
@@ -245,7 +243,6 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	pulsarLog.Info("Pulsar subscription is active with backlog")
 	return true, nil
 }
 
@@ -260,8 +257,6 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 		return nil, nil
 	}
 
-	pulsarLog.Info(fmt.Sprintf("Pulsar MsgBacklog: %d", msgBacklog))
-
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
 		Value:      *resource.NewQuantity(int64(msgBacklog), resource.DecimalSI),
@@ -273,10 +268,12 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 
 func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
+
+	metricName := fmt.Sprintf("%s-%s-%s", "pulsar", s.metadata.topic, s.metadata.subscription)
+
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "pulsar", s.metadata.topic, s.metadata.subscription)),
-			// Name: kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s-%s", "pulsar", s.metadata.tenant, s.metadata.namespace, s.metadata.topic, s.metadata.subscription)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
