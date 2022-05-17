@@ -2,8 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +35,8 @@ type pulsarMetadata struct {
 	cert      string
 	key       string
 	ca        string
+
+	statsURL string
 }
 
 const (
@@ -100,35 +100,14 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing pulsar metadata: %s", err)
 	}
 
-	client := &http.Client{}
+	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	// If TLS Authentication enabled, do
 	if pulsarMetadata.enableTLS {
-		// Load client certificate (PEM format)
-		cert, err := tls.X509KeyPair([]byte(pulsarMetadata.cert), []byte(pulsarMetadata.key))
+		config, err := kedautil.NewTLSConfig(pulsarMetadata.cert, pulsarMetadata.key, pulsarMetadata.ca)
 		if err != nil {
-			pulsarLog.Error(err, "unable to load cert or key file")
-			return nil, fmt.Errorf("unable to load cert or key file: %s", err)
+			return nil, err
 		}
-
-		rootCAs, _ := x509.SystemCertPool()
-		if rootCAs == nil {
-			rootCAs = x509.NewCertPool()
-		}
-
-		// Append our cert to the system pool
-		if ok := rootCAs.AppendCertsFromPEM([]byte(pulsarMetadata.ca)); !ok {
-			pulsarLog.Info("No certs appended, using system certs only")
-		}
-		// Setup HTTPS client
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: false,
-			Certificates:       []tls.Certificate{cert},
-			RootCAs:            rootCAs,
-		}
-
-		transport := &http.Transport{TLSClientConfig: tlsConfig}
-		client = &http.Client{Transport: transport}
+		client.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
 	return &pulsarScaler{
@@ -156,6 +135,9 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	default:
 		return meta, errors.New("no topic given")
 	}
+
+	topic := strings.ReplaceAll(meta.topic, "persistent://", "")
+	meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/stats"
 
 	switch {
 	case config.TriggerMetadata["subscriptionFromEnv"] != "":
@@ -190,6 +172,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 			meta.cert = cert
 			meta.key = key
 			meta.enableTLS = true
+
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
@@ -197,13 +180,10 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	return meta, nil
 }
 
-func (s *pulsarScaler) GetStats() (*pulsarStats, error) {
+func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	stats := new(pulsarStats)
 
-	topic := strings.ReplaceAll(s.metadata.topic, "persistent://", "")
-	statsURL := s.metadata.adminURL + "/admin/v2/persistent/" + topic + "/stats"
-
-	req, err := http.NewRequest("GET", statsURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.statsURL, nil)
 	if err != nil {
 		pulsarLog.Error(err, "error requesting stats from url")
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
@@ -238,8 +218,8 @@ func (s *pulsarScaler) GetStats() (*pulsarStats, error) {
 	}
 }
 
-func (s *pulsarScaler) getMsgBackLog() (int, bool, error) {
-	stats, err := s.GetStats()
+func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int, bool, error) {
+	stats, err := s.GetStats(ctx)
 	if err != nil {
 		return 0, false, err
 	}
@@ -254,8 +234,8 @@ func (s *pulsarScaler) getMsgBackLog() (int, bool, error) {
 }
 
 // IsActive determines if we need to scale from zero
-func (s *pulsarScaler) IsActive(_ context.Context) (bool, error) {
-	msgBackLog, found, err := s.getMsgBackLog()
+func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
+	msgBackLog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -270,8 +250,8 @@ func (s *pulsarScaler) IsActive(_ context.Context) (bool, error) {
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *pulsarScaler) GetMetrics(_ context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	msgBacklog, found, err := s.getMsgBackLog()
+func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}

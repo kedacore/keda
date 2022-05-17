@@ -435,10 +435,10 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(config)
-	case "rabbitmq":
-		return scalers.NewRabbitMQScaler(config)
 	case "pulsar":
 		return scalers.NewPulsarScaler(config)
+	case "rabbitmq":
+		return scalers.NewRabbitMQScaler(config)
 	case "redis":
 		return scalers.NewRedisScaler(ctx, false, false, config)
 	case "redis-cluster":
