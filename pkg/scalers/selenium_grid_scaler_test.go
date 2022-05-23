@@ -7,9 +7,10 @@ import (
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
 	type args struct {
-		b              []byte
-		browserName    string
-		browserVersion string
+		b                  []byte
+		browserName        string
+		sessionBrowserName string
+		browserVersion     string
 	}
 	tests := []struct {
 		name    string
@@ -18,7 +19,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "nil response body should through error",
+			name: "nil response body should throw error",
 			args: args{
 				b:           []byte(nil),
 				browserName: "",
@@ -27,7 +28,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "empty response body should through error",
+			name: "empty response body should throw error",
 			args: args{
 				b:           []byte(""),
 				browserName: "",
@@ -41,7 +42,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				b: []byte(`{
 					"data": {
 						"grid":{
-							"maxSession": 1
+							"maxSession": 0,
+							"nodeCount": 0
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": [],
@@ -60,7 +62,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				b: []byte(`{
 					"data": {
 						"grid":{
-							"maxSession": 1
+							"maxSession": 1,
+							"nodeCount": 1
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -86,7 +89,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				b: []byte(`{
 					"data": {
 						"grid":{
-							"maxSession": 1
+							"maxSession": 1,
+							"nodeCount": 1
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -101,38 +105,24 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "active sessions with matching browsername and maxSession=2 should return count as 1",
+			name: "2 active sessions with matching browsername on 2 nodes and maxSession=4 should return count as 3",
 			args: args{
 				b: []byte(`{
 					"data": {
 						"grid":{
-							"maxSession": 2
+							"maxSession": 4,
+							"nodeCount": 2
 						},
 						"sessionsInfo": {
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
-							"sessions": []
-						}
-					}
-				}`),
-				browserName:    "chrome",
-				browserVersion: "latest",
-			},
-			want:    1,
-			wantErr: false,
-		},
-		{
-			name: "active sessions with matching browsername should return count as 3",
-			args: args{
-				b: []byte(`{
-					"data": {
-						"sessionsInfo": {
-							"grid":{
-								"maxSession": 1
-							},
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
 								{
 									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+								},
+								{
+									"id": "0f9c5a941aa4d755a54b84be1f6535b2",
 									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
 									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
 								}
@@ -147,12 +137,45 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "active sessions with matching browsername and version should return count as 2",
+			name: "2 active sessions with matching browsername on 2 nodes should return count as 5",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"sessionsInfo": {
+							"grid":{
+								"maxSession": 2,
+								"nodeCount": 2
+							},
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
+							"sessions": [
+								{
+									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+								},
+								{
+									"id": "0f9c5a941aa4d755a54b84be1f6535b2",
+									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+								}
+							]
+						}
+					}
+				}`),
+				browserName:    "chrome",
+				browserVersion: "latest",
+			},
+			want:    5,
+			wantErr: false,
+		},
+		{
+			name: "1 active session with matching browsername and version should return count as 2",
 			args: args{
 				b: []byte(`{
 					"data": {
 						"grid":{
-							"maxSession": 1
+							"maxSession": 1,
+							"nodeCount": 1
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -175,7 +198,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion)
+			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
