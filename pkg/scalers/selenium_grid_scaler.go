@@ -258,7 +258,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	var gridNodeCount = int64(seleniumResponse.Data.Grid.NodeCount)
 
 	if gridMaxSession > 0 && gridNodeCount > 0 {
-		count = count / (gridMaxSession / gridNodeCount)
+		count /= (gridMaxSession / gridNodeCount)
 	}
 
 	return count, nil

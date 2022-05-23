@@ -216,9 +216,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "MicrosoftEdge",
+				browserName:        "MicrosoftEdge",
 				sessionBrowserName: "msedge",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    3,
 			wantErr: false,
