@@ -42,6 +42,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
+### Fixes
+
+- **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
+
 ### Deprecations
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
