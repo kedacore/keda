@@ -21,7 +21,7 @@ import (
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
 	specs := []v2beta2.MetricSpec{}
-	metricName := "queueLength"
+	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, int64(0), targetAverageValue)
 	// 1 1
