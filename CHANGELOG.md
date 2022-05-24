@@ -40,7 +40,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
 
 ### Deprecations
 

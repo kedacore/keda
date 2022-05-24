@@ -178,6 +178,21 @@ Allowed values are `json` and `console`
 
 Default value: `console`
 
+To change the logging time encoding, find `--zap-time-encoding=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
+ modify its value and redeploy.
+
+Allowed values are `epoch`, `millis`, `nano`, `iso8601`, `rfc3339` or `rfc3339nano`
+
+Default value: `rfc3339`
+
+> Note: Example of some of the logging time encoding values and the output:
+```
+epoch - 1.6533943565181081e+09
+iso8601 - 2022-05-24T12:10:19.411Z
+rfc3339 - 2022-05-24T12:07:40Z
+rfc3339nano - 2022-05-24T12:10:19.411Z
+```
+
 ### Metrics Server logging
 
 Find `--v=0` argument in Operator Deployment section in `config/metrics-server/deployment.yaml` file, modify its value and redeploy.
