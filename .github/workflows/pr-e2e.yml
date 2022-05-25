@@ -72,6 +72,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: e2e tests
           status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - uses: actions/checkout@v3
 
@@ -195,6 +196,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: e2e tests
           conclusion: success
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
@@ -212,3 +214,4 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: e2e tests
           conclusion: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
