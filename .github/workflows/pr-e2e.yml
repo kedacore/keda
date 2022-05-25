@@ -43,8 +43,8 @@ jobs:
           echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
           echo "::set-output name=pr_num::$PR_NUM"
           # Get commit SHA
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"  
-          gh pr checkout $PR_NUM         
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr checkout $PR_NUM
           SHA=$(git log -n 1 --pretty=format:"%H")
           echo "::set-output name=commit_sha::$SHA"
 
