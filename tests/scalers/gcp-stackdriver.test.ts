@@ -148,6 +148,8 @@ spec:
         filter: 'metric.type="storage.googleapis.com/network/received_bytes_count" AND resource.type="gcs_bucket" AND metric.label.method="WriteObject" AND resource.label.bucket_name="${bucketName}"'
         metricName: ${bucketName}
         targetValue: '5'
+        alignmentPeriodSeconds: 60
+        alignmentAligner: mean
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 

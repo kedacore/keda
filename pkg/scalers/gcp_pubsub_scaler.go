@@ -14,6 +14,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
 const (
@@ -42,6 +43,7 @@ type pubsubMetadata struct {
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
 	scalerIndex      int
+	aggregation      *monitoringpb.Aggregation
 }
 
 var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
@@ -56,6 +58,11 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
+	}
+
+	meta.aggregation, err = NewStackdriverAggregator(60, "mean", "none")
+	if err != nil {
+		return nil, fmt.Errorf("error configuring stackdriver aggregator: %s", err)
 	}
 
 	return &pubsubScaler{
@@ -228,7 +235,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 	subscriptionID, projectID := getSubscriptionData(s)
 	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	return s.client.GetMetrics(ctx, filter, projectID)
+	return s.client.GetMetrics(ctx, filter, projectID, s.metadata.aggregation)
 }
 
 func getSubscriptionData(s *pubsubScaler) (string, string) {

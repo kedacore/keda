@@ -11,6 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
 const (
@@ -30,6 +31,7 @@ type stackdriverMetadata struct {
 	metricName  string
 
 	gcpAuthorization *gcpAuthorizationMetadata
+	aggregation      *monitoringpb.Aggregation
 }
 
 var gcpStackdriverLog = logf.Log.WithName("gcp_stackdriver_scaler")
@@ -101,7 +103,35 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
+
+	meta.aggregation, err = parseAggregation(config)
+	if err != nil {
+		return nil, err
+	}
+
 	return &meta, nil
+}
+
+func parseAggregation(config *ScalerConfig) (*monitoringpb.Aggregation, error) {
+	if period, ok := config.TriggerMetadata["alignmentPeriodSeconds"]; ok {
+		if period == "" {
+			return nil, nil
+		}
+
+		val, err := strconv.ParseInt(period, 10, 64)
+		if val < 60 {
+			gcpStackdriverLog.Error(err, "Error parsing alignmentPeriodSeconds - must be at least 60")
+			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds - must be at least 60")
+		}
+		if err != nil {
+			gcpStackdriverLog.Error(err, "Error parsing alignmentPeriodSeconds")
+			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds: %s", err.Error())
+		}
+
+		return NewStackdriverAggregator(val, config.TriggerMetadata["alignmentAligner"], config.TriggerMetadata["alignmentReducer"])
+	}
+
+	return nil, nil
 }
 
 func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcpAuthorizationMetadata) (*StackDriverClient, error) {
@@ -174,10 +204,14 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, m
 
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
+	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectID, s.metadata.filter, val))
+			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %d",
+				s.metadata.projectID,
+				s.metadata.filter,
+				s.metadata.aggregation,
+				val))
 	}
 
 	return val, err
