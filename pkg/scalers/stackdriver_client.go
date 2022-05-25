@@ -25,12 +25,6 @@ type StackDriverClient struct {
 	projectID     string
 }
 
-type StackDriverAggregator struct {
-	period  int64
-	aligner string
-	reducer string
-}
-
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
 func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriverClient, error) {
 	var gcpCredentials GoogleApplicationCredentials
@@ -131,7 +125,7 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 		return monitoringpb.Aggregation_ALIGN_PERCENT_CHANGE, nil
 	default:
 	}
-	return monitoringpb.Aggregation_ALIGN_NONE, fmt.Errorf("Unknown aligner: %s", aligner)
+	return monitoringpb.Aggregation_ALIGN_NONE, fmt.Errorf("unknown aligner: %s", aligner)
 }
 
 func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error) {
@@ -164,7 +158,7 @@ func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error)
 		return monitoringpb.Aggregation_REDUCE_PERCENTILE_05, nil
 	default:
 	}
-	return monitoringpb.Aggregation_REDUCE_NONE, fmt.Errorf("Unknown reducer: %s", reducer)
+	return monitoringpb.Aggregation_REDUCE_NONE, fmt.Errorf("unknown reducer: %s", reducer)
 }
 
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
