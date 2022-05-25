@@ -34,6 +34,8 @@ jobs:
       - name: Parse git info
         if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
         id: parser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get PR number
           PR_URL="${{ github.event.issue.pull_request.url }}"
