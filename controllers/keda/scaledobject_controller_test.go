@@ -300,7 +300,7 @@ var _ = Describe("ScaledObjectController", func() {
 			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
 			Expect(err).ToNot(HaveOccurred())
 
-			// Create the ScaledObject with two triggers.
+			// Create the ScaledObject without specifying name.
 			so := &kedav1alpha1.ScaledObject{
 				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
 				Spec: kedav1alpha1.ScaledObjectSpec{
