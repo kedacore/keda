@@ -260,7 +260,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 
 	if gridMaxSession > 0 && gridNodeCount > 0 {
 		// Get count, convert count to next highest int64
-		var floatCount float64 = float64(count) / (float64(gridMaxSession) / float64(gridNodeCount))
+		var floatCount = float64(count) / (float64(gridMaxSession) / float64(gridNodeCount))
 		count = int64(math.Ceil(floatCount))
 	}
 	return count, nil
