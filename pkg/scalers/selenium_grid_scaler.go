@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"math"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -229,7 +230,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 			if capability.BrowserName == browserName {
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) {
 					count++
-				} else if capability.BrowserVersion == "" && browserVersion == DefaultBrowserVersion {
+				} else if browserVersion == DefaultBrowserVersion {
 					count++
 				}
 			}
@@ -258,8 +259,9 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	var gridNodeCount = int64(seleniumResponse.Data.Grid.NodeCount)
 
 	if gridMaxSession > 0 && gridNodeCount > 0 {
-		count /= (gridMaxSession / gridNodeCount)
+		// Get count, convert count to next highest int64
+		var floatCount float64 = float64(count) / (float64(gridMaxSession) / float64(gridNodeCount))
+		count = int64(math.Ceil(floatCount))
 	}
-
 	return count, nil
 }
