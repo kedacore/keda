@@ -1,0 +1,15 @@
+name: e2e-checker
+on:
+  - pull_request_target
+
+jobs:
+  e2e-checker:
+    name: e2e-checker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: LouisBrunner/checks-action@v1.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          name: e2e tests
+          status: queued
