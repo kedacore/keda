@@ -77,9 +77,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "",
+				browserName:        "",
 				sessionBrowserName: "",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    0,
 			wantErr: false,
@@ -99,9 +99,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "chrome",
+				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    2,
 			wantErr: false,
@@ -132,9 +132,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "chrome",
+				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    3,
 			wantErr: false,
@@ -165,9 +165,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "chrome",
+				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    2,
 			wantErr: false,
@@ -198,9 +198,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "chrome",
+				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion: "latest",
+				browserVersion:     "latest",
 			},
 			want:    5,
 			wantErr: false,
@@ -226,9 +226,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						}
 					}
 				}`),
-				browserName:    "chrome",
+				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion: "91.0",
+				browserVersion:     "91.0",
 			},
 			want:    2,
 			wantErr: false,
