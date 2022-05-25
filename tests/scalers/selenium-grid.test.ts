@@ -164,7 +164,7 @@ test.serial('should create two chrome, one firefox, and one edge nodes', t => {
     if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1' && seleniumEdgeReplicaCount == '1' && seleniumChrome91NodeReplicaCount == '1') {
       break;
     }
-    console.log('Waiting for chrome to scale up 2 pods, firefox to 1 pod, and edhe to 1 pod');
+    console.log('Waiting for chrome to scale up 2 pods, firefox to 1 pod, and edge to 1 pod');
     sh.exec('sleep 2s')
   }
 
