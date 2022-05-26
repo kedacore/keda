@@ -44,6 +44,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
 
+### Fixes
+
+- **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
+
 ### Deprecations
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
