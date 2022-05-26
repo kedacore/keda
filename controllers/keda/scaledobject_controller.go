@@ -386,6 +386,16 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 		return false, err
 	}
 
+	// check if hpa name is changed, and if so we need to delete the old hpa before creating new one
+	if isHpaRenamed(scaledObject, foundHpa) {
+		err = r.renameHPA(ctx, logger, scaledObject, foundHpa, gvkr)
+		if err != nil {
+			return false, err
+		}
+		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
+		return true, nil
+	}
+
 	// HPA was found -> let's check if we need to update it
 	err = r.updateHPAIfNeeded(ctx, logger, scaledObject, foundHpa, gvkr)
 	if err != nil {
@@ -394,6 +404,15 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	}
 
 	return false, nil
+}
+
+func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler) bool {
+	// if HPA name defined in SO -> check if equals to the found HPA
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
+		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != foundHpa.Name
+	}
+	// if HPA name not defined in SO -> check if the found HPA is equals to the default
+	return foundHpa.Name != getDefaultHpaName(scaledObject)
 }
 
 // requestScaleLoop tries to start ScaleLoop handler for the respective ScaledObject

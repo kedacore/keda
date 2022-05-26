@@ -56,6 +56,16 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 		return err
 	}
 
+	// store hpaName in the ScaledObject
+	status := scaledObject.Status.DeepCopy()
+	status.HpaName = hpaName
+
+	err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	if err != nil {
+		logger.Error(err, "Error updating scaledObject status with used hpaName")
+		return err
+	}
+
 	return nil
 }
 
@@ -107,8 +117,6 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		maxReplicas = *pausedCount
 	}
 
-	hpaName := getHPAName(scaledObject)
-
 	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{
 		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
 			MinReplicas: minReplicas,
@@ -121,7 +129,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 				APIVersion: gvkr.GroupVersion().String(),
 			}},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        hpaName,
+			Name:        getHPAName(scaledObject),
 			Namespace:   scaledObject.Namespace,
 			Labels:      labels,
 			Annotations: scaledObject.Annotations,
@@ -136,16 +144,6 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		return nil, err
 	}
 
-	// store hpaName in the ScaledObject
-	status := scaledObject.Status.DeepCopy()
-	status.HpaName = hpaName
-
-	err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
-	if err != nil {
-		logger.Error(err, "Error updating scaledObject status with used hpaName")
-		return nil, err
-	}
-
 	return hpa, nil
 }
 
@@ -157,18 +155,9 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 		return err
 	}
 
-	// check if hpa name is updated, and if so we need to delete the old hpa before creating new one
-	if hpa.Name != foundHpa.Name {
-		logger.V(1).Info("Found difference in the HPA name according to ScaledObject", "currentHPA", foundHpa.ObjectMeta, "newHPA", hpa.ObjectMeta)
-		if err = r.Client.Delete(ctx, foundHpa); err != nil {
-			logger.Error(err, "Failed to delete old HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
-			return err
-		}
-	}
-
 	// DeepDerivative ignores extra entries in arrays which makes removing the last trigger not update things, so trigger and update any time the metrics count is different.
 	if len(hpa.Spec.Metrics) != len(foundHpa.Spec.Metrics) || !equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
-		logger.V(1).Info("Found difference in the HPA spec according to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
+		logger.V(1).Info("Found difference in the HPA spec accordint to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.Spec = hpa.Spec
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -181,7 +170,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	}
 
 	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Labels, foundHpa.ObjectMeta.Labels) {
-		logger.V(1).Info("Found difference in the HPA labels according to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
+		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -191,6 +180,17 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	}
 
 	return nil
+}
+
+// deleteAndCreateHpa delete old HPA and create new one
+func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+	logger.Info("Deleting old HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", foundHpa.Name)
+	if err := r.Client.Delete(ctx, foundHpa); err != nil {
+		logger.Error(err, "Failed to delete old HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+		return err
+	}
+
+	return r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
@@ -274,6 +274,10 @@ func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
 	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
 		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
 	}
+	return getDefaultHpaName(scaledObject)
+}
+
+func getDefaultHpaName(scaledObject *kedav1alpha1.ScaledObject) string {
 	return fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
 }
 
