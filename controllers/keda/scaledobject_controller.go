@@ -361,8 +361,8 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
 	var hpaName string
-	if scaledObject.Status.CurrentHpaName != "" {
-		hpaName = scaledObject.Status.CurrentHpaName
+	if scaledObject.Status.HpaName != "" {
+		hpaName = scaledObject.Status.HpaName
 	} else {
 		hpaName = getHPAName(scaledObject)
 	}

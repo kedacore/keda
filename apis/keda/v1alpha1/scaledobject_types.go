@@ -155,7 +155,7 @@ type ScaledObjectStatus struct {
 	// +optional
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 	// +optional
-	CurrentHpaName string `json:"currentHpaName,omitempty"`
+	HpaName string `json:"hpaName,omitempty"`
 }
 
 // +kubebuilder:object:root=true

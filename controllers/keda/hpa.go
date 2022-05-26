@@ -138,7 +138,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 
 	// store hpaName in the ScaledObject
 	status := scaledObject.Status.DeepCopy()
-	status.CurrentHpaName = hpaName
+	status.HpaName = hpaName
 
 	err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 	if err != nil {
