@@ -27,6 +27,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 	// all properly formed, with namespace
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
+	// all properly formed, with ignoreNullValues
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "disable"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName
@@ -37,6 +39,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "one", "query": "up"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
+	// ignoreNullValues with wrong value
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "xxxx"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
