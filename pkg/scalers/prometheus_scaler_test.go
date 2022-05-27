@@ -130,11 +130,12 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 }
 
 type prometheusQromQueryResultTestData struct {
-	name           string
-	bodyStr        string
-	responseStatus int
-	expectedValue  float64
-	isError        bool
+	name             string
+	bodyStr          string
+	responseStatus   int
+	expectedValue    float64
+	isError          bool
+	ignoreNullValues bool
 }
 
 var testPromQueryResult = []prometheusQromQueryResultTestData{
@@ -144,6 +145,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusOK,
 		expectedValue:  0,
 		isError:        false,
+		ignoreNullValues: true,
 	},
 	{
 		name:           "no values",
@@ -151,6 +153,31 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusOK,
 		expectedValue:  0,
 		isError:        false,
+		ignoreNullValues: true,
+	},
+	{
+		name:           "no values but shouldn't ignore",
+		bodyStr:        `{"data":{"result":[]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  -1,
+		isError:        true,
+		ignoreNullValues: false,
+	},
+	{
+		name:           "value is empty list",
+		bodyStr:        `{"data":{"result":[{"value": []}]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        false,
+		ignoreNullValues: true,
+	},
+	{
+		name:           "value is empty list but shouldn't ignore",
+		bodyStr:        `{"data":{"result":[{"value": []}]}}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  -1,
+		isError:        true,
+		ignoreNullValues: false,
 	},
 	{
 		name:           "valid value",
@@ -158,6 +185,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusOK,
 		expectedValue:  2,
 		isError:        false,
+		ignoreNullValues: true,
 	},
 	{
 		name:           "not enough values",
@@ -165,6 +193,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusOK,
 		expectedValue:  -1,
 		isError:        true,
+		ignoreNullValues: true,
 	},
 	{
 		name:           "multiple results",
@@ -172,6 +201,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusOK,
 		expectedValue:  -1,
 		isError:        true,
+		ignoreNullValues: true,
 	},
 	{
 		name:           "error status response",
@@ -179,6 +209,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		responseStatus: http.StatusBadRequest,
 		expectedValue:  -1,
 		isError:        true,
+		ignoreNullValues: true,
 	},
 }
 
@@ -196,6 +227,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 			scaler := prometheusScaler{
 				metadata: &prometheusMetadata{
 					serverAddress: server.URL,
+					ignoreNullValues: testData.ignoreNullValues,
 				},
 				httpClient: http.DefaultClient,
 			}
