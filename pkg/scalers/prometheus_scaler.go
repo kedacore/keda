@@ -43,14 +43,14 @@ type prometheusScaler struct {
 }
 
 type prometheusMetadata struct {
-	serverAddress    string
-	metricName       string
-	query            string
-	threshold        int64
-	prometheusAuth   *authentication.AuthMeta
-	namespace        string
-	scalerIndex      int
-	cortexOrgID      string
+	serverAddress  string
+	metricName     string
+	query          string
+	threshold      int64
+	prometheusAuth *authentication.AuthMeta
+	namespace      string
+	scalerIndex    int
+	cortexOrgID    string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
 	// change to false/f if can not accept prometheus return null values
@@ -144,14 +144,14 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.cortexOrgID = val
 	}
 
+	meta.ignoreNullValues = defaultIgnoreNullValues
 	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
-		i, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ignoreNullValues %s error: %s", val, err.Error())
+		if val == "disable" {
+			meta.ignoreNullValues = false
+		} else if val != "enable" {
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
+				"please using enable or disable", val)
 		}
-		meta.ignoreNullValues = i
-	} else {
-		meta.ignoreNullValues = defaultIgnoreNullValues
 	}
 
 	meta.scalerIndex = config.ScalerIndex
