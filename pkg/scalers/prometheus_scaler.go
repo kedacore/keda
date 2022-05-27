@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,6 +29,11 @@ const (
 	promNamespace        = "namespace"
 	promCortexScopeOrgID = "cortexOrgID"
 	promCortexHeaderKey  = "X-Scope-OrgID"
+	ignoreNullValues     = "ignoreNullValues"
+)
+
+var (
+	defaultIgnoreNullValues = true
 )
 
 type prometheusScaler struct {
@@ -38,14 +43,19 @@ type prometheusScaler struct {
 }
 
 type prometheusMetadata struct {
-	serverAddress  string
-	metricName     string
-	query          string
-	threshold      int64
-	prometheusAuth *authentication.AuthMeta
-	namespace      string
-	scalerIndex    int
-	cortexOrgID    string
+	serverAddress    string
+	metricName       string
+	query            string
+	threshold        int64
+	prometheusAuth   *authentication.AuthMeta
+	namespace        string
+	scalerIndex      int
+	cortexOrgID      string
+	// sometimes should consider there is an error we can accept
+	// default value is true/t, to ignore the null value return from prometheus
+	// change to false/f if can not accept prometheus return null values
+	// https://github.com/kedacore/keda/issues/3065
+	ignoreNullValues bool
 }
 
 type promQueryResult struct {
@@ -132,6 +142,16 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
 		meta.cortexOrgID = val
+	}
+
+	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
+		i, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ignoreNullValues %s error: %s", val, err.Error())
+		}
+		meta.ignoreNullValues = i
+	} else {
+		meta.ignoreNullValues = defaultIgnoreNullValues
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -223,14 +243,22 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	// allow for zero element or single element result sets
 	if len(result.Data.Result) == 0 {
-		return 0, nil
+		if s.metadata.ignoreNullValues {
+			return 0, nil
+		} else {
+			return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the result is empty", s.metadata.metricName)
+		}
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
 
 	valueLen := len(result.Data.Result[0].Value)
 	if valueLen == 0 {
-		return 0, nil
+		if s.metadata.ignoreNullValues {
+			return 0, nil
+		} else {
+			return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the value list is empty", s.metadata.metricName)
+		}
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}
