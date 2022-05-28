@@ -73,7 +73,7 @@ install-test-deps:
 	go install github.com/jstemmer/go-junit-report@latest
 
 .PHONY: test
-test: manifests generate fmt vet envtest install-test-deps ## Run tests.	
+test: manifests generate fmt vet envtest install-test-deps ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out | go-junit-report -set-exit-code > tests-report.xml
 
 .PHONY: get-cluster-context
