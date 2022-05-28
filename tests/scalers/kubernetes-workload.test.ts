@@ -131,4 +131,4 @@ spec:
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod=workload-test'
-      value: '1'`
+      value: 'i(1)'`
