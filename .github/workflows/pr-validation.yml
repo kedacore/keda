@@ -49,14 +49,11 @@ jobs:
 
       - name: Test
         run: make test
-      - run: |
-          ls
-          cat tests/report.xml
+
       - name: Create test Summary
         uses: test-summary/action@v1
         with:
-          paths: "tests/report.xml"
-          show: "all"
+          paths: "tests-report.xml"
         if: always()
 
   validate-arm64:
