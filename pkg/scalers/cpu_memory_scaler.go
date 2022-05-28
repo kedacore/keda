@@ -11,6 +11,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+  logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type cpuMemoryScaler struct {
