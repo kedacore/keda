@@ -54,8 +54,8 @@ jobs:
       - name: Create test Summary
         uses: test-summary/action@v1
         with:
-          paths: |
-            tests-report.xml
+          paths: "tests-report.xml"
+          show: "all"
         if: always()
 
   validate-arm64:
@@ -111,8 +111,8 @@ jobs:
       - name: Create test Summary
         uses: test-summary/action@v1
         with:
-          paths: |
-            tests-report.xml
+          paths: "tests-report.xml"
+          show: "all"
         if: always()
 
   validate-dockerfiles:
