@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-  "strings"
+	"strings"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
