@@ -34,6 +34,13 @@ const (
 	ConditionFallback ConditionType = "Fallback"
 )
 
+const (
+	// ScaledObjectConditionReadySucccesReason defines the default Reason for correct ScaledObject
+	ScaledObjectConditionReadySucccesReason = "ScaledObjectReady"
+	// ScaledObjectConditionReadySuccessMessage defines the default Message for correct ScaledObject
+	ScaledObjectConditionReadySuccessMessage = "ScaledObject is defined correctly and is ready for scaling"
+)
+
 // Condition to store the condition state
 type Condition struct {
 	// Type of condition

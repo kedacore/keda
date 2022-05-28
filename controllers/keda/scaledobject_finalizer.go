@@ -45,20 +45,28 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 
 		// if enabled, scale scaleTarget back to the original replica count (to the state it was before scaling with KEDA)
 		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.RestoreToOriginalReplicaCount {
-			scale, err := r.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					logger.V(1).Info("Failed to get scaleTarget's scale status, because it was probably deleted", "error", err)
-				} else {
-					logger.Error(err, "Failed to get scaleTarget's scale status from a finalizer", "finalizer", scaledObjectFinalizer)
-				}
+			// If the scaling hasn't been yet initialized (for example due to the missing scaleTarget), we don't have the GVKR information about the scaleTarget.
+			// Thus we don't have enough information needed to properly set the number of replicas on the scaleTarget.
+			// Let's skip in this case.
+			if scaledObject.Status.ScaleTargetGVKR == nil {
+				logger.V(1).Info("Failed to restore scaleTarget's replica count back to the original, the scaling haven't been probably initialized yet.")
 			} else {
-				scale.Spec.Replicas = *scaledObject.Status.OriginalReplicaCount
-				_, err = r.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+				// We have enough information about the scaleTarget, let's proceed.
+				scale, err := r.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 				if err != nil {
-					logger.Error(err, "Failed to restore scaleTarget's replica count back to the original", "finalizer", scaledObjectFinalizer)
+					if errors.IsNotFound(err) {
+						logger.V(1).Info("Failed to get scaleTarget's scale status, because it was probably deleted", "error", err)
+					} else {
+						logger.Error(err, "Failed to get scaleTarget's scale status from a finalizer", "finalizer", scaledObjectFinalizer)
+					}
+				} else {
+					scale.Spec.Replicas = *scaledObject.Status.OriginalReplicaCount
+					_, err = r.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+					if err != nil {
+						logger.Error(err, "Failed to restore scaleTarget's replica count back to the original", "finalizer", scaledObjectFinalizer)
+					}
+					logger.Info("Successfully restored scaleTarget's replica count back to the original", "replicaCount", scale.Spec.Replicas)
 				}
-				logger.Info("Successfully restored scaleTarget's replica count back to the original", "replicaCount", scale.Spec.Replicas)
 			}
 		}
 

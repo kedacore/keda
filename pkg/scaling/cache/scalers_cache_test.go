@@ -21,62 +21,66 @@ import (
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
 	specs := []v2beta2.MetricSpec{}
+	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, int64(0), targetAverageValue)
 	// 1 1
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(1),
-		createMetricSpec(1),
+		createMetricSpec(1, metricName),
+		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(1), targetAverageValue)
 	// 5 5 3
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(4), targetAverageValue)
 
 	// 5 5 4
 	specs = []v2beta2.MetricSpec{
-		createMetricSpec(5),
-		createMetricSpec(5),
-		createMetricSpec(3),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, int64(4), targetAverageValue)
 }
 
-func createMetricSpec(averageValue int) v2beta2.MetricSpec {
-	qty := resource.NewQuantity(int64(averageValue), resource.DecimalSI)
+func createMetricSpec(averageValue int64, metricName string) v2beta2.MetricSpec {
+	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
 	return v2beta2.MetricSpec{
 		External: &v2beta2.ExternalMetricSource{
 			Target: v2beta2.MetricTarget{
 				AverageValue: qty,
+			},
+			Metric: v2beta2.MetricIdentifier{
+				Name: metricName,
 			},
 		},
 	}
 }
 
 func TestIsScaledJobActive(t *testing.T) {
+	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
-
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledObject(100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
-		Scaler: createScaler(ctrl, int64(20), int32(2), true),
+		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
 		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(20), int32(2), true), nil
+			return createScaler(ctrl, int64(20), int64(2), true, metricName), nil
 		},
 	}}
 
 	cache := ScalersCache{
 		Scalers:  scalerSingle,
-		Logger:   logr.DiscardLogger{},
+		Logger:   logr.Discard(),
 		Recorder: recorder,
 	}
 
@@ -88,15 +92,15 @@ func TestIsScaledJobActive(t *testing.T) {
 
 	// Non-Active trigger only
 	scalerSingle = []ScalerBuilder{{
-		Scaler: createScaler(ctrl, int64(0), int32(2), false),
+		Scaler: createScaler(ctrl, int64(0), int64(2), false, metricName),
 		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(0), int32(2), false), nil
+			return createScaler(ctrl, int64(0), int64(2), false, metricName), nil
 		},
 	}}
 
 	cache = ScalersCache{
 		Scalers:  scalerSingle,
-		Logger:   logr.DiscardLogger{},
+		Logger:   logr.Discard(),
 		Recorder: recorder,
 	}
 
@@ -108,40 +112,40 @@ func TestIsScaledJobActive(t *testing.T) {
 
 	// Test the valiation
 	scalerTestDatam := []scalerTestData{
-		newScalerTestData(100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
-		newScalerTestData(100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
-		newScalerTestData(100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
-		newScalerTestData(100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
-		newScalerTestData(25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 25),
+		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
+		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
+		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
+		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
+		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 25),
 	}
 
 	for index, scalerTestData := range scalerTestDatam {
 		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalersToTest := []ScalerBuilder{{
-			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive),
+			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
 			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive), nil
+				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), nil
 			},
 		}, {
-			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive),
+			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName),
 			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive), nil
+				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), nil
 			},
 		}, {
-			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive),
+			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName),
 			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive), nil
+				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), nil
 			},
 		}, {
-			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive),
+			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName),
 			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive), nil
+				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), nil
 			},
 		}}
 
 		cache = ScalersCache{
 			Scalers:  scalersToTest,
-			Logger:   logr.DiscardLogger{},
+			Logger:   logr.Discard(),
 			Recorder: recorder,
 		}
 		fmt.Printf("index: %d", index)
@@ -155,6 +159,7 @@ func TestIsScaledJobActive(t *testing.T) {
 }
 
 func newScalerTestData(
+	metricName string,
 	maxReplicaCount int,
 	multipleScalersCalculation string,
 	scaler1QueueLength, //nolint:golint,unparam
@@ -173,19 +178,20 @@ func newScalerTestData(
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
+		MetricName:                 metricName,
 		MaxReplicaCount:            int32(maxReplicaCount),
 		MultipleScalersCalculation: multipleScalersCalculation,
 		Scaler1QueueLength:         int64(scaler1QueueLength),
-		Scaler1AverageValue:        int32(scaler1AverageValue),
+		Scaler1AverageValue:        int64(scaler1AverageValue),
 		Scaler1IsActive:            scaler1IsActive,
 		Scaler2QueueLength:         int64(scaler2QueueLength),
-		Scaler2AverageValue:        int32(scaler2AverageValue),
+		Scaler2AverageValue:        int64(scaler2AverageValue),
 		Scaler2IsActive:            scaler2IsActive,
 		Scaler3QueueLength:         int64(scaler3QueueLength),
-		Scaler3AverageValue:        int32(scaler3AverageValue),
+		Scaler3AverageValue:        int64(scaler3AverageValue),
 		Scaler3IsActive:            scaler3IsActive,
 		Scaler4QueueLength:         int64(scaler4QueueLength),
-		Scaler4AverageValue:        int32(scaler4AverageValue),
+		Scaler4AverageValue:        int64(scaler4AverageValue),
 		Scaler4IsActive:            scaler4IsActive,
 		ResultIsActive:             resultIsActive,
 		ResultQueueLength:          int64(resultQueueLength),
@@ -194,19 +200,20 @@ func newScalerTestData(
 }
 
 type scalerTestData struct {
+	MetricName                 string
 	MaxReplicaCount            int32
 	MultipleScalersCalculation string
 	Scaler1QueueLength         int64
-	Scaler1AverageValue        int32
+	Scaler1AverageValue        int64
 	Scaler1IsActive            bool
 	Scaler2QueueLength         int64
-	Scaler2AverageValue        int32
+	Scaler2AverageValue        int64
 	Scaler2IsActive            bool
 	Scaler3QueueLength         int64
-	Scaler3AverageValue        int32
+	Scaler3AverageValue        int64
 	Scaler3IsActive            bool
 	Scaler4QueueLength         int64
-	Scaler4AverageValue        int32
+	Scaler4AverageValue        int64
 	Scaler4IsActive            bool
 	ResultIsActive             bool
 	ResultQueueLength          int64
@@ -231,10 +238,10 @@ func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string
 	}
 }
 
-func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int32, isActive bool) *mock_scalers.MockScaler {
-	metricName := "queueLength"
+func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool, metricName string) *mock_scalers.MockScaler {
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(int(averageValue))}
+	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue, metricName)}
+
 	metrics := []external_metrics.ExternalMetricValue{
 		{
 			MetricName: metricName,
@@ -243,7 +250,7 @@ func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int32
 	}
 	scaler.EXPECT().IsActive(gomock.Any()).Return(isActive, nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-	scaler.EXPECT().GetMetrics(gomock.Any(), metricName, nil).Return(metrics, nil)
+	scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Any(), nil).Return(metrics, nil)
 	scaler.EXPECT().Close(gomock.Any())
 	return scaler
 }

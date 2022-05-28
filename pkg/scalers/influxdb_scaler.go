@@ -8,18 +8,20 @@ import (
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type influxDBScaler struct {
-	client   influxdb2.Client
-	metadata *influxDBMetadata
+	client     influxdb2.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *influxDBMetadata
 }
 
 type influxDBMetadata struct {
@@ -37,6 +39,11 @@ var influxDBLog = logf.Log.WithName("influxdb_scaler")
 
 // NewInfluxDBScaler creates a new influx db scaler
 func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseInfluxDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing influxdb metadata: %s", err)
@@ -49,8 +56,9 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl}))
 
 	return &influxDBScaler{
-		client:   client,
-		metadata: meta,
+		client:     client,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -213,15 +221,11 @@ func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
 func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.thresholdValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, int64(s.metadata.thresholdValue)),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

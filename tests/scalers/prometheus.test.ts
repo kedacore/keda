@@ -1,20 +1,17 @@
-import * as async from 'async'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {waitForRollout} from "./helpers";
+import { PrometheusServer } from './prometheus-server-helpers'
+import { createNamespace, waitForDeploymentReplicaCount } from './helpers'
 
 const testNamespace = 'prometheus-test'
-const prometheusNamespace = 'monitoring'
-const prometheusDeploymentFile = 'scalers/prometheus-deployment.yaml'
+const prometheusNamespace = 'prometheus-test-monitoring'
+const loadGeneratorJob = tmp.fileSync()
 
-test.before(t => {
+test.before(async t => {
   // install prometheus
-  sh.exec(`kubectl create namespace ${prometheusNamespace}`)
-  t.is(0, sh.exec(`kubectl apply --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`).code, 'creating a Prometheus deployment should work.')
-  // wait for prometheus to load
-  t.is(0, waitForRollout('deployment', "prometheus-server", prometheusNamespace))
+  PrometheusServer.install(t, prometheusNamespace)
 
   sh.config.silent = true
   // create deployments - there are two deployments - both using the same image but one deployment
@@ -22,74 +19,58 @@ test.before(t => {
   // even when the KEDA deployment is at zero - the service points to both deployments
   const tmpFile = tmp.fileSync()
   fs.writeFileSync(tmpFile.name, deployYaml.replace('{{PROMETHEUS_NAMESPACE}}', prometheusNamespace))
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
   t.is(
     0,
     sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
     'creating a deployment should work.'
   )
-  for (let i = 0; i < 10; i++) {
-    const readyReplicaCount = sh.exec(`kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}`).stdout
-    if (readyReplicaCount != '1') {
-      sh.exec('sleep 2s')
-    }
-  }
+  t.true(await waitForDeploymentReplicaCount(1, 'test-app', testNamespace, 60, 1000), 'test-app replica count should be 1 after 1 minute')
+
+  fs.writeFileSync(loadGeneratorJob.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
 })
 
-test.serial('Deployment should have 0 replicas on start', t => {
-  const replicaCount = sh.exec(
-    `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
+test.serial('Metric type should be "AverageValue"',async t => {
+  const scaledObjectMetricType = sh.exec(
+    `kubectl get scaledobject.keda.sh/prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.triggers[0].metricType}"`
   ).stdout
-  t.is(replicaCount, '0', 'replica count should start out as 0')
+  const hpaMetricType = sh.exec(
+    `kubectl get hpa.v2beta2.autoscaling/keda-hpa-prometheus-scaledobject --namespace ${testNamespace} -o jsonpath="{.spec.metrics[0].external.target.type}"`
+  ).stdout
+
+  // when the metric type isn't explicitly set in the ScaledObject, it should default to AverageValue in the HPA
+  t.is('', scaledObjectMetricType, 'prometheus-scaledobject trigger metric type should be ""')
+  t.is('AverageValue', hpaMetricType, 'keda-hpa-prometheus-scaledobject metric target type should be "AverageValue"')
 })
 
-test.serial(`Deployment should scale to 5 (the max) with HTTP Requests exceeding in the rate then back to 0`, t => {
+test.serial('Deployment should have 0 replicas on start', async t => {
+  t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 60, 1000), 'keda-test-app replica count should be 0 after 1 minute')
+})
+
+test.serial(`Deployment should scale to 2 (the max) with HTTP Requests exceeding in the rate`, async t => {
   // generate a large number of HTTP requests (using Apache Bench) that will take some time
   // so prometheus has some time to scrape it
-  const tmpFile = tmp.fileSync()
-  fs.writeFileSync(tmpFile.name, generateRequestsYaml.replace('{{NAMESPACE}}', testNamespace))
   t.is(
     0,
-    sh.exec(`kubectl apply -f ${tmpFile.name} --namespace ${testNamespace}`).code,
+    sh.exec(`kubectl apply -f ${loadGeneratorJob.name} --namespace ${testNamespace}`).code,
     'creating job should work.'
   )
 
+  t.true(await waitForDeploymentReplicaCount(2, 'keda-test-app', testNamespace, 600, 1000), 'keda-test-app replica count should be 2 after 10 minutes')
+})
+
+test.serial(`Deployment should scale to 0`, async t => {
+  // Stop the load
   t.is(
-    '1',
-    sh.exec(
-      `kubectl get deployment.apps/test-app --namespace ${testNamespace} -o jsonpath="{.status.readyReplicas}"`
-    ).stdout,
-    'There should be 1 replica for the test-app deployment'
+    0,
+    sh.exec(`kubectl delete -f ${loadGeneratorJob.name} --namespace ${testNamespace}`).code,
+    'deleting job should work.'
   )
 
-  // keda based deployment should start scaling up with http requests issued
-  let replicaCount = '0'
-  for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
-    t.log(`Waited ${5 * i} seconds for prometheus-based deployments to scale up`)
-    const jobLogs = sh.exec(`kubectl logs -l job-name=generate-requests -n ${testNamespace}`).stdout
-    t.log(`Logs from the generate requests: ${jobLogs}`)
+  t.true(await waitForDeploymentReplicaCount(0, 'keda-test-app', testNamespace, 300, 1000), 'keda-test-app replica count should be 0 after 5 minutes')
 
-    replicaCount = sh.exec(
-      `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '5') {
-      sh.exec('sleep 5s')
-    }
-  }
-
-  t.is('5', replicaCount, 'Replica count should be maxed at 5')
-
-  for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-    replicaCount = sh.exec(
-      `kubectl get deployment.apps/keda-test-app --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
-    ).stdout
-    if (replicaCount !== '0') {
-      sh.exec('sleep 5s')
-    }
-  }
-
-  t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
 })
+
 
 test.after.always.cb('clean up prometheus deployment', t => {
   const resources = [
@@ -106,8 +87,7 @@ test.after.always.cb('clean up prometheus deployment', t => {
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
   // uninstall prometheus
-  sh.exec(`kubectl delete --namespace ${prometheusNamespace} -f ${prometheusDeploymentFile}`)
-  sh.exec(`kubectl delete namespace ${prometheusNamespace}`)
+  PrometheusServer.uninstall(prometheusNamespace)
 
   t.end()
 })
@@ -181,7 +161,7 @@ spec:
   scaleTargetRef:
     name: keda-test-app
   minReplicaCount: 0
-  maxReplicaCount: 5
+  maxReplicaCount: 2
   pollingInterval: 5
   cooldownPeriod:  10
   triggers:
@@ -203,7 +183,7 @@ spec:
       - image: jordi/ab
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;ab -c 5 -n 1000 -v 2 http://test-app.{{NAMESPACE}}.svc/;sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 600);do echo $i;ab -c 5 -n 1000 -v 2 http://test-app.{{NAMESPACE}}.svc/;sleep 1;done"]
       restartPolicy: Never
-  activeDeadlineSeconds: 120
-  backoffLimit: 2`
+  activeDeadlineSeconds: 600
+  backoffLimit: 5`

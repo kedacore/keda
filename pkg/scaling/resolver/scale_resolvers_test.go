@@ -148,7 +148,7 @@ var testMetadatas = []testMetadata{
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 	for _, testData := range testMetadatas {
 		ctx := context.Background()
-		_, err := resolveEnv(ctx, fake.NewFakeClient(), logf.Log.WithName("test"), testData.container, namespace)
+		_, err := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), testData.container, namespace)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
@@ -332,7 +332,13 @@ func TestResolveAuthRef(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 			clusterObjectNamespaceCache = &clusterNamespace // Inject test cluster namespace.
-			gotMap, gotPodIdentity := resolveAuthRef(ctx, fake.NewFakeClientWithScheme(scheme.Scheme, test.existing...), logf.Log.WithName("test"), test.soar, test.podSpec, namespace)
+			gotMap, gotPodIdentity := resolveAuthRef(
+				ctx,
+				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
+				logf.Log.WithName("test"),
+				test.soar,
+				test.podSpec,
+				namespace)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}
@@ -450,7 +456,7 @@ func TestResolveDependentEnv(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-			envMap, _ := resolveEnv(ctx, fake.NewFakeClient(), logf.Log.WithName("test"), test.container, namespace)
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}

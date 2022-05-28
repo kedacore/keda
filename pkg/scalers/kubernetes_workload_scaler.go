@@ -16,6 +16,7 @@ import (
 )
 
 type kubernetesWorkloadScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *kubernetesWorkloadMetadata
 	kubeClient client.Client
 }
@@ -26,6 +27,11 @@ const (
 	valueKey                     = "value"
 )
 
+var phasesCountedAsTerminated = []corev1.PodPhase{
+	corev1.PodSucceeded,
+	corev1.PodFailed,
+}
+
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
 	namespace   string
@@ -35,12 +41,18 @@ type kubernetesWorkloadMetadata struct {
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
 func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, parseErr := parseWorkloadMetadata(config)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %s", parseErr)
 	}
 
 	return &kubernetesWorkloadScaler{
+		metricType: metricType,
 		metadata:   meta,
 		kubeClient: kubeClient,
 	}, nil
@@ -85,15 +97,11 @@ func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kubernetesWorkloadMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -108,14 +116,14 @@ func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName st
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(pods), resource.DecimalSI),
+		Value:      *resource.NewQuantity(pods, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, error) {
+func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {
 	podList := &corev1.PodList{}
 	listOptions := client.ListOptions{}
 	listOptions.LabelSelector = s.metadata.podSelector
@@ -129,5 +137,19 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int, err
 		return 0, err
 	}
 
-	return len(podList.Items), nil
+	var count int64
+	for _, pod := range podList.Items {
+		count += getCountValue(pod)
+	}
+
+	return count, nil
+}
+
+func getCountValue(pod corev1.Pod) int64 {
+	for _, ignore := range phasesCountedAsTerminated {
+		if pod.Status.Phase == ignore {
+			return 0
+		}
+	}
+	return 1
 }

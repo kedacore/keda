@@ -52,8 +52,8 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{}, true, 0, nil, "", "", "", false},
 	// failure, no consumer group
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", "latest", false},
-	// failure, no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, true, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
+	// success, no topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success
@@ -89,6 +89,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, SASL + TLS explicitly disabled
+	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
 	// failure, SASL incorrect type
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false},
 	// failure, SASL missing username
@@ -118,6 +120,7 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -188,15 +191,27 @@ func TestKafkaAuthParams(t *testing.T) {
 		if meta.enableTLS != testData.enableTLS {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
 		}
+		if meta.enableTLS {
+			if meta.ca != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+			}
+			if meta.cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+			}
+			if meta.key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			}
+		}
 	}
 }
+
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaScaler{meta, nil, nil}
+		mockKafkaScaler := kafkaScaler{"", meta, nil, nil}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

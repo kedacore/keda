@@ -79,7 +79,7 @@ func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockMongoDBScaler := mongoDBScaler{meta, &mongo.Client{}}
+		mockMongoDBScaler := mongoDBScaler{"", meta, &mongo.Client{}}
 
 		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

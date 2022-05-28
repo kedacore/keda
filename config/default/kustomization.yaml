@@ -28,3 +28,4 @@ resources:
 - ../rbac
 - ../manager
 - ../metrics-server
+- ../service_account

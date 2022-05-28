@@ -2,6 +2,7 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
+import { createNamespace } from './helpers';
 
 const seleniumGridNamespace = 'selenium-grid';
 const seleniumGridHostName = `selenium-hub.${seleniumGridNamespace}`;
@@ -10,7 +11,7 @@ const seleniumGridGraphQLUrl = `http://${seleniumGridHostName}:${seleniumGridPor
 const seleniumGridTestName = 'selenium-random-tests';
 
 test.before(t => {
-  sh.exec(`kubectl create namespace ${seleniumGridNamespace}`);
+  createNamespace(seleniumGridNamespace)
 
   const seleniumGridDeployTmpFile = tmp.fileSync();
   fs.writeFileSync(seleniumGridDeployTmpFile.name, seleniumGridYaml.replace(/{{NAMESPACE}}/g, seleniumGridNamespace));
@@ -19,35 +20,18 @@ test.before(t => {
 
   let seleniumHubReplicaCount = '0';
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     seleniumHubReplicaCount = sh.exec(`kubectl get deploy/selenium-hub -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     if (seleniumHubReplicaCount == '1') {
       break;
     }
     console.log('Waiting for selenium hub to be ready');
-    sh.exec('sleep 2s')
+    sh.exec('sleep 5s')
   }
   t.is('1', seleniumHubReplicaCount, 'Selenium Hub is not in a ready state')
 });
 
-test.serial('should have one node for chrome and firefox each at start', t => {
-  let seleniumChromeNodeReplicaCount = '0';
-  let seleniumFireFoxReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
-    seleniumChromeNodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-    seleniumFireFoxReplicaCount = sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-    if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1') {
-      break;
-    }
-    console.log('Waiting for chrome and firefox node to be ready');
-    sh.exec('sleep 2s')
-  }
-
-  t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pods')
-  t.is('1', seleniumFireFoxReplicaCount, 'Selenium Firefox Node did not scale up to 1 pods')
-});
-
-test.serial('should scale down browser nodes to 0', t => {
+test.serial('should have 0 nodes at start', t => {
   const scaledObjectDeployTmpFile = tmp.fileSync();
   fs.writeFileSync(scaledObjectDeployTmpFile.name, scaledObjectYaml.replace(/{{NAMESPACE}}/g, seleniumGridNamespace).replace(/{{SELENIUM_GRID_GRAPHQL_URL}}/g, seleniumGridGraphQLUrl));
 
@@ -55,21 +39,24 @@ test.serial('should scale down browser nodes to 0', t => {
 
   let seleniumChromeNodeReplicaCount = '1';
   let seleniumFireFoxReplicaCount = '1';
+  let seleniumEdgeReplicaCount = '1';
   for (let i = 0; i < 60; i++) {
     seleniumChromeNodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     seleniumFireFoxReplicaCount = sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
-    if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0') {
+    seleniumEdgeReplicaCount = sh.exec(`kubectl get deploy/selenium-edge-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
+    if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0' && seleniumEdgeReplicaCount == '0') {
       break;
     }
-    console.log('Waiting for chrome and firefox to scale down to 0 pods')
-    sh.exec('sleep 5s')
+    console.log('Waiting for chrome, firefox, and edge to scale down to 0 pods')
+    sh.exec('sleep 10s')
   }
 
   t.is('0', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale down to 0 pods')
   t.is('0', seleniumFireFoxReplicaCount, 'Selenium Firefox Node did not scale down to 0 pods')
+  t.is('0', seleniumEdgeReplicaCount, 'Selenium Edge Node did not scale down to 0 pods')
 });
 
-test.serial('should create one chrome and firefox node', t => {
+test.serial('should create one chrome, firefox, and edge node', t => {
   const seleniumGridTestDeployTmpFile = tmp.fileSync();
   fs.writeFileSync(
     seleniumGridTestDeployTmpFile.name,
@@ -83,75 +70,73 @@ test.serial('should create one chrome and firefox node', t => {
 
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
-  // wait for selenium grid tests to start running
-  for (let i = 0; i < 20; i++) {
-    const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
-    if (running == '1') {
-      break;
-    }
-    sh.exec('sleep 1s')
-  }
-
   let seleniumChromeNodeReplicaCount = '0';
   let seleniumFireFoxReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
+  let seleniumEdgeReplicaCount = '0';
+  for (let i = 0; i < 120; i++) {
     seleniumChromeNodeReplicaCount = seleniumChromeNodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChromeNodeReplicaCount;
     seleniumFireFoxReplicaCount = seleniumFireFoxReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumFireFoxReplicaCount;
-    if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1') {
+    seleniumEdgeReplicaCount = seleniumEdgeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-edge-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumEdgeReplicaCount;
+    if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1' && seleniumEdgeReplicaCount == '1') {
       break;
     }
-    console.log('Waiting for chrome to scale up 1 pod and firefox to 1 pod');
+    console.log('Waiting for chrome, firefox, and edge to scale up to 1 pod');
     sh.exec('sleep 2s')
   }
 
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pod')
   t.is('1', seleniumFireFoxReplicaCount, 'Selenium Firefox Node did not scale up to 1 pod')
+  t.is('1', seleniumEdgeReplicaCount, 'Selenium Edge Node did not scale up to 1 pod')
 
   // wait for selenium grid tests to complete
-  let succeeded = '0';
-  for (let i = 0; i < 60; i++) {
-    succeeded = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.succeeded}'`).stdout
-    if (succeeded == '1') {
+  for (let i = 0; i < 120; i++) {
+    seleniumChromeNodeReplicaCount = seleniumChromeNodeReplicaCount != '0' ? sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChromeNodeReplicaCount;
+    seleniumFireFoxReplicaCount = seleniumFireFoxReplicaCount != '0' ? sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumFireFoxReplicaCount;
+    seleniumEdgeReplicaCount = seleniumEdgeReplicaCount != '0' ? sh.exec(`kubectl get deploy/selenium-edge-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumEdgeReplicaCount;
+    if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0' && seleniumEdgeReplicaCount == '0') {
       break;
     }
-    sh.exec('sleep 1s')
+    console.log('Waiting for chrome, firefox, and edge to scale up to 0 pods');
+    sh.exec('sleep 2s')
   }
 
   sh.exec(`kubectl delete job/${seleniumGridTestName} --namespace ${seleniumGridNamespace}`)
 });
 
-test.serial('should scale down chrome and firefox nodes to 0', t => {
-
+test.serial('should scale down chrome, firefox, and edge nodes to 0', t => {
   let seleniumChromeNodeReplicaCount = '1';
   let seleniumFireFoxReplicaCount = '1';
-  for (let i = 0; i < 65; i++) {
+  let seleniumEdgeReplicaCount = '1';
+  for (let i = 0; i < 120; i++) {
     seleniumChromeNodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout;
     seleniumFireFoxReplicaCount = sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout;
-    if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0') {
+    seleniumEdgeReplicaCount = sh.exec(`kubectl get deploy/selenium-edge-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout;
+    if (seleniumChromeNodeReplicaCount == '0' && seleniumFireFoxReplicaCount == '0' && seleniumEdgeReplicaCount == '0') {
       break;
     }
-    console.log('Waiting for chrome and firefox to scale down to 0 pod');
-    sh.exec('sleep 5s')
+    console.log('Waiting for chrome, firefox,a nd edge to scale down to 0 pods');
+    sh.exec('sleep 2s')
   }
 
   t.is('0', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale down to 0 pod')
   t.is('0', seleniumFireFoxReplicaCount, 'Selenium Firefox Node did not scale down to 0 pod')
+  t.is('0', seleniumEdgeReplicaCount, 'Selenium Edge Node did not scale down to 0 pod')
 });
 
-test.serial('should create two chrome and one firefox nodes', t => {
+test.serial('should create two chrome, one firefox, and one edge nodes', t => {
   const chrome91DeployTmpFile = tmp.fileSync();
   fs.writeFileSync(chrome91DeployTmpFile.name, chrome91Yaml.replace(/{{NAMESPACE}}/g, seleniumGridNamespace).replace(/{{SELENIUM_GRID_GRAPHQL_URL}}/g, seleniumGridGraphQLUrl));
 
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${chrome91DeployTmpFile.name}`).code, 'creating Chrome 91 node should work.')
 
   let seleniumChrome91NodeReplicaCount = '1';
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     seleniumChrome91NodeReplicaCount = sh.exec(`kubectl get deploy/selenium-chrome-node-91 -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout
     if (seleniumChrome91NodeReplicaCount == '0') {
       break;
     }
     console.log('Waiting for chrome 91 to scale down to 0 pods')
-    sh.exec('sleep 5s')
+    sh.exec('sleep 2s')
   }
 
   const seleniumGridTestDeployTmpFile = tmp.fileSync();
@@ -167,26 +152,19 @@ test.serial('should create two chrome and one firefox nodes', t => {
 
   t.is(0, sh.exec(`kubectl apply --namespace ${seleniumGridNamespace} -f ${seleniumGridTestDeployTmpFile.name}`).code, 'creating a Selenium Grid Tests deployment should work.');
 
-  // wait for selenium grid tests to start running
-  for (let i = 0; i < 20; i++) {
-    const running = sh.exec(`kubectl get job ${seleniumGridTestName} --namespace ${seleniumGridNamespace} -o jsonpath='{.items[0].status.running}'`).stdout
-    if (running == '1') {
-      break;
-    }
-    sh.exec('sleep 1s')
-  }
-
   let seleniumChromeNodeReplicaCount = '0';
   let seleniumFireFoxReplicaCount = '0';
+  let seleniumEdgeReplicaCount = '0';
   seleniumChrome91NodeReplicaCount = '0';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 120; i++) {
     seleniumChromeNodeReplicaCount = seleniumChromeNodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChromeNodeReplicaCount;
     seleniumFireFoxReplicaCount = seleniumFireFoxReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-firefox-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumFireFoxReplicaCount;
+    seleniumEdgeReplicaCount = seleniumEdgeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-edge-node -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumEdgeReplicaCount;
     seleniumChrome91NodeReplicaCount = seleniumChrome91NodeReplicaCount != '1' ? sh.exec(`kubectl get deploy/selenium-chrome-node-91 -n ${seleniumGridNamespace} -o jsonpath='{.spec.replicas}'`).stdout : seleniumChrome91NodeReplicaCount;
-    if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1' && seleniumChrome91NodeReplicaCount == '1') {
+    if (seleniumChromeNodeReplicaCount == '1' && seleniumFireFoxReplicaCount == '1' && seleniumEdgeReplicaCount == '1' && seleniumChrome91NodeReplicaCount == '1') {
       break;
     }
-    console.log('Waiting for chrome to scale up 2 pods and firefox to 1 pod');
+    console.log('Waiting for chrome to scale up 2 pods, firefox to 1 pod, and edge to 1 pod');
     sh.exec('sleep 2s')
   }
 
@@ -195,16 +173,20 @@ test.serial('should create two chrome and one firefox nodes', t => {
   t.is('1', seleniumChromeNodeReplicaCount, 'Selenium Chrome Node did not scale up to 1 pod')
   t.is('1', seleniumChrome91NodeReplicaCount, 'Selenium Chrome 91 Node did not scale up to 1 pod')
   t.is('1', seleniumFireFoxReplicaCount, 'Selenium Firefox Node did not scale up to 1 pod')
+  t.is('1', seleniumEdgeReplicaCount, 'Selenium Edge Node did not scale up to 1 pod')
 });
 
 test.after.always.cb('clean up prometheus deployment', t => {
   let resources = [
     'scaledobject.keda.sh/selenium-grid-chrome-scaledobject',
     'scaledobject.keda.sh/selenium-grid-firefox-scaledobject',
+    'scaledobject.keda.sh/selenium-grid-edge-scaledobject',
     'service/selenium-chrome-node',
     'deployment.apps/selenium-chrome-node',
     'service/selenium-firefox-node',
     'deployment.apps/selenium-firefox-node',
+    'service/selenium-edge-node',
+    'deployment.apps/selenium-edge-node',
     'service/selenium-hub',
     'deployment.apps/selenium-hub',
     `job/${seleniumGridTestName}`,
@@ -283,6 +265,28 @@ spec:
       port: 6900
       targetPort: 5900
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: selenium-edge-node
+  namespace: {{NAMESPACE}}
+  labels:
+    name: selenium-edge-node
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/instance: selenium-hpa
+    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
+    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
+    helm.sh/chart: selenium-grid-0.2.0
+spec:
+  type: ClusterIP
+  selector:
+    app: selenium-edge-node
+  ports:
+    - name: tcp-edge
+      protocol: TCP
+      port: 6900
+      targetPort: 5900
+---
 # Source: selenium-grid/templates/hub-service.yaml
 apiVersion: v1
 kind: Service
@@ -329,7 +333,7 @@ metadata:
     app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
     helm.sh/chart: selenium-grid-0.2.0
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: selenium-chrome-node
@@ -353,12 +357,6 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
       volumes:
         - name: dshm
           emptyDir:
@@ -380,7 +378,7 @@ metadata:
     app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
     helm.sh/chart: selenium-grid-0.2.0
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: selenium-firefox-node
@@ -404,12 +402,51 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+# Source: selenium-grid/templates/edge-node-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selenium-edge-node
+  namespace: {{NAMESPACE}}
+  labels: &edge_node_labels
+    app: selenium-edge-node
+    app.kubernetes.io/name: selenium-edge-node
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/instance: selenium-hpa
+    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
+    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
+    helm.sh/chart: selenium-grid-0.2.0
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: selenium-edge-node
+  template:
+    metadata:
+      labels: *edge_node_labels
+      annotations:
+        checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
+    spec:
+      containers:
+        - name: selenium-edge-node
+          image: selenium/node-edge:4.0.0-rc-1-prerelease-20210618
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: selenium-event-bus-config
+          ports:
+            - containerPort: 5553
+              protocol: TCP
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+          resources:
       volumes:
         - name: dshm
           emptyDir:
@@ -484,7 +521,7 @@ metadata:
     app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
     helm.sh/chart: selenium-grid-0.2.0
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: selenium-chrome-node-91
@@ -508,12 +545,6 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           resources:
-            limits:
-              cpu: "1"
-              memory: 1Gi
-            requests:
-              cpu: "1"
-              memory: 1Gi
       volumes:
         - name: dshm
           emptyDir:
@@ -552,7 +583,9 @@ metadata:
   labels:
     deploymentName: selenium-chrome-node-91
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-chrome-node-91
   triggers:
@@ -573,7 +606,9 @@ metadata:
   labels:
     deploymentName: selenium-chrome-node
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-chrome-node
   triggers:
@@ -591,14 +626,36 @@ metadata:
   labels:
     deploymentName: selenium-firefox-node
 spec:
-  maxReplicaCount: 8
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
   scaleTargetRef:
     name: selenium-firefox-node
   triggers:
     - type: selenium-grid
       metadata:
         url: '{{SELENIUM_GRID_GRAPHQL_URL}}'
-        browserName: 'firefox'`
+        browserName: 'firefox'
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: selenium-grid-edge-scaledobject
+  namespace: {{NAMESPACE}}
+  labels:
+    deploymentName: selenium-edge-node
+spec:
+  maxReplicaCount: 1
+  pollingInterval: 5
+  cooldownPeriod:  5
+  scaleTargetRef:
+    name: selenium-edge-node
+  triggers:
+    - type: selenium-grid
+      metadata:
+        url: '{{SELENIUM_GRID_GRAPHQL_URL}}'
+        browserName: 'MicrosoftEdge'
+        sessionBrowserName: 'msedge'`
 
 const seleniumGridTestsYaml = `apiVersion: batch/v1
 kind: Job
@@ -614,7 +671,7 @@ spec:
     spec:
       containers:
       - name: {{CONTAINER_NAME}}
-        image: prashanth0007/selenium-random-tests:v1.0.2
+        image: ghcr.io/kedacore/tests-selenium-grid
         imagePullPolicy: Always
         env:
         - name: HOST_NAME

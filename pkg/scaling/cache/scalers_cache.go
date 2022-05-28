@@ -21,15 +21,16 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/scalers"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 type ScalersCache struct {
@@ -82,6 +83,7 @@ func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricNa
 func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, []external_metrics.ExternalMetricValue) {
 	isActive := false
 	isError := false
+	// Let's collect status of all scalers, no matter if any scaler raises error or is active
 	for i, s := range c.Scalers {
 		isTriggerActive, err := s.Scaler.IsActive(ctx)
 		if err != nil {
@@ -92,19 +94,21 @@ func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *k
 			}
 		}
 
+		logger := c.Logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace,
+			"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
+
 		if err != nil {
-			c.Logger.V(1).Info("Error getting scale decision", "Error", err)
 			isError = true
+			logger.Error(err, "Error getting scale decision")
 			c.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		} else if isTriggerActive {
 			isActive = true
 			if externalMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
-				c.Logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
+				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
 			if resourceMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
-				c.Logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
+				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
-			break
 		}
 	}
 
@@ -267,7 +271,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-		metrics, err := s.Scaler.GetMetrics(ctx, "queueLength", nil)
+		metrics, err := s.Scaler.GetMetrics(ctx, metricSpecs[0].External.Metric.Name, nil)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
 			c.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
@@ -277,12 +281,12 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		var metricValue int64
 
 		for _, m := range metrics {
-			if m.MetricName == "queueLength" {
+			if m.MetricName == metricSpecs[0].External.Metric.Name {
 				metricValue, _ = m.Value.AsInt64()
 				queueLength += metricValue
 			}
 		}
-		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, "queueLength", queueLength, "targetAverageValue", targetAverageValue)
+		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
 
 		if isTriggerActive {
 			isActive = true

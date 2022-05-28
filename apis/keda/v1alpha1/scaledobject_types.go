@@ -126,7 +126,7 @@ type ScaleTriggers struct {
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
 	// +optional
-	FallbackReplicas *int32 `json:"fallback,omitempty"`
+	MetricType autoscalingv2beta2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -150,6 +150,8 @@ type ScaledObjectStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
+	// +optional
+	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true

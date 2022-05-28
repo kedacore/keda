@@ -57,6 +57,7 @@ import (
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
+// +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
@@ -121,7 +122,9 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		// predicate.GenerationChangedPredicate{} ignore updates to ScaledObject Status
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
-		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(
+			predicate.Or(kedacontrollerutil.PausedReplicasPredicate{}, predicate.GenerationChangedPredicate{}),
+		)).
 		Owns(&autoscalingv2beta2.HorizontalPodAutoscaler{}).
 		Complete(r)
 }
@@ -189,7 +192,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "ScaledObject is ready for scaling")
 		}
 		reqLogger.V(1).Info(msg)
-		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledObjectReady", msg)
+		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
 	}
 
 	if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
@@ -199,7 +202,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-// reconcileScaledObject implements reconciler logic for ScaleObject
+// reconcileScaledObject implements reconciler logic for ScaledObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
@@ -247,7 +250,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-	return "ScaledObject is defined correctly and is ready for scaling", nil
+	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
 
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
@@ -280,7 +283,9 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// do we need the scale to update the status later?
-	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil
+	_, present := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
+	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil || removePausedStatus
 
 	// check if we already know.
 	var scale *autoscalingv1.Scale
@@ -318,6 +323,10 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		}
 		if scaledObject.Status.OriginalReplicaCount == nil {
 			status.OriginalReplicaCount = &scale.Spec.Replicas
+		}
+
+		if removePausedStatus {
+			status.PausedReplicaCount = nil
 		}
 
 		if err := kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
@@ -382,7 +391,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	return false, nil
 }
 
-// startScaleLoop starts ScaleLoop handler for the respective ScaledObject
+// requestScaleLoop tries to start ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
 
@@ -402,7 +411,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger lo
 	return nil
 }
 
-// stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
+// stopScaleLoop stops ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {

@@ -1,8 +1,8 @@
-## Prerequisits
+## Prerequisites
 
 - [node](https://nodejs.org/en/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `TEST_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 
@@ -43,7 +43,7 @@ import test from 'ava';
 test.before(t => {
     // this runs once before all tests.
     // do setup here. e.g:
-    //  - Create a namespace for your tests (using kubectl or kubernetes node-client)
+    //  - Create a namespace for your tests using the function createNamespace(namespace: string) available in helpers file
     //  - Create deployment (using kubectl or kubernetes node-client)
     //  - Setup event source (deploy redis, or configure azure storage, etc)
     //  - etc
@@ -71,11 +71,14 @@ test.after.always.cb('clean up always after all tests', t => {
     t.end();
 });
 ```
+>⚠⚠ **Important:** ⚠⚠ Even thought the cleaning of the resources is expected inside each e2e test file, all test namespaces are cleaned up to ensure not having dangling resources after global e2e execution finishes. For not breaking this behavior, it's mandatory the usage of the function `createNamespace(namespace: string)` instead of creating them manually.
+
 * **Example test:** for example if I want to add a test for redis
 
 ```ts
 import * as sh from 'shelljs';
 import test from 'ava';
+import { createNamespace } from './helpers';
 
 // you can include template in the file or in another file.
 const deployYaml = `apiVersion: apps/v1
@@ -96,7 +99,7 @@ test.before('install redis and create deployment' t => {
     }
 
     sh.exec('helm install redis ......'); // install redis to the cluster
-    sh.exec('kubectl create namespace redis-test-deployment');
+    createNamespace("redis-test-deployment")
     sh.exec('kubectl apply -f ....'); // create your deployment
 });
 

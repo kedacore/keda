@@ -292,6 +292,81 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("s0-cron-UTC-0xxxx-1xxxx"))
 		})
 
+		//https://github.com/kedacore/keda/issues/2407
+		It("cache is correctly recreated if SO is deleted and created", func() {
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment("cache-regenerate"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject with one trigger.
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "cache-regenerate", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: "cache-regenerate",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA.
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-cache-regenerate", Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.Metrics).To(HaveLen(1))
+			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("s0-cron-UTC-0xxxx-1xxxx"))
+
+			// Delete the ScaledObject
+			err = k8sClient.Delete(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(30 * time.Second)
+
+			// Create the same ScaledObject with a change in the trigger.
+			so = &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "cache-regenerate", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: "cache-regenerate",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "CET",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(30 * time.Second)
+
+			// Get and confirm the HPA.
+			hpa2 := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-cache-regenerate", Namespace: "default"}, hpa2)
+			}).ShouldNot(HaveOccurred())
+			Expect(hpa2.Spec.Metrics).To(HaveLen(1))
+			Expect(hpa2.Spec.Metrics[0].External.Metric.Name).To(Equal("s0-cron-CET-0xxxx-1xxxx"))
+		})
+
 		It("deploys ScaledObject and creates HPA, when IdleReplicaCount, MinReplicaCount and MaxReplicaCount is defined", func() {
 
 			deploymentName := "idleminmax"
@@ -345,6 +420,53 @@ var _ = Describe("ScaledObjectController", func() {
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetReadyCondition().Status
 			}, 20*time.Second).Should(Equal(metav1.ConditionTrue))
+		})
+
+		It("deploys ScaledObject and creates HPA, when metadata.Annotations is configured", func() {
+
+			deploymentName := "annotations"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      soName,
+					Namespace: "default",
+					Annotations: map[string]string{
+						"annotation-email": "email@example.com",
+						"annotation-url":   "https://example.com",
+					}},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+
+			Ω(hpa.Annotations).To(Equal(so.Annotations))
 		})
 
 		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {

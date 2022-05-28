@@ -3,13 +3,11 @@ package scalers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -24,39 +22,30 @@ import (
 )
 
 const (
-	promServerAddress = "serverAddress"
-	promMetricName    = "metricName"
-	promQuery         = "query"
-	promThreshold     = "threshold"
+	promServerAddress    = "serverAddress"
+	promMetricName       = "metricName"
+	promQuery            = "query"
+	promThreshold        = "threshold"
+	promNamespace        = "namespace"
+	promCortexScopeOrgID = "cortexOrgID"
+	promCortexHeaderKey  = "X-Scope-OrgID"
 )
 
 type prometheusScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *prometheusMetadata
 	httpClient *http.Client
 }
 
 type prometheusMetadata struct {
-	serverAddress string
-	metricName    string
-	query         string
-	threshold     int
-
-	// bearer auth
-	enableBearerAuth bool
-	bearerToken      string
-
-	// basic auth
-	enableBasicAuth bool
-	username        string
-	password        string // +optional
-
-	// client certification
-	enableTLS bool
-	cert      string
-	key       string
-	ca        string
-
-	scalerIndex int
+	serverAddress  string
+	metricName     string
+	query          string
+	threshold      int64
+	prometheusAuth *authentication.AuthMeta
+	namespace      string
+	scalerIndex    int
+	cortexOrgID    string
 }
 
 type promQueryResult struct {
@@ -75,6 +64,11 @@ var prometheusLog = logf.Log.WithName("prometheus_scaler")
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
@@ -82,23 +76,26 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if meta.ca != "" || meta.enableTLS {
-		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
-		if err != nil || config == nil {
-			return nil, fmt.Errorf("error creating the TLS config: %s", err)
+	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
+		// create http.RoundTripper with auth settings from ScalerConfig
+		if httpClient.Transport, err = authentication.CreateHTTPRoundTripper(
+			authentication.NetHTTP,
+			meta.prometheusAuth,
+		); err != nil {
+			predictKubeLog.V(1).Error(err, "init Prometheus client http transport")
+			return nil, err
 		}
-
-		httpClient.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
 	return &prometheusScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
 }
 
-func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) {
-	meta := prometheusMetadata{}
+func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, err error) {
+	meta = &prometheusMetadata{}
 
 	if val, ok := config.TriggerMetadata[promServerAddress]; ok && val != "" {
 		meta.serverAddress = val
@@ -119,71 +116,33 @@ func parsePrometheusMetadata(config *ScalerConfig) (*prometheusMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.Atoi(val)
+		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
 		}
 
 		meta.threshold = t
+	} else {
+		return nil, fmt.Errorf("no %s given", promThreshold)
+	}
+
+	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
+		meta.namespace = val
+	}
+
+	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
+		meta.cortexOrgID = val
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
-	authModes, ok := config.TriggerMetadata["authModes"]
-	// no authMode specified
-	if !ok {
-		return &meta, nil
+	// parse auth configs from ScalerConfig
+	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return nil, err
 	}
 
-	authTypes := strings.Split(authModes, ",")
-	for _, t := range authTypes {
-		authType := authentication.Type(strings.TrimSpace(t))
-		switch authType {
-		case authentication.BearerAuthType:
-			if len(config.AuthParams["bearerToken"]) == 0 {
-				return nil, errors.New("no bearer token provided")
-			}
-			if meta.enableBasicAuth {
-				return nil, errors.New("beare and basic authentication can not be set both")
-			}
-
-			meta.bearerToken = config.AuthParams["bearerToken"]
-			meta.enableBearerAuth = true
-		case authentication.BasicAuthType:
-			if len(config.AuthParams["username"]) == 0 {
-				return nil, errors.New("no username given")
-			}
-			if meta.enableBearerAuth {
-				return nil, errors.New("beare and basic authentication can not be set both")
-			}
-
-			meta.username = config.AuthParams["username"]
-			// password is optional. For convenience, many application implement basic auth with
-			// username as apikey and password as empty
-			meta.password = config.AuthParams["password"]
-			meta.enableBasicAuth = true
-		case authentication.TLSAuthType:
-			if len(config.AuthParams["cert"]) == 0 {
-				return nil, errors.New("no cert given")
-			}
-			meta.cert = config.AuthParams["cert"]
-
-			if len(config.AuthParams["key"]) == 0 {
-				return nil, errors.New("no key given")
-			}
-
-			meta.key = config.AuthParams["key"]
-			meta.enableTLS = true
-		default:
-			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", t)
-		}
-	}
-
-	if len(config.AuthParams["ca"]) > 0 {
-		meta.ca = config.AuthParams["ca"]
-	}
-
-	return &meta, nil
+	return meta, nil
 }
 
 func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
@@ -201,16 +160,12 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -222,15 +177,25 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	t := time.Now().UTC().Format(time.RFC3339)
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
+
+	// set 'namespace' parameter for namespaced Prometheus requests (eg. for Thanos Querier)
+	if s.metadata.namespace != "" {
+		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	if s.metadata.enableBearerAuth {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.bearerToken))
-	} else if s.metadata.enableBasicAuth {
-		req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBearerAuth {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.prometheusAuth.BearerToken))
+	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
+		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
+	}
+
+	if s.metadata.cortexOrgID != "" {
+		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
 	}
 
 	r, err := s.httpClient.Do(req)
@@ -242,7 +207,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if err != nil {
 		return -1, err
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
 		return -1, fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))
@@ -283,7 +248,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	return v, nil
 }
 
-func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		prometheusLog.Error(err, "error executing prometheus query")

@@ -69,7 +69,7 @@ func TestCassandraGetMetricSpecForScaling(t *testing.T) {
 		}
 		cluster := gocql.NewCluster(meta.clusterIPAddress)
 		session, _ := cluster.CreateSession()
-		mockCassandraScaler := cassandraScaler{meta, session}
+		mockCassandraScaler := cassandraScaler{"", meta, session}
 
 		metricSpec := mockCassandraScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

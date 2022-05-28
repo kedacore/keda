@@ -7,11 +7,16 @@ jobs:
   build:
     name: Push Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
+
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: ghcr.io/kedacore/build-tools:main
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -21,13 +26,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3.0.2
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3.0.2
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -45,12 +50,6 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
@@ -60,13 +59,26 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
       - name: Publish KEDA images on GitHub Container Registry
-        run: make publish
+        run: make publish-multiarch
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Publish KEDA images on Docker Hub
-        run: make publish-dockerhub
+      # https://github.com/sigstore/cosign-installer
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+        with:
+          cosign-release: 'v1.4.1'
+      - name: Check Cosign install!
+        run: cosign version
+
+      - name: Sign KEDA images published on GitHub Container Registry
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: make sign-images
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 

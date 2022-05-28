@@ -145,8 +145,8 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false)
 
@@ -206,8 +206,8 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false)
 
@@ -265,8 +265,8 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Times(2).Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+	client.EXPECT().Status().Times(2).Return(statusWriter).Times(3)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false)
 
@@ -328,8 +328,8 @@ func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false)
 
@@ -389,12 +389,74 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Times(2).Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+	client.EXPECT().Status().Times(2).Return(statusWriter).Times(3)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false)
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
+}
+
+func TestScaleToPausedReplicasCount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			Annotations: map[string]string{
+				"autoscaling.keda.sh/paused-replicas": "0",
+			},
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	pausedReplicaCount := int32(0)
+	replicaCount := int32(2)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicaCount,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: replicaCount,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false)
+
+	assert.Equal(t, pausedReplicaCount, scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	assert.Equal(t, false, condition.IsTrue())
 }

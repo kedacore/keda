@@ -2,6 +2,7 @@ import test from 'ava'
 import * as fs from 'fs'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
+import { createNamespace } from './helpers'
 
 const cassandraNamespace = 'cassandra-test'
 const cassandraKeyspace = 'test_keyspace'
@@ -13,7 +14,7 @@ const nginxDeploymentName = 'nginx-deployment'
 test.before(t => {
     // install cassandra
     console.log("Install cassandra")
-    sh.exec(`kubectl create namespace ${cassandraNamespace}`)
+    createNamespace(cassandraNamespace)
     const cassandraTmpFile = tmp.fileSync()
     fs.writeFileSync(cassandraTmpFile.name, cassandraDeployYaml)
 
@@ -22,10 +23,10 @@ test.before(t => {
     // wait for cassandra to load
     console.log("wait for cassandra to load")
     let cassandraReadyReplicaCount = '0'
-     for (let i = 0; i < 50; i++) {
+     for (let i = 0; i < 30; i++) {
         cassandraReadyReplicaCount = sh.exec(`kubectl get deploy/cassandra -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
         if (cassandraReadyReplicaCount != '1') {
-            sh.exec('sleep 2s')
+            sh.exec('sleep 10s')
         }
     }
     t.is('1', cassandraReadyReplicaCount, 'Cassandra is not in a ready state')
@@ -36,7 +37,7 @@ test.before(t => {
     for (let i = 0; i < 30; i++) {
       cassandraReady = sh.exec(`kubectl exec -n ${cassandraNamespace} ${cassandraPod} -- nodetool status | grep -w -o UN`)
       if (cassandraReady != "UN\n") {
-        sh.exec('sleep 5s')
+        sh.exec('sleep 10s')
       }
       else {
         break
@@ -53,10 +54,10 @@ test.before(t => {
     // wait for cassandra-client to load
     console.log("wait for cassandra-client to load")
     let cassandraClientReadyReplicaCount = '0'
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 30; i++) {
       cassandraClientReadyReplicaCount = sh.exec(`kubectl get deploy/cassandra-client -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
       if (cassandraClientReadyReplicaCount != '1') {
-        sh.exec('sleep 2s')
+        sh.exec('sleep 10s')
       }
     }
     t.is('1', cassandraClientReadyReplicaCount, 'Cassandra client is not in a ready state')
@@ -67,7 +68,7 @@ test.before(t => {
     for (let i = 0; i < 30; i++) {
       cassandraClientReady = sh.exec(`kubectl exec -n ${cassandraNamespace} ${cassandraClientPod} -- nodetool status | grep -w -o UN`)
       if (cassandraClientReady != "UN\n") {
-        sh.exec('sleep 5s')
+        sh.exec('sleep 10s')
       }
       else {
         break
@@ -94,7 +95,7 @@ test.before(t => {
     for (let i = 0; i < 30; i++) {
       nginxReadyReplicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} -n ${cassandraNamespace} -o jsonpath='{.status.readyReplicas}'`).stdout
       if (nginxReadyReplicaCount != '') {
-        sh.exec('sleep 2s')
+        sh.exec('sleep 10s')
       }
     }
     t.is('', nginxReadyReplicaCount, 'creating an Nginx deployment should work')
@@ -108,7 +109,7 @@ test.serial('Should start off deployment with 0 replicas', t => {
 
 })
 
-test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
+test.serial(`Replicas should scale to 2 (the max) then back to 0`, t => {
     // insert data to cassandra
     console.log("insert data to cassandra")
     const insertData = `BEGIN BATCH
@@ -130,17 +131,17 @@ test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
     )
 
     let replicaCount = '0'
-    const maxReplicaCount = '4'
+    const maxReplicaCount = '2'
 
     for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
       replicaCount = sh.exec(
         `kubectl get deploy/${nginxDeploymentName} --namespace ${cassandraNamespace} -o jsonpath="{.spec.replicas}"`).stdout
         if (replicaCount !== maxReplicaCount) {
-          sh.exec('sleep 2s')
+          sh.exec('sleep 10s')
         }
     }
 
-    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 60 seconds`)
+    t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 300 seconds`)
     sh.exec('sleep 30s')
 
     // delete all data from cassandra
@@ -157,11 +158,11 @@ test.serial(`Replicas should scale to 4 (the max) then back to 0`, t => {
       replicaCount = sh.exec(
         `kubectl get deploy/${nginxDeploymentName} --namespace ${cassandraNamespace} -o jsonpath="{.spec.replicas}"`).stdout
       if (replicaCount !== '0') {
-        sh.exec('sleep 5s')
+        sh.exec('sleep 10s')
       }
     }
 
-     t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
+     t.is('0', replicaCount, 'Replica count should be 0 after 5 minutes')
 
 })
 
@@ -279,7 +280,7 @@ metadata:
   name: cassandra-scaledobject
 spec:
   minReplicaCount: 0
-  maxReplicaCount: 4
+  maxReplicaCount: 2
   pollingInterval: 1  # Optional. Default: 30 seconds
   cooldownPeriod: 1 # Optional. Default: 300 seconds
   scaleTargetRef:

@@ -97,6 +97,10 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// correct pod identity
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
+	// workload identity but missing namespace
+	{map[string]string{"queueName": queueName}, true, queue, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
+	// correct workload identity
+	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
@@ -131,6 +135,15 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			subscriptionName: subscriptionName,
 		},
 		podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+		httpClient:  commonHTTPClient,
+	},
+	{
+		metadata: &azureServiceBusMetadata{
+			entityType:       subscription,
+			topicName:        topicName,
+			subscriptionName: subscriptionName,
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload,
 		httpClient:  commonHTTPClient,
 	},
 }
@@ -168,7 +181,7 @@ func TestGetServiceBusLength(t *testing.T) {
 		if connectionString != "" {
 			// Can actually test that numbers return
 			scaler.metadata.connection = connectionString
-			length, err := scaler.GetAzureServiceBusLength(context.TODO())
+			length, err := scaler.getAzureServiceBusLength(context.TODO())
 
 			if err != nil {
 				t.Errorf("Expected success but got error: %s", err)
@@ -179,7 +192,7 @@ func TestGetServiceBusLength(t *testing.T) {
 			}
 		} else {
 			// Just test error message
-			length, err := scaler.GetAzureServiceBusLength(context.TODO())
+			length, err := scaler.getAzureServiceBusLength(context.TODO())
 
 			if length != -1 || err == nil {
 				t.Errorf("Expected error but got success")

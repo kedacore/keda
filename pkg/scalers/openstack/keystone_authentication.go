@@ -12,7 +12,6 @@ import (
 	"time"
 
 	openstackutil "github.com/kedacore/keda/v2/pkg/scalers/openstack/utils"
-
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 

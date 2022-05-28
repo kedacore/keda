@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import test from 'ava';
 
 import SwiftClient from './openstack/openstack-swift-helper';
+import { createNamespace } from './helpers';
 
 var swiftClient: SwiftClient
 
@@ -98,7 +99,7 @@ test.serial.before(async t => {
     .replace('{{CONTAINER_NAME}}', swiftContainerName)
   )
 
-  sh.exec(`kubectl create namespace ${testNamespace}`)
+  createNamespace(testNamespace)
 
   t.is(
     0,
@@ -184,13 +185,13 @@ test.serial('Deployment should be scaled to 5 after deleting 5 objects in contai
     await swiftClient.deleteObject(swiftContainerName, '2/hello-world.txt')
     await swiftClient.deleteObject(swiftContainerName, '3/')
 
-    for (let i = 0; i < 110 && replicaCount !== '5'; i++) {
+    for (let i = 0; i < 60 && replicaCount !== '5'; i++) {
       replicaCount = sh.exec(
           `kubectl get deployment.apps/${deploymentName} --namespace ${testNamespace} -o jsonpath="{.spec.replicas}"`
       ).stdout
 
       if (replicaCount !== '5') {
-          sh.exec('sleep 3s')
+          sh.exec('sleep 10s')
       }
     }
 

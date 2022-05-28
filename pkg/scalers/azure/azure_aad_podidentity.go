@@ -47,14 +47,3 @@ func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, a
 
 	return token, nil
 }
-
-// AADToken is the token from Azure AD
-type AADToken struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    string `json:"expires_in"`
-	ExpiresOn    string `json:"expires_on"`
-	NotBefore    string `json:"not_before"`
-	Resource     string `json:"resource"`
-	TokenType    string `json:"token_type"`
-}

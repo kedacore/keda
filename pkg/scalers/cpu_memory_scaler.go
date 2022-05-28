@@ -25,6 +25,8 @@ type cpuMemoryMetadata struct {
 	AverageUtilization *int32
 }
 
+var cpuMemoryLog = logf.Log.WithName("cpu_memory_scaler")
+
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Scaler, error) {
 	meta, parseErr := parseResourceMetadata(config)
@@ -40,14 +42,21 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 
 func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 	meta := &cpuMemoryMetadata{}
-	if val, ok := config.TriggerMetadata["type"]; ok && val != "" {
-		meta.Type = v2beta2.MetricTargetType(val)
-	} else {
-		return nil, fmt.Errorf("no type given")
-	}
-
 	var value string
 	var ok bool
+	value, ok = config.TriggerMetadata["type"]
+	switch {
+	case ok && value != "" && config.MetricType != "":
+		return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+	case ok && value != "":
+		cpuMemoryLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		meta.Type = v2beta2.MetricTargetType(value)
+	case config.MetricType != "":
+		meta.Type = config.MetricType
+	default:
+		return nil, fmt.Errorf("no type given in neither trigger.metadata.type or trigger.metricType")
+	}
+
 	if value, ok = config.TriggerMetadata["value"]; !ok || value == "" {
 		return nil, fmt.Errorf("no value given")
 	}
