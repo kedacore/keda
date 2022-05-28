@@ -49,12 +49,13 @@ jobs:
 
       - name: Test
         run: make test
-
+      - run: |
+          ls
       - name: Create test Summary
         uses: test-summary/action@v1
         with:
           paths: |
-            **/tests-report.xml
+            tests-report.xml
         if: always()
 
   validate-arm64:
@@ -111,7 +112,7 @@ jobs:
         uses: test-summary/action@v1
         with:
           paths: |
-            **/tests-report.xml
+            tests-report.xml
         if: always()
 
   validate-dockerfiles:
