@@ -70,11 +70,11 @@ all: build
 ##@ Test
 .PHONY: install-test-deps
 install-test-deps:
-	go install github.com/jstemmer/go-junit-report@latest
+	go install github.com/jstemmer/go-junit-report/v2@latest
 
 .PHONY: test
-test: manifests generate fmt vet envtest install-test-deps ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out | go-junit-report -set-exit-code > tests-report.xml
+test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
 
 .PHONY: get-cluster-context
 get-cluster-context: ## Get Azure cluster context.
