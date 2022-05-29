@@ -54,7 +54,6 @@ jobs:
         uses: test-summary/action@v1
         with:
           paths: "report.xml"
-          show: "all"
         if: always()
 
   validate-arm64:
@@ -111,7 +110,6 @@ jobs:
         uses: test-summary/action@v1
         with:
           paths: "report.xml"
-          show: "all"
         if: always()
 
   validate-dockerfiles:
