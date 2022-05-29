@@ -245,9 +245,8 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if len(result.Data.Result) == 0 {
 		if s.metadata.ignoreNullValues {
 			return 0, nil
-		} else {
-			return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the result is empty", s.metadata.metricName)
 		}
+		return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the result is empty", s.metadata.metricName)
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
@@ -256,9 +255,8 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if valueLen == 0 {
 		if s.metadata.ignoreNullValues {
 			return 0, nil
-		} else {
-			return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the value list is empty", s.metadata.metricName)
 		}
+		return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the value list is empty", s.metadata.metricName)
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}
