@@ -48,16 +48,6 @@ jobs:
           SHA=$(git log -n 1 --pretty=format:"%H")
           echo "::set-output name=commit_sha::$SHA"
 
-      - name: Update status check
-        uses: LouisBrunner/checks-action@v1.1.1
-        if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ steps.parser.outputs.commit_sha }}
-          name: e2e tests
-          status: queued
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
-
   build-test-images:
     needs: triage
     runs-on: ubuntu-latest
