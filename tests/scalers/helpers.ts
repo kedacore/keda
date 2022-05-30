@@ -25,6 +25,26 @@ export async function waitForDeploymentReplicaCount(target: number, name: string
     return false
 }
 
+export async function waitForJobCount(target: number, namespace: string, iterations = 10, interval = 3000): Promise<boolean> {
+    for (let i = 0; i < iterations; i++) {
+        let jobCountStr = sh.exec(`kubectl get job --namespace ${namespace} | wc -l`).stdout.replace(/[\r\n]/g,"")
+        try {
+            let jobCount = parseInt(jobCountStr, 10)
+            // This method counts also the header line in the output, so we have to remove 1 if the jobCount is > 1
+            if (jobCount > 0) {
+                jobCount--
+            }
+
+            if (jobCount === target) {
+                return true
+            }
+        } catch { }
+
+        await sleep(interval)
+    }
+    return false
+}
+
 export async function createNamespace(namespace: string) {
     const namespaceFile = tmp.fileSync()
     fs.writeFileSync(namespaceFile.name, namespaceTemplate.replace('{{NAMESPACE}}', namespace))

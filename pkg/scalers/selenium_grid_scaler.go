@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,12 +29,13 @@ type seleniumGridScaler struct {
 }
 
 type seleniumGridScalerMetadata struct {
-	url            string
-	browserName    string
-	targetValue    int64
-	browserVersion string
-	unsafeSsl      bool
-	scalerIndex    int
+	url                string
+	browserName        string
+	sessionBrowserName string
+	targetValue        int64
+	browserVersion     string
+	unsafeSsl          bool
+	scalerIndex        int
 }
 
 type seleniumResponse struct {
@@ -47,6 +49,7 @@ type data struct {
 
 type grid struct {
 	MaxSession int `json:"maxSession"`
+	NodeCount  int `json:"nodeCount"`
 }
 
 type sessionsInfo struct {
@@ -107,6 +110,12 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.browserName = val
 	} else {
 		return nil, fmt.Errorf("no browser name given in metadata")
+	}
+
+	if val, ok := config.TriggerMetadata["sessionBrowserName"]; ok {
+		meta.sessionBrowserName = val
+	} else {
+		meta.sessionBrowserName = meta.browserName
 	}
 
 	if val, ok := config.TriggerMetadata["browserVersion"]; ok && val != "" {
@@ -172,7 +181,7 @@ func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ grid { maxSession }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
 
 	if err != nil {
@@ -199,14 +208,14 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName)
 	if err != nil {
 		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string) (int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string) (int64, error) {
 	var count int64
 	var seleniumResponse = seleniumResponse{}
 
@@ -221,7 +230,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 			if capability.BrowserName == browserName {
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) {
 					count++
-				} else if capability.BrowserVersion == "" && browserVersion == DefaultBrowserVersion {
+				} else if browserVersion == DefaultBrowserVersion {
 					count++
 				}
 			}
@@ -234,7 +243,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, session := range sessions {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
-			if capability.BrowserName == browserName {
+			if capability.BrowserName == sessionBrowserName {
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) {
 					count++
 				} else if browserVersion == DefaultBrowserVersion {
@@ -247,10 +256,12 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	}
 
 	var gridMaxSession = int64(seleniumResponse.Data.Grid.MaxSession)
+	var gridNodeCount = int64(seleniumResponse.Data.Grid.NodeCount)
 
-	if gridMaxSession > 0 {
-		count = (count + gridMaxSession - 1) / gridMaxSession
+	if gridMaxSession > 0 && gridNodeCount > 0 {
+		// Get count, convert count to next highest int64
+		var floatCount = float64(count) / (float64(gridMaxSession) / float64(gridNodeCount))
+		count = int64(math.Ceil(floatCount))
 	}
-
 	return count, nil
 }

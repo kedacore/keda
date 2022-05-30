@@ -2,7 +2,7 @@ import * as sh from "shelljs"
 import test from "ava"
 import { createNamespace, createYamlFile, waitForDeploymentReplicaCount } from "./helpers"
 
-const testName = "test-external-scaler"
+const testName = "test-external-scaler-so"
 const testNamespace = `${testName}-ns`
 const scalerName = `${testName}-scaler`
 const serviceName = `${testName}-service`
@@ -67,7 +67,7 @@ test.serial("Deployment should scale up to minReplicaCount", async t => {
 test.serial("Deployment should scale up to maxReplicaCount", async t => {
     // Modify scaled object's metricValue to induce scaling
     t.is(
-        sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml.replace("{{VALUE}}", `${threshold * 2}`))} -n ${testNamespace}`).code,
+        sh.exec(`kubectl apply -f ${createYamlFile(scaledObjectYaml.replace("{{VALUE}}", `${threshold * maxReplicaCount}`))} -n ${testNamespace}`).code,
         0,
         "Modifying scaled object should work"
     )

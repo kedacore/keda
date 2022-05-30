@@ -19,3 +19,8 @@ _Provide a description of what has been changed_
   If it requires multiple PRs and/or a PR on another repo as well, please use "Relates to" instead.
 -->
 Fixes #
+
+<!--
+  Make sure to link the related PRs for changes such as documentation & Helm charts
+-->
+Relates to #
