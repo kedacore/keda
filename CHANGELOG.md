@@ -41,6 +41,13 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Improvements
 
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
+- **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
+- **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
+
+### Fixes
+
+- **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
+- **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
 
 ### Deprecations
 
@@ -52,6 +59,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Other
 
+- **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
 

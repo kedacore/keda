@@ -172,8 +172,6 @@ func main() {
 	defer klog.Flush()
 	klog.InitFlags(nil)
 
-	printVersion()
-
 	cmd := &Adapter{}
 	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(scheme.Scheme))
 	cmd.OpenAPIConfig.Info.Title = "keda-adapter"
@@ -188,6 +186,8 @@ func main() {
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
 	}
+
+	printVersion()
 
 	ctrl.SetLogger(logger)
 
