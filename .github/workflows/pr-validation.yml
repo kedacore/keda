@@ -50,6 +50,12 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Create test Summary
+        uses: test-summary/action@v1
+        with:
+          paths: "report.xml"
+        if: always()
+
   validate-arm64:
     name: Validate PR on ARM64
     runs-on: ARM64
@@ -99,6 +105,12 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Create test Summary
+        uses: test-summary/action@v1
+        with:
+          paths: "report.xml"
+        if: always()
 
   validate-dockerfiles:
     name: Validate Dockerfiles
