@@ -322,6 +322,22 @@ func TestShouldParseCheckpointForBlobMetadata(t *testing.T) {
 	assert.Equal(t, url.Path, "/containername/eventhubnamespace.servicebus.windows.net/hub-test/$default/checkpoint/0")
 }
 
+func TestShouldParseCheckpointForBlobMetadataWithError(t *testing.T) {
+	eventHubInfo := EventHubInfo{
+		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test\n",
+		EventHubConsumerGroup: "$Default",
+		BlobContainer:         "containername",
+		CheckpointStrategy:    "blobMetadata",
+	}
+
+	cp := newCheckpointer(eventHubInfo, "0")
+	_, err := cp.resolvePath(eventHubInfo)
+
+	if err == nil {
+		t.Errorf("Should have return an err on invalid url characters")
+	}
+}
+
 func TestShouldParseCheckpointForBlobMetadataWithPodIdentity(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		Namespace:                "eventhubnamespace",
