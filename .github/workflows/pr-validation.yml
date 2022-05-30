@@ -168,6 +168,32 @@ jobs:
       - name: Build tools
         if: steps.filter.outputs.devcontainer == 'true'
         run: make docker-build-dev-containers
+  
+  validate-dev-container-arm64:
+    name: Validate dev-container arm64
+    runs-on: ARM64
+    container: arm64v8/ubuntu:focal
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            devcontainer:
+              - '.devcontainer/Dockerfile'
+
+      - name: Install Docker
+        if: steps.filter.outputs.devcontainer == 'true'
+        uses: docker-practice/actions-setup-docker@master
+      
+      - name: Install make
+        if: steps.filter.outputs.devcontainer == 'true'
+        run: apt update && apt install -y make
+
+      - name: Build tools
+        if: steps.filter.outputs.devcontainer == 'true'
+        run: make docker-build-dev-containers
 
   statics:
     name: Static Checks
