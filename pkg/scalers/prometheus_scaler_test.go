@@ -28,7 +28,7 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	// all properly formed, with namespace
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
 	// all properly formed, with ignoreNullValues
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "disable"}, false},
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "false"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName

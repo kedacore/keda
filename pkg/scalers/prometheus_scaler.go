@@ -146,12 +146,14 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 	meta.ignoreNullValues = defaultIgnoreNullValues
 	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
-		if val == "disable" {
-			meta.ignoreNullValues = false
-		} else if val != "enable" {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
-				"please using enable or disable", val)
+		ignoreNullValues, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, " +
+				"please using ture or false", val)
 		}
+		meta.ignoreNullValues = ignoreNullValues
+	} else {
+		meta.ignoreNullValues = defaultIgnoreNullValues
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -246,7 +248,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the result is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the result is empty", s.metadata.metricName)
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
@@ -256,7 +258,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target maybe lost, the value list is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the value list is empty", s.metadata.metricName)
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}
