@@ -149,11 +149,9 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		ignoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, " +
-				"please using ture or false", val)
+				"please use ture or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
-	} else {
-		meta.ignoreNullValues = defaultIgnoreNullValues
 	}
 
 	meta.scalerIndex = config.ScalerIndex
