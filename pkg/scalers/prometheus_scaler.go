@@ -148,7 +148,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
 		ignoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, " +
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
 				"please use true or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
