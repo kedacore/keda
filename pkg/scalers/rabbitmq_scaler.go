@@ -183,7 +183,6 @@ func resolveHostFromConfig(config *ScalerConfig, protocol string) (*string, erro
 		// host: <meta.host>:<port>
 		host = fmt.Sprintf("%s:%s", host, val)
 	}
-	fmt.Printf("host: %s\n", host)
 	return &host, nil
 }
 
