@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
