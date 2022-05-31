@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Install prerequisite
 RUN apt update && \
@@ -60,9 +60,10 @@ RUN RELEASE_VERSION=v1.0.1 && \
     cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && \
     rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 
-ENV PATH=${PATH}:/usr/local/go/bin \
-    GOROOT=/usr/local/go \
-    GOPATH=/go
+ENV PATH=${PATH}:/usr/local/go/bin
+ENV GOROOT=/usr/local/go
+ENV GOPATH=/go
+ENV PATH=${PATH}:${GOPATH}/bin
 
 # Install FOSSA tooling
 RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
