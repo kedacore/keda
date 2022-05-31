@@ -22,7 +22,7 @@ jobs:
           sha: ${{ github.event.pull_request.head.sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           status: queued
-     
+
       - uses: LouisBrunner/checks-action@v1.1.1
         name: Skip e2e
         if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
