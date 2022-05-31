@@ -4,7 +4,6 @@ on:
     types:
       - opened
       - synchronize
-      - reopened
 
 env:
   SKIP_E2E_TAG: skip-e2e
