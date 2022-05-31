@@ -2,16 +2,17 @@ name: e2e-tests
 on:
   pull_request_target:
     types:
-      - labeled
-      - unlabeled
+      - opened
+      - synchronize
+      - reopened
 
 env:
   SKIP_E2E_TAG: skip-e2e
   E2E_CHECK_NAME: e2e tests
 
 jobs:
-  e2e-checker:
-    name: label checker
+  check-creator:
+    name: check-creator
     runs-on: ubuntu-latest
     steps:
       - uses: LouisBrunner/checks-action@v1.1.1
@@ -25,7 +26,7 @@ jobs:
      
       - uses: LouisBrunner/checks-action@v1.1.1
         name: Skip e2e
-        if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ github.event.pull_request.head.sha }}
