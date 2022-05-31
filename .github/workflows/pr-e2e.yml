@@ -3,6 +3,9 @@ on:
   issue_comment:
     types: [created]
 
+env:
+  E2E_CHECK_NAME: e2e tests
+
 jobs:
   triage:
     runs-on: ubuntu-latest
@@ -60,7 +63,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
-          name: e2e tests
+          name: ${{ env.E2E_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
@@ -97,6 +100,15 @@ jobs:
     concurrency: pr-e2e-tests
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@v1.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
       - uses: actions/checkout@v3
 
       - name: Checkout Pull Request
@@ -184,7 +196,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
-          name: e2e tests
+          name: ${{ env.E2E_CHECK_NAME }}
           conclusion: success
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
@@ -202,6 +214,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
-          name: e2e tests
+          name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
