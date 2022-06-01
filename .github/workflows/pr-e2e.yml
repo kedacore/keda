@@ -4,7 +4,7 @@ on:
     types: [created]
 
 env:
-  E2E_LABEL: ok-to-merge
+  E2E_CHECK_NAME: e2e tests
 
 jobs:
   triage:
@@ -13,8 +13,11 @@ jobs:
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
-      image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ github.event.comment.id }}"
+      image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
+      commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
+      - uses: actions/checkout@v3
+
       - uses: tspascoal/get-user-teams-membership@v1
         id: checkUserMember
         with:
@@ -31,13 +34,22 @@ jobs:
             **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           reactions: rocket
 
-      - name: Get Pull Request number
+      - name: Parse git info
+        if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
         id: parser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Get PR number
           PR_URL="${{ github.event.issue.pull_request.url }}"
           PR_NUM=${PR_URL##*/}
           echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
           echo "::set-output name=pr_num::$PR_NUM"
+          # Get commit SHA
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh pr checkout $PR_NUM
+          SHA=$(git log -n 1 --pretty=format:"%H")
+          echo "::set-output name=commit_sha::$SHA"
 
   build-test-images:
     needs: triage
@@ -46,15 +58,16 @@ jobs:
     container: ghcr.io/kedacore/build-tools:main
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
-      - uses: actions/checkout@v3
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@v1.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - name: Remove '${{ env.E2E_LABEL}}' label
-        id: remove-label
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
+      - uses: actions/checkout@v3
 
       - name: Checkout Pull Request
         env:
@@ -87,15 +100,16 @@ jobs:
     concurrency: pr-e2e-tests
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
-      - uses: actions/checkout@v3
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@v1.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - name: Remove '${{ env.E2E_LABEL}}' label
-        id: remove-label
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --remove-label '${{ env.E2E_LABEL}}'
+      - uses: actions/checkout@v3
 
       - name: Checkout Pull Request
         env:
@@ -176,14 +190,15 @@ jobs:
           commentId: ${{ github.event.comment.id }}
           reaction: "+1"
 
-      - name: Add '${{ env.E2E_LABEL}}' label
-        id: add-label
+      - name: Set status success
+        uses: LouisBrunner/checks-action@v1.1.1
         if: steps.test.outcome == 'success'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          gh pr edit ${{ needs.triage.outputs.pr_num }} --add-label '${{ env.E2E_LABEL}}'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          conclusion: success
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@v1
@@ -192,3 +207,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
           reaction: "-1"
+
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@v1.1.1
+        if: steps.test.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          conclusion: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
