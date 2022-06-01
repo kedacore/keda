@@ -1,9 +1,10 @@
 package util
 
 import (
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
