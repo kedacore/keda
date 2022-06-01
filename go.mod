@@ -20,7 +20,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.32.0
 	github.com/aws/aws-sdk-go v1.44.5
-	github.com/denisenkom/go-mssqldb v0.12.0
+	github.com/denisenkom/go-mssqldb v0.12.2
 	github.com/dysnix/predictkube-libs v0.0.3
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
 	github.com/elastic/go-elasticsearch/v7 v7.17.1
@@ -144,7 +144,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
-	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
