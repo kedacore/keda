@@ -27,6 +27,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 	// all properly formed, with namespace
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
+	// all properly formed, with ignoreNullValues
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "false"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName
@@ -37,6 +39,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "one", "query": "up"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
+	// ignoreNullValues with wrong value
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "xxxx"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -126,55 +130,86 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 }
 
 type prometheusQromQueryResultTestData struct {
-	name           string
-	bodyStr        string
-	responseStatus int
-	expectedValue  float64
-	isError        bool
+	name             string
+	bodyStr          string
+	responseStatus   int
+	expectedValue    float64
+	isError          bool
+	ignoreNullValues bool
 }
 
 var testPromQueryResult = []prometheusQromQueryResultTestData{
 	{
-		name:           "no results",
-		bodyStr:        `{}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  0,
-		isError:        false,
+		name:             "no results",
+		bodyStr:          `{}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
 	},
 	{
-		name:           "no values",
-		bodyStr:        `{"data":{"result":[]}}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  0,
-		isError:        false,
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
 	},
 	{
-		name:           "valid value",
-		bodyStr:        `{"data":{"result":[{"value": ["1", "2"]}]}}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  2,
-		isError:        false,
+		name:             "no values but shouldn't ignore",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
 	},
 	{
-		name:           "not enough values",
-		bodyStr:        `{"data":{"result":[{"value": ["1"]}]}}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  -1,
-		isError:        true,
+		name:             "value is empty list",
+		bodyStr:          `{"data":{"result":[{"value": []}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
 	},
 	{
-		name:           "multiple results",
-		bodyStr:        `{"data":{"result":[{},{}]}}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  -1,
-		isError:        true,
+		name:             "value is empty list but shouldn't ignore",
+		bodyStr:          `{"data":{"result":[{"value": []}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
 	},
 	{
-		name:           "error status response",
-		bodyStr:        `{}`,
-		responseStatus: http.StatusBadRequest,
-		expectedValue:  -1,
-		isError:        true,
+		name:             "valid value",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "2"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    2,
+		isError:          false,
+		ignoreNullValues: true,
+	},
+	{
+		name:             "not enough values",
+		bodyStr:          `{"data":{"result":[{"value": ["1"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: true,
+	},
+	{
+		name:             "multiple results",
+		bodyStr:          `{"data":{"result":[{},{}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: true,
+	},
+	{
+		name:             "error status response",
+		bodyStr:          `{}`,
+		responseStatus:   http.StatusBadRequest,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: true,
 	},
 }
 
@@ -191,7 +226,8 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 
 			scaler := prometheusScaler{
 				metadata: &prometheusMetadata{
-					serverAddress: server.URL,
+					serverAddress:    server.URL,
+					ignoreNullValues: testData.ignoreNullValues,
 				},
 				httpClient: http.DefaultClient,
 			}
@@ -211,11 +247,12 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 
 func TestPrometheusScalerCortexHeader(t *testing.T) {
 	testData := prometheusQromQueryResultTestData{
-		name:           "no values",
-		bodyStr:        `{"data":{"result":[]}}`,
-		responseStatus: http.StatusOK,
-		expectedValue:  0,
-		isError:        false,
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
 	}
 	cortexOrgValue := "my-org"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -229,8 +266,9 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			serverAddress: server.URL,
-			cortexOrgID:   cortexOrgValue,
+			serverAddress:    server.URL,
+			cortexOrgID:      cortexOrgValue,
+			ignoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}
