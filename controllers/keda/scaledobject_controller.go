@@ -408,7 +408,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 
 func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler) bool {
 	// if HPA name defined in SO -> check if equals to the found HPA
-	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
 		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != foundHpa.Name
 	}
 	// if HPA name not defined in SO -> check if the found HPA is equals to the default
