@@ -6,7 +6,8 @@ on:
       - unlabeled
 
 env:
-  SKIP_E2E_TAG: skip-e2e
+  SKIP_E2E_LABEL: skip-e2e
+  NOT_READY_LABEL: not-ready
   E2E_CHECK_NAME: e2e tests
 
 jobs:
@@ -25,7 +26,7 @@ jobs:
 
       - uses: LouisBrunner/checks-action@v1.1.1
         name: Skip e2e
-        if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_LABEL )}}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ github.event.pull_request.head.sha }}
@@ -33,3 +34,9 @@ jobs:
           conclusion: success
           output: |
             {"summary": "skipped by maintainer"}
+
+      - uses: docker://agilepathway/pull-request-label-checker:latest
+        name: Not ready checker
+        with:
+          none_of: ${{ env.NOT_READY_LABEL }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
