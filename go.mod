@@ -5,7 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go/compute v1.6.1
 	cloud.google.com/go/monitoring v1.5.0
-	cloud.google.com/go/storage v1.22.0
+	cloud.google.com/go/storage v1.22.1
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
 	github.com/Azure/azure-kusto-go v0.6.0
@@ -55,7 +55,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.mongodb.org/mongo-driver v1.9.0
 	google.golang.org/api v0.77.0
-	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21
+	google.golang.org/genproto v0.0.0-20220518221133-4f43b3371335
 	google.golang.org/grpc v1.46.0
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.23.6
