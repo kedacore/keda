@@ -15,7 +15,7 @@ require (
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.27
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
-	github.com/AzureAD/microsoft-authentication-library-for-go v0.4.0
+	github.com/AzureAD/microsoft-authentication-library-for-go v0.5.1
 	github.com/DataDog/datadog-api-client-go v1.13.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.32.0
