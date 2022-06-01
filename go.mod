@@ -39,7 +39,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.8.2
 	github.com/lib/pq v1.10.5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.78.0
+	github.com/newrelic/newrelic-client-go v0.85.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
