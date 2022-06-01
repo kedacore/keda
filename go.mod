@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/vault/api v1.5.0
 	github.com/imdario/mergo v0.3.12
 	github.com/influxdata/influxdb-client-go/v2 v2.8.2
-	github.com/lib/pq v1.10.5
+	github.com/lib/pq v1.10.6
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/newrelic/newrelic-client-go v0.78.0
 	github.com/onsi/ginkgo v1.16.5
