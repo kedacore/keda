@@ -147,6 +147,14 @@ jobs:
             tools:
               - 'tools/**'
 
+      - name: Set up QEMU
+        if: steps.filter.outputs.tools == 'true'
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        if: steps.filter.outputs.tools == 'true'
+        uses: docker/setup-buildx-action@v2
+
       - name: Build tools
         if: steps.filter.outputs.tools == 'true'
         run: make docker-build-tools
