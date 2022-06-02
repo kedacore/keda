@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
-
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -75,20 +74,18 @@ func (m *mockAwsDynamoDBStream) DescribeStream(input *dynamodbstreams.DescribeSt
 				StreamDescription: &dynamodbstreams.StreamDescription{
 					Shards: generateTestDynamoDBStreamShards(5),
 				}}, nil
-		} else {
-			lastShardId := "testid"
-			return &dynamodbstreams.DescribeStreamOutput{
-				StreamDescription: &dynamodbstreams.StreamDescription{
-					Shards:               generateTestDynamoDBStreamShards(100),
-					LastEvaluatedShardId: &lastShardId,
-				}}, nil
 		}
+		lastShardID := "testid"
+		return &dynamodbstreams.DescribeStreamOutput{
+			StreamDescription: &dynamodbstreams.StreamDescription{
+				Shards:               generateTestDynamoDBStreamShards(100),
+				LastEvaluatedShardId: &lastShardID,
+			}}, nil
 	default:
 		return &dynamodbstreams.DescribeStreamOutput{
 			StreamDescription: &dynamodbstreams.StreamDescription{
 				Shards: generateTestDynamoDBStreamShards(5),
 			}}, nil
-
 	}
 }
 
@@ -99,7 +96,7 @@ type mockAwsDynamoDB struct {
 func (m *mockAwsDynamoDB) DescribeTable(input *dynamodb.DescribeTableInput) (*dynamodb.DescribeTableOutput, error) {
 	switch *input.TableName {
 	case testAWSDynamoDBInvalidTable:
-		return nil, fmt.Errorf("DynamoDB Stream Arn is invlid")
+		return nil, fmt.Errorf("DynamoDB Stream Arn is invalid")
 	case testAWSDynamoDBErrorTable:
 		return &dynamodb.DescribeTableOutput{
 			Table: &dynamodb.TableDescription{

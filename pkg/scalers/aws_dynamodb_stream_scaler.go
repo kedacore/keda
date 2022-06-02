@@ -9,12 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
-
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,14 +75,10 @@ func parseAwsDynamoDBStreamMetadata(config *ScalerConfig) (*awsDynamoDBStreamMet
 	meta := awsDynamoDBStreamMetadata{}
 	meta.targetShardCount = defaultTargetDBStreamShardCount
 
-	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
-		shardCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.targetShardCount = defaultTargetDBStreamShardCount
-			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamShardCount)
-		} else {
-			meta.targetShardCount = shardCount
-		}
+	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
+		meta.awsRegion = val
+	} else {
+		return nil, fmt.Errorf("no awsRegion given")
 	}
 
 	if val, ok := config.TriggerMetadata["tableName"]; ok && val != "" {
@@ -93,10 +87,14 @@ func parseAwsDynamoDBStreamMetadata(config *ScalerConfig) (*awsDynamoDBStreamMet
 		return nil, fmt.Errorf("no tableName given")
 	}
 
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, fmt.Errorf("no awsRegion given")
+	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
+		shardCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			meta.targetShardCount = defaultTargetDBStreamShardCount
+			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamShardCount)
+		} else {
+			meta.targetShardCount = shardCount
+		}
 	}
 
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
@@ -200,18 +198,18 @@ func (s *awsDynamoDBStreamScaler) GetMetrics(ctx context.Context, metricName str
 // Get DynamoDB Stream Shard Count
 func (s *awsDynamoDBStreamScaler) GetDynamoDBStreamShardCount() (int64, error) {
 	var shardNum int64
-	var lastShardId *string
+	var lastShardID *string
 
 	input := dynamodbstreams.DescribeStreamInput{
 		StreamArn: s.streamArn,
 	}
 	for {
-		if lastShardId != nil {
+		if lastShardID != nil {
 			// The upper limit of shard num to retrun is 100.
 			// ExclusiveStartShardId is the shard ID of the first item that the operation will evaluate.
 			input = dynamodbstreams.DescribeStreamInput{
 				StreamArn:             s.streamArn,
-				ExclusiveStartShardId: lastShardId,
+				ExclusiveStartShardId: lastShardID,
 			}
 		}
 		des, err := s.dbStreamClient.DescribeStream(&input)
@@ -219,10 +217,10 @@ func (s *awsDynamoDBStreamScaler) GetDynamoDBStreamShardCount() (int64, error) {
 			return -1, err
 		}
 		shardNum += int64(len(des.StreamDescription.Shards))
-		lastShardId = des.StreamDescription.LastEvaluatedShardId
+		lastShardID = des.StreamDescription.LastEvaluatedShardId
 		// If LastEvaluatedShardId is empty, then the "last page" of results has been
 		// processed and there is currently no more data to be retrieved.
-		if lastShardId == nil {
+		if lastShardID == nil {
 			break
 		}
 	}
