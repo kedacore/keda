@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
@@ -64,7 +65,7 @@ type mockAwsDynamoDBStream struct {
 	dynamodbstreamsiface.DynamoDBStreamsAPI
 }
 
-func (m *mockAwsDynamoDBStream) DescribeStream(input *dynamodbstreams.DescribeStreamInput) (*dynamodbstreams.DescribeStreamOutput, error) {
+func (m *mockAwsDynamoDBStream) DescribeStreamWithContext(ctx context.Context, input *dynamodbstreams.DescribeStreamInput, opts ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
 	switch *input.StreamArn {
 	case testAWSDynamoDBStreamErrorArn:
 		return nil, errors.New("Error dynamodbstream DescribeStream")
@@ -93,7 +94,7 @@ type mockAwsDynamoDB struct {
 	dynamodbiface.DynamoDBAPI
 }
 
-func (m *mockAwsDynamoDB) DescribeTable(input *dynamodb.DescribeTableInput) (*dynamodb.DescribeTableOutput, error) {
+func (m *mockAwsDynamoDB) DescribeTableWithContext(ctx context.Context, input *dynamodb.DescribeTableInput, opts ...request.Option) (*dynamodb.DescribeTableOutput, error) {
 	switch *input.TableName {
 	case testAWSDynamoDBInvalidTable:
 		return nil, fmt.Errorf("DynamoDB Stream Arn is invalid")
@@ -369,7 +370,7 @@ func TestAwsDynamoDBStreamGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		streamArn, err := getDynamoDBStreamArn(&mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err := getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err != nil {
 			t.Fatal("Could not get dynamodb stream arn:", err)
 		}
@@ -388,7 +389,8 @@ func TestAwsDynamoDBStreamScalerGetMetrics(t *testing.T) {
 		var value []external_metrics.ExternalMetricValue
 		var err error
 		var streamArn *string
-		streamArn, err = getDynamoDBStreamArn(&mockAwsDynamoDB{}, &meta.tableName)
+		ctx := context.Background()
+		streamArn, err = getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamScaler{"", meta, streamArn, &mockAwsDynamoDBStream{}}
 			value, err = scaler.GetMetrics(context.Background(), "MetricName", selector)
@@ -411,7 +413,8 @@ func TestAwsDynamoDBStreamScalerIsActive(t *testing.T) {
 		var value bool
 		var err error
 		var streamArn *string
-		streamArn, err = getDynamoDBStreamArn(&mockAwsDynamoDB{}, &meta.tableName)
+		ctx := context.Background()
+		streamArn, err = getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamScaler{"", meta, streamArn, &mockAwsDynamoDBStream{}}
 			value, err = scaler.IsActive(context.Background())

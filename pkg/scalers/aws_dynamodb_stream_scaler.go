@@ -45,7 +45,7 @@ type awsDynamoDBStreamMetadata struct {
 var dynamodbStreamLog = logf.Log.WithName("aws_dynamodb_stream_scaler")
 
 // NewawsDynamoDBStreamScaler creates a new awsDynamoDBStreamScaler
-func NewAwsDynamoDBStreamScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBStreamScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
@@ -58,7 +58,7 @@ func NewAwsDynamoDBStreamScaler(config *ScalerConfig) (Scaler, error) {
 
 	dbClient, dbStreamClient := createClientsForDynamoDBStreamScaler(meta)
 
-	streamArn, err := getDynamoDBStreamArn(dbClient, &meta.tableName)
+	streamArn, err := getDynamoDBStreamArn(ctx, dbClient, &meta.tableName)
 	if err != nil {
 		return nil, fmt.Errorf("error dynamodb stream arn: %s", err)
 	}
@@ -140,8 +140,8 @@ func createClientsForDynamoDBStreamScaler(metadata *awsDynamoDBStreamMetadata) (
 	return dbClient, dbStreamClient
 }
 
-func getDynamoDBStreamArn(db dynamodbiface.DynamoDBAPI, tableName *string) (*string, error) {
-	tableOutput, err := db.DescribeTable(&dynamodb.DescribeTableInput{
+func getDynamoDBStreamArn(ctx context.Context, db dynamodbiface.DynamoDBAPI, tableName *string) (*string, error) {
+	tableOutput, err := db.DescribeTableWithContext(ctx, &dynamodb.DescribeTableInput{
 		TableName: tableName,
 	})
 	if err != nil {
@@ -155,7 +155,7 @@ func getDynamoDBStreamArn(db dynamodbiface.DynamoDBAPI, tableName *string) (*str
 
 // IsActive determines if we need to scale from zero
 func (s *awsDynamoDBStreamScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.GetDynamoDBStreamShardCount()
+	count, err := s.GetDynamoDBStreamShardCount(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +179,7 @@ func (s *awsDynamoDBStreamScaler) GetMetricSpecForScaling(context.Context) []v2b
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsDynamoDBStreamScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	shardCount, err := s.GetDynamoDBStreamShardCount()
+	shardCount, err := s.GetDynamoDBStreamShardCount(ctx)
 
 	if err != nil {
 		dynamodbStreamLog.Error(err, "error getting shard count")
@@ -196,7 +196,7 @@ func (s *awsDynamoDBStreamScaler) GetMetrics(ctx context.Context, metricName str
 }
 
 // Get DynamoDB Stream Shard Count
-func (s *awsDynamoDBStreamScaler) GetDynamoDBStreamShardCount() (int64, error) {
+func (s *awsDynamoDBStreamScaler) GetDynamoDBStreamShardCount(ctx context.Context) (int64, error) {
 	var shardNum int64
 	var lastShardID *string
 
@@ -212,7 +212,7 @@ func (s *awsDynamoDBStreamScaler) GetDynamoDBStreamShardCount() (int64, error) {
 				ExclusiveStartShardId: lastShardID,
 			}
 		}
-		des, err := s.dbStreamClient.DescribeStream(&input)
+		des, err := s.dbStreamClient.DescribeStreamWithContext(ctx, &input)
 		if err != nil {
 			return -1, err
 		}

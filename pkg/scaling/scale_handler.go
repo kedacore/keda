@@ -358,7 +358,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "aws-dynamodb":
 		return scalers.NewAwsDynamoDBScaler(config)
 	case "aws-dynamodb-stream":
-		return scalers.NewAwsDynamoDBStreamScaler(config)
+		return scalers.NewAwsDynamoDBStreamScaler(ctx, config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
