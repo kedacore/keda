@@ -9,13 +9,13 @@ import { createNamespace, sleep, waitForDeploymentReplicaCount } from './helpers
 const awsRegion = 'ap-northeast-1'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
-const dynamoDBStreamNamespace = 'keda-test'
+const dynamoDBStreamsNamespace = 'keda-test'
 const dynamoDBTableName = 'keda-table01'
 const nginxDeploymentName = 'nginx-deployment'
 
 let dynamoDBClient;
 let dynamoDBStreamsClient;
-let dynamoDBStreamShardNum;
+let dynamoDBStreamsShardNum;
 
 test.before(async t => {
 
@@ -28,7 +28,7 @@ test.before(async t => {
     }
   });
 
-  createNamespace(dynamoDBStreamNamespace)
+  createNamespace(dynamoDBStreamsNamespace)
 
   // Create table
   let params = {
@@ -70,27 +70,27 @@ test.before(async t => {
 
   let dbsResponse = await dynamoDBStreamsClient.send(describeStreamCommand)
   const shards = (dbsResponse.StreamDescription !== undefined) ? dbsResponse.StreamDescription.Shards : undefined
-  dynamoDBStreamShardNum = (( shards !== undefined ) ? shards.length : 0)
-  t.true( dynamoDBStreamShardNum > 0, 'dynamodb stream shard num should be greater than 0')
-  console.log( "dynamodb stream shard num is " + dynamoDBStreamShardNum )
+  dynamoDBStreamsShardNum = (( shards !== undefined ) ? shards.length : 0)
+  t.true( dynamoDBStreamsShardNum > 0, 'dynamodb stream shard num should be greater than 0')
+  console.log( "dynamodb stream shard num is " + dynamoDBStreamsShardNum )
 
   // Deploy nginx
   console.log('deploy nginx')
   const nginxTmpFile = tmp.fileSync()
   fs.writeFileSync(nginxTmpFile.name, nginxDeployYaml)
-  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamNamespace} -f ${nginxTmpFile.name}`).code, 'creating nginx deployment should work.')
+  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${nginxTmpFile.name}`).code, 'creating nginx deployment should work.')
 
   // wait for nginx to load
   console.log('wait for nginx to load')
   let nginxReadyReplicaCount = 1
-  await waitForDeploymentReplicaCount(nginxReadyReplicaCount, nginxDeploymentName, dynamoDBStreamNamespace, 30)
+  await waitForDeploymentReplicaCount(nginxReadyReplicaCount, nginxDeploymentName, dynamoDBStreamsNamespace, 30)
 
   t.is(1, nginxReadyReplicaCount, 'creating an Nginx deployment should work')
 })
 
 
 test.serial('Should start off deployment with 1 replicas', t => {
-  const replicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} --namespace ${dynamoDBStreamNamespace} -o jsonpath="{.spec.replicas}"`).stdout
+  const replicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} --namespace ${dynamoDBStreamsNamespace} -o jsonpath="{.spec.replicas}"`).stdout
   t.is(replicaCount, '1', 'Replica count should start out as 1')
 })
 
@@ -101,10 +101,10 @@ test.serial(`Replicas should scale up to the same number of shards after deployi
   console.log('deploy scaleobject')
   const scaleobjectTmpFile = tmp.fileSync()
   fs.writeFileSync(scaleobjectTmpFile.name, scaleObjectYaml)
-  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamNamespace} -f ${scaleobjectTmpFile.name}`).code, 'creating scaleobject should work.')
+  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleobjectTmpFile.name}`).code, 'creating scaleobject should work.')
 
   // Wait for nginx to scale up to the same number of shards
-  t.true(await waitForDeploymentReplicaCount(dynamoDBStreamShardNum, nginxDeploymentName, dynamoDBStreamNamespace, 300, 1000), 'Replica count should increase to the maxReplicaCount')
+  t.true(await waitForDeploymentReplicaCount(dynamoDBStreamsShardNum, nginxDeploymentName, dynamoDBStreamsNamespace, 300, 1000), 'Replica count should increase to the maxReplicaCount')
 })
 
 
@@ -114,7 +114,7 @@ test.after.always(async (t) => {
   await dynamoDBClient.send(deleteTableCommand)
 
   // delete k8s resources in the test namespace
-  t.is(0, sh.exec(`kubectl delete namespace ${dynamoDBStreamNamespace}`).code, 'Should delete DynamoDB Stream namespace')
+  t.is(0, sh.exec(`kubectl delete namespace ${dynamoDBStreamsNamespace}`).code, 'Should delete DynamoDB Streams namespace')
 })
 
 
@@ -168,7 +168,7 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: aws-dynamodb-stream-so
+  name: aws-dynamodb-streams-so
   labels:
     app: nginx
 spec:
@@ -179,7 +179,7 @@ spec:
   pollingInterval: 5  # Optional. Default: 30 seconds
   cooldownPeriod:  1  # Optional. Default: 300 seconds
   triggers:
-    - type: aws-dynamodb-stream
+    - type: aws-dynamodb-streams
       authenticationRef:
         name: keda-trigger-auth-aws-credentials
       metadata:

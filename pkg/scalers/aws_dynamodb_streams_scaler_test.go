@@ -19,23 +19,23 @@ import (
 )
 
 const (
-	testAWSDynamoDBStreamRoleArn          = "none"
-	testAWSDynamoDBStreamAccessKeyID      = "none"
-	testAWSDynamoDBStreamSecretAccessKey  = "none"
-	testAWSDynamoDBStreamSessionToken     = "none"
-	testAWSDynamoDBStreamRegion           = "ap-northeast-1"
-	testAWSDynamoDBStreamArnForSmallTable = "smallstreamarn"
-	testAWSDynamoDBStreamArnForBigTable   = "bigstreamarn"
-	testAWSDynamoDBStreamErrorArn         = "errorarn"
-	testAWSDynamoDBSmallTable             = "smalltable" // table with 5 shards
-	testAWSDynamoDBBigTable               = "bigtable"   // table with 105 shards
-	testAWSDynamoDBErrorTable             = "errortable"
-	testAWSDynamoDBInvalidTable           = "invalidtable"
+	testAWSDynamoDBStreamsRoleArn          = "none"
+	testAWSDynamoDBStreamsAccessKeyID      = "none"
+	testAWSDynamoDBStreamsSecretAccessKey  = "none"
+	testAWSDynamoDBStreamsSessionToken     = "none"
+	testAWSDynamoDBStreamsRegion           = "ap-northeast-1"
+	testAWSDynamoDBStreamsArnForSmallTable = "smallstreamarn"
+	testAWSDynamoDBStreamsArnForBigTable   = "bigstreamarn"
+	testAWSDynamoDBStreamsErrorArn         = "errorarn"
+	testAWSDynamoDBSmallTable              = "smalltable" // table with 5 shards
+	testAWSDynamoDBBigTable                = "bigtable"   // table with 105 shards
+	testAWSDynamoDBErrorTable              = "errortable"
+	testAWSDynamoDBInvalidTable            = "invalidtable"
 )
 
 var testAwsDynamoDBStreamAuthentication = map[string]string{
-	"awsAccessKeyId":     testAWSDynamoDBStreamAccessKeyID,
-	"awsSecretAccessKey": testAWSDynamoDBStreamSecretAccessKey,
+	"awsAccessKeyId":     testAWSDynamoDBStreamsAccessKeyID,
+	"awsSecretAccessKey": testAWSDynamoDBStreamsSecretAccessKey,
 }
 
 func generateTestDynamoDBStreamShards(shardNum int64) []*dynamodbstreams.Shard {
@@ -46,30 +46,30 @@ func generateTestDynamoDBStreamShards(shardNum int64) []*dynamodbstreams.Shard {
 	return shards
 }
 
-type parseAwsDynamoDBStreamMetadataTestData struct {
+type parseAwsDynamoDBStreamsMetadataTestData struct {
 	metadata    map[string]string
-	expected    *awsDynamoDBStreamMetadata
+	expected    *awsDynamoDBStreamsMetadata
 	authParams  map[string]string
 	isError     bool
 	comment     string
 	scalerIndex int
 }
 
-type awsDynamoDBStreamMetricIdentifier struct {
-	metadataTestData *parseAwsDynamoDBStreamMetadataTestData
+type awsDynamoDBStreamsMetricIdentifier struct {
+	metadataTestData *parseAwsDynamoDBStreamsMetadataTestData
 	scalerIndex      int
 	name             string
 }
 
-type mockAwsDynamoDBStream struct {
+type mockAwsDynamoDBStreams struct {
 	dynamodbstreamsiface.DynamoDBStreamsAPI
 }
 
-func (m *mockAwsDynamoDBStream) DescribeStreamWithContext(ctx context.Context, input *dynamodbstreams.DescribeStreamInput, opts ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
+func (m *mockAwsDynamoDBStreams) DescribeStreamWithContext(ctx context.Context, input *dynamodbstreams.DescribeStreamInput, opts ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
 	switch *input.StreamArn {
-	case testAWSDynamoDBStreamErrorArn:
+	case testAWSDynamoDBStreamsErrorArn:
 		return nil, errors.New("Error dynamodbstream DescribeStream")
-	case testAWSDynamoDBStreamArnForBigTable:
+	case testAWSDynamoDBStreamsArnForBigTable:
 		if input.ExclusiveStartShardId != nil {
 			return &dynamodbstreams.DescribeStreamOutput{
 				StreamDescription: &dynamodbstreams.StreamDescription{
@@ -101,44 +101,44 @@ func (m *mockAwsDynamoDB) DescribeTableWithContext(ctx context.Context, input *d
 	case testAWSDynamoDBErrorTable:
 		return &dynamodb.DescribeTableOutput{
 			Table: &dynamodb.TableDescription{
-				LatestStreamArn: aws.String(testAWSDynamoDBStreamErrorArn),
+				LatestStreamArn: aws.String(testAWSDynamoDBStreamsErrorArn),
 			},
 		}, nil
 	case testAWSDynamoDBBigTable:
 		return &dynamodb.DescribeTableOutput{
 			Table: &dynamodb.TableDescription{
-				LatestStreamArn: aws.String(testAWSDynamoDBStreamArnForBigTable),
+				LatestStreamArn: aws.String(testAWSDynamoDBStreamsArnForBigTable),
 			},
 		}, nil
 	default:
 		return &dynamodb.DescribeTableOutput{
 			Table: &dynamodb.TableDescription{
-				LatestStreamArn: aws.String(testAWSDynamoDBStreamArnForSmallTable),
+				LatestStreamArn: aws.String(testAWSDynamoDBStreamsArnForSmallTable),
 			},
 		}, nil
 	}
 }
 
-var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
+var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 	{
 		metadata:   map[string]string{},
 		authParams: testAWSKinesisAuthentication,
-		expected:   &awsDynamoDBStreamMetadata{},
+		expected:   &awsDynamoDBStreamsMetadata{},
 		isError:    true,
 		comment:    "metadata empty"},
 	{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
-		expected: &awsDynamoDBStreamMetadata{
+		expected: &awsDynamoDBStreamsMetadata{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamSecretAccessKey,
+				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				podIdentityOwner:   true,
 			},
 			scalerIndex: 0,
@@ -151,9 +151,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  "",
 			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams:  testAWSKinesisAuthentication,
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "missing dynamodb table name",
 		scalerIndex: 1,
@@ -164,7 +164,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 			"shardCount": "2",
 			"awsRegion":  ""},
 		authParams:  testAWSKinesisAuthentication,
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "properly formed dynamodb table name, empty region",
 		scalerIndex: 2,
@@ -173,15 +173,15 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
-		expected: &awsDynamoDBStreamMetadata{
-			targetShardCount: defaultTargetDBStreamShardCount,
+		expected: &awsDynamoDBStreamsMetadata{
+			targetShardCount: defaultTargetDBStreamsShardCount,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamSecretAccessKey,
+				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				podIdentityOwner:   true,
 			},
 			scalerIndex: 3,
@@ -194,15 +194,15 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "a",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
-		expected: &awsDynamoDBStreamMetadata{
-			targetShardCount: defaultTargetDBStreamShardCount,
+		expected: &awsDynamoDBStreamsMetadata{
+			targetShardCount: defaultTargetDBStreamsShardCount,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamSecretAccessKey,
+				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				podIdentityOwner:   true,
 			},
 			scalerIndex: 4,
@@ -215,12 +215,12 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
 			"awsAccessKeyID":     "",
-			"awsSecretAccessKey": testAWSDynamoDBStreamSecretAccessKey,
+			"awsSecretAccessKey": testAWSDynamoDBStreamsSecretAccessKey,
 		},
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "with AWS static credentials from TriggerAuthentication, missing Access Key Id",
 		scalerIndex: 5,
@@ -228,12 +228,12 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 	{metadata: map[string]string{
 		"tableName":  testAWSDynamoDBSmallTable,
 		"shardCount": "2",
-		"awsRegion":  testAWSDynamoDBStreamRegion},
+		"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
-			"awsAccessKeyID":     testAWSDynamoDBStreamAccessKeyID,
+			"awsAccessKeyID":     testAWSDynamoDBStreamsAccessKeyID,
 			"awsSecretAccessKey": "",
 		},
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
 		scalerIndex: 6,
@@ -242,20 +242,20 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
-			"awsAccessKeyID":     testAWSDynamoDBStreamAccessKeyID,
-			"awsSecretAccessKey": testAWSDynamoDBStreamSecretAccessKey,
-			"awsSessionToken":    testAWSDynamoDBStreamSessionToken,
+			"awsAccessKeyID":     testAWSDynamoDBStreamsAccessKeyID,
+			"awsSecretAccessKey": testAWSDynamoDBStreamsSecretAccessKey,
+			"awsSessionToken":    testAWSDynamoDBStreamsSessionToken,
 		},
-		expected: &awsDynamoDBStreamMetadata{
+		expected: &awsDynamoDBStreamsMetadata{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamSecretAccessKey,
-				awsSessionToken:    testAWSDynamoDBStreamSessionToken,
+				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				awsSessionToken:    testAWSDynamoDBStreamsSessionToken,
 				podIdentityOwner:   true,
 			},
 			scalerIndex: 5,
@@ -268,13 +268,13 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 		metadata: map[string]string{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamRegion},
+			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
 			"awsAccessKeyID":     "",
-			"awsSecretAccessKey": testAWSDynamoDBStreamSecretAccessKey,
-			"awsSessionToken":    testAWSDynamoDBStreamSessionToken,
+			"awsSecretAccessKey": testAWSDynamoDBStreamsSecretAccessKey,
+			"awsSessionToken":    testAWSDynamoDBStreamsSessionToken,
 		},
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
 		scalerIndex: 5,
@@ -282,13 +282,13 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 	{metadata: map[string]string{
 		"tableName":  testAWSDynamoDBSmallTable,
 		"shardCount": "2",
-		"awsRegion":  testAWSDynamoDBStreamRegion},
+		"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
-			"awsAccessKeyID":     testAWSDynamoDBStreamAccessKeyID,
+			"awsAccessKeyID":     testAWSDynamoDBStreamsAccessKeyID,
 			"awsSecretAccessKey": "",
-			"awsSessionToken":    testAWSDynamoDBStreamSessionToken,
+			"awsSessionToken":    testAWSDynamoDBStreamsSessionToken,
 		},
-		expected:    &awsDynamoDBStreamMetadata{},
+		expected:    &awsDynamoDBStreamsMetadata{},
 		isError:     true,
 		comment:     "with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
 		scalerIndex: 6,
@@ -296,16 +296,16 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 	{metadata: map[string]string{
 		"tableName":  testAWSDynamoDBSmallTable,
 		"shardCount": "2",
-		"awsRegion":  testAWSDynamoDBStreamRegion},
+		"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: map[string]string{
-			"awsRoleArn": testAWSDynamoDBStreamRoleArn,
+			"awsRoleArn": testAWSDynamoDBStreamsRoleArn,
 		},
-		expected: &awsDynamoDBStreamMetadata{
+		expected: &awsDynamoDBStreamsMetadata{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
-				awsRoleArn:       testAWSDynamoDBStreamRoleArn,
+				awsRoleArn:       testAWSDynamoDBStreamsRoleArn,
 				podIdentityOwner: true,
 			},
 			scalerIndex: 7,
@@ -317,13 +317,13 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 	{metadata: map[string]string{
 		"tableName":     testAWSDynamoDBSmallTable,
 		"shardCount":    "2",
-		"awsRegion":     testAWSDynamoDBStreamRegion,
+		"awsRegion":     testAWSDynamoDBStreamsRegion,
 		"identityOwner": "operator"},
 		authParams: map[string]string{},
-		expected: &awsDynamoDBStreamMetadata{
+		expected: &awsDynamoDBStreamsMetadata{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamRegion,
+			awsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				podIdentityOwner: false,
 			},
@@ -335,21 +335,21 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamMetadataTestData{
 	},
 }
 
-var awsDynamoDBStreamMetricIdentifiers = []awsDynamoDBStreamMetricIdentifier{
+var awsDynamoDBStreamMetricIdentifiers = []awsDynamoDBStreamsMetricIdentifier{
 	{&testAwsDynamoDBStreamMetadata[1], 0, fmt.Sprintf("s0-aws-dynamodb-stream-%s", testAWSDynamoDBSmallTable)},
 	{&testAwsDynamoDBStreamMetadata[1], 1, fmt.Sprintf("s1-aws-dynamodb-stream-%s", testAWSDynamoDBSmallTable)},
 }
 
-var awsDynamoDBStreamGetMetricTestData = []*awsDynamoDBStreamMetadata{
+var awsDynamoDBStreamsGetMetricTestData = []*awsDynamoDBStreamsMetadata{
 	{tableName: testAWSDynamoDBBigTable},
 	{tableName: testAWSDynamoDBSmallTable},
 	{tableName: testAWSDynamoDBErrorTable},
 	{tableName: testAWSDynamoDBInvalidTable},
 }
 
-func TestParseAwsDynamoDBStreamMetadata(t *testing.T) {
+func TestParseAwsDynamoDBStreamsMetadata(t *testing.T) {
 	for _, testData := range testAwsDynamoDBStreamMetadata {
-		result, err := parseAwsDynamoDBStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, ScalerIndex: testData.scalerIndex})
+		result, err := parseAwsDynamoDBStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -363,19 +363,19 @@ func TestParseAwsDynamoDBStreamMetadata(t *testing.T) {
 	}
 }
 
-func TestAwsDynamoDBStreamGetMetricSpecForScaling(t *testing.T) {
+func TestAwsDynamoDBStreamsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsDynamoDBStreamMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsDynamoDBStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAwsDynamoDBStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		streamArn, err := getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err := getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err != nil {
 			t.Fatal("Could not get dynamodb stream arn:", err)
 		}
-		mockAwsDynamoDBStreamScaler := awsDynamoDBStreamScaler{"", meta, streamArn, &mockAwsDynamoDBStream{}}
-		metricSpec := mockAwsDynamoDBStreamScaler.GetMetricSpecForScaling(ctx)
+		mockAwsDynamoDBStreamsScaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}}
+		metricSpec := mockAwsDynamoDBStreamsScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
@@ -383,16 +383,16 @@ func TestAwsDynamoDBStreamGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-func TestAwsDynamoDBStreamScalerGetMetrics(t *testing.T) {
+func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
-	for _, meta := range awsDynamoDBStreamGetMetricTestData {
+	for _, meta := range awsDynamoDBStreamsGetMetricTestData {
 		var value []external_metrics.ExternalMetricValue
 		var err error
 		var streamArn *string
 		ctx := context.Background()
-		streamArn, err = getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
-			scaler := awsDynamoDBStreamScaler{"", meta, streamArn, &mockAwsDynamoDBStream{}}
+			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}}
 			value, err = scaler.GetMetrics(context.Background(), "MetricName", selector)
 		}
 		switch meta.tableName {
@@ -408,15 +408,15 @@ func TestAwsDynamoDBStreamScalerGetMetrics(t *testing.T) {
 	}
 }
 
-func TestAwsDynamoDBStreamScalerIsActive(t *testing.T) {
-	for _, meta := range awsDynamoDBStreamGetMetricTestData {
+func TestAwsDynamoDBStreamsScalerIsActive(t *testing.T) {
+	for _, meta := range awsDynamoDBStreamsGetMetricTestData {
 		var value bool
 		var err error
 		var streamArn *string
 		ctx := context.Background()
-		streamArn, err = getDynamoDBStreamArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
-			scaler := awsDynamoDBStreamScaler{"", meta, streamArn, &mockAwsDynamoDBStream{}}
+			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}}
 			value, err = scaler.IsActive(context.Background())
 		}
 		switch meta.tableName {
