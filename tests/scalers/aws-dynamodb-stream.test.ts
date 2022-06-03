@@ -69,8 +69,9 @@ test.before(async t => {
   })
 
   let dbsResponse = await dynamoDBStreamsClient.send(describeStreamCommand)
-  const shards = (dbsResponse.StreamDescription !== undefined) ? dbsResponse.StreamDescription.Shards : undefined 
+  const shards = (dbsResponse.StreamDescription !== undefined) ? dbsResponse.StreamDescription.Shards : undefined
   dynamoDBStreamShardNum = (( shards !== undefined ) ? shards.length : 0)
+  t.true( dynamoDBStreamShardNum > 0, 'dynamodb stream shard num should be greater than 0')
   console.log( "dynamodb stream shard num is " + dynamoDBStreamShardNum )
 
   // Deploy nginx
