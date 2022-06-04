@@ -306,12 +306,12 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: docker-build-tools
-docker-build-tools: ## Build build-tools image
-	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+docker-build-tools: ## Build multi-arch Docker image for build-tools.
+	docker buildx build --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
 
 .PHONY: publish-build-tools
-publish-build-tools: docker-build-tools ## Publish build-tools image
-	docker push $(IMAGE_BUILD_TOOLS)
+publish-build-tools: ## Build and push multi-arch Docker image for build-tools.
+	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
 
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
