@@ -6,8 +6,6 @@ import (
 	"strconv"
 
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -169,21 +167,17 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, m
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
+func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
 	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectID, s.metadata.filter, val))
+			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %f", s.metadata.projectID, s.metadata.filter, val))
 	}
 
 	return val, err

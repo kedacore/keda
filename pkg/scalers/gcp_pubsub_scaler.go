@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -180,7 +178,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	var value int64
+	var value float64
 	var err error
 
 	switch s.metadata.mode {
@@ -198,11 +196,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 		}
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -224,7 +218,7 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64, error) {
+func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
