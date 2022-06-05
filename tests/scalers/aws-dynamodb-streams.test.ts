@@ -82,29 +82,48 @@ test.before(async t => {
 
   // wait for nginx to load
   console.log('wait for nginx to load')
-  let nginxReadyReplicaCount = 1
-  await waitForDeploymentReplicaCount(nginxReadyReplicaCount, nginxDeploymentName, dynamoDBStreamsNamespace, 30)
-
-  t.is(1, nginxReadyReplicaCount, 'creating an Nginx deployment should work')
+  const targetReplicaCount = 0
+  await waitForDeploymentReplicaCount(targetReplicaCount, nginxDeploymentName, dynamoDBStreamsNamespace, 30)
+  t.is(0, targetReplicaCount, 'creating an Nginx deployment should work')
 })
 
 
-test.serial('Should start off deployment with 1 replicas', t => {
+test.serial('Should start off deployment with 0 replicas', t => {
   const replicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} --namespace ${dynamoDBStreamsNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-  t.is(replicaCount, '1', 'Replica count should start out as 1')
+  t.is(replicaCount, '0', 'Replica count should start out as 0')
 })
 
 
-test.serial(`Replicas should scale up to the same number of shards after deploying scaleobject`, async t => {
+test.serial(`Replicas should scale up to 1 then up to 2 (the max) then back to 1`, async t => {
 
-  // Deploy scaleobject, etc
+  //// Check if replicas scale up to 1
   console.log('deploy scaleobject')
-  const scaleobjectTmpFile = tmp.fileSync()
-  fs.writeFileSync(scaleobjectTmpFile.name, scaleObjectYaml)
-  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleobjectTmpFile.name}`).code, 'creating scaleobject should work.')
+  let targetShardCount = dynamoDBStreamsShardNum
+  let scaleObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaleObjectFile.name, scaleObjectYaml.
+    replace('{{SHARD_COUNT}}',targetShardCount.toString()))
+  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleObjectFile.name}`).code, 'deploying scaleobject should work.')
 
-  // Wait for nginx to scale up to the same number of shards
-  t.true(await waitForDeploymentReplicaCount(dynamoDBStreamsShardNum, nginxDeploymentName, dynamoDBStreamsNamespace, 300, 1000), 'Replica count should increase to the maxReplicaCount')
+  t.true(await waitForDeploymentReplicaCount(1, nginxDeploymentName, dynamoDBStreamsNamespace, 180, 1000), 'Replica count should increase to 1')
+
+
+  //// Check if replicas scale up to 2 (= maxReplicaCount)
+  targetShardCount = 1
+  scaleObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaleObjectFile.name, scaleObjectYaml.
+    replace('{{SHARD_COUNT}}',targetShardCount.toString()))
+  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleObjectFile.name}`).code, 'deploying scaleobject should work.')
+
+  t.true(await waitForDeploymentReplicaCount(2, nginxDeploymentName, dynamoDBStreamsNamespace, 180, 1000), 'Replica count should increase to 2')
+
+  //// Check if replicas scale down to 1 
+  targetShardCount = dynamoDBStreamsShardNum
+  scaleObjectFile = tmp.fileSync()
+  fs.writeFileSync(scaleObjectFile.name, scaleObjectYaml.
+    replace('{{SHARD_COUNT}}',targetShardCount.toString()))
+  t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleObjectFile.name}`).code, 'deploying scaleobject should work.')
+
+  t.true(await waitForDeploymentReplicaCount(1, nginxDeploymentName, dynamoDBStreamsNamespace, 300, 1000), 'Replica count should descrese to 1')
 })
 
 
@@ -126,7 +145,7 @@ metadata:
   labels:
     app: nginx
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: nginx
@@ -174,8 +193,8 @@ metadata:
 spec:
   scaleTargetRef:
     name: ${nginxDeploymentName}
-  maxReplicaCount: 5
-  minReplicaCount: 1
+  maxReplicaCount: 2
+  minReplicaCount: 0
   pollingInterval: 5  # Optional. Default: 30 seconds
   cooldownPeriod:  1  # Optional. Default: 300 seconds
   triggers:
@@ -185,6 +204,6 @@ spec:
       metadata:
         awsRegion: ${awsRegion}         # Required
         tableName: ${dynamoDBTableName} # Required
-        shardCount: "1"                 # Optional. Default: 2
+        shardCount: "{{SHARD_COUNT}}"   # Optional. Default: 2
 ---
 `
