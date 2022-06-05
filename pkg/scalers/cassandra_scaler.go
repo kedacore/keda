@@ -32,7 +32,7 @@ type CassandraMetadata struct {
 	protocolVersion  int
 	keyspace         string
 	query            string
-	targetQueryValue int64
+	targetQueryValue float64
 	metricName       string
 	scalerIndex      int
 }
@@ -74,7 +74,7 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("targetQueryValue parsing error %s", err.Error())
 		}
@@ -184,7 +184,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -200,14 +200,14 @@ func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, met
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(num))
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // GetQueryResult returns the result of the scaler query.
-func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
-	var value int64
+func (s *cassandraScaler) GetQueryResult(ctx context.Context) (float64, error) {
+	var value float64
 	if err := s.session.Query(s.metadata.query).WithContext(ctx).Scan(&value); err != nil {
 		if err != gocql.ErrNotFound {
 			cassandraLog.Error(err, "query failed")
