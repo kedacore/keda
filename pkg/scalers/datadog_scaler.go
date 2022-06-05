@@ -10,8 +10,6 @@ import (
 
 	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,7 +27,7 @@ type datadogMetadata struct {
 	appKey      string
 	datadogSite string
 	query       string
-	queryValue  int64
+	queryValue  float64
 	vType       v2beta2.MetricTargetType
 	metricName  string
 	age         int
@@ -101,7 +99,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseInt(val, 10, 64)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -293,7 +291,7 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metadata.vType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -309,11 +307,7 @@ func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metri
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metrics from Datadog: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: s.metadata.metricName,
-		Value:      *resource.NewMilliQuantity(int64(num*1000), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

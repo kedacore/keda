@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -215,12 +213,7 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	for _, metricResult := range response.MetricValues {
-		metric := external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(metricResult.MetricValue, resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
-
+		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
 		metrics = append(metrics, metric)
 	}
 
