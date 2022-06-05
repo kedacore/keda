@@ -96,7 +96,7 @@ test.serial('Should start off deployment with 0 replicas', t => {
 
 test.serial(`Replicas should scale up to 1 then up to 2 (the max) then back to 1`, async t => {
 
-  //// Check if replicas scale up to 1
+  // Check if replicas scale up to 1
   console.log('deploy scaleobject')
   let targetShardCount = dynamoDBStreamsShardNum
   let scaleObjectFile = tmp.fileSync()
@@ -107,7 +107,7 @@ test.serial(`Replicas should scale up to 1 then up to 2 (the max) then back to 1
   t.true(await waitForDeploymentReplicaCount(1, nginxDeploymentName, dynamoDBStreamsNamespace, 180, 1000), 'Replica count should increase to 1')
 
 
-  //// Check if replicas scale up to 2 (= maxReplicaCount)
+  // Check if replicas scale up to 2 (= maxReplicaCount)
   targetShardCount = 1
   scaleObjectFile = tmp.fileSync()
   fs.writeFileSync(scaleObjectFile.name, scaleObjectYaml.
@@ -116,7 +116,7 @@ test.serial(`Replicas should scale up to 1 then up to 2 (the max) then back to 1
 
   t.true(await waitForDeploymentReplicaCount(2, nginxDeploymentName, dynamoDBStreamsNamespace, 180, 1000), 'Replica count should increase to 2')
 
-  //// Check if replicas scale down to 1 
+  // Check if replicas scale down to 1
   targetShardCount = dynamoDBStreamsShardNum
   scaleObjectFile = tmp.fileSync()
   fs.writeFileSync(scaleObjectFile.name, scaleObjectYaml.
