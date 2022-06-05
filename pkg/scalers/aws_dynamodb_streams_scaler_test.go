@@ -336,8 +336,8 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 }
 
 var awsDynamoDBStreamMetricIdentifiers = []awsDynamoDBStreamsMetricIdentifier{
-	{&testAwsDynamoDBStreamMetadata[1], 0, fmt.Sprintf("s0-aws-dynamodb-stream-%s", testAWSDynamoDBSmallTable)},
-	{&testAwsDynamoDBStreamMetadata[1], 1, fmt.Sprintf("s1-aws-dynamodb-stream-%s", testAWSDynamoDBSmallTable)},
+	{&testAwsDynamoDBStreamMetadata[1], 0, fmt.Sprintf("s0-aws-dynamodb-streams-%s", testAWSDynamoDBSmallTable)},
+	{&testAwsDynamoDBStreamMetadata[1], 1, fmt.Sprintf("s1-aws-dynamodb-streams-%s", testAWSDynamoDBSmallTable)},
 }
 
 var awsDynamoDBStreamsGetMetricTestData = []*awsDynamoDBStreamsMetadata{
