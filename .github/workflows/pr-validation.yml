@@ -169,15 +169,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            devcontainer:
-              - '.devcontainer/Dockerfile'
+      # - uses: dorny/paths-filter@v2
+      #   id: filter
+      #   with:
+      #     filters: |
+      #       devcontainer:
+      #         - '.devcontainer/Dockerfile'
 
       - name: Build tools
-        if: steps.filter.outputs.devcontainer == 'true'
+        # if: steps.filter.outputs.devcontainer == 'true'
         run: make docker-build-dev-containers
 
   statics:
