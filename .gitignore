@@ -44,3 +44,4 @@ cover.out
 
 # GO debug binary
 cmd/manager/debug.test
+report.xml

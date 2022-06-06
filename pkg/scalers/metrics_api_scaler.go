@@ -12,6 +12,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -192,11 +193,11 @@ func GetValueFromResponse(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
 	if r.Type == gjson.String {
-		v, err := strconv.ParseFloat(r.String(), 64)
+		v, err := resource.ParseQuantity(r.String())
 		if err != nil {
 			return 0, fmt.Errorf(errorMsg, r.String())
 		}
-		return v, nil
+		return v.AsApproximateFloat64(), nil
 	}
 	if r.Type != gjson.Number {
 		return 0, fmt.Errorf(errorMsg, r.Type.String())

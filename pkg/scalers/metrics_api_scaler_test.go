@@ -126,7 +126,7 @@ func TestGetValueFromResponse(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v != 2 {
+	if v != 2.43 {
 		t.Errorf("Expected %d got %f", 2, v)
 	}
 
