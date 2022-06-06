@@ -6,6 +6,9 @@ jobs:
     name: validate-${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
+    strategy:
+      matrix:
+        runner: [ARM64, ubuntu-latest]
     steps:
       - name: Setup Go
         uses: actions/setup-go@v3
