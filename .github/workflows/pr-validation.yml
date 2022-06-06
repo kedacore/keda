@@ -167,12 +167,16 @@ jobs:
         run: make docker-build-tools
 
   validate-dev-container:
-    name: Validate dev-container-${{ matrix.runner }}
+    name: Validate dev-container-${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
     strategy:
-      matrix:
-        runner: [ARM64, ubuntu-latest]
+       matrix:
+        include:
+        - runner: ARM64
+          name: amr64
+        - runner: ubuntu:latest
+          name: amd64
     steps:
       - uses: actions/checkout@v3
 
