@@ -21,9 +21,8 @@ import (
 
 // Default variables and settings
 const (
-	ibmMqQueueDepthMetricName = "currentQueueDepth"
-	defaultTargetQueueDepth   = 20
-	defaultTLSDisabled        = false
+	defaultTargetQueueDepth = 20
+	defaultTLSDisabled      = false
 )
 
 // IBMMQScaler assigns struct data pointer to metadata variable
