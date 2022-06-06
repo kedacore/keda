@@ -3,12 +3,18 @@ on:
   - pull_request
 jobs:
   validate:
-    name: validate-${{ matrix.runner }}
+    name: validate-${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
     strategy:
-      matrix:
-        runner: [ARM64, ubuntu-latest]
+       matrix:
+        include:
+        - runner: ARM64
+          name: amr64
+        - runner: ubuntu:latest
+          name: amd64
+        - runner: amd
+          kindImage: kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047
     steps:
       - name: Setup Go
         uses: actions/setup-go@v3
