@@ -62,7 +62,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 }
 
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
-func (s StackDriverClient) GetMetrics(ctx context.Context, filter string, projectID string) (float64, error) {
+func (s StackDriverClient) GetMetrics(ctx context.Context, filter string, projectID string) (int64, error) {
 	// Set the start time to 1 minute ago
 	startTime := time.Now().UTC().Add(time.Minute * -2)
 
@@ -92,7 +92,7 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string, projec
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
 
-	var value float64 = -1
+	var value int64 = -1
 
 	// Get the value from the first metric returned
 	resp, err := it.Next()
@@ -107,7 +107,7 @@ func (s StackDriverClient) GetMetrics(ctx context.Context, filter string, projec
 
 	if len(resp.GetPoints()) > 0 {
 		point := resp.GetPoints()[0]
-		value = point.GetValue().GetDoubleValue()
+		value = point.GetValue().GetInt64Value()
 	}
 
 	return value, nil

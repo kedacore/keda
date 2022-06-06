@@ -167,17 +167,17 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, m
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := GenerateMetricInMili(metricName, value)
+	metric := GenerateMetricInMili(metricName, float64(value))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
+func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
 	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %f", s.metadata.projectID, s.metadata.filter, val))
+			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectID, s.metadata.filter, val))
 	}
 
 	return val, err

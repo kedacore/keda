@@ -178,7 +178,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	var value float64
+	var value int64
 	var err error
 
 	switch s.metadata.mode {
@@ -196,7 +196,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 		}
 	}
 
-	metric := GenerateMetricInMili(metricName, value)
+	metric := GenerateMetricInMili(metricName, float64(value))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -218,7 +218,7 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
+func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
