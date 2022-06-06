@@ -141,7 +141,7 @@ jobs:
         run: make docker-build
 
   validate-build-tools:
-    name: Validate build-tools
+    name: Validate build-tools - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
     strategy:
