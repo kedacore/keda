@@ -7,12 +7,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
     strategy:
-       matrix:
+      matrix:
         include:
         - runner: ARM64
-          name: amr64
-        - runner: ubuntu:latest
-          name: amd64
+          name: arm64
     steps:
       - name: Setup Go
         uses: actions/setup-go@v3
@@ -120,24 +118,31 @@ jobs:
         if: always()
 
   validate-dockerfiles:
-    name: Validate Dockerfiles
-    runs-on: ubuntu-latest
+    name: validate-dockerfiles - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            dockerfiles:
-              - 'Dockerfile*'
+      # - uses: dorny/paths-filter@v2
+      #   id: filter
+      #   with:
+      #     filters: |
+      #       dockerfiles:
+      #         - 'Dockerfile*'
 
       - name: Build images
-        if: steps.filter.outputs.dockerfiles == 'true'
+        # if: steps.filter.outputs.dockerfiles == 'true'
         run: make docker-build
 
   validate-build-tools:
@@ -148,8 +153,8 @@ jobs:
        matrix:
         include:
         - runner: ARM64
-          name: amr64
-        - runner: ubuntu:latest
+          name: arm64
+        - runner: ubuntu-latest
           name: amd64
     steps:
       - uses: actions/checkout@v3
@@ -181,8 +186,8 @@ jobs:
        matrix:
         include:
         - runner: ARM64
-          name: amr64
-        - runner: ubuntu:latest
+          name: arm64
+        - runner: ubuntu-latest
           name: amd64
     steps:
       - uses: actions/checkout@v3
