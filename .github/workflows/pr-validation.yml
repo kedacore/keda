@@ -11,6 +11,8 @@ jobs:
         include:
         - runner: ARM64
           name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
       - name: Setup Go
         uses: actions/setup-go@v3
