@@ -25,7 +25,7 @@ import (
 
 const (
 	targetQueueLengthDefault = 5
-	defaultScaleOnInFlight = true
+	defaultScaleOnInFlight   = true
 )
 
 var (
