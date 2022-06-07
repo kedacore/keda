@@ -36,7 +36,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
-- **AWS SQS Queue:** Updated the sqs scaler to add the config flag `scaleOnInFlight`.
+- **AWS SQS Queue:** Updated the sqs scaler to add the config flag `scaleOnInFlight`. ([#773](https://github.com/kedacore/keda-docs/pull/773))
 
 ### New
 
