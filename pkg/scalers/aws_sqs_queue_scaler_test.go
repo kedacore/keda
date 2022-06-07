@@ -215,14 +215,14 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue and region"},
-		{map[string]string{
-			"queueURL":    testAWSSimpleQueueURL,
-			"queueLength": "1",
-			"awsRegion":   "eu-west-1",
-			"scaleOnInFlight": true},
-			testAWSSQSAuthentication,
-			false,
-			"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":    testAWSSimpleQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1",
+		"scaleOnInFlight": true},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
