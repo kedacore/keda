@@ -14,13 +14,6 @@ jobs:
         - runner: ubuntu-latest
           name: amd64
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install necessary packages
-        run: apt update && apt install -y make ca-certificates gcc
 
       - name: Check out code
         uses: actions/checkout@v3
