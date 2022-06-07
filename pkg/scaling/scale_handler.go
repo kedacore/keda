@@ -392,7 +392,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "external":
 		return scalers.NewExternalScaler(config)
 	// TODO: use other way for test.
-	case "externalMock":
+	case "external-mock":
 		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)

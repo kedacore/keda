@@ -632,7 +632,7 @@ var _ = Describe("ScaledObjectController", func() {
 						},
 					},
 					{
-						Type:       "externalMock",
+						Type:       "external-mock",
 						MetricType: autoscalingv2beta2.AverageValueMetricType,
 						Metadata:   map[string]string{},
 					},
