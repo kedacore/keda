@@ -6,7 +6,7 @@ import { CreateTableCommand, DescribeTableCommand, DeleteTableCommand, DynamoDBC
 import { DynamoDBStreamsClient, DescribeStreamCommand } from '@aws-sdk/client-dynamodb-streams'
 import { createNamespace, sleep, waitForDeploymentReplicaCount } from './helpers'
 
-const awsRegion = 'ap-northeast-1'
+const awsRegion = 'eu-west-2'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
 const dynamoDBStreamsNamespace = 'keda-test'
