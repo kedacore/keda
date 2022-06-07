@@ -156,7 +156,7 @@ spec:
   - type: postgresql
     metadata:
       targetQueryValue: "4"
-      query: "SELECT COUNT(*) / 5 FROM task_instance WHERE state='running' OR state='queued'"
+      query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
     authenticationRef:
       name: keda-trigger-auth-postgresql-secret`
 
