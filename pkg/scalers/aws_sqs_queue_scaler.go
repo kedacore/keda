@@ -25,6 +25,7 @@ import (
 
 const (
 	targetQueueLengthDefault = 5
+	defaultScaleOnInFlight = true
 )
 
 var (
@@ -48,6 +49,7 @@ type awsSqsQueueMetadata struct {
 	awsRegion         string
 	awsAuthorization  awsAuthorizationMetadata
 	scalerIndex       int
+	scaleOnInFlight   bool
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
@@ -72,6 +74,7 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
+	meta.scaleOnInFlight = defaultScaleOnInFlight
 
 	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
@@ -80,6 +83,22 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
 		} else {
 			meta.targetQueueLength = queueLength
+		}
+	}
+
+	if val, ok := config.TriggerMetadata["scaleOnInFlight"]; ok && val != "" {
+		scaleOnInFlight, err := strconv.ParseBool(val)
+		if err != nil {
+			meta.scaleOnInFlight = defaultScaleOnInFlight
+			sqsQueueLog.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
+		} else {
+			meta.scaleOnInFlight = scaleOnInFlight
+		}
+	}
+
+	if !meta.scaleOnInFlight {
+		awsSqsQueueMetricNames = []string{
+			"ApproximateNumberOfMessages",
 		}
 	}
 

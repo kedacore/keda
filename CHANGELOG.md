@@ -34,6 +34,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Unreleased
 
+### Improvements
+
+- **AWS SQS Queue:** Updated the sqs scaler to add the config flag `scaleOnInFlight`.
+
 ### New
 
 - **General:** Support for Azure AD Workload Identity as a pod identity provider. ([2487](https://github.com/kedacore/keda/issues/2487))
