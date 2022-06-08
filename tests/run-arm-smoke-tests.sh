@@ -4,6 +4,7 @@ set -eu
 DIR=$(dirname "$0")
 cd $DIR
 
+# TODO - Replace with Go tests.
 test_files=(
     "kubernetes-workload.test.ts"
     "activemq.test.ts"
@@ -18,7 +19,7 @@ failed_lookup=()
 counter=0
 
 function run_setup {
-    ./node_modules/.bin/ava setup.test.ts
+    go test -v setup_test.go
 }
 
 function run_tests {
@@ -28,7 +29,14 @@ function run_tests {
     do
         test_case="scalers/${scaler}"
         counter=$((counter+1))
-        ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
+        # TODO - Remove condition after all tests have been migrated to Go.
+        if [[ $test_case == *_test.go ]]
+        then
+            go test -v $test_case > "${test_case}.log" 2>&1 &
+        else
+            ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
+        fi
+
         pid=$!
         echo "Running $test_case with pid: $pid"
         pids+=($pid)
@@ -61,7 +69,14 @@ function run_tests {
         for test_case in "${retry_lookup[@]}"
         do
             counter=$((counter+1))
-            ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
+            # TODO - Remove condition after all tests have been migrated to Go.
+            if [[ $test_case == *_test.go ]]
+            then
+                go test -v $test_case > "${test_case}.retry.log" 2>&1 &
+            else
+                ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
+            fi
+
             pid=$!
             echo "Rerunning $test_case with pid: $pid"
             pids+=($pid)
@@ -92,7 +107,7 @@ function wait_for_jobs {
 }
 
 function print_logs {
-    for test_log in $(find scalers -name "*.log")
+    for test_log in $(find . -name "*.log")
     do
         echo ">>> $test_log <<<"
         cat $test_log
@@ -112,7 +127,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    ./node_modules/.bin/ava cleanup.test.ts
+    go test -v cleanup_test.go
 }
 
 function print_failed {
