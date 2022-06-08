@@ -1,5 +1,5 @@
 #! /bin/bash
-set -eu
+set -u
 
 DIR=$(dirname "$0")
 cd $DIR

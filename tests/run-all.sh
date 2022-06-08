@@ -1,5 +1,5 @@
 #! /bin/bash
-set -eu
+set -u
 
 # TODO - Remove TypeScript regex after all tests have been migrated to Go.
 E2E_REGEX_GO="${E2E_TEST_REGEX}_*test.go"
