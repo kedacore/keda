@@ -17,7 +17,7 @@ counter=0
 executed_count=0
 
 function run_setup {
-    go test -v setup_test.go
+    go test -v -tags e2e setup_test.go
 }
 
 function run_tests {
@@ -35,7 +35,7 @@ function run_tests {
         # TODO - Remove condition after all tests have been migrated to Go.
         if [[ $test_case == *_test.go ]]
         then
-            go test -v $test_case > "${test_case}.log" 2>&1 &
+            go test -v -tags e2e $test_case > "${test_case}.log" 2>&1 &
         else
             ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         fi
@@ -75,7 +75,7 @@ function run_tests {
             # TODO - Remove condition after all tests have been migrated to Go.
             if [[ $test_case == *_test.go ]]
             then
-                go test -v $test_case > "${test_case}.retry.log" 2>&1 &
+                go test -v -tags e2e $test_case > "${test_case}.retry.log" 2>&1 &
             else
                 ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
             fi
@@ -131,7 +131,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    go test -v cleanup_test.go
+    go test -v -tags e2e cleanup_test.go
 }
 
 function print_failed {
