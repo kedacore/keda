@@ -63,6 +63,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Other
 
 - **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
+- **General:** Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([3142](https://github.com/kedacore/keda/issues/3142))
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
 - **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
