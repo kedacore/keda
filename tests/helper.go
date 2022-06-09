@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +24,11 @@ const (
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
+
+	DefaultHTTPTimeOut = 3000
 )
+
+var _ = godotenv.Load()
 
 // Env variables assertd for setup and cleanup.
 var (
@@ -130,7 +135,7 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	return false
 }
 
-func KubectlApplyWithTemplate(t *testing.T, config string, data interface{}) {
+func KubectlApplyWithTemplate(t *testing.T, data interface{}, config string) {
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
@@ -149,7 +154,13 @@ func KubectlApplyWithTemplate(t *testing.T, config string, data interface{}) {
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlDeleteWithTemplate(t *testing.T, config string, data interface{}) {
+func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs ...string) {
+	for _, config := range configs {
+		KubectlApplyWithTemplate(t, data, config)
+	}
+}
+
+func KubectlDeleteWithTemplate(t *testing.T, data interface{}, config string) {
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
@@ -166,4 +177,10 @@ func KubectlDeleteWithTemplate(t *testing.T, config string, data interface{}) {
 
 	err = tempFile.Close()
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
+}
+
+func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, configs ...string) {
+	for _, config := range configs {
+		KubectlDeleteWithTemplate(t, data, config)
+	}
 }
