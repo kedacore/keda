@@ -139,7 +139,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 			serviceAccount := &corev1.ServiceAccount{}
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
-				return nil, kedav1alpha1.PodIdentityProviderNone, fmt.Errorf("error getting service account: %s", err)
+				return nil, kedav1alpha1.PodIdentityProviderNone, fmt.Errorf("error getting service account: '%s', error: %s", serviceAccountName, err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity == kedav1alpha1.PodIdentityProviderAwsKiam {
