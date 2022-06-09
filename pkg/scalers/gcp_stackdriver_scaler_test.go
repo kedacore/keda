@@ -57,10 +57,6 @@ var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{
 }
 
 func TestStackdriverParseMetadata(t *testing.T) {
-	str := testStackdriverResolvedEnv["a"]
-	if str == "" {
-		t.Error("No key")
-	}
 	for _, testData := range testStackdriverMetadata {
 		_, err := parseStackdriverMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testStackdriverResolvedEnv})
 		if err != nil && !testData.isError {

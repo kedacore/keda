@@ -142,9 +142,9 @@ func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error)
 		return monitoringpb.Aggregation_REDUCE_SUM, nil
 	case "stddev":
 		return monitoringpb.Aggregation_REDUCE_STDDEV, nil
-	case "true":
+	case "count_true":
 		return monitoringpb.Aggregation_REDUCE_COUNT_TRUE, nil
-	case "false":
+	case "count_false":
 		return monitoringpb.Aggregation_REDUCE_COUNT_FALSE, nil
 	case "fraction_true":
 		return monitoringpb.Aggregation_REDUCE_FRACTION_TRUE, nil
