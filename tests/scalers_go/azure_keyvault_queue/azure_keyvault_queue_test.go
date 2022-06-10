@@ -1,4 +1,4 @@
-package azure_queue_test
+package azure_keyvault_queue_test
 
 import (
 	"context"
@@ -24,14 +24,19 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-queue-test"
+	testName = "azure-keyvault-queue-test"
 )
 
 var (
 	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	keyvaultURI      = os.Getenv("AZURE_KEYVAULT_URI")
+	azureADClientID  = os.Getenv("AZURE_SP_APP_ID")
+	azureADSecret    = os.Getenv("AZURE_SP_KEY")
+	azureADTenantID  = os.Getenv("AZURE_SP_TENANT")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	queueName        = fmt.Sprintf("%s-queue", testName)
 )
@@ -41,8 +46,13 @@ type templateData struct {
 	SecretName       string
 	Connection       string
 	DeploymentName   string
+	TriggerAuthName  string
 	ScaledObjectName string
 	QueueName        string
+	KeyVaultURI      string
+	AzureADClientID  string
+	AzureADSecret    string
+	AzureADTenantID  string
 }
 
 const (
@@ -54,6 +64,7 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   AzureWebJobsStorage: {{.Connection}}
+  clientSecret: {{.AzureADSecret}}
 `
 
 	deploymentTemplate = `
@@ -88,6 +99,28 @@ spec:
                   key: AzureWebJobsStorage
 `
 
+	triggerAuthTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  azureKeyVault:
+    vaultUri: {{.KeyVaultURI}}
+    credentials:
+      clientId: {{.AzureADClientID}}
+      tenantId: {{.AzureADTenantID}}
+      clientSecret:
+        valueFrom:
+          secretKeyRef:
+            name: {{.SecretName}}
+            key: clientSecret
+    secrets:
+      - parameter: connection
+        name: E2E-Storage-ConnectionString
+`
+
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -105,7 +138,8 @@ spec:
     - type: azure-queue
       metadata:
         queueName: {{.QueueName}}
-        connectionFromEnv: AzureWebJobsStorage
+      authenticationRef:
+        name: {{.TriggerAuthName}}
 `
 )
 
@@ -113,6 +147,10 @@ func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, keyvaultURI, "AZURE_KEYVAULT_URI env variable is required for service bus tests")
+	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for service bus tests")
+	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for service bus tests")
+	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for service bus tests")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -155,15 +193,21 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 
 func getTemplateData() (templateData, []string) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
+	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
 		TestNamespace:    testNamespace,
 		SecretName:       secretName,
 		Connection:       base64ConnectionString,
 		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
 		ScaledObjectName: scaledObjectName,
 		QueueName:        queueName,
-	}, []string{secretTemplate, deploymentTemplate, scaledObjectTemplate}
+		KeyVaultURI:      keyvaultURI,
+		AzureADClientID:  azureADClientID,
+		AzureADSecret:    base64ClientSecret,
+		AzureADTenantID:  azureADTenantID,
+	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {

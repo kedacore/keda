@@ -30,7 +30,7 @@ const (
 
 var _ = godotenv.Load()
 
-// Env variables assertd for setup and cleanup.
+// Env variables required for setup and cleanup.
 var (
 	AzureADTenantID               = os.Getenv("AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
@@ -183,4 +183,14 @@ func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, configs .
 	for _, config := range configs {
 		KubectlDeleteWithTemplate(t, data, config)
 	}
+}
+
+func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs ...string) {
+	CreateNamespace(t, kc, nsName)
+	KubectlApplyMultipleWithTemplate(t, data, configs...)
+}
+
+func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs ...string) {
+	DeleteNamespace(t, kc, nsName)
+	KubectlDeleteMultipleWithTemplate(t, data, configs...)
 }

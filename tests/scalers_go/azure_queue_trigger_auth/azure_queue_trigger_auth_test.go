@@ -1,4 +1,4 @@
-package azure_service_bus_queue_test
+package azure_queue_trigger_auth_test
 
 import (
 	"context"
@@ -8,12 +8,15 @@ import (
 	"testing"
 	"time"
 
-	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/Azure/azure-storage-queue-go/azqueue"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	. "github.com/kedacore/keda/v2/tests"
 )
 
@@ -21,11 +24,11 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-service-bus-queue-test"
+	testName = "azure-queue-trigger-auth-test"
 )
 
 var (
-	connectionString = os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING")
+	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
@@ -51,9 +54,8 @@ kind: Secret
 metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
-type: Opaque
 data:
-  connection: {{.Connection}}
+  AzureWebJobsStorage: {{.Connection}}
 `
 
 	deploymentTemplate = `
@@ -62,6 +64,8 @@ kind: Deployment
 metadata:
   name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
 spec:
   replicas: 0
   selector:
@@ -73,8 +77,17 @@ spec:
         app: {{.DeploymentName}}
     spec:
       containers:
-        - name: nginx
-          image: nginx:1.16.1
+        - name: {{.DeploymentName}}
+          image: ghcr.io/kedacore/tests-azure-queue
+          resources:
+          env:
+            - name: FUNCTIONS_WORKER_RUNTIME
+              value: node
+            - name: AzureWebJobsStorage
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: AzureWebJobsStorage
 `
 
 	triggerAuthTemplate = `
@@ -87,7 +100,7 @@ spec:
   secretTargetRef:
     - parameter: connection
       name: {{.SecretName}}
-      key: connection
+      key: AzureWebJobsStorage
 `
 
 	scaledObjectTemplate = `
@@ -96,31 +109,30 @@ kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
-  labels:
-    deploymentName: {{.DeploymentName}}
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  cooldownPeriod: 10
   minReplicaCount: 0
   maxReplicaCount: 1
+  cooldownPeriod: 10
   triggers:
-  - type: azure-servicebus
-    metadata:
-      queueName: {{.QueueName}}
-    authenticationRef:
-      name: {{.TriggerAuthName}}
+    - type: azure-queue
+      metadata:
+        queueName: {{.QueueName}}
+      authenticationRef:
+        name: {{.TriggerAuthName}}
 `
 )
 
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
 
-	sbQueueManager, sbQueue := setupServiceBusQueue(t)
+	queueURL, messageURL := createQueue(t)
 
+	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
@@ -130,45 +142,31 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after a minute")
 
 	// test scaling
-	testScaleUp(t, kc, sbQueue)
-	testScaleDown(t, kc, sbQueue)
+	testScaleUp(t, kc, messageURL)
+	testScaleDown(t, kc, messageURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
-	cleanupServiceBusQueue(t, sbQueueManager)
+	cleanupQueue(t, queueURL)
 }
 
-func setupServiceBusQueue(t *testing.T) (*servicebus.QueueManager, *servicebus.Queue) {
-	// Connect to service bus namespace.
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
-	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
+func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
+	// Create Queue
+	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
+	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
+		context.Background(), httpClient, kedav1alpha1.PodIdentityProviderNone, connectionString, "", "")
+	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
-	sbQueueManager := sbNamespace.NewQueueManager()
+	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
+	serviceURL := azqueue.NewServiceURL(*endpoint, p)
+	queueURL := serviceURL.NewQueueURL(queueName)
 
-	createQueue(t, sbQueueManager)
+	_, err = queueURL.Create(context.Background(), azqueue.Metadata{})
+	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 
-	sbQueue, err := sbNamespace.NewQueue(queueName)
-	assert.NoErrorf(t, err, "cannot create client for queue - %s", err)
+	messageURL := queueURL.NewMessagesURL()
 
-	return sbQueueManager, sbQueue
-}
-
-func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
-	// delete queue if already exists
-	sbQueues, err := sbQueueManager.List(context.Background())
-	assert.NoErrorf(t, err, "cannot fetch queue list for service bus namespace - %s", err)
-
-	for _, queue := range sbQueues {
-		if queue.Name == queueName {
-			t.Log("Service Bus Queue already exists. Deleting.")
-			err := sbQueueManager.Delete(context.Background(), queueName)
-			assert.NoErrorf(t, err, "cannot delete existing service bus queue - %s", err)
-		}
-	}
-
-	// create queue
-	_, err = sbQueueManager.Put(context.Background(), queueName)
-	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
+	return queueURL, messageURL
 }
 
 func getTemplateData() (templateData, []string) {
@@ -185,34 +183,29 @@ func getTemplateData() (templateData, []string) {
 	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing scale up ---")
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
-		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
+		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
+		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
 	}
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 0 after a minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing scale down ---")
-	var messageHandlerFunc servicebus.HandlerFunc = func(ctx context.Context, msg *servicebus.Message) error {
-		return msg.Complete(ctx)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_ = sbQueue.Receive(ctx, messageHandlerFunc)
+	_, err := messageURL.Clear(context.Background())
+	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+		"replica count should be 0 after a minute")
 }
 
-func cleanupServiceBusQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
+func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
 	t.Log("--- cleaning up ---")
-	err := sbQueueManager.Delete(context.Background(), queueName)
-	assert.NoErrorf(t, err, "cannot delete service bus queue - %s", err)
+	_, err := queueURL.Delete(context.Background())
+	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 }

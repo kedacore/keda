@@ -10,7 +10,9 @@ import (
 
 	servicebus "github.com/Azure/azure-service-bus-go"
 	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests"
 )
@@ -115,43 +117,78 @@ spec:
 `
 )
 
-func TestSetup(t *testing.T) {
+func TestScaler(t *testing.T) {
+	// setup
+	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
+	sbTopicManager, sbTopic, sbSubscription := setupServiceBusTopicAndSubscription(t)
+
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after a minute")
+
+	// test scaling
+	testScaleUp(t, kc, sbTopic)
+	testScaleDown(t, kc, sbSubscription)
+
+	// cleanup
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	cleanupServiceBusTopic(t, sbTopicManager)
+}
+
+func setupServiceBusTopicAndSubscription(t *testing.T) (*servicebus.TopicManager, *servicebus.Topic, *servicebus.Subscription) {
 	// Connect to service bus namespace.
 	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
-	require.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
+	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
 	sbTopicManager := sbNamespace.NewTopicManager()
+
+	createTopicAndSubscription(t, sbNamespace, sbTopicManager)
+
+	sbTopic, err := sbNamespace.NewTopic(topicName)
+	assert.NoErrorf(t, err, "cannot create client for topic - %s", err)
+
+	sbSubscription, err := sbTopic.NewSubscription(subscriptionName)
+	assert.NoErrorf(t, err, "cannot create client for subscription - %s", err)
+
+	return sbTopicManager, sbTopic, sbSubscription
+}
+
+func createTopicAndSubscription(t *testing.T, sbNamespace *servicebus.Namespace, sbTopicManager *servicebus.TopicManager) {
+	// Delete service bus topic if already exists.
 	sbTopics, err := sbTopicManager.List(context.Background())
-	require.NoErrorf(t, err, "cannot fetch topic list for service bus namespace - %s", err)
+	assert.NoErrorf(t, err, "cannot fetch topic list for service bus namespace - %s", err)
 
 	// Delete service bus topic if already exists.
 	for _, topic := range sbTopics {
 		if topic.Name == topicName {
 			t.Log("Service Bus Topic already exists. Deleting.")
 			err := sbTopicManager.Delete(context.Background(), topicName)
-			require.NoErrorf(t, err, "cannot delete existing service bus topic - %s", err)
+			assert.NoErrorf(t, err, "cannot delete existing service bus topic - %s", err)
 		}
 	}
 
 	// Create service bus topic.
 	_, err = sbTopicManager.Put(context.Background(), topicName)
-	require.NoErrorf(t, err, "cannot create service bus topic - %s", err)
+	assert.NoErrorf(t, err, "cannot create service bus topic - %s", err)
 
 	// Create subscription within topic
 	sbSubscriptionManager, err := sbNamespace.NewSubscriptionManager(topicName)
-	require.NoErrorf(t, err, "cannot create subscription manager for topic - %s", err)
+	assert.NoErrorf(t, err, "cannot create subscription manager for topic - %s", err)
 
 	_, err = sbSubscriptionManager.Put(context.Background(), subscriptionName)
-	require.NoErrorf(t, err, "cannot create subscription for topic - %s", err)
+	assert.NoErrorf(t, err, "cannot create subscription for topic - %s", err)
+}
 
-	Kc = GetKubernetesClient(t)
-	CreateNamespace(t, Kc, testNamespace)
-
+func getTemplateData() (templateData, []string) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
-	data := templateData{
+	return templateData{
 		TestNamespace:    testNamespace,
 		SecretName:       secretName,
 		Connection:       base64ConnectionString,
@@ -160,78 +197,37 @@ func TestSetup(t *testing.T) {
 		ScaledObjectName: scaledObjectName,
 		TopicName:        topicName,
 		SubscriptionName: subscriptionName,
-	}
-
-	// Create kubernetes resources
-	KubectlApplyMultipleWithTemplate(t, data, secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate)
-
-	require.True(t, WaitForDeploymentReplicaCount(t, Kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
 }
 
-func TestScaleUp(t *testing.T) {
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
-	require.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
-
-	sbTopic, err := sbNamespace.NewTopic(topicName)
-	require.NoErrorf(t, err, "cannot create for topic - %s", err)
-
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Topic) {
+	t.Log("--- testing scale up ---")
 	for i := 0; i < 5; i++ {
-		_ = sbTopic.Send(context.Background(), servicebus.NewMessageFromString(fmt.Sprintf("Message - %d", i)))
+		msg := fmt.Sprintf("Message - %d", i)
+		_ = sbTopic.Send(context.Background(), servicebus.NewMessageFromString(msg))
 	}
 
-	require.True(t, WaitForDeploymentReplicaCount(t, Kc, deploymentName, testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func TestScaleDown(t *testing.T) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbSubscription *servicebus.Subscription) {
+	t.Log("--- testing scale down ---")
 	var messageHandlerFunc servicebus.HandlerFunc = func(ctx context.Context, msg *servicebus.Message) error {
 		return msg.Complete(ctx)
 	}
-
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
-	require.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
-
-	sbTopic, err := sbNamespace.NewTopic(topicName)
-	require.NoErrorf(t, err, "cannot create client for topic - %s", err)
-
-	sbSubscription, err := sbTopic.NewSubscription(subscriptionName)
-	require.NoErrorf(t, err, "cannot create client for subscription - %s", err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	_ = sbSubscription.Receive(ctx, messageHandlerFunc)
 
-	require.True(t, WaitForDeploymentReplicaCount(t, Kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
-func TestCleanup(t *testing.T) {
-	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
-
-	data := templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		Connection:       base64ConnectionString,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		ScaledObjectName: scaledObjectName,
-		TopicName:        topicName,
-		SubscriptionName: subscriptionName,
-	}
-
-	// Delete kubernetes resources
-	KubectlDeleteMultipleWithTemplate(t, data, secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate)
-
-	Kc = GetKubernetesClient(t)
-	DeleteNamespace(t, Kc, testNamespace)
-
-	// Delete service bus topic.
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
-	require.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
-
-	sbTopicManager := sbNamespace.NewTopicManager()
-	err = sbTopicManager.Delete(context.Background(), topicName)
-	require.NoErrorf(t, err, "cannot delete existing service bus topic - %s", err)
+func cleanupServiceBusTopic(t *testing.T, sbTopicManager *servicebus.TopicManager) {
+	t.Log("--- cleaning up ---")
+	err := sbTopicManager.Delete(context.Background(), topicName)
+	assert.NoErrorf(t, err, "cannot delete service bus topic - %s", err)
 }
