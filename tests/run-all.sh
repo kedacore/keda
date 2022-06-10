@@ -26,7 +26,7 @@ function run_tests {
     # TODO - Remove TypeScript regex after all tests have been migrated to Go.
     for test_case in $(find . -name "$E2E_REGEX_GO" -o -name "$E2E_REGEX_TS" | shuf)
     do
-        if [[ $test_case != *_test.go ]] # Skip helper files
+         if [[ $test_case != *_test.go && $test_case != *.test.ts ]] # Skip helper files
         then
             continue
         fi
