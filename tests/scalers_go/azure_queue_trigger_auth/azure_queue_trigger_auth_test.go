@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package azure_queue_trigger_auth_test
 
 import (

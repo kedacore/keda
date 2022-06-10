@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package azure_service_bus_topic_test
 
 import (

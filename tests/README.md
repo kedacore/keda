@@ -61,6 +61,8 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 #### **Example Test:** Let's say you want to add a test for `Redis`.
 
 ```go
+// +build e2e
+// ^ This is necessary to ensure the tests don't get run in the GitHub workflow.
 import (
 	"context"
 	"fmt"
@@ -169,6 +171,7 @@ func cleanupTest(t *testing.T) {
 #### Notes
 
 - You can see [`azure_queue_test.go`](scalers_go/azure_queue/azure_queue_test.go) for a full example.
+- All tests must have the `// +build e2e` build tag.
 - Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
 - Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
 you're trying to achieve is too complicated or tedious using above, use `ParseCommand` or `ExecuteCommand` from `helper.go`
