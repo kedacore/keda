@@ -41,6 +41,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Improvements
 
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
+- **Azure Event Hub Scaler:** Add dapr checkpoint strategy ([#3022](https://github.com/kedacore/keda/issues/3022))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))

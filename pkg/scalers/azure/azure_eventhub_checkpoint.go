@@ -82,6 +82,11 @@ type goSdkCheckpointer struct {
 	containerName string
 }
 
+type daprCheckpointer struct {
+	partitionID   string
+	containerName string
+}
+
 type defaultCheckpointer struct {
 	partitionID   string
 	containerName string
@@ -97,6 +102,11 @@ func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	switch {
 	case (info.CheckpointStrategy == "goSdk"):
 		return &goSdkCheckpointer{
+			containerName: info.BlobContainer,
+			partitionID:   partitionID,
+		}
+	case (info.CheckpointStrategy == "dapr"):
+		return &daprCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
@@ -176,19 +186,27 @@ func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL,
 
 // extract checkpoint for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
-	var checkpoint goCheckpoint
-	err := readToCheckpointFromBody(get, &checkpoint)
+	return extractCheckpointGoSdk(get)
+}
+
+// resolve path for daprCheckpointer
+func (checkpointer *daprCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+	_, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
-		return Checkpoint{}, err
+		return nil, err
 	}
 
-	return Checkpoint{
-		SequenceNumber: checkpoint.Checkpoint.SequenceNumber,
-		baseCheckpoint: baseCheckpoint{
-			Offset: checkpoint.Checkpoint.Offset,
-		},
-		PartitionID: checkpoint.PartitionID,
-	}, nil
+	path, err := url.Parse(fmt.Sprintf("/%s/dapr-%s-%s-%s", checkpointer.containerName, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
+
+	return path, nil
+}
+
+// extract checkpoint for daprCheckpointer
+func (checkpointer *daprCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+	return extractCheckpointGoSdk(get)
 }
 
 // resolve path for DefaultCheckpointer
@@ -221,6 +239,22 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 	err := mergo.Merge(&checkpoint, Checkpoint(pyCheckpoint))
 
 	return checkpoint, err
+}
+
+func extractCheckpointGoSdk(get *azblob.DownloadResponse) (Checkpoint, error) {
+	var checkpoint goCheckpoint
+	err := readToCheckpointFromBody(get, &checkpoint)
+	if err != nil {
+		return Checkpoint{}, err
+	}
+
+	return Checkpoint{
+		SequenceNumber: checkpoint.Checkpoint.SequenceNumber,
+		baseCheckpoint: baseCheckpoint{
+			Offset: checkpoint.Checkpoint.Offset,
+		},
+		PartitionID: checkpoint.PartitionID,
+	}, nil
 }
 
 func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {

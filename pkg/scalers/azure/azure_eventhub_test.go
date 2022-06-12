@@ -227,6 +227,47 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
+func TestCheckpointFromBlobStorageDapr(t *testing.T) {
+	if StorageConnectionString == "" {
+		return
+	}
+
+	partitionID := "0"
+	offset := "1003"
+
+	sequencenumber := int64(1)
+
+	containerName := "daprcontainer"
+	checkpointFormat := "{\"partitionID\":\"%s\",\"epoch\":0,\"owner\":\"\",\"checkpoint\":{\"offset\":\"%s\",\"sequenceNumber\":%d,\"enqueueTime\":\"\"},\"state\":\"\",\"token\":\"\"}"
+	checkpoint := fmt.Sprintf(checkpointFormat, partitionID, offset, sequencenumber)
+
+	urlPath := ""
+
+	ctx, err := createNewCheckpointInStorage(urlPath, containerName, partitionID, checkpoint, nil)
+	assert.Equal(t, err, nil)
+
+	expectedCheckpoint := Checkpoint{
+		baseCheckpoint: baseCheckpoint{
+			Offset: offset,
+		},
+		PartitionID:    partitionID,
+		SequenceNumber: sequencenumber,
+	}
+
+	eventHubInfo := EventHubInfo{
+		EventHubConnection: "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub",
+		StorageConnection:  StorageConnectionString,
+		EventHubName:       "hub",
+		BlobContainer:      containerName,
+		CheckpointStrategy: "dapr",
+	}
+
+	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	_ = check.Offset
+	_ = expectedCheckpoint.Offset
+	assert.Equal(t, check, expectedCheckpoint)
+}
+
 func TestShouldParseCheckpointForFunction(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",
