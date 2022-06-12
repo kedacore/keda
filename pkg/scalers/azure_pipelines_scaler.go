@@ -178,7 +178,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 		return []byte{}, err
 	}
 
-	req.SetBasicAuth("PAT", metadata.personalAccessToken)
+	req.SetBasicAuth("", strings.TrimSuffix(metadata.personalAccessToken, "\n"))
 
 	r, err := httpClient.Do(req)
 	if err != nil {
