@@ -115,6 +115,8 @@ const (
 // mechanism
 type AuthPodIdentity struct {
 	Provider PodIdentityProvider `json:"provider"`
+	// +optional
+	IdentityID string `json:"identityID"`
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
