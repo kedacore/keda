@@ -97,6 +97,10 @@ e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kub
 	npm install --prefix tests
 	./tests/run-all.sh
 
+.PHONY: e2e-test-clean-crds
+e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
+	./tests/clean-crds.sh
+
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
@@ -251,7 +255,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+undeploy: e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 

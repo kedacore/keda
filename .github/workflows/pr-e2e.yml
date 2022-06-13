@@ -31,7 +31,7 @@ jobs:
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
-            **Update:** You can check the progres [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+            **Update:** You can check the progress [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           reactions: rocket
 
       - name: Parse git info

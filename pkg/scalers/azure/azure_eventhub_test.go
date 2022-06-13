@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
