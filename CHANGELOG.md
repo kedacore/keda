@@ -38,8 +38,9 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
-- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487))
 - **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
+- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487)|[#2656](https://github.com/kedacore/keda/issues/2656))
+- **General:** Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
 
 ### Improvements
 
