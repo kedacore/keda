@@ -155,7 +155,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.eventHubInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	meta.eventHubInfo.PodIdentity = config.PodIdentity
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", v1alpha1.PodIdentityProviderNone:
 		if config.AuthParams["connection"] != "" {
 			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]

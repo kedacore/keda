@@ -25,7 +25,7 @@ type EventHubInfo struct {
 	ServiceBusEndpointSuffix string
 	ActiveDirectoryEndpoint  string
 	EventHubResourceURL      string
-	PodIdentity              kedav1alpha1.PodIdentityProvider
+	PodIdentity              kedav1alpha1.AuthPodIdentity
 }
 
 const (
@@ -34,7 +34,7 @@ const (
 
 // GetEventHubClient returns eventhub client
 func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, error) {
-	switch info.PodIdentity {
+	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// The user wants to use a connectionstring, not a pod identity
 		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
@@ -60,7 +60,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		// User wants to use AAD Workload Identity
 		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
 		hubEnvOptions := eventhub.HubWithEnvironment(env)
-		provider := NewADWorkloadIdentityTokenProvider(ctx, info.EventHubResourceURL)
+		provider := NewAzureADWorkloadIdentityTokenProvider(ctx, info.PodIdentity.IdentityID, info.EventHubResourceURL)
 
 		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 	}

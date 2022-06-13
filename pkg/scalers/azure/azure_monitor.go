@@ -66,7 +66,7 @@ type MonitorInfo struct {
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (float64, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (float64, error) {
 	client := createMetricsClient(ctx, info, podIdentity)
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
@@ -76,10 +76,10 @@ func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity keda
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) insights.MetricsClient {
+func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) insights.MetricsClient {
 	client := insights.NewMetricsClientWithBaseURI(info.AzureResourceManagerEndpoint, info.SubscriptionID)
 	var authConfig auth.AuthorizerConfig
-	switch podIdentity {
+	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
 		config.Resource = info.AzureResourceManagerEndpoint
@@ -92,7 +92,7 @@ func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity keda
 
 		authConfig = config
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		authConfig = NewAzureADWorkloadIdentityConfig(ctx, info.AzureResourceManagerEndpoint)
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, podIdentity.IdentityID, info.AzureResourceManagerEndpoint)
 	}
 
 	authorizer, _ := authConfig.Authorizer()

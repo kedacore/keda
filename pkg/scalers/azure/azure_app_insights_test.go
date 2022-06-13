@@ -91,7 +91,7 @@ var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
 
 func TestAzAppInfoGetAuthConfig(t *testing.T) {
 	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(context.TODO(), testData.info, testData.podIdentity)
+		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
 		switch testData.config {
 		case msiConfig:
 			if _, ok := authConfig.(auth.MSIConfig); !ok {

@@ -41,7 +41,7 @@ const (
 type azureQueueScaler struct {
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureQueueMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
 }
 
@@ -76,7 +76,7 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1alpha1.PodIdentityProvider, error) {
+func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
@@ -84,7 +84,8 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
-			return nil, "", fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+			return nil, kedav1alpha1.AuthPodIdentity{},
+				fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
 
 		meta.targetQueueLength = queueLength
@@ -92,7 +93,7 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.QueueEndpoint)
 	if err != nil {
-		return nil, "", err
+		return nil, kedav1alpha1.AuthPodIdentity{}, err
 	}
 
 	meta.endpointSuffix = endpointSuffix
@@ -100,19 +101,19 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	if val, ok := config.TriggerMetadata["queueName"]; ok && val != "" {
 		meta.queueName = val
 	} else {
-		return nil, "", fmt.Errorf("no queueName given")
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no queueName given")
 	}
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity == "" {
+	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" {
 		if val == "true" {
-			config.PodIdentity = kedav1alpha1.PodIdentityProviderAzure
+			config.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
 		}
 	}
 
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// Azure Queue Scaler expects a "connection" parameter in the metadata
 		// of the scaler or in a TriggerAuthentication object
@@ -124,17 +125,17 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		}
 
 		if len(meta.connection) == 0 {
-			return nil, "", fmt.Errorf("no connection setting given")
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no connection setting given")
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val
 		} else {
-			return nil, "", fmt.Errorf("no accountName given")
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")
 		}
 	default:
-		return nil, "", fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
 	}
 
 	meta.scalerIndex = config.ScalerIndex

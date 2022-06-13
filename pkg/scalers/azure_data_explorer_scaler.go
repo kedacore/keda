@@ -129,7 +129,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
 	metadata := azure.DataExplorerMetadata{}
 
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
