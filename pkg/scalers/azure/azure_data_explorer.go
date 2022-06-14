@@ -27,6 +27,8 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/unsafe"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type DataExplorerMetadata struct {
@@ -35,7 +37,7 @@ type DataExplorerMetadata struct {
 	DatabaseName            string
 	Endpoint                string
 	MetricName              string
-	PodIdentity             string
+	PodIdentity             kedav1alpha1.PodIdentityProvider
 	Query                   string
 	TenantID                string
 	Threshold               int64
@@ -44,13 +46,18 @@ type DataExplorerMetadata struct {
 
 var azureDataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 
-func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata) (*kusto.Client, error) {
-	authConfig, err := getDataExplorerAuthConfig(metadata)
+func CreateAzureDataExplorerClient(ctx context.Context, metadata *DataExplorerMetadata) (*kusto.Client, error) {
+	authConfig, err := getDataExplorerAuthConfig(ctx, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data explorer auth config: %v", err)
 	}
 
-	client, err := kusto.New(metadata.Endpoint, kusto.Authorization{Config: *authConfig})
+	authorizer, err := authConfig.Authorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorizer: %v", err)
+	}
+
+	client, err := kusto.New(metadata.Endpoint, kusto.Authorization{Authorizer: authorizer})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kusto client: %v", err)
 	}
@@ -58,26 +65,31 @@ func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata) (*kusto.Clien
 	return client, nil
 }
 
-func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*auth.AuthorizerConfig, error) {
+func getDataExplorerAuthConfig(ctx context.Context, metadata *DataExplorerMetadata) (auth.AuthorizerConfig, error) {
 	var authConfig auth.AuthorizerConfig
 
-	if metadata.PodIdentity != "" {
+	switch metadata.PodIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		if metadata.ClientID != "" && metadata.ClientSecret != "" && metadata.TenantID != "" {
+			config := auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
+			config.Resource = metadata.Endpoint
+			config.AADEndpoint = metadata.ActiveDirectoryEndpoint
+			azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using clientID, clientSecret and tenantID")
+
+			authConfig = config
+			return authConfig, nil
+		}
+	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = metadata.Endpoint
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
 
 		authConfig = config
-		return &authConfig, nil
-	}
-
-	if metadata.ClientID != "" && metadata.ClientSecret != "" && metadata.TenantID != "" {
-		config := auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
-		config.Resource = metadata.Endpoint
-		config.AADEndpoint = metadata.ActiveDirectoryEndpoint
-		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using clientID, clientSecret and tenantID")
-
-		authConfig = config
-		return &authConfig, nil
+		return authConfig, nil
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Workload Identity")
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, metadata.Endpoint)
+		return authConfig, nil
 	}
 
 	return nil, fmt.Errorf("missing credentials. please reconfigure your scaled object metadata")

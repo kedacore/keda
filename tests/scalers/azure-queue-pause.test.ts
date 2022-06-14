@@ -4,7 +4,7 @@ import * as azure from 'azure-storage'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import test from 'ava'
-import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount, sleep} from "./helpers";
 
 const testNamespace = 'pause-test'
 const deploymentFile = tmp.fileSync()
@@ -57,6 +57,24 @@ test.serial(
   'Deployment should scale to 0 - to pausedReplicaCount',
   async t => {
     t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', testNamespace, 60, 1000), 'replica count should be 0 after 1 minute')
+  }
+)
+
+test.serial.cb(
+  'Deployment should remain at pausedReplicaCount (0) even with messages on storage',
+  t => {
+    const queueSvc = azure.createQueueService(connectionString)
+    queueSvc.messageEncoder = new azure.QueueMessageEncoder.TextBase64QueueMessageEncoder()
+    async.mapLimit(
+      Array(1000).keys(),
+      20,
+      (n, cb) => queueSvc.createMessage(queueName, `test ${n}`, cb),
+      async () => {
+        t.true(await checkIfReplicaCountGreater(0, 'test-deployment', testNamespace, 60, 1000), 'replica count remain 0 after 1 minute')
+        queueSvc.clearMessages(queueName, _ => {})
+        t.end()
+      }
+    )
   }
 )
 
@@ -117,6 +135,24 @@ test.after.always.cb('clean up workload test related deployments', t => {
   sh.exec(`kubectl delete namespace ${testNamespace}`)
   t.end()
 })
+
+
+// checks if the current replica count is greater than the given target count for a given interval.
+// returns false if it is greater, otherwise true.
+async function checkIfReplicaCountGreater(target: number, name: string, namespace: string, iterations = 10, interval = 3000): Promise<boolean> {
+    for (let i = 0; i < iterations; i++) {
+        let replicaCountStr = sh.exec(`kubectl get deployment.apps/${name} --namespace ${namespace} -o jsonpath="{.spec.replicas}"`).stdout
+        try {
+            const replicaCount = parseInt(replicaCountStr, 10)
+            if (replicaCount > target) {
+                return false
+            }
+        } catch { }
+
+        await sleep(interval)
+    }
+    return true
+}
 
 const deployYaml = `apiVersion: v1
 kind: Secret

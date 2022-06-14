@@ -60,17 +60,21 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) auth.AuthorizerConfig {
-	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
+func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) auth.AuthorizerConfig {
+	switch podIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
 		config.Resource = info.AppInsightsResourceURL
 		config.AADEndpoint = info.ActiveDirectoryEndpoint
 		return config
+	case kedav1alpha1.PodIdentityProviderAzure:
+		config := auth.NewMSIConfig()
+		config.Resource = info.AppInsightsResourceURL
+		return config
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		return NewAzureADWorkloadIdentityConfig(ctx, info.AppInsightsResourceURL)
 	}
-
-	config := auth.NewMSIConfig()
-	config.Resource = info.AppInsightsResourceURL
-	return config
+	return nil
 }
 
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (int64, error) {
@@ -112,7 +116,7 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
 func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
-	config := getAuthConfig(info, podIdentity)
+	config := getAuthConfig(ctx, info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {
 		return -1, err

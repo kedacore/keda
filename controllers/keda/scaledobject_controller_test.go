@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -27,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -597,6 +599,116 @@ var _ = Describe("ScaledObjectController", func() {
 				return so.Status.Conditions.GetReadyCondition().Status
 			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
 		})
+	})
+
+	It("scaleobject ready condition 'False/Unknow' to 'True' will requeue", func() {
+		var (
+			deploymentName        = "conditionchange"
+			soName                = "so-" + deploymentName
+			min             int32 = 1
+			max             int32 = 5
+			pollingInterVal int32 = 1
+		)
+
+		// Create the scaling target.
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				MinReplicaCount: &min,
+				MaxReplicaCount: &max,
+				PollingInterval: &pollingInterVal,
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type:       "cpu",
+						MetricType: autoscalingv2beta2.UtilizationMetricType,
+						Metadata: map[string]string{
+							"value": "50",
+						},
+					},
+					{
+						Type:       "external-mock",
+						MetricType: autoscalingv2beta2.AverageValueMetricType,
+						Metadata:   map[string]string{},
+					},
+				},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// wait so's ready condition Ready
+		Eventually(func() metav1.ConditionStatus {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+			return so.Status.Conditions.GetReadyCondition().Status
+		}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+
+		// check hpa
+		hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+		Eventually(func() int {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			Expect(err).ToNot(HaveOccurred())
+			return len(hpa.Spec.Metrics)
+		}, 1*time.Second).Should(Equal(2))
+
+		// mock external server offline
+		atomic.StoreInt32(&scalers.MockExternalServerStatus, scalers.MockExternalServerStatusOffline)
+
+		// wait so's ready condition not
+		Eventually(func() metav1.ConditionStatus {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+			return so.Status.Conditions.GetReadyCondition().Status
+		}, 5*time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
+
+		// mock kube-controller-manager request v1beta1.custom.metrics.k8s.io api GetMetrics
+		err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+		Expect(err).ToNot(HaveOccurred())
+		hpa.Status.CurrentMetrics = []autoscalingv2beta2.MetricStatus{
+			{
+				Type: autoscalingv2beta2.ResourceMetricSourceType,
+				Resource: &autoscalingv2beta2.ResourceMetricStatus{
+					Name: corev1.ResourceCPU,
+					Current: autoscalingv2beta2.MetricValueStatus{
+						Value: resource.NewQuantity(int64(100), resource.DecimalSI),
+					},
+				},
+			},
+		}
+		err = k8sClient.Status().Update(ctx, hpa)
+		Expect(err).ToNot(HaveOccurred())
+
+		// hpa metrics will only left CPU metric
+		Eventually(func() int {
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			Expect(err).ToNot(HaveOccurred())
+			return len(hpa.Spec.Metrics)
+		}, 5*time.Second).Should(Equal(1))
+
+		// mock external server online
+		atomic.StoreInt32(&scalers.MockExternalServerStatus, scalers.MockExternalServerStatusOnline)
+
+		// wait so's ready condition Ready
+		Eventually(func() metav1.ConditionStatus {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+			return so.Status.Conditions.GetReadyCondition().Status
+		}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+
+		// hpa will recover
+		Eventually(func() int {
+			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			Expect(err).ToNot(HaveOccurred())
+			return len(hpa.Spec.Metrics)
+		}, 5*time.Second).Should(Equal(2))
 	})
 })
 

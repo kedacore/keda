@@ -75,7 +75,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
 	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
 	if !isError && !readyCondition.IsTrue() {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
+		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionTrue,
 			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
@@ -93,23 +93,26 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 
 	status := scaledObject.Status.DeepCopy()
-	if pausedCount != nil && *pausedCount != currentReplicas && status.PausedReplicaCount == nil {
-		_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *pausedCount)
-		if err != nil {
-			logger.Error(err, "error scaling target to paused replicas count", "paused replicas", *pausedCount)
-			if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown,
-				kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
-				logger.Error(err, "error setting ready condition")
+	if pausedCount != nil {
+		// Scale the target to the paused replica count
+		if *pausedCount != currentReplicas {
+			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *pausedCount)
+			if err != nil {
+				logger.Error(err, "error scaling target to paused replicas count", "paused replicas", *pausedCount)
+				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown,
+					kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
+					logger.Error(err, "error setting ready condition")
+				}
+				return
 			}
-			return
+			status.PausedReplicaCount = pausedCount
+			err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
+			if err != nil {
+				logger.Error(err, "error updating status paused replica count")
+				return
+			}
+			logger.Info("Successfully scaled target to paused replicas count", "paused replicas", *pausedCount)
 		}
-		status.PausedReplicaCount = pausedCount
-		err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
-		if err != nil {
-			logger.Error(err, "error updating status paused replica count")
-			return
-		}
-		logger.Info("Successfully scaled target to paused replicas count", "paused replicas", *pausedCount)
 		return
 	}
 
@@ -355,6 +358,8 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 	return false, *scaledObject.Spec.MinReplicaCount
 }
 
+// GetPausedReplicaCount returns the paused replica count of the ScaledObject.
+// If not paused, it returns nil.
 func GetPausedReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (*int32, error) {
 	if scaledObject.Annotations != nil {
 		if val, ok := scaledObject.Annotations[kedacontrollerutil.PausedReplicasAnnotation]; ok {

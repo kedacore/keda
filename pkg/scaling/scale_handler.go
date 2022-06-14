@@ -366,9 +366,9 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
 	case "azure-data-explorer":
-		return scalers.NewAzureDataExplorerScaler(config)
+		return scalers.NewAzureDataExplorerScaler(ctx, config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(config)
+		return scalers.NewAzureEventHubScaler(ctx, config)
 	case "azure-log-analytics":
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
@@ -391,6 +391,9 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewElasticsearchScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
+	// TODO: use other way for test.
+	case "external-mock":
+		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":

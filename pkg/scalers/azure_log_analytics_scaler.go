@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +65,7 @@ type azureLogAnalyticsMetadata struct {
 	clientID                string
 	clientSecret            string
 	workspaceID             string
-	podIdentity             string
+	podIdentity             kedav1alpha1.PodIdentityProvider
 	query                   string
 	threshold               int64
 	metricName              string // Custom metric name for trigger
@@ -79,13 +80,14 @@ type sessionCache struct {
 }
 
 type tokenData struct {
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in,string"`
-	ExtExpiresIn int    `json:"ext_expires_in,string"`
-	ExpiresOn    int64  `json:"expires_on,string"`
-	NotBefore    int64  `json:"not_before,string"`
-	Resource     string `json:"resource"`
-	AccessToken  string `json:"access_token"`
+	TokenType               string `json:"token_type"`
+	ExpiresIn               int    `json:"expires_in,string"`
+	ExtExpiresIn            int    `json:"ext_expires_in,string"`
+	ExpiresOn               int64  `json:"expires_on,string"`
+	NotBefore               int64  `json:"not_before,string"`
+	Resource                string `json:"resource"`
+	AccessToken             string `json:"access_token"`
+	IsWorkloadIdentityToken bool   `json:"isWorkloadIdentityToken"`
 }
 
 type metricsData struct {
@@ -165,8 +167,8 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		meta.clientSecret = clientSecret
 
 		meta.podIdentity = ""
-	case kedav1alpha1.PodIdentityProviderAzure:
-		meta.podIdentity = string(config.PodIdentity)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		meta.podIdentity = config.PodIdentity
 	default:
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
 	}
@@ -333,10 +335,11 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 	currentTimeSec := time.Now().Unix()
 	tokenInfo := tokenData{}
 
-	if s.metadata.podIdentity == "" {
+	switch s.metadata.podIdentity {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		tokenInfo, _ = getTokenFromCache(s.metadata.clientID, s.metadata.clientSecret)
-	} else {
-		tokenInfo, _ = getTokenFromCache(s.metadata.podIdentity, s.metadata.podIdentity)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		tokenInfo, _ = getTokenFromCache(string(s.metadata.podIdentity), string(s.metadata.podIdentity))
 	}
 
 	if currentTimeSec+30 > tokenInfo.ExpiresOn {
@@ -345,12 +348,13 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 			return tokenData{}, err
 		}
 
-		if s.metadata.podIdentity == "" {
+		switch s.metadata.podIdentity {
+		case "", kedav1alpha1.PodIdentityProviderNone:
 			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, newTokenInfo)
-		} else {
+		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
-			_ = setTokenInCache(s.metadata.podIdentity, s.metadata.podIdentity, newTokenInfo)
+			_ = setTokenInCache(string(s.metadata.podIdentity), string(s.metadata.podIdentity), newTokenInfo)
 		}
 
 		return newTokenInfo, nil
@@ -373,12 +377,13 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 			return metricsData{}, err
 		}
 
-		if s.metadata.podIdentity == "" {
+		switch s.metadata.podIdentity {
+		case "", kedav1alpha1.PodIdentityProviderNone:
 			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, tokenInfo)
-		} else {
+		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
-			_ = setTokenInCache(s.metadata.podIdentity, s.metadata.podIdentity, tokenInfo)
+			_ = setTokenInCache(string(s.metadata.podIdentity), string(s.metadata.podIdentity), tokenInfo)
 		}
 
 		if err == nil {
@@ -473,6 +478,10 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken(ctx context.Context) (token
 		return tokenData{}, err
 	}
 
+	if tokenInfo.IsWorkloadIdentityToken {
+		return tokenInfo, nil
+	}
+
 	// Now, let's check we can use this token. If no, wait until we can use it
 	currentTimeSec := time.Now().Unix()
 	if currentTimeSec < tokenInfo.NotBefore {
@@ -494,9 +503,30 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 	var err error
 	var tokenInfo tokenData
 
-	if s.metadata.podIdentity == "" {
+	switch s.metadata.podIdentity {
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.logAnalyticsResourceURL)
+		if err != nil {
+			return tokenData{}, nil
+		}
+
+		expiresOn := aadToken.ExpiresOnTimeObject.Unix()
+		if err != nil {
+			return tokenData{}, nil
+		}
+
+		tokenInfo = tokenData{
+			TokenType:               string(auth.CBSTokenTypeJWT),
+			AccessToken:             aadToken.AccessToken,
+			ExpiresOn:               expiresOn,
+			Resource:                s.metadata.logAnalyticsResourceURL,
+			IsWorkloadIdentityToken: true,
+		}
+
+		return tokenInfo, nil
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		body, statusCode, err = s.executeAADApicall(ctx)
-	} else {
+	case kedav1alpha1.PodIdentityProviderAzure:
 		body, statusCode, err = s.executeIMDSApicall(ctx)
 	}
 

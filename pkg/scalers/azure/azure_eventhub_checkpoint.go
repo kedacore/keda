@@ -125,7 +125,10 @@ func (checkpointer *azureFunctionCheckpointer) resolvePath(info EventHubInfo) (*
 		return nil, err
 	}
 
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
 
 	return path, nil
 }
@@ -148,7 +151,11 @@ func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*u
 		return nil, err
 	}
 
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
+
 	return path, nil
 }
 
@@ -159,7 +166,10 @@ func (checkpointer *blobMetadataCheckpointer) extractCheckpoint(get *azblob.Down
 
 // resolve path for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
 
 	return path, nil
 }

@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -72,27 +73,39 @@ func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
 
 type testAppInsightsAuthConfigTestData struct {
 	testName    string
-	expectMSI   bool
+	config      string
 	info        AppInsightsInfo
 	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
+const (
+	msiConfig               = "msiConfig"
+	clientCredentialsConfig = "clientCredentialsConfig"
+	workloadIdentityConfig  = "workloadIdentityConfig"
+)
+
 var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure pod identity", true, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
+	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
+	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
+	{"azure pod identity", msiConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
+	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
 func TestAzAppInfoGetAuthConfig(t *testing.T) {
 	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(testData.info, testData.podIdentity)
-		if testData.expectMSI {
+		authConfig := getAuthConfig(context.TODO(), testData.info, testData.podIdentity)
+		switch testData.config {
+		case msiConfig:
 			if _, ok := authConfig.(auth.MSIConfig); !ok {
 				t.Errorf("Test %v; incorrect auth config. expected MSI config", testData.testName)
 			}
-		} else {
+		case clientCredentialsConfig:
 			if _, ok := authConfig.(auth.ClientCredentialsConfig); !ok {
 				t.Errorf("Test: %v; incorrect auth config. expected client credentials config", testData.testName)
+			}
+		case workloadIdentityConfig:
+			if _, ok := authConfig.(ADWorkloadIdentityConfig); !ok {
+				t.Errorf("Test: %v; incorrect auth config. expected ad workload identity config", testData.testName)
 			}
 		}
 	}

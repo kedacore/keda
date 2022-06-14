@@ -4,12 +4,13 @@ import test from "ava"
 import { createNamespace, createYamlFile, waitForDeploymentReplicaCount } from "./helpers"
 
 const connectionString = process.env["AZURE_SERVICE_BUS_CONNECTION_STRING"]
-const topicName = "sb-topic"
-const subscriptionName = "sb-subscription"
+// Format for connection string -
+// Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key-val>"
+const serviceBusNameSpace = connectionString.split("//")[1].split(".")[0]
+const queueName = "sb-queue-workload"
 
-const testName = "test-azure-service-bus-topic"
+const testName = "test-azure-service-bus-queue-workload-identity"
 const testNamespace = `${testName}-ns`
-const secretName = `${testName}-secret`
 const deploymentName = `${testName}-deployment`
 const triggerAuthName = `${testName}-trigger-auth`
 const scaledObjectName = `${testName}-scaled-object`
@@ -21,30 +22,17 @@ test.before(async t => {
 
     sh.config.silent = true
 
-    // Create topic within the Service Bus Namespace
+    // Create queue within the Service Bus Namespace
     const serviceBusAdminClient = new azure.ServiceBusAdministrationClient(connectionString)
-    const topicExists = await serviceBusAdminClient.topicExists(topicName)
-    // Clean up (delete) topic if already exists and create again
-    if (topicExists) {
-        await serviceBusAdminClient.deleteTopic(topicName)
+    const queueExists = await serviceBusAdminClient.queueExists(queueName)
+    // Clean up (delete) queue if already exists and create again
+    if (queueExists) {
+        await serviceBusAdminClient.deleteQueue(queueName)
     }
-    await serviceBusAdminClient.createTopic(topicName)
-
-    // Create subscription within topic
-    await serviceBusAdminClient.createSubscription(topicName, subscriptionName)
+    await serviceBusAdminClient.createQueue(queueName)
 
     // Create Kubernetes Namespace
     createNamespace(testNamespace)
-
-    // Create Secret
-    const base64ConStr = Buffer.from(connectionString).toString("base64")
-    const secretFileName = createYamlFile(secretYaml.replace("{{CONNECTION}}", base64ConStr))
-
-    t.is(
-        sh.exec(`kubectl apply -f ${secretFileName} -n ${testNamespace}`).code,
-        0,
-        "Creating a secret should work"
-    )
 
     // Create deployment
     t.is(
@@ -70,10 +58,10 @@ test.before(async t => {
     t.true(await waitForDeploymentReplicaCount(0, deploymentName, testNamespace, 60, 1000), "Replica count should be 0 after 1 minute")
 })
 
-test.serial("Deployment should scale up with messages on service bus topic", async t => {
-    // Send messages to service bus topic
+test.serial("Deployment should scale up with messages on service bus queue", async t => {
+    // Send messages to service bus queue
     const serviceBusClient = new azure.ServiceBusClient(connectionString)
-    const sender = serviceBusClient.createSender(topicName)
+    const sender = serviceBusClient.createSender(queueName)
 
     const messages: azure.ServiceBusMessage[] = [
         {"body": "1"},
@@ -91,10 +79,10 @@ test.serial("Deployment should scale up with messages on service bus topic", asy
     t.true(await waitForDeploymentReplicaCount(1, deploymentName, testNamespace, 60, 1000), "Replica count should be 1 after 1 minute")
 })
 
-test.serial("Deployment should scale down with messages on service bus topic", async t => {
-    // Receive messages from service bus topic
+test.serial("Deployment should scale down with messages on service bus queue", async t => {
+    // Receive messages from service bus queue
     const serviceBusClient = new azure.ServiceBusClient(connectionString)
-    const receiver = serviceBusClient.createReceiver(topicName, subscriptionName)
+    const receiver = serviceBusClient.createReceiver(queueName)
 
     var numOfReceivedMessages = 0
 
@@ -120,7 +108,6 @@ test.after.always("Clean up E2E K8s objects", async t => {
         `scaledobject.keda.sh/${scaledObjectName}`,
         `triggerauthentications.keda.sh/${triggerAuthName}`,
         `deployments.apps/${deploymentName}`,
-        `secrets/${secretName}`,
     ]
 
     for (const resource of resources) {
@@ -129,36 +116,17 @@ test.after.always("Clean up E2E K8s objects", async t => {
 
     sh.exec(`kubectl delete ns ${testNamespace}`)
 
-    // Delete subscription
+    // Delete queue
     const serviceBusAdminClient = new azure.ServiceBusAdministrationClient(connectionString)
-    var response = await serviceBusAdminClient.deleteSubscription(topicName, subscriptionName)
+    const response = await serviceBusAdminClient.deleteQueue(queueName)
     t.is(
         response._response.status,
         200,
-        "Subscription deletion must succeed"
-    )
-
-    response = await serviceBusAdminClient.deleteTopic(topicName)
-    t.is(
-        response._response.status,
-        200,
-        "Topic deletion must succeed"
+        "Queue deletion must succeed"
     )
 })
 
 // YAML Definitions for Kubernetes resources
-// Secret
-const secretYaml =
-`apiVersion: v1
-kind: Secret
-metadata:
-  name: ${secretName}
-  namespace: ${testNamespace}
-type: Opaque
-data:
-  connection: {{CONNECTION}}
-`
-
 // Deployment
 const deploymentYaml =
 `apiVersion: apps/v1
@@ -189,10 +157,8 @@ metadata:
   name: ${triggerAuthName}
   namespace: ${testNamespace}
 spec:
-  secretTargetRef:
-    - parameter: connection
-      name: ${secretName}
-      key: connection
+  podIdentity:
+    provider: azure-workload
 `
 
 // Scaled Object
@@ -214,8 +180,8 @@ spec:
   triggers:
   - type: azure-servicebus
     metadata:
-      topicName: ${topicName}
-      subscriptionName: ${subscriptionName}
+      namespace: ${serviceBusNameSpace}
+      queueName: ${queueName}
     authenticationRef:
       name: ${triggerAuthName}
 `

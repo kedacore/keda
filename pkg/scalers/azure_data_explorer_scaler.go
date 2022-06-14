@@ -46,7 +46,7 @@ const adxName = "azure-data-explorer"
 
 var dataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 
-func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
@@ -57,7 +57,7 @@ func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
 	}
 
-	client, err := azure.CreateAzureDataExplorerClient(metadata)
+	client, err := azure.CreateAzureDataExplorerClient(ctx, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure data explorer client: %s", err)
 	}
@@ -132,8 +132,8 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorer
 	metadata := azure.DataExplorerMetadata{}
 
 	switch config.PodIdentity {
-	case kedav1alpha1.PodIdentityProviderAzure:
-		metadata.PodIdentity = string(config.PodIdentity)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		dataExplorerLogger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 
