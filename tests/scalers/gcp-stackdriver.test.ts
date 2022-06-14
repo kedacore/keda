@@ -4,7 +4,7 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
 
-const gcpKey = process.env['GCP_SP_KEY']
+const gcpKey = process.env['GCP_SP_KEY'] || ''
 const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
@@ -148,7 +148,7 @@ spec:
         filter: 'metric.type="storage.googleapis.com/network/received_bytes_count" AND resource.type="gcs_bucket" AND metric.label.method="WriteObject" AND resource.label.bucket_name="${bucketName}"'
         metricName: ${bucketName}
         targetValue: '5'
-        alignmentPeriodSeconds: 60
+        alignmentPeriodSeconds: '60'
         alignmentAligner: mean
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
