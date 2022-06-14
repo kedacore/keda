@@ -9,8 +9,6 @@ import (
 	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -25,7 +23,7 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue int64
+	targetQueryValue float64
 	connection       string
 	query            string
 	metricName       string
@@ -67,7 +65,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -168,8 +166,8 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 	return messages > 0, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
-	var id int64
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
+	var id float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
@@ -184,7 +182,7 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -199,11 +197,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

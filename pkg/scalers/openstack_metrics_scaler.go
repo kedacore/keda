@@ -12,8 +12,6 @@ import (
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -210,7 +208,7 @@ func (a *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(a.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(a.metricType, int64(a.metadata.threshold)),
+		Target: GetMetricTargetMili(a.metricType, a.metadata.threshold),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
@@ -229,11 +227,7 @@ func (a *openstackMetricScaler) GetMetrics(ctx context.Context, metricName strin
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

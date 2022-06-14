@@ -3,7 +3,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -77,7 +76,7 @@ func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1
 	return nil
 }
 
-func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (int64, error) {
+func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
 	}
@@ -94,7 +93,7 @@ func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetr
 
 	azureAppInsightsLog.V(2).Info("value extracted from metric request", "metric type", info.AggregationType, "metric value", floatVal)
 
-	return int64(math.Round(floatVal)), nil
+	return floatVal, nil
 }
 
 func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interface{}, error) {
@@ -115,7 +114,7 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.PodIdentityProvider) (float64, error) {
 	config := getAuthConfig(ctx, info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {

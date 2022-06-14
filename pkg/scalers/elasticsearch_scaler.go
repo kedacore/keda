@@ -14,8 +14,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -176,7 +174,7 @@ func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // getQueryResult returns result of the scaler query
-func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (int64, error) {
+func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// Build the request body.
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(buildQuery(s.metadata)); err != nil {
@@ -223,11 +221,11 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 	return query
 }
 
-func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
+func getValueFromSearch(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number but got: '%s'"
 	if r.Type == gjson.String {
-		q, err := strconv.ParseInt(r.String(), 10, 64)
+		q, err := strconv.ParseFloat(r.String(), 64)
 		if err != nil {
 			return 0, fmt.Errorf(errorMsg, r.String())
 		}
@@ -236,7 +234,7 @@ func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
 	if r.Type != gjson.Number {
 		return 0, fmt.Errorf(errorMsg, r.Type.String())
 	}
-	return int64(r.Num), nil
+	return r.Num, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -260,11 +258,7 @@ func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string,
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting elasticsearch: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

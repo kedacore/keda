@@ -7,8 +7,6 @@ import (
 
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,7 +34,7 @@ var phasesCountedAsTerminated = []corev1.PodPhase{
 type kubernetesWorkloadMetadata struct {
 	podSelector labels.Selector
 	namespace   string
-	value       int64
+	value       float64
 	scalerIndex int
 }
 
@@ -67,7 +65,7 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
 	}
-	meta.value, err = strconv.ParseInt(config.TriggerMetadata[valueKey], 10, 64)
+	meta.value, err = strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be an integer greater than 0")
 	}
@@ -97,7 +95,7 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kubernetesWorkloadMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -110,11 +108,7 @@ func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName st
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting kubernetes workload: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(pods, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(pods))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

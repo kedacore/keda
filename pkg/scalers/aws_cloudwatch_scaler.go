@@ -14,8 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,8 +41,8 @@ type awsCloudwatchMetadata struct {
 	dimensionValue []string
 	expression     string
 
-	targetMetricValue int64
-	minMetricValue    int64
+	targetMetricValue float64
+	minMetricValue    float64
 
 	metricCollectionTime int64
 	metricStat           string
@@ -87,6 +85,22 @@ func getIntMetadataValue(metadata map[string]string, key string, required bool, 
 			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
 		}
 		return int64(value), nil
+	}
+
+	if required {
+		return 0, fmt.Errorf("metadata %s not given", key)
+	}
+
+	return defaultValue, nil
+}
+
+func getFloatMetadataValue(metadata map[string]string, key string, required bool, defaultValue float64) (float64, error) {
+	if val, ok := metadata[key]; ok && val != "" {
+		value, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
+		}
+		return value, nil
 	}
 
 	if required {
@@ -167,12 +181,12 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		}
 	}
 
-	meta.targetMetricValue, err = getIntMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
+	meta.targetMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	meta.minMetricValue, err = getIntMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
+	meta.minMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -278,11 +292,7 @@ func (c *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string,
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(metricValue, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, metricValue)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -300,7 +310,7 @@ func (c *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(c.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-cloudwatch-%s", metricNameSuffix))),
 		},
-		Target: GetMetricTarget(c.metricType, c.metadata.targetMetricValue),
+		Target: GetMetricTargetMili(c.metricType, c.metadata.targetMetricValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -320,7 +330,7 @@ func (c *awsCloudwatchScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (int64, error) {
+func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 	var input cloudwatch.GetMetricDataInput
 
 	startTime, endTime := computeQueryWindow(time.Now(), c.metadata.metricStatPeriod, c.metadata.metricEndTimeOffset, c.metadata.metricCollectionTime)
@@ -384,9 +394,9 @@ func (c *awsCloudwatchScaler) GetCloudwatchMetrics() (int64, error) {
 	}
 
 	cloudwatchLog.V(1).Info("Received Metric Data", "data", output)
-	var metricValue int64
+	var metricValue float64
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
-		metricValue = int64(*output.MetricDataResults[0].Values[0])
+		metricValue = *output.MetricDataResults[0].Values[0]
 	} else {
 		cloudwatchLog.Info("empty metric data received, returning minMetricValue")
 		metricValue = c.metadata.minMetricValue
