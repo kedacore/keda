@@ -127,7 +127,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	}
 
 	// Trim any trailing new lines from the Azure Pipelines PAT
-        meta.personalAccessToken = strings.TrimSuffix(metadata.personalAccessToken, "\n")
+        meta.personalAccessToken = strings.TrimSuffix(meta.personalAccessToken, "\n")
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
