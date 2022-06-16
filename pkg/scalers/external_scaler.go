@@ -305,7 +305,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
 	// in the metadata, they will share the same grpc.ClientConn
-	key, err := hashstructure.Hash(metadata, nil)
+	key, err := hashstructure.Hash(metadata.scalerAddress, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -326,7 +326,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(1)
-	connGroup := connectionGroup{
+	connGroup := &connectionGroup{
 		grpcConnection: conn,
 		waitGroup:      waitGroup,
 	}
