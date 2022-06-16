@@ -134,7 +134,7 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
 
 	t.Logf("--- validate hpa is with %s name ---", firstHpaDescription)
-	hpa, _ := WaitForHpaCreation(t, kc, firstHpaName, testNamespace, 10, 1)
+	hpa, _ := WaitForHpaCreation(t, kc, firstHpaName, testNamespace, 60, 1)
 	assert.Equal(t, firstHpaName, hpa.Name)
 
 	t.Log("--- change hpa name ---")
@@ -142,11 +142,11 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	KubectlApplyMultipleWithTemplate(t, data, templatesCustomName...)
 
 	t.Logf("--- validate new hpa is with %s name ---", secondHpaDescription)
-	hpa, _ = WaitForHpaCreation(t, kc, secondHpaName, testNamespace, 10, 1)
+	hpa, _ = WaitForHpaCreation(t, kc, secondHpaName, testNamespace, 60, 1)
 	assert.Equal(t, secondHpaName, hpa.Name)
 
 	t.Logf("--- validate hpa with %s name does not exists ---", firstHpaDescription)
-	_, err := WaitForHpaCreation(t, kc, firstHpaName, testNamespace, 10, 1)
+	_, err := WaitForHpaCreation(t, kc, firstHpaName, testNamespace, 15, 1)
 	assert.True(t, errors.IsNotFound(err))
 
 	// cleanup
