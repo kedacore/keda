@@ -9,8 +9,6 @@ import (
 	"github.com/newrelic/newrelic-client-go/newrelic"
 	"github.com/newrelic/newrelic-client-go/pkg/nrdb"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,7 +38,7 @@ type newrelicMetadata struct {
 	queryKey    string
 	noDataError bool
 	nrql        string
-	threshold   int64
+	threshold   float64
 	scalerIndex int
 }
 
@@ -108,7 +106,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
-		t, err := strconv.ParseInt(val, 10, 64)
+		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s", threshold)
 		}
@@ -171,11 +169,7 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -187,7 +181,7 @@ func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

@@ -19,7 +19,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -67,7 +66,7 @@ type MonitorInfo struct {
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int64, error) {
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (float64, error) {
 	client := createMetricsClient(ctx, info, podIdentity)
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
@@ -128,16 +127,13 @@ func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error)
 	return &metricRequest, nil
 }
 
-func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (int64, error) {
+func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (float64, error) {
 	metricResponse, err := getAzureMetric(ctx, client, *request)
 	if err != nil {
 		return -1, fmt.Errorf("error getting azure monitor metric %s: %w", request.MetricName, err)
 	}
 
-	// casting drops everything after decimal, so round first
-	metricValue := int64(math.Round(metricResponse))
-
-	return metricValue, nil
+	return metricResponse, nil
 }
 
 func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {

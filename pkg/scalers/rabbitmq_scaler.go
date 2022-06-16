@@ -13,8 +13,6 @@ import (
 
 	"github.com/streadway/amqp"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -64,7 +62,7 @@ type rabbitMQScaler struct {
 type rabbitMQMetadata struct {
 	queueName   string
 	mode        string        // QueueLength or MessageRate
-	value       int64         // trigger value (queue length or publish/sec. rate)
+	value       float64       // trigger value (queue length or publish/sec. rate)
 	host        string        // connection string for either HTTP or AMQP protocol
 	protocol    string        // either http or amqp protocol
 	vhostName   *string       // override the vhost from the connection info
@@ -281,7 +279,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	// Parse deprecated `queueLength` value
 	if deprecatedQueueLengthPresent {
-		queueLength, err := strconv.ParseInt(deprecatedQueueLengthValue, 10, 64)
+		queueLength, err := strconv.ParseFloat(deprecatedQueueLengthValue, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
 		}
@@ -307,7 +305,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	default:
 		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", mode, rabbitModeQueueLength, rabbitModeMessageRate)
 	}
-	triggerValue, err := strconv.ParseInt(value, 10, 64)
+	triggerValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
 	}
@@ -465,7 +463,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,
@@ -481,17 +479,11 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, s.anonimizeRabbitMQError(err)
 	}
 
-	var metricValue resource.Quantity
+	var metric external_metrics.ExternalMetricValue
 	if s.metadata.mode == rabbitModeQueueLength {
-		metricValue = *resource.NewQuantity(messages, resource.DecimalSI)
+		metric = GenerateMetricInMili(metricName, float64(messages))
 	} else {
-		metricValue = *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI)
-	}
-
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      metricValue,
-		Timestamp:  metav1.Now(),
+		metric = GenerateMetricInMili(metricName, publishRate)
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil

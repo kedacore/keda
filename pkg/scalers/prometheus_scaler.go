@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -46,7 +44,7 @@ type prometheusMetadata struct {
 	serverAddress  string
 	metricName     string
 	query          string
-	threshold      int64
+	threshold      float64
 	prometheusAuth *authentication.AuthMeta
 	namespace      string
 	scalerIndex    int
@@ -126,7 +124,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.ParseInt(val, 10, 64)
+		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
 		}
@@ -185,7 +183,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Me
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -281,11 +279,7 @@ func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, _ 
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -33,8 +33,6 @@ import (
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -67,7 +65,7 @@ type azureLogAnalyticsMetadata struct {
 	workspaceID             string
 	podIdentity             kedav1alpha1.PodIdentityProvider
 	query                   string
-	threshold               int64
+	threshold               float64
 	metricName              string // Custom metric name for trigger
 	scalerIndex             int
 	logAnalyticsResourceURL string
@@ -75,8 +73,8 @@ type azureLogAnalyticsMetadata struct {
 }
 
 type sessionCache struct {
-	metricValue     int64
-	metricThreshold int64
+	metricValue     float64
+	metricThreshold float64
 }
 
 type tokenData struct {
@@ -91,8 +89,8 @@ type tokenData struct {
 }
 
 type metricsData struct {
-	value     int64
-	threshold int64
+	value     float64
+	threshold float64
 }
 
 type queryResult struct {
@@ -192,7 +190,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	if err != nil {
 		return nil, err
 	}
-	threshold, err := strconv.ParseInt(val, 10, 64)
+	threshold, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 	}
@@ -267,7 +265,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) [
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.cache.metricThreshold),
+		Target: GetMetricTargetMili(s.metricType, s.cache.metricThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -281,11 +279,7 @@ func (s *azureLogAnalyticsScaler) GetMetrics(ctx context.Context, metricName str
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(receivedMetric.value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, receivedMetric.value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -428,7 +422,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 		if len(queryData.Tables[0].Rows[0]) > 0 {
 			metricDataType := queryData.Tables[0].Columns[0].Type
 			metricVal := queryData.Tables[0].Rows[0][0]
-			parsedMetricVal, err := parseTableValueToInt64(metricVal, metricDataType)
+			parsedMetricVal, err := parseTableValueToFloat64(metricVal, metricDataType)
 			if err != nil {
 				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
@@ -438,7 +432,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 		if len(queryData.Tables[0].Rows[0]) > 1 {
 			thresholdDataType := queryData.Tables[0].Columns[1].Type
 			thresholdVal := queryData.Tables[0].Rows[0][1]
-			parsedThresholdVal, err := parseTableValueToInt64(thresholdVal, thresholdDataType)
+			parsedThresholdVal, err := parseTableValueToFloat64(thresholdVal, thresholdDataType)
 			if err != nil {
 				return metricsData{}, fmt.Errorf("%s. HTTP code: %d. Body: %s", err.Error(), statusCode, string(body))
 			}
@@ -453,7 +447,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 	return metricsData{}, fmt.Errorf("error processing Log Analytics request. Details: unknown error. HTTP code: %d. Body: %s", statusCode, string(body))
 }
 
-func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
+func parseTableValueToFloat64(value interface{}, dataType string) (float64, error) {
 	if value != nil {
 		// type can be: real, int, long
 		if dataType == "real" || dataType == "int" || dataType == "long" {
@@ -464,7 +458,7 @@ func parseTableValueToInt64(value interface{}, dataType string) (int64, error) {
 			if convertedValue < 0 {
 				return 0, fmt.Errorf("error validating Log Analytics request. Details: value should be >=0, but received %f", value)
 			}
-			return int64(convertedValue), nil
+			return convertedValue, nil
 		}
 		return 0, fmt.Errorf("error validating Log Analytics request. Details: value data type should be real, int or long, but received %s", dataType)
 	}
