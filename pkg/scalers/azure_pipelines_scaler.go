@@ -180,7 +180,6 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 		return []byte{}, err
 	}
 
-	req.SetBasicAuth("", strings.TrimSuffix(metadata.personalAccessToken, "\n"))
 	req.SetBasicAuth("", metadata.personalAccessToken)
 
 	r, err := httpClient.Do(req)
