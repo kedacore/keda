@@ -153,8 +153,8 @@ type predictKubeMetricIdentifier struct {
 }
 
 var predictKubeMetricIdentifiers = []predictKubeMetricIdentifier{
-	{&testPredictKubeMetadata[0], 0, fmt.Sprintf("s0-predictkube-%s", &testPredictKubeMetadata[0][0]["metricName"])},
-	{&testPredictKubeMetadata[0], 1, fmt.Sprintf("s1-predictkube-%s", &testPredictKubeMetadata[0][0]["metricName"])},
+	{&testPredictKubeMetadata[0], 0, fmt.Sprintf("s0-predictkube-%s", testPredictKubeMetadata[0].metadata["metricName"])},
+	{&testPredictKubeMetadata[0], 1, fmt.Sprintf("s1-predictkube-%s", testPredictKubeMetadata[0].metadata["metricName"])},
 }
 
 func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
@@ -211,7 +211,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), mockPredictKubeScaler.TriggerMetadata["metricName"], nil)
+		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), mockPredictKubeScaler.metadata.metricName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))
