@@ -276,10 +276,9 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
-			if (meta.scaleOnInFlight){
+			if meta.scaleOnInFlight {
 				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
-			}
-			else{
+			} else {
 				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
 			}
 		}
