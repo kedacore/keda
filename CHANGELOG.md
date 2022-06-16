@@ -53,6 +53,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
 - **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
 - **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue([#3096](https://github.com/kedacore/keda/issues/3096))
+- **PredictKube Scaler** Use `metricName` value to set metric name ([#3180](https://github.com/kedacore/keda/issues/3180))
 
 ### Deprecations
 

@@ -113,23 +113,23 @@ type predictKubeMetadataTestData struct {
 var testPredictKubeMetadata = []predictKubeMetadataTestData{
 	// all properly formed
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "threshold": "2000", "query": "up", "metricName": "liveness_metric_0"},
 		map[string]string{"apiKey": testAPIKey}, false,
 	},
 	// missing prometheusAddress
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "", "queryStep": "2m", "threshold": "2000", "query": "up", "metricName": "liveness_metric_1"},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 	// malformed threshold
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "up", "metricName": "liveness_metric_2"},
 
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 	// missing query
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": ""},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "", "metricName": "liveness_metric_3"},
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
 }
@@ -153,8 +153,8 @@ type predictKubeMetricIdentifier struct {
 }
 
 var predictKubeMetricIdentifiers = []predictKubeMetricIdentifier{
-	{&testPredictKubeMetadata[0], 0, fmt.Sprintf("s0-predictkube-%s", predictKubeMetricPrefix)},
-	{&testPredictKubeMetadata[0], 1, fmt.Sprintf("s1-predictkube-%s", predictKubeMetricPrefix)},
+	{&testPredictKubeMetadata[0], 0, fmt.Sprintf("s0-predictkube-%s", &testPredictKubeMetadata[0][0]["metricName"])},
+	{&testPredictKubeMetadata[0], 1, fmt.Sprintf("s1-predictkube-%s", &testPredictKubeMetadata[0][0]["metricName"])},
 }
 
 func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
@@ -211,7 +211,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), predictKubeMetricPrefix, nil)
+		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), mockPredictKubeScaler.TriggerMetadata["metricName"], nil)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))
