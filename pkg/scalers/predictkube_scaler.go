@@ -36,7 +36,6 @@ import (
 
 const (
 	predictKubeMetricType   = "External"
-	predictKubeMetricPrefix = "predictkube_metric"
 
 	invalidMetricTypeErr = "metric type is invalid"
 )
