@@ -4,17 +4,12 @@
 package custom_hpa_name
 
 import (
-	"context"
 	"fmt"
 	"github.com/joho/godotenv"
 	. "github.com/kedacore/keda/v2/tests"
 	"github.com/stretchr/testify/assert"
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"testing"
-	"time"
 )
 
 // Load environment variables from .env file
@@ -160,19 +155,4 @@ func getTemplateData(testNamespace string, deploymentName string, scaledObjectNa
 		ScaledObjectName: scaledObjectName,
 		CustomHpaName:    customHpaName,
 	}
-}
-
-func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
-	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
-	var err error
-	for i := 0; i < iterations; i++ {
-		hpa, err = kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		t.Log("Waiting for hpa creation")
-		if err == nil {
-			return hpa, err
-		}
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-	return hpa, err
 }
