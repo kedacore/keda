@@ -279,8 +279,9 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 			if (meta.scaleOnInFlight){
 				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
 			}
-			else:
+			else{
 				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
+			}
 		}
 	}
 }
