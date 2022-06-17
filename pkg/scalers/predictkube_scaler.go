@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	predictKubeMetricType = "External"
+	predictKubeMetricType          = "External"
+	predictKubeDefaultMetricPrefix = "predictkube_metric"
 
 	invalidMetricTypeErr = "metric type is invalid"
 )
@@ -429,7 +430,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
 		meta.metricName = val
 	} else {
-		return nil, fmt.Errorf("no metricName given")
+		meta.metricName = predictKubeDefaultMetricPrefix
 	}
 
 	meta.scalerIndex = config.ScalerIndex
