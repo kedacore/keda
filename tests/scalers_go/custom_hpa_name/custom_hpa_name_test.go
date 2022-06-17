@@ -5,11 +5,13 @@ package custom_hpa_name
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/joho/godotenv"
-	. "github.com/kedacore/keda/v2/tests"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"testing"
+
+	. "github.com/kedacore/keda/v2/tests"
 )
 
 // Load environment variables from .env file
