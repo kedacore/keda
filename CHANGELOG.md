@@ -33,7 +33,6 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.0.0](#v100)
 
 ## Unreleased
-
 ### New
 
 - **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487))
@@ -47,6 +46,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
+- **AWS SQS Queue:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 
 ### Fixes
 
