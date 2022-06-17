@@ -61,7 +61,7 @@ jobs:
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@v1
         with:
           cosign-release: 'v1.4.1'
       - name: Check Cosign install!
