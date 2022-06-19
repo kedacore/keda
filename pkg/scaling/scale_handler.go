@@ -393,6 +393,9 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewElasticsearchScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
+	// TODO: use other way for test.
+	case "external-mock":
+		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":

@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -198,13 +196,13 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 	defer done()
 
 	// Remove the sX- prefix as the external scaler shouldn't have to know about it
-	metricName, err = RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
+	metricNameWithoutIndex, err := RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
 	if err != nil {
 		return metrics, err
 	}
 
 	request := &pb.GetMetricsRequest{
-		MetricName:      metricName,
+		MetricName:      metricNameWithoutIndex,
 		ScaledObjectRef: &s.scaledObjectRef,
 	}
 
@@ -215,12 +213,7 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 	}
 
 	for _, metricResult := range response.MetricValues {
-		metric := external_metrics.ExternalMetricValue{
-			MetricName: metricResult.MetricName,
-			Value:      *resource.NewQuantity(metricResult.MetricValue, resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
-
+		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
 		metrics = append(metrics, metric)
 	}
 

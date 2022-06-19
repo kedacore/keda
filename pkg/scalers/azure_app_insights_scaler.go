@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,7 +28,7 @@ const (
 
 type azureAppInsightsMetadata struct {
 	azureAppInsightsInfo azure.AppInsightsInfo
-	targetValue          int64
+	targetValue          float64
 	scalerIndex          int
 }
 
@@ -70,7 +68,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseInt(val, 10, 64)
+	meta.targetValue, err = strconv.ParseFloat(val, 64)
 	if err != nil {
 		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", "targetValue", targetValueName)
 		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", targetValueName, err.Error())
@@ -172,7 +170,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2be
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -186,11 +184,7 @@ func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName stri
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(val, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

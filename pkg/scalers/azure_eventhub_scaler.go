@@ -29,8 +29,6 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -335,11 +333,7 @@ func (scaler *azureEventHubScaler) GetMetrics(ctx context.Context, metricName st
 
 	eventhubLog.V(1).Info(fmt.Sprintf("Unprocessed events in event hub total: %d, scaling for a lag of %d related to %d partitions", totalUnprocessedEventCount, lagRelatedToPartitionCount, len(partitionIDs)))
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(lagRelatedToPartitionCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

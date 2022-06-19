@@ -25,6 +25,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -154,4 +155,32 @@ func GetMetricTarget(metricType v2beta2.MetricTargetType, metricValue int64) v2b
 	}
 
 	return target
+}
+
+// GetMetricTargetMili returns a metric target for a valid given metric target type (Value or AverageValue) and value in mili scale
+func GetMetricTargetMili(metricType v2beta2.MetricTargetType, metricValue float64) v2beta2.MetricTarget {
+	target := v2beta2.MetricTarget{
+		Type: metricType,
+	}
+
+	// Construct the target size as a quantity
+	metricValueMili := int64(metricValue * 1000)
+	targetQty := resource.NewMilliQuantity(metricValueMili, resource.DecimalSI)
+	if metricType == v2beta2.AverageValueMetricType {
+		target.AverageValue = targetQty
+	} else {
+		target.Value = targetQty
+	}
+
+	return target
+}
+
+// GenerateMetricInMili returns a externalMetricValue with mili as metric scale
+func GenerateMetricInMili(metricName string, value float64) external_metrics.ExternalMetricValue {
+	valueMili := int64(value * 1000)
+	return external_metrics.ExternalMetricValue{
+		MetricName: metricName,
+		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
+		Timestamp:  metav1.Now(),
+	}
 }

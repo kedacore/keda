@@ -13,8 +13,6 @@ import (
 	"text/template"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -275,11 +273,7 @@ func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(queueSize, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queueSize))
 
 	return []external_metrics.ExternalMetricValue{metric}, nil
 }

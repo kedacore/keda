@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -168,11 +166,7 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(metricValue, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, metricValue)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -204,7 +198,7 @@ func (c *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
+func (c *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(c.metadata.tableName),
 		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
@@ -218,7 +212,7 @@ func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
 		return 0, err
 	}
 
-	return *res.Count, nil
+	return float64(*res.Count), nil
 }
 
 // json2Map convert Json to map[string]string

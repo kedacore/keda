@@ -68,9 +68,13 @@ all: build
 ##################################################
 
 ##@ Test
+.PHONY: install-test-deps
+install-test-deps:
+	go install github.com/jstemmer/go-junit-report/v2@latest
 
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+.PHONY: test
+test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
 
 .PHONY: get-cluster-context
 get-cluster-context: ## Get Azure cluster context.
@@ -92,6 +96,10 @@ e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
 	npm install --prefix tests
 	./tests/run-all.sh
+
+.PHONY: e2e-test-clean-crds
+e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
+	./tests/clean-crds.sh
 
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
@@ -247,7 +255,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+undeploy: e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 
@@ -302,12 +310,12 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: docker-build-tools
-docker-build-tools: ## Build build-tools image
-	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+docker-build-tools: ## Build multi-arch Docker image for build-tools.
+	docker buildx build --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
 
 .PHONY: publish-build-tools
-publish-build-tools: docker-build-tools ## Publish build-tools image
-	docker push $(IMAGE_BUILD_TOOLS)
+publish-build-tools: ## Build and push multi-arch Docker image for build-tools.
+	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
 
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
