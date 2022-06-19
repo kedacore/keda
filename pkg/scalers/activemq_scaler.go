@@ -200,7 +200,7 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 		"BrokerName":         s.metadata.brokerName,
 		"DestinationName":    s.metadata.destinationName,
 	}
-	template, err := template.New("monitoring_endpoint").Parse(defaultActiveMQRestAPITemplate)
+	template, err := template.New("monitoring_endpoint").Parse(s.metadata.restAPITemplate)
 	if err != nil {
 		return "", fmt.Errorf("error parsing template: %s", err)
 	}
