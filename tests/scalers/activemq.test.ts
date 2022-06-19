@@ -472,7 +472,7 @@ spec:
   triggers:
     - type: activemq
       metadata:
-        restAPITemplate: "https://activemq.${activeMQNamespace}:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
+        managementEndpoint: "activemq.${activeMQNamespace}:8161"
         destinationName: "testQ"
         brokerName: "localhost"
       authenticationRef:
