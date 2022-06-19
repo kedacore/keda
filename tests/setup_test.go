@@ -12,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 func TestVerifyCommands(t *testing.T) {
