@@ -12,8 +12,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	. "github.com/kedacore/keda/v2/tests"
 )
 
 func TestVerifyCommands(t *testing.T) {
@@ -48,7 +46,7 @@ func TestSetupHelm(t *testing.T) {
 	require.NoErrorf(t, err, "cannot change permissions for helm installation script - %s", err)
 
 	_, err = ExecuteCommand("./get_helm.sh")
-	require.NoErrorf(t, err, "cannot downlaod helm - %s", err)
+	require.NoErrorf(t, err, "cannot download helm - %s", err)
 
 	_, err = ExecuteCommand("helm version")
 	require.NoErrorf(t, err, "cannot get helm version - %s", err)
