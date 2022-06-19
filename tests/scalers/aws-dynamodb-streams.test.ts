@@ -9,7 +9,7 @@ import { createNamespace, sleep, waitForDeploymentReplicaCount } from './helpers
 const awsRegion = 'eu-west-2'
 const awsAccessKey = process.env['AWS_ACCESS_KEY'];
 const awsSecretKey =  process.env['AWS_SECRET_KEY'];
-const dynamoDBStreamsNamespace = 'keda-test'
+const dynamoDBStreamsNamespace = 'keda-dynamodbstreams-test'
 const dynamoDBTableName = 'keda-table01'
 const nginxDeploymentName = 'nginx-deployment'
 
@@ -71,7 +71,7 @@ test.before(async t => {
   let dbsResponse = await dynamoDBStreamsClient.send(describeStreamCommand)
   const shards = (dbsResponse.StreamDescription !== undefined) ? dbsResponse.StreamDescription.Shards : undefined
   dynamoDBStreamsShardNum = (( shards !== undefined ) ? shards.length : 0)
-  t.true( dynamoDBStreamsShardNum > 0, 'dynamodb stream shard num should be greater than 0')
+  t.true( dynamoDBStreamsShardNum >= 2, 'dynamodb stream shard num should be 2 or higher')
   console.log( "dynamodb stream shard num is " + dynamoDBStreamsShardNum )
 
   // Deploy nginx
@@ -123,7 +123,7 @@ test.serial(`Replicas should scale up to 1 then up to 2 (the max) then back to 1
     replace('{{SHARD_COUNT}}',targetShardCount.toString()))
   t.is(0, sh.exec(`kubectl apply --namespace ${dynamoDBStreamsNamespace} -f ${scaleObjectFile.name}`).code, 'deploying scaleobject should work.')
 
-  t.true(await waitForDeploymentReplicaCount(1, nginxDeploymentName, dynamoDBStreamsNamespace, 300, 1000), 'Replica count should descrese to 1')
+  t.true(await waitForDeploymentReplicaCount(1, nginxDeploymentName, dynamoDBStreamsNamespace, 330, 1000), 'Replica count should descrese to 1')
 })
 
 
