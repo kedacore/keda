@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package custom_hpa_name
+package custom_hpa_name_test
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	. "github.com/kedacore/keda/v2/tests"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
