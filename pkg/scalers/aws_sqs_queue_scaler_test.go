@@ -207,6 +207,22 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "false"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "true"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
@@ -260,7 +276,11 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
-			assert.EqualValues(t, int64(300.0), value[0].Value.Value())
+			if meta.scaleOnInFlight {
+				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
+			} else {
+				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
+			}
 		}
 	}
 }
