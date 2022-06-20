@@ -17,7 +17,6 @@
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.56.0",
     "@aws-sdk/client-dynamodb": "^3.56.0",
-    "@aws-sdk/client-dynamodb-streams": "^3.56.0",
     "@aws-sdk/client-kinesis": "^3.56.0",
     "@aws-sdk/client-sqs": "^3.56.0",
     "@azure/service-bus": "^7.5.1",
