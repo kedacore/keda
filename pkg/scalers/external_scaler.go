@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"github.com/mitchellh/hashstructure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
 
 type externalScaler struct {
