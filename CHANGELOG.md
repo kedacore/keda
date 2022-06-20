@@ -38,6 +38,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487))
+- **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
 
 ### Improvements
 

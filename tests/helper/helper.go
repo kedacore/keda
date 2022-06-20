@@ -16,6 +16,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -136,6 +137,21 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	}
 
 	return false
+}
+
+func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	iterations, intervalSeconds int) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
+	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+	var err error
+	for i := 0; i < iterations; i++ {
+		hpa, err = kc.AutoscalingV2beta2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		t.Log("Waiting for hpa creation")
+		if err == nil {
+			return hpa, err
+		}
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+	return hpa, err
 }
 
 func KubectlApplyWithTemplate(t *testing.T, data interface{}, config string) {
