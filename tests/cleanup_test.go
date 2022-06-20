@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/kedacore/keda/v2/tests"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 func TestRemoveKEDA(t *testing.T) {
