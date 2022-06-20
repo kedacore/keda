@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
@@ -197,7 +198,7 @@ func TestWaitForState(t *testing.T) {
 	}()
 
 	// build client connect to server
-	grpcClient, err := grpc.Dial(address, grpc.WithInsecure())
+	grpcClient, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Errorf("connect grpc server %s failed:%s", address, err)
 		return
