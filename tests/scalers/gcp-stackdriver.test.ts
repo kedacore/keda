@@ -4,8 +4,7 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
 
-//const gcpKey = process.env['GCP_SP_KEY'] || ''
-const gcpKey = fs.readFileSync('/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json', 'utf8')
+const gcpKey = process.env['GCP_SP_KEY'] || ''
 const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
