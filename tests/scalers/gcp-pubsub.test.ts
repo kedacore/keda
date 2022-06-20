@@ -74,7 +74,7 @@ function publishMessages() {
     // Publish 30 messages
     var cmd = gsPrefix + ' /bin/bash -c -- "cd .'
     for (let i = 0; i < 30; i++) {
-        cmd += ` && gcloud pubsub topics publish ${topicId} --message=AAAAAAAAAA`
+        cmd += ` && gcloud pubsub topics publish ${topicId} --message=AAAAAAAAAA && sleep 2s`
     }
     cmd += '"'
     return sh.exec(cmd).code
