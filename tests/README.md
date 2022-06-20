@@ -75,7 +75,7 @@ import (
     ...
     ...
 
-	. "github.com/kedacore/keda/v2/tests" // For helper methods
+	. "github.com/kedacore/keda/v2/tests/helper" // For helper methods
 )
 
 var _ = godotenv.Load("../../.env") // For loading env variables from .env
