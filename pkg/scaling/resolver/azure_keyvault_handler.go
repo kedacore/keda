@@ -125,6 +125,7 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = keyVaultResourceURL
+		config.ClientID = vh.podIdentity.IdentityID
 
 		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:

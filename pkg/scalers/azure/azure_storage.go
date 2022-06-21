@@ -199,7 +199,7 @@ func parseAcessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, a
 
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = GetAzureADPodIdentityToken(ctx, httpClient, storageResource)
+		token, err = GetAzureADPodIdentityToken(ctx, httpClient, podIdentity.IdentityID, storageResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.IdentityID, storageResource)
 	}

@@ -82,6 +82,7 @@ func getDataExplorerAuthConfig(ctx context.Context, metadata *DataExplorerMetada
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = metadata.Endpoint
+		config.ClientID = metadata.PodIdentity.IdentityID
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
 
 		authConfig = config

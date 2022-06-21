@@ -316,7 +316,6 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				MetricType:        trigger.MetricType,
 			}
 
-			// TODO - Change.
 			var podIdentity kedav1alpha1.AuthPodIdentity
 			config.AuthParams, podIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 			if err != nil {

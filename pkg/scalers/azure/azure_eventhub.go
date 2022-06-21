@@ -49,7 +49,12 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
 		envJWTProviderOption := aad.JWTProviderWithAzureEnvironment(&env)
 		resourceURLJWTProviderOption := aad.JWTProviderWithResourceURI(info.EventHubResourceURL)
-		provider, aadErr := aad.NewJWTProvider(envJWTProviderOption, resourceURLJWTProviderOption)
+		clientIDJWTProviderOption := func(config *aad.TokenProviderConfiguration) error {
+			config.ClientID = info.PodIdentity.IdentityID
+			return nil
+		}
+
+		provider, aadErr := aad.NewJWTProvider(envJWTProviderOption, resourceURLJWTProviderOption, clientIDJWTProviderOption)
 
 		if aadErr == nil {
 			return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)

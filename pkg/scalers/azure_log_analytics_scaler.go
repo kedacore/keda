@@ -43,7 +43,6 @@ import (
 )
 
 const (
-	miEndpoint                     = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
 	aadTokenEndpoint               = "%s/%s/oauth2/token"
 	laQueryEndpoint                = "%s/v1/workspaces/%s/query"
 	defaultLogAnalyticsResourceURL = "https://api.loganalytics.io"
@@ -583,7 +582,14 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 }
 
 func (s *azureLogAnalyticsScaler) executeIMDSApicall(ctx context.Context) ([]byte, int, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(miEndpoint, s.metadata.logAnalyticsResourceURL), nil)
+	var urlStr string
+	if s.metadata.podIdentity.IdentityID == "" {
+		urlStr = fmt.Sprintf(azure.MSIURL, s.metadata.logAnalyticsResourceURL)
+	} else {
+		urlStr = fmt.Sprintf(azure.MSIURLWithClientID, s.metadata.logAnalyticsResourceURL, url.QueryEscape(s.metadata.podIdentity.IdentityID))
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Instance Metadata service. Inner Error: %v", err)
 	}

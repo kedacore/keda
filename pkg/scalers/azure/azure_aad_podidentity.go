@@ -13,14 +13,21 @@ import (
 )
 
 const (
-	msiURL = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
+	MSIURL             = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s"
+	MSIURLWithClientID = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s&client_id=%s"
 )
 
 // GetAzureADPodIdentityToken returns the AADToken for resource
-func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, audience string) (AADToken, error) {
+func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, identityID, audience string) (AADToken, error) {
 	var token AADToken
 
-	urlStr := fmt.Sprintf(msiURL, url.QueryEscape(audience))
+	var urlStr string
+	if identityID == "" {
+		urlStr = fmt.Sprintf(MSIURL, url.QueryEscape(audience))
+	} else {
+		urlStr = fmt.Sprintf(MSIURLWithClientID, url.QueryEscape(audience), url.QueryEscape(identityID))
+	}
+
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
 		return token, err

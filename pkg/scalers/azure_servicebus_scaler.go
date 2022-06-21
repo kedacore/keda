@@ -234,7 +234,7 @@ func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 
 	switch a.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, serviceBusResource)
+		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, a.podIdentity.IdentityID, serviceBusResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, a.podIdentity.IdentityID, serviceBusResource)
 	default:
