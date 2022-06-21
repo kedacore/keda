@@ -102,7 +102,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
 		_, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata,
 			ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{}})
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
