@@ -152,7 +152,7 @@ func TestParseServiceBusMetadata(t *testing.T) {
 	for _, testData := range parseServiceBusMetadataDataset {
 		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv,
 			TriggerMetadata: testData.metadata, AuthParams: testData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, ScalerIndex: testEventHubScaler.metadata.scalerIndex})
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, ScalerIndex: 0})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

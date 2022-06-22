@@ -185,7 +185,7 @@ spec:
                 description: AuthPodIdentity allows users to select the platform native
                   identity mechanism
                 properties:
-                  identityID:
+                  identityId:
                     type: string
                   provider:
                     description: PodIdentityProvider contains the list of providers
