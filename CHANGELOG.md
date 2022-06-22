@@ -73,6 +73,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
 - **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
+- **General:** Migrate e2e test for Memory scaler to Go. ([3170](https://github.com/kedacore/keda/issues/3170))
 
 ## v2.7.1
 
