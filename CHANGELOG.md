@@ -36,15 +36,15 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### New
 
+- **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487))
-- **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
 
 ### Improvements
 
+- **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
 - **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issue/3135))
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
-- **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
 - **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
@@ -71,10 +71,9 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
 - **General:** Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([3142](https://github.com/kedacore/keda/issues/3142))
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
+- **General:** Migrate e2e test to Go. ([2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
-- **General:** Migrate e2e test for Memory scaler to Go. ([3170](https://github.com/kedacore/keda/issues/3170))
-- **General:** Migrate e2e test for CPU scaler to Go. ([3169](https://github.com/kedacore/keda/issues/3169))
 
 ## v2.7.1
 
