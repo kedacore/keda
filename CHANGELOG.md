@@ -74,9 +74,6 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Migrate e2e test to Go. ([2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
-- **General:** Migrate e2e test for AWS SQS Queue scaler to Go. ([3172](https://github.com/kedacore/keda/issues/3172))
-- **General:** Migrate e2e test for CPU scaler to Go. ([3169](https://github.com/kedacore/keda/issues/3169))
-- **General:** Migrate e2e test for Memory scaler to Go. ([3170](https://github.com/kedacore/keda/issues/3170))
 
 ## v2.7.1
 
