@@ -83,7 +83,7 @@ function publishMessages() {
 test.serial(`Deployment should scale to ${maxReplicaCount} (the max)`, async t => {
     var ok = false
 
-    for (let i = 0; i < 5 && !ok; i++) {
+    for (let i = 0; i < 10 && !ok; i++) {
       t.is(0, publishMessages() ,'Publishing messages to pub/sub should work..')
       // Wait for the number of replicas to be scaled up to maxReplicaCount
       ok = await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 30, 2000)
