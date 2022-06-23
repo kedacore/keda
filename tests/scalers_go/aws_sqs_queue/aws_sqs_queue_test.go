@@ -123,7 +123,7 @@ var (
 	sqsQueueName       = fmt.Sprintf("%s-keda-queue", testName)
 	awsAccessKeyID     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_KEY")
-	awsRegion          = "eu-west-2"
+	awsRegion          = os.Getenv("AWS_REGION")
 	maxReplicaCount    = 2
 	minReplicaCount    = 0
 )
