@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_service_bus_queue_test
+package azure_workload_identity_test
 
 import (
 	"context"
@@ -23,12 +23,11 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-sb-queue-workload-id-override-test"
+	testName = "azure-workload-identity-test"
 )
 
 var (
-	connectionString = os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING_ALT")
-	azureADClientID  = os.Getenv("AZURE_SP_APP_ID_ALT")
+	connectionString = os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
@@ -40,7 +39,6 @@ type templateData struct {
 	TestNamespace       string
 	DeploymentName      string
 	TriggerAuthName     string
-	IdentityID          string
 	ScaledObjectName    string
 	ServiceBusNamespace string
 	QueueName           string
@@ -79,18 +77,6 @@ spec:
     provider: azure-workload
 `
 
-	triggerAuthTemplateWithIdentityID = `
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: {{.TriggerAuthName}}
-  namespace: {{.TestNamespace}}
-spec:
-  podIdentity:
-    provider: azure-workload
-    identityId: {{.IdentityID}}
-`
-
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -119,8 +105,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING_ALT env variable is required")
-	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID_ALT env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
 	sbNamespace, sbQueueManager, sbQueue := setupServiceBusQueue(t)
 
@@ -134,8 +119,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after a minute")
 
 	// test scaling
-	testScaleUpWithIncorrectIdentity(t, kc, sbQueue)
-	testScaleUpWithCorrectIdentity(t, kc, data)
+	testScaleUp(t, kc, sbQueue)
 	testScaleDown(t, kc, sbQueue)
 
 	// cleanup
@@ -181,31 +165,17 @@ func getTemplateData() (templateData, []string) {
 		TestNamespace:    testNamespace,
 		DeploymentName:   deploymentName,
 		TriggerAuthName:  triggerAuthName,
-		IdentityID:       azureADClientID,
 		ScaledObjectName: scaledObjectName,
 		QueueName:        queueName,
 	}, []string{deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
 }
 
-func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
-	t.Log("--- testing scale up with incorrect identity ---")
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+	t.Log("--- testing scale up ---")
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
 		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
 	}
-
-	// scale up should fail as we are using the incorrect identity
-	assert.True(t, WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 30, 1) == 0,
-		"replica count should be 0 after 1 minute")
-}
-
-func testScaleUpWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up with correct identity ---")
-	KubectlDeleteWithTemplate(t, data, scaledObjectTemplate)
-	KubectlDeleteWithTemplate(t, data, triggerAuthTemplate)
-
-	KubectlApplyWithTemplate(t, data, triggerAuthTemplateWithIdentityID)
-	KubectlApplyWithTemplate(t, data, scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
