@@ -37,6 +37,8 @@ type templateData struct {
 	EndMin           string
 }
 
+type templateValues map[string]string
+
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -97,7 +99,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
 		"replica count should be 1 after a minute")
@@ -107,17 +109,20 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, map[string]string) {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		StartMin:         strconv.Itoa(start),
-		EndMin:           strconv.Itoa(end),
-	}, []string{deploymentTemplate, scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			StartMin:         strconv.Itoa(start),
+			EndMin:           strconv.Itoa(end),
+		}, templateValues{
+			"deploymentTemplate":   deploymentTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate,
+		}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
