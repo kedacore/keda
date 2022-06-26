@@ -19,7 +19,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
-
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,7 +190,6 @@ func setupDynamoDBStreams(t *testing.T) (*dynamodb.DynamoDB, *dynamodbstreams.Dy
 }
 
 func createTable(db dynamodbiface.DynamoDBAPI) error {
-
 	keySchema := []*dynamodb.KeySchemaElement{
 		{
 			AttributeName: aws.String("id"),
