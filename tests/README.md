@@ -9,9 +9,9 @@
 ### All tests
 
 ```bash
-go test -v setup_test.go        # Only needs to be run once.
+go test -v assets/setup_test.go        # Only needs to be run once.
 go test -v ./scalers_go/...
-go test -v cleanup_test.go      # Skip if you want to keep testing.
+go test -v assets/cleanup_test.go      # Skip if you want to keep testing.
 ```
 
 ### Specific test
@@ -26,15 +26,15 @@ Refer to [this](https://pkg.go.dev/testing) for more information about testing i
 
 The test script will run in 3 phases:
 
-- **Setup:** This is done in [`setup_test.go`](setup_test.go). If you're adding any tests to the KEDA install / setup process, you need to add it to this file. `setup_test.go` deploys KEDA to the `keda` namespace, updates the image to
+- **Setup:** This is done in [`assets/setup_test.go`](assets/setup_test.go). If you're adding any tests to the KEDA install / setup process, you need to add it to this file. `assets/setup_test.go` deploys KEDA to the `keda` namespace, updates the image to
 `kedacore/keda:main`.
 
-    After `setup_test.go` is done, we expect to have KEDA setup in the `keda` namespace.
+    After `assets/setup_test.go` is done, we expect to have KEDA setup in the `keda` namespace.
 
 - **Tests:** Currently there are only scaler tests in `tests/scalers_go/`. Each test is kept in its own package. This is to prevent conflicting variable declarations for commoly used variables (**ex -** `testNamespace`). Individual scaler tests are run
 in parallel, but tests within a file can be run in parallel or in series. More about tests below.
 
-- **Global cleanup:** This is done in [`cleanup_test.go`](cleanup_test.go). It cleans up all the resources created in `setup_test.go`.
+- **Global cleanup:** This is done in [`assets/cleanup_test.go`](assets/cleanup_test.go). It cleans up all the resources created in `assets/setup_test.go`.
 
 ## Adding tests
 

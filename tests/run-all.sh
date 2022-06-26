@@ -17,14 +17,14 @@ counter=0
 executed_count=0
 
 function run_setup {
-    go test -v -tags e2e setup_test.go
+    go test -v -tags e2e assets/setup_test.go
 }
 
 function run_tests {
     counter=0
     # randomize tests order using shuf
     # TODO - Remove TypeScript regex after all tests have been migrated to Go.
-    for test_case in $(find . -wholename "$E2E_REGEX_GO" -o -wholename "$E2E_REGEX_TS" | shuf)
+    for test_case in $(find . -not -path '*/assets/*' -wholename "$E2E_REGEX_GO" -o -wholename "$E2E_REGEX_TS" | shuf)
     do
         if [[ $test_case != *_test.go && $test_case != *.test.ts ]] # Skip helper files
         then
@@ -131,7 +131,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    go test -v -tags e2e cleanup_test.go
+    go test -v -tags e2e assets/cleanup_test.go
 }
 
 function print_failed {
