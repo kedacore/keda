@@ -2,8 +2,8 @@
 set -u
 
 # TODO - Remove TypeScript regex after all tests have been migrated to Go.
-E2E_REGEX_GO="./scalers*${E2E_TEST_REGEX:-*_test.go}"
-E2E_REGEX_TS="./scalers*${E2E_TEST_REGEX:-*.test.ts}"
+E2E_REGEX_GO="./${E2E_TEST_REGEX:-*_test.go}"
+E2E_REGEX_TS="./${E2E_TEST_REGEX:-*.test.ts}"
 
 DIR=$(dirname "$0")
 cd $DIR
