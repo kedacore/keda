@@ -6,9 +6,9 @@ cd $DIR
 
 # TODO - Replace with Go tests.
 test_files=(
-    "kubernetes-workload.test.ts"
-    "activemq.test.ts"
-    "cron.test.ts"
+    "scalers/kubernetes-workload.test.ts"
+    "scalers/activemq.test.ts"
+    "scalers_go/cron/cron_test.go"
 )
 
 concurrent_tests_limit=5
@@ -25,9 +25,8 @@ function run_setup {
 function run_tests {
     counter=0
 
-    for scaler in ${test_files[@]}
+    for test_case in ${test_files[@]}
     do
-        test_case="scalers/${scaler}"
         counter=$((counter+1))
         # TODO - Remove condition after all tests have been migrated to Go.
         if [[ $test_case == *_test.go ]]
