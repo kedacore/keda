@@ -39,8 +39,13 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 ## Adding tests
 
 - Tests are written using `Go`'s default [`testing`](https://pkg.go.dev/testing) framework, and [`testify`](https://pkg.go.dev/github.com/stretchr/testify).
-- Each scaler should be in its own package, **ex -** `scalers_go/azure_queue/azure_queue_test.go`, or `scalers_go/kafka/kafka_test.go`, etc
+- Each e2e test should be in its own package, **ex -** `scalers_go/azure_queue/azure_queue_test.go`, or `scalers_go/kafka/kafka_test.go`, etc
 - Each test file is expected to do its own setup and clean for resources.
+
+Test are split in different folders based on what it's testing:
+- `internals`: KEDA internals (ie: HPA related stuff).
+- `scalers_go`: Anything related with scalers.
+- `secret-providers`: Anything related with how KEDA gets the secrets for working (ie: pod-identity, vault, etc).
 
 #### ⚠⚠ Important: ⚠⚠
 >
