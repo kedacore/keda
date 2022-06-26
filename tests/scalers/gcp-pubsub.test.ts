@@ -12,7 +12,7 @@ const testNamespace = 'gcp-pubsub-test'
 const topicId = `projects/${projectId}/topics/keda-test-topic-` + crypto.randomBytes(6).toString('hex')
 const subscriptionName = `keda-test-topic-sub-` + crypto.randomBytes(6).toString('hex')
 const subscriptionId = `projects/${projectId}/subscriptions/${subscriptionName}`
-const deploymentName = 'dummy-consumer'
+const deploymentName = 'dummy-pubsub-consumer'
 const maxReplicaCount = '4'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deployment.apps/gcp-sdk -- `
 

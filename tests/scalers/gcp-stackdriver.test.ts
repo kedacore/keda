@@ -8,7 +8,7 @@ const gcpKey = process.env['GCP_SP_KEY'] || ''
 const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
-const deploymentName = 'dummy-consumer'
+const deploymentName = 'dummy-stackdriver-consumer'
 const maxReplicaCount = '3'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
 
