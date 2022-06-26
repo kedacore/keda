@@ -295,3 +295,53 @@ func TestActiveMQGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+type getMonitoringEndpointTestData struct {
+	metadata map[string]string
+	expected string
+}
+
+var getMonitoringEndpointData = []getMonitoringEndpointTestData{
+	{
+		expected: "http://localhost:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=testQueue/QueueSize",
+		metadata: map[string]string{
+			"managementEndpoint": "localhost:8161",
+			"destinationName":    "testQueue",
+			"brokerName":         "localhost",
+			"targetQueueSize":    "10",
+		},
+	},
+	{
+		expected: "https://myBrokerHost:8162/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test/QueueSize",
+		metadata: map[string]string{
+			"targetQueueSize": "10",
+			"restAPITemplate": "https://myBrokerHost:8162/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test/QueueSize",
+		},
+	},
+}
+
+func TestActiveMQGetMonitoringEndpoint(t *testing.T) {
+	authParams := map[string]string{
+		"username": "testUsername",
+		"password": "pass123",
+	}
+	for _, testData := range getMonitoringEndpointData {
+		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams, ScalerIndex: 0})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockActiveMQScaler := activeMQScaler{
+			metadata:   metadata,
+			httpClient: http.DefaultClient,
+		}
+
+		endpoint, err := mockActiveMQScaler.getMonitoringEndpoint()
+		if err != nil {
+			t.Fatal("Could not get the endpoint:", err)
+		}
+
+		if endpoint != testData.expected {
+			t.Errorf("Wrong endpoint: %s, expected: %s", endpoint, testData.expected)
+		}
+	}
+}

@@ -2,7 +2,9 @@
 run:
   # default concurrency is a available CPU number
   concurrency: 4
-
+  # add the build tags to include e2e tests files
+  build-tags:
+  - e2e
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 10m
 linters:
@@ -75,6 +77,10 @@ issues:
     - path: azure/azure_app_insights.go
       linters:
         - bodyclose
+  # We need to use Golang 1.18 before update the SDK due to it's a prerrequisite
+    - linters:
+       - staticcheck
+      text: "SA1019: package github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
 
 linters-settings:
   funlen:

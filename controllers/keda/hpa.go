@@ -56,6 +56,16 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 		return err
 	}
 
+	// store hpaName in the ScaledObject
+	status := scaledObject.Status.DeepCopy()
+	status.HpaName = hpaName
+
+	err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	if err != nil {
+		logger.Error(err, "Error updating scaledObject status with used hpaName")
+		return err
+	}
+
 	return nil
 }
 
@@ -172,6 +182,17 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	return nil
 }
 
+// deleteAndCreateHpa delete old HPA and create new one
+func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+	logger.Info("Deleting old HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", foundHpa.Name)
+	if err := r.Client.Delete(ctx, foundHpa); err != nil {
+		logger.Error(err, "Failed to delete old HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+		return err
+	}
+
+	return r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
+}
+
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
 func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
 	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
@@ -250,6 +271,13 @@ func (r *ScaledObjectReconciler) checkMinK8sVersionforHPABehavior(logger logr.Lo
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter
 func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
+		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
+	}
+	return getDefaultHpaName(scaledObject)
+}
+
+func getDefaultHpaName(scaledObject *kedav1alpha1.ScaledObject) string {
 	return fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
 }
 
