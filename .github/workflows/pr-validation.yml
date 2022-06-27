@@ -263,3 +263,19 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
+
+  trivy-scanner:
+    name: Trivy Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.5.0
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: false
+        format: 'table'
+        exit-code: 1
+        skip-dirs: tests # Remove this once the ts files are removed
