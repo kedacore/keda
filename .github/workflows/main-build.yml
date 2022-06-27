@@ -171,6 +171,30 @@ jobs:
       - name: Run smoke test
         run: make arm-smoke-test
 
+  trivy-scan:
+    name: Trivy scan code
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.5.0
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: false
+        format: 'sarif'
+        output: 'code.sarif'
+        exit-code: 1
+        skip-dirs: tests # Remove this once the ts files are removed
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'code.sarif'
+
   trivy-scan-metrics-server:
     name: Trivy scan metrics server image - ${{ matrix.name }}
     needs: build
