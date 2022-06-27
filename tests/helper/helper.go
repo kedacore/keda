@@ -143,17 +143,23 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 // Waits for number of iterations and returns replica count.
 func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) int {
 	t.Log("Waiting for some time to see if deployment replica count changes")
+	var replicas, prevReplicas int32
+	prevReplicas = -1
+
 	for i := 0; i < iterations; i++ {
 		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.Replicas
+		replicas = deployment.Status.Replicas
 
 		t.Logf("Deployment - %s, Current  - %d", name, replicas)
+
+		if replicas != prevReplicas && prevReplicas != -1 {
+			break
+		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 
-	deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-	return int(deployment.Status.Replicas)
+	return int(replicas)
 }
 
 func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
