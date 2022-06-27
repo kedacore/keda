@@ -8,10 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,7 +42,6 @@ type pubsubMetadata struct {
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
 	scalerIndex      int
-	aggregation      *monitoringpb.Aggregation
 }
 
 var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
@@ -60,11 +56,6 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
-	}
-
-	meta.aggregation, err = NewStackdriverAggregator(60, "mean", "none")
-	if err != nil {
-		return nil, fmt.Errorf("error configuring stackdriver aggregator: %s", err)
 	}
 
 	return &pubsubScaler{
@@ -237,7 +228,9 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 	subscriptionID, projectID := getSubscriptionData(s)
 	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	return s.client.GetMetrics(ctx, filter, projectID, s.metadata.aggregation)
+	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
+	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
+	return s.client.GetMetrics(ctx, filter, projectID, nil)
 }
 
 func getSubscriptionData(s *pubsubScaler) (string, string) {

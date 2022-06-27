@@ -5,7 +5,8 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace, sleep, waitForDeploymentReplicaCount } from './helpers';
 
-const gcpKey = process.env['GCP_SP_KEY'] || ''
+//const gcpKey = process.env['GCP_SP_KEY'] || ''
+const gcpKey = fs.readFileSync('/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json', 'utf-8')
 const projectId = JSON.parse(gcpKey).project_id
 const gcpAccount = JSON.parse(gcpKey).client_email
 const testNamespace = 'gcp-pubsub-test'
@@ -70,26 +71,21 @@ test.serial('initializing the gcp-sdk pod should work..', t => {
     )
 })
 
-function publishMessages() {
+test.serial(`Publishing to pubsub`, t => {
     // Publish 30 messages
     var cmd = gsPrefix + ' /bin/bash -c -- "cd .'
     for (let i = 0; i < 30; i++) {
         cmd += ` && gcloud pubsub topics publish ${topicId} --message=AAAAAAAAAA && sleep 2s`
     }
     cmd += '"'
-    return sh.exec(cmd).code
-}
+    t.is(0,sh.exec(cmd).code,'Publishing messages to pub/sub should work..')
+})
 
 test.serial(`Deployment should scale to ${maxReplicaCount} (the max)`, async t => {
-    var ok = false
-
-    for (let i = 0; i < 10 && !ok; i++) {
-      t.is(0, publishMessages() ,'Publishing messages to pub/sub should work..')
-      // Wait for the number of replicas to be scaled up to maxReplicaCount
-      ok = await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 30, 2000)
-    }
-
-    t.true(ok, `Replica count should be ${maxReplicaCount} after 5 minutes`)
+  // Wait for the number of replicas to be scaled up to maxReplicaCount
+  t.true(
+    await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 150, 2000),
+    `Replica count should be ${maxReplicaCount} after 5 minutes`)
 })
 
 test.serial(`Deployment should scale back to 0`, async t => {
