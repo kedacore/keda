@@ -58,6 +58,8 @@ type templateData struct {
 	AzureADTenantID  string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -161,7 +163,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -171,7 +173,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, messageURL)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupQueue(t, queueURL)
 }
 
@@ -195,23 +197,27 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	return queueURL, messageURL
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		Connection:       base64ConnectionString,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		ScaledObjectName: scaledObjectName,
-		QueueName:        queueName,
-		KeyVaultURI:      keyvaultURI,
-		AzureADClientID:  azureADClientID,
-		AzureADSecret:    base64ClientSecret,
-		AzureADTenantID:  azureADTenantID,
-	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			Connection:       base64ConnectionString,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			QueueName:        queueName,
+			KeyVaultURI:      keyvaultURI,
+			AzureADClientID:  azureADClientID,
+			AzureADSecret:    base64ClientSecret,
+			AzureADTenantID:  azureADTenantID,
+		}, templateValues{
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"triggerAuthTemplate":  triggerAuthTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {

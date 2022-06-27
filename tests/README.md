@@ -118,18 +118,22 @@ type templateData struct {
     ...
 }
 
+// templateValues consists of templates and their names
+type templateValues map[string] string
+
+
 func TestScaler(t *testing.T) {
     setupTest(t)
 
     kc := GetKubernetesClient(t)
     data, templates := getTemplateData()
 
-    CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+    CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
     testScaleUp(t)
 
     // Ensure that this gets run. Using defer is necessary
-    DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+    DeleteKubernetesResources(t, kc, testNamespace, data, templates)
     cleanupTest(t)
 }
 
@@ -142,12 +146,12 @@ func setupTest(t *testing.T) {
     assert.NoErrorf(t, err, "error while installing redis - %s", err)
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, map[string]string) {
     return templateData{
         // Populate fields required in YAML templates
         ...
         ...
-    }, []string{deploymentTemplate, scaledObjectTemplate}
+    }, templateValues{"deploymentTemplate":deploymentTemplate,  "scaledObjectTemplate":scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {

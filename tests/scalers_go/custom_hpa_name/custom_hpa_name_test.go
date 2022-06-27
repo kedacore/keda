@@ -24,6 +24,8 @@ type templateData struct {
 	CustomHpaName    string
 }
 
+type templateValues map[string]string
+
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -126,17 +128,17 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data := getTemplateData(testNamespace, deploymentName, scaledObjectName, customHpaName)
-	templates := []string{deploymentTemplate, firstSOTemplate}
+	templates := templateValues{"deploymentTemplate": deploymentTemplate, "firstSOTemplate": firstSOTemplate}
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	t.Logf("--- validate hpa is with %s name ---", firstHpaDescription)
 	hpa, _ := WaitForHpaCreation(t, kc, firstHpaName, testNamespace, 60, 1)
 	assert.Equal(t, firstHpaName, hpa.Name)
 
 	t.Log("--- change hpa name ---")
-	templatesCustomName := []string{secondSOTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templatesCustomName...)
+	templatesCustomName := templateValues{"secondSOTemplate": secondSOTemplate}
+	KubectlApplyMultipleWithTemplate(t, data, templatesCustomName)
 
 	t.Logf("--- validate new hpa is with %s name ---", secondHpaDescription)
 	hpa, _ = WaitForHpaCreation(t, kc, secondHpaName, testNamespace, 60, 1)
@@ -147,7 +149,7 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	assert.True(t, errors.IsNotFound(err))
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
 func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, customHpaName string) templateData {

@@ -40,6 +40,8 @@ type templateData struct {
 	KinesisStream      string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -142,7 +144,7 @@ func TestKiensisScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
@@ -152,7 +154,7 @@ func TestKiensisScaler(t *testing.T) {
 	testScaleDown(t, kc, kinesisClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupStream(t, kinesisClient)
 }
 
@@ -229,7 +231,7 @@ func createKinesisClient() *kinesis.Kinesis {
 	})
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	return templateData{
 		TestNamespace:      testNamespace,
 		DeploymentName:     deploymentName,
@@ -239,5 +241,5 @@ func getTemplateData() (templateData, []string) {
 		AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 		AwsRegion:          awsRegion,
 		KinesisStream:      kinesisStreamName,
-	}, []string{secretTemplate, triggerAuthenticationTemplate, deploymentTemplate, scaledObjectTemplate}
+	}, templateValues{"secretTemplate": secretTemplate, "triggerAuthenticationTemplate": triggerAuthenticationTemplate, "deploymentTemplate": deploymentTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }

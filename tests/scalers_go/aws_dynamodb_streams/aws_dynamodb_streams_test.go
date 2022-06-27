@@ -60,6 +60,8 @@ type templateData struct {
 	ShardCount       int64
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -155,9 +157,9 @@ func TestScaler(t *testing.T) {
 	// Deploy nginx, secret, and triggerAuth
 	kc := GetKubernetesClient(t)
 	CreateNamespace(t, kc, testNamespace)
-	KubectlApplyWithTemplate(t, data, deploymentTemplate)
-	KubectlApplyWithTemplate(t, data, secretTemplate)
-	KubectlApplyWithTemplate(t, data, triggerAuthTemplate)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "secretTemplate", secretTemplate)
+	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 
 	// Wait for nginx to load
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 30, 3),
@@ -168,7 +170,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, data, shardCount)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupDynamoDBTable(t, dbClient)
 }
 
@@ -241,22 +243,26 @@ func getDynamoDBStreamShardCount(dbs dynamodbstreamsiface.DynamoDBStreamsAPI, st
 	return int64(len(des.StreamDescription.Shards)), nil
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64AwsAccessKey := base64.StdEncoding.EncodeToString([]byte(awsAccessKey))
 	base64AwsSecretKey := base64.StdEncoding.EncodeToString([]byte(awsSecretKey))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		AwsRegion:        awsRegion,
-		AwsAccessKey:     base64AwsAccessKey,
-		AwsSecretKey:     base64AwsSecretKey,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		ScaledObjectName: scaledObjectName,
-		TableName:        tableName,
-		ShardCount:       int64(shardCount),
-	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			AwsRegion:        awsRegion,
+			AwsAccessKey:     base64AwsAccessKey,
+			AwsSecretKey:     base64AwsSecretKey,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			TableName:        tableName,
+			ShardCount:       int64(shardCount),
+		}, templateValues{
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"triggerAuthTemplate":  triggerAuthTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
@@ -264,14 +270,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shar
 	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale up to 1
 	t.Log("replicas should scale up to 1")
 	data.ShardCount = shardCount
-	KubectlApplyWithTemplate(t, data, scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"replica count should increase to 1")
 
 	// Deploy scalerObject with its shardCount = 1 and check if replicas scale up to 2 (maxReplicaCount)
 	t.Log("then, replicas should scale up to 2")
 	data.ShardCount = 1
-	KubectlApplyWithTemplate(t, data, scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"replica count should increase to 2")
 }
@@ -280,7 +286,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData, sh
 	t.Log("--- testing scale down ---")
 	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale down to 1
 	data.ShardCount = shardCount
-	KubectlApplyWithTemplate(t, data, scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 330, 1),
 		"replica count should decrease to 1 in 330 seconds")
 }

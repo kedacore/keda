@@ -44,6 +44,8 @@ type templateData struct {
 	ExpressionAttributeValues string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -147,7 +149,7 @@ func TestDynamoDBScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
@@ -157,7 +159,7 @@ func TestDynamoDBScaler(t *testing.T) {
 	testScaleDown(t, kc, dynamodbClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupTable(t, dynamodbClient)
 }
 
@@ -253,7 +255,7 @@ func createDynamoDBClient() *dynamodb.DynamoDB {
 	})
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	return templateData{
 		TestNamespace:             testNamespace,
 		DeploymentName:            deploymentName,
@@ -266,5 +268,5 @@ func getTemplateData() (templateData, []string) {
 		ExpressionAttributeNames:  expressionAttributeNames,
 		KeyConditionExpression:    keyConditionExpression,
 		ExpressionAttributeValues: expressionAttributeValues,
-	}, []string{secretTemplate, triggerAuthenticationTemplate, deploymentTemplate, scaledObjectTemplate}
+	}, templateValues{"secretTemplate": secretTemplate, "triggerAuthenticationTemplate": triggerAuthenticationTemplate, "deploymentTemplate": deploymentTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }
