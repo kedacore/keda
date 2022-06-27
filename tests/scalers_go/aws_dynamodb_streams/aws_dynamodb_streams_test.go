@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	awsRegion        = "eu-west-2"
+	awsRegion        = os.Getenv("AWS_REGION")
 	awsAccessKey     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretKey     = os.Getenv("AWS_SECRET_KEY")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
