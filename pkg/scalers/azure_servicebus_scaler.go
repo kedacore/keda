@@ -53,7 +53,7 @@ type azureServiceBusScaler struct {
 	ctx         context.Context
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
 }
 
@@ -143,7 +143,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
 		if config.AuthParams["connection"] != "" {
@@ -222,7 +222,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 type azureTokenProvider struct {
 	httpClient  *http.Client
 	ctx         context.Context
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 // GetToken implements TokenProvider interface for azureTokenProvider
@@ -232,11 +232,11 @@ func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 	var token azure.AADToken
 	var err error
 
-	switch a.podIdentity {
+	switch a.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, serviceBusResource)
+		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, a.podIdentity.IdentityID, serviceBusResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, serviceBusResource)
+		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, a.podIdentity.IdentityID, serviceBusResource)
 	default:
 		err = fmt.Errorf("unknown pod identity provider")
 	}
@@ -270,7 +270,7 @@ func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*se
 	var namespace *servicebus.Namespace
 	var err error
 
-	switch s.podIdentity {
+	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
 		if err != nil {

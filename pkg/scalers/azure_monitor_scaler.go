@@ -41,7 +41,7 @@ const (
 type azureMonitorScaler struct {
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureMonitorMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 type azureMonitorMetadata struct {
@@ -174,7 +174,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 
 // parseAzurePodIdentityParams gets the activeDirectory clientID and password
 func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientPassword string, err error) {
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		clientID, err = getParameterFromConfig(config, "activeDirectoryClientId", true)
 		if err != nil || clientID == "" {

@@ -120,6 +120,7 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
+// Waits until deployment count hits target or number of iterations are done.
 func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -137,6 +138,29 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	}
 
 	return false
+}
+
+// Waits for number of iterations and returns replica count.
+func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) int {
+	t.Log("Waiting for some time to see if deployment replica count changes")
+	var replicas, prevReplicas int32
+	prevReplicas = -1
+
+	for i := 0; i < iterations; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas = deployment.Status.Replicas
+
+		t.Logf("Deployment - %s, Current  - %d", name, replicas)
+
+		if replicas != prevReplicas && prevReplicas != -1 {
+			break
+		}
+
+		prevReplicas = replicas
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return int(replicas)
 }
 
 func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,

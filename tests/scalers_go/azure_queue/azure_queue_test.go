@@ -141,7 +141,8 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	// Create Queue
 	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
 	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
-		context.Background(), httpClient, kedav1alpha1.PodIdentityProviderNone, connectionString, "", "")
+		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		connectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
