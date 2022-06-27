@@ -156,6 +156,7 @@ func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset,
 			break
 		}
 
+		prevReplicas = replicas
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 
