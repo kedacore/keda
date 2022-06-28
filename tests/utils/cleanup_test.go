@@ -13,7 +13,7 @@ import (
 )
 
 func TestRemoveKEDA(t *testing.T) {
-	out, err := ExecuteCommandWithDir("make undeploy", "..")
+	out, err := ExecuteCommandWithDir("make undeploy", "../..")
 	require.NoErrorf(t, err, "error removing KEDA - %s", err)
 
 	t.Log(string(out))

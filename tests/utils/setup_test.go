@@ -98,7 +98,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 }
 
 func TestDeployKEDA(t *testing.T) {
-	out, err := ExecuteCommandWithDir("make deploy", "..")
+	out, err := ExecuteCommandWithDir("make deploy", "../..")
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
 
 	t.Log(string(out))
