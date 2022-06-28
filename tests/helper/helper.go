@@ -53,7 +53,18 @@ func (ee ExecutionError) Error() string {
 }
 
 func ParseCommand(cmdWithArgs string) *exec.Cmd {
-	splitCmd := strings.Fields(cmdWithArgs)
+	quoted := false
+	splitCmd := strings.FieldsFunc(cmdWithArgs, func(r rune) bool {
+		if r == '\'' {
+			quoted = !quoted
+		}
+		return !quoted && r == ' '
+	})
+	for i, s := range splitCmd {
+		if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+			splitCmd[i] = s[1 : len(s)-1]
+		}
+	}
 
 	return exec.Command(splitCmd[0], splitCmd[1:]...)
 }
@@ -128,6 +139,26 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 		replicas := deployment.Status.Replicas
 
 		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+			name, replicas, target)
+
+		if replicas == int32(target) {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
+// Waits until statefulset count hits target or number of iterations are done.
+func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		statefulset, _ := kc.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas := statefulset.Status.ReadyReplicas
+
+		t.Logf("Waiting for statefulset replicas to hit target. Statefulset - %s, Current  - %d, Target - %d",
 			name, replicas, target)
 
 		if replicas == int32(target) {
