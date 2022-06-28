@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"strings"
+	"testing"
 )
 
 type parseAzurePipelinesMetadataTestData struct {
