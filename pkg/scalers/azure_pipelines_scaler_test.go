@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"strings"
 )
 
 type parseAzurePipelinesMetadataTestData struct {
@@ -41,7 +42,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 	for _, testData := range testAzurePipelinesMetadata {
 		t.Run(testData.testName, func(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				personalAccessToken := testData.authParams["personalAccessToken"]	
+				personalAccessToken := strings.Split(r.Header["Authorization"][0], " ")[1]
 				if personalAccessToken != "" && personalAccessToken[len(personalAccessToken)-1:] == "\n" {
 					w.WriteHeader(http.StatusUnauthorized)
 				} else {
