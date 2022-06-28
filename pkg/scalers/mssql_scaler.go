@@ -10,8 +10,6 @@ import (
 	// mssql driver required for this scaler
 	_ "github.com/denisenkom/go-mssqldb"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -52,7 +50,7 @@ type mssqlMetadata struct {
 	query string
 	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
 	// +required
-	targetValue int64
+	targetValue float64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
@@ -100,7 +98,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 
 	// Target query value
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseInt(val, 10, 64)
+		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 		}
@@ -221,7 +219,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
@@ -238,18 +236,14 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getQueryResult returns the result of the scaler query
-func (s *mssqlScaler) getQueryResult(ctx context.Context) (int64, error) {
-	var value int64
+func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
+	var value float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:

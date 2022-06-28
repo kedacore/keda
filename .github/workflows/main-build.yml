@@ -61,9 +61,8 @@ jobs:
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
-        with:
-          cosign-release: 'v1.4.1'
+        uses: sigstore/cosign-installer@v2
+
       - name: Check Cosign install!
         run: cosign version
 
@@ -88,6 +87,7 @@ jobs:
       - name: Run end to end tests
         env:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
           AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
           AZURE_APP_INSIGHTS_CONNECTION_STRING: ${{ secrets.AZURE_APP_INSIGHTS_CONNECTION_STRING }}
@@ -104,9 +104,13 @@ jobs:
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           AZURE_SERVICE_BUS_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}
+          AZURE_SERVICE_BUS_ALTERNATIVE_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_ALTERNATIVE_CONNECTION_STRING }}
           AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
           AZURE_SP_OBJECT_ID: ${{ secrets.AZURE_SP_OBJECT_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_ALTERNATIVE_APP_ID: ${{ secrets.AZURE_SP_ALTERNATIVE_APP_ID }}
+          AZURE_SP_ALTERNATIVE_OBJECT_ID: ${{ secrets.AZURE_SP_ALTERNATIVE_OBJECT_ID }}
+          AZURE_SP_ALTERNATIVE_KEY: ${{ secrets.AZURE_SP_ALTERNATIVE_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}

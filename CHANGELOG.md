@@ -36,22 +36,30 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### New
 
-- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([2487](https://github.com/kedacore/keda/issues/2487))
+- **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
+- **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
+- **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
+- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487)|[#2656](https://github.com/kedacore/keda/issues/2656))
+- **General:** Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
 
 ### Improvements
 
+- **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
+- **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issue/3135))
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
+- **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
 
 ### Fixes
 
-- **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
-- **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
 - **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue([#3096](https://github.com/kedacore/keda/issues/3096))
 - **Azure Pipelines Scaler:** Fix issue with Azure Pipelines wrong PAT Auth. ([#3159](https://github.com/kedacore/keda/issues/3159))
+- **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
+- **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
+- **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
 
 ### Deprecations
 
@@ -66,6 +74,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
 - **General:** Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([3142](https://github.com/kedacore/keda/issues/3142))
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))
+- **General:** Migrate e2e test to Go. ([2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
 - **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
 

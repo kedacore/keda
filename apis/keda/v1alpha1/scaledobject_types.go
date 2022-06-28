@@ -104,6 +104,8 @@ type AdvancedConfig struct {
 type HorizontalPodAutoscalerConfig struct {
 	// +optional
 	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // ScaleTarget holds the a reference to the scale target Object
@@ -152,6 +154,8 @@ type ScaledObjectStatus struct {
 	Health map[string]HealthStatus `json:"health,omitempty"`
 	// +optional
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
+	// +optional
+	HpaName string `json:"hpaName,omitempty"`
 }
 
 // +kubebuilder:object:root=true

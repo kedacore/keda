@@ -9,8 +9,6 @@ import (
 	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -237,12 +235,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	}
 	totalLag := s.getMaxMsgLag()
 	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
-
+	metric := GenerateMetricInMili(metricName, float64(totalLag))
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 

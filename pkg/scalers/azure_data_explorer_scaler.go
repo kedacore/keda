@@ -23,8 +23,6 @@ import (
 
 	"github.com/Azure/azure-kusto-go/kusto"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -100,7 +98,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 
 	// Get threshold.
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
-		threshold, err := strconv.ParseInt(val, 10, 64)
+		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
 		}
@@ -131,7 +129,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
 	metadata := azure.DataExplorerMetadata{}
 
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
@@ -166,11 +164,7 @@ func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName stri
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(metricValue, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, metricValue)
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
@@ -179,7 +173,7 @@ func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2be
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.MetricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.Threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
