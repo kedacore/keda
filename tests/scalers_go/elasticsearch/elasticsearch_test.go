@@ -25,6 +25,19 @@ const (
 	testName = "elasticsearch-test"
 )
 
+var (
+	testNamespace         = fmt.Sprintf("%s-ns", testName)
+	deploymentName        = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName      = fmt.Sprintf("%s-so", testName)
+	secretName            = fmt.Sprintf("%s-secret", testName)
+	password              = "passw0rd"
+	indexName             = "keda"
+	searchTemplateName    = "keda-search-template"
+	maxReplicaCount       = 2
+	minReplicaCount       = 0
+	kubectlElasticExecCmd = fmt.Sprintf("kubectl exec -n %s elasticsearch-0 -- curl -sS -H 'Content-Type: application/json' -u 'elastic:%s'", testNamespace, password)
+)
+
 type templateData struct {
 	TestNamespace         string
 	DeploymentName        string
@@ -278,19 +291,6 @@ spec:
   "dummy": 1,
   "dumb": "oOooo"
 }`
-)
-
-var (
-	testNamespace         = fmt.Sprintf("%s-ns", testName)
-	deploymentName        = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName      = fmt.Sprintf("%s-so", testName)
-	secretName            = fmt.Sprintf("%s-secret", testName)
-	password              = "passw0rd"
-	indexName             = "keda"
-	searchTemplateName    = "keda-search-template"
-	maxReplicaCount       = 2
-	minReplicaCount       = 0
-	kubectlElasticExecCmd = fmt.Sprintf("kubectl exec -n %s elasticsearch-0 -- curl -sS -H 'Content-Type: application/json' -u 'elastic:%s'", testNamespace, password)
 )
 
 func TestElasticsearchScaler(t *testing.T) {
