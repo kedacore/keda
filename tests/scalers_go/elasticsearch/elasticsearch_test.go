@@ -49,6 +49,8 @@ type templateData struct {
 	SearchTemplateName    string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -297,7 +299,7 @@ func TestElasticsearchScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// setup elastic
 	setupElasticsearch(t, kc)
@@ -310,7 +312,7 @@ func TestElasticsearchScaler(t *testing.T) {
 	testScaleDown(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
 func setupElasticsearch(t *testing.T, kc *kubernetes.Clientset) {
@@ -353,15 +355,22 @@ func getElasticsearchDoc() (interface{}, error) {
 	return result, err
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, map[string]string) {
 	return templateData{
-		TestNamespace:         testNamespace,
-		DeploymentName:        deploymentName,
-		ScaledObjectName:      scaledObjectName,
-		SecretName:            secretName,
-		ElasticPassword:       password,
-		ElasticPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
-		IndexName:             indexName,
-		SearchTemplateName:    searchTemplateName,
-	}, []string{secretTemplate, triggerAuthenticationTemplate, serviceTemplate, elasticsearchDeploymentTemplate, deploymentTemplate, scaledObjectTemplate}
+			TestNamespace:         testNamespace,
+			DeploymentName:        deploymentName,
+			ScaledObjectName:      scaledObjectName,
+			SecretName:            secretName,
+			ElasticPassword:       password,
+			ElasticPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
+			IndexName:             indexName,
+			SearchTemplateName:    searchTemplateName,
+		}, templateValues{
+			"secretTemplate":                  secretTemplate,
+			"triggerAuthenticationTemplate":   triggerAuthenticationTemplate,
+			"serviceTemplate":                 serviceTemplate,
+			"elasticsearchDeploymentTemplate": elasticsearchDeploymentTemplate,
+			"deploymentTemplate":              deploymentTemplate,
+			"scaledObjectTemplate":            scaledObjectTemplate,
+		}
 }
