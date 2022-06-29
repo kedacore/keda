@@ -46,6 +46,8 @@ type templateData struct {
 	QueueName           string
 }
 
+type templateValues map[string]string
+
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -128,7 +130,7 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	data.ServiceBusNamespace = sbNamespace.Name
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -139,7 +141,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, sbQueue)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupServiceBusQueue(t, sbQueueManager)
 }
 
@@ -176,7 +178,7 @@ func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
 	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	return templateData{
 		TestNamespace:    testNamespace,
 		DeploymentName:   deploymentName,
@@ -184,7 +186,7 @@ func getTemplateData() (templateData, []string) {
 		IdentityID:       azureADClientID,
 		ScaledObjectName: scaledObjectName,
 		QueueName:        queueName,
-	}, []string{deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
+	}, templateValues{"deploymentTemplate": deploymentTemplate, "triggerAuthTemplate": triggerAuthTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }
 
 func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
@@ -201,11 +203,11 @@ func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, sb
 
 func testScaleUpWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up with correct identity ---")
-	KubectlDeleteWithTemplate(t, data, scaledObjectTemplate)
-	KubectlDeleteWithTemplate(t, data, triggerAuthTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlDeleteWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 
-	KubectlApplyWithTemplate(t, data, triggerAuthTemplateWithIdentityID)
-	KubectlApplyWithTemplate(t, data, scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "triggerAuthTemplateWithIdentityID", triggerAuthTemplateWithIdentityID)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")

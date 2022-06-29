@@ -26,6 +26,8 @@ type templateData struct {
 	ScaledObjectName string
 }
 
+type templateValues map[string]string
+
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -120,10 +122,9 @@ func TestCpuScaler(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data := getTemplateData(testNamespace, deploymentName, scaledObjectName)
-	templates := []string{serviceTemplate, deploymentTemplate, scaledObjectTemplate}
+	data, templates := getTemplateData(testNamespace, deploymentName, scaledObjectName)
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
@@ -131,8 +132,8 @@ func TestCpuScaler(t *testing.T) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying job ---")
 
-	templateTriggerJob := []string{triggerJob}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob...)
+	templateTriggerJob := templateValues{"triggerJobTemplate": triggerJob}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"Replica count should scale up in next 3 minutes")
@@ -140,19 +141,23 @@ func TestCpuScaler(t *testing.T) {
 	t.Log("--- testing scale down ---")
 	t.Log("--- deleting job ---")
 
-	KubectlDeleteWithTemplate(t, data, triggerJob)
+	KubectlDeleteMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"Replica count should be 1 in next 3 minutes")
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string) templateData {
+func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string) (templateData, map[string]string) {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-	}
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+		}, templateValues{
+			"deploymentTemplate":   deploymentTemplate,
+			"serviceTemplate":      serviceTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate,
+		}
 }

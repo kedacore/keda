@@ -27,6 +27,8 @@ type templateData struct {
 	UtilizationValue int32
 }
 
+type templateValues map[string]string
+
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -97,10 +99,9 @@ func TestMemoryScaler(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data := getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleUpValue)
-	templates := []string{deploymentTemplate}
+	data, templates := getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleUpValue)
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templateValues{"deploymentTemplate": deploymentTemplate})
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
@@ -108,8 +109,7 @@ func TestMemoryScaler(t *testing.T) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying scaled object with scaled up utilization ---")
 
-	templateScaledObjectTemplate := []string{scaledObjectTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateScaledObjectTemplate...)
+	KubectlApplyMultipleWithTemplate(t, data, templateValues{"scaledObjectTemplate": scaledObjectTemplate})
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"Replica count should scale up in next 3 minutes")
@@ -117,22 +117,24 @@ func TestMemoryScaler(t *testing.T) {
 	t.Log("--- testing scale down ---")
 	t.Log("--- applying scaled object with scaled down utilization ---")
 
-	data = getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleDownValue)
-	templateScaledObjectTemplate = []string{scaledObjectTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateScaledObjectTemplate...)
+	data, _ = getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleDownValue)
+	KubectlApplyMultipleWithTemplate(t, data, templateValues{"scaledObjectTemplate": scaledObjectTemplate})
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"Replica count should be 1 in next 3 minutes")
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, utilizationValue int32) templateData {
+func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, utilizationValue int32) (templateData, map[string]string) {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		UtilizationValue: utilizationValue,
-	}
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			UtilizationValue: utilizationValue,
+		}, templateValues{
+			"deploymentTemplate":   deploymentTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate,
+		}
 }

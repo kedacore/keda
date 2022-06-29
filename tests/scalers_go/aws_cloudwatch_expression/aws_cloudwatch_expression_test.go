@@ -40,6 +40,7 @@ type templateData struct {
 	CloudWatchMetricNamespace  string
 	CloudwatchMetricExpression string
 }
+type templateValues map[string]string
 
 const (
 	secretTemplate = `apiVersion: v1
@@ -147,7 +148,7 @@ func TestCloudWatchExpressionScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
@@ -157,7 +158,7 @@ func TestCloudWatchExpressionScaler(t *testing.T) {
 	testScaleDown(t, kc, cloudwatchClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
 }
@@ -210,17 +211,20 @@ func createCloudWatchClient() *cloudwatch.CloudWatch {
 	})
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	return templateData{
-		TestNamespace:              testNamespace,
-		DeploymentName:             deploymentName,
-		ScaledObjectName:           scaledObjectName,
-		SecretName:                 secretName,
-		AwsAccessKeyID:             base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-		AwsSecretAccessKey:         base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-		AwsRegion:                  awsRegion,
-		CloudWatchMetricName:       cloudwatchMetricName,
-		CloudWatchMetricNamespace:  cloudwatchMetricNamespace,
-		CloudwatchMetricExpression: cloudwatchMetricExpression,
-	}, []string{secretTemplate, triggerAuthenticationTemplate, deploymentTemplate, scaledObjectTemplate}
+			TestNamespace:              testNamespace,
+			DeploymentName:             deploymentName,
+			ScaledObjectName:           scaledObjectName,
+			SecretName:                 secretName,
+			AwsAccessKeyID:             base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+			AwsSecretAccessKey:         base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+			AwsRegion:                  awsRegion,
+			CloudWatchMetricName:       cloudwatchMetricName,
+			CloudWatchMetricNamespace:  cloudwatchMetricNamespace,
+			CloudwatchMetricExpression: cloudwatchMetricExpression,
+		}, templateValues{"secretTemplate": secretTemplate,
+			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
+			"deploymentTemplate":            deploymentTemplate,
+			"scaledObjectTemplate":          scaledObjectTemplate}
 }

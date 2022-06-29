@@ -47,6 +47,8 @@ type templateData struct {
 	QueueName        string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -127,7 +129,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -137,7 +139,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, sbQueue)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupServiceBusQueue(t, sbQueueManager)
 }
 
@@ -174,7 +176,7 @@ func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
 	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
@@ -185,7 +187,7 @@ func getTemplateData() (templateData, []string) {
 		TriggerAuthName:  triggerAuthName,
 		ScaledObjectName: scaledObjectName,
 		QueueName:        queueName,
-	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
+	}, templateValues{"secretTemplate": secretTemplate, "deploymentTemplate": deploymentTemplate, "triggerAuthTemplate": triggerAuthTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {

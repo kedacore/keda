@@ -39,6 +39,8 @@ type templateData struct {
 	SqsQueue           string
 }
 
+type templateValues map[string]string
+
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -136,7 +138,7 @@ func TestSqsScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData(*queue.QueueUrl)
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after a minute")
@@ -146,7 +148,7 @@ func TestSqsScaler(t *testing.T) {
 	testScaleDown(t, kc, sqsClient, queue.QueueUrl)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupQueue(t, sqsClient, queue.QueueUrl)
 }
 
@@ -207,7 +209,7 @@ func createSqsClient() *sqs.SQS {
 	})
 }
 
-func getTemplateData(sqsQueue string) (templateData, []string) {
+func getTemplateData(sqsQueue string) (templateData, templateValues) {
 	return templateData{
 		TestNamespace:      testNamespace,
 		DeploymentName:     deploymentName,
@@ -217,5 +219,5 @@ func getTemplateData(sqsQueue string) (templateData, []string) {
 		AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 		AwsRegion:          awsRegion,
 		SqsQueue:           sqsQueue,
-	}, []string{secretTemplate, triggerAuthenticationTemplate, deploymentTemplate, scaledObjectTemplate}
+	}, templateValues{"secretTemplate": secretTemplate, "triggerAuthenticationTemplate": triggerAuthenticationTemplate, "deploymentTemplate": deploymentTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }

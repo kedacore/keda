@@ -178,11 +178,11 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 	return hpa, err
 }
 
-func KubectlApplyWithTemplate(t *testing.T, data interface{}, config string) {
+func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
-	tempFile, err := ioutil.TempFile("", "tempTemplateFile")
+	tempFile, err := ioutil.TempFile("", templateName)
 	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
 
 	defer os.Remove(tempFile.Name())
@@ -197,18 +197,19 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, config string) {
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs ...string) {
-	for _, config := range configs {
-		KubectlApplyWithTemplate(t, data, config)
+func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
+	for templateName, config := range configs {
+		t.Logf("Key: %s", templateName)
+		KubectlApplyWithTemplate(t, data, templateName, config)
 	}
 }
 
-func KubectlDeleteWithTemplate(t *testing.T, data interface{}, config string) {
+func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, config string) {
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
-	tempFile, err := ioutil.TempFile("", "tempTemplateFile")
-	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
+	tempFile, err := ioutil.TempFile("", templateName)
+	assert.NoErrorf(t, err, "cannot delete temp file - %s", err)
 
 	defer os.Remove(tempFile.Name())
 
@@ -222,18 +223,18 @@ func KubectlDeleteWithTemplate(t *testing.T, data interface{}, config string) {
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, configs ...string) {
-	for _, config := range configs {
-		KubectlDeleteWithTemplate(t, data, config)
+func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
+	for templateName, config := range configs {
+		KubectlDeleteWithTemplate(t, data, templateName, config)
 	}
 }
 
-func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs ...string) {
+func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
 	CreateNamespace(t, kc, nsName)
-	KubectlApplyMultipleWithTemplate(t, data, configs...)
+	KubectlApplyMultipleWithTemplate(t, data, configs)
 }
 
-func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs ...string) {
+func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
 	DeleteNamespace(t, kc, nsName)
-	KubectlDeleteMultipleWithTemplate(t, data, configs...)
+	KubectlDeleteMultipleWithTemplate(t, data, configs)
 }
