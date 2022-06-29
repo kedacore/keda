@@ -7,8 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	//"os"
+	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -27,8 +26,7 @@ const (
 )
 
 var (
-	//gcpKey           = os.Getenv("GCP_SP_KEY")
-	gcpKey, _        = ioutil.ReadFile("/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json")
+	gcpKey           = os.Getenv("GCP_SP_KEY")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
