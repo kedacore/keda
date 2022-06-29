@@ -7,7 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
+	//"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -26,7 +27,8 @@ const (
 )
 
 var (
-	gcpKey           = os.Getenv("GCP_SP_KEY")
+	//gcpKey           = os.Getenv("GCP_SP_KEY")
+	gcpKey, _        = ioutil.ReadFile("/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
@@ -45,6 +47,8 @@ type templateData struct {
 	BucketName       string
 	MaxReplicaCount  int
 }
+
+type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -152,7 +156,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -160,21 +164,22 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1),
 		"gcp-sdk deployment should be ready after a minute")
 
-	createBucket(t)
-
-	// test scaling
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	if createBucket(t) == nil {
+		// test scaling
+		testScaleUp(t, kc)
+		testScaleDown(t, kc)
+	}
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	t.Log("--- cleanup ---")
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupBucket(t)
 }
 
-func createBucket(t *testing.T) {
+func createBucket(t *testing.T) error {
 	// Authenticate to GCP
 	creds := make(map[string]interface{})
-	err := json.Unmarshal(gcpKey, &creds)
+	err := json.Unmarshal([]byte(gcpKey), &creds)
 	assert.NoErrorf(t, err, "Failed to load credentials from gcpKey - %s", err)
 
 	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], creds["project_id"])
@@ -187,6 +192,7 @@ func createBucket(t *testing.T) {
 	cmd = fmt.Sprintf("%sgsutil mb gs://%s", gsPrefix, bucketName)
 	_, err = ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "Failed tocreate GCS bucket - %s", err)
+	return err
 }
 
 func cleanupBucket(t *testing.T) {
@@ -195,18 +201,22 @@ func cleanupBucket(t *testing.T) {
 	ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		GcpCreds:         base64GcpCreds,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		BucketName:       bucketName,
-		MaxReplicaCount:  maxReplicaCount,
-	}, []string{secretTemplate, deploymentTemplate, scaledObjectTemplate, gcpSdkTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			GcpCreds:         base64GcpCreds,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			BucketName:       bucketName,
+			MaxReplicaCount:  maxReplicaCount,
+		}, templateValues{
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate,
+			"gcpSdkTemplate":       gcpSdkTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
