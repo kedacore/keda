@@ -189,14 +189,15 @@ func createBucket(t *testing.T) error {
 	// Create bucket
 	cmd = fmt.Sprintf("%sgsutil mb gs://%s", gsPrefix, bucketName)
 	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "Failed tocreate GCS bucket - %s", err)
+	assert.NoErrorf(t, err, "Failed to create GCS bucket - %s", err)
 	return err
 }
 
 func cleanupBucket(t *testing.T) {
 	// Cleanup the bucket
 	t.Log("--- cleaning up the bucket ---")
-	ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
+	_, err := ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
+	assert.NoErrorf(t, err, "Failed to clear GCS bucket %s - %s", bucketName, err)
 }
 
 func getTemplateData() (templateData, templateValues) {
