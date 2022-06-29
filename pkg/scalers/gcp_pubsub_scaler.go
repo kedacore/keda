@@ -228,7 +228,9 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 	subscriptionID, projectID := getSubscriptionData(s)
 	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	return s.client.GetMetrics(ctx, filter, projectID)
+	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
+	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
+	return s.client.GetMetrics(ctx, filter, projectID, nil)
 }
 
 func getSubscriptionData(s *pubsubScaler) (string, string) {

@@ -4,11 +4,11 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
 
-const gcpKey = process.env['GCP_SP_KEY']
+const gcpKey = process.env['GCP_SP_KEY'] || ''
 const projectId = JSON.parse(gcpKey).project_id
 const testNamespace = 'gcp-stackdriver-test'
 const bucketName = 'keda-test-stackdriver-bucket'
-const deploymentName = 'dummy-consumer'
+const deploymentName = 'dummy-stackdriver-consumer'
 const maxReplicaCount = '3'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
 
@@ -70,12 +70,12 @@ test.serial(`Deployment should scale to ${maxReplicaCount} (the max) then back t
             sh.exec(gsPrefix + `gsutil cp /usr/lib/google-cloud-sdk/bin/gsutil gs://${bucketName}`).code,
             'Copying an object should work..'
         )
-        if (await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 1, 2000)) {
+        if (await waitForDeploymentReplicaCount(parseInt(maxReplicaCount, 10), deploymentName, testNamespace, 1, 3000)) {
           haveAllReplicas = true
         }
     }
 
-    t.true(haveAllReplicas, `Replica count should be ${maxReplicaCount} after 120 seconds`)
+    t.true(haveAllReplicas, `Replica count should be ${maxReplicaCount} after 180 seconds`)
 
     // Wait for the number of replicas to be scaled down to 0
     t.true(
@@ -148,6 +148,8 @@ spec:
         filter: 'metric.type="storage.googleapis.com/network/received_bytes_count" AND resource.type="gcs_bucket" AND metric.label.method="WriteObject" AND resource.label.bucket_name="${bucketName}"'
         metricName: ${bucketName}
         targetValue: '5'
+        alignmentPeriodSeconds: '60'
+        alignmentAligner: max
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
