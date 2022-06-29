@@ -9,15 +9,15 @@
 ### All tests
 
 ```bash
-go test -v setup_test.go        # Only needs to be run once.
-go test -v ./scalers_go/...
-go test -v cleanup_test.go      # Skip if you want to keep testing.
+go test -v -tags e2e setup_test.go        # Only needs to be run once.
+go test -v -tags e2e ./scalers_go/...
+go test -v -tags e2e cleanup_test.go      # Skip if you want to keep testing.
 ```
 
 ### Specific test
 
 ```bash
-go test -v ./scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
+go test -v -tags e2e ./scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
