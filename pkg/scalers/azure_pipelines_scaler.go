@@ -124,6 +124,8 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 	}
 
+	// Trim any trailing new lines from the Azure Pipelines PAT
+	meta.personalAccessToken = strings.TrimSuffix(meta.personalAccessToken, "\n")
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
@@ -176,7 +178,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 		return []byte{}, err
 	}
 
-	req.SetBasicAuth("PAT", metadata.personalAccessToken)
+	req.SetBasicAuth("", metadata.personalAccessToken)
 
 	r, err := httpClient.Do(req)
 	if err != nil {
