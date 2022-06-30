@@ -228,8 +228,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	}
 
 	t.Log("--- waiting for replicas to scale up ---")
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 2),
-		fmt.Sprintf("replica count should be %d after two minutes", maxReplicaCount))
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
+		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
