@@ -154,15 +154,12 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	assert.True(t, WaitForNamespaceToBeDeleted(t, kc, testNamespace, 6, 10),
-		fmt.Sprintf("namespace %s should not exist at the beginning of the test", testNamespace))
-
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
-	assert.True(t, WaitForDeploymentReadyReplicaCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1),
 		"gcp-sdk deployment should be ready after a minute")
 
 	if createBucket(t) == nil {
@@ -199,8 +196,7 @@ func createBucket(t *testing.T) error {
 func cleanupBucket(t *testing.T) {
 	// Cleanup the bucket
 	t.Log("--- cleaning up the bucket ---")
-	_, err := ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
-	assert.NoErrorf(t, err, "Failed to clear GCS bucket %s - %s", bucketName, err)
+	_, _ = ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
 }
 
 func getTemplateData() (templateData, templateValues) {
