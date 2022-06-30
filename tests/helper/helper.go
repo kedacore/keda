@@ -131,6 +131,28 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
+// Waits for a namespace to be deleted.
+func WaitForNamespaceToBeDeleted(t *testing.T, kc *kubernetes.Clientset, namespace string,
+	iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		ns, err := Kc.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
+		if err != nil {
+			return true
+		}
+
+		if ns != nil && ns.Status.Phase == corev1.NamespaceActive {
+			t.Logf("Namespace %s is in the Active state so deleting it", namespace)
+			_ = Kc.CoreV1().Namespaces().Delete(context.Background(), namespace, metav1.DeleteOptions{})
+		}
+
+		t.Logf("Waiting for namespace %s to be gone", namespace)
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 // Waits until deployment count hits target or number of iterations are done.
 func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
@@ -139,6 +161,26 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 		replicas := deployment.Status.Replicas
 
 		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+			name, replicas, target)
+
+		if replicas == int32(target) {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
+// Waits until the number of ready replicas hits target or number of iterations are done.
+func WaitForDeploymentReadyReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas := deployment.Status.ReadyReplicas
+
+		t.Logf("Waiting for deployment ready replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
 			name, replicas, target)
 
 		if replicas == int32(target) {
