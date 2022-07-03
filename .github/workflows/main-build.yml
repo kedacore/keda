@@ -170,3 +170,83 @@ jobs:
 
       - name: Run smoke test
         run: make arm-smoke-test
+
+  trivy-scan:
+    name: Trivy scan code
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.5.0
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: false
+        format: 'sarif'
+        output: 'code.sarif'
+        exit-code: 1
+        skip-dirs: tests # Remove this once the ts files are removed
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'code.sarif'
+
+  trivy-scan-metrics-server:
+    name: Trivy scan metrics server image - ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy on metrics-server
+        uses: aquasecurity/trivy-action@0.5.0
+        with:
+          scan-type: 'image'
+          image-ref: ghcr.io/kedacore/keda-metrics-apiserver:main
+          format: 'sarif'
+          output: 'metrics-server.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'metrics-server.sarif'
+
+  trivy-scan-keda:
+    name: Trivy scan keda image - ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy on operator
+        uses: aquasecurity/trivy-action@0.5.0
+        with:
+          scan-type: 'image'
+          image-ref: ghcr.io/kedacore/keda:main
+          format: 'sarif'
+          output: 'keda.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'keda.sarif'

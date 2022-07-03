@@ -15,7 +15,7 @@ require (
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 	github.com/Azure/go-autorest/autorest v0.11.27
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
-	github.com/AzureAD/microsoft-authentication-library-for-go v0.4.0
+	github.com/AzureAD/microsoft-authentication-library-for-go v0.5.2
 	github.com/DataDog/datadog-api-client-go v1.13.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.32.0
@@ -35,11 +35,11 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/vault/api v1.5.0
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.8.2
+	github.com/influxdata/influxdb-client-go/v2 v2.9.1
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.86.1
+	github.com/newrelic/newrelic-client-go v0.86.3
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -49,7 +49,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/streadway/amqp v1.0.0
-	github.com/stretchr/testify v1.7.4
+	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.14.1
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
