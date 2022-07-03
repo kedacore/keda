@@ -80,8 +80,8 @@ spec:
       containers:
         - name: noop-processor
           image: ubuntu:20.04
-          command: ["/bin/bash", "-c", "--"]
-          args: ["sleep 10"]
+          command: ["/bin/bash"]
+          args: ["-c", "sleep 30"]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
