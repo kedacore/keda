@@ -193,11 +193,9 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = &val
 	}
 
-	if meta.protocol == httpProtocol {
-		err := parseRabbitMQHttpProtocolMetadata(config, &meta)
-		if err != nil {
-			return nil, err
-		}
+	err := parseRabbitMQHttpProtocolMetadata(config, &meta)
+	if err != nil {
+		return nil, err
 	}
 
 	if meta.useRegex && meta.protocol == amqpProtocol {
@@ -208,7 +206,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("configure excludeUnacknowledged=true with http protocol only")
 	}
 
-	_, err := parseTrigger(&meta, config)
+	_, err = parseTrigger(&meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
 	}
