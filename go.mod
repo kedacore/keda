@@ -5,7 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go/compute v1.7.0
 	cloud.google.com/go/monitoring v1.5.0
-	cloud.google.com/go/storage v1.22.1
+	cloud.google.com/go/storage v1.23.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.2
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.16
 	github.com/Azure/azure-kusto-go v0.6.0
@@ -19,7 +19,7 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.13.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.32.0
-	github.com/aws/aws-sdk-go v1.44.40
+	github.com/aws/aws-sdk-go v1.44.46
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dysnix/predictkube-libs v0.0.3
 	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
@@ -54,8 +54,8 @@ require (
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.mongodb.org/mongo-driver v1.9.0
-	google.golang.org/api v0.85.0
-	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad
+	google.golang.org/api v0.86.0
+	google.golang.org/genproto v0.0.0-20220624142145-8cd45d7dbd1f
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.23.8
@@ -94,7 +94,7 @@ replace (
 )
 
 require (
-	cloud.google.com/go v0.102.0 // indirect
+	cloud.google.com/go v0.102.1 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-amqp v0.16.4 // indirect
@@ -250,10 +250,10 @@ require (
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9 // indirect
-	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect
+	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
+	golang.org/x/oauth2 v0.0.0-20220622183110-fd043fe589d2 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c // indirect
+	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
