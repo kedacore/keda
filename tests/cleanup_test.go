@@ -28,7 +28,7 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall workload-identity-webhook --namespace %s", AzureWorkloadIdentityNamespace))
 	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
 
-	Kc := GetKubernetesClient(t)
+	KubeClient := GetKubernetesClient(t)
 
-	DeleteNamespace(t, Kc, AzureWorkloadIdentityNamespace)
+	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 }
