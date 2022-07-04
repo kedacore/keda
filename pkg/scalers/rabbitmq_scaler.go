@@ -193,42 +193,11 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = &val
 	}
 
-	// Resolve useRegex
-	if val, ok := config.TriggerMetadata["useRegex"]; ok {
-		useRegex, err := strconv.ParseBool(val)
+	if meta.protocol == httpProtocol {
+		err := parseRabbitMQHttpProtocolMetadata(config, &meta)
 		if err != nil {
-			return nil, fmt.Errorf("useRegex has invalid value")
+			return nil, err
 		}
-		meta.useRegex = useRegex
-	}
-
-	// Resolve excludeUnacknowledged
-	if val, ok := config.TriggerMetadata["excludeUnacknowledged"]; ok {
-		excludeUnacknowledged, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("excludeUnacknowledged has invalid value")
-		}
-		meta.excludeUnacknowledged = excludeUnacknowledged
-	}
-
-	// Resolve pageSize
-	if val, ok := config.TriggerMetadata["pageSize"]; ok {
-		pageSize, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("pageSize has invalid value")
-		}
-		meta.pageSize = pageSize
-		if meta.pageSize < 1 {
-			return nil, fmt.Errorf("pageSize should be 1 or greater than 1")
-		}
-	} else {
-		meta.pageSize = 100
-	}
-
-	// Resolve operation
-	meta.operation = defaultOperation
-	if val, ok := config.TriggerMetadata["operation"]; ok {
-		meta.operation = val
 	}
 
 	if meta.useRegex && meta.protocol == amqpProtocol {
@@ -271,6 +240,48 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
+}
+
+func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetadata) error {
+	// Resolve useRegex
+	if val, ok := config.TriggerMetadata["useRegex"]; ok {
+		useRegex, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("useRegex has invalid value")
+		}
+		meta.useRegex = useRegex
+	}
+
+	// Resolve excludeUnacknowledged
+	if val, ok := config.TriggerMetadata["excludeUnacknowledged"]; ok {
+		excludeUnacknowledged, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("excludeUnacknowledged has invalid value")
+		}
+		meta.excludeUnacknowledged = excludeUnacknowledged
+	}
+
+	// Resolve pageSize
+	if val, ok := config.TriggerMetadata["pageSize"]; ok {
+		pageSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("pageSize has invalid value")
+		}
+		meta.pageSize = pageSize
+		if meta.pageSize < 1 {
+			return fmt.Errorf("pageSize should be 1 or greater than 1")
+		}
+	} else {
+		meta.pageSize = 100
+	}
+
+	// Resolve operation
+	meta.operation = defaultOperation
+	if val, ok := config.TriggerMetadata["operation"]; ok {
+		meta.operation = val
+	}
+
+	return nil
 }
 
 func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetadata, error) {
