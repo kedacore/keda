@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -165,8 +166,24 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 }
 
 func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{})
+	t.Logf("deleting namespace %s", nsName)
+	period := int64(0)
+	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
+		GracePeriodSeconds: &period,
+	})
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
+}
+
+func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
+	for i := 0; i < 30; i++ {
+		t.Logf("waiting for namespace %s deletion", nsName)
+		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			return true
+		}
+		time.Sleep(time.Second * 5)
+	}
+	return false
 }
 
 // Waits until deployment count hits target or number of iterations are done.
@@ -304,6 +321,8 @@ func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 }
 
 func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
-	DeleteNamespace(t, kc, nsName)
 	KubectlDeleteMultipleWithTemplate(t, data, configs)
+	DeleteNamespace(t, kc, nsName)
+	deleted := WaitForNamespaceDeletion(t, kc, nsName)
+	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }
