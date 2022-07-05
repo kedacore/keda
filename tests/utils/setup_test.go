@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package tests
+package utils
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func TestVerifyCommands(t *testing.T) {
 }
 
 func TestKubernetesConnection(t *testing.T) {
-	_ = GetKubernetesClient(t)
+	KubeClient = GetKubernetesClient(t)
 }
 
 func TestKubernetesVersion(t *testing.T) {
@@ -68,7 +68,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update azure-workload-identity")
 	require.NoErrorf(t, err, "cannot update workload identity helm repo - %s", err)
 
-	KubeClient := GetKubernetesClient(t)
+	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace %s --set azureTenantID=%s",
@@ -98,7 +98,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 }
 
 func TestDeployKEDA(t *testing.T) {
-	out, err := ExecuteCommandWithDir("make deploy", "..")
+	out, err := ExecuteCommandWithDir("make deploy", "../..")
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
 
 	t.Log(string(out))
