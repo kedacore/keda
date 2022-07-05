@@ -25,7 +25,7 @@ func TestVerifyCommands(t *testing.T) {
 }
 
 func TestKubernetesConnection(t *testing.T) {
-	Kc = GetKubernetesClient(t)
+	_ = GetKubernetesClient(t)
 }
 
 func TestKubernetesVersion(t *testing.T) {
@@ -68,8 +68,8 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update azure-workload-identity")
 	require.NoErrorf(t, err, "cannot update workload identity helm repo - %s", err)
 
-	Kc = GetKubernetesClient(t)
-	CreateNamespace(t, Kc, AzureWorkloadIdentityNamespace)
+	KubeClient := GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace %s --set azureTenantID=%s",
 		AzureWorkloadIdentityNamespace, AzureADTenantID))
@@ -78,7 +78,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	workloadIdentityDeploymentName := "azure-wi-webhook-controller-manager"
 	success := false
 	for i := 0; i < 20; i++ {
-		deployment, err := Kc.AppsV1().Deployments(AzureWorkloadIdentityNamespace).Get(context.Background(), workloadIdentityDeploymentName, v1.GetOptions{})
+		deployment, err := KubeClient.AppsV1().Deployments(AzureWorkloadIdentityNamespace).Get(context.Background(), workloadIdentityDeploymentName, v1.GetOptions{})
 		require.NoErrorf(t, err, "unable to get workload identity webhook deployment - %s", err)
 
 		readyReplicas := deployment.Status.ReadyReplicas
@@ -108,10 +108,10 @@ func TestDeployKEDA(t *testing.T) {
 func TestVerifyKEDA(t *testing.T) {
 	success := false
 	for i := 0; i < 20; i++ {
-		operatorDeployment, err := Kc.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAOperator, v1.GetOptions{})
+		operatorDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAOperator, v1.GetOptions{})
 		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAOperator, err)
 
-		metricsServerDeployment, err := Kc.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAMetricsAPIServer, v1.GetOptions{})
+		metricsServerDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAMetricsAPIServer, v1.GetOptions{})
 		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAMetricsAPIServer, err)
 
 		operatorReadyReplicas := operatorDeployment.Status.ReadyReplicas

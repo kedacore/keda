@@ -4,6 +4,7 @@
 package helper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -20,6 +21,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -41,7 +45,8 @@ var (
 )
 
 var (
-	Kc *kubernetes.Clientset
+	KubeClient *kubernetes.Clientset
+	KubeConfig *rest.Config
 )
 
 type ExecutionError struct {
@@ -100,18 +105,51 @@ func ExecuteCommandWithDir(cmdWithArgs, dir string) ([]byte, error) {
 	return out, err
 }
 
+func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, command string) (string, string, error) {
+	cmd := []string{
+		"sh",
+		"-c",
+		command,
+	}
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	request := KubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").Name(podName).Namespace(namespace).
+		SubResource("exec").Timeout(time.Second*20).
+		VersionedParams(&corev1.PodExecOptions{
+			Command: cmd,
+			Stdin:   false,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     true,
+		}, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(KubeConfig, "POST", request.URL())
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	if err != nil {
+		return "", "", err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	out := buf.String()
+	errOut := errBuf.String()
+	return out, errOut, err
+}
+
 func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
-	if Kc != nil {
-		return Kc
+	if KubeClient != nil && KubeConfig != nil {
+		return KubeClient
 	}
 
-	kubeConfig, err := config.GetConfig()
+	var err error
+	KubeConfig, err = config.GetConfig()
 	assert.NoErrorf(t, err, "cannot fetch kube config file - %s", err)
 
-	Kc, err = kubernetes.NewForConfig(kubeConfig)
+	KubeClient, err = kubernetes.NewForConfig(KubeConfig)
 	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
 
-	return Kc
+	return KubeClient
 }
 
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
@@ -127,7 +165,7 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 }
 
 func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	err := Kc.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{})
+	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{})
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
