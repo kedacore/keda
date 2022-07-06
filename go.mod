@@ -72,6 +72,9 @@ require (
 )
 
 replace (
+	// we need a version with license
+	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
+
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
 	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 
@@ -84,10 +87,6 @@ replace (
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-43565
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
-
-	// Every newer commit will break building via controller-tools/controller-gen
-	// Wait for https://github.com/kubernetes-sigs/controller-tools/pull/648
-	golang.org/x/sys => golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
 	golang.org/x/text => golang.org/x/text v0.3.7
@@ -140,6 +139,7 @@ require (
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
