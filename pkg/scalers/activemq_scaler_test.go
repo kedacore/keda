@@ -27,7 +27,7 @@ type activeMQMetricIdentifier struct {
 // Setting metric identifier mock name
 var activeMQMetricIdentifiers = []activeMQMetricIdentifier{
 	{&testActiveMQMetadata[1], 0, "s0-activemq-testQueue"},
-	{&testActiveMQMetadata[9], 1, "s1-activemq-testQueue"},
+	{&testActiveMQMetadata[10], 1, "s1-activemq-testQueue"},
 }
 
 var testActiveMQMetadata = []parseActiveMQMetadataTestData{
@@ -40,10 +40,11 @@ var testActiveMQMetadata = []parseActiveMQMetadataTestData{
 	{
 		name: "properly formed metadata",
 		metadata: map[string]string{
-			"managementEndpoint": "localhost:8161",
-			"destinationName":    "testQueue",
-			"brokerName":         "localhost",
-			"targetQueueSize":    "10",
+			"managementEndpoint":        "localhost:8161",
+			"destinationName":           "testQueue",
+			"brokerName":                "localhost",
+			"targetQueueSize":           "10",
+			"activationTargetQueueSize": "0",
 		},
 		authParams: map[string]string{
 			"username": "testUsername",
@@ -73,6 +74,22 @@ var testActiveMQMetadata = []parseActiveMQMetadataTestData{
 			"brokerName":         "localhost",
 			"targetQueueSize":    "AA",
 			"metricName":         "testMetricName",
+		},
+		authParams: map[string]string{
+			"username": "testUsername",
+			"password": "pass123",
+		},
+		isError: true,
+	},
+	{
+		name: "Invalid activatingTargetQueueSize using a string",
+		metadata: map[string]string{
+			"managementEndpoint":        "localhost:8161",
+			"destinationName":           "testQueue",
+			"brokerName":                "localhost",
+			"targetQueueSize":           "10",
+			"activationTargetQueueSize": "AA",
+			"metricName":                "testMetricName",
 		},
 		authParams: map[string]string{
 			"username": "testUsername",

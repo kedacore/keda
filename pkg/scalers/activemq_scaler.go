@@ -27,16 +27,17 @@ type activeMQScaler struct {
 }
 
 type activeMQMetadata struct {
-	managementEndpoint string
-	destinationName    string
-	brokerName         string
-	username           string
-	password           string
-	restAPITemplate    string
-	targetQueueSize    int64
-	corsHeader         string
-	metricName         string
-	scalerIndex        int
+	managementEndpoint        string
+	destinationName           string
+	brokerName                string
+	username                  string
+	password                  string
+	restAPITemplate           string
+	targetQueueSize           int64
+	activationTargetQueueSize int64
+	corsHeader                string
+	metricName                string
+	scalerIndex               int
 }
 
 type activeMQMonitoring struct {
@@ -46,8 +47,9 @@ type activeMQMonitoring struct {
 }
 
 const (
-	defaultTargetQueueSize         = 10
-	defaultActiveMQRestAPITemplate = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
+	defaultTargetQueueSize           = 10
+	defaultactivationTargetQueueSize = 0
+	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
 var activeMQLog = logf.Log.WithName("activeMQ_scaler")
@@ -110,6 +112,16 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		meta.targetQueueSize = defaultTargetQueueSize
 	}
 
+	if val, ok := config.TriggerMetadata["activationTargetQueueSize"]; ok {
+		activationTargetQueueSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationTargetQueueSize - must be an integer")
+		}
+		meta.activationTargetQueueSize = activationTargetQueueSize
+	} else {
+		meta.activationTargetQueueSize = defaultactivationTargetQueueSize
+	}
+
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
 	} else if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
@@ -162,7 +174,7 @@ func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return queueSize > 0, nil
+	return queueSize > s.metadata.activationTargetQueueSize, nil
 }
 
 // getRestAPIParameters parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
