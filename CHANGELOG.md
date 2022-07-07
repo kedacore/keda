@@ -52,7 +52,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
-
+- **ScaledJob:** Make propagation policy for rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910)
 ### Fixes
 
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
