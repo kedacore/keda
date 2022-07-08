@@ -7,7 +7,7 @@ cd $DIR
 # TODO - Replace with Go tests.
 test_files=(
     "scalers_go/kubernetes_workload/kubernetes_workload_test.go"
-    "scalers/activemq.test.ts"
+    "scalers_go/activemq/activemq_test.go"
     "scalers_go/cron/cron_test.go"
 )
 
