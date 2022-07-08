@@ -264,6 +264,16 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 	return hpa, err
 }
 
+func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name string, desiredReplica int64, namespace string) {
+	scaleObject, _ := kc.AppsV1().Deployments(namespace).GetScale(context.TODO(), name, metav1.GetOptions{})
+	sc := *scaleObject
+	sc.Spec.Replicas = int32(desiredReplica)
+	us, err := kc.AppsV1().Deployments(namespace).UpdateScale(context.TODO(), name, &sc, metav1.UpdateOptions{})
+	if err != nil {
+		assert.NoErrorf(t, err, "couldn't scale the deployment: %v: %v", us.Name, err.Error())
+	}
+}
+
 func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
