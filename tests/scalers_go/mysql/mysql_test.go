@@ -248,7 +248,7 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 	KubectlApplyWithTemplate(t, data, "mysqlServiceTemplate", mysqlServiceTemplate)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
 	// Wait 30 sec which would be enought for mysql to be accessible
-	time.Sleep(time.Duration(30 * time.Second))
+	time.Sleep(30 * time.Second)
 
 	// Create table that used by the job and the worker
 	createTableSQL := fmt.Sprintf("CREATE TABLE %s.task_instance (id INT AUTO_INCREMENT PRIMARY KEY,state VARCHAR(10));", mySQLDatabase)
