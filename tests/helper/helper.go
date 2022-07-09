@@ -154,6 +154,7 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 }
 
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   nsName,
@@ -275,6 +276,8 @@ func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name stri
 }
 
 func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
+	t.Logf("Applying template: %s", templateName)
+
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
@@ -295,12 +298,13 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 
 func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
 	for templateName, config := range configs {
-		t.Logf("Key: %s", templateName)
 		KubectlApplyWithTemplate(t, data, templateName, config)
 	}
 }
 
 func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, config string) {
+	t.Logf("Deleting template: %s", templateName)
+
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
