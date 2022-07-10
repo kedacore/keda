@@ -239,7 +239,7 @@ data:
 
     set -e
     echo Copying common configuration
-    cp /data/etc-override/*.xml /var/lib/artemis/etc-override/broker-10.xml	
+    cp /data/etc-override/*.xml /var/lib/artemis/etc-override/broker-10.xml
 `
 
 	scaledObjectTemplate = `
