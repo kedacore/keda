@@ -6,7 +6,7 @@ cd $DIR
 
 # TODO - Replace with Go tests.
 test_files=(
-    "scalers/kubernetes-workload.test.ts"
+    "scalers_go/kubernetes_workload/kubernetes_workload_test.go"
     "scalers/activemq.test.ts"
     "scalers_go/cron/cron_test.go"
 )
@@ -19,7 +19,7 @@ failed_lookup=()
 counter=0
 
 function run_setup {
-    go test -v -tags e2e setup_test.go
+    go test -v -tags e2e utils/setup_test.go
 }
 
 function run_tests {
@@ -126,7 +126,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    go test -v -tags e2e cleanup_test.go
+    go test -v -tags e2e utils/cleanup_test.go
 }
 
 function print_failed {

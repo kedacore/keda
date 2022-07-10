@@ -4,6 +4,7 @@
 package helper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -18,8 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -41,7 +46,8 @@ var (
 )
 
 var (
-	Kc *kubernetes.Clientset
+	KubeClient *kubernetes.Clientset
+	KubeConfig *rest.Config
 )
 
 type ExecutionError struct {
@@ -100,40 +106,58 @@ func ExecuteCommandWithDir(cmdWithArgs, dir string) ([]byte, error) {
 	return out, err
 }
 
+func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, command string) (string, string, error) {
+	cmd := []string{
+		"sh",
+		"-c",
+		command,
+	}
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	request := KubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").Name(podName).Namespace(namespace).
+		SubResource("exec").Timeout(time.Second*20).
+		VersionedParams(&corev1.PodExecOptions{
+			Command: cmd,
+			Stdin:   false,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     true,
+		}, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(KubeConfig, "POST", request.URL())
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	if err != nil {
+		return "", "", err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	out := buf.String()
+	errOut := errBuf.String()
+	return out, errOut, err
+}
+
 func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
-	if Kc != nil {
-		return Kc
+	if KubeClient != nil && KubeConfig != nil {
+		return KubeClient
 	}
 
-	kubeConfig, err := config.GetConfig()
+	var err error
+	KubeConfig, err = config.GetConfig()
 	assert.NoErrorf(t, err, "cannot fetch kube config file - %s", err)
 
-	Kc, err = kubernetes.NewForConfig(kubeConfig)
+	KubeClient, err = kubernetes.NewForConfig(KubeConfig)
 	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
 
-	return Kc
+	return KubeClient
 }
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	// First, delete the namespace in case it still exists from a previous test attempt,
-	// and wait for it to actually be gone
-	for i := 0; i < 6; i++ {
-		ns, err := Kc.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
-		if err != nil {
-			break
-		}
+	WaitForNamespaceDeletion(t, kc, nsName)
 
-		if ns != nil && ns.Status.Phase == corev1.NamespaceActive {
-			t.Logf("Namespace %s is in the Active state so deleting it", nsName)
-			_ = Kc.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{})
-		}
-
-		t.Logf("Waiting for namespace %s to be gone", nsName)
-
-		time.Sleep(time.Duration(10) * time.Second)
-	}
-
+	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   nsName,
@@ -146,11 +170,27 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 }
 
 func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	err := Kc.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{})
+	t.Logf("deleting namespace %s", nsName)
+	period := int64(0)
+	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
+		GracePeriodSeconds: &period,
+	})
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
-// Waits until deployment ready count hits target or number of iterations are done.
+func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
+	for i := 0; i < 30; i++ {
+		t.Logf("waiting for namespace %s deletion", nsName)
+		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			return true
+		}
+		time.Sleep(time.Second * 5)
+	}
+	return false
+}
+
+// Waits until deployment count hits target or number of iterations are done.
 func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -228,7 +268,19 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 	return hpa, err
 }
 
+func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name string, desiredReplica int64, namespace string) {
+	scaleObject, _ := kc.AppsV1().Deployments(namespace).GetScale(context.TODO(), name, metav1.GetOptions{})
+	sc := *scaleObject
+	sc.Spec.Replicas = int32(desiredReplica)
+	us, err := kc.AppsV1().Deployments(namespace).UpdateScale(context.TODO(), name, &sc, metav1.UpdateOptions{})
+	if err != nil {
+		assert.NoErrorf(t, err, "couldn't scale the deployment: %v: %v", us.Name, err.Error())
+	}
+}
+
 func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
+	t.Logf("Applying template: %s", templateName)
+
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
@@ -249,12 +301,13 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 
 func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
 	for templateName, config := range configs {
-		t.Logf("Key: %s", templateName)
 		KubectlApplyWithTemplate(t, data, templateName, config)
 	}
 }
 
 func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, config string) {
+	t.Logf("Deleting template: %s", templateName)
+
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
@@ -285,6 +338,8 @@ func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 }
 
 func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
-	DeleteNamespace(t, kc, nsName)
 	KubectlDeleteMultipleWithTemplate(t, data, configs)
+	DeleteNamespace(t, kc, nsName)
+	deleted := WaitForNamespaceDeletion(t, kc, nsName)
+	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package tests
+package utils
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestRemoveKEDA(t *testing.T) {
-	out, err := ExecuteCommandWithDir("make undeploy", "..")
+	out, err := ExecuteCommandWithDir("make undeploy", "../..")
 	require.NoErrorf(t, err, "error removing KEDA - %s", err)
 
 	t.Log(string(out))
@@ -28,7 +28,7 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall workload-identity-webhook --namespace %s", AzureWorkloadIdentityNamespace))
 	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
 
-	Kc = GetKubernetesClient(t)
+	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, Kc, AzureWorkloadIdentityNamespace)
+	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 }

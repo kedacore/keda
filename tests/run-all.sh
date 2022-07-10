@@ -2,8 +2,8 @@
 set -u
 
 # TODO - Remove TypeScript regex after all tests have been migrated to Go.
-E2E_REGEX_GO="./scalers*${E2E_TEST_REGEX:-*_test.go}"
-E2E_REGEX_TS="./scalers*${E2E_TEST_REGEX:-*.test.ts}"
+E2E_REGEX_GO="./${E2E_TEST_REGEX:-*_test.go}"
+E2E_REGEX_TS="./${E2E_TEST_REGEX:-*.test.ts}"
 
 DIR=$(dirname "$0")
 cd $DIR
@@ -17,14 +17,14 @@ counter=0
 executed_count=0
 
 function run_setup {
-    go test -v -tags e2e setup_test.go
+    go test -v -tags e2e utils/setup_test.go
 }
 
 function run_tests {
     counter=0
     # randomize tests order using shuf
     # TODO - Remove TypeScript regex after all tests have been migrated to Go.
-    for test_case in $(find . -wholename "$E2E_REGEX_GO" -o -wholename "$E2E_REGEX_TS" | shuf)
+    for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX_GO" -o -wholename "$E2E_REGEX_TS" | shuf)
     do
         if [[ $test_case != *_test.go && $test_case != *.test.ts ]] # Skip helper files
         then
@@ -131,7 +131,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    go test -v -tags e2e cleanup_test.go
+    go test -v -tags e2e utils/cleanup_test.go
 }
 
 function print_failed {

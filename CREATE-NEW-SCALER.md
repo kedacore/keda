@@ -8,7 +8,7 @@ In order to develop a scaler, a developer should do the following:
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods defined in the [scaler interface](#scaler-interface) section.
 4. Create a constructor according to [this](#constructor).
-5. Change the `getScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
+5. Change the `buildScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally

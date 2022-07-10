@@ -225,7 +225,7 @@ jobs:
           go-version: 1.17
       - name: Get golangci
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2
-      - uses: pre-commit/action@v2.0.3
+      - uses: pre-commit/action@v3.0.0
 
   codeScanning:
     name: Code Scanning
@@ -263,3 +263,19 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
+
+  trivy-scanner:
+    name: Trivy Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.5.1
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: false
+        format: 'table'
+        exit-code: 1
+        skip-dirs: tests # Remove this once the ts files are removed
