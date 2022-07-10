@@ -202,7 +202,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 	}
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 1 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {

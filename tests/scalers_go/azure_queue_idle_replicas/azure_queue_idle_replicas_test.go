@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_queue_test
+package azure_queue_idle_replicas_test
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-queue-test"
+	testName = "azure-queue-idle-replicas-test"
 )
 
 var (
@@ -102,8 +102,9 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  minReplicaCount: 0
-  maxReplicaCount: 1
+  idleReplicaCount: 0
+  minReplicaCount: 2
+  maxReplicaCount: 4
   cooldownPeriod: 10
   triggers:
     - type: azure-queue
@@ -126,11 +127,14 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
+	// scaling to idle replica count
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
+	// till min replica count
 	testScaleUp(t, kc, messageURL)
+	// back to idle replica count
 	testScaleDown(t, kc, messageURL)
 
 	// cleanup
@@ -182,8 +186,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after a minute")
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
