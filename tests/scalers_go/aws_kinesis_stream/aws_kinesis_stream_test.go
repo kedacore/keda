@@ -120,6 +120,7 @@ spec:
         awsRegion: {{.AwsRegion}}
         streamName: {{.KinesisStream}}
         shardCount: "1"
+		activationShardCount: "3"
 `
 )
 
@@ -150,6 +151,7 @@ func TestKiensisScaler(t *testing.T) {
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, kinesisClient)
 	testScaleUp(t, kc, kinesisClient)
 	testScaleDown(t, kc, kinesisClient)
 
@@ -158,9 +160,15 @@ func TestKiensisScaler(t *testing.T) {
 	cleanupStream(t, kinesisClient)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+	t.Log("--- testing activation ---")
+	updateShardCount(t, kinesisClient, 2)
+	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing scale up ---")
-	updateShardCount(t, kinesisClient, 2)
+	updateShardCount(t, kinesisClient, 4)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }

@@ -122,6 +122,7 @@ spec:
         keyConditionExpression: '{{.KeyConditionExpression}}'
         expressionAttributeValues: '{{.ExpressionAttributeValues}}'
         targetValue: '1'
+		activationTargetValue: '4'
 `
 )
 
@@ -155,6 +156,7 @@ func TestDynamoDBScaler(t *testing.T) {
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, dynamodbClient)
 	testScaleUp(t, kc, dynamodbClient)
 	testScaleDown(t, kc, dynamodbClient)
 
@@ -163,20 +165,15 @@ func TestDynamoDBScaler(t *testing.T) {
 	cleanupTable(t, dynamodbClient)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+	t.Log("--- testing activation ---")
+	addMessages(t, dynamodbClient, 3)
+	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
 	t.Log("--- testing scale up ---")
-
-	for i := 0; i < 6; i++ {
-		_, err := dynamodbClient.PutItemWithContext(context.Background(), &dynamodb.PutItemInput{
-			TableName: aws.String(dynamoDBTableName),
-			Item: map[string]*dynamodb.AttributeValue{
-				"event_type": {S: aws.String("scaling_event")},
-				"event_id":   {S: aws.String(strconv.Itoa(i))},
-			},
-		})
-		assert.NoErrorf(t, err, "failed to create item - %s", err)
-	}
-
+	addMessages(t, dynamodbClient, 3)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
@@ -197,6 +194,19 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynam
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)
+}
+
+func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) {
+	for i := 0; i < messages; i++ {
+		_, err := dynamodbClient.PutItemWithContext(context.Background(), &dynamodb.PutItemInput{
+			TableName: aws.String(dynamoDBTableName),
+			Item: map[string]*dynamodb.AttributeValue{
+				"event_type": {S: aws.String("scaling_event")},
+				"event_id":   {S: aws.String(strconv.Itoa(i))},
+			},
+		})
+		assert.NoErrorf(t, err, "failed to create item - %s", err)
+	}
 }
 
 func createDynamoDBTable(t *testing.T, dynamodbClient *dynamodb.DynamoDB) {

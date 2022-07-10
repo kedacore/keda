@@ -117,6 +117,7 @@ spec:
         expression: {{.CloudwatchMetricExpression}}
         metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
+		activationTargetMetricValue: "5"
         minMetricValue: "0"
         metricCollectionTime: "120"
         metricStatPeriod: "30"
@@ -154,6 +155,7 @@ func TestCloudWatchExpressionScaler(t *testing.T) {
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, cloudwatchClient)
 	testScaleUp(t, kc, cloudwatchClient)
 	testScaleDown(t, kc, cloudwatchClient)
 
@@ -161,6 +163,13 @@ func TestCloudWatchExpressionScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+	t.Log("--- testing activation ---")
+	setCloudWatchCustomMetric(t, cloudwatchClient, 3)
+
+	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
