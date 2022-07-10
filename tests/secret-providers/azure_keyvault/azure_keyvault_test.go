@@ -151,11 +151,11 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
-	require.NotEmpty(t, keyvaultURI, "AZURE_KEYVAULT_URI env variable is required for service bus tests")
-	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for service bus tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for service bus tests")
-	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for key vault tests")
+	require.NotEmpty(t, keyvaultURI, "AZURE_KEYVAULT_URI env variable is required for key vault tests")
+	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for key vault tests")
+	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for key vault tests")
+	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for key vault tests")
 
 	queueURL, messageURL := createQueue(t)
 

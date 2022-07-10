@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_queue_idle_replicas_test
+package restore_original_test
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-storage-queue-go/azqueue"
 	"github.com/joho/godotenv"
@@ -27,7 +26,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-queue-idle-replicas-test"
+	testName = "restore-original-test"
 )
 
 var (
@@ -69,7 +68,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 0
+  replicas: 2
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -99,11 +98,12 @@ metadata:
   name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
+  advanced:
+    restoreToOriginalReplicaCount: true
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  idleReplicaCount: 0
-  minReplicaCount: 2
+  minReplicaCount: 0
   maxReplicaCount: 4
   cooldownPeriod: 10
   triggers:
@@ -117,9 +117,9 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for restore original test")
 
-	queueURL, messageURL := createQueue(t)
+	queueURL := createQueue(t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -127,22 +127,19 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	// scaling to idle replica count
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after a minute")
 
 	// test scaling
-	// till min replica count
-	testScaleUp(t, kc, messageURL)
-	// back to idle replica count
-	testScaleDown(t, kc, messageURL)
+	testScale(t, kc, data)
+	testRestore(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupQueue(t, queueURL)
 }
 
-func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
+func createQueue(t *testing.T) azqueue.QueueURL {
 	// Create Queue
 	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
 	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
@@ -157,9 +154,7 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	_, err = queueURL.Create(context.Background(), azqueue.Metadata{})
 	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 
-	messageURL := queueURL.NewMessagesURL()
-
-	return queueURL, messageURL
+	return queueURL
 }
 
 func getTemplateData() (templateData, templateValues) {
@@ -173,30 +168,24 @@ func getTemplateData() (templateData, templateValues) {
 			ScaledObjectName: scaledObjectName,
 			QueueName:        queueName,
 		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+			"secretTemplate":     secretTemplate,
+			"deploymentTemplate": deploymentTemplate}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
-		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
-	}
-
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
-}
-
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale down ---")
-	_, err := messageURL.Clear(context.Background())
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
+func testScale(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scaling ---")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
+}
+
+func testRestore(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing restore ---")
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after a minute")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {

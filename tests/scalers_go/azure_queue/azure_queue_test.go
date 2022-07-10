@@ -116,7 +116,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
 
 	queueURL, messageURL := createQueue(t)
 

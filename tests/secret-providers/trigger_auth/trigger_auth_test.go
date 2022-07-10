@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_queue_pause_test
+package trigger_auth_test
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-queue-pause-test"
+	testName = "trigger-auth-test"
 )
 
 var (
@@ -35,19 +35,21 @@ var (
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	queueName        = fmt.Sprintf("%s-queue", testName)
 )
 
 type templateData struct {
-	TestNamespace      string
-	SecretName         string
-	Connection         string
-	DeploymentName     string
-	ScaledObjectName   string
-	QueueName          string
-	PausedReplicaCount int
+	TestNamespace    string
+	SecretName       string
+	Connection       string
+	DeploymentName   string
+	TriggerAuthName  string
+	ScaledObjectName string
+	QueueName        string
 }
+
 type templateValues map[string]string
 
 const (
@@ -93,6 +95,19 @@ spec:
                   key: AzureWebJobsStorage
 `
 
+	triggerAuthTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+    - parameter: connection
+      name: {{.SecretName}}
+      key: AzureWebJobsStorage
+`
+
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -103,43 +118,22 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  minReplicaCount: 2
-  maxReplicaCount: 4
+  minReplicaCount: 0
+  maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
     - type: azure-queue
       metadata:
         queueName: {{.QueueName}}
-        connectionFromEnv: AzureWebJobsStorage
-`
-
-	scaledObjectAnnotatedTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectName}}
-  namespace: {{.TestNamespace}}
-  annotations:
-    autoscaling.keda.sh/paused-replicas: "{{.PausedReplicaCount}}"
-spec:
-  scaleTargetRef:
-    name: {{.DeploymentName}}
-  pollingInterval: 5
-  minReplicaCount: 2
-  maxReplicaCount: 4
-  cooldownPeriod: 10
-  triggers:
-    - type: azure-queue
-      metadata:
-        queueName: {{.QueueName}}
-        connectionFromEnv: AzureWebJobsStorage
+      authenticationRef:
+        name: {{.TriggerAuthName}}
 `
 )
 
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for trigger auth tests")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -149,15 +143,12 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	// scaling to paused replica count
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
-	testPauseAt0(t, kc, messageURL)
-	testScaleUp(t, kc, data)
-	testPauseAtN(t, kc, messageURL, data, 5)
-	testScaleDown(t, kc, data)
+	testScaleUp(t, kc, messageURL)
+	testScaleDown(t, kc, messageURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -188,57 +179,39 @@ func getTemplateData() (templateData, templateValues) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-			TestNamespace:      testNamespace,
-			SecretName:         secretName,
-			Connection:         base64ConnectionString,
-			DeploymentName:     deploymentName,
-			ScaledObjectName:   scaledObjectName,
-			QueueName:          queueName,
-			PausedReplicaCount: 0,
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			Connection:       base64ConnectionString,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			QueueName:        queueName,
 		}, templateValues{
-			"secretTemplate":                secretTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"scaledObjectAnnotatedTemplate": scaledObjectAnnotatedTemplate}
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"triggerAuthTemplate":  triggerAuthTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
-func testPauseAt0(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing pausing at 0 ---")
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale up ---")
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
 		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
 		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 60, 1) == 0,
-		"replica count should stay at 0")
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after a minute")
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
-}
-
-func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL, data templateData, n int) {
-	t.Log("--- testing pausing at N ---")
-	data.PausedReplicaCount = n
-	KubectlApplyWithTemplate(t, data, "scaledObjectAnnotatedTemplate", scaledObjectAnnotatedTemplate)
-
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale down ---")
 	_, err := messageURL.Clear(context.Background())
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
-	assert.Truef(t, WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 60, 1) == n,
-		"replica count should stay at %d", n)
-}
-
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after a minute")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
