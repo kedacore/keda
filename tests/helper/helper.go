@@ -207,6 +207,26 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	return false
 }
 
+// Waits until deployment count hits target or number of iterations are done.
+func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas := deployment.Status.ReadyReplicas
+
+		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+			name, replicas, target)
+
+		if replicas == int32(target) {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 // Waits until statefulset count hits target or number of iterations are done.
 func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
@@ -357,4 +377,22 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	DeleteNamespace(t, kc, nsName)
 	deleted := WaitForNamespaceDeletion(t, kc, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
+}
+
+// DELETE THIS AFTER REBASE
+func AssertReplicaCountNotChangeDuringTime(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
+	t.Log("Waiting for some time to ensure deployment replica count doesn't change")
+	var replicas int32
+
+	for i := 0; i < intervalSeconds; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas = deployment.Status.Replicas
+
+		if replicas != int32(target) {
+			assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
+			return
+		}
+
+		time.Sleep(time.Second)
+	}
 }
