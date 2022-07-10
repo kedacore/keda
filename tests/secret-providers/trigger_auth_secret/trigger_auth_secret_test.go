@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package trigger_auth_test
+package trigger_auth_secret_test
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "trigger-auth-test"
+	testName = "trigger-auth-secret-test"
 )
 
 var (
