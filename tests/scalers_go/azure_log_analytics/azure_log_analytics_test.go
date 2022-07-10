@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_data_explorer_test
+package azure_log_analytics_test
 
 import (
 	"encoding/base64"
@@ -21,39 +21,32 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-data-explorer-test"
+	testName = "azure-log-analytics-test"
 )
 
 var (
-	dataExplorerDB       = os.Getenv("AZURE_DATA_EXPLORER_DB")
-	dataExplorerEndpoint = os.Getenv("AZURE_DATA_EXPLORER_ENDPOINT")
-	azureADClientID      = os.Getenv("AZURE_SP_APP_ID")
-	azureADSecret        = os.Getenv("AZURE_SP_KEY")
-	azureADTenantID      = os.Getenv("AZURE_SP_TENANT")
-	testNamespace        = fmt.Sprintf("%s-ns", testName)
-	secretName           = fmt.Sprintf("%s-secret", testName)
-	deploymentName       = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
-	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	scaleInReplicaCount  = 0
-	scaleInMetricValue   = 0
-	scaleOutReplicaCount = 4
-	scaleOutMetricValue  = 18
+	logAnalyticsWorkspaceID = os.Getenv("AZURE_LOG_ANALYTICS_WORKSPACE_ID")
+	azureADClientID         = os.Getenv("AZURE_SP_APP_ID")
+	azureADSecret           = os.Getenv("AZURE_SP_KEY")
+	azureADTenantID         = os.Getenv("AZURE_SP_TENANT")
+	testNamespace           = fmt.Sprintf("%s-ns", testName)
+	secretName              = fmt.Sprintf("%s-secret", testName)
+	deploymentName          = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 )
 
 type templateData struct {
-	TestNamespace        string
-	SecretName           string
-	DeploymentName       string
-	TriggerAuthName      string
-	ScaledObjectName     string
-	AzureADClientID      string
-	AzureADSecret        string
-	AzureADTenantID      string
-	DataExplorerDB       string
-	DataExplorerEndpoint string
-	ScaleReplicaCount    int
-	ScaleMetricValue     int
+	TestNamespace           string
+	SecretName              string
+	DeploymentName          string
+	TriggerAuthName         string
+	ScaledObjectName        string
+	AzureADClientID         string
+	AzureADSecret           string
+	AzureADTenantID         string
+	LogAnalyticsWorkspaceID string
+	QueryX, QueryY          int
 }
 
 type templateValues map[string]string
@@ -78,7 +71,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: {{.ScaleReplicaCount}}
+  replicas: 0
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -116,19 +109,17 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  cooldownPeriod: 10
-  minReplicaCount: 0
-  maxReplicaCount: 10
-  pollingInterval: 30
+  cooldownPeriod: 5
+  pollingInterval: 5
+  maxReplicaCount: 2
   triggers:
-    - type: azure-data-explorer
+    - type: azure-log-analytics
       metadata:
-        databaseName: {{.DataExplorerDB}}
-        endpoint: {{.DataExplorerEndpoint}}
         clientId: {{.AzureADClientID}}
         tenantId: {{.AzureADTenantID}}
-        query: print result = {{.ScaleMetricValue}}
-        threshold: "5"
+        workspaceId: {{.LogAnalyticsWorkspaceID}}
+        query: "let x = {{.QueryX}}; let y = {{.QueryY}}; print MetricValue = x, Threshold = y;"
+        threshold: "1"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -137,8 +128,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, dataExplorerDB, "AZURE_DATA_EXPLORER_DB env variable is required for deployment bus tests")
-	require.NotEmpty(t, dataExplorerEndpoint, "AZURE_DATA_EXPLORER_ENDPOINT env variable is required for deployment bus tests")
+	require.NotEmpty(t, logAnalyticsWorkspaceID, "AZURE_LOG_ANALYTICS_WORKSPACE_ID env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for deployment bus tests")
@@ -149,8 +139,8 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleInReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after a minute")
 
 	// test scaling
 	testScaleUp(t, kc, data)
@@ -164,40 +154,39 @@ func TestScaler(t *testing.T) {
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	data.ScaleMetricValue = scaleOutMetricValue
+	data.QueryX = 10
+	data.QueryY = 1
 
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleOutReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleOutReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
-	data.ScaleMetricValue = scaleInMetricValue
+	data.QueryX = 0
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleInReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after a minute")
 }
 
 func getTemplateData() (templateData, templateValues) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
-			TestNamespace:        testNamespace,
-			SecretName:           secretName,
-			DeploymentName:       deploymentName,
-			TriggerAuthName:      triggerAuthName,
-			ScaledObjectName:     scaledObjectName,
-			AzureADClientID:      azureADClientID,
-			AzureADSecret:        base64ClientSecret,
-			AzureADTenantID:      azureADTenantID,
-			DataExplorerDB:       dataExplorerDB,
-			DataExplorerEndpoint: dataExplorerEndpoint,
-			ScaleReplicaCount:    scaleInReplicaCount,
+			TestNamespace:           testNamespace,
+			SecretName:              secretName,
+			DeploymentName:          deploymentName,
+			TriggerAuthName:         triggerAuthName,
+			ScaledObjectName:        scaledObjectName,
+			AzureADClientID:         azureADClientID,
+			AzureADSecret:           base64ClientSecret,
+			AzureADTenantID:         azureADTenantID,
+			LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 		}, templateValues{
 			"secretTemplate":     secretTemplate,
 			"deploymentTemplate": deploymentTemplate}
