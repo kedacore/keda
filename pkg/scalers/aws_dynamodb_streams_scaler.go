@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	defaultTargetDBStreamsShardCount = 2
+	defaultTargetDBStreamsShardCount           = 2
+	defaultActivationTargetDBStreamsShardCount = 0
 )
 
 type awsDynamoDBStreamsScaler struct {
@@ -35,11 +36,12 @@ type awsDynamoDBStreamsScaler struct {
 }
 
 type awsDynamoDBStreamsMetadata struct {
-	targetShardCount int64
-	tableName        string
-	awsRegion        string
-	awsAuthorization awsAuthorizationMetadata
-	scalerIndex      int
+	targetShardCount           int64
+	activationTargetShardCount int64
+	tableName                  string
+	awsRegion                  string
+	awsAuthorization           awsAuthorizationMetadata
+	scalerIndex                int
 }
 
 var dynamodbStreamLog = logf.Log.WithName("aws_dynamodb_streams_scaler")
@@ -94,6 +96,15 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig) (*awsDynamoDBStreamsM
 			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamsShardCount)
 		} else {
 			meta.targetShardCount = shardCount
+		}
+	}
+	if val, ok := config.TriggerMetadata["activationShardCount"]; ok && val != "" {
+		shardCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			meta.activationTargetShardCount = defaultActivationTargetDBStreamsShardCount
+			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata activationTargetShardCount, using default %n", defaultActivationTargetDBStreamsShardCount)
+		} else {
+			meta.activationTargetShardCount = shardCount
 		}
 	}
 
@@ -159,7 +170,7 @@ func (s *awsDynamoDBStreamsScaler) IsActive(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return count > s.metadata.activationTargetShardCount, nil
 }
 
 func (s *awsDynamoDBStreamsScaler) Close(context.Context) error {
