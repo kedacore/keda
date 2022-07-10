@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_queue_trigger_auth_test
+package trigger_auth_secret_test
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-queue-trigger-auth-test"
+	testName = "trigger-auth-secret-test"
 )
 
 var (
@@ -133,7 +133,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for trigger auth tests")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -202,7 +202,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 	}
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 1 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
