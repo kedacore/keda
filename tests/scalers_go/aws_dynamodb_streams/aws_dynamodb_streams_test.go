@@ -137,7 +137,7 @@ spec:
       awsRegion: {{.AwsRegion}}     # Required
       tableName: {{.TableName}}     # Required
       shardCount: "{{.ShardCount}}" # Optional. Default: 2
-	  activationShardCount: "{{.ActivationShardCount}}" # Optional. Default: 0
+      activationShardCount: "{{.ActivationShardCount}}" # Optional. Default: 0
 `
 )
 

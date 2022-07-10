@@ -122,7 +122,7 @@ spec:
         keyConditionExpression: '{{.KeyConditionExpression}}'
         expressionAttributeValues: '{{.ExpressionAttributeValues}}'
         targetValue: '1'
-		activationTargetValue: '4'
+        activationTargetValue: '4'
 `
 )
 

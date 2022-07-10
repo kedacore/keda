@@ -114,7 +114,7 @@ spec:
         awsRegion: {{.AwsRegion}}
         queueURL: {{.SqsQueue}}
         queueLength: "1"
-		activationQueueLength: "5"
+        activationQueueLength: "5"
 `
 )
 

@@ -120,7 +120,7 @@ spec:
         awsRegion: {{.AwsRegion}}
         streamName: {{.KinesisStream}}
         shardCount: "1"
-		activationShardCount: "3"
+        activationShardCount: "3"
 `
 )
 

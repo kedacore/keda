@@ -119,7 +119,7 @@ spec:
         dimensionValue: {{.CloudWatchMetricDimensionValue}}
         metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
-		activationTargetMetricValue: "5"
+        activationTargetMetricValue: "5"
         minMetricValue: "0"
         metricCollectionTime: "120"
         metricStatPeriod: "30"
