@@ -198,7 +198,7 @@ func updateShardCount(t *testing.T, kinesisClient *kinesis.Kinesis, shardCount i
 func createKinesisStream(t *testing.T, kinesisClient *kinesis.Kinesis) {
 	_, err := kinesisClient.CreateStreamWithContext(context.Background(), &kinesis.CreateStreamInput{
 		StreamName: &kinesisStreamName,
-		ShardCount: aws.Int64(1),
+		ShardCount: aws.Int64(2),
 	})
 	assert.NoErrorf(t, err, "failed to create stream - %s", err)
 	done := waitForStreamActiveStatus(t, kinesisClient)
