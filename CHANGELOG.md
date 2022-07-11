@@ -65,7 +65,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **ScaledJob**: `rolloutStrategy` is deprecated in favor of `rollout.strategy` ([#2910](https://github.com/kedacore/keda/issues/2910))
 
 ### Breaking Changes
 
