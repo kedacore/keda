@@ -132,7 +132,7 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, rand.Intn(100))
+	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, rand.Intn(10000))
 	awsAccessKeyID            = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey        = os.Getenv("AWS_SECRET_KEY")
 	awsRegion                 = os.Getenv("AWS_REGION")
