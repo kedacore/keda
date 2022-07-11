@@ -163,7 +163,7 @@ func TestKiensisScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing activation ---")
 	updateShardCount(t, kinesisClient, 2)
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {

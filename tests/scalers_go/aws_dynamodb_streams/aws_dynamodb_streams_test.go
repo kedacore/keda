@@ -273,7 +273,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	data.ActivationShardCount = 10
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {

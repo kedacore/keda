@@ -157,7 +157,7 @@ func TestSqsScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
 	t.Log("--- testing activation ---")
 	addMessages(t, sqsClient, queueURL, 4)
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {

@@ -170,7 +170,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cl
 	t.Log("--- testing activation ---")
 	setCloudWatchCustomMetric(t, cloudwatchClient, 3)
 
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
