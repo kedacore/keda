@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -335,17 +333,9 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 	var metric external_metrics.ExternalMetricValue
 	switch {
 	case strings.HasSuffix(metricName, solaceTriggermsgcount):
-		metric = external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(int64(metricValues.msgCount), resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
+		metric = GenerateMetricInMili(metricName, float64(metricValues.msgCount))
 	case strings.HasSuffix(metricName, solaceTriggermsgspoolusage):
-		metric = external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(int64(metricValues.msgSpoolUsage), resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
+		metric = GenerateMetricInMili(metricName, float64(metricValues.msgSpoolUsage))
 	default:
 		// Should never end up here
 		err := fmt.Errorf("unidentified metric: %s", metricName)

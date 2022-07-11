@@ -12,7 +12,7 @@ import (
 type testExtractAzAppInsightsTestData struct {
 	testName      string
 	isError       bool
-	expectedValue int64
+	expectedValue float64
 	info          AppInsightsInfo
 	metricResult  ApplicationInsightsMetric
 }
@@ -48,8 +48,6 @@ var testExtractAzAppInsightsData = []testExtractAzAppInsightsTestData{
 	{"metric not found", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("test/test", "avg", newMetricValue(0.0))},
 	{"metric is nil", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "avg", nil)},
 	{"incorrect aggregation type", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "max", newMetricValue(0.0))},
-	{"success round down value", false, 5, mockAppInsightsInfo("max"), mockAppInsightsMetric("testns/test", "max", newMetricValue(5.2))},
-	{"success round up value", false, 6, mockAppInsightsInfo("max"), mockAppInsightsMetric("testns/test", "max", newMetricValue(5.5))},
 }
 
 func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
@@ -93,7 +91,7 @@ var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
 
 func TestAzAppInfoGetAuthConfig(t *testing.T) {
 	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(context.TODO(), testData.info, testData.podIdentity)
+		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
 		switch testData.config {
 		case msiConfig:
 			if _, ok := authConfig.(auth.MSIConfig); !ok {

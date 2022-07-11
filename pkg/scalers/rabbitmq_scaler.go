@@ -13,8 +13,6 @@ import (
 
 	"github.com/streadway/amqp"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -62,22 +60,24 @@ type rabbitMQScaler struct {
 }
 
 type rabbitMQMetadata struct {
-	queueName   string
-	mode        string        // QueueLength or MessageRate
-	value       int64         // trigger value (queue length or publish/sec. rate)
-	host        string        // connection string for either HTTP or AMQP protocol
-	protocol    string        // either http or amqp protocol
-	vhostName   *string       // override the vhost from the connection info
-	useRegex    bool          // specify if the queueName contains a rexeg
-	pageSize    int64         // specify the page size if useRegex is enabled
-	operation   string        // specify the operation to apply in case of multiples queues
-	metricName  string        // custom metric name for trigger
-	timeout     time.Duration // custom http timeout for a specific trigger
-	scalerIndex int           // scaler index
+	queueName             string
+	mode                  string        // QueueLength or MessageRate
+	value                 float64       // trigger value (queue length or publish/sec. rate)
+	host                  string        // connection string for either HTTP or AMQP protocol
+	protocol              string        // either http or amqp protocol
+	vhostName             *string       // override the vhost from the connection info
+	useRegex              bool          // specify if the queueName contains a rexeg
+	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
+	pageSize              int64         // specify the page size if useRegex is enabled
+	operation             string        // specify the operation to apply in case of multiples queues
+	metricName            string        // custom metric name for trigger
+	timeout               time.Duration // custom http timeout for a specific trigger
+	scalerIndex           int           // scaler index
 }
 
 type queueInfo struct {
 	Messages               int         `json:"messages"`
+	MessagesReady          int         `json:"messages_ready"`
 	MessagesUnacknowledged int         `json:"messages_unacknowledged"`
 	MessageStat            messageStat `json:"message_stats"`
 	Name                   string      `json:"name"`
@@ -193,40 +193,20 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = &val
 	}
 
-	// Resolve useRegex
-	if val, ok := config.TriggerMetadata["useRegex"]; ok {
-		useRegex, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("useRegex has invalid value")
-		}
-		meta.useRegex = useRegex
-	}
-
-	// Resolve pageSize
-	if val, ok := config.TriggerMetadata["pageSize"]; ok {
-		pageSize, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("pageSize has invalid value")
-		}
-		meta.pageSize = pageSize
-		if meta.pageSize < 1 {
-			return nil, fmt.Errorf("pageSize should be 1 or greater than 1")
-		}
-	} else {
-		meta.pageSize = 100
-	}
-
-	// Resolve operation
-	meta.operation = defaultOperation
-	if val, ok := config.TriggerMetadata["operation"]; ok {
-		meta.operation = val
+	err := parseRabbitMQHttpProtocolMetadata(config, &meta)
+	if err != nil {
+		return nil, err
 	}
 
 	if meta.useRegex && meta.protocol == amqpProtocol {
 		return nil, fmt.Errorf("configure only useRegex with http protocol")
 	}
 
-	_, err := parseTrigger(&meta, config)
+	if meta.excludeUnacknowledged && meta.protocol == amqpProtocol {
+		return nil, fmt.Errorf("configure excludeUnacknowledged=true with http protocol only")
+	}
+
+	_, err = parseTrigger(&meta, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %s", err)
 	}
@@ -260,6 +240,48 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	return &meta, nil
 }
 
+func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetadata) error {
+	// Resolve useRegex
+	if val, ok := config.TriggerMetadata["useRegex"]; ok {
+		useRegex, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("useRegex has invalid value")
+		}
+		meta.useRegex = useRegex
+	}
+
+	// Resolve excludeUnacknowledged
+	if val, ok := config.TriggerMetadata["excludeUnacknowledged"]; ok {
+		excludeUnacknowledged, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("excludeUnacknowledged has invalid value")
+		}
+		meta.excludeUnacknowledged = excludeUnacknowledged
+	}
+
+	// Resolve pageSize
+	if val, ok := config.TriggerMetadata["pageSize"]; ok {
+		pageSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("pageSize has invalid value")
+		}
+		meta.pageSize = pageSize
+		if meta.pageSize < 1 {
+			return fmt.Errorf("pageSize should be 1 or greater than 1")
+		}
+	} else {
+		meta.pageSize = 100
+	}
+
+	// Resolve operation
+	meta.operation = defaultOperation
+	if val, ok := config.TriggerMetadata["operation"]; ok {
+		meta.operation = val
+	}
+
+	return nil
+}
+
 func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetadata, error) {
 	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
 	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
@@ -281,7 +303,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	// Parse deprecated `queueLength` value
 	if deprecatedQueueLengthPresent {
-		queueLength, err := strconv.ParseInt(deprecatedQueueLengthValue, 10, 64)
+		queueLength, err := strconv.ParseFloat(deprecatedQueueLengthValue, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
 		}
@@ -307,7 +329,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	default:
 		return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", mode, rabbitModeQueueLength, rabbitModeMessageRate)
 	}
-	triggerValue, err := strconv.ParseInt(value, 10, 64)
+	triggerValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
 	}
@@ -366,6 +388,10 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 			return -1, -1, err
 		}
 
+		if s.metadata.excludeUnacknowledged {
+			// messages count includes only ready
+			return int64(info.MessagesReady), info.MessageStat.PublishDetail.Rate, nil
+		}
 		// messages count includes count of ready and unack-ed
 		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
 	}
@@ -465,7 +491,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metr
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,
@@ -481,17 +507,11 @@ func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, s.anonimizeRabbitMQError(err)
 	}
 
-	var metricValue resource.Quantity
+	var metric external_metrics.ExternalMetricValue
 	if s.metadata.mode == rabbitModeQueueLength {
-		metricValue = *resource.NewQuantity(messages, resource.DecimalSI)
+		metric = GenerateMetricInMili(metricName, float64(messages))
 	} else {
-		metricValue = *resource.NewMilliQuantity(int64(publishRate*1000), resource.DecimalSI)
-	}
-
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      metricValue,
-		Timestamp:  metav1.Now(),
+		metric = GenerateMetricInMili(metricName, publishRate)
 	}
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
@@ -504,16 +524,19 @@ func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
 	if len(q) > 0 {
 		switch s.metadata.operation {
 		case sumOperation:
-			sumMessages, sumRate := getSum(q)
+			sumMessages, sumReady, sumRate := getSum(q)
 			queue.Messages = sumMessages
+			queue.MessagesReady = sumReady
 			queue.MessageStat.PublishDetail.Rate = sumRate
 		case avgOperation:
-			avgMessages, avgRate := getAverage(q)
+			avgMessages, avgReady, avgRate := getAverage(q)
 			queue.Messages = avgMessages
+			queue.MessagesReady = avgReady
 			queue.MessageStat.PublishDetail.Rate = avgRate
 		case maxOperation:
-			maxMessages, maxRate := getMaximum(q)
+			maxMessages, maxReady, maxRate := getMaximum(q)
 			queue.Messages = maxMessages
+			queue.MessagesReady = maxReady
 			queue.MessageStat.PublishDetail.Rate = maxRate
 		default:
 			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.operation, sumOperation, avgOperation, maxOperation)
@@ -526,34 +549,40 @@ func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
 	return queue, nil
 }
 
-func getSum(q []queueInfo) (int, float64) {
+func getSum(q []queueInfo) (int, int, float64) {
 	var sumMessages int
+	var sumMessagesReady int
 	var sumRate float64
 	for _, value := range q {
 		sumMessages += value.Messages
+		sumMessagesReady += value.MessagesReady
 		sumRate += value.MessageStat.PublishDetail.Rate
 	}
-	return sumMessages, sumRate
+	return sumMessages, sumMessagesReady, sumRate
 }
 
-func getAverage(q []queueInfo) (int, float64) {
-	sumMessages, sumRate := getSum(q)
+func getAverage(q []queueInfo) (int, int, float64) {
+	sumMessages, sumReady, sumRate := getSum(q)
 	len := len(q)
-	return sumMessages / len, sumRate / float64(len)
+	return sumMessages / len, sumReady / len, sumRate / float64(len)
 }
 
-func getMaximum(q []queueInfo) (int, float64) {
+func getMaximum(q []queueInfo) (int, int, float64) {
 	var maxMessages int
+	var maxReady int
 	var maxRate float64
 	for _, value := range q {
 		if value.Messages > maxMessages {
 			maxMessages = value.Messages
 		}
+		if value.MessagesReady > maxReady {
+			maxReady = value.MessagesReady
+		}
 		if value.MessageStat.PublishDetail.Rate > maxRate {
 			maxRate = value.MessageStat.PublishDetail.Rate
 		}
 	}
-	return maxMessages, maxRate
+	return maxMessages, maxReady, maxRate
 }
 
 // Mask host for log purposes

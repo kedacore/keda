@@ -13,8 +13,6 @@ import (
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -23,9 +21,8 @@ import (
 
 // Default variables and settings
 const (
-	ibmMqQueueDepthMetricName = "currentQueueDepth"
-	defaultTargetQueueDepth   = 20
-	defaultTLSDisabled        = false
+	defaultTargetQueueDepth = 20
+	defaultTLSDisabled      = false
 )
 
 // IBMMQScaler assigns struct data pointer to metadata variable
@@ -226,11 +223,7 @@ func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: ibmMqQueueDepthMetricName,
-		Value:      *resource.NewQuantity(queueDepth, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queueDepth))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

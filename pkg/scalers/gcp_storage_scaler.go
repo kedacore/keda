@@ -10,8 +10,6 @@ import (
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -174,11 +172,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(items, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(items))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

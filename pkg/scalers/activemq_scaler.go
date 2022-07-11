@@ -13,8 +13,6 @@ import (
 	"text/template"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,16 +27,17 @@ type activeMQScaler struct {
 }
 
 type activeMQMetadata struct {
-	managementEndpoint string
-	destinationName    string
-	brokerName         string
-	username           string
-	password           string
-	restAPITemplate    string
-	targetQueueSize    int64
-	corsHeader         string
-	metricName         string
-	scalerIndex        int
+	managementEndpoint        string
+	destinationName           string
+	brokerName                string
+	username                  string
+	password                  string
+	restAPITemplate           string
+	targetQueueSize           int64
+	activationTargetQueueSize int64
+	corsHeader                string
+	metricName                string
+	scalerIndex               int
 }
 
 type activeMQMonitoring struct {
@@ -48,8 +47,9 @@ type activeMQMonitoring struct {
 }
 
 const (
-	defaultTargetQueueSize         = 10
-	defaultActiveMQRestAPITemplate = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
+	defaultTargetQueueSize           = 10
+	defaultActivationTargetQueueSize = 0
+	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
 var activeMQLog = logf.Log.WithName("activeMQ_scaler")
@@ -112,6 +112,16 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		meta.targetQueueSize = defaultTargetQueueSize
 	}
 
+	if val, ok := config.TriggerMetadata["activationTargetQueueSize"]; ok {
+		activationTargetQueueSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationTargetQueueSize - must be an integer")
+		}
+		meta.activationTargetQueueSize = activationTargetQueueSize
+	} else {
+		meta.activationTargetQueueSize = defaultActivationTargetQueueSize
+	}
+
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
 	} else if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
@@ -164,7 +174,7 @@ func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return queueSize > 0, nil
+	return queueSize > s.metadata.activationTargetQueueSize, nil
 }
 
 // getRestAPIParameters parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
@@ -202,7 +212,7 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 		"BrokerName":         s.metadata.brokerName,
 		"DestinationName":    s.metadata.destinationName,
 	}
-	template, err := template.New("monitoring_endpoint").Parse(defaultActiveMQRestAPITemplate)
+	template, err := template.New("monitoring_endpoint").Parse(s.metadata.restAPITemplate)
 	if err != nil {
 		return "", fmt.Errorf("error parsing template: %s", err)
 	}
@@ -275,11 +285,7 @@ func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(queueSize, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queueSize))
 
 	return []external_metrics.ExternalMetricValue{metric}, nil
 }

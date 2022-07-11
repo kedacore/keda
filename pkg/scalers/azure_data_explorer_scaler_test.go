@@ -109,7 +109,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     ""})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{}})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -126,7 +126,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.PodIdentityProviderAzure})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -143,7 +143,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.PodIdentityProviderAzureWorkload})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -161,7 +161,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     "",
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{},
 				ScalerIndex:     testData.scalerIndex})
 		if err != nil {
 			t.Error("Failed to parse metadata:", err)

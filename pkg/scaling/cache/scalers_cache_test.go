@@ -23,31 +23,31 @@ func TestTargetAverageValue(t *testing.T) {
 	specs := []v2beta2.MetricSpec{}
 	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
-	assert.Equal(t, int64(0), targetAverageValue)
+	assert.Equal(t, float64(0), targetAverageValue)
 	// 1 1
 	specs = []v2beta2.MetricSpec{
 		createMetricSpec(1, metricName),
 		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(1), targetAverageValue)
-	// 5 5 3
+	assert.Equal(t, float64(1), targetAverageValue)
+	// 5 5 3 -> 4.333333333333333
 	specs = []v2beta2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
 		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
+	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
-	// 5 5 4
+	// 5 5 4 -> 4.666666666666667
 	specs = []v2beta2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
-		createMetricSpec(3, metricName),
+		createMetricSpec(4, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
-	assert.Equal(t, int64(4), targetAverageValue)
+	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
 
 func createMetricSpec(averageValue int64, metricName string) v2beta2.MetricSpec {

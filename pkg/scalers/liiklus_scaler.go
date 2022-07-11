@@ -10,8 +10,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -82,11 +80,7 @@ func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string, metri
 	}
 
 	return []external_metrics.ExternalMetricValue{
-		{
-			MetricName: metricName,
-			Timestamp:  meta_v1.Now(),
-			Value:      *resource.NewQuantity(int64(totalLag), resource.DecimalSI),
-		},
+		GenerateMetricInMili(metricName, float64(totalLag)),
 	}, nil
 }
 

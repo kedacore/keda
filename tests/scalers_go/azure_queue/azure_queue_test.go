@@ -20,7 +20,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	. "github.com/kedacore/keda/v2/tests"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -47,6 +47,7 @@ type templateData struct {
 	ScaledObjectName string
 	QueueName        string
 }
+type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -115,7 +116,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -123,7 +124,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -133,7 +134,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, messageURL)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupQueue(t, queueURL)
 }
 
@@ -141,7 +142,8 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	// Create Queue
 	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
 	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
-		context.Background(), httpClient, kedav1alpha1.PodIdentityProviderNone, connectionString, "", "")
+		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		connectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
 	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
@@ -156,17 +158,20 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	return queueURL, messageURL
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		Connection:       base64ConnectionString,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		QueueName:        queueName,
-	}, []string{secretTemplate, deploymentTemplate, scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			Connection:       base64ConnectionString,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			QueueName:        queueName,
+		}, templateValues{
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
@@ -178,7 +183,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 	}
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 1 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
@@ -193,5 +198,5 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Me
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
 	t.Log("--- cleaning up ---")
 	_, err := queueURL.Delete(context.Background())
-	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
+	assert.NoErrorf(t, err, "cannot delete storage queue - %s", err)
 }

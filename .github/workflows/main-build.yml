@@ -61,9 +61,8 @@ jobs:
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
-        with:
-          cosign-release: 'v1.4.1'
+        uses: sigstore/cosign-installer@v2
+
       - name: Check Cosign install!
         run: cosign version
 
@@ -88,6 +87,7 @@ jobs:
       - name: Run end to end tests
         env:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
           AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
           AZURE_APP_INSIGHTS_CONNECTION_STRING: ${{ secrets.AZURE_APP_INSIGHTS_CONNECTION_STRING }}
@@ -104,9 +104,13 @@ jobs:
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           AZURE_SERVICE_BUS_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}
+          AZURE_SERVICE_BUS_ALTERNATIVE_CONNECTION_STRING:  ${{ secrets.AZURE_SERVICE_BUS_ALTERNATIVE_CONNECTION_STRING }}
           AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
           AZURE_SP_OBJECT_ID: ${{ secrets.AZURE_SP_OBJECT_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
+          AZURE_SP_ALTERNATIVE_APP_ID: ${{ secrets.AZURE_SP_ALTERNATIVE_APP_ID }}
+          AZURE_SP_ALTERNATIVE_OBJECT_ID: ${{ secrets.AZURE_SP_ALTERNATIVE_OBJECT_ID }}
+          AZURE_SP_ALTERNATIVE_KEY: ${{ secrets.AZURE_SP_ALTERNATIVE_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
@@ -166,3 +170,83 @@ jobs:
 
       - name: Run smoke test
         run: make arm-smoke-test
+
+  trivy-scan:
+    name: Trivy scan code
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.5.1
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: false
+        format: 'sarif'
+        output: 'code.sarif'
+        exit-code: 1
+        skip-dirs: tests # Remove this once the ts files are removed
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'code.sarif'
+
+  trivy-scan-metrics-server:
+    name: Trivy scan metrics server image - ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy on metrics-server
+        uses: aquasecurity/trivy-action@0.5.1
+        with:
+          scan-type: 'image'
+          image-ref: ghcr.io/kedacore/keda-metrics-apiserver:main
+          format: 'sarif'
+          output: 'metrics-server.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'metrics-server.sarif'
+
+  trivy-scan-keda:
+    name: Trivy scan keda image - ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy on operator
+        uses: aquasecurity/trivy-action@0.5.1
+        with:
+          scan-type: 'image'
+          image-ref: ghcr.io/kedacore/keda:main
+          format: 'sarif'
+          output: 'keda.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'keda.sarif'

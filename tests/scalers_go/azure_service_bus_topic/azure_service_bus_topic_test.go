@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -48,6 +48,7 @@ type templateData struct {
 	TopicName        string
 	SubscriptionName string
 }
+type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -130,7 +131,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates...)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
@@ -140,7 +141,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, sbSubscription)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates...)
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 	cleanupServiceBusTopic(t, sbTopicManager)
 }
 
@@ -188,19 +189,24 @@ func createTopicAndSubscription(t *testing.T, sbNamespace *servicebus.Namespace,
 	assert.NoErrorf(t, err, "cannot create subscription for topic - %s", err)
 }
 
-func getTemplateData() (templateData, []string) {
+func getTemplateData() (templateData, templateValues) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		Connection:       base64ConnectionString,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		ScaledObjectName: scaledObjectName,
-		TopicName:        topicName,
-		SubscriptionName: subscriptionName,
-	}, []string{secretTemplate, deploymentTemplate, triggerAuthTemplate, scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			Connection:       base64ConnectionString,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			TopicName:        topicName,
+			SubscriptionName: subscriptionName,
+		}, templateValues{
+			"secretTemplate":       secretTemplate,
+			"deploymentTemplate":   deploymentTemplate,
+			"triggerAuthTemplate":  triggerAuthTemplate,
+			"scaledObjectTemplate": scaledObjectTemplate,
+		}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Topic) {

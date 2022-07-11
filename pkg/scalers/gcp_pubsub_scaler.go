@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -198,11 +196,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 		}
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(value))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -234,7 +228,9 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 	subscriptionID, projectID := getSubscriptionData(s)
 	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	return s.client.GetMetrics(ctx, filter, projectID)
+	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
+	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
+	return s.client.GetMetrics(ctx, filter, projectID, nil)
 }
 
 func getSubscriptionData(s *pubsubScaler) (string, string) {
