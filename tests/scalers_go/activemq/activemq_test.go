@@ -1,107 +1,120 @@
-import * as fs from 'fs'
-import * as sh from 'shelljs'
-import * as tmp from 'tmp'
-import test from 'ava'
-import {createNamespace, waitForRollout} from './helpers'
+//go:build e2e
+// +build e2e
 
-const activeMQNamespace = 'activemq-test'
-const activemqConf = '/opt/apache-activemq-5.16.3/conf'
-const activemqHome = '/opt/apache-activemq-5.16.3'
-const activeMQPath = 'bin/activemq'
-const activeMQUsername = 'admin'
-const activeMQPassword = 'admin'
-const destinationName = 'testQ'
-const nginxDeploymentName = 'nginx-deployment'
+package activemq_test
 
-test.before(t => {
-	// install ActiveMQ
-  createNamespace(activeMQNamespace)
-	const activeMQTmpFile = tmp.fileSync()
-	fs.writeFileSync(activeMQTmpFile.name, activeMQDeployYaml)
+import (
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
 
-	t.is(0, sh.exec(`kubectl apply --namespace ${activeMQNamespace} -f ${activeMQTmpFile.name}`).code, 'creating ActiveMQ deployment should work.')
-	t.is(0, waitForRollout('deployment', "activemq", activeMQNamespace))
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes"
 
-	const activeMQPod = sh.exec(`kubectl get pods --selector=app=activemq-app -n ${activeMQNamespace} -o jsonpath='{.items[0].metadata.name'}`).stdout
+	. "github.com/kedacore/keda/v2/tests/helper"
+)
 
-        // ActiveMQ ready check
-	let activeMQReady
-	for (let i = 0; i < 30; i++) {
-		activeMQReady = sh.exec(`kubectl exec -n ${activeMQNamespace} ${activeMQPod} -- curl -u ${activeMQUsername}:${activeMQPassword} -s http://localhost:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus | sed -e 's/[{}]/''/g' | awk -v RS=',"' -F: '/^status/ {print $2}'`)
-		if (activeMQReady != 200) {
-			sh.exec('sleep 5s')
-		}
-		else {
-			break
-		}
-	}
+// Load environment variables from .env file
+var _ = godotenv.Load("../../.env")
 
-	// deploy Nginx, scaledobject etc.
-	const nginxTmpFile = tmp.fileSync()
-	fs.writeFileSync(nginxTmpFile.name, nginxDeployYaml)
+const (
+	testName = "activemq-test"
+)
 
-	t.is(0, sh.exec(`kubectl apply --namespace ${activeMQNamespace} -f ${nginxTmpFile.name}`).code, 'creating Nginx deployment should work.')
-        t.is(0, waitForRollout('deployment', "nginx-deployment", activeMQNamespace))
-})
+var (
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	secretName          = fmt.Sprintf("%s-secret", testName)
+	activemqUser        = "admin"
+	activemqPassword    = "admin"
+	activemqConf        = "/opt/apache-activemq-5.16.3/conf"
+	activemqHome        = "/opt/apache-activemq-5.16.3"
+	activemqPath        = "bin/activemq"
+	activemqDestination = "testQ"
+	activemqPodName     = "activemq-0"
+	minReplicaCount     = 0
+	maxReplicaCount     = 2
+)
 
-test.serial('Deployment should have 0 replicas on start', t => {
-	const replicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} --namespace ${activeMQNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-	t.is(replicaCount, '0', 'replica count should start out as 0')
-})
+type templateData struct {
+	TestNamespace          string
+	DeploymentName         string
+	ScaledObjectName       string
+	SecretName             string
+	ActiveMQPasswordBase64 string
+	ActiveMQUserBase64     string
+	ActiveMQConf           string
+	ActiveMQHome           string
+	ActiveMQDestination    string
+}
 
-test.serial('Deployment should scale to 5 (the max) with 1000 messages on the queue then back to 0', t => {
-	const activeMQPod = sh.exec(`kubectl get pods --selector=app=activemq-app -n ${activeMQNamespace} -o jsonpath='{.items[0].metadata.name'}`).stdout
+type templateValues map[string]string
 
-	// produce 1000 messages to ActiveMQ
-	t.is(
-		0,
-		sh.exec(`kubectl exec -n ${activeMQNamespace} ${activeMQPod} -- ${activeMQPath} producer --destination ${destinationName} --messageCount 1000`).code,
-		'produce 1000 message to the ActiveMQ queue'
-	)
+const (
+	secretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  activemq-password: {{.ActiveMQPasswordBase64}}
+  activemq-username: {{.ActiveMQUserBase64}}
+`
 
-	let replicaCount = '0'
-	const maxReplicaCount = '5'
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-activemq-secret
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+    - parameter: username
+      name: {{.SecretName}}
+      key: activemq-username
+    - parameter: password
+      name: {{.SecretName}}
+      key: activemq-password
+`
 
-	for (let i = 0; i < 30 && replicaCount !== maxReplicaCount; i++) {
-		replicaCount = sh.exec(`kubectl get deploy/${nginxDeploymentName} --namespace ${activeMQNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-		if (replicaCount !== maxReplicaCount) {
-			sh.exec('sleep 2s')
-		}
-	}
-	t.is(maxReplicaCount, replicaCount, `Replica count should be ${maxReplicaCount} after 60 seconds`)
-	sh.exec('sleep 30s')
-
-	// consume all messages from ActiveMQ
-	t.is(
-		0,
-		sh.exec(`kubectl exec -n ${activeMQNamespace} ${activeMQPod} -- ${activeMQPath} consumer --destination ${destinationName} --messageCount 1000`).code,
-		'consume all messages'
-	)
-
-	for (let i = 0; i < 50 && replicaCount !== '0'; i++) {
-		replicaCount = sh.exec(
-			`kubectl get deploy/${nginxDeploymentName} --namespace ${activeMQNamespace} -o jsonpath="{.spec.replicas}"`).stdout
-		if (replicaCount !== '0') {
-			sh.exec('sleep 5s')
-		}
-	}
-	t.is('0', replicaCount, 'Replica count should be 0 after 3 minutes')
-
-})
-
-test.after.always((t) => {
-     t.is(0, sh.exec(`kubectl delete namespace ${activeMQNamespace}`).code, 'Should delete ActiveMQ namespace')
-})
-
-const activeMQDeployYaml = `
-apiVersion: apps/v1
+	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+`
+
+	activemqSteatefulTemplate = `apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   labels:
     app: activemq-app
   name: activemq
+  namespace: {{.TestNamespace}}
 spec:
   replicas: 1
+  serviceName: activemq
   revisionHistoryLimit: 10
   selector:
     matchLabels:
@@ -136,14 +149,14 @@ spec:
           protocol: TCP
         resources:
         volumeMounts:
-        - name: activemq-config
+        - name: config
           mountPath: /opt/apache-activemq-5.16.3/webapps/api/WEB-INF/classes/jolokia-access.xml
           subPath: jolokia-access.xml
         - name: remote-access-cm
           mountPath: /opt/apache-activemq-5.16.3/conf/jetty.xml
           subPath: jetty.xml
       volumes:
-      - name: activemq-config
+      - name: config
         configMap:
           name: activemq-config
           items:
@@ -151,15 +164,16 @@ spec:
             path: jolokia-access.xml
       - name: remote-access-cm
         configMap:
-          name: remote-access-cm
+          name: activemq-config
           items:
           - key: jetty.xml
             path: jetty.xml
----
-apiVersion: v1
+`
+	activemqServiceTemplate = `apiVersion: v1
 kind: Service
 metadata:
   name: activemq
+  namespace: {{.TestNamespace}}
 spec:
   type: ClusterIP
   selector:
@@ -185,11 +199,12 @@ spec:
     port: 1883
     targetPort: 1883
     protocol: TCP
----
-apiVersion: v1
+`
+	activemqConfigTemplate = `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: activemq-config
+  namespace: {{.TestNamespace}}
 data:
   jolokia-access.xml: |
     <?xml version="1.0" encoding="UTF-8"?>
@@ -211,12 +226,6 @@ data:
         </mbean>
       </deny>
     </restrict>
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: remote-access-cm
-data:
   jetty.xml: |
     <!--
         Licensed to the Apache Software Foundation (ASF) under one or more contributor
@@ -244,7 +253,7 @@ data:
 
     <bean id="securityLoginService" class="org.eclipse.jetty.security.HashLoginService">
         <property name="name" value="ActiveMQRealm" />
-        <property name="config" value="${activemqConf}/jetty-realm.properties" />
+        <property name="config" value="{{.ActiveMQConf}}/jetty-realm.properties" />
     </bean>
 
     <bean id="securityConstraint" class="org.eclipse.jetty.util.security.Constraint">
@@ -296,12 +305,12 @@ data:
             <ref bean="rewriteHandler"/>
                 <bean class="org.eclipse.jetty.webapp.WebAppContext">
                     <property name="contextPath" value="/admin" />
-                    <property name="resourceBase" value="${activemqHome}/webapps/admin" />
+                    <property name="resourceBase" value="{{.ActiveMQHome}}/webapps/admin" />
                     <property name="logUrlOnStart" value="true" />
                 </bean>
                 <bean class="org.eclipse.jetty.webapp.WebAppContext">
                     <property name="contextPath" value="/api" />
-                    <property name="resourceBase" value="${activemqHome}/webapps/api" />
+                    <property name="resourceBase" value="{{.ActiveMQHome}}/webapps/api" />
                     <property name="logUrlOnStart" value="true" />
                 </bean>
                 <bean class="org.eclipse.jetty.server.handler.ResourceHandler">
@@ -311,7 +320,7 @@ data:
                             <value>index.html</value>
                         </list>
                     </property>
-                    <property name="resourceBase" value="${activemqHome}/webapps/" />
+                    <property name="resourceBase" value="{{.ActiveMQHome}}/webapps/" />
                 </bean>
                 <bean id="defaultHandler" class="org.eclipse.jetty.server.handler.DefaultHandler">
                     <property name="serveIcon" value="false" />
@@ -384,7 +393,7 @@ data:
                     <constructor-arg>
                         <bean id="handlers" class="org.eclipse.jetty.util.ssl.SslContextFactory">
 
-                            <property name="keyStorePath" value="${activemqConf}/broker.ks" />
+                            <property name="keyStorePath" value="{{.ActiveMQConf}}/broker.ks" />
                             <property name="keyStorePassword" value="password" />
                         </bean>
                     </constructor-arg>
@@ -411,70 +420,118 @@ data:
     </bean>
     </beans>
 `
-const nginxDeployYaml = `
-apiVersion: v1
-kind: Secret
-metadata:
-  name: activemq-secret
-type: Opaque
-data:
-  activemq-password: YWRtaW4=
-  activemq-username: YWRtaW4=
----
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: trigger-auth-activemq
-spec:
-  secretTargetRef:
-    - parameter: username
-      name: activemq-secret
-      key: activemq-username
-    - parameter: password
-      name: activemq-secret
-      key: activemq-password
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: nginx
-  name: ${nginxDeploymentName}
-spec:
-  replicas: 0
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - image: nginx
-        name: nginx
-        ports:
-        - containerPort: 80
----
+
+	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: activemq-scaledobject
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
   labels:
-    deploymentName: ${nginxDeploymentName}
+    app: {{.DeploymentName}}
 spec:
   scaleTargetRef:
-    name: ${nginxDeploymentName}
-  pollingInterval: 5
-  cooldownPeriod:  5
+    name: {{.DeploymentName}}
   minReplicaCount: 0
-  maxReplicaCount: 5
+  maxReplicaCount: 2
+  pollingInterval: 1
+  cooldownPeriod:  1
   triggers:
     - type: activemq
       metadata:
-        managementEndpoint: "activemq.${activeMQNamespace}:8161"
-        destinationName: "testQ"
+        managementEndpoint: "activemq.{{.TestNamespace}}:8161"
+        destinationName: "{{.ActiveMQDestination}}"
         brokerName: "localhost"
+        activationTargetQueueSize: "500"
       authenticationRef:
-        name: trigger-auth-activemq
+        name: keda-trigger-auth-activemq-secret
 `
+)
+
+func TestActiveMQScaler(t *testing.T) {
+	// Create kubernetes resources
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	// setup activemq
+	setupActiveMQ(t, kc)
+
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %s after 3 minute", minReplicaCount)
+
+	// test scaling
+	testActivation(t, kc)
+	testScaleUp(t, kc)
+	testScaleDown(t, kc)
+
+	// cleanup
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func setupActiveMQ(t *testing.T, kc *kubernetes.Clientset) {
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "activemq", testNamespace, 1, 60, 3),
+		"activemq should be up")
+	err := checkIfActiveMQStatusIsReady(t, activemqPodName)
+	assert.NoErrorf(t, err, "%s", err)
+}
+
+func checkIfActiveMQStatusIsReady(t *testing.T, name string) error {
+	t.Log("--- checking activemq status ---")
+	time.Sleep(time.Second * 10)
+	for i := 0; i < 30; i++ {
+		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("curl -u %s:%s -s http://localhost:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus", activemqUser, activemqPassword))
+		t.Logf("Output: %s, Error: %s", out, errOut)
+		if !strings.Contains(out, "\"status\":200") {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		return nil
+	}
+	return errors.New("activemq is not ready")
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation ---")
+	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s producer --destination %s --messageCount 100", activemqPath, activemqDestination))
+	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale up ---")
+	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s producer --destination %s --messageCount 900", activemqPath, activemqDestination))
+	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %s after 3 minutes", maxReplicaCount)
+}
+
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale down ---")
+	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s consumer --destination %s --messageCount 1000", activemqPath, activemqDestination))
+	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %s after 3 minutes", minReplicaCount)
+}
+
+func getTemplateData() (templateData, map[string]string) {
+	return templateData{
+			TestNamespace:          testNamespace,
+			DeploymentName:         deploymentName,
+			ScaledObjectName:       scaledObjectName,
+			SecretName:             secretName,
+			ActiveMQPasswordBase64: base64.StdEncoding.EncodeToString([]byte(activemqPassword)),
+			ActiveMQUserBase64:     base64.StdEncoding.EncodeToString([]byte(activemqUser)),
+			ActiveMQConf:           activemqConf,
+			ActiveMQHome:           activemqHome,
+			ActiveMQDestination:    activemqDestination,
+		}, templateValues{
+			"secretTemplate":                secretTemplate,
+			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
+			"activemqServiceTemplate":       activemqServiceTemplate,
+			"activemqConfigTemplate":        activemqConfigTemplate,
+			"activemqSteatefulTemplate":     activemqSteatefulTemplate,
+			"deploymentTemplate":            deploymentTemplate,
+			"scaledObjectTemplate":          scaledObjectTemplate,
+		}
+}

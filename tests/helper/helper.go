@@ -250,6 +250,24 @@ func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset,
 	return int(replicas)
 }
 
+// Waits some time to ensure that the replica count doesn't change.
+func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
+	t.Log("Waiting for some time to ensure deployment replica count doesn't change")
+	var replicas int32
+
+	for i := 0; i < intervalSeconds; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas = deployment.Status.Replicas
+
+		if replicas != int32(target) {
+			assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
+			return
+		}
+
+		time.Sleep(time.Second)
+	}
+}
+
 func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	iterations, intervalSeconds int) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
