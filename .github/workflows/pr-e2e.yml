@@ -94,10 +94,9 @@ jobs:
 
   run-test:
     needs: [triage, build-test-images]
-    runs-on: ubuntu-latest
+    runs-on: e2e
     name: Execute e2e tests
     container: ghcr.io/kedacore/build-tools:main
-    concurrency: pr-e2e-tests
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
