@@ -48,7 +48,7 @@ type activeMQMonitoring struct {
 
 const (
 	defaultTargetQueueSize           = 10
-	defaultactivationTargetQueueSize = 0
+	defaultActivationTargetQueueSize = 0
 	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
@@ -119,7 +119,7 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		}
 		meta.activationTargetQueueSize = activationTargetQueueSize
 	} else {
-		meta.activationTargetQueueSize = defaultactivationTargetQueueSize
+		meta.activationTargetQueueSize = defaultActivationTargetQueueSize
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {

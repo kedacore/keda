@@ -495,7 +495,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
 	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s producer --destination %s --messageCount 100", activemqPath, activemqDestination))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {

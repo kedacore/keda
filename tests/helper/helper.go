@@ -250,7 +250,7 @@ func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset,
 }
 
 // Waits some time to ensure that the replica count doesn't change.
-func AssertReplicaCountNotChangeDuringTime(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
+func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
 	t.Log("Waiting for some time to ensure deployment replica count doesn't change")
 	var replicas int32
 
