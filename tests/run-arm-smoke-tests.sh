@@ -4,7 +4,6 @@ set -u
 DIR=$(dirname "$0")
 cd $DIR
 
-# TODO - Replace with Go tests.
 test_files=(
     "scalers_go/kubernetes_workload/kubernetes_workload_test.go"
     "scalers_go/activemq/activemq_test.go"
@@ -28,13 +27,7 @@ function run_tests {
     for test_case in ${test_files[@]}
     do
         counter=$((counter+1))
-        # TODO - Remove condition after all tests have been migrated to Go.
-        if [[ $test_case == *_test.go ]]
-        then
-            go test -v -tags e2e $test_case > "${test_case}.log" 2>&1 &
-        else
-            ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
-        fi
+        go test -v -tags e2e $test_case > "${test_case}.log" 2>&1 &
 
         pid=$!
         echo "Running $test_case with pid: $pid"
@@ -68,13 +61,7 @@ function run_tests {
         for test_case in "${retry_lookup[@]}"
         do
             counter=$((counter+1))
-            # TODO - Remove condition after all tests have been migrated to Go.
-            if [[ $test_case == *_test.go ]]
-            then
-                go test -v -tags e2e $test_case > "${test_case}.retry.log" 2>&1 &
-            else
-                ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
-            fi
+            go test -v -tags e2e $test_case > "${test_case}.retry.log" 2>&1 &
 
             pid=$!
             echo "Rerunning $test_case with pid: $pid"
