@@ -4,10 +4,10 @@ import * as tmp from 'tmp'
 import test from 'ava'
 import { createNamespace, waitForDeploymentReplicaCount } from './helpers';
 
-const gcpKey = process.env['GCP_SP_KEY']
+const gcpKey = process.env['GCP_SP_KEY'] || ''
 const testNamespace = 'gcp-storage-test'
 const bucketName = 'keda-test-storage-bucket'
-const deploymentName = 'dummy-consumer'
+const deploymentName = 'dummy-storage-consumer'
 const maxReplicaCount = '3'
 const gsPrefix = `kubectl exec --namespace ${testNamespace} deploy/gcp-sdk -- `
 

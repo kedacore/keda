@@ -22,6 +22,8 @@ spec:
         name: keda-operator
       name: keda-operator
     spec:
+      securityContext:
+        runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
         - name: keda-operator
@@ -32,6 +34,7 @@ spec:
             - --leader-elect
             - --zap-log-level=info
             - --zap-encoder=console
+            - --zap-time-encoding=rfc3339
           imagePullPolicy: Always
           resources:
             requests:
@@ -59,6 +62,12 @@ spec:
               value: ""
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux

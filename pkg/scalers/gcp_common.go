@@ -22,7 +22,7 @@ func getGcpAuthorization(config *ScalerConfig, resolvedEnv map[string]string) (*
 	} else if metadata["identityOwner"] == "" || metadata["identityOwner"] == "pod" {
 		meta.podIdentityOwner = true
 		switch {
-		case config.PodIdentity == kedav1alpha1.PodIdentityProviderGCP:
+		case config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP:
 			// do nothing, rely on underneath metadata google
 			meta.podIdentityProviderEnabled = true
 		case authParams["GoogleApplicationCredentials"] != "":

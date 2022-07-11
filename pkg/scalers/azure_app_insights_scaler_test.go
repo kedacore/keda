@@ -104,6 +104,30 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
 		},
 	}},
+	{name: "correct pod identity", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
+	}},
+	{name: "invalid pod Identity", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProvider("notAzure")},
+	}},
+	{name: "correct workload identity", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	}},
+	{name: "invalid workload Identity", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProvider("notAzureWorkload")},
+	}},
 	{name: "app insights id in auth", isError: false, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
@@ -140,6 +164,56 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 			"AD_CLIENT_ID": "5678", "AD_CLIENT_PASSWORD": "pw", "APP_INSIGHTS_ID": "1234", "TENANT_ID": "1234",
 		},
 	}},
+	{name: "known Azure Cloud", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "azureChinaCloud",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "appInsightsResourceURL": "appInsightsResourceURL", "activeDirectoryEndpoint": "adEndpoint",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud - missing app insights resource URL", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "activeDirectoryEndpoint": "adEndpoint",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "private cloud - missing active directory endpoint", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "private", "appInsightsResourceURL": "appInsightsResourceURL",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
+	{name: "unsupported cloud", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"metricAggregationTimespan": "00:01", "metricAggregationType": "count", "metricId": "unittest/test", "targetValue": "10",
+			"applicationInsightsId": "appinsightid", "tenantId": "tenantid",
+			"cloud": "azureGermanCloud",
+		},
+		AuthParams: map[string]string{
+			"tenantId": "tenantId", "activeDirectoryClientId": "adClientId", "activeDirectoryClientPassword": "adClientPassword",
+		},
+	}},
 }
 
 func TestNewAzureAppInsightsScaler(t *testing.T) {
@@ -166,7 +240,7 @@ func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
 			}
 			mockAzureAppInsightsScaler := azureAppInsightsScaler{
 				metadata:    meta,
-				podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+				podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
 			}
 
 			metricSpec := mockAzureAppInsightsScaler.GetMetricSpecForScaling(ctx)

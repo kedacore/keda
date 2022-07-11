@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 func TestGetQueueLength(t *testing.T) {
-	length, err := GetAzureQueueLength(context.TODO(), http.DefaultClient, "", "", "queueName", "", "")
+	length, err := GetAzureQueueLength(context.TODO(), http.DefaultClient, kedav1alpha1.AuthPodIdentity{}, "", "queueName", "", "")
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)
 	}
@@ -21,7 +23,7 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
-	length, err = GetAzureQueueLength(context.TODO(), http.DefaultClient, "", "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "queueName", "", "")
+	length, err = GetAzureQueueLength(context.TODO(), http.DefaultClient, kedav1alpha1.AuthPodIdentity{}, "DefaultEndpointsProtocol=https;AccountName=name;AccountKey=key==;EndpointSuffix=core.windows.net", "queueName", "", "")
 
 	if length != -1 {
 		t.Error("Expected length to be -1, but got", length)

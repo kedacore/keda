@@ -9,10 +9,7 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
-
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,9 +25,10 @@ const (
 )
 
 type gcsScaler struct {
-	client   *storage.Client
-	bucket   *storage.BucketHandle
-	metadata *gcsMetadata
+	client     *storage.Client
+	bucket     *storage.BucketHandle
+	metricType v2beta2.MetricTargetType
+	metadata   *gcsMetadata
 }
 
 type gcsMetadata struct {
@@ -38,13 +36,18 @@ type gcsMetadata struct {
 	gcpAuthorization     *gcpAuthorizationMetadata
 	maxBucketItemsToScan int
 	metricName           string
-	targetObjectCount    int
+	targetObjectCount    int64
 }
 
 var gcsLog = logf.Log.WithName("gcp_storage_scaler")
 
 // NewGcsScaler creates a new gcsScaler
 func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseGcsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing GCP storage metadata: %s", err)
@@ -77,9 +80,10 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	gcsLog.Info(fmt.Sprintf("Metadata %v", meta))
 
 	return &gcsScaler{
-		client:   client,
-		bucket:   bucket,
-		metadata: meta,
+		client:     client,
+		bucket:     bucket,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -101,7 +105,7 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["targetObjectCount"]; ok {
-		targetObjectCount, err := strconv.Atoi(val)
+		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			gcsLog.Error(err, "Error parsing targetObjectCount")
 			return nil, fmt.Errorf("error parsing targetObjectCount: %s", err.Error())
@@ -151,15 +155,11 @@ func (s *gcsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValueQty := resource.NewQuantity(int64(s.metadata.targetObjectCount), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValueQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetObjectCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -172,17 +172,13 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(items), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(items))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getItemCount gets the number of items in the bucket, up to maxCount
-func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error) {
+func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int64, error) {
 	query := &storage.Query{Prefix: ""}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
@@ -191,9 +187,9 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int, error)
 	}
 
 	it := s.bucket.Objects(ctx, query)
-	count := 0
+	var count int64
 
-	for count < maxCount {
+	for count < int64(maxCount) {
 		_, err := it.Next()
 		if err == iterator.Done {
 			break

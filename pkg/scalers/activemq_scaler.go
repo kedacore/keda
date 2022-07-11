@@ -13,8 +13,6 @@ import (
 	"text/template"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -23,20 +21,23 @@ import (
 )
 
 type activeMQScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *activeMQMetadata
 	httpClient *http.Client
 }
 
 type activeMQMetadata struct {
-	managementEndpoint string
-	destinationName    string
-	brokerName         string
-	username           string
-	password           string
-	restAPITemplate    string
-	targetQueueSize    int
-	metricName         string
-	scalerIndex        int
+	managementEndpoint        string
+	destinationName           string
+	brokerName                string
+	username                  string
+	password                  string
+	restAPITemplate           string
+	targetQueueSize           int64
+	activationTargetQueueSize int64
+	corsHeader                string
+	metricName                string
+	scalerIndex               int
 }
 
 type activeMQMonitoring struct {
@@ -46,14 +47,20 @@ type activeMQMonitoring struct {
 }
 
 const (
-	defaultTargetQueueSize         = 10
-	defaultActiveMQRestAPITemplate = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
+	defaultTargetQueueSize           = 10
+	defaultActivationTargetQueueSize = 0
+	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
 var activeMQLog = logf.Log.WithName("activeMQ_scaler")
 
 // NewActiveMQScaler creates a new activeMQ Scaler
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseActiveMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing ActiveMQ metadata: %s", err)
@@ -61,6 +68,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &activeMQScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -94,7 +102,7 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueueSize"]; ok {
-		queueSize, err := strconv.Atoi(val)
+		queueSize, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid targetQueueSize - must be an integer")
 		}
@@ -102,6 +110,16 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		meta.targetQueueSize = queueSize
 	} else {
 		meta.targetQueueSize = defaultTargetQueueSize
+	}
+
+	if val, ok := config.TriggerMetadata["activationTargetQueueSize"]; ok {
+		activationTargetQueueSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationTargetQueueSize - must be an integer")
+		}
+		meta.activationTargetQueueSize = activationTargetQueueSize
+	} else {
+		meta.activationTargetQueueSize = defaultActivationTargetQueueSize
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
@@ -114,6 +132,12 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		} else {
 			meta.username = username
 		}
+	}
+
+	if val, ok := config.TriggerMetadata["corsHeader"]; ok && val != "" {
+		meta.corsHeader = config.TriggerMetadata["corsHeader"]
+	} else {
+		meta.corsHeader = fmt.Sprintf(defaultCorsHeader, meta.managementEndpoint)
 	}
 
 	if meta.username == "" {
@@ -150,7 +174,7 @@ func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return queueSize > 0, nil
+	return queueSize > s.metadata.activationTargetQueueSize, nil
 }
 
 // getRestAPIParameters parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
@@ -188,7 +212,7 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 		"BrokerName":         s.metadata.brokerName,
 		"DestinationName":    s.metadata.destinationName,
 	}
-	template, err := template.New("monitoring_endpoint").Parse(defaultActiveMQRestAPITemplate)
+	template, err := template.New("monitoring_endpoint").Parse(s.metadata.restAPITemplate)
 	if err != nil {
 		return "", fmt.Errorf("error parsing template: %s", err)
 	}
@@ -200,9 +224,9 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 	return monitoringEndpoint, nil
 }
 
-func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) {
+func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error) {
 	var monitoringInfo *activeMQMonitoring
-	var queueMessageCount int
+	var queueMessageCount int64
 
 	client := s.httpClient
 	url, err := s.getMonitoringEndpoint()
@@ -218,6 +242,7 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 	// Add HTTP Auth and Headers
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", s.metadata.corsHeader)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -230,7 +255,7 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 		return -1, err
 	}
 	if resp.StatusCode == 200 && monitoringInfo.Status == 200 {
-		queueMessageCount = monitoringInfo.MsgCount
+		queueMessageCount = int64(monitoringInfo.MsgCount)
 	} else {
 		return -1, fmt.Errorf("ActiveMQ management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
@@ -242,15 +267,11 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int, error) 
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(s.metadata.targetQueueSize), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueSize),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -264,11 +285,7 @@ func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(queueSize), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queueSize))
 
 	return []external_metrics.ExternalMetricValue{metric}, nil
 }

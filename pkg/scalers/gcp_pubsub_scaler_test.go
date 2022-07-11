@@ -82,7 +82,7 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpPubSubScaler := pubsubScaler{nil, meta}
+		mockGcpPubSubScaler := pubsubScaler{nil, "", meta}
 
 		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -98,7 +98,7 @@ func TestGcpPubSubSubscriptionName(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpPubSubScaler := pubsubScaler{nil, meta}
+		mockGcpPubSubScaler := pubsubScaler{nil, "", meta}
 		subscriptionID, projectID := getSubscriptionData(&mockGcpPubSubScaler)
 
 		if subscriptionID != testData.name || projectID != testData.projectID {

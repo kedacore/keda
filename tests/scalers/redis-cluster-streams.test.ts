@@ -2,12 +2,10 @@ import test from 'ava'
 import * as sh from 'shelljs'
 import * as tmp from 'tmp'
 import * as fs from 'fs'
-import {createNamespace, waitForDeploymentReplicaCount, waitForRollout} from "./helpers";
+import {createNamespace, waitForDeploymentReplicaCount} from "./helpers";
+import { RedisClusterHelper } from './redis-cluster-helper';
 
 const redisNamespace = 'redis-cluster-streams'
-const redisClusterName = 'redis-cluster-streams'
-const redisStatefulSetName = 'redis-cluster-streams'
-const redisService = 'redis-cluster-streams'
 const testNamespace = 'redis-cluster-streams-test'
 const redisPassword = 'foobared'
 let redisHost = ''
@@ -15,28 +13,18 @@ const numMessages = 100
 
 test.before(t => {
     // Deploy Redis cluster.
-    createNamespace(redisNamespace)
-    sh.exec(`helm repo add bitnami https://charts.bitnami.com/bitnami`)
-
-    let clusterStatus = sh.exec(`helm install --timeout 900s ${redisClusterName} --namespace ${redisNamespace} --set "global.redis.password=${redisPassword}" bitnami/redis-cluster`).code
-    t.is(0,
-        clusterStatus,
-        'creating a Redis cluster should work.'
-    )
-
-    // Wait for Redis cluster to be ready.
-    let exitCode = waitForRollout('statefulset', redisStatefulSetName, redisNamespace, 600)
-    t.is(0, exitCode, 'expected rollout status for redis to finish successfully')
+    const base64Password = Buffer.from(redisPassword).toString('base64')
+    RedisClusterHelper.install(t,base64Password, redisNamespace)
 
     // Get Redis cluster address.
-    redisHost = sh.exec(`kubectl get svc ${redisService} -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
+    redisHost = sh.exec(`kubectl get svc redis-cluster -n ${redisNamespace} -o jsonpath='{.spec.clusterIP}'`)
 
     // Create test namespace.
     createNamespace(testNamespace)
 
     // Deploy streams consumer app, scaled object etc.
     const tmpFile = tmp.fileSync()
-    const base64Password = Buffer.from(redisPassword).toString('base64')
+
 
     fs.writeFileSync(tmpFile.name, redisStreamsDeployYaml.replace('{{REDIS_PASSWORD}}', base64Password).replace('{{REDIS_HOSTS}}', redisHost))
     t.is(
@@ -94,8 +82,7 @@ test.after.always.cb('clean up deployment', t => {
   }
   sh.exec(`kubectl delete namespace ${testNamespace}`)
 
-  sh.exec(`helm delete ${redisClusterName} --namespace ${redisNamespace}`)
-  sh.exec(`kubectl delete namespace ${redisNamespace}`)
+  RedisClusterHelper.uninstall(redisNamespace)
   t.end()
 })
 
@@ -163,6 +150,11 @@ spec:
   cooldownPeriod: 10
   minReplicaCount: 1
   maxReplicaCount: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
     - type: redis-cluster-streams
       metadata:

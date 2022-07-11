@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
-	pConfig "github.com/prometheus/common/config"
-
 	libs "github.com/dysnix/predictkube-libs/external/configs"
 	"github.com/dysnix/predictkube-libs/external/http_transport"
+	pConfig "github.com/prometheus/common/config"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )

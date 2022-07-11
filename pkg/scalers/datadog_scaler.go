@@ -8,14 +8,12 @@ import (
 	"strings"
 	"time"
 
+	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -24,20 +22,13 @@ type datadogScaler struct {
 	apiClient *datadog.APIClient
 }
 
-type valueType int
-
-const (
-	average = iota
-	global
-)
-
 type datadogMetadata struct {
 	apiKey      string
 	appKey      string
 	datadogSite string
 	query       string
-	queryValue  int
-	vType       valueType
+	queryValue  float64
+	vType       v2beta2.MetricTargetType
 	metricName  string
 	age         int
 	useFiller   bool
@@ -108,7 +99,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.Atoi(val)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
@@ -127,17 +118,25 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
+		datadogLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		if config.MetricType != "" {
+			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+		}
 		val = strings.ToLower(val)
 		switch val {
 		case "average":
-			meta.vType = average
+			meta.vType = v2beta2.AverageValueMetricType
 		case "global":
-			meta.vType = global
+			meta.vType = v2beta2.ValueMetricType
 		default:
 			return nil, fmt.Errorf("type has to be global or average")
 		}
 	} else {
-		meta.vType = average // Default to average between pods
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		}
+		meta.vType = metricType
 	}
 
 	if val, ok := config.AuthParams["apiKey"]; ok {
@@ -191,7 +190,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx)
+	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %v", err)
 	}
@@ -204,7 +203,7 @@ func (s *datadogScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive checks whether the value returned by Datadog is higher than the target value
+// IsActive checks whether the scaler is active
 func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 	num, err := s.getQueryResult(ctx)
 
@@ -212,7 +211,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return num > float64(s.metadata.queryValue), nil
+	return num > 0, nil
 }
 
 // getQueryResult returns result of the scaler query
@@ -236,8 +235,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			"site": s.metadata.datadogSite,
 		})
 
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query)
-
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query) //nolint:bodyclose
 	if err != nil {
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
 	}
@@ -289,31 +287,11 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := new(v2beta2.ExternalMetricSource)
-
-	targetQueryValue := resource.NewQuantity(int64(s.metadata.queryValue), resource.DecimalSI)
-
-	switch s.metadata.vType {
-	case average:
-		externalMetric = &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
-				Name: s.metadata.metricName,
-			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetQueryValue,
-			},
-		}
-	case global:
-		externalMetric = &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
-				Name: s.metadata.metricName,
-			},
-			Target: v2beta2.MetricTarget{
-				Type:  v2beta2.ValueMetricType,
-				Value: targetQueryValue,
-			},
-		}
+	externalMetric := &v2beta2.ExternalMetricSource{
+		Metric: v2beta2.MetricIdentifier{
+			Name: s.metadata.metricName,
+		},
+		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -329,11 +307,7 @@ func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metri
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metrics from Datadog: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: s.metadata.metricName,
-		Value:      *resource.NewMilliQuantity(int64(num*1000), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
+
 	"github.com/kedacore/keda/v2/pkg/scalers/liiklus"
 	mock_liiklus "github.com/kedacore/keda/v2/pkg/scalers/liiklus/mocks"
-	"github.com/pkg/errors"
 )
 
 type parseLiiklusMetadataTestData struct {
@@ -171,7 +172,7 @@ func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockLiiklusScaler := liiklusScaler{meta, nil, nil}
+		mockLiiklusScaler := liiklusScaler{"", meta, nil, nil}
 
 		metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
