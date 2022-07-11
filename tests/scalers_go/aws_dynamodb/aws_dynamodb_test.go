@@ -174,7 +174,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dyna
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
 	t.Log("--- testing scale up ---")
-	addMessages(t, dynamodbClient, 3)
+	addMessages(t, dynamodbClient, 6)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
