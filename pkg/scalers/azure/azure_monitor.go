@@ -19,7 +19,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -49,30 +48,26 @@ type azureExternalMetricRequest struct {
 
 // MonitorInfo to create metric request
 type MonitorInfo struct {
-	ResourceURI         string
-	TenantID            string
-	SubscriptionID      string
-	ResourceGroupName   string
-	Name                string
-	Namespace           string
-	Filter              string
-	AggregationInterval string
-	AggregationType     string
-	ClientID            string
-	ClientPassword      string
+	ResourceURI                  string
+	TenantID                     string
+	SubscriptionID               string
+	ResourceGroupName            string
+	Name                         string
+	Namespace                    string
+	Filter                       string
+	AggregationInterval          string
+	AggregationType              string
+	ClientID                     string
+	ClientPassword               string
+	AzureResourceManagerEndpoint string
+	ActiveDirectoryEndpoint      string
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.PodIdentityProvider) (int32, error) {
-	var podIdentityEnabled = true
-
-	if podIdentity == "" || podIdentity == kedav1alpha1.PodIdentityProviderNone {
-		podIdentityEnabled = false
-	}
-
-	client := createMetricsClient(info, podIdentityEnabled)
+func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (float64, error) {
+	client := createMetricsClient(ctx, info, podIdentity)
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
 		return -1, err
@@ -81,15 +76,27 @@ func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity keda
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(info MonitorInfo, podIdentityEnabled bool) insights.MetricsClient {
-	client := insights.NewMetricsClient(info.SubscriptionID)
-	var config auth.AuthorizerConfig
-	if podIdentityEnabled {
-		config = auth.NewMSIConfig()
-	} else {
-		config = auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) insights.MetricsClient {
+	client := insights.NewMetricsClientWithBaseURI(info.AzureResourceManagerEndpoint, info.SubscriptionID)
+	var authConfig auth.AuthorizerConfig
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+		config.Resource = info.AzureResourceManagerEndpoint
+		config.AADEndpoint = info.ActiveDirectoryEndpoint
+
+		authConfig = config
+	case kedav1alpha1.PodIdentityProviderAzure:
+		config := auth.NewMSIConfig()
+		config.Resource = info.AzureResourceManagerEndpoint
+		config.ClientID = podIdentity.IdentityID
+
+		authConfig = config
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, podIdentity.IdentityID, info.AzureResourceManagerEndpoint)
 	}
-	authorizer, _ := config.Authorizer()
+
+	authorizer, _ := authConfig.Authorizer()
 	client.Authorizer = authorizer
 
 	return client
@@ -121,16 +128,13 @@ func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error)
 	return &metricRequest, nil
 }
 
-func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (int32, error) {
+func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (float64, error) {
 	metricResponse, err := getAzureMetric(ctx, client, *request)
 	if err != nil {
 		return -1, fmt.Errorf("error getting azure monitor metric %s: %w", request.MetricName, err)
 	}
 
-	// casting drops everything after decimal, so round first
-	metricValue := int32(math.Round(metricResponse))
-
-	return metricValue, nil
+	return metricResponse, nil
 }
 
 func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {

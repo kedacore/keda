@@ -84,6 +84,7 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 		closeFn := func() error { return nil }
 		lengthFn := func(context.Context) (int64, error) { return -1, nil }
 		mockRedisScaler := redisScaler{
+			"",
 			meta,
 			closeFn,
 			lengthFn,

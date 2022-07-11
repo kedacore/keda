@@ -10,6 +10,11 @@ import (
 	"strconv"
 	"time"
 
+	libs "github.com/dysnix/predictkube-libs/external/configs"
+	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
+	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
+	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -21,17 +26,9 @@ import (
 	health "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	libs "github.com/dysnix/predictkube-libs/external/configs"
-	pc "github.com/dysnix/predictkube-libs/external/grpc/client"
-	tc "github.com/dysnix/predictkube-libs/external/types_convertation"
-	"github.com/dysnix/predictkube-proto/external/proto/commonproto"
-	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -77,6 +74,7 @@ var (
 )
 
 type PredictKubeScaler struct {
+	metricType       v2beta2.MetricTargetType
 	metadata         *predictKubeMetadata
 	prometheusClient api.Client
 	grpcConn         *grpc.ClientConn
@@ -93,7 +91,7 @@ type predictKubeMetadata struct {
 	prometheusAddress string
 	prometheusAuth    *authentication.AuthMeta
 	query             string
-	threshold         int64
+	threshold         float64
 	scalerIndex       int
 }
 
@@ -141,6 +139,14 @@ func (s *PredictKubeScaler) setupClientConn() error {
 // NewPredictKubeScaler creates a new PredictKube scaler
 func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKubeScaler, error) {
 	s := &PredictKubeScaler{}
+
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		predictKubeLog.Error(err, "error getting scaler metric type")
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
+	s.metricType = metricType
 
 	meta, err := parsePredictKubeMetadata(config)
 	if err != nil {
@@ -195,16 +201,12 @@ func (s *PredictKubeScaler) Close(_ context.Context) error {
 }
 
 func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
@@ -226,20 +228,14 @@ func (s *PredictKubeScaler) GetMetrics(ctx context.Context, metricName string, _
 		return nil, err
 	}
 
-	predictKubeLog.V(1).Info(fmt.Sprintf("predict value is: %d", value))
+	predictKubeLog.V(1).Info(fmt.Sprintf("predict value is: %f", value))
 
-	val := *resource.NewQuantity(value, resource.DecimalSI)
-
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      val,
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (int64, error) {
+func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (float64, error) {
 	results, err := s.doQuery(ctx)
 	if err != nil {
 		return 0, err
@@ -254,14 +250,14 @@ func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (int64, error)
 		return 0, err
 	}
 
-	var y int64
+	var y float64
 	if len(results) > 0 {
-		y = int64(results[len(results)-1].Value)
+		y = results[len(results)-1].Value
 	}
 
-	x := resp.GetResultMetric()
+	x := float64(resp.GetResultMetric())
 
-	return func(x, y int64) int64 {
+	return func(x, y float64) float64 {
 		if x < y {
 			return y
 		}
@@ -422,7 +418,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	}
 
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
-		meta.threshold, err = strconv.ParseInt(val, 10, 64)
+		meta.threshold, err = strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("threshold parsing error %s", err.Error())
 		}

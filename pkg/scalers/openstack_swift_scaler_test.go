@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 )
 
 type parseOpenstackSwiftMetadataTestData struct {
@@ -109,7 +110,7 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse auth metadata:", err)
 		}
 
-		mockSwiftScaler := openstackSwiftScaler{meta, openstack.Client{}}
+		mockSwiftScaler := openstackSwiftScaler{"", meta, openstack.Client{}}
 
 		metricSpec := mockSwiftScaler.GetMetricSpecForScaling(context.Background())
 

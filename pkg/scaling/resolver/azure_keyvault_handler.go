@@ -18,42 +18,44 @@ package resolver
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-)
-
-const (
-	azureKeyVaultResource = "https://vault.azure.net"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 type AzureKeyVaultHandler struct {
 	vault          *kedav1alpha1.AzureKeyVault
 	keyvaultClient *keyvault.BaseClient
+	podIdentity    kedav1alpha1.AuthPodIdentity
 }
 
-func NewAzureKeyVaultHandler(v *kedav1alpha1.AzureKeyVault) *AzureKeyVaultHandler {
+func NewAzureKeyVaultHandler(v *kedav1alpha1.AzureKeyVault, podIdentity kedav1alpha1.AuthPodIdentity) *AzureKeyVaultHandler {
 	return &AzureKeyVaultHandler{
-		vault: v,
+		vault:       v,
+		podIdentity: podIdentity,
 	}
 }
 
 func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string) error {
-	clientID := vh.vault.Credentials.ClientID
-	tenantID := vh.vault.Credentials.TenantID
+	keyvaultResourceURL, activeDirectoryEndpoint, err := vh.getPropertiesForCloud()
+	if err != nil {
+		return err
+	}
 
-	clientSecretName := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Name
-	clientSecretKey := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
-	clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
+	authConfig, err := vh.getAuthConfig(ctx, client, logger, triggerNamespace, keyvaultResourceURL, activeDirectoryEndpoint)
+	if err != nil {
+		return err
+	}
 
-	clientCredentialsConfig := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
-	clientCredentialsConfig.Resource = azureKeyVaultResource
-
-	authorizer, err := clientCredentialsConfig.Authorizer()
+	authorizer, err := authConfig.Authorizer()
 	if err != nil {
 		return err
 	}
@@ -73,4 +75,62 @@ func (vh *AzureKeyVaultHandler) Read(ctx context.Context, secretName string, ver
 	}
 
 	return *result.Value, nil
+}
+
+func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) {
+	cloud := vh.vault.Cloud
+
+	if cloud == nil {
+		return az.PublicCloud.ResourceIdentifiers.KeyVault, az.PublicCloud.ActiveDirectoryEndpoint, nil
+	}
+
+	if strings.EqualFold(cloud.Type, azure.PrivateCloud) {
+		if cloud.KeyVaultResourceURL == "" || cloud.ActiveDirectoryEndpoint == "" {
+			err := fmt.Errorf("properties keyVaultResourceURL and activeDirectoryEndpoint must be provided for cloud %s",
+				azure.PrivateCloud)
+			return "", "", err
+		}
+
+		return cloud.KeyVaultResourceURL, cloud.ActiveDirectoryEndpoint, nil
+	}
+
+	env, err := az.EnvironmentFromName(cloud.Type)
+	if err != nil {
+		return "", "", err
+	}
+
+	return env.ResourceIdentifiers.KeyVault, env.ActiveDirectoryEndpoint, nil
+}
+
+func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client.Client, logger logr.Logger,
+	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string) (auth.AuthorizerConfig, error) {
+	switch vh.podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		clientID := vh.vault.Credentials.ClientID
+		tenantID := vh.vault.Credentials.TenantID
+
+		clientSecretName := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Name
+		clientSecretKey := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
+		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
+
+		if clientID == "" || tenantID == "" || clientSecret == "" {
+			return nil, fmt.Errorf("clientID, tenantID and clientSecret are expected when not using a pod identity provider")
+		}
+
+		config := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
+		config.Resource = keyVaultResourceURL
+		config.AADEndpoint = activeDirectoryEndpoint
+
+		return config, nil
+	case kedav1alpha1.PodIdentityProviderAzure:
+		config := auth.NewMSIConfig()
+		config.Resource = keyVaultResourceURL
+		config.ClientID = vh.podIdentity.IdentityID
+
+		return config, nil
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		return azure.NewAzureADWorkloadIdentityConfig(ctx, vh.podIdentity.IdentityID, keyVaultResourceURL), nil
+	default:
+		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", vh.podIdentity)
+	}
 }

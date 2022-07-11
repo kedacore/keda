@@ -11,7 +11,8 @@ import { createNamespace } from './helpers'
 const namespacePrefix = 'azure-ai-test-'
 const app_insights_app_id = process.env['AZURE_APP_INSIGHTS_APP_ID']
 const app_insights_instrumentation_key = process.env['AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY']
-const sp_id = process.env['AZURE_SP_ID']
+const sp_id = process.env['AZURE_SP_APP_ID']
+const app_insights_connection_string = process.env['AZURE_APP_INSIGHTS_CONNECTION_STRING']
 const sp_key = process.env['AZURE_SP_KEY']
 const sp_tenant = process.env['AZURE_SP_TENANT']
 const test_pod_id = process.env['TEST_POD_ID'] == "true"
@@ -48,13 +49,15 @@ function sleep(sec: number) {
 }
 
 function set_metric(metric_value, t, test_callback) {
-  appinsights.setup(app_insights_instrumentation_key).setUseDiskRetryCaching(true)
+  appinsights.setup(app_insights_connection_string).setUseDiskRetryCaching(true)
   appinsights.defaultClient.context.tags[appinsights.defaultClient.context.keys.cloudRole] = test_app_insights_role
   appinsights.defaultClient.trackMetric({name: test_app_insights_metric, value: metric_value});
   appinsights.defaultClient.flush({
     callback: function(response: string) {
-      let resp = JSON.parse(response)
-      t.is(0, resp['errors'].length, `failed to set metric: ${response['errors']}`)
+      let resp_errors = JSON.parse(response)['errors']
+      if (resp_errors != null && resp_errors != undefined) {
+        t.is(0, resp_errors.length, `failed to set metric: ${JSON.stringify(resp_errors)}`)
+      }
       test_callback()
     }
   })
@@ -76,7 +79,8 @@ function assert_replicas(t, namespace: string, name: string, replicas: number, w
 }
 
 test.before(t => {
-  if (!app_insights_app_id || !app_insights_instrumentation_key || !sp_id || !sp_key || !sp_tenant) {
+  if (!app_insights_app_id || !app_insights_instrumentation_key
+    || !app_insights_connection_string || !sp_id || !sp_key || !sp_tenant) {
     t.fail('A required parameters app insights scaler was not resolved')
   }
 

@@ -191,6 +191,17 @@ func TestKafkaAuthParams(t *testing.T) {
 		if meta.enableTLS != testData.enableTLS {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
 		}
+		if meta.enableTLS {
+			if meta.ca != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+			}
+			if meta.cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+			}
+			if meta.key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			}
+		}
 	}
 }
 
@@ -200,7 +211,7 @@ func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaScaler{meta, nil, nil}
+		mockKafkaScaler := kafkaScaler{"", meta, nil, nil}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

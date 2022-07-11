@@ -125,7 +125,10 @@ func (checkpointer *azureFunctionCheckpointer) resolvePath(info EventHubInfo) (*
 		return nil, err
 	}
 
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
 
 	return path, nil
 }
@@ -148,7 +151,11 @@ func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*u
 		return nil, err
 	}
 
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
+
 	return path, nil
 }
 
@@ -159,7 +166,10 @@ func (checkpointer *blobMetadataCheckpointer) extractCheckpoint(get *azblob.Down
 
 // resolve path for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
+	path, err := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
 
 	return path, nil
 }
@@ -214,7 +224,8 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 }
 
 func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
-	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, kedav1alpha1.PodIdentityProviderNone, info.StorageConnection, "", "")
+	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, info.StorageConnection, "", "")
 	if err != nil {
 		return Checkpoint{}, err
 	}

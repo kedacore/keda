@@ -64,7 +64,7 @@ func TestGcsGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcsScaler := gcsScaler{nil, nil, meta}
+		mockGcsScaler := gcsScaler{nil, nil, "", meta}
 
 		metricSpec := mockGcsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

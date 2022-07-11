@@ -122,6 +122,39 @@ to deploy it as part of KEDA. Do the following:
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
     ```
 
+## Debugging
+
+### Using VS Code
+
+Follow these instructions if you want to debug the KEDA operator using VS Code.
+
+1. Create a `launch.json` file inside the `.vscode/` folder in the repo with the following configuration:
+   ```json
+   {
+    "configurations": [
+         {
+            "name": "Launch file",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/main.go",
+            "env": {"WATCH_NAMESPACE": ""}
+        }
+    ]
+   }
+   ```
+   Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
+2. Deploy CRDs and KEDA into `keda` namespace
+   ```bash
+   make deploy
+   ```
+3. Scale down `keda-operator` Deployment
+   ```bash
+   kubectl scale deployment/keda-operator --replicas=0 -n keda
+   ```
+4. Set breakpoints in the code as required.
+5. Select `Run > Start Debugging` or press `F5` to start debugging.
+
 ## Miscellaneous
 
 ### Setting log levels
@@ -144,6 +177,21 @@ To change the logging format, find `--zap-encoder=` argument in Operator Deploym
 Allowed values are `json` and `console`
 
 Default value: `console`
+
+To change the logging time encoding, find `--zap-time-encoding=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
+ modify its value and redeploy.
+
+Allowed values are `epoch`, `millis`, `nano`, `iso8601`, `rfc3339` or `rfc3339nano`
+
+Default value: `rfc3339`
+
+> Note: Example of some of the logging time encoding values and the output:
+```
+epoch - 1.6533943565181081e+09
+iso8601 - 2022-05-24T12:10:19.411Z
+rfc3339 - 2022-05-24T12:07:40Z
+rfc3339nano - 2022-05-24T12:10:19.411Z
+```
 
 ### Metrics Server logging
 

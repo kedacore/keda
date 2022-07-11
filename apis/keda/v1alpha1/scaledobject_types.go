@@ -104,6 +104,8 @@ type AdvancedConfig struct {
 type HorizontalPodAutoscalerConfig struct {
 	// +optional
 	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // ScaleTarget holds the a reference to the scale target Object
@@ -126,7 +128,7 @@ type ScaleTriggers struct {
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
 	// +optional
-	FallbackReplicas *int32 `json:"fallback,omitempty"`
+	MetricType autoscalingv2beta2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -150,6 +152,10 @@ type ScaledObjectStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
+	// +optional
+	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
+	// +optional
+	HpaName string `json:"hpaName,omitempty"`
 }
 
 // +kubebuilder:object:root=true

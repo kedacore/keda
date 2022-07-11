@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,25 +28,32 @@ const (
 
 type azureAppInsightsMetadata struct {
 	azureAppInsightsInfo azure.AppInsightsInfo
-	targetValue          int
+	targetValue          float64
 	scalerIndex          int
 }
 
 var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
 
 type azureAppInsightsScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureAppInsightsMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
 func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureAppInsightsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %s", err)
 	}
 
 	return &azureAppInsightsScaler{
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 	}, nil
@@ -63,7 +68,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.Atoi(val)
+	meta.targetValue, err = strconv.ParseFloat(val, 64)
 	if err != nil {
 		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", "targetValue", targetValueName)
 		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", targetValueName, err.Error())
@@ -96,6 +101,28 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	} else {
 		meta.azureAppInsightsInfo.Filter = ""
 	}
+
+	meta.azureAppInsightsInfo.AppInsightsResourceURL = azure.DefaultAppInsightsResourceURL
+
+	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := config.TriggerMetadata["appInsightsResourceURL"]; ok && resource != "" {
+				meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+			} else {
+				return nil, fmt.Errorf("appInsightsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AppInsightsResourceURLInCloud[strings.ToUpper(cloud)]; ok {
+			meta.azureAppInsightsInfo.AppInsightsResourceURL = resource
+		} else {
+			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureAppInsightsInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
 	// Required authentication parameters below
 
@@ -139,15 +166,11 @@ func (s *azureAppInsightsScaler) Close(context.Context) error {
 }
 
 func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(s.metadata.targetValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -161,11 +184,7 @@ func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName stri
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

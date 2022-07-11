@@ -1,5 +1,3 @@
-
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -196,6 +194,8 @@ spec:
                                 type: integer
                             type: object
                         type: object
+                      name:
+                        type: string
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
@@ -261,13 +261,15 @@ spec:
                       required:
                       - name
                       type: object
-                    fallback:
-                      format: int32
-                      type: integer
                     metadata:
                       additionalProperties:
                         type: string
                       type: object
+                    metricType:
+                      description: MetricTargetType specifies the type of metric being
+                        targeted, and should be either "Value", "AverageValue", or
+                        "Utilization"
+                      type: string
                     name:
                       type: string
                     type:
@@ -325,10 +327,15 @@ spec:
                       type: string
                   type: object
                 type: object
+              hpaName:
+                type: string
               lastActiveTime:
                 format: date-time
                 type: string
               originalReplicaCount:
+                format: int32
+                type: integer
+              pausedReplicaCount:
                 format: int32
                 type: integer
               resourceMetricNames:

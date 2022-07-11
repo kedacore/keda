@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.17.3
+FROM golang:1.17.9
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -49,13 +49,13 @@ RUN apt-get update \
         github.com/cweill/gotests/... \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
-        golang.org/x/tools/gopls \
         github.com/alecthomas/gometalinter \
-        honnef.co/go/tools/... \
         github.com/mgechev/revive \
         github.com/derekparker/delve/cmd/dlv 2>&1 \
+    && go install honnef.co/go/tools/cmd/staticcheck@latest \
+    && go install golang.org/x/tools/gopls@latest \
     # Install golangci-lint
-    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0 \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
@@ -67,7 +67,7 @@ RUN apt-get update \
     # Docker install
     && apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release \
     && curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null \
-    && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" \
+    && add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" \
     && apt-get update \
     && apt-get install -y docker-ce-cli \
     #

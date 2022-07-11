@@ -4,24 +4,27 @@ The release process of a new version of KEDA involves the following:
 
 ## 0. Prerequisites
 
-Look at the last released version in the releases page: https://github.com/kedacore/keda/releases
-For example: currently it is 2.3.0
-The next version will thus be 2.4.0
+Look at the [last release] in the releases page:
+
+- For example, at the time of writing, it was 2.3.0
+- The next version will thus be 2.4.0
+
+[last release]: https://github.com/kedacore/keda/releases/latest
 
 ## 1. Changelog
 
-Provide a new section in `CHANGELOG.md` for the new version that is being released along with the new features, patches and deprecations it introduces.
+Add a new section in [CHANGELOG.md](CHANGELOG.md) for the new version that is being released along with the new features, patches and deprecations it introduces.
 
 It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
 
 ## 2. Add the new version to GitHub Bug report template
+
 Add the new released version to the list in `KEDA Version` dropdown in [3_bug_report.yml](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml).
 
 ## 3. Publish documentation for new version
 
 Publish documentation for new version on https://keda.sh.
-
-See [docs](https://github.com/kedacore/keda-docs#publishing-a-new-version).
+For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
 ## 4. Create KEDA release on GitHub
 
@@ -33,14 +36,19 @@ KEDA Deployment YAML file (eg. keda-2.4.0.yaml) is also automatically created an
 
 ### Release template
 
-Every release should use the provided template below to create the GitHub release and ensure that a new GitHub Discussion is created.
+Every release should use the template provided below to create the GitHub release and ensure that a new GitHub Discussion is created.
 
-> 💡 Don't forget to update the version & new contributors in the template
+> ### 💡 IMPORTANT
+>
+> Remember to make the following changes to the template:
+>
+> - Replace `INSERT-CORRECT-VERSION` (there are **two** occurrences in the template) with the new-release ID
+> - Update the list of new contributors
 
 Here's the template:
 
 ```markdown
-We are happy to release KEDA <INSERT-CORRECT-VERSION> 🎉
+We are happy to release KEDA INSERT-CORRECT-VERSION 🎉
 
 Here are some highlights:
 
@@ -100,4 +108,12 @@ Guidance on how to release it can be found in our [contribution guide](https://g
 
 ## 8. Prepare next release
 
-Prepare next release by creating a [new GitHub milestone](https://github.com/kedacore/keda/milestones/new) called `v{upcoming-semver-version}` with a target date in 3 months as per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md).
+As per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we need to create a new shipping cycle in our [project settings](https://github.com/orgs/kedacore/projects/2/settings/fields/1647216) with a target date in 3 months after the last cycle.
+
+Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
+
+## 9. Tweet! 🐦
+
+Prepare a tweet with some highlights and send it out on [@kedaorg](https://twitter.com/kedaorg)!
+
+If you don't have access, ask a maintainer who has access to the account (see 1Password).

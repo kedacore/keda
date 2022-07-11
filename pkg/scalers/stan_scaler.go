@@ -9,8 +9,6 @@ import (
 	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,6 +38,7 @@ type monitorSubscriberInfo struct {
 
 type stanScaler struct {
 	channelInfo *monitorChannelInfo
+	metricType  v2beta2.MetricTargetType
 	metadata    stanMetadata
 	httpClient  *http.Client
 }
@@ -62,6 +61,11 @@ var stanLog = logf.Log.WithName("stan_scaler")
 
 // NewStanScaler creates a new stanScaler
 func NewStanScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	stanMetadata, err := parseStanMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stan metadata: %s", err)
@@ -69,6 +73,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
+		metricType:  metricType,
 		metadata:    stanMetadata,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 	}, nil
@@ -197,16 +202,12 @@ func (s *stanScaler) hasPendingMessage() bool {
 }
 
 func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.lagThreshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("stan-%s", s.metadata.subject))
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: stanMetricType,
@@ -234,12 +235,7 @@ func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSe
 	}
 	totalLag := s.getMaxMsgLag()
 	stanLog.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
-
+	metric := GenerateMetricInMili(metricName, float64(totalLag))
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 

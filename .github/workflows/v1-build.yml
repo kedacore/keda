@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 1
 
       - name: Go modules cache
-        uses: actions/cache@v3.0.0
+        uses: actions/cache@v3.0.4
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -39,7 +39,7 @@ jobs:
         env:
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_ID: ${{ secrets.AZURE_SP_ID }}
+          AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
           AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
           AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
