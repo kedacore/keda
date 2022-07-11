@@ -207,6 +207,26 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	return false
 }
 
+// Waits until deployment count hits target or number of iterations are done.
+func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicas := deployment.Status.ReadyReplicas
+
+		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+			name, replicas, target)
+
+		if replicas == int32(target) {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 // Waits until statefulset count hits target or number of iterations are done.
 func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
