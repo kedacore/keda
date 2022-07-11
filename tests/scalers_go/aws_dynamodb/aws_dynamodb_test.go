@@ -131,7 +131,7 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("%s-keda-table", testName)
+	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, rand.Intn(100))
 	awsAccessKeyID            = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey        = os.Getenv("AWS_SECRET_KEY")
 	awsRegion                 = os.Getenv("AWS_REGION")
@@ -205,6 +205,7 @@ func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) 
 				"event_id":   {S: aws.String(strconv.Itoa(i))},
 			},
 		})
+		t.Log("Message enqueued")
 		assert.NoErrorf(t, err, "failed to create item - %s", err)
 	}
 }

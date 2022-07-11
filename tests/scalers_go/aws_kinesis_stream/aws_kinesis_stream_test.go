@@ -77,7 +77,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -105,7 +105,7 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   maxReplicaCount: 2
-  minReplicaCount: 1
+  minReplicaCount: 0
   cooldownPeriod: 1
   advanced:
     horizontalPodAutoscalerConfig:
@@ -119,8 +119,8 @@ spec:
       metadata:
         awsRegion: {{.AwsRegion}}
         streamName: {{.KinesisStream}}
-        shardCount: "1"
-        activationShardCount: "3"
+        shardCount: "3"
+        activationShardCount: "4"
 `
 )
 
@@ -129,12 +129,12 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
 	secretName         = fmt.Sprintf("%s-secret", testName)
-	kinesisStreamName  = fmt.Sprintf("%s-keda-stream", testName)
+	kinesisStreamName  = fmt.Sprintf("%s-keda-stream-%d", testName, rand.Intn(100))
 	awsAccessKeyID     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_KEY")
 	awsRegion          = os.Getenv("AWS_REGION")
 	maxReplicaCount    = 2
-	minReplicaCount    = 1
+	minReplicaCount    = 0
 )
 
 func TestKiensisScaler(t *testing.T) {
@@ -162,20 +162,20 @@ func TestKiensisScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing activation ---")
-	updateShardCount(t, kinesisClient, 2)
+	updateShardCount(t, kinesisClient, 3)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing scale up ---")
-	updateShardCount(t, kinesisClient, 4)
+	updateShardCount(t, kinesisClient, 6)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing scale down ---")
-	updateShardCount(t, kinesisClient, 1)
+	updateShardCount(t, kinesisClient, 3)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)
