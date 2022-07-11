@@ -327,7 +327,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	templateTriggerJob := templateValues{"triggerJobTemplate": producerJob}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
-	AssertReplicaCountNotChangeDuringTime(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {

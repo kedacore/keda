@@ -378,21 +378,3 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	deleted := WaitForNamespaceDeletion(t, kc, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }
-
-// DELETE THIS AFTER REBASE
-func AssertReplicaCountNotChangeDuringTime(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
-	t.Log("Waiting for some time to ensure deployment replica count doesn't change")
-	var replicas int32
-
-	for i := 0; i < intervalSeconds; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas = deployment.Status.Replicas
-
-		if replicas != int32(target) {
-			assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
-			return
-		}
-
-		time.Sleep(time.Second)
-	}
-}
