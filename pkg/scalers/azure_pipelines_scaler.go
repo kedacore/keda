@@ -42,6 +42,7 @@ type azurePipelinesMetadata struct {
 	organizationName           string
 	personalAccessToken        string
 	parent                     string
+	demands                    string
 	poolID                     int
 	targetPipelinesQueueLength int64
 	scalerIndex                int
@@ -238,13 +239,19 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data despite successful code. url: %s", url)
 	}
 
+	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	for _, value := range jobs {
 		v := value.(map[string]interface{})
 		if v["result"] == nil {
-			if s.metadata.parent == "" {
-				// keep the old template working
-				count++
-			} else if getCanAgentFulfilJob(v, s.metadata) {
+			if s.metadata.parent != "" {
+				if getCanAgentParentFulfilJob(v, s.metadata) {
+					count++
+				}
+			} else if s.metadata.demands != "" {
+				if getCanAgentDemandFulfilJob(v, s.metadata) {
+					count++
+				}
+			} else {
 				count++
 			}
 		}
@@ -252,8 +259,26 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	return count, err
 }
 
-// Determine if the Job and Agent have matching capabilities
-func getCanAgentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+// Determine if the scaledjob has the right demands to spin up
+func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	var demandsReq = v["demands"].([]interface{})
+	var demandsAvail = strings.Split(metadata.demands, ",")
+	var countDemands = 0
+	for _, dr := range demandsReq {
+		for _, da := range demandsAvail {
+			if dr == da {
+				countDemands++
+			}
+		}
+	}
+	if countDemands == len(demandsReq)-1 {
+		return true
+	}
+	return false
+}
+
+// Determine if the Job and Parent Agent Template have matching capabilities
+func getCanAgentParentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
 	matchedAgents, ok := v["matchedAgents"].([]interface{})
 	if !ok {
 		// ADO is already processing
