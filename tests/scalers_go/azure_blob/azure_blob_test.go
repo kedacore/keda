@@ -1,17 +1,17 @@
 //go:build e2e
 // +build e2e
 
-package trigger_auth_secret_test
+package azure_blob_test
 
 import (
 	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/Azure/azure-storage-queue-go/azqueue"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "trigger-auth-secret-test"
+	testName = "azure-blob-test"
 )
 
 var (
@@ -35,9 +35,8 @@ var (
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queueName        = fmt.Sprintf("%s-queue", testName)
+	containerName    = fmt.Sprintf("%s-container", testName)
 )
 
 type templateData struct {
@@ -45,11 +44,9 @@ type templateData struct {
 	SecretName       string
 	Connection       string
 	DeploymentName   string
-	TriggerAuthName  string
 	ScaledObjectName string
-	QueueName        string
+	ContainerName    string
 }
-
 type templateValues map[string]string
 
 const (
@@ -81,31 +78,27 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
+      nodeSelector:
+        kubernetes.io/os: linux
       containers:
         - name: {{.DeploymentName}}
-          image: ghcr.io/kedacore/tests-azure-queue
+          image: slurplk/blob-consumer:latest
           resources:
           env:
             - name: FUNCTIONS_WORKER_RUNTIME
-              value: node
+              value: dotnet
+            - name: AzureFunctionsWebHost__hostid
+              value: {{.DeploymentName}}
             - name: AzureWebJobsStorage
               valueFrom:
                 secretKeyRef:
                   name: {{.SecretName}}
                   key: AzureWebJobsStorage
-`
-
-	triggerAuthTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: {{.TriggerAuthName}}
-  namespace: {{.TestNamespace}}
-spec:
-  secretTargetRef:
-    - parameter: connection
-      name: {{.SecretName}}
-      key: AzureWebJobsStorage
+            - name: TEST_STORAGE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: AzureWebJobsStorage
 `
 
 	scaledObjectTemplate = `
@@ -117,25 +110,25 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 5
+  pollingInterval: 10
   minReplicaCount: 0
-  maxReplicaCount: 1
+  maxReplicaCount: 2
   cooldownPeriod: 10
   triggers:
-    - type: azure-queue
+    - type: azure-blob
       metadata:
-        queueName: {{.QueueName}}
-      authenticationRef:
-        name: {{.TriggerAuthName}}
+        blobContainerName: {{.ContainerName}}
+        blobCount: '1'
+        connectionFromEnv: AzureWebJobsStorage
 `
 )
 
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for trigger auth tests")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure blob test")
 
-	queueURL, messageURL := createQueue(t)
+	containerURL := createContainer(t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -147,32 +140,30 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after a minute")
 
 	// test scaling
-	testScaleUp(t, kc, messageURL)
-	testScaleDown(t, kc, messageURL)
+	testScaleUp(t, kc, containerURL)
+	testScaleDown(t, kc, containerURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupQueue(t, queueURL)
+	cleanupContainer(t, containerURL)
 }
 
-func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
-	// Create Queue
+func createContainer(t *testing.T) azblob.ContainerURL {
+	// Create Blob Container
 	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
-	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
+	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
 		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		connectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
-	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
-	serviceURL := azqueue.NewServiceURL(*endpoint, p)
-	queueURL := serviceURL.NewQueueURL(queueName)
+	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	serviceURL := azblob.NewServiceURL(*endpoint, p)
+	containerURL := serviceURL.NewContainerURL(containerName)
 
-	_, err = queueURL.Create(context.Background(), azqueue.Metadata{})
-	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
+	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessContainer)
+	assert.NoErrorf(t, err, "cannot create blob container - %s", err)
 
-	messageURL := queueURL.NewMessagesURL()
-
-	return queueURL, messageURL
+	return containerURL
 }
 
 func getTemplateData() (templateData, templateValues) {
@@ -183,39 +174,52 @@ func getTemplateData() (templateData, templateValues) {
 			SecretName:       secretName,
 			Connection:       base64ConnectionString,
 			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
 			ScaledObjectName: scaledObjectName,
-			QueueName:        queueName,
+			ContainerName:    containerName,
 		}, templateValues{
 			"secretTemplate":       secretTemplate,
 			"deploymentTemplate":   deploymentTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
 			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
-		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
+	data := "Hello World!"
+
+	for i := 0; i < 10; i++ {
+		blobName := fmt.Sprintf("blob-%d", i)
+		blobURL := containerURL.NewBlockBlobURL(blobName)
+
+		_, err := blobURL.Upload(context.Background(), strings.NewReader(data),
+			azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{},
+			azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
+
+		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after a minute")
+	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after a minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
 	t.Log("--- testing scale down ---")
-	_, err := messageURL.Clear(context.Background())
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
+
+	for i := 0; i < 10; i++ {
+		blobName := fmt.Sprintf("blob-%d", i)
+		blobURL := containerURL.NewBlockBlobURL(blobName)
+
+		_, err := blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude,
+			azblob.BlobAccessConditions{})
+
+		assert.NoErrorf(t, err, "cannot delete blob - %s", err)
+	}
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 }
 
-func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
+func cleanupContainer(t *testing.T, containerURL azblob.ContainerURL) {
 	t.Log("--- cleaning up ---")
-	_, err := queueURL.Delete(context.Background())
-	assert.NoErrorf(t, err, "cannot delete storage queue - %s", err)
+	_, err := containerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
+	assert.NoErrorf(t, err, "cannot delete storage container - %s", err)
 }

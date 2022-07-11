@@ -202,5 +202,5 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Me
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
 	t.Log("--- cleaning up ---")
 	_, err := queueURL.Delete(context.Background())
-	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
+	assert.NoErrorf(t, err, "cannot delete storage queue - %s", err)
 }
