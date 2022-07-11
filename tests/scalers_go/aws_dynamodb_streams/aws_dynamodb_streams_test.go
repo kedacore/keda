@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -44,7 +43,7 @@ var (
 	deploymentName       = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	tableName            = fmt.Sprintf("%s-table-%d", testName, rand.Intn(10000))
+	tableName            = fmt.Sprintf("%s-table-%d", testName, GetRandomNumber())
 	shardCount           = 2 // default count
 	activationShardCount = 0 // default count
 )
