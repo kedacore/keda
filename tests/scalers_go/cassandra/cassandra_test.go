@@ -208,14 +208,18 @@ spec:
       keyspace: "{{.CassandraKeyspace}}"
       query: "SELECT COUNT(*) FROM {{.CassandraKeyspace}}.{{.CassandraTableName}};"
       targetQueryValue: "1"
+      activationTargetQueryValue: "4"
       metricName: "{{.CassandraKeyspace}}"
     authenticationRef:
       name: keda-trigger-auth-cassandra-secret
 `
-	insertDataTemplate = `BEGIN BATCH
+	insertDataTemplateA = `BEGIN BATCH
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('Mary', 'Paul', 30);
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('James', 'Miller', 25);
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('Lisa', 'Wilson', 29);
+    APPLY BATCH;`
+
+	insertDataTemplateB = `BEGIN BATCH
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('Bob', 'Taylor', 33);
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('Carol', 'Moore', 31);
     INSERT INTO {{.CassandraKeyspace}}.{{.CassandraTableName}} (name, surname, age) VALUES ('Richard', 'Brown', 23);
@@ -235,6 +239,7 @@ func TestCassandraScaler(t *testing.T) {
 		"replica count should be %s after 3 minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc)
 	testScaleUp(t, kc)
 	testScaleDown(t, kc)
 
@@ -275,9 +280,19 @@ func checkIfCassandraStatusIsReady(t *testing.T, name string) error {
 	return errors.New("cassandra is not ready")
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation ---")
+	result, err := getCassandraInsertCmd(insertDataTemplateA)
+	assert.NoErrorf(t, err, "cannot parse log - %s", err)
+	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, result))
+	t.Logf("Output: %s, Error: %s", out, errOut)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
-	result, err := getCassandraInsertCmd()
+	result, err := getCassandraInsertCmd(insertDataTemplateB)
 	assert.NoErrorf(t, err, "cannot parse log - %s", err)
 	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, result))
 	t.Logf("Output: %s, Error: %s", out, errOut)
@@ -296,7 +311,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %s after 3 minutes", minReplicaCount)
 }
 
-func getCassandraInsertCmd() (string, error) {
+func getCassandraInsertCmd(insertDataTemplate string) (string, error) {
 	tmpl, err := template.New("cassandra insert").Parse(insertDataTemplate)
 	var tpl bytes.Buffer
 	if err := tmpl.Execute(&tpl, templateData{CassandraKeyspace: cassandraKeyspace, CassandraTableName: cassandraTableName}); err != nil {
