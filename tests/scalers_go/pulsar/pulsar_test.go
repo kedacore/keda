@@ -27,6 +27,7 @@ var (
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
 	consumerDeploymentName = fmt.Sprintf("%s-consumer-deploy", testName)
 	producerJobName        = fmt.Sprintf("%s-producer-job", testName)
+	messageCount           = 100
 )
 
 type templateData struct {
@@ -175,7 +176,7 @@ func getTemplateData() (templateData, templateValues) {
 	return templateData{
 			TestNamespace:          testNamespace,
 			StatefulSetName:        statefulSetName,
-			MessageCount:           100,
+			MessageCount:           messageCount,
 			ScaledObjectName:       scaledObjectName,
 			ConsumerDeploymentName: consumerDeploymentName,
 			ProducerJobName:        producerJobName,
