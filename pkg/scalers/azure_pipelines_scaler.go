@@ -114,6 +114,12 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.parent = ""
 	}
 
+	if val, ok := config.TriggerMetadata["demands"]; ok && val != "" {
+		meta.demands = config.TriggerMetadata["demands"]
+	} else {
+		meta.demands = ""
+	}
+
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
 		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
@@ -243,16 +249,21 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	for _, value := range jobs {
 		v := value.(map[string]interface{})
 		if v["result"] == nil {
-			if s.metadata.parent != "" {
-				if getCanAgentParentFulfilJob(v, s.metadata) {
-					count++
-				}
-			} else if s.metadata.demands != "" {
-				if getCanAgentDemandFulfilJob(v, s.metadata) {
-					count++
-				}
-			} else {
+			if s.metadata.parent == "" && s.metadata.demands == "" {
+				// no plan defined, just add a count
 				count++
+			} else {
+				if s.metadata.parent == "" {
+					// doesn't use parent, switch to demand
+					if getCanAgentDemandFulfilJob(v, s.metadata) {
+						count++
+					}
+				} else {
+					// does use parent
+					if getCanAgentParentFulfilJob(v, s.metadata) {
+						count++
+					}
+				}
 			}
 		}
 	}
@@ -266,15 +277,16 @@ func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelin
 	var countDemands = 0
 	for _, dr := range demandsReq {
 		for _, da := range demandsAvail {
-			if dr == da {
-				countDemands++
+			strDr := fmt.Sprintf("%v", dr)
+			if !strings.HasPrefix(strDr, "Agent.Version") {
+				if strDr == da {
+					countDemands++
+				}
 			}
 		}
 	}
-	if countDemands == len(demandsReq)-1 {
-		return true
-	}
-	return false
+
+	return countDemands == len(demandsReq)-1
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
