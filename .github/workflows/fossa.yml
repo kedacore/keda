@@ -21,5 +21,4 @@ jobs:
         name: Testing with FOSSA
         with:
           api-key: ${{ secrets.FOSSA_API_KEY }}
-          branch: main
           run-tests: true
