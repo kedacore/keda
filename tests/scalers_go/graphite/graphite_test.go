@@ -465,7 +465,9 @@ spec:
       - image: busybox
         name: generate-graphite-metrics
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i; echo \\"https_metric 1000 $(date +%s)\\" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done"]
+        args:
+        - -c
+        - for i in $(seq 1 60);do echo $i; echo "https_metric 1000 $(date +%s)" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done
       restartPolicy: Never
   activeDeadlineSeconds: 120
   backoffLimit: 2
@@ -483,7 +485,9 @@ spec:
       - image: busybox
         name: generate-graphite-metrics
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i; echo \\"https_metric 0 $(date +%s)\\" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done"]
+        args:
+        - -c
+        - for i in $(seq 1 60);do echo $i; echo "https_metric 0 $(date +%s)" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done
       restartPolicy: Never
   activeDeadlineSeconds: 120
   backoffLimit: 2
