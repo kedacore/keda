@@ -58,37 +58,37 @@ type templateValues map[string]string
 
 const (
 	deploymentTemplate = `apiVersion: apps/v1
-    kind: Deployment
+kind: Deployment
+metadata:
+  labels:
+    app: postgresql-update-worker
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: postgresql-update-worker
+  template:
     metadata:
       labels:
         app: postgresql-update-worker
-      name: {{.DeploymentName}}
-      namespace: {{.TestNamespace}}
     spec:
-      replicas: 0
-      selector:
-        matchLabels:
-          app: postgresql-update-worker
-      template:
-        metadata:
-          labels:
-            app: postgresql-update-worker
-        spec:
-          containers:
-          - image: ghcr.io/kedacore/tests-postgresql
-            imagePullPolicy: Always
-            name: postgresql-processor-test
-            command:
-              - /app
-              - update
-            env:
-              - name: TASK_INSTANCES_COUNT
-                value: "6000"
-              - name: CONNECTION_STRING
-                valueFrom:
-                  secretKeyRef:
-                    name: {{.SecretName}}
-                    key: postgresql_conn_str
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - update
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "6000"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
 `
 
 	secretTemplate = `apiVersion: v1
@@ -101,7 +101,7 @@ data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
 
-	triggerAuthenticationTemplate = `keda.sh/v1alpha1
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: {{.TriggerAuthenticationName}}
@@ -173,8 +173,8 @@ kind: Service
 metadata:
   labels:
     app: {{.PostgreSQLStatefulSetName}}
-    name: {{.PostgreSQLStatefulSetName}}
-    namespace: {{.TestNamespace}}
+  name: {{.PostgreSQLStatefulSetName}}
+  namespace: {{.TestNamespace}}
 spec:
   ports:
   - port: 5432
