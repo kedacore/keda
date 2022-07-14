@@ -2,8 +2,6 @@ name: FOSSA
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build:
@@ -15,5 +13,13 @@ jobs:
           go-version: 1.17
       - run: go version
       - uses: fossas/fossa-action@main
+        name: Scanning with FOSSA
         with:
-          api-key: "b0bfb312cf03c6c63752afaa5c98c7c8"
+          api-key: ${{ secrets.FOSSA_API_KEY }}
+          branch: main
+      - uses: fossas/fossa-action@main
+        name: Testing with FOSSA
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
+          branch: main
+          run-tests: true

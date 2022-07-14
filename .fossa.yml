@@ -1,0 +1,8 @@
+version: 3
+
+project:
+  id: https://github.com/kedacore/keda
+  name: kedacore/keda
+  team: KEDA
+  link: https://keda.sh
+  url: https://github.com/kedacore/keda
