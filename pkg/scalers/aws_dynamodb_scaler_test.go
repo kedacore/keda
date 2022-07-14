@@ -102,6 +102,20 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		expectedError: errors.New("error parsing metadata targetValue"),
 	},
 	{
+		name: "invalid activationTargetValue given",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "1",
+			"activationTargetValue":     "no-valid",
+		},
+		authParams:    map[string]string{},
+		expectedError: errors.New("error parsing metadata targetValue"),
+	},
+	{
 		name: "malformed expressionAttributeNames",
 		metadata: map[string]string{
 			"tableName":                 "test",

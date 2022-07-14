@@ -41,8 +41,9 @@ type awsCloudwatchMetadata struct {
 	dimensionValue []string
 	expression     string
 
-	targetMetricValue float64
-	minMetricValue    float64
+	targetMetricValue           float64
+	activationTargetMetricValue float64
+	minMetricValue              float64
 
 	metricCollectionTime int64
 	metricStat           string
@@ -186,6 +187,11 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, err
 	}
 
+	meta.activationTargetMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "activationTargetMetricValue", false, 0)
+	if err != nil {
+		return nil, err
+	}
+
 	meta.minMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
 	if err != nil {
 		return nil, err
@@ -323,7 +329,7 @@ func (c *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > c.metadata.minMetricValue, nil
+	return val > c.metadata.activationTargetMetricValue, nil
 }
 
 func (c *awsCloudwatchScaler) Close(context.Context) error {

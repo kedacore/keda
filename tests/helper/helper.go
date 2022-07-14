@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +39,8 @@ const (
 )
 
 var _ = godotenv.Load()
+
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
@@ -377,4 +380,8 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	DeleteNamespace(t, kc, nsName)
 	deleted := WaitForNamespaceDeletion(t, kc, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
+}
+
+func GetRandomNumber() int {
+	return random.Intn(10000)
 }

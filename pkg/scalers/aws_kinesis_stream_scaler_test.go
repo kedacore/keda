@@ -68,14 +68,16 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		comment:    "metadata empty"},
 	{
 		metadata: map[string]string{
-			"streamName": testAWSKinesisStreamName,
-			"shardCount": "2",
-			"awsRegion":  testAWSRegion},
+			"streamName":           testAWSKinesisStreamName,
+			"shardCount":           "2",
+			"activationShardCount": "1",
+			"awsRegion":            testAWSRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsKinesisStreamMetadata{
-			targetShardCount: 2,
-			streamName:       testAWSKinesisStreamName,
-			awsRegion:        testAWSRegion,
+			targetShardCount:           2,
+			activationTargetShardCount: 1,
+			streamName:                 testAWSKinesisStreamName,
+			awsRegion:                  testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
@@ -111,14 +113,16 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 	},
 	{
 		metadata: map[string]string{
-			"streamName": testAWSKinesisStreamName,
-			"shardCount": "",
-			"awsRegion":  testAWSRegion},
+			"streamName":           testAWSKinesisStreamName,
+			"shardCount":           "",
+			"activationShardCount": "",
+			"awsRegion":            testAWSRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsKinesisStreamMetadata{
-			targetShardCount: 2,
-			streamName:       testAWSKinesisStreamName,
-			awsRegion:        testAWSRegion,
+			targetShardCount:           targetShardCountDefault,
+			activationTargetShardCount: activationTargetShardCountDefault,
+			streamName:                 testAWSKinesisStreamName,
+			awsRegion:                  testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,

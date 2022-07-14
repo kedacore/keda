@@ -119,6 +119,7 @@ spec:
         dimensionValue: {{.CloudWatchMetricDimensionValue}}
         metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
+        activationTargetMetricValue: "5"
         minMetricValue: "0"
         metricCollectionTime: "120"
         metricStatPeriod: "30"
@@ -130,7 +131,7 @@ var (
 	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName               = fmt.Sprintf("%s-so", testName)
 	secretName                     = fmt.Sprintf("%s-secret", testName)
-	cloudwatchMetricName           = fmt.Sprintf("%s-keda-metric", testName)
+	cloudwatchMetricName           = fmt.Sprintf("%s-keda-metric-%d", testName, GetRandomNumber())
 	awsAccessKeyID                 = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey             = os.Getenv("AWS_SECRET_KEY")
 	awsRegion                      = os.Getenv("AWS_REGION")
@@ -155,6 +156,7 @@ func TestCloudWatchScaler(t *testing.T) {
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, cloudwatchClient)
 	testScaleUp(t, kc, cloudwatchClient)
 	testScaleDown(t, kc, cloudwatchClient)
 
@@ -162,6 +164,13 @@ func TestCloudWatchScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+	t.Log("--- testing activation ---")
+	setCloudWatchCustomMetric(t, cloudwatchClient, 3)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {

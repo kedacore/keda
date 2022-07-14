@@ -114,6 +114,7 @@ spec:
         awsRegion: {{.AwsRegion}}
         queueURL: {{.SqsQueue}}
         queueLength: "1"
+        activationQueueLength: "5"
 `
 )
 
@@ -122,7 +123,7 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
 	secretName         = fmt.Sprintf("%s-secret", testName)
-	sqsQueueName       = fmt.Sprintf("%s-keda-queue", testName)
+	sqsQueueName       = fmt.Sprintf("%s-keda-queue-%d", testName, GetRandomNumber())
 	awsAccessKeyID     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_KEY")
 	awsRegion          = os.Getenv("AWS_REGION")
@@ -144,6 +145,7 @@ func TestSqsScaler(t *testing.T) {
 		"replica count should be 0 after a minute")
 
 	// test scaling
+	testActivation(t, kc, sqsClient, queue.QueueUrl)
 	testScaleUp(t, kc, sqsClient, queue.QueueUrl)
 	testScaleDown(t, kc, sqsClient, queue.QueueUrl)
 
@@ -152,18 +154,15 @@ func TestSqsScaler(t *testing.T) {
 	cleanupQueue(t, sqsClient, queue.QueueUrl)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
+	t.Log("--- testing activation ---")
+	addMessages(t, sqsClient, queueURL, 4)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 10; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_, err := sqsClient.SendMessageWithContext(context.Background(), &sqs.SendMessageInput{
-			QueueUrl:     queueURL,
-			MessageBody:  aws.String(msg),
-			DelaySeconds: aws.Int64(10),
-		})
-		assert.NoErrorf(t, err, "cannot send message - %s", err)
-	}
-
+	addMessages(t, sqsClient, queueURL, 6)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
 		"replica count should be 2 after 3 minutes")
 }
@@ -177,6 +176,18 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, q
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 1),
 		"replica count should be 0 after 3 minutes")
+}
+
+func addMessages(t *testing.T, sqsClient *sqs.SQS, queueURL *string, messages int) {
+	for i := 0; i < messages; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_, err := sqsClient.SendMessageWithContext(context.Background(), &sqs.SendMessageInput{
+			QueueUrl:     queueURL,
+			MessageBody:  aws.String(msg),
+			DelaySeconds: aws.Int64(10),
+		})
+		assert.NoErrorf(t, err, "cannot send message - %s", err)
+	}
 }
 
 func createSqsQueue(t *testing.T, sqsClient *sqs.SQS) *sqs.CreateQueueOutput {
