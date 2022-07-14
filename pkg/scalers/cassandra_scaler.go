@@ -24,17 +24,18 @@ type cassandraScaler struct {
 
 // CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
 type CassandraMetadata struct {
-	username         string
-	password         string
-	clusterIPAddress string
-	port             int
-	consistency      gocql.Consistency
-	protocolVersion  int
-	keyspace         string
-	query            string
-	targetQueryValue int64
-	metricName       string
-	scalerIndex      int
+	username                   string
+	password                   string
+	clusterIPAddress           string
+	port                       int
+	consistency                gocql.Consistency
+	protocolVersion            int
+	keyspace                   string
+	query                      string
+	targetQueryValue           int64
+	activationTargetQueryValue int64
+	metricName                 string
+	scalerIndex                int
 }
 
 var cassandraLog = logf.Log.WithName("cassandra_scaler")
@@ -81,6 +82,15 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["username"]; ok {
@@ -175,7 +185,7 @@ func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
