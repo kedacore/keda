@@ -68,7 +68,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
-  apiKey: {{.DatadogApiKey}}
+  apiKey: {{.DatadogAPIKey}}
   appKey: {{.DatadogAppKey}}
   datadogSite: {{.DatadogSite}}
 `
