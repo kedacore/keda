@@ -474,10 +474,10 @@ spec:
   backoffLimit: 2
 `
 
-	requestsActivationJobTemplate = `apiVersion: batch/v1
+	lowLevelRequestsJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-load-graphite-metrics
+  name: generate-low-load-graphite-metrics
   namespace: {{.TestNamespace}}
 spec:
   template:
@@ -536,7 +536,7 @@ func TestGraphiteScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"requestsActivationJobTemplate": requestsActivationJobTemplate}
+	templateTriggerJob := templateValues{"lowLevelRequestsJobTemplate": lowLevelRequestsJobTemplate}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
