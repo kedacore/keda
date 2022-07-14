@@ -14,8 +14,9 @@ jobs:
         with:
           go-version: 1.17
       - run: go version
+      - uses: nelonoel/branch-name@v1.0.1
       - uses: fossas/fossa-action@main
         name: Scanning with FOSSA
         with:
           api-key: 9e722f2c8904586d61f97f0bf05a99e4
-          branch: main
+          branch: ${{ env.BRANCH_NAME }}
