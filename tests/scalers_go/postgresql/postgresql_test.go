@@ -134,8 +134,8 @@ spec:
       name: {{.TriggerAuthenticationName}}
 `
 
-	postgreSQLDeploymentTemplate = `apiVersion: apps/v1
-kind: Deployment
+	postgreSQLStatefulSetTemplate = `apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   labels:
     app: {{.PostgreSQLStatefulSetName}}
@@ -276,8 +276,8 @@ var data = templateData{
 
 func getPostgreSQLTemplateData() (templateData, map[string]string) {
 	return data, templateValues{
-		"postgreSQLDeploymentTemplate": postgreSQLDeploymentTemplate,
-		"postgreSQLServiceTemplate":    postgreSQLServiceTemplate,
+		"postgreSQLStatefulSetTemplate": postgreSQLStatefulSetTemplate,
+		"postgreSQLServiceTemplate":     postgreSQLServiceTemplate,
 	}
 }
 
