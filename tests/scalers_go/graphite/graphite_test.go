@@ -449,6 +449,7 @@ spec:
       serverAddress: http://graphite.{{.TestNamespace}}.svc:8080
       metricName: https_metric
       threshold: '100'
+      activationThreshold: '50'
       query: "https_metric"
       queryTime: '-10Seconds'
 `
@@ -468,6 +469,26 @@ spec:
         args:
         - -c
         - for i in $(seq 1 60);do echo $i; echo "https_metric 1000 $(date +%s)" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done
+      restartPolicy: Never
+  activeDeadlineSeconds: 120
+  backoffLimit: 2
+`
+
+	requestsActivationJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-load-graphite-metrics
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: busybox
+        name: generate-graphite-metrics
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - for i in $(seq 1 60);do echo $i; echo "https_metric 10 $(date +%s)" | nc graphite.{{.TestNamespace}}.svc 2003; echo 'data sent :)'; sleep 1; done
       restartPolicy: Never
   activeDeadlineSeconds: 120
   backoffLimit: 2
@@ -505,11 +526,20 @@ func TestGraphiteScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	templateTriggerJob := templateValues{"requestsActivationJobTemplate": requestsActivationJobTemplate}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {

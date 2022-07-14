@@ -24,13 +24,15 @@ type graphiteMetricIdentifier struct {
 var testGrapMetadata = []parseGraphiteMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "activationThreshold": "23", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// missing metricName
 	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// malformed threshold
 	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
+	// malformed activationThreshold
+	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "activationThreshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
 	// missing queryTime
