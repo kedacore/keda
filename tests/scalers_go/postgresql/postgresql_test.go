@@ -143,6 +143,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   replicas: 1
+  serviceName: {{.PostgreSQLStatefulSetName}}
   selector:
     matchLabels:
       app: {{.PostgreSQLStatefulSetName}}
@@ -233,7 +234,7 @@ func TestPostreSQLScaler(t *testing.T) {
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
