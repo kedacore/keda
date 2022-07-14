@@ -33,7 +33,7 @@ var (
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	secretName              = fmt.Sprintf("%s-secret", testName)
 	configName              = fmt.Sprintf("%s-config", testName)
-	datadogApiKey           = os.Getenv("DATADOG_API_KEY")
+	datadogAPIKey           = os.Getenv("DATADOG_API_KEY")
 	datadogAppKey           = os.Getenv("DATADOG_APP_KEY")
 	datadogSite             = os.Getenv("DATADOG_SITE")
 	datadogHelmRepo         = "https://helm.datadoghq.com"
@@ -51,7 +51,7 @@ type templateData struct {
 	TriggerAuthName         string
 	SecretName              string
 	ConfigName              string
-	DatadogApiKey           string
+	DatadogAPIKey           string
 	DatadogAppKey           string
 	DatadogSite             string
 	KuberneteClusterName    string
@@ -253,7 +253,7 @@ func TestDatadogScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, datadogAppKey, "DATADOG_APP_KEY env variable is required for datadog tests")
-	require.NotEmpty(t, datadogApiKey, "DATADOG_API_KEY env variable is required for datadog tests")
+	require.NotEmpty(t, datadogAPIKey, "DATADOG_API_KEY env variable is required for datadog tests")
 	require.NotEmpty(t, datadogSite, "DATADOG_SITE env variable is required for datadog tests")
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -299,10 +299,10 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func installDatadog(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add datadog %s", datadogHelmRepo))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm repo update"))
+	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --namespace %s --wait %s datadog/datadog`,
-		datadogApiKey,
+		datadogAPIKey,
 		datadogAppKey,
 		datadogSite,
 		kuberneteClusterName,
@@ -321,7 +321,7 @@ func getTemplateData() (templateData, map[string]string) {
 			ScaledObjectName:        scaledObjectName,
 			SecretName:              secretName,
 			ConfigName:              configName,
-			DatadogApiKey:           base64.StdEncoding.EncodeToString([]byte(datadogApiKey)),
+			DatadogAPIKey:           base64.StdEncoding.EncodeToString([]byte(datadogAPIKey)),
 			DatadogAppKey:           base64.StdEncoding.EncodeToString([]byte(datadogAppKey)),
 			DatadogSite:             base64.StdEncoding.EncodeToString([]byte(datadogSite)),
 			KuberneteClusterName:    kuberneteClusterName,
