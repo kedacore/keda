@@ -143,19 +143,9 @@ jobs:
     needs: build
     name: validate-arm64
     runs-on: ARM64
+    container: ghcr.io/kedacore/build-tools:main
     concurrency: arm-smoke-tests
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install prerequisites
-        run: |
-          apt update
-          apt install curl npm make ca-certificates gcc libc-dev -y
-        env:
-          DEBIAN_FRONTEND: noninteractive
 
       - name: Check out code
         uses: actions/checkout@v3
