@@ -156,7 +156,10 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	return KubeClient
 }
 
+// Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+	WaitForNamespaceDeletion(t, kc, nsName)
+
 	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -195,9 +198,9 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.Replicas
+		replicas := deployment.Status.ReadyReplicas
 
-		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+		t.Logf("Waiting for deployment ready replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
 			name, replicas, target)
 
 		if replicas == int32(target) {
