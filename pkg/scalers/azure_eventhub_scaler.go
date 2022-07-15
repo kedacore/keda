@@ -42,6 +42,7 @@ const (
 	defaultEventHubMessageThreshold = 64
 	eventHubMetricType              = "External"
 	thresholdMetricName             = "unprocessedEventThreshold"
+	activationThresholdMetricName   = "activationUnprocessedEventThreshold"
 	defaultEventHubConsumerGroup    = "$Default"
 	defaultBlobContainer            = ""
 	defaultCheckpointStrategy       = ""
@@ -57,9 +58,10 @@ type azureEventHubScaler struct {
 }
 
 type eventHubMetadata struct {
-	eventHubInfo azure.EventHubInfo
-	threshold    int64
-	scalerIndex  int
+	eventHubInfo        azure.EventHubInfo
+	threshold           int64
+	activationThreshold int64
+	scalerIndex         int
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -101,6 +103,16 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		}
 
 		meta.threshold = threshold
+	}
+
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata[activationThresholdMetricName]; ok {
+		activationThreshold, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", activationThresholdMetricName, err)
+		}
+
+		meta.activationThreshold = activationThreshold
 	}
 
 	if config.AuthParams["storageConnection"] != "" {
@@ -278,7 +290,7 @@ func (scaler *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %s", err)
 		}
 
-		if unprocessedEventCount > 0 {
+		if unprocessedEventCount > scaler.metadata.activationThreshold {
 			return true, nil
 		}
 	}

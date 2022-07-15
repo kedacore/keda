@@ -105,6 +105,16 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 		metadata.Threshold = threshold
 	}
 
+	// Get activationThreshold.
+	metadata.ActivationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %v", err)
+		}
+		metadata.ActivationThreshold = activationThreshold
+	}
+
 	// Generate metricName.
 	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 
@@ -185,7 +195,7 @@ func (s azureDataExplorerScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to get azure data explorer metric value: %s", err)
 	}
 
-	return metricValue > 0, nil
+	return metricValue > s.metadata.ActivationThreshold, nil
 }
 
 func (s azureDataExplorerScaler) Close(context.Context) error {

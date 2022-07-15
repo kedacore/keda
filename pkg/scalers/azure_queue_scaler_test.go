@@ -51,6 +51,8 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// improperly formed queueLength
 	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// improperly formed activationQueueLength
+	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "1", "activationQueueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity with account name
 	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity without account name
@@ -95,7 +97,7 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 
 var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
 	{&testAzQueueMetadata[1], 0, "s0-azure-queue-sample"},
-	{&testAzQueueMetadata[4], 1, "s1-azure-queue-sample_queue"},
+	{&testAzQueueMetadata[5], 1, "s1-azure-queue-sample_queue"},
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
