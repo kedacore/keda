@@ -218,9 +218,9 @@ spec:
     metadata:
       query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}}"
       queryValue: "2"
-      activationQueryValue: "2"
-      type: "global"
+      activationQueryValue: "3"
       age: "120"
+    metricType: "Value"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -234,7 +234,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.3; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
