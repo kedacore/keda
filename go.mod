@@ -85,8 +85,8 @@ replace (
 	// version < 1.34.0 is vulnerable to Directory Traversal
 	github.com/valyala/fasthttp => github.com/valyala/fasthttp v1.36.0
 
-	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-43565
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
+	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
 	golang.org/x/text => golang.org/x/text v0.3.7
