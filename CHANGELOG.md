@@ -55,6 +55,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Fixes
 
+- **General:** Fix CVE-2022-27191([#3378](https://github.com/kedacore/keda/issues/3378))
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
 - **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue([#3096](https://github.com/kedacore/keda/issues/3096))
 - **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
