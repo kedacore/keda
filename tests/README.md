@@ -8,10 +8,12 @@
 
 ### All tests
 
+Make sure that you are in `keda/tests` directory.
+
 ```bash
-go test -v -tags e2e setup_test.go        # Only needs to be run once.
+go test -v -tags e2e ./utils/setup_test.go        # Only needs to be run once.
 go test -v -tags e2e ./scalers_go/...
-go test -v -tags e2e cleanup_test.go      # Skip if you want to keep testing.
+go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep testing.
 ```
 
 ### Specific test
@@ -19,6 +21,11 @@ go test -v -tags e2e cleanup_test.go      # Skip if you want to keep testing.
 ```bash
 go test -v -tags e2e ./scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
+
+> **Note**
+> On macOS you might need to set following environment variable in order to run the tests: `GOOS="darwin"`
+>
+> eg. `GOOS="darwin" go test -v tags e2e ...`
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
