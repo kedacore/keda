@@ -93,7 +93,6 @@ jobs:
         run: make docker-build
 
   test-smoke-arm64:
-    needs: build
     name: validate-arm64
     runs-on: ARM64
     container: ghcr.io/kedacore/build-tools:main
