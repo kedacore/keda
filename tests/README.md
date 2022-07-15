@@ -8,16 +8,18 @@
 
 ### All tests
 
+Make sure that you are in `keda/tests` directory.
+
 ```bash
-go test -v -tags e2e ./tests/utils/setup_test.go        # Only needs to be run once.
-go test -v -tags e2e ./tests/scalers_go/...
-go test -v -tags e2e ./tests/utils/cleanup_test.go      # Skip if you want to keep testing.
+go test -v -tags e2e ./utils/setup_test.go        # Only needs to be run once.
+go test -v -tags e2e ./scalers_go/...
+go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep testing.
 ```
 
 ### Specific test
 
 ```bash
-go test -v -tags e2e ./tests/scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
+go test -v -tags e2e ./scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
 
 > **Note**
