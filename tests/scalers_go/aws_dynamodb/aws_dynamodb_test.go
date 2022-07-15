@@ -152,7 +152,7 @@ func TestDynamoDBScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
@@ -174,7 +174,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dyna
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
 	t.Log("--- testing scale up ---")
 	addMessages(t, dynamodbClient, 6)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
 
@@ -192,7 +192,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynam
 		assert.NoErrorf(t, err, "failed to delete item - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)
 }
 

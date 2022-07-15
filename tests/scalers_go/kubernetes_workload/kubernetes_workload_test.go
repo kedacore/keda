@@ -109,9 +109,9 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, sutDeploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
@@ -125,24 +125,24 @@ func TestScaler(t *testing.T) {
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
 		"replica count should be 5 after a minute")
 
 	// scale monitored deployment to 10 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, sutDeploymentName, testNamespace, 10, 60, 2),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 10, 60, 2),
 		"replica count should be 10 after a minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
 		"replica count should be 5 after a minute")
 
 	// scale monitored deployment to 0 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, sutDeploymentName, testNamespace, 0, 60, 2),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 0, 60, 2),
 		"replica count should be 0 after a minute")
 }
 

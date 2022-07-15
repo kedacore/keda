@@ -209,26 +209,6 @@ func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName str
 	return false
 }
 
-// Waits until deployment count hits target or number of iterations are done.
-func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int) bool {
-	for i := 0; i < iterations; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.ReadyReplicas
-
-		t.Logf("Waiting for deployment ready replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
-			name, replicas, target)
-
-		if replicas == int32(target) {
-			return true
-		}
-
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
-	return false
-}
-
 func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
