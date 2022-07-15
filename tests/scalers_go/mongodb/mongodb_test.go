@@ -32,7 +32,7 @@ var (
 	mongoNamespace  = "mongo-ns"
 	mongoUser       = "test_user"
 	mongoPassword   = "test_password"
-	mongoDB         = "test_DB"
+	mongoDBName     = "test"
 	mongoCollection = "test_collection"
 )
 
@@ -129,7 +129,7 @@ spec:
             image: ghcr.io/kedacore/tests-mongodb:latest
             args:
             - --connectStr={{.Connection}}
-            - --dataBase={{.Database}}"
+            - --dataBase={{.Database}}
             - --collection={{.Collection}}
             imagePullPolicy: IfNotPresent
         restartPolicy: Never
@@ -173,7 +173,7 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, templateValues) {
 	connectionString := fmt.Sprintf("mongodb://%s:%s@mongodb-svc.%s.svc.cluster.local:27017/%s",
-		mongoUser, mongoPassword, mongoNamespace, mongoDB)
+		mongoUser, mongoPassword, mongoNamespace, mongoDBName)
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
@@ -182,7 +182,7 @@ func getTemplateData() (templateData, templateValues) {
 			TriggerAuthName:  triggerAuthName,
 			ScaledJobName:    scaledJobName,
 			MongoNamespace:   mongoNamespace,
-			Database:         mongoDB,
+			Database:         mongoDBName,
 			Collection:       mongoCollection,
 			Connection:       connectionString,
 			Base64Connection: base64ConnectionString,
@@ -210,7 +210,7 @@ func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	mongoPod := podList.Items[0].Name
 
 	createUserCmd := fmt.Sprintf("db.createUser({ user:\"%s\",pwd:\"%s\",roles:[{ role:\"readWrite\", db: \"%s\"}]})",
-		mongoUser, mongoPassword, mongoDB)
+		mongoUser, mongoPassword, mongoDBName)
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongo --eval '%s'", mongoPod, mongoNamespace, createUserCmd))
 	assert.NoErrorf(t, err, "cannot create user - %s", err)
 
