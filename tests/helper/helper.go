@@ -141,6 +141,22 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	return out, errOut, err
 }
 
+func WaitForSuccessfulExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, command string, iterations, intervalSeconds int) (bool, string, string, error) {
+	var out, errOut string
+	var err error
+	for i := 0; i < iterations; i++ {
+		out, errOut, err = ExecCommandOnSpecificPod(t, podName, namespace, command)
+		t.Logf("Waiting for successful execution of command on Pod; Output: %s, Error: %s", out, errOut)
+		if err == nil {
+			return true, out, errOut, err
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false, out, errOut, err
+}
+
 func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	if KubeClient != nil && KubeConfig != nil {
 		return KubeClient

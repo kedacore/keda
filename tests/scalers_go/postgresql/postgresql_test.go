@@ -228,9 +228,9 @@ func TestPostreSQLScaler(t *testing.T) {
 		"replica count should be %s after 3 minute", 1)
 
 	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
-	out, errOut, err := ExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL))
-	t.Logf("Output: %s, Error: %s", out, errOut)
-	assert.Nil(t, err, "executing a command on PostreSQL Pod should work")
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
+		fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL), 60, 3)
+	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
