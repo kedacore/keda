@@ -95,7 +95,7 @@ test.serial('PoolName: Deployment should scale to 1 replica after queueing job',
   await build.queueBuild(null, projectName, null, null, null, definitionID)
   await sleep(60000);
   t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 0 due to the activation threshold')
-  
+
   await build.queueBuild(null, projectName, null, null, null, definitionID)
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 1 after starting a job')
 })
