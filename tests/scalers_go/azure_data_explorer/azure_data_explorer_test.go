@@ -25,20 +25,21 @@ const (
 )
 
 var (
-	dataExplorerDB       = os.Getenv("AZURE_DATA_EXPLORER_DB")
-	dataExplorerEndpoint = os.Getenv("AZURE_DATA_EXPLORER_ENDPOINT")
-	azureADClientID      = os.Getenv("AZURE_SP_APP_ID")
-	azureADSecret        = os.Getenv("AZURE_SP_KEY")
-	azureADTenantID      = os.Getenv("AZURE_SP_TENANT")
-	testNamespace        = fmt.Sprintf("%s-ns", testName)
-	secretName           = fmt.Sprintf("%s-secret", testName)
-	deploymentName       = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
-	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	scaleInReplicaCount  = 0
-	scaleInMetricValue   = 0
-	scaleOutReplicaCount = 4
-	scaleOutMetricValue  = 18
+	dataExplorerDB        = os.Getenv("AZURE_DATA_EXPLORER_DB")
+	dataExplorerEndpoint  = os.Getenv("AZURE_DATA_EXPLORER_ENDPOINT")
+	azureADClientID       = os.Getenv("AZURE_SP_APP_ID")
+	azureADSecret         = os.Getenv("AZURE_SP_KEY")
+	azureADTenantID       = os.Getenv("AZURE_SP_TENANT")
+	testNamespace         = fmt.Sprintf("%s-ns", testName)
+	secretName            = fmt.Sprintf("%s-secret", testName)
+	deploymentName        = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName       = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName      = fmt.Sprintf("%s-so", testName)
+	scaleInReplicaCount   = 0
+	scaleInMetricValue    = 0
+	scaleOutReplicaCount  = 4
+	scaleOutMetricValue   = 30
+	activationMetricValue = 3
 )
 
 type templateData struct {
@@ -118,7 +119,7 @@ spec:
     name: {{.DeploymentName}}
   cooldownPeriod: 10
   minReplicaCount: 0
-  maxReplicaCount: 10
+  maxReplicaCount: 4
   pollingInterval: 30
   triggers:
     - type: azure-data-explorer
@@ -129,6 +130,7 @@ spec:
         tenantId: {{.AzureADTenantID}}
         query: print result = {{.ScaleMetricValue}}
         threshold: "5"
+        activationTthreshold: "3"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -153,6 +155,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be %d after 1 minute", scaleInReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc, data)
 
@@ -162,11 +165,20 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	data.ScaleMetricValue = activationMetricValue
+
+	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	data.ScaleMetricValue = scaleOutMetricValue
 
-	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, scaleOutReplicaCount, 60, 1),
