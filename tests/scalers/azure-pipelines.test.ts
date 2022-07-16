@@ -69,13 +69,16 @@ test.serial('PoolID: Deployment should scale to 1 replica after queueing job', a
   var definitionID = parseInt(buildDefinitionID)
 
   await build.queueBuild(null, projectName, null, null, null, definitionID)
+  await sleep(60000);
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 0 due to the activation threshold')
 
+  await build.queueBuild(null, projectName, null, null, null, definitionID)
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 1 after starting a job')
 })
 
 test.serial('PoolID: Deployment should scale to 0 replicas after finishing job', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 0 after finishing')
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 300, 10000), 'replica count should be 0 after finishing')
 })
 
 test.serial('PoolName: Deployment should scale to 1 replica after queueing job', async t => {
@@ -90,13 +93,16 @@ test.serial('PoolName: Deployment should scale to 1 replica after queueing job',
   var definitionID = parseInt(buildDefinitionID)
 
   await build.queueBuild(null, projectName, null, null, null, definitionID)
-
+  await sleep(60000);
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 0 due to the activation threshold')
+  
+  await build.queueBuild(null, projectName, null, null, null, definitionID)
   t.true(await waitForDeploymentReplicaCount(1, 'test-deployment', defaultNamespace, 30, 5000), 'replica count should be 1 after starting a job')
 })
 
 test.serial('PoolName: should scale to 0 replicas after finishing job', async t => {
   // wait 10 minutes for the jobs to finish and scale down
-  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 120, 10000), 'replica count should be 0 after finishing')
+  t.true(await waitForDeploymentReplicaCount(0, 'test-deployment', defaultNamespace, 300, 10000), 'replica count should be 0 after finishing')
 })
 
 test.after.always('clean up azure-pipelines deployment', t => {
@@ -176,6 +182,7 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
+      activationTargetPipelinesQueueLength: 1
       poolID: "{{AZP_POOL_ID}}"`
 const poolNameScaledObject =`apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -198,4 +205,5 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
+      activationTargetPipelinesQueueLength: 1
       poolName: "{{AZP_POOL}}"`
