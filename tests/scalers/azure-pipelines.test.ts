@@ -182,7 +182,7 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
-      activationTargetPipelinesQueueLength: 1
+      activationTargetPipelinesQueueLength: "1"
       poolID: "{{AZP_POOL_ID}}"`
 const poolNameScaledObject =`apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -205,5 +205,5 @@ spec:
     metadata:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
-      activationTargetPipelinesQueueLength: 1
+      activationTargetPipelinesQueueLength: "1"
       poolName: "{{AZP_POOL}}"`
