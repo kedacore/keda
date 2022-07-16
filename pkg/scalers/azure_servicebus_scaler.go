@@ -113,10 +113,9 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		activationMessageCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
-			return nil, fmt.Errorf("Error parsing azure queue metadata %s", activationMessageCountMetricName)
-		} else {
-			meta.activationTargetLength = activationMessageCount
+			return nil, fmt.Errorf("error parsing azure queue metadata %s", activationMessageCountMetricName)
 		}
+		meta.activationTargetLength = activationMessageCount
 	}
 
 	// get queue name OR topic and subscription name & set entity type accordingly

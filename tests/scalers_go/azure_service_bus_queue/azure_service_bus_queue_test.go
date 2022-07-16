@@ -223,7 +223,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Q
 }
 
 func addMessages(sbQueue *servicebus.Queue, count int) {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < count; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
 		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
 	}
