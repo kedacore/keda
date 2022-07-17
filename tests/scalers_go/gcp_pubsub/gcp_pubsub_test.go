@@ -36,10 +36,10 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	projectId        = creds["project_id"]
-	topicId          = fmt.Sprintf("projects/%s/topics/keda-test-topic-%d", projectId, now)
+	projectID        = creds["project_id"]
+	topicID          = fmt.Sprintf("projects/%s/topics/keda-test-topic-%d", projectID, now)
 	subscriptionName = fmt.Sprintf("keda-test-topic-sub-%d", now)
-	subscriptionId   = fmt.Sprintf("projects/%s/subscriptions/%s", projectId, subscriptionName)
+	subscriptionID   = fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionName)
 	maxReplicaCount  = 4
 	gsPrefix         = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
@@ -51,7 +51,7 @@ type templateData struct {
 	DeploymentName   string
 	ScaledObjectName string
 	SubscriptionName string
-	SubscriptionId   string
+	SubscriptionID   string
 	MaxReplicaCount  int
 }
 
@@ -200,7 +200,7 @@ func TestScaler(t *testing.T) {
 func createPubsub(t *testing.T) error {
 	// Authenticate to GCP
 	t.Log("--- authenticate to GCP ---")
-	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], projectId)
+	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], projectID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "Failed to set GCP authentication on gcp-sdk - %s", err)
 	if err != nil {
@@ -209,18 +209,18 @@ func createPubsub(t *testing.T) error {
 
 	// Create topic
 	t.Log("--- create topic ---")
-	cmd = fmt.Sprintf("%sgcloud pubsub topics create %s", gsPrefix, topicId)
+	cmd = fmt.Sprintf("%sgcloud pubsub topics create %s", gsPrefix, topicID)
 	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "Failed to create Pubsub topic %s: %s", topicId, err)
+	assert.NoErrorf(t, err, "Failed to create Pubsub topic %s: %s", topicID, err)
 	if err != nil {
 		return err
 	}
 
 	// Create subscription
 	t.Log("--- create subscription ---")
-	cmd = fmt.Sprintf("%sgcloud pubsub subscriptions create %s --topic=%s", gsPrefix, subscriptionId, topicId)
+	cmd = fmt.Sprintf("%sgcloud pubsub subscriptions create %s --topic=%s", gsPrefix, subscriptionID, topicID)
 	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "Failed to create Pubsub subscription %s: %s", subscriptionId, err)
+	assert.NoErrorf(t, err, "Failed to create Pubsub subscription %s: %s", subscriptionID, err)
 
 	return err
 }
@@ -228,8 +228,8 @@ func createPubsub(t *testing.T) error {
 func cleanupPubsub(t *testing.T) {
 	// Delete the topic and subscription
 	t.Log("--- cleaning up the subscription and topic ---")
-	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub subscriptions delete %s", gsPrefix, subscriptionId))
-	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub topics delete %s", gsPrefix, topicId))
+	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub subscriptions delete %s", gsPrefix, subscriptionID))
+	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub topics delete %s", gsPrefix, topicID))
 }
 
 func getTemplateData() (templateData, templateValues) {
@@ -241,7 +241,7 @@ func getTemplateData() (templateData, templateValues) {
 			GcpCreds:         base64GcpCreds,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
-			SubscriptionId:   subscriptionId,
+			SubscriptionID:   subscriptionID,
 			SubscriptionName: subscriptionName,
 			MaxReplicaCount:  maxReplicaCount,
 		}, templateValues{
@@ -255,7 +255,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 
 	t.Log("--- publishing messages ---")
-	publish := fmt.Sprintf(" && gcloud pubsub topics publish %s --message=AAAAAAAAAA && sleep 1s", topicId)
+	publish := fmt.Sprintf(" && gcloud pubsub topics publish %s --message=AAAAAAAAAA && sleep 1s", topicID)
 	cmd := gsPrefix + `/bin/bash -c -- 'cd .`
 	for i := 0; i < 30; i++ {
 		cmd += publish
@@ -271,7 +271,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
-	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=p0s", gsPrefix, subscriptionId)
+	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=p0s", gsPrefix, subscriptionID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot reset subscription position - %s", err)
 

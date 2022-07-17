@@ -29,7 +29,7 @@ var (
 	gcpKey           = os.Getenv("GCP_SP_KEY")
 	creds            = make(map[string]interface{})
 	errGcpKey        = json.Unmarshal([]byte(gcpKey), &creds)
-	projectId        = fmt.Sprintf("%s", creds["project_id"])
+	projectID        = fmt.Sprintf("%s", creds["project_id"])
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
@@ -46,7 +46,7 @@ type templateData struct {
 	DeploymentName   string
 	ScaledObjectName string
 	BucketName       string
-	ProjectId        string
+	ProjectID        string
 	MaxReplicaCount  int
 }
 
@@ -217,7 +217,7 @@ func getTemplateData() (templateData, templateValues) {
 			GcpCreds:         base64GcpCreds,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
-			ProjectId:        projectId,
+			ProjectID:        projectID,
 			BucketName:       bucketName,
 			MaxReplicaCount:  maxReplicaCount,
 		}, templateValues{
