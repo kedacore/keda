@@ -21,8 +21,8 @@ require (
 	github.com/Shopify/sarama v1.32.0
 	github.com/aws/aws-sdk-go v1.44.46
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dysnix/predictkube-libs v0.0.3
-	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
+	github.com/dysnix/predictkube-libs v0.0.4-0.20220717101015-44c816c4fb9c
+	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
 	github.com/elastic/go-elasticsearch/v7 v7.17.1
 	github.com/go-logr/logr v1.2.3
 	github.com/go-playground/validator/v10 v10.11.0
@@ -81,9 +81,6 @@ replace (
 	// Needed for CVE-2020-28483 https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	// we need version github.com/gin-gonic/gin >= 1.7.0
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
-
-	// version < 1.34.0 is vulnerable to Directory Traversal
-	github.com/valyala/fasthttp => github.com/valyala/fasthttp v1.36.0
 
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
@@ -223,7 +220,7 @@ require (
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/ulikunitz/unixtime v0.1.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.31.0 // indirect
+	github.com/valyala/fasthttp v1.38.0 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect
 	github.com/wagslane/go-password-validator v0.3.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
