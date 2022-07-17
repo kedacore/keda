@@ -34,8 +34,8 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	topicName        = fmt.Sprintf("%s-topic", testName)
-	subscriptionName = fmt.Sprintf("%s-subscription", testName)
+	topicName        = fmt.Sprintf("%s-topic-%d", testName, GetRandomNumber())
+	subscriptionName = fmt.Sprintf("%s-subscription-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {

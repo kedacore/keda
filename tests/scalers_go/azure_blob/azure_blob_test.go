@@ -36,7 +36,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	containerName    = fmt.Sprintf("%s-container", testName)
+	containerName    = fmt.Sprintf("%s-container-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
