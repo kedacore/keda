@@ -174,7 +174,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationTargetQueueLength, nil
 }
 
 func (s *azureQueueScaler) Close(context.Context) error {
