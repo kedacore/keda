@@ -192,7 +192,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
 	t.Log("--- testing scale up ---")
-	addFiles(t, containerURL, 6)
+	addFiles(t, containerURL, 10)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
 }

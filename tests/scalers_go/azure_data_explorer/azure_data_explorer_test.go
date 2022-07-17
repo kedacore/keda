@@ -130,7 +130,7 @@ spec:
         tenantId: {{.AzureADTenantID}}
         query: print result = {{.ScaleMetricValue}}
         threshold: "5"
-        activationTthreshold: "3"
+        activationThreshold: "3"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `

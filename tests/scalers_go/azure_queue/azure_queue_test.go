@@ -178,7 +178,7 @@ func getTemplateData() (templateData, templateValues) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing activation ---")
-	addMessages(t, messageURL, 4)
+	addMessages(t, messageURL, 3)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
