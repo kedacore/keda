@@ -110,7 +110,7 @@ spec:
   triggers:
     - type: gcp-stackdriver
       metadata:
-        projectId: {{.ProjectId}}
+        projectId: {{.ProjectID}}
         filter: 'metric.type="storage.googleapis.com/network/received_bytes_count" AND resource.type="gcs_bucket" AND metric.label.method="WriteObject" AND resource.label.bucket_name="{{.BucketName}}"'
         metricName: {{.BucketName}}
         targetValue: "5"

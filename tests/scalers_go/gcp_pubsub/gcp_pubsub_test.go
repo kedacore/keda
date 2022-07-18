@@ -92,7 +92,7 @@ spec:
           # Consume a message
           command: [ "/bin/bash", "-c", "--" ]
           args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && \
-          while true; do gcloud pubsub subscriptions pull {{.SubscriptionId}} --auto-ack; sleep 20; done" ]
+          while true; do gcloud pubsub subscriptions pull {{.SubscriptionID}} --auto-ack; sleep 20; done" ]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
