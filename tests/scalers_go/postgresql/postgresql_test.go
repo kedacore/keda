@@ -129,6 +129,7 @@ spec:
   - type: postgresql
     metadata:
       targetQueryValue: "4"
+      activationTargetQueryValue: "5"
       query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
@@ -185,6 +186,38 @@ spec:
   type: ClusterIP
 `
 
+	lowLevelRecordsJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: postgresql-insert-low-level-job
+  name: postgresql-insert-low-level-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: postgresql-insert-low-level-job
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - insert
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "20"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
+      restartPolicy: Never
+  backoffLimit: 4
+`
+
 	insertRecordsJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -207,7 +240,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "6000"
+            value: "10000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -238,12 +271,22 @@ func TestPostreSQLScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	templateTriggerJob := templateValues{"lowLevelRecordsJobTemplate": lowLevelRecordsJobTemplate}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	templateTriggerJob := templateValues{"insertRecordsJobTemplate": insertRecordsJobTemplate}
