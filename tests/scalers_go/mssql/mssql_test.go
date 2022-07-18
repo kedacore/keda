@@ -224,7 +224,7 @@ func TestMssqlScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, mssqlTemplates)
 
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, mssqlServerName, testNamespace, 1, 60, 3),
-		"replica count should be %s after 3 minute", 1)
+		"replica count should be %d after 3 minutes", 1)
 
 	createDatabaseCommand := fmt.Sprintf("/opt/mssql-tools/bin/sqlcmd -S . -U sa -P \"%s\" -Q \"CREATE DATABASE [%s]\"", mssqlPassword, mssqlDatabase)
 
@@ -240,7 +240,7 @@ func TestMssqlScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
@@ -255,14 +255,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 var data = templateData{
