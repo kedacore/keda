@@ -261,7 +261,7 @@ func TestDatadogScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	installDatadog(t)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
 	// test scaling
@@ -284,7 +284,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	KubectlApplyWithTemplate(t, data, "heavyLoadTemplate", heavyLoadTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
 
@@ -292,7 +292,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
 	KubectlDeleteWithTemplate(t, data, "lightLoadTemplate", lightLoadTemplate)
 	KubectlDeleteWithTemplate(t, data, "heavyLoadTemplate", heavyLoadTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)
 }
 
