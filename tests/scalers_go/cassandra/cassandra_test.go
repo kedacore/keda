@@ -236,7 +236,7 @@ func TestCassandraScaler(t *testing.T) {
 	setupCassandra(t, kc)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)
@@ -298,7 +298,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
@@ -308,7 +308,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func getCassandraInsertCmd(insertDataTemplate string) (string, error) {

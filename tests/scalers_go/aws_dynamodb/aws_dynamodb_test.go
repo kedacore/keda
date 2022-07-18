@@ -153,7 +153,7 @@ func TestDynamoDBScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %s after a minute", minReplicaCount)
+		"replica count should be %d after a minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, dynamodbClient)
@@ -175,7 +175,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamod
 	t.Log("--- testing scale up ---")
 	addMessages(t, dynamodbClient, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
@@ -193,7 +193,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynam
 	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) {
