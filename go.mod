@@ -38,6 +38,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.9.1
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.5
+	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/newrelic/newrelic-client-go v0.86.3
 	github.com/onsi/ginkgo v1.16.5

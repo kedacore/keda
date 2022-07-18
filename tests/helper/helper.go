@@ -233,6 +233,25 @@ func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 }
 
 // Waits until deployment count hits target or number of iterations are done.
+func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+
+		t.Logf("Waiting for pods in namespace to hit target. Namespace - %s, Current  - %d, Target - %d",
+			namespace, len(pods.Items), target)
+
+		if len(pods.Items) == target {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
+// Waits until deployment ready replica count hits target or number of iterations are done.
 func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
