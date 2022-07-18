@@ -132,7 +132,7 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
@@ -209,7 +209,7 @@ func testScaleUpWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplateWithIdentityID", triggerAuthTemplateWithIdentityID)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
@@ -224,7 +224,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Q
 
 	_ = sbQueue.Receive(ctx, messageHandlerFunc)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 

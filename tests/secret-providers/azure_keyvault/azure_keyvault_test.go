@@ -165,7 +165,7 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
@@ -228,7 +228,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 0 after a minute")
 }
 
@@ -237,7 +237,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Me
 	_, err := messageURL.Clear(context.Background())
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 }
 
