@@ -479,7 +479,7 @@ func setupActiveMQ(t *testing.T, kc *kubernetes.Clientset) {
 func checkIfActiveMQStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking activemq status ---")
 	time.Sleep(time.Second * 10)
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ {
 		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("curl -u %s:%s -s http://localhost:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus", activemqUser, activemqPassword))
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "\"status\":200") {
