@@ -174,6 +174,7 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+	DeleteNamespace(t, kc, nsName)
 	WaitForNamespaceDeletion(t, kc, nsName)
 
 	t.Logf("Creating namespace - %s", nsName)
@@ -194,6 +195,9 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
 		GracePeriodSeconds: &period,
 	})
+	if errors.IsNotFound(err) {
+		err = nil
+	}
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
