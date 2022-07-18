@@ -141,7 +141,7 @@ func TestSqsScaler(t *testing.T) {
 	data, templates := getTemplateData(*queue.QueueUrl)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after a minute")
 
 	// test scaling
@@ -163,7 +163,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
 	t.Log("--- testing scale up ---")
 	addMessages(t, sqsClient, queueURL, 6)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
 		"replica count should be 2 after 3 minutes")
 }
 
@@ -174,7 +174,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, q
 	})
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 1),
 		"replica count should be 0 after 3 minutes")
 }
 

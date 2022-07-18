@@ -165,7 +165,7 @@ func TestScaler(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 
 	// Wait for nginx to load
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 30, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 3),
 		"replica count should start out as 0")
 
 	// test scaling
@@ -283,14 +283,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shar
 	data.ShardCount = shardCount
 	data.ActivationShardCount = int64(activationShardCount)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"replica count should increase to 1")
 
 	// Deploy scalerObject with its shardCount = 1 and check if replicas scale up to 2 (maxReplicaCount)
 	t.Log("then, replicas should scale up to 2")
 	data.ShardCount = 1
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"replica count should increase to 2")
 }
 
@@ -299,7 +299,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData, sh
 	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale down to 1
 	data.ShardCount = shardCount
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 330, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 330, 1),
 		"replica count should decrease to 1 in 330 seconds")
 }
 

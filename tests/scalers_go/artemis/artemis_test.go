@@ -311,7 +311,7 @@ func TestArtemisScaler(t *testing.T) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "artemis-activemq", testNamespace, 1, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
 	testActivation(t, kc, data)
@@ -335,14 +335,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	templateTriggerJob := templateValues{"triggerJobTemplate": producerJob}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)
 }
 
