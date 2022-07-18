@@ -262,7 +262,7 @@ func TestDatadogScaler(t *testing.T) {
 	installDatadog(t)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, data)

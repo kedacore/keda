@@ -121,7 +121,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
-		"job count should be 0 after a minute")
+		"job count should be 0 after 1 minute")
 
 	// test scaling
 	testScaleUp(t, kc, data)
@@ -153,7 +153,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 3, 60, 1),
-		"job count should be 3 after a minute")
+		"job count should be 3 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -164,5 +164,5 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
-		"job count should be 0 after a minute")
+		"job count should be 0 after 1 minute")
 }
