@@ -106,6 +106,37 @@ spec:
           args: ["-s", "nats://{{.StanServerName}}.{{.TestNamespace}}:4222", "-d", "10", "-limit", "1000", "Test"]
 `
 
+	lowLevelPublishDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.PublishDeploymentName}}2
+  namespace: {{.TestNamespace}}
+  labels:
+    app.kubernetes.io/name: pub
+    helm.sh/chart: pub-0.0.3
+    app.kubernetes.io/instance: pub
+    app.kubernetes.io/version: "0.0.3"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pub
+      app.kubernetes.io/instance: pub
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pub
+        app.kubernetes.io/instance: pub
+    spec:
+      containers:
+        - name: pub
+          image: "balchu/gonuts-pub:c02e4ee-dirty"
+          imagePullPolicy: Always
+          command: ["/app"]
+          args: ["-s", "nats://{{.StanServerName}}.{{.TestNamespace}}:4222", "-d", "10", "-limit", "10", "Test"]
+`
+
 	// Source: nats-ss/templates/service.yaml
 	stanServiceTemplate = `apiVersion: v1
 kind: Service
@@ -200,6 +231,7 @@ spec:
       durableName: "ImDurable"
       subject: "Test"
       lagThreshold: "10"
+      activationLagThreshold: "15"
 `
 )
 
@@ -214,11 +246,20 @@ func TestStanScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minute", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	templateTriggerJob := templateValues{"lowLevelPublishDeploymentTemplate": lowLevelPublishDeploymentTemplate}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
