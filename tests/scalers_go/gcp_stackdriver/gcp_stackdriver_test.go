@@ -165,10 +165,10 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
-	sdkReady := WaitForDeploymentReplicaCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
+	sdkReady := WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
 	assert.True(t, sdkReady, "gcp-sdk deployment should be ready after a minute")
 
 	if sdkReady {
@@ -236,7 +236,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 		t.Log("--- upload a file to generate traffic ---")
 		_, err := ExecuteCommand(cmd)
 		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
-		haveAllReplicas = WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 1, 5)
+		haveAllReplicas = WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 1, 5)
 	}
 
 	assert.True(t, haveAllReplicas, fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
@@ -246,6 +246,6 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
 	t.Log("--- waiting for replicas to scale down to zero ---")
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after five minute")
 }
