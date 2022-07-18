@@ -7595,6 +7595,14 @@ spec:
               pollingInterval:
                 format: int32
                 type: integer
+              rollout:
+                description: Rollout defines the strategy for job rollouts
+                properties:
+                  propagationPolicy:
+                    type: string
+                  strategy:
+                    type: string
+                type: object
               rolloutStrategy:
                 type: string
               scalingStrategy:
