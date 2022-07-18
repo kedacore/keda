@@ -276,7 +276,8 @@ func TestPostreSQLScaler(t *testing.T) {
 	testScaleDown(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	KubectlDeleteMultipleWithTemplate(t, data, templates)
+	DeleteKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
