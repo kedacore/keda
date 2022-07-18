@@ -458,7 +458,7 @@ func TestActiveMQScaler(t *testing.T) {
 	setupActiveMQ(t, kc)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)
@@ -503,7 +503,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s producer --destination %s --messageCount 900", activemqPath, activemqDestination))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
@@ -511,7 +511,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s consumer --destination %s --messageCount 1000", activemqPath, activemqDestination))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func getTemplateData() (templateData, map[string]string) {

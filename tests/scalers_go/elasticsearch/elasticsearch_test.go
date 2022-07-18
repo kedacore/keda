@@ -306,7 +306,7 @@ func TestElasticsearchScaler(t *testing.T) {
 	setupElasticsearch(t, kc)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)
@@ -339,14 +339,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	addElements(t, 5)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func addElements(t *testing.T, count int) {
