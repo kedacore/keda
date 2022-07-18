@@ -152,7 +152,7 @@ func TestCloudWatchExpressionScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %d after a minute", minReplicaCount)
+		"replica count should be %d after 1 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, cloudwatchClient)

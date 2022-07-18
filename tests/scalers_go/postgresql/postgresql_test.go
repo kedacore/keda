@@ -258,7 +258,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
 
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minute", 1)
+		"replica count should be %d after 3 minutes", 1)
 
 	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
@@ -269,7 +269,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)

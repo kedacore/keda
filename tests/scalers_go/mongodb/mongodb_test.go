@@ -161,7 +161,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
-		"job count should be 0 after a minute")
+		"job count should be 0 after 1 minute")
 
 	// test scaling
 	testScaleUp(t, kc, mongoPod)
@@ -236,7 +236,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 	assert.NoErrorf(t, err, "cannot insert mongo records - %s", err)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 5, 60, 1),
-		"job count should be 5 after a minute")
+		"job count should be 5 after 1 minute")
 }
 
 func cleanupMongo(t *testing.T, kc *kubernetes.Clientset) {

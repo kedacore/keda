@@ -306,7 +306,7 @@ func TestElasticsearchScaler(t *testing.T) {
 	setupElasticsearch(t, kc)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)

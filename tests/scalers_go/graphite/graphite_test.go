@@ -522,9 +522,9 @@ func TestGraphiteScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "graphite", testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minute", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
