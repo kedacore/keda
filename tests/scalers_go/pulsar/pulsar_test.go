@@ -18,7 +18,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "kt1"
+	testName = "pulsar-test"
 )
 
 var (
@@ -27,7 +27,10 @@ var (
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
 	consumerDeploymentName = fmt.Sprintf("%s-consumer-deploy", testName)
 	producerJobName        = fmt.Sprintf("%s-producer-job", testName)
-	messageCount           = 100
+	messageCount           = 3
+	minReplicaCount        = 0
+	maxReplicaCount        = 5
+	msgBacklog             = 10
 )
 
 type templateData struct {
@@ -37,6 +40,9 @@ type templateData struct {
 	ScaledObjectName       string
 	ConsumerDeploymentName string
 	ProducerJobName        string
+	MinReplicaCount        int
+	MaxReplicaCount        int
+	MsgBacklog             int
 }
 
 const statefulsetTemplate = `
@@ -62,6 +68,9 @@ spec:
       - name: pulsar
         image: apachepulsar/pulsar:2.10.0
         imagePullPolicy: IfNotPresent
+        readinessProbe:
+          tcpSocket:
+            port: 8080
         ports:
         - name: pulsar
           containerPort: 6650
@@ -70,8 +79,6 @@ spec:
           containerPort: 8080
           protocol: TCP
         env:
-        - name: PULSAR_MEM
-          value: "-Xms64m -Xmx256m -XX:MaxDirectMemorySize=256m"
         - name: PULSAR_PREFIX_tlsRequireTrustedClientCertOnConnect
           value: "true"
         command:
@@ -121,11 +128,13 @@ spec:
     name: {{.ConsumerDeploymentName}}
   pollingInterval: 5 # Optional. Default: 30 seconds
   cooldownPeriod: 30 # Optional. Default: 300 seconds
-  maxReplicaCount: 5 # Optional. Default: 100
+  maxReplicaCount: {{.MaxReplicaCount}}
+  minReplicaCount: {{.MinReplicaCount}}
   triggers:
     - type: pulsar
       metadata:
-        msgBacklog: "10"
+        msgBacklog: "{{.MsgBacklog}}"
+        activationTargetQueryValue: "5"
         adminURL: http://{{.StatefulSetName}}.{{.TestNamespace}}:8080
         topic:  persistent://public/default/keda
         subscription: keda
@@ -142,7 +151,7 @@ spec:
     spec:
       containers:
       - name: pulsar-client
-        image: ghcr.io/pulsar-sigs/pulsar-client:v0.3.0
+        image: ghcr.io/pulsar-sigs/pulsar-client:v0.3.1
         imagePullPolicy: IfNotPresent
         args: ["producer", "--broker","pulsar://{{.StatefulSetName}}.{{.TestNamespace}}:6650","--topic","persistent://public/default/keda","--message-num","{{.MessageCount}}"]
       restartPolicy: Never
@@ -180,10 +189,12 @@ func getTemplateData() (templateData, templateValues) {
 			ScaledObjectName:       scaledObjectName,
 			ConsumerDeploymentName: consumerDeploymentName,
 			ProducerJobName:        producerJobName,
+			MinReplicaCount:        minReplicaCount,
+			MaxReplicaCount:        maxReplicaCount,
+			MsgBacklog:             msgBacklog,
 		}, templateValues{
 			"statefulsetTemplate": statefulsetTemplate,
-			"consumerTemplate":    consumerTemplate,
-			"serviceTemplate":     serviceTemplate,
+			"serviceTemplate": serviceTemplate,
 		}
 }
 
@@ -200,6 +211,9 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, statefulSetName, testNamespace, 1, 300, 1),
 		"replica count should be 1 after 5 minute")
 
+	KubectlApplyWithTemplate(t, data, "consumerTemplate", consumerTemplate)
+
+	//run consumer for create subcription
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, testNamespace, 1, 300, 1),
 		"replica count should be 1 after 5 minute")
 
@@ -208,7 +222,11 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, consumerDeploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
+	testActivation(t, kc, data)
+	KubectlDeleteWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
+	//scale up
 	testScaleUp(t, kc, data)
+	// scale down
 	testScaleDown(t, kc)
 
 	// cleanup
@@ -218,12 +236,18 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	// publish message and less than MsgBacklog
+	KubectlApplyWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, consumerDeploymentName, testNamespace, minReplicaCount, 60)
+}
 
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	data.MessageCount = 100
 	KubectlApplyWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
 	assert.True(t, WaitForDeploymentReplicaCount(t, kc, consumerDeploymentName, testNamespace, 5, 300, 1),
 		"replica count should be 5 after 5 minute")
-
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {

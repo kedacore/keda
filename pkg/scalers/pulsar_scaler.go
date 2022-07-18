@@ -36,7 +36,8 @@ type pulsarMetadata struct {
 	key       string
 	ca        string
 
-	statsURL string
+	statsURL                   string
+	activationTargetQueryValue int64
 
 	scalerIndex int
 }
@@ -56,7 +57,7 @@ type pulsarSubscription struct {
 	Msgoutcounter                    int           `json:"msgOutCounter"`
 	Msgrateredeliver                 float64       `json:"msgRateRedeliver"`
 	Chuckedmessagerate               int           `json:"chuckedMessageRate"`
-	Msgbacklog                       int           `json:"msgBacklog"`
+	Msgbacklog                       int64         `json:"msgBacklog"`
 	Msgbacklognodelayed              int           `json:"msgBacklogNoDelayed"`
 	Blockedsubscriptiononunackedmsgs bool          `json:"blockedSubscriptionOnUnackedMsgs"`
 	Msgdelayed                       int           `json:"msgDelayed"`
@@ -150,6 +151,15 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		return meta, errors.New("no subscription given")
 	}
 
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
+	}
+
 	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
 
 	if val, ok := config.TriggerMetadata[msgBacklogMetricName]; ok {
@@ -216,7 +226,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	}
 }
 
-func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int, bool, error) {
+func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 	stats, err := s.GetStats(ctx)
 	if err != nil {
 		return 0, false, err
@@ -238,10 +248,10 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if !found || msgBackLog == 0 {
+	if !found || msgBackLog <= s.metadata.activationTargetQueryValue {
 		pulsarLog.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
 		return false, nil
-	}
+	} 
 
 	return true, nil
 }
