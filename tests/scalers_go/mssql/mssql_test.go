@@ -130,6 +130,7 @@ spec:
       username: sa
       query: "SELECT COUNT(*) FROM tasks WHERE [status]='running' OR [status]='queued'"
       targetValue: "1" # one replica per row
+      activationTargetValue: "15"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -188,12 +189,13 @@ spec:
   type: ClusterIP
 `
 
-	insertRecordsJobTemplate = `apiVersion: batch/v1
+	// inserts 10 records in the table
+	insertRecordsJobTemplate1 = `apiVersion: batch/v1
 kind: Job
 metadata:
   labels:
     app: mssql-producer-job
-  name: mssql-producer-job
+  name: mssql-producer-job1
   namespace: {{.TestNamespace}}
 spec:
   template:
@@ -215,6 +217,35 @@ spec:
       restartPolicy: Never
   backoffLimit: 4
 `
+
+	// inserts 10 records in the table
+	insertRecordsJobTemplate2 = `apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: mssql-producer-job
+  name: mssql-producer-job2
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: mssql-producer-job
+    spec:
+      containers:
+      - image: docker.io/cgillum/mssqlscalertest:latest
+        imagePullPolicy: Always
+        name: mssql-test-producer
+        args: ["producer"]
+        env:
+          - name: SQL_CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: mssql-connection-string
+      restartPolicy: Never
+  backoffLimit: 4
+  `
 )
 
 func TestMssqlScaler(t *testing.T) {
@@ -242,6 +273,7 @@ func TestMssqlScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
@@ -249,9 +281,19 @@ func TestMssqlScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
+// insert 10 records in the table -> activation should not happen (activationTargetValue = 15)
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	templateTriggerJob := templateValues{"insertRecordsJobTemplate1": insertRecordsJobTemplate1}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
+// insert another 10 records in the table, which in total is 20 -> should be scaled up
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"insertRecordsJobTemplate": insertRecordsJobTemplate}
+	templateTriggerJob := templateValues{"insertRecordsJobTemplate2": insertRecordsJobTemplate2}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
