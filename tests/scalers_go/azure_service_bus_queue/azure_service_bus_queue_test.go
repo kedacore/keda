@@ -34,7 +34,7 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queueName        = fmt.Sprintf("%s-queue", testName)
+	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -114,6 +114,7 @@ spec:
   - type: azure-servicebus
     metadata:
       queueName: {{.QueueName}}
+      activationMessageCount: "5"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -135,6 +136,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, sbQueue)
 	testScaleUp(t, kc, sbQueue)
 	testScaleDown(t, kc, sbQueue)
 
@@ -190,12 +192,16 @@ func getTemplateData() (templateData, templateValues) {
 	}, templateValues{"secretTemplate": secretTemplate, "deploymentTemplate": deploymentTemplate, "triggerAuthTemplate": triggerAuthTemplate, "scaledObjectTemplate": scaledObjectTemplate}
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+	t.Log("--- testing activation ---")
+	addMessages(sbQueue, 3)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
-	}
+	addMessages(sbQueue, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
@@ -214,6 +220,13 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Q
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
+}
+
+func addMessages(sbQueue *servicebus.Queue, count int) {
+	for i := 0; i < count; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
+	}
 }
 
 func cleanupServiceBusQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {

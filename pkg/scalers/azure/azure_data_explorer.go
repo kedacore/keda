@@ -41,6 +41,7 @@ type DataExplorerMetadata struct {
 	Query                   string
 	TenantID                string
 	Threshold               float64
+	ActivationThreshold     float64
 	ActiveDirectoryEndpoint string
 }
 

@@ -32,6 +32,14 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
 		},
 	}},
+	{name: "activation target value not a number", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "1", "activationTargetValue": "a1", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "", "tenantId": "1234",
+		},
+		AuthParams: map[string]string{
+			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
+		},
+	}},
 	{name: "empty app insights id", isError: true, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "", "tenantId": "1234",

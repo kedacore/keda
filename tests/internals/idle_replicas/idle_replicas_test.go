@@ -129,7 +129,7 @@ func TestScaler(t *testing.T) {
 
 	// scaling to idle replica count
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
 	// till min replica count
@@ -187,7 +187,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
@@ -196,7 +196,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Me
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
