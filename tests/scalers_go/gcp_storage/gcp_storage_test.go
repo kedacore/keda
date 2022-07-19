@@ -240,9 +240,5 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- waiting for replicas to scale down to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
-<<<<<<< HEAD
-		"replica count should be 0 after five minute")
-=======
 		"replica count should be 0 after 5 minutes")
->>>>>>> origin/main
 }
