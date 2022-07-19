@@ -268,7 +268,7 @@ func setupCassandra(t *testing.T, kc *kubernetes.Clientset) {
 func checkIfCassandraStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking cassandra status ---")
 	time.Sleep(time.Second * 10)
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ {
 		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, "nodetool status")
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "UN ") {
