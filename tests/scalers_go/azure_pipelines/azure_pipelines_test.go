@@ -98,7 +98,7 @@ spec:
         image: ghcr.io/kedacore/tests-azure-pipelines-agent:b3a02cc
         env:
           - name: AZP_URL
-            value: {{.Url}}
+            value: {{.URL}}
           - name: AZP_TOKEN
             valueFrom:
               secretKeyRef:
@@ -134,7 +134,7 @@ spec:
       organizationURLFromEnv: "AZP_URL"
       personalAccessTokenFromEnv: "AZP_TOKEN"
       activationTargetPipelinesQueueLength: "1"
-      poolID: "{{.PoolId}}"
+      poolID: "{{.PoolID}}"
 `
 	poolNamescaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
