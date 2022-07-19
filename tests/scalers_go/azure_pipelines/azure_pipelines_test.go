@@ -34,7 +34,7 @@ var (
 	organizationURL     = os.Getenv("AZURE_DEVOPS_ORGANIZATION_URL")
 	personalAccessToken = os.Getenv("AZURE_DEVOPS_PAT")
 	project             = os.Getenv("AZURE_DEVOPS_PROJECT")
-	buildId             = os.Getenv("AZURE_DEVOPS_BUILD_DEFINITON_ID")
+	buildId             = os.Getenv("AZURE_DEVOPS_BUILD_DEFINITION_ID")
 	poolName            = os.Getenv("AZURE_DEVOPS_POOL_NAME")
 	poolID              = "0"
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
@@ -165,7 +165,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, organizationURL, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure blob test")
 	require.NotEmpty(t, personalAccessToken, "AZURE_DEVOPS_PAT env variable is required for azure blob test")
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure blob test")
-	require.NotEmpty(t, buildId, "AZURE_DEVOPS_BUILD_DEFINITON_ID env variable is required for azure blob test")
+	require.NotEmpty(t, buildId, "AZURE_DEVOPS_BUILD_DEFINITION_ID env variable is required for azure blob test")
 	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure blob test")
 	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
 	clearAllBuilds(t, connection)
