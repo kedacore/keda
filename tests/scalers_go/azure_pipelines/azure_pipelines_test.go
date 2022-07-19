@@ -298,11 +298,11 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops
 	t.Log("--- testing scale up ---")
 	queueBuild(t, connection)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-		"replica count should be 2 after a minute")
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 5),
-		"pod count should be 0 after a minute")
+		"pod count should be 0 after 1 minute")
 }
