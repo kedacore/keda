@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -144,6 +145,7 @@ spec:
         collection: {{.Collection}}
         query: '{"region":"eu-1","state":"running","plan":"planA"}'
         queryValue: "1"
+        activationQueryValue: "4"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -164,6 +166,7 @@ func TestScaler(t *testing.T) {
 		"job count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, mongoPod)
 	testScaleUp(t, kc, mongoPod)
 
 	// cleanup
@@ -219,6 +222,21 @@ func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	assert.NoErrorf(t, err, "cannot login - %s", err)
 
 	return mongoPod
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
+	t.Log("--- testing activation ---")
+
+	insertCmd := fmt.Sprintf(`db.%s.insert([
+		{"region":"eu-1","state":"running","plan":"planA","goods":"apple"},
+		{"region":"eu-1","state":"running","plan":"planA","goods":"orange"}
+		])`, mongoCollection)
+
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongo --eval '%s'", mongoPod, mongoNamespace, insertCmd))
+	assert.NoErrorf(t, err, "cannot insert mongo records - %s", err)
+	time.Sleep(time.Second * 60)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
+		"job count should be 0 after 1 minute")
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
