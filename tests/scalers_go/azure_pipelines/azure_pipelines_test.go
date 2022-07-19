@@ -182,7 +182,7 @@ func TestScaler(t *testing.T) {
 	// test scaling poolId
 	testActivation(t, kc, connection)
 	testScaleUp(t, kc, connection)
-	testScaleDown(t, kc, connection)
+	testScaleDown(t, kc)
 
 	// test scaling PoolName
 	KubectlApplyWithTemplate(t, data, "poolNamescaledObjectTemplate", poolNamescaledObjectTemplate)
