@@ -207,7 +207,6 @@ spec:
   maxReplicaCount: {{.MaxReplicaCount}}
   pollingInterval: 1
   cooldownPeriod:  1
-  triggers:
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
