@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package gcp_storage_test
+package gcp_stackdriver_test
 
 import (
 	"encoding/base64"
@@ -22,11 +22,14 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "gcp-storage-test"
+	testName = "gcp-stackdriver-test"
 )
 
 var (
 	gcpKey           = os.Getenv("GCP_SP_KEY")
+	creds            = make(map[string]interface{})
+	errGcpKey        = json.Unmarshal([]byte(gcpKey), &creds)
+	projectID        = fmt.Sprintf("%s", creds["project_id"])
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
@@ -43,6 +46,7 @@ type templateData struct {
 	DeploymentName   string
 	ScaledObjectName string
 	BucketName       string
+	ProjectID        string
 	MaxReplicaCount  int
 }
 
@@ -81,7 +85,7 @@ spec:
         - name: noop-processor
           image: ubuntu:20.04
           command: ["/bin/bash"]
-          args: ["-c", "sleep 60"]
+          args: ["-c", "sleep 30"]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
@@ -104,10 +108,14 @@ spec:
   maxReplicaCount: {{.MaxReplicaCount}}
   cooldownPeriod: 10
   triggers:
-    - type: gcp-storage
+    - type: gcp-stackdriver
       metadata:
-        bucketName: {{.BucketName}}
-        targetObjectCount: '5'
+        projectId: {{.ProjectID}}
+        filter: 'metric.type="storage.googleapis.com/network/received_bytes_count" AND resource.type="gcs_bucket" AND metric.label.method="WriteObject" AND resource.label.bucket_name="{{.BucketName}}"'
+        metricName: {{.BucketName}}
+        targetValue: "5"
+        alignmentPeriodSeconds: "60"
+        alignmentAligner: max
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
@@ -149,6 +157,7 @@ func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, gcpKey, "GCP_KEY env variable is required for GCP storage test")
+	assert.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -157,31 +166,31 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+		"replica count should be 0 after a minute")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1),
-		"gcp-sdk deployment should be ready after 1 minute")
+	sdkReady := WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
+	assert.True(t, sdkReady, "gcp-sdk deployment should be ready after a minute")
 
-	if createBucket(t) == nil {
-		// test scaling
-		testScaleUp(t, kc)
-		testScaleDown(t, kc)
+	if sdkReady {
+		if createBucket(t) == nil {
+			// test scaling
+			testScaleUp(t, kc)
+			testScaleDown(t, kc)
+		}
+
+		// cleanup
+		t.Log("--- cleanup ---")
+		cleanupBucket(t)
 	}
 
-	// cleanup
-	t.Log("--- cleanup ---")
-	cleanupBucket(t)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
 func createBucket(t *testing.T) error {
 	// Authenticate to GCP
-	creds := make(map[string]interface{})
-	err := json.Unmarshal([]byte(gcpKey), &creds)
-	assert.NoErrorf(t, err, "Failed to load credentials from gcpKey - %s", err)
 
 	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], creds["project_id"])
-	_, err = ExecuteCommand(cmd)
+	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "Failed to set GCP authentication on gcp-sdk - %s", err)
 
 	cleanupBucket(t)
@@ -208,6 +217,7 @@ func getTemplateData() (templateData, templateValues) {
 			GcpCreds:         base64GcpCreds,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
+			ProjectID:        projectID,
 			BucketName:       bucketName,
 			MaxReplicaCount:  maxReplicaCount,
 		}, templateValues{
@@ -220,25 +230,22 @@ func getTemplateData() (templateData, templateValues) {
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 
-	t.Log("--- uploading files ---")
-	for i := 0; i < 30; i++ {
-		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil%d", gsPrefix, bucketName, i)
+	cmd := fmt.Sprintf("%sgsutil cp /usr/lib/google-cloud-sdk/bin/gsutil gs://%s", gsPrefix, bucketName)
+	haveAllReplicas := false
+	for i := 0; i < 60 && !haveAllReplicas; i++ {
+		t.Log("--- upload a file to generate traffic ---")
 		_, err := ExecuteCommand(cmd)
 		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
+		haveAllReplicas = WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 1, 5)
 	}
 
-	t.Log("--- waiting for replicas to scale up ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
-		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
+	assert.True(t, haveAllReplicas, fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
-	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/**", gsPrefix, bucketName)
-	_, err := ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
 	t.Log("--- waiting for replicas to scale down to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
-		"replica count should be 0 after 5 minutes")
+		"replica count should be 0 after five minute")
 }
