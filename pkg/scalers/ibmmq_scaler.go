@@ -34,14 +34,15 @@ type IBMMQScaler struct {
 
 // IBMMQMetadata Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
-	host             string
-	queueManager     string
-	queueName        string
-	username         string
-	password         string
-	targetQueueDepth int64
-	tlsDisabled      bool
-	scalerIndex      int
+	host                       string
+	queueManager               string
+	queueName                  string
+	username                   string
+	password                   string
+	targetQueueDepth           int64
+	activationTargetQueueDepth int64
+	tlsDisabled                bool
+	scalerIndex                int
 }
 
 // CommandResponse Full structured response from MQ admin REST query
@@ -112,12 +113,21 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["queueDepth"]; ok && val != "" {
 		queueDepth, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
+			return nil, fmt.Errorf("invalid queueDepth - must be an integer")
 		}
 		meta.targetQueueDepth = queueDepth
 	} else {
 		fmt.Println("No target depth defined - setting default")
 		meta.targetQueueDepth = defaultTargetQueueDepth
+	}
+
+	meta.activationTargetQueueDepth = 0
+	if val, ok := config.TriggerMetadata["activationQueueDepth"]; ok && val != "" {
+		activationTargetQueueDepth, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationQueueDepth - must be an integer")
+		}
+		meta.activationTargetQueueDepth = activationTargetQueueDepth
 	}
 
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -158,7 +168,7 @@ func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
-	return queueDepth > 0, nil
+	return queueDepth > s.metadata.activationTargetQueueDepth, nil
 }
 
 // getQueueDepthViaHTTP returns the depth of the MQ Queue from the Admin endpoint
