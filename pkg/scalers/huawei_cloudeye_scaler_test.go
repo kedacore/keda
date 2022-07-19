@@ -139,6 +139,16 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 		testHuaweiAuthenticationWithCloud,
 		true,
 		"metadata miss minMetricValue"},
+	{map[string]string{
+		"namespace":                   "SYS.ELB",
+		"dimensionName":               "lbaas_instance_id",
+		"dimensionValue":              "5e052238-0346-xxb0-86ea-92d9f33e29d2",
+		"metricName":                  "mb_l7_qps",
+		"targetMetricValue":           "100",
+		"activationTargetMetricValue": "aaaaa"},
+		testHuaweiAuthenticationWithCloud,
+		true,
+		"invalid activationTargetMetricValue"},
 }
 
 var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
