@@ -29,6 +29,8 @@ var testStanMetadata = []parseStanMetadataTestData{
 	{map[string]string{"queueGroup": "grp1", "subject": "mySubject"}, map[string]string{}, true},
 	// All good.
 	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, map[string]string{}, false},
+	// All good + activationLagThreshold
+	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject", "activationLagThreshold": "10"}, map[string]string{}, false},
 	// natsServerMonitoringEndpoint is defined in authParams
 	{map[string]string{"queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss"}, false},
 	// Missing nats server monitoring endpoint , should fail

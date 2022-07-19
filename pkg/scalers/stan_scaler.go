@@ -49,6 +49,7 @@ type stanMetadata struct {
 	durableName                  string
 	subject                      string
 	lagThreshold                 int64
+	activationLagThreshold       int64
 	scalerIndex                  int
 }
 
@@ -112,6 +113,15 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 		meta.lagThreshold = t
 	}
 
+	meta.activationLagThreshold = 0
+	if val, ok := config.TriggerMetadata["activationLagThreshold"]; ok {
+		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("activationLagThreshold parsing error %s", err.Error())
+		}
+		meta.activationLagThreshold = activationTargetQueryValue
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
@@ -154,7 +164,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 		stanLog.Error(err, "Unable to decode channel info as %v", err)
 		return false, err
 	}
-	return s.hasPendingMessage() || s.getMaxMsgLag() > 0, nil
+	return s.hasPendingMessage() || s.getMaxMsgLag() > s.metadata.activationLagThreshold, nil
 }
 
 func (s *stanScaler) getSTANChannelsEndpoint() string {

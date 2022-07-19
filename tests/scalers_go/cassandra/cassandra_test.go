@@ -235,8 +235,8 @@ func TestCassandraScaler(t *testing.T) {
 	// setup elastic
 	setupCassandra(t, kc)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)
@@ -268,7 +268,7 @@ func setupCassandra(t *testing.T, kc *kubernetes.Clientset) {
 func checkIfCassandraStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking cassandra status ---")
 	time.Sleep(time.Second * 10)
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ {
 		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, "nodetool status")
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "UN ") {
@@ -297,8 +297,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, result))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
@@ -307,8 +307,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, truncateData))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func getCassandraInsertCmd(insertDataTemplate string) (string, error) {

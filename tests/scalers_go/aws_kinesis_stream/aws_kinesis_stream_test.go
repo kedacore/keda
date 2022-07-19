@@ -147,8 +147,8 @@ func TestKiensisScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %s after a minute", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, kinesisClient)
@@ -169,16 +169,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kines
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing scale up ---")
 	updateShardCount(t, kinesisClient, 6)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
 	t.Log("--- testing scale down ---")
 	updateShardCount(t, kinesisClient, 3)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func updateShardCount(t *testing.T, kinesisClient *kinesis.Kinesis, shardCount int64) {

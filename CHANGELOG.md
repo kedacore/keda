@@ -39,6 +39,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
+- **General:** Make propagation policy for ScaledJob rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910))
 - **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487)|[#2656](https://github.com/kedacore/keda/issues/2656))
 - **General:** Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
 
@@ -52,11 +53,12 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
-
 ### Fixes
 
+- **General:** Fix CVE-2022-27191([#3378](https://github.com/kedacore/keda/issues/3378))
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
 - **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue([#3096](https://github.com/kedacore/keda/issues/3096))
+- **General:** Use `go install` in the Makefile for downloading dependencides ([#2916](https://github.com/kedacore/keda/issue/2916))
 - **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issue/3032))
 - **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
 - **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
@@ -66,7 +68,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **ScaledJob**: `rolloutStrategy` is deprecated in favor of `rollout.strategy` ([#2910](https://github.com/kedacore/keda/issues/2910))
 
 ### Breaking Changes
 

@@ -136,8 +136,8 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
 	testScaleUp(t, kc, containerURL)
@@ -197,8 +197,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.Con
 		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
@@ -214,8 +214,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.C
 		assert.NoErrorf(t, err, "cannot delete blob - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 }
 
 func cleanupContainer(t *testing.T, containerURL azblob.ContainerURL) {

@@ -23,16 +23,17 @@ type datadogScaler struct {
 }
 
 type datadogMetadata struct {
-	apiKey      string
-	appKey      string
-	datadogSite string
-	query       string
-	queryValue  float64
-	vType       v2beta2.MetricTargetType
-	metricName  string
-	age         int
-	useFiller   bool
-	fillValue   float64
+	apiKey               string
+	appKey               string
+	datadogSite          string
+	query                string
+	queryValue           float64
+	activationQueryValue float64
+	vType                v2beta2.MetricTargetType
+	metricName           string
+	age                  int
+	useFiller            bool
+	fillValue            float64
 }
 
 var datadogLog = logf.Log.WithName("datadog_scaler")
@@ -106,6 +107,15 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		meta.queryValue = queryValue
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
+	}
+
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
@@ -211,7 +221,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return num > 0, nil
+	return num > s.metadata.activationQueryValue, nil
 }
 
 // getQueryResult returns result of the scaler query

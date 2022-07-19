@@ -133,8 +133,8 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
 	testScaleUp(t, kc, sbTopic)
@@ -216,7 +216,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Top
 		_ = sbTopic.Send(context.Background(), servicebus.NewMessageFromString(msg))
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
@@ -231,7 +231,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbSubscription *servi
 
 	_ = sbSubscription.Receive(ctx, messageHandlerFunc)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 

@@ -174,6 +174,7 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+	DeleteNamespace(t, kc, nsName)
 	WaitForNamespaceDeletion(t, kc, nsName)
 
 	t.Logf("Creating namespace - %s", nsName)
@@ -194,6 +195,9 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
 		GracePeriodSeconds: &period,
 	})
+	if errors.IsNotFound(err) {
+		err = nil
+	}
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
@@ -206,26 +210,6 @@ func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName str
 		}
 		time.Sleep(time.Second * 5)
 	}
-	return false
-}
-
-// Waits until deployment count hits target or number of iterations are done.
-func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int) bool {
-	for i := 0; i < iterations; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.ReadyReplicas
-
-		t.Logf("Waiting for deployment ready replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
-			name, replicas, target)
-
-		if replicas == int32(target) {
-			return true
-		}
-
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
 	return false
 }
 

@@ -149,8 +149,8 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleInReplicaCount)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", scaleInReplicaCount)
 
 	// test scaling
 	testScaleUp(t, kc, data)
@@ -169,8 +169,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleOutReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleOutReplicaCount)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, scaleOutReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", scaleOutReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -179,8 +179,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.Truef(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
-		"replica count should be %d after a minute", scaleInReplicaCount)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", scaleInReplicaCount)
 }
 
 func getTemplateData() (templateData, templateValues) {

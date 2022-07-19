@@ -168,7 +168,15 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	switch scaledJob.Spec.RolloutStrategy {
+	var rolloutStrategy string
+	if len(scaledJob.Spec.RolloutStrategy) > 0 {
+		logger.Info("RolloutStrategy is deprecated, please us Rollout.Strategy in order to define the desired strategy for job rollouts")
+		rolloutStrategy = scaledJob.Spec.RolloutStrategy
+	} else {
+		rolloutStrategy = scaledJob.Spec.Rollout.Strategy
+	}
+
+	switch rolloutStrategy {
 	case "gradual":
 		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
 	default:
@@ -187,7 +195,12 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 		}
 		for _, job := range jobs.Items {
 			job := job
-			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
+
+			propagationPolicy := metav1.DeletePropagationBackground
+			if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
+				propagationPolicy = metav1.DeletePropagationForeground
+			}
+			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
 			if err != nil {
 				return "Not able to delete job: " + job.Name, err
 			}
