@@ -81,7 +81,7 @@ spec:
         - name: noop-processor
           image: ubuntu:20.04
           command: ["/bin/bash"]
-          args: ["-c", "sleep 30"]
+          args: ["-c", "sleep 60"]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
