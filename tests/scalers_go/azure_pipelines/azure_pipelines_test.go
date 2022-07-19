@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	organizationUrl     = os.Getenv("AZURE_DEVOPS_ORGANIZATION_URL")
+	organizationURL     = os.Getenv("AZURE_DEVOPS_ORGANIZATION_URL")
 	personalAccessToken = os.Getenv("AZURE_DEVOPS_PAT")
 	project             = os.Getenv("AZURE_DEVOPS_PROJECT")
 	buildId             = os.Getenv("AZURE_DEVOPS_BUILD_DEFINITON_ID")
 	poolName            = os.Getenv("AZURE_DEVOPS_POOL_NAME")
-	poolId              = "0"
+	poolID              = "0"
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
 	secretName          = fmt.Sprintf("%s-secret", testName)
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
@@ -53,9 +53,9 @@ type templateData struct {
 	MinReplicaCount  string
 	MaxReplicaCount  string
 	Pat              string
-	Url              string
+	URL              string
 	PoolName         string
-	PoolId           string
+	PoolID           string
 }
 type templateValues map[string]string
 
@@ -162,15 +162,15 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, organizationUrl, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure blob test")
+	require.NotEmpty(t, organizationURL, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure blob test")
 	require.NotEmpty(t, personalAccessToken, "AZURE_DEVOPS_PAT env variable is required for azure blob test")
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure blob test")
 	require.NotEmpty(t, buildId, "AZURE_DEVOPS_BUILD_DEFINITON_ID env variable is required for azure blob test")
 	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure blob test")
-	connection := azuredevops.NewPatConnection(organizationUrl, personalAccessToken)
+	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
 	clearAllBuilds(t, connection)
 	// Get pool ID
-	poolId = fmt.Sprintf("%d", getAzDoPoolId(t, connection))
+	poolID = fmt.Sprintf("%d", getAzDoPoolID(t, connection))
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -188,13 +188,13 @@ func TestScaler(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "poolNamescaledObjectTemplate", poolNamescaledObjectTemplate)
 	testActivation(t, kc, connection)
 	testScaleUp(t, kc, connection)
-	testScaleDown(t, kc, connection)
+	testScaleDown(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getAzDoPoolId(t *testing.T, connection *azuredevops.Connection) int {
+func getAzDoPoolID(t *testing.T, connection *azuredevops.Connection) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	taskClient, err := taskagent.NewClient(ctx, connection)
@@ -279,9 +279,9 @@ func getTemplateData() (templateData, templateValues) {
 			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
 			Pat:              base64Pat,
-			Url:              organizationUrl,
+			URL:              organizationURL,
 			PoolName:         poolName,
-			PoolId:           poolId,
+			PoolID:           poolID,
 		}, templateValues{
 			"secretTemplate":             secretTemplate,
 			"deploymentTemplate":         deploymentTemplate,
@@ -301,7 +301,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops
 		"replica count should be 2 after a minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 5),
 		"pod count should be 0 after a minute")

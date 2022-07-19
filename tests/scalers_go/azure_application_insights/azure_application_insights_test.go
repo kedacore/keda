@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	appInsightsAppId              = os.Getenv("AZURE_APP_INSIGHTS_APP_ID")
+	appInsightsAppID              = os.Getenv("AZURE_APP_INSIGHTS_APP_ID")
 	appInsightsInstrumentationKey = os.Getenv("AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
 	appInsightsConnectionstring   = os.Getenv("AZURE_APP_INSIGHTS_CONNECTION_STRING")
 	appInsightsMetricName         = fmt.Sprintf("%s-%d", testName, GetRandomNumber())
@@ -150,7 +150,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, appInsightsAppId, "AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
+	require.NotEmpty(t, appInsightsAppID, "AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
 	require.NotEmpty(t, appInsightsInstrumentationKey, "AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
 	require.NotEmpty(t, appInsightsConnectionstring, "AZURE_APP_INSIGHTS_CONNECTION_STRING env variable is required for application insights tests")
 	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for application insights tests")
@@ -179,7 +179,7 @@ func TestScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
 	t.Log("--- testing activation ---")
 	stopCh := make(chan struct{})
-	go setMetricValue(t, client, 10, stopCh)
+	go setMetricValue(client, 10, stopCh)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 300)
 	close(stopCh)
 }
@@ -187,7 +187,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.T
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
 	t.Log("--- testing scale up ---")
 	stopCh := make(chan struct{})
-	go setMetricValue(t, client, 100, stopCh)
+	go setMetricValue(client, 100, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
 		"replica count should be 2 after 5 minutes")
 	close(stopCh)
@@ -196,13 +196,13 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client appinsights.Tele
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
 	t.Log("--- testing scale down ---")
 	stopCh := make(chan struct{})
-	go setMetricValue(t, client, 0, stopCh)
+	go setMetricValue(client, 0, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
 		"replica count should be 0 after 5 minutes")
 	close(stopCh)
 }
 
-func setMetricValue(t *testing.T, client appinsights.TelemetryClient, value float64, stopCh <-chan struct{}) {
+func setMetricValue(client appinsights.TelemetryClient, value float64, stopCh <-chan struct{}) {
 	for {
 		select {
 		case <-stopCh:
@@ -214,14 +214,13 @@ func setMetricValue(t *testing.T, client appinsights.TelemetryClient, value floa
 			time.Sleep(time.Second * 15)
 		}
 	}
-
 }
 
 func getTemplateData() (templateData, templateValues) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 	base64ClientID := base64.StdEncoding.EncodeToString([]byte(azureADClientID))
 	base64TenantID := base64.StdEncoding.EncodeToString([]byte(azureADTenantID))
-	base64ApplicationInsightsID := base64.StdEncoding.EncodeToString([]byte(appInsightsAppId))
+	base64ApplicationInsightsID := base64.StdEncoding.EncodeToString([]byte(appInsightsAppID))
 
 	return templateData{
 			TestNamespace:                 testNamespace,
