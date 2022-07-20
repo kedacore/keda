@@ -31,12 +31,13 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 	{map[string]string{"topic": "foo"}, errors.New("no liiklus API address provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565"}, errors.New("no consumer group provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup"}, nil, "bar:6565", "mygroup", "foo", 10},
+	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "activationLagThreshold": "aa"}, errors.New("error parsing activationLagThreshold: strconv.ParseInt: parsing \"aa\": invalid syntax"), "bar:6565", "mygroup", "foo", 10},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "lagThreshold": "15"}, nil, "bar:6565", "mygroup", "foo", 15},
 }
 
 var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
-	{&parseLiiklusMetadataTestDataset[4], 0, "s0-liiklus-foo"},
-	{&parseLiiklusMetadataTestDataset[4], 1, "s1-liiklus-foo"},
+	{&parseLiiklusMetadataTestDataset[5], 0, "s0-liiklus-foo"},
+	{&parseLiiklusMetadataTestDataset[5], 1, "s1-liiklus-foo"},
 }
 
 func TestLiiklusParseMetadata(t *testing.T) {

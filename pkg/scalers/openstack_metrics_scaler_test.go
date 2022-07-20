@@ -65,6 +65,9 @@ var invalidOpenstackMetricMetadaTestData = []parseOpenstackMetricMetadataTestDat
 
 	// threshold 0
 	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0z"}},
+
+	// activation threshold invalid
+	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0", "activationThreshold": "z"}},
 }
 
 var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetadataTestData{
