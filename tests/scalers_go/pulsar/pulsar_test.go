@@ -75,7 +75,7 @@ spec:
         - name: pulsar
           containerPort: 6650
           protocol: TCP
-        - name: admin 
+        - name: admin
           containerPort: 8080
           protocol: TCP
         env:
@@ -194,7 +194,7 @@ func getTemplateData() (templateData, templateValues) {
 			MsgBacklog:             msgBacklog,
 		}, templateValues{
 			"statefulsetTemplate": statefulsetTemplate,
-			"serviceTemplate": serviceTemplate,
+			"serviceTemplate":     serviceTemplate,
 		}
 }
 
@@ -213,7 +213,7 @@ func TestScaler(t *testing.T) {
 
 	KubectlApplyWithTemplate(t, data, "consumerTemplate", consumerTemplate)
 
-	//run consumer for create subcription
+	// run consumer for create subcription
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, testNamespace, 1, 300, 1),
 		"replica count should be 1 after 5 minute")
 
@@ -224,7 +224,7 @@ func TestScaler(t *testing.T) {
 
 	testActivation(t, kc, data)
 	KubectlDeleteWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
-	//scale up
+	// scale up
 	testScaleUp(t, kc, data)
 	// scale down
 	testScaleDown(t, kc)

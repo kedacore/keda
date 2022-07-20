@@ -10,13 +10,14 @@ import (
 	"strconv"
 	"strings"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type pulsarScaler struct {
@@ -184,7 +185,6 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 			meta.cert = cert
 			meta.key = key
 			meta.enableTLS = true
-
 		} else {
 			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
@@ -251,7 +251,7 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 	if !found || msgBackLog <= s.metadata.activationTargetQueryValue {
 		pulsarLog.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
 		return false, nil
-	} 
+	}
 
 	return true, nil
 }
@@ -269,7 +269,7 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(msgBacklog), resource.DecimalSI),
+		Value:      *resource.NewQuantity(msgBacklog, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 
