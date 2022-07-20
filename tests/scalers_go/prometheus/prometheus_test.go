@@ -610,8 +610,35 @@ spec:
       serverAddress: http://{{.PrometheusServerName}}.{{.TestNamespace}}.svc
       metricName: http_requests_total
       threshold: '20'
+      activationThreshold: '20'
       query: sum(rate(http_requests_total{app="{{.MonitoredAppName}}"}[2m]))
 `
+
+	generateLowLevelLoadJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-low-level-requests-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: quay.io/zroubalik/hey
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 5 -n 30 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  activeDeadlineSeconds: 100
+  backoffLimit: 2
+  `
 
 	generateLoadJobTemplate = `apiVersion: batch/v1
 kind: Job
@@ -660,12 +687,21 @@ func TestPrometheusScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	DeleteKubernetesResources(t, kc, testNamespace, data, prometheusServerTemplates)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	templateTriggerJob := templateValues{"generateLowLevelLoadJobTemplate": generateLowLevelLoadJobTemplate}
+	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
