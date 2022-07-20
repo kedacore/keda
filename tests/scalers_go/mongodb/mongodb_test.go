@@ -243,8 +243,6 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 	t.Log("--- testing scale up ---")
 
 	insertCmd := fmt.Sprintf(`db.%s.insert([
-		{"region":"eu-1","state":"running","plan":"planA","goods":"apple"},
-		{"region":"eu-1","state":"running","plan":"planA","goods":"orange"},
 		{"region":"eu-1","state":"running","plan":"planA","goods":"strawberry"},
 		{"region":"eu-1","state":"running","plan":"planA","goods":"cherry"},
 		{"region":"eu-1","state":"running","plan":"planA","goods":"pineapple"}
