@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	promServerAddress    = "serverAddress"
-	promMetricName       = "metricName"
-	promQuery            = "query"
-	promThreshold        = "threshold"
-	promNamespace        = "namespace"
-	promCortexScopeOrgID = "cortexOrgID"
-	promCortexHeaderKey  = "X-Scope-OrgID"
-	ignoreNullValues     = "ignoreNullValues"
+	promServerAddress       = "serverAddress"
+	promMetricName          = "metricName"
+	promQuery               = "query"
+	promThreshold           = "threshold"
+	promActivationThreshold = "activationThreshold"
+	promNamespace           = "namespace"
+	promCortexScopeOrgID    = "cortexOrgID"
+	promCortexHeaderKey     = "X-Scope-OrgID"
+	ignoreNullValues        = "ignoreNullValues"
 )
 
 var (
@@ -41,14 +42,15 @@ type prometheusScaler struct {
 }
 
 type prometheusMetadata struct {
-	serverAddress  string
-	metricName     string
-	query          string
-	threshold      float64
-	prometheusAuth *authentication.AuthMeta
-	namespace      string
-	scalerIndex    int
-	cortexOrgID    string
+	serverAddress       string
+	metricName          string
+	query               string
+	threshold           float64
+	activationThreshold float64
+	prometheusAuth      *authentication.AuthMeta
+	namespace           string
+	scalerIndex         int
+	cortexOrgID         string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
 	// change to false/f if can not accept prometheus return null values
@@ -134,6 +136,16 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promThreshold)
 	}
 
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata[promActivationThreshold]; ok {
+		t, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
+		}
+
+		meta.activationThreshold = t
+	}
+
 	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
 		meta.namespace = val
 	}
@@ -170,7 +182,7 @@ func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationThreshold, nil
 }
 
 func (s *prometheusScaler) Close(context.Context) error {
