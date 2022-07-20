@@ -46,6 +46,8 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid queueDepth using a string
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Invalid activationQueueDepth using a string
+	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "1", "activationQueueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// No host provided
 	{map[string]string{"queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Missing queueManager
@@ -88,7 +90,7 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
-// Test that DefaultQueueDepth is set when targetQueueDepth is not provided
+// Test that DefaultQueueDepth is set when queueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
 		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
@@ -97,8 +99,8 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		case metadata.targetQueueDepth != defaultTargetQueueDepth:
-			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.targetQueueDepth)
+		case metadata.queueDepth != defaultTargetQueueDepth:
+			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.queueDepth)
 		}
 	}
 }
