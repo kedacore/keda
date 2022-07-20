@@ -51,6 +51,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 - **GCP Stackdriver Scaler:** Added aggregation parameters ([#3008](https://github.com/kedacore/keda/issues/3008))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
+- **Prometheus Scaler:** Improve error reporting, include the failed query in error message ([#3406](https://github.com/kedacore/keda/pull/3406))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
 ### Fixes
