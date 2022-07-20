@@ -90,7 +90,7 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
-// Test that DefaultQueueDepth is set when targetQueueDepth is not provided
+// Test that DefaultQueueDepth is set when queueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
 		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
@@ -99,8 +99,8 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		case metadata.targetQueueDepth != defaultTargetQueueDepth:
-			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.targetQueueDepth)
+		case metadata.queueDepth != defaultTargetQueueDepth:
+			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.queueDepth)
 		}
 	}
 }
