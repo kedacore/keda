@@ -24,6 +24,7 @@ const (
 	kubernetesWorkloadMetricType = "External"
 	podSelectorKey               = "podSelector"
 	valueKey                     = "value"
+	activationValueKey           = "activationValue"
 )
 
 var phasesCountedAsTerminated = []corev1.PodPhase{
@@ -32,10 +33,11 @@ var phasesCountedAsTerminated = []corev1.PodPhase{
 }
 
 type kubernetesWorkloadMetadata struct {
-	podSelector labels.Selector
-	namespace   string
-	value       float64
-	scalerIndex int
+	podSelector     labels.Selector
+	namespace       string
+	value           float64
+	activationValue float64
+	scalerIndex     int
 }
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
@@ -67,8 +69,17 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	}
 	meta.value, err = strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
 	if err != nil || meta.value == 0 {
-		return nil, fmt.Errorf("value must be an integer greater than 0")
+		return nil, fmt.Errorf("value must be a float greater than 0")
 	}
+
+	meta.activationValue = 0
+	if val, ok := config.TriggerMetadata[activationValueKey]; ok {
+		meta.activationValue, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("value must be a float")
+		}
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
@@ -81,7 +92,7 @@ func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return pods > 0, nil
+	return float64(pods) > s.metadata.activationValue, nil
 }
 
 // Close no need for kubernetes workload scaler

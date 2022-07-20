@@ -97,7 +97,8 @@ spec:
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod=workload-test'
-      value: '1'`
+      value: '1'
+      activationValue: '3'`
 )
 
 func TestScaler(t *testing.T) {
@@ -115,11 +116,17 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc)
 	testScaleUp(t, kc)
 	testScaleDown(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, sutDeploymentName, testNamespace, 0, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
