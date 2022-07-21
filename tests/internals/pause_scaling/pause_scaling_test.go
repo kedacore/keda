@@ -37,6 +37,8 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	queueName        = fmt.Sprintf("%s-queue", testName)
+	maxReplicaCount  = 1
+	minReplicaCount  = 0
 )
 
 type templateData struct {
@@ -103,8 +105,8 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  minReplicaCount: 2
-  maxReplicaCount: 4
+  minReplicaCount: 0
+  maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
     - type: azure-queue
@@ -125,8 +127,8 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  minReplicaCount: 2
-  maxReplicaCount: 4
+  minReplicaCount: 0
+  maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
     - type: azure-queue
@@ -217,8 +219,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
+		"replica count should be 1 after 1 minute")
 }
 
 func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL, data templateData, n int) {
@@ -237,8 +239,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
-		"replica count should be 2 after 2 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, min, 60, 2),
+		"replica count should be 0 after 2 minutes")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
