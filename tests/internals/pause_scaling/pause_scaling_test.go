@@ -239,7 +239,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, min, 60, 2),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
 		"replica count should be 0 after 2 minutes")
 }
 
