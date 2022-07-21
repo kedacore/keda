@@ -34,7 +34,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Unreleased
 
-- **Kafka Scaler:** Support of passphrase encrypted PKCS #8 private key
+- **Kafka Scaler:** Support of passphrase encrypted PKCS #\8 private key [3413](https://github.com/kedacore/keda/pull/3413)
 
 ### New
 
