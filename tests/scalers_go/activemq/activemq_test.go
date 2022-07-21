@@ -149,20 +149,20 @@ spec:
           protocol: TCP
         resources:
         volumeMounts:
-        - name: config
+        - name: remote-access-cm
           mountPath: /opt/apache-activemq-5.16.3/webapps/api/WEB-INF/classes/jolokia-access.xml
           subPath: jolokia-access.xml
-        - name: remote-access-cm
+        - name: config
           mountPath: /opt/apache-activemq-5.16.3/conf/jetty.xml
           subPath: jetty.xml
       volumes:
-      - name: config
+      - name: remote-access-cm
         configMap:
           name: activemq-config
           items:
           - key: jolokia-access.xml
             path: jolokia-access.xml
-      - name: remote-access-cm
+      - name: config
         configMap:
           name: activemq-config
           items:
@@ -480,9 +480,9 @@ func checkIfActiveMQStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking activemq status ---")
 	time.Sleep(time.Second * 10)
 	for i := 0; i < 60; i++ {
-		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("curl -u %s:%s -s http://localhost:8161/api/jolokia/exec/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/healthStatus", activemqUser, activemqPassword))
+		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s query –objname type=Broker,brokerName=localhost,Service=Health", activemqPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
-		if !strings.Contains(out, "\"status\":200") {
+		if !strings.Contains(out, "CurrentStatus = Good") {
 			time.Sleep(time.Second * 10)
 			continue
 		}

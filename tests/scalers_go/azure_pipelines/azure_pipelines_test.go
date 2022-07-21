@@ -88,7 +88,7 @@ spec:
       labels:
         app: azdevops-agent
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 90
       containers:
       - name: azdevops-agent
         lifecycle:
