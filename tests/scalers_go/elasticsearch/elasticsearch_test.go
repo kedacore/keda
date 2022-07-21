@@ -228,6 +228,7 @@ spec:
         searchTemplateName: {{.SearchTemplateName}}
         valueLocation: "hits.total.value"
         targetValue: "1"
+        activationTargetValue: "4"
         parameters: "dummy_value:1;dumb_value:oOooo"
       authenticationRef:
         name: keda-trigger-auth-elasticsearch-secret
@@ -304,10 +305,11 @@ func TestElasticsearchScaler(t *testing.T) {
 	// setup elastic
 	setupElasticsearch(t, kc)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minute", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc)
 	testScaleUp(t, kc)
 	testScaleDown(t, kc)
 
@@ -325,24 +327,35 @@ func setupElasticsearch(t *testing.T, kc *kubernetes.Clientset) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation ---")
+	addElements(t, 3)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		result, err := getElasticsearchDoc()
-		assert.NoErrorf(t, err, "cannot parse log - %s", err)
-		_, err = ExecuteCommand(fmt.Sprintf("%s -XPOST http://localhost:9200/%s/_doc -d '%s'", kubectlElasticExecCmd, indexName, result))
-		assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	}
+	addElements(t, 5)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+}
+
+func addElements(t *testing.T, count int) {
+	for i := 0; i < count; i++ {
+		result, err := getElasticsearchDoc()
+		assert.NoErrorf(t, err, "cannot parse log - %s", err)
+		_, err = ExecuteCommand(fmt.Sprintf("%s -XPOST http://localhost:9200/%s/_doc -d '%s'", kubectlElasticExecCmd, indexName, result))
+		assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	}
 }
 
 func getElasticsearchDoc() (interface{}, error) {

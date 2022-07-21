@@ -35,6 +35,7 @@ type awsDynamoDBMetadata struct {
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
 	targetValue               int64
+	activationTargetValue     int64
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
 	metricName                string
@@ -116,6 +117,17 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		return nil, fmt.Errorf("no targetValue given")
 	}
 
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata targetValue")
+		}
+
+		meta.activationTargetValue = n
+	} else {
+		meta.activationTargetValue = 0
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -191,7 +203,7 @@ func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > float64(c.metadata.activationTargetValue), nil
 }
 
 func (c *awsDynamoDBScaler) Close(context.Context) error {

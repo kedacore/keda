@@ -19,6 +19,7 @@ import (
 const (
 	azureAppInsightsMetricID                      = "metricId"
 	azureAppInsightsTargetValueName               = "targetValue"
+	azureAppInsightsActivationTargetValueName     = "activationTargetValue"
 	azureAppInsightsAppIDName                     = "applicationInsightsId"
 	azureAppInsightsMetricAggregationTimespanName = "metricAggregationTimespan"
 	azureAppInsightsMetricAggregationTypeName     = "metricAggregationType"
@@ -27,9 +28,10 @@ const (
 )
 
 type azureAppInsightsMetadata struct {
-	azureAppInsightsInfo azure.AppInsightsInfo
-	targetValue          float64
-	scalerIndex          int
+	azureAppInsightsInfo  azure.AppInsightsInfo
+	targetValue           float64
+	activationTargetValue float64
+	scalerIndex           int
 }
 
 var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
@@ -70,8 +72,18 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	}
 	meta.targetValue, err = strconv.ParseFloat(val, 64)
 	if err != nil {
-		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", "targetValue", targetValueName)
-		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", targetValueName, err.Error())
+		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", azureAppInsightsTargetValueName, azureAppInsightsTargetValueName)
+		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsTargetValueName, err.Error())
+	}
+
+	meta.activationTargetValue = 0
+	val, err = getParameterFromConfig(config, azureAppInsightsActivationTargetValueName, false)
+	if err == nil {
+		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", azureAppInsightsActivationTargetValueName, azureAppInsightsActivationTargetValueName)
+			return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsActivationTargetValueName, err.Error())
+		}
 	}
 
 	val, err = getParameterFromConfig(config, azureAppInsightsMetricID, false)
@@ -158,7 +170,7 @@ func (s *azureAppInsightsScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationTargetValue, nil
 }
 
 func (s *azureAppInsightsScaler) Close(context.Context) error {

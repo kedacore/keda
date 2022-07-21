@@ -38,11 +38,12 @@ import (
 type entityType int
 
 const (
-	none                      entityType = 0
-	queue                     entityType = 1
-	subscription              entityType = 2
-	messageCountMetricName               = "messageCount"
-	defaultTargetMessageCount            = 5
+	none                             entityType = 0
+	queue                            entityType = 1
+	subscription                     entityType = 2
+	messageCountMetricName                      = "messageCount"
+	activationMessageCountMetricName            = "activationMessageCount"
+	defaultTargetMessageCount                   = 5
 	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
 	serviceBusResource = "https://servicebus.azure.net/"
 )
@@ -58,15 +59,16 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
-	targetLength     int64
-	queueName        string
-	topicName        string
-	subscriptionName string
-	connection       string
-	entityType       entityType
-	namespace        string
-	endpointSuffix   string
-	scalerIndex      int
+	targetLength           int64
+	activationTargetLength int64
+	queueName              string
+	topicName              string
+	subscriptionName       string
+	connection             string
+	entityType             entityType
+	namespace              string
+	endpointSuffix         string
+	scalerIndex            int
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -104,6 +106,16 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		} else {
 			meta.targetLength = messageCount
 		}
+	}
+
+	meta.activationTargetLength = 0
+	if val, ok := config.TriggerMetadata[activationMessageCountMetricName]; ok {
+		activationMessageCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
+			return nil, fmt.Errorf("error parsing azure queue metadata %s", activationMessageCountMetricName)
+		}
+		meta.activationTargetLength = activationMessageCount
 	}
 
 	// get queue name OR topic and subscription name & set entity type accordingly
@@ -178,7 +190,7 @@ func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationTargetLength, nil
 }
 
 // Close - nothing to close for SB

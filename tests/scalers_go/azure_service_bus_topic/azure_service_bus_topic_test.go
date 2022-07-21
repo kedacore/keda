@@ -34,8 +34,8 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	topicName        = fmt.Sprintf("%s-topic", testName)
-	subscriptionName = fmt.Sprintf("%s-subscription", testName)
+	topicName        = fmt.Sprintf("%s-topic-%d", testName, GetRandomNumber())
+	subscriptionName = fmt.Sprintf("%s-subscription-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -116,6 +116,7 @@ spec:
     metadata:
       topicName: {{.TopicName}}
       subscriptionName: {{.SubscriptionName}}
+      activationMessageCount: "5"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -133,10 +134,11 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, sbTopic)
 	testScaleUp(t, kc, sbTopic)
 	testScaleDown(t, kc, sbSubscription)
 
@@ -209,14 +211,18 @@ func getTemplateData() (templateData, templateValues) {
 		}
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Topic) {
+	t.Log("--- testing activation ---")
+	addMessages(sbTopic, 4)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Topic) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_ = sbTopic.Send(context.Background(), servicebus.NewMessageFromString(msg))
-	}
+	addMessages(sbTopic, 10)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
@@ -231,8 +237,15 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbSubscription *servi
 
 	_ = sbSubscription.Receive(ctx, messageHandlerFunc)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
+}
+
+func addMessages(sbTopic *servicebus.Topic, count int) {
+	for i := 0; i < count; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_ = sbTopic.Send(context.Background(), servicebus.NewMessageFromString(msg))
+	}
 }
 
 func cleanupServiceBusTopic(t *testing.T, sbTopicManager *servicebus.TopicManager) {

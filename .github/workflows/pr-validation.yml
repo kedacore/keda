@@ -3,22 +3,30 @@ on:
   - pull_request
 jobs:
   validate:
-    name: Validate PR
-    runs-on: ubuntu-latest
-    container: ubuntu:focal
+    name: validate - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    container: ghcr.io/kedacore/build-tools:main
+    strategy:
+      matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install necessary packages
-        run: apt update && apt install -y make ca-certificates gcc
 
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
+
+      # Enable this if you need a different version that the already installed in build-tools image
+      # - uses: actions/setup-go@v3
+      #   with:
+      #     go-version: 1.18
+
+      - name: Check go version
+        run: go version
 
       - name: Set Go paths
         id: go-paths
@@ -27,69 +35,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v3.0.5
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v3.0.4
-        with:
-          path: ${{ steps.go-paths.outputs.build_cache }}
-          key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
-
-      - name: Go modules sync
-        run: go mod tidy
-
-      - name: Verify Generated clientset is up to date
-        run: make clientset-verify
-
-      - name: Build
-        run: make build
-
-      - name: Test
-        run: make test
-
-      - name: Create test Summary
-        uses: test-summary/action@v1
-        with:
-          paths: "report.xml"
-        if: always()
-
-  validate-arm64:
-    name: Validate PR on ARM64
-    runs-on: ARM64
-    container: arm64v8/ubuntu:focal
-    env:
-      ARCH: arm64
-    steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install necessary packages
-        run: apt update && apt install -y make ca-certificates gcc
-
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-
-      - name: Set Go paths
-        id: go-paths
-        run: |
-          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
-          echo ::set-output name=build_cache::$(go env GOCACHE)
-
-      - name: Go modules cache
-        uses: actions/cache@v3.0.4
-        with:
-          path: ${{ steps.go-paths.outputs.mod_cache }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Go build cache
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v3.0.5
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -113,9 +65,16 @@ jobs:
         if: always()
 
   validate-dockerfiles:
-    name: Validate Dockerfiles
-    runs-on: ubuntu-latest
+    name: validate-dockerfiles - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -134,9 +93,16 @@ jobs:
         run: make docker-build
 
   validate-build-tools:
-    name: Validate build-tools
-    runs-on: ubuntu-latest
+    name: Validate build-tools - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
       - uses: actions/checkout@v3
 
@@ -160,9 +126,16 @@ jobs:
         run: make docker-build-tools
 
   validate-dev-container:
-    name: Validate dev-container
-    runs-on: ubuntu-latest
+    name: Validate dev-container - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/build-tools:main
+    strategy:
+       matrix:
+        include:
+        - runner: ARM64
+          name: arm64
+        - runner: ubuntu-latest
+          name: amd64
     steps:
       - uses: actions/checkout@v3
 
@@ -172,41 +145,6 @@ jobs:
           filters: |
             devcontainer:
               - '.devcontainer/Dockerfile'
-
-      - name: Build tools
-        if: steps.filter.outputs.devcontainer == 'true'
-        run: make docker-build-dev-containers
-
-  validate-dev-container-arm64:
-    name: Validate dev-container on ARM64
-    runs-on: ARM64
-    container: arm64v8/ubuntu:focal
-    env:
-      DEBIAN_FRONTEND: noninteractive
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            devcontainer:
-              - '.devcontainer/Dockerfile'
-
-      - name: Setup Go
-        if: steps.filter.outputs.devcontainer == 'true'
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install deps
-        if: steps.filter.outputs.devcontainer == 'true'
-        run: |
-          apt update && apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release make
-          curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null
-          add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable"
-          apt-get update
-          apt-get install -y docker-ce-cli
 
       - name: Build tools
         if: steps.filter.outputs.devcontainer == 'true'
@@ -217,7 +155,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.0.0
+      - uses: actions/setup-python@v4.1.0
         with:
           python-version: 3.x
       - uses: actions/setup-go@v3

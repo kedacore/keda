@@ -127,8 +127,8 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
 
 	// test scaling
 	testScale(t, kc, data)
@@ -176,16 +176,16 @@ func testScale(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scaling ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 }
 
 func testRestore(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing restore ---")
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {

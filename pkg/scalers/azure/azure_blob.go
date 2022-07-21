@@ -27,16 +27,17 @@ import (
 )
 
 type BlobMetadata struct {
-	TargetBlobCount   int64
-	BlobContainerName string
-	BlobDelimiter     string
-	BlobPrefix        string
-	Connection        string
-	AccountName       string
-	MetricName        string
-	EndpointSuffix    string
-	ScalerIndex       int
-	GlobPattern       *glob.Glob
+	TargetBlobCount           int64
+	ActivationTargetBlobCount int64
+	BlobContainerName         string
+	BlobDelimiter             string
+	BlobPrefix                string
+	Connection                string
+	AccountName               string
+	MetricName                string
+	EndpointSuffix            string
+	ScalerIndex               int
+	GlobPattern               *glob.Glob
 }
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int

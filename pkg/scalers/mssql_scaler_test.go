@@ -25,6 +25,13 @@ var testInputs = []mssqlTestData{
 		authParams:               map[string]string{"connectionString": "sqlserver://localhost"},
 		expectedConnectionString: "sqlserver://localhost",
 	},
+	// direct connection string input with activationTargetValue
+	{
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "activationTargetValue": "20"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"connectionString": "sqlserver://localhost"},
+		expectedConnectionString: "sqlserver://localhost",
+	},
 	// direct connection string input, OLEDB format
 	{
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},

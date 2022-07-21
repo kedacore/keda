@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	targetShardCountDefault = 2
+	targetShardCountDefault           = 2
+	activationTargetShardCountDefault = 0
 )
 
 type awsKinesisStreamScaler struct {
@@ -30,11 +31,12 @@ type awsKinesisStreamScaler struct {
 }
 
 type awsKinesisStreamMetadata struct {
-	targetShardCount int64
-	streamName       string
-	awsRegion        string
-	awsAuthorization awsAuthorizationMetadata
-	scalerIndex      int
+	targetShardCount           int64
+	activationTargetShardCount int64
+	streamName                 string
+	awsRegion                  string
+	awsAuthorization           awsAuthorizationMetadata
+	scalerIndex                int
 }
 
 var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
@@ -69,6 +71,16 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
 		} else {
 			meta.targetShardCount = shardCount
+		}
+	}
+
+	if val, ok := config.TriggerMetadata["activationShardCount"]; ok && val != "" {
+		activationShardCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			meta.activationTargetShardCount = activationTargetShardCountDefault
+			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata activationShardCount, using default %n", activationTargetShardCountDefault)
+		} else {
+			meta.activationTargetShardCount = activationShardCount
 		}
 	}
 
@@ -129,7 +141,7 @@ func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return count > 0, nil
+	return count > s.metadata.activationTargetShardCount, nil
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {

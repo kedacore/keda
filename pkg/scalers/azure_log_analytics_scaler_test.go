@@ -87,6 +87,8 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": "", "threshold": "1900000000"}, true},
 	// Missing threshold, should fail
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
+	// Invalid activation threshold, should fail
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1", "activationThreshold": "A"}, true},
 	// All parameters set, should succeed
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 	// Known Azure Cloud
@@ -102,8 +104,8 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 }
 
 var LogAnalyticsMetricIdentifiers = []LogAnalyticsMetricIdentifier{
-	{&testLogAnalyticsMetadata[7], 0, "s0-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
-	{&testLogAnalyticsMetadata[7], 1, "s1-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[8], 0, "s0-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[8], 1, "s1-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
 }
 
 var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTestData{

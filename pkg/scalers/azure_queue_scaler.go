@@ -33,9 +33,10 @@ import (
 )
 
 const (
-	queueLengthMetricName    = "queueLength"
-	defaultTargetQueueLength = 5
-	externalMetricType       = "External"
+	queueLengthMetricName           = "queueLength"
+	activationQueueLengthMetricName = "activationQueueLength"
+	defaultTargetQueueLength        = 5
+	externalMetricType              = "External"
 )
 
 type azureQueueScaler struct {
@@ -46,12 +47,13 @@ type azureQueueScaler struct {
 }
 
 type azureQueueMetadata struct {
-	targetQueueLength int64
-	queueName         string
-	connection        string
-	accountName       string
-	endpointSuffix    string
-	scalerIndex       int
+	targetQueueLength           int64
+	activationTargetQueueLength int64
+	queueName                   string
+	connection                  string
+	accountName                 string
+	endpointSuffix              string
+	scalerIndex                 int
 }
 
 var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
@@ -89,6 +91,18 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 		}
 
 		meta.targetQueueLength = queueLength
+	}
+
+	meta.activationTargetQueueLength = 0
+	if val, ok := config.TriggerMetadata[activationQueueLengthMetricName]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			azureQueueLog.Error(err, "Error parsing azure queue metadata", activationQueueLengthMetricName, activationQueueLengthMetricName)
+			return nil, kedav1alpha1.AuthPodIdentity{},
+				fmt.Errorf("error parsing azure queue metadata %s: %s", activationQueueLengthMetricName, err.Error())
+		}
+
+		meta.activationTargetQueueLength = activationQueueLength
 	}
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.QueueEndpoint)
@@ -160,7 +174,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationTargetQueueLength, nil
 }
 
 func (s *azureQueueScaler) Close(context.Context) error {

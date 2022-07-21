@@ -246,7 +246,7 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 	// Deploy mysql
 	KubectlApplyWithTemplate(t, data, "mysqlDeploymentTemplate", mysqlDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "mysqlServiceTemplate", mysqlServiceTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
 	// Wait 30 sec which would be enought for mysql to be accessible
 	time.Sleep(30 * time.Second)
 
@@ -262,7 +262,7 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 
 	// Deploy mysql consumer app, scaled object and trigger auth, etc.
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should start out as 0")
 }
 
@@ -272,14 +272,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 	// Check if deployment scale to 2 (the max)
 	maxReplicaCount := 2
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
 		"Replica count should scale up in next 2 minutes")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	// Check if deployment scale down to 0 after 5 minutes
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
 		"Replica count should be 0 after 5 minutes")
 }
 

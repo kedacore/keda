@@ -57,6 +57,9 @@ type mongoDBMetadata struct {
 	// A threshold that is used as targetAverageValue in HPA
 	// +required
 	queryValue int64
+	// A threshold that is used to check if scaler is active
+	// +optional
+	activationQueryValue int64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
 	// +optional
 	metricName string
@@ -134,6 +137,15 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		return nil, "", fmt.Errorf("no queryValue given")
 	}
 
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
+	}
+
 	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
 	if err != nil {
 		return nil, "", err
@@ -196,7 +208,7 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 		mongoDBLog.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
 		return false, err
 	}
-	return result > 0, nil
+	return result > s.metadata.activationQueryValue, nil
 }
 
 // Close disposes of mongoDB connections

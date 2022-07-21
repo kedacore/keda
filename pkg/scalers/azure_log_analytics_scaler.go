@@ -65,6 +65,7 @@ type azureLogAnalyticsMetadata struct {
 	podIdentity             kedav1alpha1.AuthPodIdentity
 	query                   string
 	threshold               float64
+	activationThreshold     float64
 	metricName              string // Custom metric name for trigger
 	scalerIndex             int
 	logAnalyticsResourceURL string
@@ -195,6 +196,17 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.threshold = threshold
 
+	// Getting activationThreshold
+	meta.activationThreshold = 0
+	val, err = getParameterFromConfig(config, "activationThreshold", false)
+	if err == nil {
+		activationThreshold, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+		}
+		meta.activationThreshold = activationThreshold
+	}
+
 	// Resolve metricName
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", val))
@@ -249,7 +261,7 @@ func (s *azureLogAnalyticsScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to execute IsActive function. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
 	}
 
-	return s.cache.metricValue > 0, nil
+	return s.cache.metricValue > s.metadata.activationThreshold, nil
 }
 
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {

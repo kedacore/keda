@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +39,8 @@ const (
 )
 
 var _ = godotenv.Load()
+
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
@@ -138,6 +141,22 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	return out, errOut, err
 }
 
+func WaitForSuccessfulExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, command string, iterations, intervalSeconds int) (bool, string, string, error) {
+	var out, errOut string
+	var err error
+	for i := 0; i < iterations; i++ {
+		out, errOut, err = ExecCommandOnSpecificPod(t, podName, namespace, command)
+		t.Logf("Waiting for successful execution of command on Pod; Output: %s, Error: %s", out, errOut)
+		if err == nil {
+			return true, out, errOut, err
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false, out, errOut, err
+}
+
 func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	if KubeClient != nil && KubeConfig != nil {
 		return KubeClient
@@ -153,7 +172,11 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	return KubeClient
 }
 
+// Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+	DeleteNamespace(t, kc, nsName)
+	WaitForNamespaceDeletion(t, kc, nsName)
+
 	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -172,6 +195,9 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
 		GracePeriodSeconds: &period,
 	})
+	if errors.IsNotFound(err) {
+		err = nil
+	}
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
 }
 
@@ -187,17 +213,16 @@ func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName str
 	return false
 }
 
-// Waits until deployment count hits target or number of iterations are done.
-func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.Replicas
+		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		count := len(jobList.Items)
 
-		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
-			name, replicas, target)
+		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
+			namespace, count, target)
 
-		if replicas == int32(target) {
+		if count == target {
 			return true
 		}
 
@@ -208,6 +233,25 @@ func WaitForDeploymentReplicaCount(t *testing.T, kc *kubernetes.Clientset, name,
 }
 
 // Waits until deployment count hits target or number of iterations are done.
+func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+
+		t.Logf("Waiting for pods in namespace to hit target. Namespace - %s, Current  - %d, Target - %d",
+			namespace, len(pods.Items), target)
+
+		if len(pods.Items) == target {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
+// Waits until deployment ready replica count hits target or number of iterations are done.
 func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -377,4 +421,8 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	DeleteNamespace(t, kc, nsName)
 	deleted := WaitForNamespaceDeletion(t, kc, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
+}
+
+func GetRandomNumber() int {
+	return random.Intn(10000)
 }

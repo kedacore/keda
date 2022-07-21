@@ -53,6 +53,8 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// improperly formed blobCount
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "AA"}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
+	// improperly formed activationBlobCount
+	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "1", "activationBlobCount": "AA"}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// podIdentity = azure with account name
 	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without account name
@@ -102,7 +104,7 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
 	{&testAzBlobMetadata[1], 0, "s0-azure-blob-sample"},
 	{&testAzBlobMetadata[2], 1, "s1-azure-blob-customname"},
-	{&testAzBlobMetadata[5], 2, "s2-azure-blob-sample_container"},
+	{&testAzBlobMetadata[6], 2, "s2-azure-blob-sample_container"},
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {

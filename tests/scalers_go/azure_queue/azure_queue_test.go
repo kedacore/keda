@@ -36,7 +36,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queueName        = fmt.Sprintf("%s-queue", testName)
+	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -110,6 +110,7 @@ spec:
       metadata:
         queueName: {{.QueueName}}
         connectionFromEnv: AzureWebJobsStorage
+        activationQueueLength: "5"
 `
 )
 
@@ -126,10 +127,11 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, messageURL)
 	testScaleUp(t, kc, messageURL)
 	testScaleDown(t, kc, messageURL)
 
@@ -154,7 +156,7 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 
 	messageURL := queueURL.NewMessagesURL()
-
+	t.Logf("Queue %s created", queueName)
 	return queueURL, messageURL
 }
 
@@ -174,16 +176,19 @@ func getTemplateData() (templateData, templateValues) {
 			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing activation ---")
+	addMessages(t, messageURL, 3)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing scale up ---")
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
-		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
-	}
+	addMessages(t, messageURL, 5)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
@@ -191,12 +196,22 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Me
 	_, err := messageURL.Clear(context.Background())
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
+}
+
+func addMessages(t *testing.T, messageURL azqueue.MessagesURL, count int) {
+	for i := 0; i < count; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
+		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
+		t.Logf("Message queued")
+	}
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
 	t.Log("--- cleaning up ---")
 	_, err := queueURL.Delete(context.Background())
 	assert.NoErrorf(t, err, "cannot delete storage queue - %s", err)
+	t.Logf("Queue %s deleted", queueName)
 }

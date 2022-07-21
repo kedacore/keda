@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	blobCountMetricName    = "blobCount"
-	defaultTargetBlobCount = 5
-	defaultBlobDelimiter   = "/"
-	defaultBlobPrefix      = ""
+	blobCountMetricName           = "blobCount"
+	activationBlobCountMetricName = "activationBlobCount"
+	defaultTargetBlobCount        = 5
+	defaultBlobDelimiter          = "/"
+	defaultBlobPrefix             = ""
 )
 
 type azureBlobScaler struct {
@@ -83,6 +84,17 @@ func parseAzureBlobMetadata(config *ScalerConfig) (*azure.BlobMetadata, kedav1al
 		}
 
 		meta.TargetBlobCount = blobCount
+	}
+
+	meta.ActivationTargetBlobCount = 0
+	if val, ok := config.TriggerMetadata[activationBlobCountMetricName]; ok {
+		activationBlobCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			azureBlobLog.Error(err, "Error parsing azure blob metadata", activationBlobCountMetricName, activationBlobCountMetricName)
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %s", activationBlobCountMetricName, err.Error())
+		}
+
+		meta.ActivationTargetBlobCount = activationBlobCount
 	}
 
 	if val, ok := config.TriggerMetadata["blobContainerName"]; ok && val != "" {
@@ -181,7 +193,7 @@ func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.ActivationTargetBlobCount, nil
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {

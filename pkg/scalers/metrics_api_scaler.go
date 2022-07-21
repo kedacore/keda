@@ -28,9 +28,10 @@ type metricsAPIScaler struct {
 }
 
 type metricsAPIScalerMetadata struct {
-	targetValue   float64
-	url           string
-	valueLocation string
+	targetValue           float64
+	activationTargetValue float64
+	url                   string
+	valueLocation         string
 
 	// apiKeyAuth
 	enableAPIKeyAuth bool
@@ -106,6 +107,15 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given in metadata")
+	}
+
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	if val, ok := config.TriggerMetadata["url"]; ok {
@@ -246,7 +256,7 @@ func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return v > 0.0, nil
+	return v > s.metadata.activationTargetValue, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler

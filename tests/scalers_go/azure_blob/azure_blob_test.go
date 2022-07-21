@@ -36,7 +36,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	containerName    = fmt.Sprintf("%s-container", testName)
+	containerName    = fmt.Sprintf("%s-container-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -119,6 +119,7 @@ spec:
       metadata:
         blobContainerName: {{.ContainerName}}
         blobCount: '1'
+        activationBlobCount: '5'
         connectionFromEnv: AzureWebJobsStorage
 `
 )
@@ -136,10 +137,11 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, containerURL)
 	testScaleUp(t, kc, containerURL)
 	testScaleDown(t, kc, containerURL)
 
@@ -182,23 +184,17 @@ func getTemplateData() (templateData, templateValues) {
 			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+	t.Log("--- testing activation ---")
+	addFiles(t, containerURL, 4)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
 	t.Log("--- testing scale up ---")
-	data := "Hello World!"
-
-	for i := 0; i < 10; i++ {
-		blobName := fmt.Sprintf("blob-%d", i)
-		blobURL := containerURL.NewBlockBlobURL(blobName)
-
-		_, err := blobURL.Upload(context.Background(), strings.NewReader(data),
-			azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{},
-			azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
-
-		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
-	}
-
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	addFiles(t, containerURL, 10)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
@@ -214,8 +210,23 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.C
 		assert.NoErrorf(t, err, "cannot delete blob - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
+}
+
+func addFiles(t *testing.T, containerURL azblob.ContainerURL, count int) {
+	data := "Hello World!"
+
+	for i := 0; i < count; i++ {
+		blobName := fmt.Sprintf("blob-%d", i)
+		blobURL := containerURL.NewBlockBlobURL(blobName)
+
+		_, err := blobURL.Upload(context.Background(), strings.NewReader(data),
+			azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{},
+			azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
+
+		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
+	}
 }
 
 func cleanupContainer(t *testing.T, containerURL azblob.ContainerURL) {

@@ -29,6 +29,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
 	// all properly formed, with ignoreNullValues
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "false"}, false},
+	// all properly formed, with activationThreshold
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "activationThreshold": "50"}, false},
 	// missing serverAddress
 	{map[string]string{"serverAddress": "", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, true},
 	// missing metricName
@@ -37,6 +39,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "query": "up"}, true},
 	// malformed threshold
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "one", "query": "up"}, true},
+	// malformed threshold
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "activationThreshold": "one", "query": "up"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
 	// ignoreNullValues with wrong value
@@ -216,7 +220,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 	for _, testData := range testPromQueryResult {
 		t.Run(testData.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testData.responseStatus)
 
 				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
