@@ -25,10 +25,11 @@ type stackdriverScaler struct {
 }
 
 type stackdriverMetadata struct {
-	projectID   string
-	filter      string
-	targetValue int64
-	metricName  string
+	projectID             string
+	filter                string
+	targetValue           int64
+	activationTargetValue int64
+	metricName            string
 
 	gcpAuthorization *gcpAuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
@@ -98,6 +99,15 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 		meta.targetValue = targetValue
 	}
 
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
+	}
+
 	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -156,7 +166,7 @@ func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
 		gcpStackdriverLog.Error(err, "error getting metric value")
 		return false, err
 	}
-	return value > 0, nil
+	return value > s.metadata.activationTargetValue, nil
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {

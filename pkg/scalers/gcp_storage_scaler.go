@@ -32,11 +32,12 @@ type gcsScaler struct {
 }
 
 type gcsMetadata struct {
-	bucketName           string
-	gcpAuthorization     *gcpAuthorizationMetadata
-	maxBucketItemsToScan int
-	metricName           string
-	targetObjectCount    int64
+	bucketName                  string
+	gcpAuthorization            *gcpAuthorizationMetadata
+	maxBucketItemsToScan        int
+	metricName                  string
+	targetObjectCount           int64
+	activationTargetObjectCount int64
 }
 
 var gcsLog = logf.Log.WithName("gcp_storage_scaler")
@@ -114,6 +115,15 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 		meta.targetObjectCount = targetObjectCount
 	}
 
+	meta.activationTargetObjectCount = 0
+	if val, ok := config.TriggerMetadata["activationTargetObjectCount"]; ok {
+		activationTargetObjectCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetObjectCount parsing error %s", err.Error())
+		}
+		meta.activationTargetObjectCount = activationTargetObjectCount
+	}
+
 	if val, ok := config.TriggerMetadata["maxBucketItemsToScan"]; ok {
 		maxBucketItemsToScan, err := strconv.Atoi(val)
 		if err != nil {
@@ -143,7 +153,7 @@ func (s *gcsScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return items > 0, nil
+	return items > s.metadata.activationTargetObjectCount, nil
 }
 
 func (s *gcsScaler) Close(context.Context) error {

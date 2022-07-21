@@ -29,30 +29,32 @@ const (
 )
 
 var (
-	gcpKey           = os.Getenv("GCP_SP_KEY")
-	creds            = make(map[string]interface{})
-	errGcpKey        = json.Unmarshal([]byte(gcpKey), &creds)
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	secretName       = fmt.Sprintf("%s-secret", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	projectID        = creds["project_id"]
-	topicID          = fmt.Sprintf("projects/%s/topics/keda-test-topic-%d", projectID, now)
-	subscriptionName = fmt.Sprintf("keda-test-topic-sub-%d", now)
-	subscriptionID   = fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionName)
-	maxReplicaCount  = 4
-	gsPrefix         = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
+	gcpKey              = os.Getenv("GCP_SP_KEY")
+	creds               = make(map[string]interface{})
+	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	secretName          = fmt.Sprintf("%s-secret", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	projectID           = creds["project_id"]
+	topicID             = fmt.Sprintf("projects/%s/topics/keda-test-topic-%d", projectID, now)
+	subscriptionName    = fmt.Sprintf("keda-test-topic-sub-%d", now)
+	subscriptionID      = fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionName)
+	maxReplicaCount     = 4
+	activationThreshold = 5
+	gsPrefix            = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
 
 type templateData struct {
-	TestNamespace    string
-	SecretName       string
-	GcpCreds         string
-	DeploymentName   string
-	ScaledObjectName string
-	SubscriptionName string
-	SubscriptionID   string
-	MaxReplicaCount  int
+	TestNamespace       string
+	SecretName          string
+	GcpCreds            string
+	DeploymentName      string
+	ScaledObjectName    string
+	SubscriptionName    string
+	SubscriptionID      string
+	MaxReplicaCount     int
+	ActivationThreshold int
 }
 
 type templateValues map[string]string
@@ -127,6 +129,7 @@ spec:
         subscriptionName: {{.SubscriptionName}}
         mode: SubscriptionSize
         value: "5"
+        activationTargetValue: "{{.ActivationThreshold}}"
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
@@ -185,6 +188,7 @@ func TestScaler(t *testing.T) {
 	if sdkReady {
 		if createPubsub(t) == nil {
 			// test scaling
+			testDontScaleUpIfBelowThreshold(t, kc)
 			testScaleUp(t, kc)
 			testScaleDown(t, kc)
 
@@ -236,14 +240,15 @@ func getTemplateData() (templateData, templateValues) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			GcpCreds:         base64GcpCreds,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			SubscriptionID:   subscriptionID,
-			SubscriptionName: subscriptionName,
-			MaxReplicaCount:  maxReplicaCount,
+			TestNamespace:       testNamespace,
+			SecretName:          secretName,
+			GcpCreds:            base64GcpCreds,
+			DeploymentName:      deploymentName,
+			ScaledObjectName:    scaledObjectName,
+			SubscriptionID:      subscriptionID,
+			SubscriptionName:    subscriptionName,
+			MaxReplicaCount:     maxReplicaCount,
+			ActivationThreshold: activationThreshold,
 		}, templateValues{
 			"secretTemplate":       secretTemplate,
 			"deploymentTemplate":   deploymentTemplate,
@@ -251,27 +256,48 @@ func getTemplateData() (templateData, templateValues) {
 			"gcpSdkTemplate":       gcpSdkTemplate}
 }
 
+func publishMessages(t *testing.T, count int) {
+	t.Log(fmt.Sprintf("--- publishing %d messages ---", count))
+	publish := fmt.Sprintf(
+		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud pubsub topics publish %s --message=AAAAAAAAAA;done'",
+		gsPrefix,
+		count,
+		topicID)
+	_, err := ExecuteCommand(publish)
+	assert.NoErrorf(t, err, "cannot publish messages to pubsub topic - %s", err)
+}
+
+func testDontScaleUpIfBelowThreshold(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing not scaling if below threshold ---")
+
+	publishMessages(t, activationThreshold)
+
+	t.Log("--- waiting to see replicas are not scaled up ---")
+
+	for i := 0; i < 24; i++ {
+		ok := WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 1, 1)
+		assert.True(t, ok, "replica count should be 0 if below activation threshold")
+		if !ok {
+			return
+		}
+
+		time.Sleep(time.Duration(10) * time.Second)
+	}
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 
-	t.Log("--- publishing messages ---")
-	publish := fmt.Sprintf(" && gcloud pubsub topics publish %s --message=AAAAAAAAAA && sleep 1s", topicID)
-	cmd := gsPrefix + `/bin/bash -c -- 'cd .`
-	for i := 0; i < 30; i++ {
-		cmd += publish
-	}
-	cmd += `'`
-	_, err := ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "cannot publish messages to pubsub topic - %s", err)
+	publishMessages(t, 20-activationThreshold)
 
 	t.Log("--- waiting for replicas to scale up ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
 		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
-	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=p0s", gsPrefix, subscriptionID)
+	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=-P1S", gsPrefix, subscriptionID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot reset subscription position - %s", err)
 

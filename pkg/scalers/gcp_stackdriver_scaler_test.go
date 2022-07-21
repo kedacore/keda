@@ -26,7 +26,7 @@ var sdFilter = "metric.type=\"storage.googleapis.com/storage/object_count\" reso
 var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationTargetValue": "5"}, false},
 	// all required properly formed
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing projectId
@@ -37,6 +37,8 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7"}, true},
 	// malformed targetValue
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "aa", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// malformed activationTargetValue
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "activationTargetValue": "a"}, true},
 	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, false},
 	// Credentials from AuthParams with empty creds

@@ -7,7 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -26,24 +28,27 @@ const (
 )
 
 var (
-	gcpKey           = os.Getenv("GCP_SP_KEY")
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	secretName       = fmt.Sprintf("%s-secret", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	bucketName       = fmt.Sprintf("%s-bucket", testName)
-	maxReplicaCount  = 3
-	gsPrefix         = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
+	gcpKey2             = os.Getenv("GCP_SP_KEY")
+	gcpKey, _           = ioutil.ReadFile("/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json")
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	secretName          = fmt.Sprintf("%s-secret", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	bucketName          = fmt.Sprintf("%s-bucket", testName)
+	maxReplicaCount     = 3
+	activationThreshold = 5
+	gsPrefix            = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
 
 type templateData struct {
-	TestNamespace    string
-	SecretName       string
-	GcpCreds         string
-	DeploymentName   string
-	ScaledObjectName string
-	BucketName       string
-	MaxReplicaCount  int
+	TestNamespace       string
+	SecretName          string
+	GcpCreds            string
+	DeploymentName      string
+	ScaledObjectName    string
+	BucketName          string
+	MaxReplicaCount     int
+	ActivationThreshold int
 }
 
 type templateValues map[string]string
@@ -108,6 +113,7 @@ spec:
       metadata:
         bucketName: {{.BucketName}}
         targetObjectCount: '5'
+        activationTargetObjectCount: '{{.ActivationThreshold}}'
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
@@ -203,13 +209,14 @@ func getTemplateData() (templateData, templateValues) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			GcpCreds:         base64GcpCreds,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			BucketName:       bucketName,
-			MaxReplicaCount:  maxReplicaCount,
+			TestNamespace:       testNamespace,
+			SecretName:          secretName,
+			GcpCreds:            base64GcpCreds,
+			DeploymentName:      deploymentName,
+			ScaledObjectName:    scaledObjectName,
+			BucketName:          bucketName,
+			MaxReplicaCount:     maxReplicaCount,
+			ActivationThreshold: activationThreshold,
 		}, templateValues{
 			"secretTemplate":       secretTemplate,
 			"deploymentTemplate":   deploymentTemplate,
@@ -221,7 +228,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 
 	t.Log("--- uploading files ---")
-	for i := 0; i < 30; i++ {
+
+	for i := 0; i < activationThreshold; i++ {
+		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/threshold%d", gsPrefix, bucketName, i)
+		_, err := ExecuteCommand(cmd)
+		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
+	}
+
+	for i := 0; i < 30-activationThreshold; i++ {
 		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil%d", gsPrefix, bucketName, i)
 		_, err := ExecuteCommand(cmd)
 		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
@@ -234,11 +248,21 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
-	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/**", gsPrefix, bucketName)
+
+	// Delete files so we are still left with activationThreshold number of files which should be enough
+	// to scale down to 0.
+	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
-	t.Log("--- waiting for replicas to scale down to zero ---")
+	// count to see we are left with activationThreshold number of files
+	cmd = fmt.Sprintf("%sgsutil du gs://%s", gsPrefix, bucketName)
+	result, err := ExecuteCommand(cmd)
+	count := strings.Count(string(result), "\n")
+	assert.NoErrorf(t, err, "cannot count number of files in bucket - %s", err)
+	assert.Equal(t, activationThreshold, count, "The number of files in the bucket is %d and not %d", count, activationThreshold)
+
+	t.Log(fmt.Sprintf("--- waiting for replicas to scale down to zero while there are still %d files in the bucket ---", count))
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after 5 minutes")
 }
