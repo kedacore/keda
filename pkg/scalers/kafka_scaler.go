@@ -43,10 +43,11 @@ type kafkaMetadata struct {
 	password string
 
 	// TLS
-	enableTLS bool
-	cert      string
-	key       string
-	ca        string
+	enableTLS   bool
+	cert        string
+	key         string
+	keyPassword string
+	ca          string
 
 	scalerIndex int
 }
@@ -141,6 +142,11 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			meta.ca = config.AuthParams["ca"]
 			meta.cert = config.AuthParams["cert"]
 			meta.key = config.AuthParams["key"]
+			if value, found := config.AuthParams["keyPassword"]; found {
+				meta.keyPassword = value
+			} else {
+				meta.keyPassword = ""
+			}
 			meta.enableTLS = true
 		} else if val != "disable" {
 			return fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -280,7 +286,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca)
 		if err != nil {
 			return nil, nil, err
 		}
