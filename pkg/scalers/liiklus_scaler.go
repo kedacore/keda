@@ -25,21 +25,24 @@ type liiklusScaler struct {
 }
 
 type liiklusMetadata struct {
-	lagThreshold int64
-	address      string
-	topic        string
-	group        string
-	groupVersion uint32
-	scalerIndex  int
+	lagThreshold           int64
+	activationLagThreshold int64
+	address                string
+	topic                  string
+	group                  string
+	groupVersion           uint32
+	scalerIndex            int
 }
 
 const (
-	defaultLiiklusLagThreshold int64 = 10
+	defaultLiiklusLagThreshold           int64 = 10
+	defaultLiiklusActivationLagThreshold int64 = 0
 )
 
 const (
-	liiklusLagThresholdMetricName = "lagThreshold"
-	liiklusMetricType             = "External"
+	liiklusLagThresholdMetricName           = "lagThreshold"
+	liiklusActivationLagThresholdMetricName = "activationLagThreshold"
+	liiklusMetricType                       = "External"
 )
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
@@ -109,7 +112,7 @@ func (s *liiklusScaler) IsActive(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return lag > 0, nil
+	return lag > uint64(s.metadata.activationLagThreshold), nil
 }
 
 // getLag returns the total lag, as well as per-partition lag for this scaler. That is, the difference between the
@@ -148,6 +151,7 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 
 func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
+	activationLagThreshold := defaultLiiklusActivationLagThreshold
 
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
@@ -155,6 +159,14 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
 		}
 		lagThreshold = t
+	}
+
+	if val, ok := config.TriggerMetadata[liiklusActivationLagThresholdMetricName]; ok {
+		t, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %s", liiklusActivationLagThresholdMetricName, err)
+		}
+		activationLagThreshold = t
 	}
 
 	groupVersion := uint32(0)
@@ -176,11 +188,12 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	}
 
 	return &liiklusMetadata{
-		topic:        config.TriggerMetadata["topic"],
-		address:      config.TriggerMetadata["address"],
-		group:        config.TriggerMetadata["group"],
-		groupVersion: groupVersion,
-		lagThreshold: lagThreshold,
-		scalerIndex:  config.ScalerIndex,
+		topic:                  config.TriggerMetadata["topic"],
+		address:                config.TriggerMetadata["address"],
+		group:                  config.TriggerMetadata["group"],
+		groupVersion:           groupVersion,
+		lagThreshold:           lagThreshold,
+		activationLagThreshold: activationLagThreshold,
+		scalerIndex:            config.ScalerIndex,
 	}, nil
 }
