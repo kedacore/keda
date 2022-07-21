@@ -47,6 +47,7 @@ const (
 	msgBacklogMetricName       = "msgBacklog"
 	pulsarMetricType           = "External"
 	defaultMsgBacklogThreshold = 10
+	enable                     = "enable"
 )
 
 var pulsarLog = logf.Log.WithName("pulsar_scaler")
@@ -175,7 +176,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	if val, ok := config.TriggerMetadata["tls"]; ok {
 		val = strings.TrimSpace(val)
 
-		if val == "enable" {
+		if val == enable {
 			cert := config.AuthParams["cert"]
 			key := config.AuthParams["key"]
 			if key == "" || cert == "" {

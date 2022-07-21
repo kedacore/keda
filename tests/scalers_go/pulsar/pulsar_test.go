@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package pulsar_test
 
 import (
@@ -18,7 +15,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "pulsar-test"
+	testName = "pulsar-test11"
 )
 
 var (
@@ -219,7 +216,7 @@ func TestScaler(t *testing.T) {
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, consumerDeploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after a minute")
 
 	testActivation(t, kc, data)
@@ -246,13 +243,13 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MessageCount = 100
 	KubectlApplyWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, consumerDeploymentName, testNamespace, 5, 300, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, testNamespace, 5, 300, 1),
 		"replica count should be 5 after 5 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	// Check if deployment scale down to 0 after 5 minutes
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, consumerDeploymentName, testNamespace, 0, 300, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, testNamespace, 0, 300, 1),
 		"Replica count should be 0 after 5 minutes")
 }
