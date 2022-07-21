@@ -237,8 +237,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be 2 after 2 minutes")
 }
 
 func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
