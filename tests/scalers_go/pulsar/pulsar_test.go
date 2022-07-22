@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package pulsar_test
 
 import (
@@ -131,7 +134,7 @@ spec:
     - type: pulsar
       metadata:
         msgBacklog: "{{.MsgBacklog}}"
-        activationTargetQueryValue: "5"
+        defaultMsgBacklogThreshold: "5"
         adminURL: http://{{.StatefulSetName}}.{{.TestNamespace}}:8080
         topic:  persistent://public/default/keda
         subscription: keda

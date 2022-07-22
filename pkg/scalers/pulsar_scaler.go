@@ -12,7 +12,6 @@ import (
 
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,8 +36,9 @@ type pulsarMetadata struct {
 	key       string
 	ca        string
 
-	statsURL                   string
-	activationTargetQueryValue int64
+	statsURL                      string
+	metricName                    string
+	activationMsgBacklogThreshold int64
 
 	scalerIndex int
 }
@@ -153,13 +153,15 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		return meta, errors.New("no subscription given")
 	}
 
-	meta.activationTargetQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
-		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.topic, meta.subscription)
+
+	meta.activationMsgBacklogThreshold = 0
+	if val, ok := config.TriggerMetadata["activationMsgBacklogThreshold"]; ok {
+		activationMsgBacklogThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+			return meta, fmt.Errorf("activationMsgBacklogThreshold parsing error %s", err.Error())
 		}
-		meta.activationTargetQueryValue = activationTargetQueryValue
+		meta.activationMsgBacklogThreshold = activationMsgBacklogThreshold
 	}
 
 	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
@@ -221,7 +223,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 		}
 		return stats, nil
 	case 404:
-		return nil, nil
+		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	default:
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
@@ -249,7 +251,7 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if !found || msgBackLog <= s.metadata.activationTargetQueryValue {
+	if !found || msgBackLog <= s.metadata.activationMsgBacklogThreshold {
 		pulsarLog.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
 		return false, nil
 	}
@@ -265,14 +267,10 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 	}
 
 	if !found {
-		return nil, nil
+		return nil, fmt.Errorf("have not subscription found! %s", s.metadata.subscription)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(msgBacklog, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(msgBacklog))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -280,11 +278,9 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
 
-	metricName := fmt.Sprintf("%s-%s-%s", "pulsar", s.metadata.topic, s.metadata.subscription)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(s.metadata.metricName)),
 		},
 		Target: v2beta2.MetricTarget{
 			Type:         v2beta2.AverageValueMetricType,
