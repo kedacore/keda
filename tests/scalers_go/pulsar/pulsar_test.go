@@ -18,7 +18,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "pulsar-test11"
+	testName = "pulsar-test"
 )
 
 var (
@@ -134,7 +134,7 @@ spec:
     - type: pulsar
       metadata:
         msgBacklog: "{{.MsgBacklog}}"
-        defaultMsgBacklogThreshold: "5"
+        activationMsgBacklogThreshold: "5"
         adminURL: http://{{.StatefulSetName}}.{{.TestNamespace}}:8080
         topic:  persistent://public/default/keda
         subscription: keda
@@ -223,7 +223,6 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after a minute")
 
 	testActivation(t, kc, data)
-	KubectlDeleteWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
 	// scale up
 	testScaleUp(t, kc, data)
 	// scale down
@@ -241,6 +240,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// publish message and less than MsgBacklog
 	KubectlApplyWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, consumerDeploymentName, testNamespace, minReplicaCount, 60)
+	KubectlDeleteWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
