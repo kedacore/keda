@@ -251,12 +251,12 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if !found || msgBackLog <= s.metadata.activationMsgBacklogThreshold {
+	if !found {
 		pulsarLog.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
 		return false, nil
 	}
 
-	return true, nil
+	return msgBackLog > s.metadata.activationMsgBacklogThreshold, nil
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
