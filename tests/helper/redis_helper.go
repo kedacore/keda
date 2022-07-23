@@ -1,48 +1,93 @@
-import * as sh from 'shelljs'
-import * as tmp from 'tmp'
-import * as fs from 'fs'
-import {createNamespace, waitForRollout} from "./helpers";
+//go:build e2e
+// +build e2e
 
-export class RedisClusterHelper {
+package helper
 
-    static install(t, password: string, namespace: string) {
-        const clusterTmpFile = tmp.fileSync()
-        fs.writeFileSync(clusterTmpFile.name, redisClusterYaml
-                                              .replace('{{PASSWORD}}', password)
-                                              .replace('{{NAMESPACE}}', namespace))
-        createNamespace(namespace)
-        t.is(0, sh.exec(`kubectl apply -f ${clusterTmpFile.name} --namespace ${namespace}`).code, 'creating a redis cluster should work.')
-        // wait for rabbitmq to load
-        t.is(0, waitForRollout('statefulset', 'redis-cluster', namespace))
-    }
+import (
+	"fmt"
+	"testing"
 
-    static uninstall(namespace: string) {
-        sh.exec(`kubectl delete namespace ${namespace}`)
-    }
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes"
+)
+
+type templateValues map[string]string
+
+type templateData struct {
+	Namespace     string
+	RedisName     string
+	RedisPassword string
 }
 
-const redisClusterYaml = `apiVersion: v1
+var (
+	redisStandaloneTemplates = templateValues{
+		"standaloneRedisTemplate":        standaloneRedisTemplate,
+		"standaloneRedisServiceTemplate": standaloneRedisServiceTemplate,
+	}
+
+	redisClusterTemplates = templateValues{
+		"clusterRedisSecretTemplate":          clusterRedisSecretTemplate,
+		"clusterRedisConfig1Template":         clusterRedisConfig1Template,
+		"clusterRedisConfig2Template":         clusterRedisConfig2Template,
+		"clusterRedisHeadlessServiceTemplate": clusterRedisHeadlessServiceTemplate,
+		"clusterRedisServiceTemplate":         clusterRedisServiceTemplate,
+		"clusterRedisStatefulSetTemplate":     clusterRedisStatefulSetTemplate,
+	}
+)
+
+const (
+	standaloneRedisTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.RedisName}}
+  namespace: {{.Namespace}}
+spec:
+  selector:
+    matchLabels:
+      app: {{.RedisName}}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{.RedisName}}
+    spec:
+      containers:
+      - name: master
+        image: redis:6.0.6
+        command: ["redis-server", "--requirepass", {{.RedisPassword}}]
+        ports:
+        - containerPort: 6379`
+
+	standaloneRedisServiceTemplate = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.RedisName}}
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: {{.RedisName}}`
+
+	clusterRedisSecretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
   name: redis-cluster
-  labels:
-    app.kubernetes.io/name: redis-cluster
-    helm.sh/chart: redis-cluster-7.5.1
-    app.kubernetes.io/instance: redis
-    app.kubernetes.io/managed-by: Helm
+  namespace: {{.Namespace}}
 type: Opaque
-data:
-  redis-password: "{{PASSWORD}}"
----
+stringData:
+  redis-password: "{{.RedisPassword}}"`
+	clusterRedisConfig1Template = `
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: redis-cluster-default
-  labels:
-    app.kubernetes.io/name: redis-cluster
-    helm.sh/chart: redis-cluster-7.5.1
-    app.kubernetes.io/instance: redis
-    app.kubernetes.io/managed-by: Helm
+  namespace: {{.Namespace}}
 data:
   redis-default.conf: |-
     bind 127.0.0.1
@@ -113,17 +158,13 @@ data:
     dynamic-hz yes
     aof-rewrite-incremental-fsync yes
     rdb-save-incremental-fsync yes
-    jemalloc-bg-thread yes
----
+    jemalloc-bg-thread yes`
+	clusterRedisConfig2Template = `
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: redis-cluster-scripts
-  labels:
-    app.kubernetes.io/name: redis-cluster
-    helm.sh/chart: redis-cluster-7.5.1
-    app.kubernetes.io/instance: redis
-    app.kubernetes.io/managed-by: Helm
+  namespace: {{.Namespace}}
 data:
   ping_readiness_local.sh: |-
     #!/bin/sh
@@ -131,10 +172,10 @@ data:
     REDIS_STATUS_FILE=/tmp/.redis_cluster_check
     if [ ! -z "$REDIS_PASSWORD" ]; then export REDISCLI_AUTH=$REDIS_PASSWORD; fi;
     response=$(
-      timeout -s 3 $1 \\
-      redis-cli \\
-        -h localhost \\
-        -p $REDIS_PORT \\
+      timeout -s 3 $1 \
+      redis-cli \
+        -h localhost \
+        -p $REDIS_PORT \
         ping
     )
     if [ "$?" -eq "124" ]; then
@@ -147,10 +188,10 @@ data:
     fi
     if [ ! -f "$REDIS_STATUS_FILE" ]; then
       response=$(
-        timeout -s 3 $1 \\
-        redis-cli \\
-          -h localhost \\
-          -p $REDIS_PORT \\
+        timeout -s 3 $1 \
+        redis-cli \
+          -h localhost \
+          -p $REDIS_PORT \
           CLUSTER INFO | grep cluster_state | tr -d '[:space:]'
       )
       if [ "$?" -eq "124" ]; then
@@ -169,10 +210,10 @@ data:
     set -e
     if [ ! -z "$REDIS_PASSWORD" ]; then export REDISCLI_AUTH=$REDIS_PASSWORD; fi;
     response=$(
-      timeout -s 3 $1 \\
-      redis-cli \\
-        -h localhost \\
-        -p $REDIS_PORT \\
+      timeout -s 3 $1 \
+      redis-cli \
+        -h localhost \
+        -p $REDIS_PORT \
         ping
     )
     if [ "$?" -eq "124" ]; then
@@ -183,17 +224,13 @@ data:
     if [ "$response" != "PONG" ] && [ "$responseFirstWord" != "LOADING" ] && [ "$responseFirstWord" != "MASTERDOWN" ]; then
       echo "$response"
       exit 1
-    fi
----
+    fi`
+	clusterRedisHeadlessServiceTemplate = `
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-cluster-headless
-  labels:
-    app.kubernetes.io/name: redis-cluster
-    helm.sh/chart: redis-cluster-7.5.1
-    app.kubernetes.io/instance: redis
-    app.kubernetes.io/managed-by: Helm
+  name: {{.RedisName}}-headless
+  namespace: {{.Namespace}}
 spec:
   type: ClusterIP
   clusterIP: None
@@ -207,17 +244,13 @@ spec:
       targetPort: tcp-redis-bus
   selector:
     app.kubernetes.io/name: redis-cluster
-    app.kubernetes.io/instance: redis
----
+    app.kubernetes.io/instance: redis`
+	clusterRedisServiceTemplate = `
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-cluster
-  labels:
-    app.kubernetes.io/name: redis-cluster
-    helm.sh/chart: redis-cluster-7.5.1
-    app.kubernetes.io/instance: redis
-    app.kubernetes.io/managed-by: Helm
+  name: {{.RedisName}}
+  namespace: {{.Namespace}}
   annotations:
 spec:
   type: ClusterIP
@@ -229,12 +262,13 @@ spec:
       nodePort: null
   selector:
     app.kubernetes.io/name: redis-cluster
-    app.kubernetes.io/instance: redis
----
+    app.kubernetes.io/instance: redis`
+	clusterRedisStatefulSetTemplate = `
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis-cluster
+  name: {{.RedisName}}
+  namespace: {{.Namespace}}
   labels:
     app.kubernetes.io/name: redis-cluster
     helm.sh/chart: redis-cluster-7.5.1
@@ -250,7 +284,7 @@ spec:
       app.kubernetes.io/name: redis-cluster
       app.kubernetes.io/instance: redis
   replicas: 6
-  serviceName: redis-cluster-headless
+  serviceName: {{.RedisName}}-headless
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -281,7 +315,7 @@ spec:
                     app.kubernetes.io/name: redis-cluster
                     app.kubernetes.io/instance: redis
                 namespaces:
-                  - {{NAMESPACE}}
+                  - {{.Namespace}}
                 topologyKey: kubernetes.io/hostname
               weight: 1
         nodeAffinity:
@@ -299,12 +333,13 @@ spec:
                   echo COPYING FILE
                   cp  /opt/bitnami/redis/etc/redis-default.conf /opt/bitnami/redis/etc/redis.conf
               fi
-              pod_index=($(echo "$POD_NAME" | tr "-" "\\n"))
-              pod_index="\${pod_index[-1]}"
+              pod_index=($(echo "$POD_NAME" | tr "-" "\n"))
+              pod_index="${pod_index[-1]}"
               if [[ "$pod_index" == "0" ]]; then
                 export REDIS_CLUSTER_CREATOR="yes"
                 export REDIS_CLUSTER_REPLICAS="1"
               fi
+
               /opt/bitnami/scripts/redis-cluster/entrypoint.sh /opt/bitnami/scripts/redis-cluster/run.sh
           env:
             - name: POD_NAME
@@ -312,7 +347,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: REDIS_NODES
-              value: "redis-cluster-0.redis-cluster-headless redis-cluster-1.redis-cluster-headless redis-cluster-2.redis-cluster-headless redis-cluster-3.redis-cluster-headless redis-cluster-4.redis-cluster-headless redis-cluster-5.redis-cluster-headless "
+              value: "{{.RedisName}}-0.{{.RedisName}}-headless {{.RedisName}}-1.{{.RedisName}}-headless {{.RedisName}}-2.{{.RedisName}}-headless {{.RedisName}}-3.{{.RedisName}}-headless {{.RedisName}}-4.{{.RedisName}}-headless {{.RedisName}}-5.{{.RedisName}}-headless "
             - name: REDISCLI_AUTH
               valueFrom:
                 secretKeyRef:
@@ -377,3 +412,65 @@ spec:
             name: redis-cluster-default
         - name: redis-tmp-conf
           emptyDir: {}`
+)
+
+func InstallRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+	CreateNamespace(t, kc, namespace)
+	var data = templateData{
+		Namespace:     namespace,
+		RedisName:     name,
+		RedisPassword: password,
+	}
+	KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
+}
+
+func RemoveRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+	var data = templateData{
+		Namespace: namespace,
+		RedisName: name,
+	}
+	KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
+	DeleteNamespace(t, kc, namespace)
+}
+
+func InstallRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+	CreateNamespace(t, kc, namespace)
+	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand("helm repo update")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false --set global.redis.password=%s bitnami/redis`,
+		name,
+		namespace,
+		password))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func RemoveRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
+		name,
+		namespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	DeleteNamespace(t, kc, namespace)
+}
+
+func InstallRedisCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+	CreateNamespace(t, kc, namespace)
+	var data = templateData{
+		Namespace:     namespace,
+		RedisName:     name,
+		RedisPassword: password,
+	}
+	KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 6, 60, 3),
+		"redis-cluster should be up")
+}
+
+func RemoveRedisCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+	var data = templateData{
+		Namespace: namespace,
+		RedisName: name,
+	}
+	KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
+	DeleteNamespace(t, kc, namespace)
+}

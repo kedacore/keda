@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	defaultTargetListLength = 5
-	defaultDBIdx            = 0
-	defaultEnableTLS        = false
+	defaultListLength           = 5
+	defaultActivationListLength = 0
+	defaultDBIdx                = 0
+	defaultEnableTLS            = false
 )
 
 type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
@@ -44,11 +45,12 @@ type redisConnectionInfo struct {
 }
 
 type redisMetadata struct {
-	targetListLength int64
-	listName         string
-	databaseIndex    int
-	connectionInfo   redisConnectionInfo
-	scalerIndex      int
+	listLength           int64
+	activationListLength int64
+	listName             string
+	databaseIndex        int
+	connectionInfo       redisConnectionInfo
+	scalerIndex          int
 }
 
 var redisLog = logf.Log.WithName("redis_scaler")
@@ -178,14 +180,23 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	meta := redisMetadata{
 		connectionInfo: connInfo,
 	}
-	meta.targetListLength = defaultTargetListLength
 
+	meta.listLength = defaultListLength
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
 		listLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("list length parsing error %s", err.Error())
 		}
-		meta.targetListLength = listLength
+		meta.listLength = listLength
+	}
+
+	meta.activationListLength = defaultActivationListLength
+	if val, ok := config.TriggerMetadata["activationListLength"]; ok {
+		activationListLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationListLength parsing error %s", err.Error())
+		}
+		meta.activationListLength = activationListLength
 	}
 
 	if val, ok := config.TriggerMetadata["listName"]; ok {
@@ -215,7 +226,7 @@ func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationListLength, nil
 }
 
 func (s *redisScaler) Close(context.Context) error {
@@ -229,7 +240,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetListLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.listLength),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
