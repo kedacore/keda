@@ -38,6 +38,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.9.1
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.5
+	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/newrelic/newrelic-client-go v0.86.3
@@ -78,6 +79,9 @@ replace (
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
 	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
+
+	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
+	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
 
 	// Needed for CVE-2020-28483 https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	// we need version github.com/gin-gonic/gin >= 1.7.0
@@ -196,7 +200,6 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
-	github.com/microsoft/ApplicationInsights-Go v0.4.4 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
