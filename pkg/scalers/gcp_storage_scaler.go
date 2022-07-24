@@ -34,7 +34,7 @@ type gcsScaler struct {
 type gcsMetadata struct {
 	bucketName                  string
 	gcpAuthorization            *gcpAuthorizationMetadata
-	maxBucketItemsToScan        int
+	maxBucketItemsToScan        int64
 	metricName                  string
 	targetObjectCount           int64
 	activationTargetObjectCount int64
@@ -125,7 +125,7 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["maxBucketItemsToScan"]; ok {
-		maxBucketItemsToScan, err := strconv.Atoi(val)
+		maxBucketItemsToScan, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			gcsLog.Error(err, "Error parsing maxBucketItemsToScan")
 			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %s", err.Error())
@@ -148,7 +148,7 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 
 // IsActive checks if there are any messages in the subscription
 func (s *gcsScaler) IsActive(ctx context.Context) (bool, error) {
-	items, err := s.getItemCount(ctx, 1)
+	items, err := s.getItemCount(ctx, s.metadata.activationTargetObjectCount+1)
 	if err != nil {
 		return false, err
 	}
@@ -188,7 +188,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 }
 
 // getItemCount gets the number of items in the bucket, up to maxCount
-func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int64, error) {
+func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, error) {
 	query := &storage.Query{Prefix: ""}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
@@ -199,7 +199,7 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int) (int64, erro
 	it := s.bucket.Objects(ctx, query)
 	var count int64
 
-	for count < int64(maxCount) {
+	for count < maxCount {
 		_, err := it.Next()
 		if err == iterator.Done {
 			break
