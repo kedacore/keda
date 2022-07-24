@@ -36,9 +36,9 @@ type pubsubScaler struct {
 }
 
 type pubsubMetadata struct {
-	mode                  string
-	value                 int64
-	activationValue       int64
+	mode            string
+	value           int64
+	activationValue int64
 
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
