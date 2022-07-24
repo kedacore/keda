@@ -26,24 +26,26 @@ const (
 )
 
 var (
-	gcpKey           = os.Getenv("GCP_SP_KEY")
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	secretName       = fmt.Sprintf("%s-secret", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	bucketName       = fmt.Sprintf("%s-bucket", testName)
-	maxReplicaCount  = 3
-	gsPrefix         = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
+	gcpKey              = os.Getenv("GCP_SP_KEY")
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	secretName          = fmt.Sprintf("%s-secret", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	bucketName          = fmt.Sprintf("%s-bucket", testName)
+	maxReplicaCount     = 3
+	activationThreshold = 5
+	gsPrefix            = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
 
 type templateData struct {
-	TestNamespace    string
-	SecretName       string
-	GcpCreds         string
-	DeploymentName   string
-	ScaledObjectName string
-	BucketName       string
-	MaxReplicaCount  int
+	TestNamespace       string
+	SecretName          string
+	GcpCreds            string
+	DeploymentName      string
+	ScaledObjectName    string
+	BucketName          string
+	MaxReplicaCount     int
+	ActivationThreshold int
 }
 
 type templateValues map[string]string
@@ -108,6 +110,7 @@ spec:
       metadata:
         bucketName: {{.BucketName}}
         targetObjectCount: '5'
+        activationTargetObjectCount: '{{.ActivationThreshold}}'
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
@@ -164,6 +167,7 @@ func TestScaler(t *testing.T) {
 
 	if createBucket(t) == nil {
 		// test scaling
+		testActivation(t, kc)
 		testScaleUp(t, kc)
 		testScaleDown(t, kc)
 	}
@@ -203,13 +207,14 @@ func getTemplateData() (templateData, templateValues) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			GcpCreds:         base64GcpCreds,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			BucketName:       bucketName,
-			MaxReplicaCount:  maxReplicaCount,
+			TestNamespace:       testNamespace,
+			SecretName:          secretName,
+			GcpCreds:            base64GcpCreds,
+			DeploymentName:      deploymentName,
+			ScaledObjectName:    scaledObjectName,
+			BucketName:          bucketName,
+			MaxReplicaCount:     maxReplicaCount,
+			ActivationThreshold: activationThreshold,
 		}, templateValues{
 			"secretTemplate":       secretTemplate,
 			"deploymentTemplate":   deploymentTemplate,
@@ -217,15 +222,29 @@ func getTemplateData() (templateData, templateValues) {
 			"gcpSdkTemplate":       gcpSdkTemplate}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func uploadFiles(t *testing.T, prefix string, count int) {
+	t.Logf("--- uploading %d files ---", count)
 
-	t.Log("--- uploading files ---")
-	for i := 0; i < 30; i++ {
-		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil%d", gsPrefix, bucketName, i)
+	for i := 0; i < count; i++ {
+		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil-%s%d", gsPrefix, bucketName, prefix, i)
 		_, err := ExecuteCommand(cmd)
 		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
 	}
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing not scaling if below threshold ---")
+
+	uploadFiles(t, "active", activationThreshold)
+
+	t.Log("--- waiting to see replicas are not scaled up ---")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
+}
+
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale up ---")
+
+	uploadFiles(t, "scaling", 30-activationThreshold)
 
 	t.Log("--- waiting for replicas to scale up ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
@@ -234,11 +253,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
-	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/**", gsPrefix, bucketName)
+
+	// Delete files so we are still left with activationThreshold number of files which should be enough
+	// to scale down to 0.
+	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
-	t.Log("--- waiting for replicas to scale down to zero ---")
+	t.Log("--- waiting for replicas to scale down to zero")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after 5 minutes")
 }
