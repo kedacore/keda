@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -30,8 +29,7 @@ const (
 )
 
 var (
-	gcpKey2             = os.Getenv("GCP_SP_KEY")
-	gcpKey, _           = ioutil.ReadFile("/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json")
+	gcpKey              = os.Getenv("GCP_SP_KEY")
 	creds               = make(map[string]interface{})
 	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
@@ -196,7 +194,7 @@ func TestScaler(t *testing.T) {
 	if sdkReady {
 		if createPubsub(t) == nil {
 			// test scaling
-			testDontScaleUpIfBelowThreshold(t, kc)
+			testActivation(t, kc)
 			testScaleUp(t, kc)
 			testScaleDown(t, kc)
 
@@ -267,7 +265,7 @@ func getTemplateData() (templateData, templateValues) {
 }
 
 func publishMessages(t *testing.T, count int) {
-	t.Log(fmt.Sprintf("--- publishing %d messages ---", count))
+	t.Logf("--- publishing %d messages ---", count)
 	publish := fmt.Sprintf(
 		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud pubsub topics publish %s --message=AAAAAAAAAA;done'",
 		gsPrefix,
@@ -277,22 +275,13 @@ func publishMessages(t *testing.T, count int) {
 	assert.NoErrorf(t, err, "cannot publish messages to pubsub topic - %s", err)
 }
 
-func testDontScaleUpIfBelowThreshold(t *testing.T, kc *kubernetes.Clientset) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing not scaling if below threshold ---")
 
 	publishMessages(t, activationThreshold)
 
 	t.Log("--- waiting to see replicas are not scaled up ---")
-
-	for i := 0; i < 24; i++ {
-		ok := WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 1, 1)
-		assert.True(t, ok, "replica count should be 0 if below activation threshold")
-		if !ok {
-			return
-		}
-
-		time.Sleep(time.Duration(10) * time.Second)
-	}
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {

@@ -7,9 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -28,8 +26,7 @@ const (
 )
 
 var (
-	gcpKey2             = os.Getenv("GCP_SP_KEY")
-	gcpKey, _           = ioutil.ReadFile("/mnt/c/Users/ramcohen/Downloads/nth-hybrid-341214-e17dce826df7.json")
+	gcpKey              = os.Getenv("GCP_SP_KEY")
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
 	secretName          = fmt.Sprintf("%s-secret", testName)
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
@@ -170,6 +167,7 @@ func TestScaler(t *testing.T) {
 
 	if createBucket(t) == nil {
 		// test scaling
+		testActivation(t, kc)
 		testScaleUp(t, kc)
 		testScaleDown(t, kc)
 	}
@@ -224,22 +222,29 @@ func getTemplateData() (templateData, templateValues) {
 			"gcpSdkTemplate":       gcpSdkTemplate}
 }
 
+func uploadFiles(t *testing.T, prefix string, count int) {
+	t.Logf("--- uploading %d files ---", count)
+
+	for i := 0; i < count; i++ {
+		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil-%s%d", gsPrefix, bucketName, prefix, i)
+		_, err := ExecuteCommand(cmd)
+		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
+	}
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing not scaling if below threshold ---")
+
+	uploadFiles(t, "active", activationThreshold)
+
+	t.Log("--- waiting to see replicas are not scaled up ---")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 
-	t.Log("--- uploading files ---")
-
-	for i := 0; i < activationThreshold; i++ {
-		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/threshold%d", gsPrefix, bucketName, i)
-		_, err := ExecuteCommand(cmd)
-		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
-	}
-
-	for i := 0; i < 30-activationThreshold; i++ {
-		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil%d", gsPrefix, bucketName, i)
-		_, err := ExecuteCommand(cmd)
-		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
-	}
+	uploadFiles(t, "scaling", 30-activationThreshold)
 
 	t.Log("--- waiting for replicas to scale up ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
@@ -255,14 +260,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
-	// count to see we are left with activationThreshold number of files
-	cmd = fmt.Sprintf("%sgsutil du gs://%s", gsPrefix, bucketName)
-	result, err := ExecuteCommand(cmd)
-	count := strings.Count(string(result), "\n")
-	assert.NoErrorf(t, err, "cannot count number of files in bucket - %s", err)
-	assert.Equal(t, activationThreshold, count, "The number of files in the bucket is %d and not %d", count, activationThreshold)
-
-	t.Log(fmt.Sprintf("--- waiting for replicas to scale down to zero while there are still %d files in the bucket ---", count))
+	t.Log("--- waiting for replicas to scale down to zero")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after 5 minutes")
 }
