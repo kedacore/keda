@@ -207,7 +207,7 @@ func publishMessages(t *testing.T, kc *kubernetes.Clientset, messageRate, messag
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+	t.Log("--- testing activation ---")
 	publishMessages(t, kc, 50, 10, 1)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
