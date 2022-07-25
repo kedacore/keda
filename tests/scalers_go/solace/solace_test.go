@@ -155,7 +155,7 @@ spec:
       messageCountTarget: '20'
       messageSpoolUsageTarget: '1'
       activationMessageCountTarget: '20'
-      activationMessageSpoolUsageTarget: '10'
+      activationMessageSpoolUsageTarget: '20'
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -208,13 +208,13 @@ func publishMessages(t *testing.T, kc *kubernetes.Clientset, messageRate, messag
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	publishMessages(t, kc, 50, 20, 256)
+	publishMessages(t, kc, 50, 10, 1)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	publishMessages(t, kc, 50, 30, 256)
+	publishMessages(t, kc, 50, 40, 256)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
