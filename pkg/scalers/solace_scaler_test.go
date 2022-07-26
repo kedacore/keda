@@ -162,6 +162,40 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 		1,
 		true,
 	},
+	// -Case - activationMsgSpoolUsageTarget non-numeric
+	{
+		"#011 - msgSpoolUsageTarget non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:              soltestValidBaseURL,
+			solaceMetaMsgVpn:                   soltestValidVpn,
+			solaceMetaUsernameFromEnv:          "",
+			solaceMetaPasswordFromEnv:          "",
+			solaceMetaUsername:                 soltestValidUsername,
+			solaceMetaPassword:                 soltestValidPassword,
+			solaceMetaQueueName:                soltestValidQueueName,
+			solaceMetaMsgCountTarget:           "1",
+			solaceMetaActivationMsgCountTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
+	},
+	// -Case - activationMsgSpoolUsage non-numeric
+	{
+		"#012 - msgSpoolUsage non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:                   soltestValidBaseURL,
+			solaceMetaMsgVpn:                        soltestValidVpn,
+			solaceMetaUsernameFromEnv:               "",
+			solaceMetaPasswordFromEnv:               "",
+			solaceMetaUsername:                      soltestValidUsername,
+			solaceMetaPassword:                      soltestValidPassword,
+			solaceMetaQueueName:                     soltestValidQueueName,
+			solaceMetaMsgSpoolUsageTarget:           "1",
+			solaceMetaActivationMsgSpoolUsageTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
+	},
 	// +Case - Pass with msgSpoolUsageTarget and not msgCountTarget
 	{
 		"#013 - brokerBaseUrl",
