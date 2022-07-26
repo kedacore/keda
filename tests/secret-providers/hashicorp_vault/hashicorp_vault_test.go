@@ -60,7 +60,8 @@ type templateData struct {
 type templateValues map[string]string
 
 const (
-	deploymentTemplate = `apiVersion: apps/v1
+	deploymentTemplate = `
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -94,7 +95,8 @@ spec:
                 key: postgresql_conn_str
 `
 
-	secretTemplate = `apiVersion: v1
+	secretTemplate = `
+apiVersion: v1
 kind: Secret
 metadata:
   name: {{.SecretName}}
@@ -104,7 +106,8 @@ data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
 
-	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+	triggerAuthenticationTemplate = `
+apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: {{.TriggerAuthenticationName}}
@@ -121,7 +124,8 @@ spec:
       path: secret/data/keda
 `
 
-	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+	scaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
@@ -143,7 +147,8 @@ spec:
       name: {{.TriggerAuthenticationName}}
 `
 
-	postgreSQLStatefulSetTemplate = `apiVersion: apps/v1
+	postgreSQLStatefulSetTemplate = `
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
@@ -177,7 +182,8 @@ spec:
             containerPort: 5432
 `
 
-	postgreSQLServiceTemplate = `apiVersion: v1
+	postgreSQLServiceTemplate = `
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -194,7 +200,8 @@ spec:
   type: ClusterIP
 `
 
-	lowLevelRecordsJobTemplate = `apiVersion: batch/v1
+	lowLevelRecordsJobTemplate = `
+apiVersion: batch/v1
 kind: Job
 metadata:
   labels:
@@ -226,7 +233,8 @@ spec:
   backoffLimit: 4
 `
 
-	insertRecordsJobTemplate = `apiVersion: batch/v1
+	insertRecordsJobTemplate = `
+apiVersion: batch/v1
 kind: Job
 metadata:
   labels:
@@ -277,7 +285,7 @@ func TestPostreSQLScaler(t *testing.T) {
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
-	data.HashiCorpToken = hashiCorpToken
+	data.HashiCorpToken = RemoveANSI(hashiCorpToken)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -301,7 +309,7 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset) string {
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot update repos - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set "server.dev.enabled=true" --namespace %s --wait vault hashicorp/vault`, vaultNamespace))
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set server.dev.enabled=true --namespace %s --wait vault hashicorp/vault`, vaultNamespace))
 	assert.NoErrorf(t, err, "cannot install hashicorp vault - %s", err)
 
 	podName := "vault-0"

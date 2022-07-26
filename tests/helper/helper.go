@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"text/template"
@@ -425,4 +426,9 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 
 func GetRandomNumber() int {
 	return random.Intn(10000)
+}
+
+func RemoveANSI(input string) string {
+	reg := regexp.MustCompile(`(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]`)
+	return reg.ReplaceAllString(input, "")
 }
