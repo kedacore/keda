@@ -166,22 +166,22 @@ func TestStanScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	installSolace(t, kc)
+	installSolace(t)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
 
-	testActivation(t, kc, data)
-	testScaleUp(t, kc, data)
+	testActivation(t, kc)
+	testScaleUp(t, kc)
 	testScaleDown(t, kc)
 
 	// cleanup
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	uninstallSolace(t, kc)
+	uninstallSolace(t)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func installSolace(t *testing.T, kc *kubernetes.Clientset) {
+func installSolace(t *testing.T) {
 	_, err := ExecuteCommand("helm repo add solacecharts https://solaceproducts.github.io/pubsubplus-kubernetes-quickstart/helm-charts")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
@@ -192,29 +192,28 @@ func installSolace(t *testing.T, kc *kubernetes.Clientset) {
 	// Create the pubsub broker
 	_, _, err = ExecCommandOnSpecificPod(t, helperName, testNamespace, "./config/config_solace.sh")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-
 }
 
-func uninstallSolace(t *testing.T, kc *kubernetes.Clientset) {
+func uninstallSolace(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s --wait kedalab`,
 		testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func publishMessages(t *testing.T, kc *kubernetes.Clientset, messageRate, messageNumber, messageSize int) {
+func publishMessages(t *testing.T, messageRate, messageNumber, messageSize int) {
 	_, _, err := ExecCommandOnSpecificPod(t, helperName, testNamespace, fmt.Sprintf("./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu consumer_user@keda_vpn -cp=consumer_pwd -mr %d -mn %d -msx %d -mt=persistent -pql=SCALED_CONSUMER_QUEUE1", messageRate, messageNumber, messageSize))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
-	publishMessages(t, kc, 50, 10, 1)
+	publishMessages(t, 50, 10, 1)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
-	publishMessages(t, kc, 50, 40, 256)
+	publishMessages(t, 50, 40, 256)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
