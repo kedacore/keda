@@ -23,15 +23,16 @@ type mySQLScaler struct {
 }
 
 type mySQLMetadata struct {
-	connectionString string // Database connection string
-	username         string
-	password         string
-	host             string
-	port             string
-	dbName           string
-	query            string
-	queryValue       float64
-	metricName       string
+	connectionString     string // Database connection string
+	username             string
+	password             string
+	host                 string
+	port                 string
+	dbName               string
+	query                string
+	queryValue           float64
+	activationQueryValue float64
+	metricName           string
 }
 
 var mySQLLog = logf.Log.WithName("mysql_scaler")
@@ -76,6 +77,15 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		meta.queryValue = queryValue
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
+	}
+
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationQueryValue parsing error %s", err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
 	}
 
 	switch {
@@ -188,7 +198,7 @@ func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
 		mySQLLog.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
 		return false, err
 	}
-	return messages > 0, nil
+	return messages > s.metadata.activationQueryValue, nil
 }
 
 // getQueryResult returns result of the scaler query

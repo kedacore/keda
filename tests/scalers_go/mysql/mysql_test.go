@@ -45,6 +45,7 @@ type templateData struct {
 	MySQLDatabase         string
 	MySQLRootPassword     string
 	MySQLConnectionString string
+	ItemsToWrite          int
 }
 
 type templateValues map[string]string
@@ -126,6 +127,7 @@ spec:
   - type: mysql
     metadata:
       queryValue: "4"
+      activationQueryValue: "100"
       query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
     authenticationRef:
       name: keda-trigger-auth-mysql-secret
@@ -140,6 +142,7 @@ metadata:
   name: mysql-insert-job
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     metadata:
       labels:
@@ -154,7 +157,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "4000"
+            value: "{{.ItemsToWrite}}"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -235,6 +238,7 @@ func TestMySQLScaler(t *testing.T) {
 	setupMySQL(t, kc, data, templates)
 
 	// test scaling
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
@@ -266,9 +270,19 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 		"replica count should start out as 0")
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	t.Log("--- applying job ---")
+	data.ItemsToWrite = 50
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying job ---")
+	data.ItemsToWrite = 4000
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 	// Check if deployment scale to 2 (the max)
 	maxReplicaCount := 2
@@ -295,6 +309,7 @@ func getTemplateData() (templateData, templateValues) {
 			MySQLDatabase:         mySQLDatabase,
 			MySQLRootPassword:     mySQLRootPassword,
 			MySQLConnectionString: base64MySQLConnectionString,
+			ItemsToWrite:          0,
 		}, templateValues{
 			"deploymentTemplate":   deploymentTemplate,
 			"secretTemplate":       secretTemplate,
