@@ -46,7 +46,15 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
-	effectiveMaxScale := NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, scaledJob.MaxReplicaCount())
+	var effectiveMaxScale int64
+	minScale := scaledJob.MinReplicaCount()
+
+	if runningJobCount < minScale {
+		scaleTo = minScale
+		effectiveMaxScale = minScale
+	} else {
+		effectiveMaxScale = NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount-minScale, pendingJobCount, scaledJob.MaxReplicaCount())
+	}
 
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
