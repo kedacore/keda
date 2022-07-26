@@ -1,14 +1,17 @@
 //go:build e2e
 // +build e2e
 
-package prometheus_test
+package predictkube_test
 
 import (
+	"encoding/base64"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -19,29 +22,33 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "prometheus-test"
+	testName = "predictkube-test"
 )
 
 var (
-	testNamespace         = fmt.Sprintf("%s-ns", testName)
-	deploymentName        = fmt.Sprintf("%s-deployment", testName)
-	monitoredAppName      = fmt.Sprintf("%s-monitored-app", testName)
-	publishDeploymentName = fmt.Sprintf("%s-publish", testName)
-	scaledObjectName      = fmt.Sprintf("%s-so", testName)
-	prometheusServerName  = fmt.Sprintf("%s-server", testName)
-	minReplicaCount       = 0
-	maxReplicaCount       = 2
+	testNamespace        = fmt.Sprintf("%s-ns", testName)
+	deploymentName       = fmt.Sprintf("%s-deployment", testName)
+	monitoredAppName     = fmt.Sprintf("%s-monitored-app", testName)
+	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName     = fmt.Sprintf("%s-so", testName)
+	secretName           = fmt.Sprintf("%s-secret", testName)
+	prometheusServerName = fmt.Sprintf("%s-server", testName)
+	predictkubeApiKey    = os.Getenv("PREDICTKUBE_API_KEY")
+	minReplicaCount      = 0
+	maxReplicaCount      = 2
 )
 
 type templateData struct {
-	TestNamespace         string
-	DeploymentName        string
-	MonitoredAppName      string
-	PublishDeploymentName string
-	ScaledObjectName      string
-	PrometheusServerName  string
-	MinReplicaCount       int
-	MaxReplicaCount       int
+	TestNamespace        string
+	DeploymentName       string
+	MonitoredAppName     string
+	ScaledObjectName     string
+	TriggerAuthName      string
+	SecretName           string
+	PrometheusServerName string
+	PredictkubeApiKey    string
+	MinReplicaCount      int
+	MaxReplicaCount      int
 }
 
 type templateValues map[string]string
@@ -58,25 +65,17 @@ spec:
   replicas: 0
   selector:
     matchLabels:
-      app: test-app
+      app: {{.DeploymentName}}
   template:
     metadata:
       labels:
-        app: test-app
+        app: {{.DeploymentName}}
         type: keda-testing
     spec:
       containers:
       - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
+        image: tbickford/simple-web-app-prometheus:a13ade9
         imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
 ---
 `
 
@@ -96,20 +95,12 @@ spec:
     metadata:
       labels:
         app: {{.MonitoredAppName}}
-        type: {{.MonitoredAppName}}
+        type: keda-testing
     spec:
       containers:
       - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
+        image: tbickford/simple-web-app-prometheus:a13ade9
         imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
 ---
 `
 
@@ -129,7 +120,28 @@ spec:
     protocol: TCP
     targetPort: 8080
   selector:
-    type: {{.MonitoredAppName}}
+    app: {{.MonitoredAppName}}
+`
+
+	secretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  apiKey: {{.PredictkubeApiKey}}
+`
+
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: apiKey
+    name: {{.SecretName}}
+    key: apiKey
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -145,72 +157,62 @@ spec:
   pollingInterval: 3
   cooldownPeriod:  1
   triggers:
-  - type: prometheus
+  - type: predictkube
     metadata:
-      serverAddress: http://{{.PrometheusServerName}}.{{.TestNamespace}}.svc
-      metricName: http_requests_total
-      threshold: '20'
-      activationThreshold: '20'
+      predictHorizon: "2h"
+      historyTimeWindow: "7d"
+      prometheusAddress: http://{{.PrometheusServerName}}.{{.TestNamespace}}.svc
+      threshold: '100'
+      activationThreshold: '50'
       query: sum(rate(http_requests_total{app="{{.MonitoredAppName}}"}[2m]))
+      queryStep: "2m"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
 `
 
-	generateLowLevelLoadJobTemplate = `apiVersion: batch/v1
+	generateHeavyLoadJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-low-level-requests-job
+  name: generate-requests
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: jordi/ab
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 5 -n 30 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
+        args: ["-c", "for i in $(seq 1 45);do echo $i;ab -c 5 -n 1000 -v 2 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc/;sleep 1;done"]
       restartPolicy: Never
-  activeDeadlineSeconds: 100
+  activeDeadlineSeconds: 120
   backoffLimit: 2
   `
 
-	generateLoadJobTemplate = `apiVersion: batch/v1
+	generateLightLoadJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-requests-job
+  name: generate-requests
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: jordi/ab
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 5 -n 80 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
+        args: ["-c", "for i in $(seq 1 45);do echo $i;ab -c 1 -n 10 -v 2 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc/;sleep 1;done"]
       restartPolicy: Never
-  activeDeadlineSeconds: 100
+  activeDeadlineSeconds: 120
   backoffLimit: 2
-`
+    `
 )
 
-// TestPrometheusScaler creates deployments - there are two deployments - both using the same image but one deployment
-// is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
-// even when the KEDA deployment is at zero - the service points to both deployments
-func TestPrometheusScaler(t *testing.T) {
+func TestScaler(t *testing.T) {
+
+	require.NotEmpty(t, predictkubeApiKey, "PREDICTKUBE_API_KEY env variable is required for predictkube test")
+
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	prometheus.Install(t, kc, prometheusServerName, testNamespace)
@@ -234,7 +236,7 @@ func TestPrometheusScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"generateLowLevelLoadJobTemplate": generateLowLevelLoadJobTemplate}
+	templateTriggerJob := templateValues{"generateLoadJobTemplate": generateLightLoadJobTemplate}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
@@ -242,7 +244,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerDeployment := templateValues{"generateLoadJobTemplate": generateLoadJobTemplate}
+	templateTriggerDeployment := templateValues{"generateLoadJobTemplate": generateHeavyLoadJobTemplate}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerDeployment)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -257,18 +259,22 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, map[string]string) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			PublishDeploymentName: publishDeploymentName,
-			ScaledObjectName:      scaledObjectName,
-			MonitoredAppName:      monitoredAppName,
-			PrometheusServerName:  prometheusServerName,
-			MinReplicaCount:       minReplicaCount,
-			MaxReplicaCount:       maxReplicaCount,
+			TestNamespace:        testNamespace,
+			DeploymentName:       deploymentName,
+			PredictkubeApiKey:    base64.StdEncoding.EncodeToString([]byte(predictkubeApiKey)),
+			SecretName:           secretName,
+			TriggerAuthName:      triggerAuthName,
+			ScaledObjectName:     scaledObjectName,
+			MonitoredAppName:     monitoredAppName,
+			PrometheusServerName: prometheusServerName,
+			MinReplicaCount:      minReplicaCount,
+			MaxReplicaCount:      maxReplicaCount,
 		}, templateValues{
 			"deploymentTemplate":             deploymentTemplate,
 			"monitoredAppDeploymentTemplate": monitoredAppDeploymentTemplate,
 			"monitoredAppServiceTemplate":    monitoredAppServiceTemplate,
+			"secretTemplate":                 secretTemplate,
+			"triggerAuthenticationTemplate":  triggerAuthenticationTemplate,
 			"scaledObjectTemplate":           scaledObjectTemplate,
 		}
 }
