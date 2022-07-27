@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/helper"
 )
 
 type templateValues map[string]string
@@ -417,13 +417,13 @@ spec:
 )
 
 func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
-	CreateNamespace(t, kc, namespace)
+	helper.CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:     namespace,
 		RedisName:     name,
 		RedisPassword: password,
 	}
-	KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
+	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
 }
 
 func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
@@ -431,17 +431,17 @@ func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace st
 		Namespace: namespace,
 		RedisName: name,
 	}
-	KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
-	DeleteNamespace(t, kc, namespace)
+	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
+	helper.DeleteNamespace(t, kc, namespace)
 }
 
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
-	CreateNamespace(t, kc, namespace)
-	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
+	helper.CreateNamespace(t, kc, namespace)
+	_, err := helper.ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand("helm repo update")
+	_, err = helper.ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false --set global.redis.password=%s bitnami/redis`,
+	_, err = helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false --set global.redis.password=%s bitnami/redis`,
 		name,
 		namespace,
 		password))
@@ -449,22 +449,22 @@ func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, pa
 }
 
 func RemoveSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
-	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
+	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, kc, namespace)
 }
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
-	CreateNamespace(t, kc, namespace)
+	helper.CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:     namespace,
 		RedisName:     name,
 		RedisPassword: password,
 	}
-	KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 6, 60, 3),
+	helper.KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
+	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 6, 60, 3),
 		"redis-cluster should be up")
 }
 
@@ -473,6 +473,6 @@ func RemoveCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace strin
 		Namespace: namespace,
 		RedisName: name,
 	}
-	KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
-	DeleteNamespace(t, kc, namespace)
+	helper.KubectlApplyMultipleWithTemplate(t, data, redisClusterTemplates)
+	helper.DeleteNamespace(t, kc, namespace)
 }
