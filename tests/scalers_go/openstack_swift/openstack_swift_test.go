@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package openstack_swift_test
+package openstack_test
 
 import (
 	"encoding/base64"
@@ -32,12 +32,10 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	swiftURL                  = os.Getenv("OPENSTACK_SWIFT_URL")
 	userID                    = os.Getenv("OPENSTACK_USER_ID")
 	password                  = os.Getenv("OPENSTACK_PASSWORD")
 	projectID                 = os.Getenv("OPENSTACK_PROJECT_ID")
 	authURL                   = os.Getenv("OPENSTACK_AUTH_URL")
-	regionName                = os.Getenv("OPENSTACK_REGION_NAME")
 	containerName             = "my-container-password-test"
 	containerObjects          = []string{
 		"1/",

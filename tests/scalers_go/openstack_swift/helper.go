@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package openstack_swift
+package openstack
 
 import (
 	"strings"
