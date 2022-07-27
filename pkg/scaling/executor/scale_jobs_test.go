@@ -175,10 +175,10 @@ func TestRunningJobCountSmallerMinReplicaCount(t *testing.T) {
 	scaleExecutor := getMockScaleExecutor(nil)
 	scaledJob := getMockScaledJobWithMinReplicaCountAndDefaultStrategy(2)
 
-	var runningJobCount int64 = 0
-	var scaleTo int64 = 0
-	var maxScale int64 = 0
-	var pendingJobCount int64 = 0
+	var runningJobCount int64
+	var scaleTo int64
+	var maxScale int64
+	var pendingJobCount int64
 
 	effectiveMaxScale, scaleTo := scaleExecutor.takeScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(2), effectiveMaxScale)
@@ -190,9 +190,9 @@ func TestRunningJobCountIsDeductedFromMinReplicaCount(t *testing.T) {
 	scaledJob := getMockScaledJobWithMinReplicaCountAndDefaultStrategy(2)
 
 	var runningJobCount int64 = 1
-	var scaleTo int64 = 0
-	var maxScale int64 = 0
-	var pendingJobCount int64 = 0
+	var scaleTo int64
+	var maxScale int64
+	var pendingJobCount int64
 
 	effectiveMaxScale, scaleTo := scaleExecutor.takeScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(1), effectiveMaxScale)
@@ -206,7 +206,7 @@ func TestRunningJobCountGreaterOrEqualMinReplicaCountExecutesScalingStrategy(t *
 	var runningJobCount int64 = 1
 	var scaleTo int64 = 2
 	var maxScale int64 = 2
-	var pendingJobCount int64 = 0
+	var pendingJobCount int64
 
 	effectiveMaxScale, scaleTo := scaleExecutor.takeScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(2), effectiveMaxScale)
