@@ -16,12 +16,13 @@ func ResolveOsEnvInt(envName string, defaultValue int) (int, error) {
 	return defaultValue, nil
 }
 
-func ResolveOsEnvDuration(envName string, defaultValue time.Duration) (time.Duration, error) {
+func ResolveOsEnvDuration(envName string) (*time.Duration, error) {
 	valueStr, found := os.LookupEnv(envName)
 
 	if found && valueStr != "" {
-		return time.ParseDuration(valueStr)
+		value, err := time.ParseDuration(valueStr)
+		return &value, err
 	}
 
-	return defaultValue, nil
+	return nil, nil
 }
