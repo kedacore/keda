@@ -1,12 +1,14 @@
 //go:build e2e
 // +build e2e
 
-package helper
+package rabbitmq
 
 import (
 	"testing"
 
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -165,7 +167,7 @@ type templateData struct {
 }
 
 func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string) {
-	CreateNamespace(t, kc, namespace)
+	helper.CreateNamespace(t, kc, namespace)
 	data := templateData{
 		Namespace: namespace,
 		VHostName: vhost,
@@ -173,7 +175,7 @@ func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passwor
 		Password:  password,
 	}
 
-	KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
+	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
 }
 
 func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string) {
@@ -184,8 +186,8 @@ func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passw
 		Password:  password,
 	}
 
-	KubectlDeleteWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
-	DeleteNamespace(t, kc, namespace)
+	helper.KubectlDeleteWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
+	helper.DeleteNamespace(t, kc, namespace)
 }
 
 func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName string, messageCount int) {
@@ -196,7 +198,7 @@ func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName str
 		MessageCount: messageCount,
 	}
 
-	KubectlApplyWithTemplate(t, data, "rmqPublishTemplate", publishTemplate)
+	helper.KubectlApplyWithTemplate(t, data, "rmqPublishTemplate", publishTemplate)
 }
 
 func RMQCreateVHost(t *testing.T, namespace, host, user, password, vhost string) {
@@ -208,5 +210,5 @@ func RMQCreateVHost(t *testing.T, namespace, host, user, password, vhost string)
 		Password:  password,
 	}
 
-	KubectlApplyWithTemplate(t, data, "rmqVHostTemplate", vHostTemplate)
+	helper.KubectlApplyWithTemplate(t, data, "rmqVHostTemplate", vHostTemplate)
 }

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package rabbitmq_queue_http_regex_vhost_test
+package rabbitmq_queue_amqp_test
 
 import (
 	"encoding/base64"
@@ -13,34 +13,28 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	. "github.com/kedacore/keda/v2/tests/scalers_go/rabbitmq"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "rmq-queue-http-regex-vhost-test"
+	testName = "rmq-queue-amqp-test"
 )
 
 var (
-	testNamespace          = fmt.Sprintf("%s-ns", testName)
-	rmqNamespace           = fmt.Sprintf("%s-rmq", testName)
-	deploymentName         = fmt.Sprintf("%s-deployment", testName)
-	secretName             = fmt.Sprintf("%s-secret", testName)
-	scaledObjectName       = fmt.Sprintf("%s-so", testName)
-	queueName              = "hello"
-	queueRegex             = "^hell.{1}$"
-	user                   = fmt.Sprintf("%s-user", testName)
-	password               = fmt.Sprintf("%s-password", testName)
-	vhost                  = fmt.Sprintf("%s-vhost", testName)
-	dummyVhost1            = fmt.Sprintf("%s-1", vhost)
-	dummyVhost2            = fmt.Sprintf("%s-2", vhost)
-	connectionHost         = fmt.Sprintf("rabbitmq.%s.svc.cluster.local", rmqNamespace)
-	connectionString       = fmt.Sprintf("amqp://%s:%s@%s/%s", user, password, connectionHost, vhost)
-	dummyConnectionString1 = fmt.Sprintf("http://%s:%s@%s/%s", user, password, connectionHost, dummyVhost1)
-	dummyConnectionString2 = fmt.Sprintf("http://%s:%s@%s/%s", user, password, connectionHost, dummyVhost2)
-	httpConnectionString   = fmt.Sprintf("http://%s:%s@%s/%s", user, password, connectionHost, vhost)
-	messageCount           = 100
+	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	rmqNamespace     = fmt.Sprintf("%s-rmq", testName)
+	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	secretName       = fmt.Sprintf("%s-secret", testName)
+	scaledObjectName = fmt.Sprintf("%s-so", testName)
+	queueName        = "hello"
+	user             = fmt.Sprintf("%s-user", testName)
+	password         = fmt.Sprintf("%s-password", testName)
+	vhost            = fmt.Sprintf("%s-vhost", testName)
+	connectionString = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/%s", user, password, rmqNamespace, vhost)
+	messageCount     = 100
 )
 
 const (
@@ -62,11 +56,8 @@ spec:
       metadata:
         queueName: {{.QueueName}}
         hostFromEnv: RabbitApiHost
-        protocol: http
         mode: QueueLength
         value: '10'
-        useRegex: 'true'
-        operation: sum
 `
 )
 
@@ -91,9 +82,6 @@ func TestScaler(t *testing.T) {
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	RMQCreateVHost(t, rmqNamespace, connectionHost, user, password, dummyVhost1)
-	RMQCreateVHost(t, rmqNamespace, connectionHost, user, password, dummyVhost2)
-
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 
@@ -111,9 +99,9 @@ func getTemplateData() (templateData, templateValues) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			SecretName:       secretName,
-			QueueName:        queueRegex,
+			QueueName:        queueName,
 			Connection:       connectionString,
-			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+			Base64Connection: base64.StdEncoding.EncodeToString([]byte(connectionString)),
 		}, templateValues{
 			"deploymentTemplate":   RMQTargetDeploymentTemplate,
 			"scaledObjectTemplate": scaledObjectTemplate}
@@ -122,12 +110,8 @@ func getTemplateData() (templateData, templateValues) {
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
-	// dummies
-	RMQPublishMessages(t, rmqNamespace, dummyConnectionString1, fmt.Sprintf("%s-1", queueName), messageCount)
-	RMQPublishMessages(t, rmqNamespace, dummyConnectionString2, fmt.Sprintf("%s-%s", queueName, queueName), messageCount)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 2 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
+		"replica count should be 4 after 1 minute")
 
 	t.Log("--- testing scale down ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
