@@ -121,9 +121,10 @@ func (s ScaledJob) MaxReplicaCount() int64 {
 
 // MinReplicaCount returns MinReplicaCount
 func (s ScaledJob) MinReplicaCount() int64 {
-	if *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
-		return int64(*s.Spec.MaxReplicaCount)
-	} else if s.Spec.MinReplicaCount != nil {
+	if s.Spec.MinReplicaCount != nil {
+		if *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
+			return int64(*s.Spec.MaxReplicaCount)
+		}
 		return int64(*s.Spec.MinReplicaCount)
 	}
 	return 0
