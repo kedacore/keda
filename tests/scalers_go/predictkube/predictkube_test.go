@@ -33,7 +33,7 @@ var (
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
 	secretName           = fmt.Sprintf("%s-secret", testName)
 	prometheusServerName = fmt.Sprintf("%s-server", testName)
-	predictkubeApiKey    = os.Getenv("PREDICTKUBE_API_KEY")
+	predictkubeAPIKey    = os.Getenv("PREDICTKUBE_API_KEY")
 	minReplicaCount      = 0
 	maxReplicaCount      = 2
 )
@@ -46,7 +46,7 @@ type templateData struct {
 	TriggerAuthName      string
 	SecretName           string
 	PrometheusServerName string
-	PredictkubeApiKey    string
+	PredictkubeAPIKey    string
 	MinReplicaCount      int
 	MaxReplicaCount      int
 }
@@ -129,7 +129,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
-  apiKey: {{.PredictkubeApiKey}}
+  apiKey: {{.PredictkubeAPIKey}}
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -210,8 +210,7 @@ spec:
 )
 
 func TestScaler(t *testing.T) {
-
-	require.NotEmpty(t, predictkubeApiKey, "PREDICTKUBE_API_KEY env variable is required for predictkube test")
+	require.NotEmpty(t, predictkubeAPIKey, "PREDICTKUBE_API_KEY env variable is required for predictkube test")
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -261,7 +260,7 @@ func getTemplateData() (templateData, map[string]string) {
 	return templateData{
 			TestNamespace:        testNamespace,
 			DeploymentName:       deploymentName,
-			PredictkubeApiKey:    base64.StdEncoding.EncodeToString([]byte(predictkubeApiKey)),
+			PredictkubeAPIKey:    base64.StdEncoding.EncodeToString([]byte(predictkubeAPIKey)),
 			SecretName:           secretName,
 			TriggerAuthName:      triggerAuthName,
 			ScaledObjectName:     scaledObjectName,
