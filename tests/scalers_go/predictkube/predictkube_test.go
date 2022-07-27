@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
-	prometheus "github.com/kedacore/keda/v2/tests/helper/prometheus"
+	prometheus "github.com/kedacore/keda/v2/tests/scalers_go/prometheus"
 )
 
 // Load environment variables from .env file
@@ -214,7 +214,7 @@ func TestScaler(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	InstallPrometheus(t, kc, prometheusServerName, testNamespace)
+	prometheus.Install(t, kc, prometheusServerName, testNamespace)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
@@ -230,7 +230,7 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	UninstallPrometheus(t, kc, prometheusServerName, testNamespace)
+	prometheus.Uninstall(t, kc, prometheusServerName, testNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

@@ -1,13 +1,15 @@
 //go:build e2e
 // +build e2e
 
-package helper
+package prometheus
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 type templateValues map[string]string
@@ -487,7 +489,7 @@ spec:
 `
 )
 
-func InstallPrometheus(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:            namespace,
@@ -498,7 +500,7 @@ func InstallPrometheus(t *testing.T, kc *kubernetes.Clientset, name, namespace s
 		"replica count should be 1 after 3 minutes")
 }
 
-func UninstallPrometheus(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func Uninstall(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
