@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/helper"
 )
 
 type templateValues map[string]string
@@ -490,13 +490,13 @@ spec:
 )
 
 func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
-	CreateNamespace(t, kc, namespace)
+	helper.CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
 	}
-	KubectlApplyMultipleWithTemplate(t, data, prometheusTemplates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, 1, 60, 3),
+	helper.KubectlApplyMultipleWithTemplate(t, data, prometheusTemplates)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, 1, 60, 3),
 		"replica count should be 1 after 3 minutes")
 }
 
@@ -505,6 +505,6 @@ func Uninstall(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 		Namespace:            namespace,
 		PrometheusServerName: name,
 	}
-	KubectlDeleteMultipleWithTemplate(t, data, prometheusTemplates)
-	DeleteNamespace(t, kc, namespace)
+	helper.KubectlDeleteMultipleWithTemplate(t, data, prometheusTemplates)
+	helper.DeleteNamespace(t, kc, namespace)
 }
