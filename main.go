@@ -84,21 +84,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_ELECTION_LEASE_DURATION")
+	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
-		setupLog.Error(err, "Invalid KEDA_LEADER_ELECTION_LEASE_DURATION")
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 		os.Exit(1)
 	}
 
-	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_ELECTION_RENEW_DEADLINE")
+	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
 	if err != nil {
-		setupLog.Error(err, "Invalid KEDA_LEADER_ELECTION_RENEW_DEADLINE")
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
 		os.Exit(1)
 	}
 
-	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_ELECTION_RETRY_PERIOD")
+	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
 	if err != nil {
-		setupLog.Error(err, "Invalid KEDA_LEADER_ELECTION_RETRY_PERIOD")
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
 		os.Exit(1)
 	}
 

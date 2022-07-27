@@ -34,8 +34,6 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Unreleased
 
-- **General:** Add settings for configuring leader election ([#2836]https://github.com/kedacore/keda/issues/2836))
-
 ### New
 
 - **General:** Add support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
@@ -47,6 +45,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
+- **General:** Add settings for configuring leader election ([#2836]https://github.com/kedacore/keda/issues/2836))
 - **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
 - **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issue/3135))
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
@@ -55,6 +54,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
+
 ### Fixes
 
 - **General:** Fix CVE-2022-27191([#3378](https://github.com/kedacore/keda/issues/3378))
