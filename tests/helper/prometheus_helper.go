@@ -487,7 +487,7 @@ spec:
 `
 )
 
-func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func InstallPrometheus(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:            namespace,
@@ -498,7 +498,7 @@ func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 		"replica count should be 1 after 3 minutes")
 }
 
-func Uninstall(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func UninstallPrometheus(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
