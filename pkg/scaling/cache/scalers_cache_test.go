@@ -191,17 +191,17 @@ func newScalerTestData(
 	multipleScalersCalculation string,
 	scaler1QueueLength, //nolint:golint,unparam
 	scaler1AverageValue int, //nolint:golint,unparam
-	scaler1IsActive bool,    //nolint:golint,unparam
+	scaler1IsActive bool, //nolint:golint,unparam
 	scaler2QueueLength, //nolint:golint,unparam
 	scaler2AverageValue int, //nolint:golint,unparam
-	scaler2IsActive bool,    //nolint:golint,unparam
+	scaler2IsActive bool, //nolint:golint,unparam
 	scaler3QueueLength, //nolint:golint,unparam
 	scaler3AverageValue int, //nolint:golint,unparam
-	scaler3IsActive bool,    //nolint:golint,unparam
+	scaler3IsActive bool, //nolint:golint,unparam
 	scaler4QueueLength, //nolint:golint,unparam
 	scaler4AverageValue int, //nolint:golint,unparam
-	scaler4IsActive bool,    //nolint:golint,unparam
-	resultIsActive bool,     //nolint:golint,unparam
+	scaler4IsActive bool, //nolint:golint,unparam
+	resultIsActive bool, //nolint:golint,unparam
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
