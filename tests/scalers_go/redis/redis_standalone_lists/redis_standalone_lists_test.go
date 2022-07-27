@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	redis "github.com/kedacore/keda/v2/tests/scalers_go/redis/helper"
 )
 
 // Load environment variables from .env file
@@ -168,7 +169,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 
 	// Create Redis Standalone
-	InstallRedisStandalone(t, kc, testName, redisNamespace, redisPassword)
+	redis.InstallStandalone(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
@@ -179,7 +180,7 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc)
 
 	// cleanup
-	RemoveRedisStandalone(t, kc, testName, redisNamespace)
+	redis.RemoveStandalone(t, kc, testName, redisNamespace)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 

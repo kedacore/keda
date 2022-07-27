@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_sentinel_lists_test
+package redis_cluster_streams_test
 
 import (
 	"encoding/base64"
@@ -13,13 +13,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	redis "github.com/kedacore/keda/v2/tests/scalers_go/redis/helper"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-lists-test"
+	testName = "redis-cluster-streams-test"
 )
 
 var (
@@ -31,10 +32,9 @@ var (
 	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
-	redisList                 = "queue"
 	redisHost                 = fmt.Sprintf("%s-headless", testName)
-	minReplicaCount           = 0
-	maxReplicaCount           = 2
+	minReplicaCount           = 1
+	maxReplicaCount           = 4
 )
 
 type templateData struct {
@@ -49,7 +49,6 @@ type templateData struct {
 	MaxReplicaCount           int
 	RedisPassword             string
 	RedisPasswordBase64       string
-	RedisList                 string
 	RedisHost                 string
 	ItemsToWrite              int
 }
@@ -63,7 +62,7 @@ metadata:
   name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -74,23 +73,21 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-sentinel-lists
+        image: goku321/redis-cluster-streams:v2.5
         imagePullPolicy: IfNotPresent
         command: ["./main"]
-        args: ["read"]
+        args: ["consumer"]
         env:
-        - name: REDIS_ADDRESSES
-          value: {{.RedisHost}}.{{.RedisNamespace}}:26379
-        - name: LIST_NAME
-          value: {{.RedisList}}
+        - name: REDIS_HOSTS
+          value: {{.RedisHost}}.{{.RedisNamespace}}
+        - name: REDIS_PORTS
+          value: "6379"
+        - name: REDIS_STREAM_NAME
+          value: my-stream
+        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
+          value: consumer-group-1
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
-        - name: READ_PROCESS_TIME
-          value: "100"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -113,9 +110,6 @@ spec:
   - parameter: password
     name: {{.SecretName}}
     key: password
-  - parameter: sentinelPassword
-    name: {{.SecretName}}
-    key: password
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -130,14 +124,19 @@ spec:
   cooldownPeriod:  10
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
-  - type: redis-sentinel
+  - type: redis-cluster-streams
     metadata:
-      addressesFromEnv: REDIS_ADDRESSES
-      listName: {{.RedisList}}
-      sentinelMaster: mymaster
-      listLength: "5"
-      activationListLength: "10"
+      hostsFromEnv: REDIS_HOSTS
+      portsFromEnv: REDIS_PORTS
+      stream: my-stream
+      consumerGroup: consumer-group-1
+      pendingEntriesCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -153,22 +152,20 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-sentinel-lists
+        image: goku321/redis-cluster-streams:v2.5
         imagePullPolicy: IfNotPresent
         command: ["./main"]
-        args: ["write"]
+        args: ["producer"]
         env:
-        - name: REDIS_ADDRESSES
-          value: {{.RedisHost}}.{{.RedisNamespace}}:26379
+        - name: REDIS_HOSTS
+          value: {{.RedisHost}}.{{.RedisNamespace}}
+        - name: REDIS_PORTS
+          value: "6379"
+        - name: REDIS_STREAM_NAME
+          value: my-stream
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
-        - name: LIST_NAME
-          value: {{.RedisList}}
-        - name: NO_LIST_ITEMS_TO_WRITE
+        - name: NUM_MESSAGES
           value: "{{.ItemsToWrite}}"
       restartPolicy: Never
   backoffLimit: 4
@@ -179,35 +176,24 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
-	// Create Redis Sentinel
-	InstallRedisSentinel(t, kc, testName, redisNamespace, redisPassword)
+	// Create Redis Cluster
+	redis.InstallCluster(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
 	// cleanup
-	RemoveRedisSentinel(t, kc, testName, redisNamespace)
+	redis.RemoveCluster(t, kc, testName, redisNamespace)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-}
-
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
-	data.ItemsToWrite = 5
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
-	data.ItemsToWrite = 200
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -233,9 +219,8 @@ var data = templateData{
 	JobName:                   jobName,
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
-	RedisList:                 redisList,
 	RedisHost:                 redisHost,
-	ItemsToWrite:              0,
+	ItemsToWrite:              100,
 }
 
 func getTemplateData() (templateData, map[string]string) {

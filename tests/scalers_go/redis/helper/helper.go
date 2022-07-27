@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 type templateValues map[string]string
@@ -414,7 +416,7 @@ spec:
           emptyDir: {}`
 )
 
-func InstallRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:     namespace,
@@ -424,7 +426,7 @@ func InstallRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namesp
 	KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
 }
 
-func RemoveRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	var data = templateData{
 		Namespace: namespace,
 		RedisName: name,
@@ -433,7 +435,7 @@ func RemoveRedisStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespa
 	DeleteNamespace(t, kc, namespace)
 }
 
-func InstallRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	CreateNamespace(t, kc, namespace)
 	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -446,7 +448,7 @@ func InstallRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespac
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func RemoveRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))
@@ -454,7 +456,7 @@ func RemoveRedisSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace
 	DeleteNamespace(t, kc, namespace)
 }
 
-func InstallRedisCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
+func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:     namespace,
@@ -466,7 +468,7 @@ func InstallRedisCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace
 		"redis-cluster should be up")
 }
 
-func RemoveRedisCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 	var data = templateData{
 		Namespace: namespace,
 		RedisName: name,

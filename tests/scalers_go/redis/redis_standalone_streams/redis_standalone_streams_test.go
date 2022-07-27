@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_cluster_lists_test
+package redis_standalone_streams_test
 
 import (
 	"encoding/base64"
@@ -13,13 +13,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	redis "github.com/kedacore/keda/v2/tests/scalers_go/redis/helper"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-cluster-lists-test"
+	testName = "redis-standalone-streams-test"
 )
 
 var (
@@ -31,15 +32,14 @@ var (
 	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
-	redisList                 = "queue"
-	redisHost                 = fmt.Sprintf("%s-headless", testName)
-	minReplicaCount           = 0
+	redisStreamName           = "stream"
+	redisHost                 = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
+	minReplicaCount           = 1
 	maxReplicaCount           = 2
 )
 
 type templateData struct {
 	TestNamespace             string
-	RedisNamespace            string
 	DeploymentName            string
 	JobName                   string
 	ScaledObjectName          string
@@ -49,7 +49,7 @@ type templateData struct {
 	MaxReplicaCount           int
 	RedisPassword             string
 	RedisPasswordBase64       string
-	RedisList                 string
+	RedisStreamName           string
 	RedisHost                 string
 	ItemsToWrite              int
 }
@@ -63,7 +63,7 @@ metadata:
   name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -74,23 +74,17 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: goku321/redis-cluster-list:v1.7
+        image: abhirockzz/redis-streams-consumer
         imagePullPolicy: IfNotPresent
-        command: ["./main"]
-        args: ["read"]
         env:
-        - name: REDIS_ADDRESSES
-          value: {{.RedisHost}}.{{.RedisNamespace}}:6379
-        - name: LIST_NAME
-          value: {{.RedisList}}
+        - name: REDIS_HOST
+          value: {{.RedisHost}}
+        - name: REDIS_STREAM_NAME
+          value: {{.RedisStreamName}}
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
-        - name: READ_PROCESS_TIME
-          value: "100"
+        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
+          value: "consumer-group-1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -127,13 +121,18 @@ spec:
   cooldownPeriod:  10
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
   triggers:
-  - type: redis-cluster
+  - type: redis-streams
     metadata:
-      addressesFromEnv: REDIS_ADDRESSES
-      listName: {{.RedisList}}
-      listLength: "5"
-      activationListLength: "10"
+      addressFromEnv: REDIS_HOST
+      stream: {{.RedisStreamName}}
+      consumerGroup: consumer-group-1
+      pendingEntriesCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -149,18 +148,16 @@ spec:
     spec:
       containers:
       - name: redis
-        image: goku321/redis-cluster-list:v1.7
+        image: abhirockzz/redis-streams-producer
         imagePullPolicy: IfNotPresent
-        command: ["./main"]
-        args: ["write"]
         env:
-        - name: REDIS_ADDRESSES
-          value: {{.RedisHost}}.{{.RedisNamespace}}:6379
+        - name: REDIS_HOST
+          value: {{.RedisHost}}
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: LIST_NAME
-          value: {{.RedisList}}
-        - name: NO_LIST_ITEMS_TO_WRITE
+        - name: REDIS_STREAM_NAME
+          value: {{.RedisStreamName}}
+        - name: NUM_MESSAGES
           value: "{{.ItemsToWrite}}"
       restartPolicy: Never
   backoffLimit: 4
@@ -171,35 +168,27 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
-	// Create Redis Cluster
-	InstallRedisCluster(t, kc, testName, redisNamespace, redisPassword)
+	// Create Redis Standalone
+	redis.InstallStandalone(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 3),
+		"replica count should be %d after 3 minutes", 1)
 
-	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
 	// cleanup
-	RemoveRedisCluster(t, kc, testName, redisNamespace)
+	redis.RemoveStandalone(t, kc, testName, redisNamespace)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-}
-
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
-	data.ItemsToWrite = 5
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
-	data.ItemsToWrite = 200
+	data.ItemsToWrite = 20
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -210,22 +199,21 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 5 minutes", minReplicaCount)
 }
 
 var data = templateData{
 	TestNamespace:             testNamespace,
-	RedisNamespace:            redisNamespace,
 	DeploymentName:            deploymentName,
 	ScaledObjectName:          scaledObjectName,
-	MinReplicaCount:           minReplicaCount,
+	MinReplicaCount:           1,
 	MaxReplicaCount:           maxReplicaCount,
 	TriggerAuthenticationName: triggerAuthenticationName,
 	SecretName:                secretName,
 	JobName:                   jobName,
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
-	RedisList:                 redisList,
+	RedisStreamName:           redisStreamName,
 	RedisHost:                 redisHost,
 	ItemsToWrite:              0,
 }
