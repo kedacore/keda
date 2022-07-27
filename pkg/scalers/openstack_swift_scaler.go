@@ -20,24 +20,26 @@ import (
 )
 
 const (
-	defaultOnlyFiles         = false
-	defaultObjectCount       = 2
-	defaultObjectLimit       = ""
-	defaultObjectPrefix      = ""
-	defaultObjectDelimiter   = ""
-	defaultHTTPClientTimeout = 30
+	defaultOnlyFiles             = false
+	defaultObjectCount           = 2
+	defaultActivationObjectCount = 0
+	defaultObjectLimit           = ""
+	defaultObjectPrefix          = ""
+	defaultObjectDelimiter       = ""
+	defaultHTTPClientTimeout     = 30
 )
 
 type openstackSwiftMetadata struct {
-	swiftURL          string
-	containerName     string
-	objectCount       int64
-	objectPrefix      string
-	objectDelimiter   string
-	objectLimit       string
-	httpClientTimeout int
-	onlyFiles         bool
-	scalerIndex       int
+	swiftURL              string
+	containerName         string
+	objectCount           int64
+	activationObjectCount int64
+	objectPrefix          string
+	objectDelimiter       string
+	objectLimit           string
+	httpClientTimeout     int
+	onlyFiles             bool
+	scalerIndex           int
 }
 
 type openstackSwiftAuthenticationMetadata struct {
@@ -259,13 +261,23 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["objectCount"]; ok {
-		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
+		objectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("objectCount parsing error: %s", err.Error())
 		}
-		meta.objectCount = targetObjectCount
+		meta.objectCount = objectCount
 	} else {
 		meta.objectCount = defaultObjectCount
+	}
+
+	if val, ok := config.TriggerMetadata["activationObjectCount"]; ok {
+		activationObjectCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationObjectCount parsing error: %s", err.Error())
+		}
+		meta.activationObjectCount = activationObjectCount
+	} else {
+		meta.activationObjectCount = defaultActivationObjectCount
 	}
 
 	if val, ok := config.TriggerMetadata["objectPrefix"]; ok {
@@ -362,7 +374,7 @@ func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return objectCount > 0, nil
+	return objectCount > s.metadata.activationObjectCount, nil
 }
 
 func (s *openstackSwiftScaler) Close(context.Context) error {
