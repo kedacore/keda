@@ -84,6 +84,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_LEASE_DURATION", time.Duration(15)*time.Second)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_LEADER_LEASE_DURATION")
+		os.Exit(1)
+	}
+
+	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_RENEW_DEADLINE", time.Duration(10)*time.Second)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_LEADER_RENEW_DEADLINE")
+		os.Exit(1)
+	}
+
+	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_LEADER_RETRY_PERIOD", time.Duration(2)*time.Second)
+	if err != nil {
+		setupLog.Error(err, "Invalid KEDA_LEADER_RETRY_PERIOD")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -91,6 +109,9 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "operator.keda.sh",
+		LeaseDuration:          &leaseDuration,
+		RenewDeadline:          &renewDeadline,
+		RetryPeriod:            &retryPeriod,
 		Namespace:              namespace,
 	})
 	if err != nil {
