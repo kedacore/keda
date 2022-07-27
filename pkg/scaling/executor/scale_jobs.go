@@ -46,7 +46,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
-	effectiveMaxScale, scaleTo := e.takeScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, logger)
+	effectiveMaxScale, scaleTo := e.makeScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, logger)
 
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
@@ -86,7 +86,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	}
 }
 
-func (e *scaleExecutor) takeScalingDecision(scaledJob *kedav1alpha1.ScaledJob, runningJobCount int64, scaleTo int64, maxScale int64, pendingJobCount int64, logger logr.Logger) (int64, int64) {
+func (e *scaleExecutor) makeScalingDecision(scaledJob *kedav1alpha1.ScaledJob, runningJobCount int64, scaleTo int64, maxScale int64, pendingJobCount int64, logger logr.Logger) (int64, int64) {
 	var effectiveMaxScale int64
 	minReplicaCount := scaledJob.MinReplicaCount()
 
