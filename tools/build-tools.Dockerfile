@@ -24,10 +24,8 @@ RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent soft
     apt-get install -y docker-ce-cli
 
 # Install golang
-RUN GO_VERSION=1.17.9 && \
-    curl -LO https://golang.org/dl/go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz && \
-    ARCH=$(dpkg --print-architecture) && if [ ${ARCH} == "amd64" ]; then go_sha256="9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6" ; elif [ ${ARCH} == "arm64" ]; then go_sha256="44dcdcd4f0fa6f83c15ef70b31580f1e3f95895c2f11a00e36c440c3554b6ad5" ; fi && \
-    echo "$go_sha256 go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz" | sha256sum -c - && \
+ARG GO_VERSION
+RUN curl -LO https://golang.org/dl/go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz && \
     tar -C /usr/local -xvzf go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz && \
     rm -rf go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz
 
