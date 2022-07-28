@@ -82,6 +82,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Other
 
+- **General**: Bump Golang to 1.17.12 and deps ([#3447](https://github.com/kedacore/keda/issues/3447))
 - **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
 - **General:** Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([3142](https://github.com/kedacore/keda/issues/3142))
 - **General:** Improve e2e on PR process. ([3004](https://github.com/kedacore/keda/issues/3004))

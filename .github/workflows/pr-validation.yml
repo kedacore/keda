@@ -20,11 +20,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Enable this if you need a different version that the already installed in build-tools image
-      # - uses: actions/setup-go@v3
-      #   with:
-      #     go-version: 1.18
-
       - name: Check go version
         run: go version
 
