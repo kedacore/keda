@@ -28,7 +28,6 @@ var (
 	firefoxDeploymentName = fmt.Sprintf("%s-firefox", testName)
 	edgeDeploymentName    = fmt.Sprintf("%s-edge", testName)
 	hubDeploymentName     = fmt.Sprintf("%s-hub", testName)
-	jobName               = fmt.Sprintf("%s-job", testName)
 	scaledObjectName      = fmt.Sprintf("%s-so", testName)
 	hubHost               = fmt.Sprintf("selenium-hub.%s", testNamespace)
 	hubPort               = 4444
