@@ -52,6 +52,8 @@ var invalidOpenstackSwiftMetadataTestData = []parseOpenstackSwiftMetadataTestDat
 	{metadata: map[string]string{"swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5"}},
 	// objectCount is not an integer value
 	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5.5"}},
+	// activationObjectCount is not an integer value
+	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5", "activationObjectCount": "5.5"}},
 	// timeout is not an integer value
 	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5", "timeout": "2.5"}},
 	// onlyFiles is not a boolean value
