@@ -27,13 +27,14 @@ type seleniumGridScaler struct {
 }
 
 type seleniumGridScalerMetadata struct {
-	url                string
-	browserName        string
-	sessionBrowserName string
-	targetValue        int64
-	browserVersion     string
-	unsafeSsl          bool
-	scalerIndex        int
+	url                 string
+	browserName         string
+	sessionBrowserName  string
+	targetValue         int64
+	activationThreshold int64
+	browserVersion      string
+	unsafeSsl           bool
+	scalerIndex         int
 }
 
 type seleniumResponse struct {
@@ -116,6 +117,15 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.sessionBrowserName = meta.browserName
 	}
 
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+		meta.activationThreshold = activationThreshold
+	}
+
 	if val, ok := config.TriggerMetadata["browserVersion"]; ok && val != "" {
 		meta.browserVersion = val
 	} else {
@@ -170,7 +180,7 @@ func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return v > 0, nil
+	return v > s.metadata.activationThreshold, nil
 }
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error) {
