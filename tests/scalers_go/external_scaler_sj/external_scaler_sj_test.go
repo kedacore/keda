@@ -29,11 +29,12 @@ var (
 )
 
 type templateData struct {
-	TestNamespace                string
-	ServiceName                  string
-	ScalerName                   string
-	ScaledJobName                string
-	MetricThreshold, MetricValue int
+	TestNamespace                    string
+	ServiceName                      string
+	ScalerName                       string
+	ScaledJobName                    string
+	MetricThreshold, MetricValue     int
+	MinReplicaCount, MaxReplicaCount int
 }
 type templateValues map[string]string
 
@@ -98,7 +99,8 @@ spec:
         restartPolicy: Never
     backoffLimit: 1
   pollingInterval: 5
-  maxReplicaCount: 3
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
   successfulJobsHistoryLimit: 0
   failedJobsHistoryLimit: 0
   triggers:
@@ -116,7 +118,11 @@ func TestScaler(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	minReplicaCount := 0
+	maxReplicaCount := 100
+	metricValue := 0
+
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -129,20 +135,6 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-}
-
-func getTemplateData() (templateData, templateValues) {
-	return templateData{
-			TestNamespace:   testNamespace,
-			ServiceName:     serviceName,
-			ScalerName:      scalerName,
-			ScaledJobName:   scaledJobName,
-			MetricThreshold: 10,
-			MetricValue:     0,
-		}, templateValues{
-			"scalerTemplate":    scalerTemplate,
-			"serviceTemplate":   serviceTemplate,
-			"scaledJobTemplate": scaledJobTemplate}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -165,4 +157,85 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
 		"job count should be 0 after 1 minute")
+}
+
+func TestMinReplicaCount(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	minReplicaCount := 2
+	maxReplicaCount := 50
+	metricValue := 0
+
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 2, 60, 1),
+		"job count should be 2 after 1 minute")
+
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func TestMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	minReplicaCount := 2
+	maxReplicaCount := 1
+	metricValue := 0
+
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	data.MetricValue = data.MetricThreshold * 3
+
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 1),
+		"job count should be 1 after 1 minute")
+
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func TestMinReplicaCountWithMetricValue(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	minReplicaCount := 2
+	maxReplicaCount := 10
+	metricValue := 1
+
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 3, 60, 1),
+		"job count should be 3 after 1 minute")
+
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func TestMinReplicaCountWithMetricValueDoesNotExceedMaxReplicaCount(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	minReplicaCount := 2
+	maxReplicaCount := 3
+	metricValue := 2
+
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 3, 60, 1),
+		"job count should be 3 after 1 minute")
+
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, templateValues) {
+	return templateData{
+			TestNamespace:   testNamespace,
+			ServiceName:     serviceName,
+			ScalerName:      scalerName,
+			ScaledJobName:   scaledJobName,
+			MetricThreshold: 10,
+			MetricValue:     metricValue,
+			MinReplicaCount: minReplicaCount,
+			MaxReplicaCount: maxReplicaCount,
+		}, templateValues{
+			"scalerTemplate":    scalerTemplate,
+			"serviceTemplate":   serviceTemplate,
+			"scaledJobTemplate": scaledJobTemplate}
 }
