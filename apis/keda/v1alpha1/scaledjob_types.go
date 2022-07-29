@@ -53,6 +53,8 @@ type ScaledJobSpec struct {
 	// +optional
 	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
 	// +optional
+	Rollout Rollout `json:"rollout,omitempty"`
+	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
@@ -91,6 +93,15 @@ type ScalingStrategy struct {
 	PendingPodConditions []string `json:"pendingPodConditions,omitempty"`
 	// +optional
 	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
+}
+
+// Rollout defines the strategy for job rollouts
+// +optional
+type Rollout struct {
+	// +optional
+	Strategy string `json:"strategy,omitempty"`
+	// +optional
+	PropagationPolicy string `json:"propagationPolicy,omitempty"`
 }
 
 func init() {

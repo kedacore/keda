@@ -51,6 +51,9 @@ type mssqlMetadata struct {
 	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
 	// +required
 	targetValue float64
+	// The threshold that is used in activation phase
+	// +optional
+	activationTargetValue float64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
@@ -105,6 +108,16 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given")
+	}
+
+	// Activation target value
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	// Connection string, which can either be provided explicitly or via the helper fields
@@ -263,7 +276,7 @@ func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetValue, nil
 }
 
 // Close closes the mssql database connections

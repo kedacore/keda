@@ -45,6 +45,7 @@ type templateData struct {
 	MySQLDatabase         string
 	MySQLRootPassword     string
 	MySQLConnectionString string
+	ItemsToWrite          int
 }
 
 type templateValues map[string]string
@@ -126,6 +127,7 @@ spec:
   - type: mysql
     metadata:
       queryValue: "4"
+      activationQueryValue: "100"
       query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
     authenticationRef:
       name: keda-trigger-auth-mysql-secret
@@ -140,6 +142,7 @@ metadata:
   name: mysql-insert-job
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     metadata:
       labels:
@@ -154,7 +157,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "4000"
+            value: "{{.ItemsToWrite}}"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -235,6 +238,7 @@ func TestMySQLScaler(t *testing.T) {
 	setupMySQL(t, kc, data, templates)
 
 	// test scaling
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc)
 
@@ -246,7 +250,7 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 	// Deploy mysql
 	KubectlApplyWithTemplate(t, data, "mysqlDeploymentTemplate", mysqlDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "mysqlServiceTemplate", mysqlServiceTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
 	// Wait 30 sec which would be enought for mysql to be accessible
 	time.Sleep(30 * time.Second)
 
@@ -262,24 +266,34 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 
 	// Deploy mysql consumer app, scaled object and trigger auth, etc.
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should start out as 0")
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	t.Log("--- applying job ---")
+	data.ItemsToWrite = 50
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying job ---")
+	data.ItemsToWrite = 4000
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 	// Check if deployment scale to 2 (the max)
 	maxReplicaCount := 2
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
 		"Replica count should scale up in next 2 minutes")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	// Check if deployment scale down to 0 after 5 minutes
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
 		"Replica count should be 0 after 5 minutes")
 }
 
@@ -295,6 +309,7 @@ func getTemplateData() (templateData, templateValues) {
 			MySQLDatabase:         mySQLDatabase,
 			MySQLRootPassword:     mySQLRootPassword,
 			MySQLConnectionString: base64MySQLConnectionString,
+			ItemsToWrite:          0,
 		}, templateValues{
 			"deploymentTemplate":   deploymentTemplate,
 			"secretTemplate":       secretTemplate,

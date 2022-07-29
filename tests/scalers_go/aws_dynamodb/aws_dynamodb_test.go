@@ -122,6 +122,7 @@ spec:
         keyConditionExpression: '{{.KeyConditionExpression}}'
         expressionAttributeValues: '{{.ExpressionAttributeValues}}'
         targetValue: '1'
+        activationTargetValue: '4'
 `
 )
 
@@ -130,7 +131,7 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("%s-keda-table", testName)
+	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, GetRandomNumber())
 	awsAccessKeyID            = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey        = os.Getenv("AWS_SECRET_KEY")
 	awsRegion                 = os.Getenv("AWS_REGION")
@@ -151,10 +152,11 @@ func TestDynamoDBScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %s after a minute", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", minReplicaCount)
 
 	// test scaling
+	testActivation(t, kc, dynamodbClient)
 	testScaleUp(t, kc, dynamodbClient)
 	testScaleDown(t, kc, dynamodbClient)
 
@@ -163,22 +165,17 @@ func TestDynamoDBScaler(t *testing.T) {
 	cleanupTable(t, dynamodbClient)
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+	t.Log("--- testing activation ---")
+	addMessages(t, dynamodbClient, 3)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
 	t.Log("--- testing scale up ---")
-
-	for i := 0; i < 6; i++ {
-		_, err := dynamodbClient.PutItemWithContext(context.Background(), &dynamodb.PutItemInput{
-			TableName: aws.String(dynamoDBTableName),
-			Item: map[string]*dynamodb.AttributeValue{
-				"event_type": {S: aws.String("scaling_event")},
-				"event_id":   {S: aws.String(strconv.Itoa(i))},
-			},
-		})
-		assert.NoErrorf(t, err, "failed to create item - %s", err)
-	}
-
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", maxReplicaCount)
+	addMessages(t, dynamodbClient, 6)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
@@ -195,8 +192,22 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynam
 		assert.NoErrorf(t, err, "failed to delete item - %s", err)
 	}
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %s after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+}
+
+func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) {
+	for i := 0; i < messages; i++ {
+		_, err := dynamodbClient.PutItemWithContext(context.Background(), &dynamodb.PutItemInput{
+			TableName: aws.String(dynamoDBTableName),
+			Item: map[string]*dynamodb.AttributeValue{
+				"event_type": {S: aws.String("scaling_event")},
+				"event_id":   {S: aws.String(strconv.Itoa(i))},
+			},
+		})
+		t.Log("Message enqueued")
+		assert.NoErrorf(t, err, "failed to create item - %s", err)
+	}
 }
 
 func createDynamoDBTable(t *testing.T, dynamodbClient *dynamodb.DynamoDB) {

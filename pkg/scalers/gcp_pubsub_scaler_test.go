@@ -33,7 +33,7 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// all properly formed with deprecated field
 	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
 	// all properly formed with oldest unacked message age mode
 	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": pubsubModeOldestUnackedMessageAge, "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing subscriptionName
@@ -44,6 +44,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed mode
 	{nil, map[string]string{"subscriptionName": "", "mode": "AA", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// malformed activationTargetValue
+	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "AA"}, true},
 	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
 	// Credentials from AuthParams with empty creds
@@ -60,8 +62,8 @@ var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
 }
 
 var gcpSubscriptionNameTests = []gcpPubSubSubscription{
-	{&testPubSubMetadata[10], 1, "mysubscription", "myproject"},
-	{&testPubSubMetadata[11], 1, "projects/myproject/mysubscription", ""},
+	{&testPubSubMetadata[11], 1, "mysubscription", "myproject"},
+	{&testPubSubMetadata[12], 1, "projects/myproject/mysubscription", ""},
 }
 
 func TestPubSubParseMetadata(t *testing.T) {

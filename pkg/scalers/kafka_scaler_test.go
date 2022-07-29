@@ -56,6 +56,10 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is negative value
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is 0
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success, more brokers
@@ -118,8 +122,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[6], 0, "s0-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[6], 1, "s1-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 

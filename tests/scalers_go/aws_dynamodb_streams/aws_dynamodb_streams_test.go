@@ -35,29 +35,31 @@ const (
 )
 
 var (
-	awsRegion        = os.Getenv("AWS_REGION")
-	awsAccessKey     = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretKey     = os.Getenv("AWS_SECRET_KEY")
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	secretName       = fmt.Sprintf("%s-secret", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	tableName        = fmt.Sprintf("%s-table", testName)
-	shardCount       = 2 // default count
+	awsRegion            = os.Getenv("AWS_REGION")
+	awsAccessKey         = os.Getenv("AWS_ACCESS_KEY")
+	awsSecretKey         = os.Getenv("AWS_SECRET_KEY")
+	testNamespace        = fmt.Sprintf("%s-ns", testName)
+	secretName           = fmt.Sprintf("%s-secret", testName)
+	deploymentName       = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName     = fmt.Sprintf("%s-so", testName)
+	tableName            = fmt.Sprintf("%s-table-%d", testName, GetRandomNumber())
+	shardCount           = 2 // default count
+	activationShardCount = 0 // default count
 )
 
 type templateData struct {
-	TestNamespace    string
-	SecretName       string
-	AwsRegion        string
-	AwsAccessKey     string
-	AwsSecretKey     string
-	DeploymentName   string
-	TriggerAuthName  string
-	ScaledObjectName string
-	TableName        string
-	ShardCount       int64
+	TestNamespace        string
+	SecretName           string
+	AwsRegion            string
+	AwsAccessKey         string
+	AwsSecretKey         string
+	DeploymentName       string
+	TriggerAuthName      string
+	ScaledObjectName     string
+	TableName            string
+	ShardCount           int64
+	ActivationShardCount int64
 }
 
 type templateValues map[string]string
@@ -135,6 +137,7 @@ spec:
       awsRegion: {{.AwsRegion}}     # Required
       tableName: {{.TableName}}     # Required
       shardCount: "{{.ShardCount}}" # Optional. Default: 2
+      activationShardCount: "{{.ActivationShardCount}}" # Optional. Default: 0
 `
 )
 
@@ -162,10 +165,11 @@ func TestScaler(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 
 	// Wait for nginx to load
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 30, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 3),
 		"replica count should start out as 0")
 
 	// test scaling
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data, shardCount)
 	testScaleDown(t, kc, data, shardCount)
 
@@ -265,20 +269,28 @@ func getTemplateData() (templateData, templateValues) {
 			"scaledObjectTemplate": scaledObjectTemplate}
 }
 
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	data.ActivationShardCount = 10
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
 	t.Log("--- testing scale up ---")
 	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale up to 1
 	t.Log("replicas should scale up to 1")
 	data.ShardCount = shardCount
+	data.ActivationShardCount = int64(activationShardCount)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"replica count should increase to 1")
 
 	// Deploy scalerObject with its shardCount = 1 and check if replicas scale up to 2 (maxReplicaCount)
 	t.Log("then, replicas should scale up to 2")
 	data.ShardCount = 1
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"replica count should increase to 2")
 }
 
@@ -287,7 +299,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData, sh
 	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale down to 1
 	data.ShardCount = shardCount
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 1, 330, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 330, 1),
 		"replica count should decrease to 1 in 330 seconds")
 }
 

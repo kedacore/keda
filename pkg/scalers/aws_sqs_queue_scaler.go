@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	targetQueueLengthDefault = 5
-	defaultScaleOnInFlight   = true
+	targetQueueLengthDefault           = 5
+	activationTargetQueueLengthDefault = 0
+	defaultScaleOnInFlight             = true
 )
 
 var (
@@ -41,13 +42,14 @@ type awsSqsQueueScaler struct {
 }
 
 type awsSqsQueueMetadata struct {
-	targetQueueLength int64
-	queueURL          string
-	queueName         string
-	awsRegion         string
-	awsAuthorization  awsAuthorizationMetadata
-	scalerIndex       int
-	scaleOnInFlight   bool
+	targetQueueLength           int64
+	activationTargetQueueLength int64
+	queueURL                    string
+	queueName                   string
+	awsRegion                   string
+	awsAuthorization            awsAuthorizationMetadata
+	scalerIndex                 int
+	scaleOnInFlight             bool
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
@@ -81,6 +83,16 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
 		} else {
 			meta.targetQueueLength = queueLength
+		}
+	}
+
+	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok && val != "" {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			meta.activationTargetQueueLength = activationTargetQueueLengthDefault
+			sqsQueueLog.Error(err, "Error parsing SQS queue metadata activationQueueLength, using default %n", activationTargetQueueLengthDefault)
+		} else {
+			meta.activationTargetQueueLength = activationQueueLength
 		}
 	}
 
@@ -171,7 +183,7 @@ func (s *awsSqsQueueScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationTargetQueueLength, nil
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {

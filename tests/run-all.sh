@@ -8,7 +8,7 @@ E2E_REGEX_TS="./*${E2E_TEST_REGEX:-*.test.ts}"
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=6
+concurrent_tests_limit=8
 pids=()
 lookup=()
 failed_count=0
@@ -35,7 +35,7 @@ function run_tests {
         # TODO - Remove condition after all tests have been migrated to Go.
         if [[ $test_case == *_test.go ]]
         then
-            go test -v -tags e2e $test_case > "${test_case}.log" 2>&1 &
+            go test -v -tags e2e -timeout 20m $test_case > "${test_case}.log" 2>&1 &
         else
             ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
         fi
@@ -75,7 +75,7 @@ function run_tests {
             # TODO - Remove condition after all tests have been migrated to Go.
             if [[ $test_case == *_test.go ]]
             then
-                go test -v -tags e2e $test_case > "${test_case}.retry.log" 2>&1 &
+                go test -v -tags e2e -timeout 20m $test_case > "${test_case}.retry.log" 2>&1 &
             else
                 ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
             fi

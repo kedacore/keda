@@ -38,14 +38,15 @@ type azurePipelinesScaler struct {
 }
 
 type azurePipelinesMetadata struct {
-	organizationURL            string
-	organizationName           string
-	personalAccessToken        string
-	parent                     string
-	demands                    string
-	poolID                     int
-	targetPipelinesQueueLength int64
-	scalerIndex                int
+	organizationURL                      string
+	organizationName                     string
+	personalAccessToken                  string
+	parent                               string
+	demands                              string
+  poolID                               int
+	targetPipelinesQueueLength           int64
+	activationTargetPipelinesQueueLength int64
+	scalerIndex                          int
 }
 
 var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
@@ -82,6 +83,16 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 
 		meta.targetPipelinesQueueLength = queueLength
+	}
+
+	meta.activationTargetPipelinesQueueLength = 0
+	if val, ok := config.TriggerMetadata["activationTargetPipelinesQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %s", err.Error())
+		}
+
+		meta.activationTargetPipelinesQueueLength = activationQueueLength
 	}
 
 	if val, ok := config.AuthParams["organizationURL"]; ok && val != "" {
@@ -325,7 +336,7 @@ func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return queuelen > 0, nil
+	return queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {

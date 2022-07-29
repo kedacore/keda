@@ -120,6 +120,7 @@ spec:
         workspaceId: {{.LogAnalyticsWorkspaceID}}
         query: "let x = {{.QueryX}}; let y = {{.QueryY}}; print MetricValue = x, Threshold = y;"
         threshold: "1"
+        activationThreshold: "3"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -139,10 +140,11 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
+	testActivation(t, kc, data)
 	testScaleUp(t, kc, data)
 	testScaleDown(t, kc, data)
 
@@ -152,16 +154,26 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
-	data.QueryX = 10
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	data.QueryX = 2
 	data.QueryY = 1
 
 	KubectlApplyWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+}
+
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale up ---")
+	data.QueryX = 10
+	data.QueryY = 1
+
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -170,8 +182,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 }
 
 func getTemplateData() (templateData, templateValues) {

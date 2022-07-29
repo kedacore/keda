@@ -118,6 +118,22 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"properly formed queue, invalid queueLength"},
 	{map[string]string{
+		"queueURL":              testAWSSQSProperQueueURL,
+		"queueLength":           "1",
+		"activationQueueLength": "1",
+		"awsRegion":             "eu-west-1"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue, integer activationQueueLength"},
+	{map[string]string{
+		"queueURL":              testAWSSQSProperQueueURL,
+		"queueLength":           "1",
+		"activationQueueLength": "a",
+		"awsRegion":             "eu-west-1"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue, invalid activationQueueLength"},
+	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},

@@ -18,11 +18,14 @@ import (
 )
 
 const (
-	grapServerAddress = "serverAddress"
-	grapMetricName    = "metricName"
-	grapQuery         = "query"
-	grapThreshold     = "threshold"
-	grapQueryTime     = "queryTime"
+	graphiteServerAddress              = "serverAddress"
+	graphiteMetricName                 = "metricName"
+	graphiteQuery                      = "query"
+	graphiteThreshold                  = "threshold"
+	graphiteActivationThreshold        = "activationThreshold"
+	graphiteQueryTime                  = "queryTime"
+	defaultGraphiteThreshold           = 100
+	defaultGraphiteActivationThreshold = 0
 )
 
 type graphiteScaler struct {
@@ -32,11 +35,12 @@ type graphiteScaler struct {
 }
 
 type graphiteMetadata struct {
-	serverAddress string
-	metricName    string
-	query         string
-	threshold     float64
-	from          string
+	serverAddress       string
+	metricName          string
+	query               string
+	threshold           float64
+	activationThreshold float64
+	from                string
 
 	// basic auth
 	enableBasicAuth bool
@@ -77,37 +81,48 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	meta := graphiteMetadata{}
 
-	if val, ok := config.TriggerMetadata[grapServerAddress]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteServerAddress]; ok && val != "" {
 		meta.serverAddress = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapServerAddress)
+		return nil, fmt.Errorf("no %s given", graphiteServerAddress)
 	}
 
-	if val, ok := config.TriggerMetadata[grapQuery]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteQuery]; ok && val != "" {
 		meta.query = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapQuery)
+		return nil, fmt.Errorf("no %s given", graphiteQuery)
 	}
 
-	if val, ok := config.TriggerMetadata[grapMetricName]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteMetricName]; ok && val != "" {
 		meta.metricName = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapMetricName)
+		return nil, fmt.Errorf("no %s given", graphiteMetricName)
 	}
 
-	if val, ok := config.TriggerMetadata[grapQueryTime]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
 		meta.from = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapQueryTime)
+		return nil, fmt.Errorf("no %s given", graphiteQueryTime)
 	}
 
-	if val, ok := config.TriggerMetadata[grapThreshold]; ok && val != "" {
+	meta.threshold = defaultGraphiteThreshold
+	if val, ok := config.TriggerMetadata[graphiteThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", grapThreshold, err)
+			return nil, fmt.Errorf("error parsing %s: %s", graphiteThreshold, err)
 		}
 
 		meta.threshold = t
+	}
+
+	meta.activationThreshold = defaultGraphiteActivationThreshold
+	if val, ok := config.TriggerMetadata[graphiteActivationThreshold]; ok {
+		t, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+
+		meta.activationThreshold = t
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -141,7 +156,7 @@ func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationThreshold, nil
 }
 
 func (s *graphiteScaler) Close(context.Context) error {

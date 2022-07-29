@@ -41,6 +41,9 @@ const (
 	// Metric Targets
 	solaceMetaMsgCountTarget      = "messageCountTarget"
 	solaceMetaMsgSpoolUsageTarget = "messageSpoolUsageTarget"
+	// Metric Activation Targets
+	solaceMetaActivationMsgCountTarget      = "activationMessageCountTarget"
+	solaceMetaActivationMsgSpoolUsageTarget = "activationMessageSpoolUsageTarget"
 	// Trigger type identifiers
 	solaceTriggermsgcount      = "msgcount"
 	solaceTriggermsgspoolusage = "msgspoolusage"
@@ -74,6 +77,9 @@ type SolaceMetadata struct {
 	// Target Message Count
 	msgCountTarget      int64
 	msgSpoolUsageTarget int64 // Spool Use Target in Megabytes
+	// Activation Target Message Count
+	activationMsgCountTarget      int
+	activationMsgSpoolUsageTarget int // Spool Use Target in Megabytes
 	// Scaler index
 	scalerIndex int
 }
@@ -175,6 +181,26 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	//	Check that we have at least one positive target value for the scaler
 	if meta.msgCountTarget < 1 && meta.msgSpoolUsageTarget < 1 {
 		return nil, fmt.Errorf("no target value found in the scaler configuration")
+	}
+
+	//	GET ACTIVATION METRIC TARGET VALUES
+	//	GET activationMsgCountTarget
+	meta.activationMsgCountTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaActivationMsgCountTarget]; ok && val != "" {
+		if activationMsgCountTarget, err := strconv.Atoi(val); err == nil {
+			meta.activationMsgCountTarget = activationMsgCountTarget
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgCountTarget, err)
+		}
+	}
+	//	GET activationMsgSpoolUsageTarget
+	meta.activationMsgSpoolUsageTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaActivationMsgSpoolUsageTarget]; ok && val != "" {
+		if activationMsgSpoolUsageTarget, err := strconv.Atoi(val); err == nil {
+			meta.activationMsgSpoolUsageTarget = activationMsgSpoolUsageTarget * 1024 * 1024
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgSpoolUsageTarget, err)
+		}
 	}
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
@@ -354,7 +380,7 @@ func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
 		solaceLog.Error(err, "call to semp endpoint failed")
 		return false, err
 	}
-	return (metricValues.msgCount > 0 || metricValues.msgSpoolUsage > 0), nil
+	return (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil
 }
 
 // Do Nothing - Satisfies Interface

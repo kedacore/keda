@@ -37,8 +37,8 @@ type huaweiCloudeyeMetadata struct {
 	dimensionName  string
 	dimensionValue string
 
-	targetMetricValue float64
-	minMetricValue    float64
+	targetMetricValue           float64
+	activationTargetMetricValue float64
 
 	metricCollectionTime int64
 	metricFilter         string
@@ -132,12 +132,22 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
+	meta.activationTargetMetricValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetMetricValue"]; ok && val != "" {
+		activationTargetMetricValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			cloudeyeLog.Error(err, "Error parsing activationTargetMetricValue metadata")
+		}
+		meta.activationTargetMetricValue = activationTargetMetricValue
+	}
+
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
 		} else {
-			meta.minMetricValue = minMetricValue
+			cloudeyeLog.Error(err, "minMetricValue is deprecated and will be removed in next versions, please use activationTargetMetricValue instead")
+			meta.activationTargetMetricValue = minMetricValue
 		}
 	} else {
 		return nil, fmt.Errorf("min Metric Value not given")
@@ -259,7 +269,7 @@ func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > h.metadata.minMetricValue, nil
+	return val > h.metadata.activationTargetMetricValue, nil
 }
 
 func (h *huaweiCloudeyeScaler) Close(context.Context) error {

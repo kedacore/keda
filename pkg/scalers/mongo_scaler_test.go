@@ -54,6 +54,13 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
+	// wrong activationQueryValue
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: true,
+	},
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{

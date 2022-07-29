@@ -26,16 +26,17 @@ type artemisScaler struct {
 
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
-	managementEndpoint string
-	queueName          string
-	brokerName         string
-	brokerAddress      string
-	username           string
-	password           string
-	restAPITemplate    string
-	queueLength        int64
-	corsHeader         string
-	scalerIndex        int
+	managementEndpoint    string
+	queueName             string
+	brokerName            string
+	brokerAddress         string
+	username              string
+	password              string
+	restAPITemplate       string
+	queueLength           int64
+	activationQueueLength int64
+	corsHeader            string
+	scalerIndex           int
 }
 
 //revive:enable:var-naming
@@ -47,10 +48,11 @@ type artemisMonitoring struct {
 }
 
 const (
-	artemisMetricType         = "External"
-	defaultArtemisQueueLength = 10
-	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
-	defaultCorsHeader         = "http://%s"
+	artemisMetricType                   = "External"
+	defaultArtemisQueueLength           = 10
+	defaultArtemisActivationQueueLength = 0
+	defaultRestAPITemplate              = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultCorsHeader                   = "http://%s"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -83,6 +85,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
+	meta.activationQueueLength = defaultArtemisActivationQueueLength
 
 	if val, ok := config.TriggerMetadata["restApiTemplate"]; ok && val != "" {
 		meta.restAPITemplate = config.TriggerMetadata["restApiTemplate"]
@@ -126,6 +129,15 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		}
 
 		meta.queueLength = queueLength
+	}
+
+	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse activationQueueLength: %s", err)
+		}
+
+		meta.activationQueueLength = activationQueueLength
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
@@ -173,7 +185,7 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationQueueLength, nil
 }
 
 // getAPIParameters parse restAPITemplate to provide managementEndpoint , brokerName, brokerAddress, queueName

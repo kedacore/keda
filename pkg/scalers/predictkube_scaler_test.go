@@ -127,6 +127,12 @@ var testPredictKubeMetadata = []predictKubeMetadataTestData{
 
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
+	// malformed activation threshold
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "1", "activationThreshold": "one", "query": "up"},
+
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
 	// missing query
 	{
 		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": ""},

@@ -177,7 +177,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = config.TriggerMetadata["topic"]
 	default:
 		meta.topic = ""
-		kafkaLog.V(1).Info(fmt.Sprintf("consumer group %s has no topic specified, "+
+		kafkaLog.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
@@ -186,7 +186,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	if config.TriggerMetadata["offsetResetPolicy"] != "" {
 		policy := offsetResetPolicy(config.TriggerMetadata["offsetResetPolicy"])
 		if policy != earliest && policy != latest {
-			return meta, fmt.Errorf("err offsetResetPolicy policy %s given", policy)
+			return meta, fmt.Errorf("err offsetResetPolicy policy %q given", policy)
 		}
 		meta.offsetResetPolicy = policy
 	}
@@ -196,7 +196,10 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %q: %s", lagThresholdMetricName, err)
+		}
+		if t <= 0 {
+			return meta, fmt.Errorf("%q must be positive number", lagThresholdMetricName)
 		}
 		meta.lagThreshold = t
 	}

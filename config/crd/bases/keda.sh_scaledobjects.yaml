@@ -1,8 +1,9 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
+    controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
   name: scaledobjects.keda.sh
 spec:
@@ -138,10 +139,9 @@ spec:
                             type: object
                           scaleUp:
                             description: 'scaleUp is scaling policy for scaling Up.
-                              If not set, the default value is the higher of:   *
-                              increase no more than 4 pods per 60 seconds   * double
-                              the number of pods per 60 seconds No stabilization is
-                              used.'
+                              If not set, the default value is the higher of: * increase
+                              no more than 4 pods per 60 seconds * double the number
+                              of pods per 60 seconds No stabilization is used.'
                             properties:
                               policies:
                                 description: policies is a list of potential scaling
@@ -370,9 +370,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

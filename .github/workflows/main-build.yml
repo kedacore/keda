@@ -26,13 +26,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v3.0.5
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v3.0.5
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -94,7 +94,7 @@ jobs:
           AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ secrets.AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY }}
           AZURE_DATA_EXPLORER_DB: ${{ secrets.AZURE_DATA_EXPLORER_DB }}
           AZURE_DATA_EXPLORER_ENDPOINT: ${{ secrets.AZURE_DATA_EXPLORER_ENDPOINT }}
-          AZURE_DEVOPS_BUILD_DEFINITON_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITON_ID }}
+          AZURE_DEVOPS_BUILD_DEFINITION_ID: ${{ secrets.AZURE_DEVOPS_BUILD_DEFINITION_ID }}
           AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.AZURE_DEVOPS_ORGANIZATION_URL }}
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
           AZURE_DEVOPS_POOL_NAME: ${{ secrets.AZURE_DEVOPS_POOL_NAME }}

@@ -34,8 +34,9 @@ import (
 )
 
 const (
-	azureMonitorMetricName = "metricName"
-	targetValueName        = "targetValue"
+	azureMonitorMetricName    = "metricName"
+	targetValueName           = "targetValue"
+	activationTargetValueName = "activationTargetValue"
 )
 
 type azureMonitorScaler struct {
@@ -45,9 +46,10 @@ type azureMonitorScaler struct {
 }
 
 type azureMonitorMetadata struct {
-	azureMonitorInfo azure.MonitorInfo
-	targetValue      float64
-	scalerIndex      int
+	azureMonitorInfo      azure.MonitorInfo
+	targetValue           float64
+	activationTargetValue float64
+	scalerIndex           int
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
@@ -85,6 +87,17 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given")
+	}
+
+	if val, ok := config.TriggerMetadata[activationTargetValueName]; ok && val != "" {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", activationTargetValueName)
+			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", activationTargetValueName, err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
+	} else {
+		meta.activationTargetValue = 0
 	}
 
 	if val, ok := config.TriggerMetadata["resourceURI"]; ok && val != "" {
@@ -207,7 +220,7 @@ func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationTargetValue, nil
 }
 
 func (s *azureMonitorScaler) Close(context.Context) error {

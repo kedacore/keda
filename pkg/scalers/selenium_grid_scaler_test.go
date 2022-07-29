@@ -424,26 +424,43 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "valid url, browsername and unsafeSsl should return metadata",
+			name: "valid url, browsername, unsafeSsl and activationThreshold should return metadata",
 			args: args{
 				config: &ScalerConfig{
 					TriggerMetadata: map[string]string{
-						"url":            "http://selenium-hub:4444/graphql",
-						"browserName":    "chrome",
-						"browserVersion": "91.0",
-						"unsafeSsl":      "true",
+						"url":                 "http://selenium-hub:4444/graphql",
+						"browserName":         "chrome",
+						"browserVersion":      "91.0",
+						"unsafeSsl":           "true",
+						"activationThreshold": "10",
 					},
 				},
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				url:                "http://selenium-hub:4444/graphql",
-				browserName:        "chrome",
-				sessionBrowserName: "chrome",
-				targetValue:        1,
-				browserVersion:     "91.0",
-				unsafeSsl:          true,
+				url:                 "http://selenium-hub:4444/graphql",
+				browserName:         "chrome",
+				sessionBrowserName:  "chrome",
+				targetValue:         1,
+				activationThreshold: 10,
+				browserVersion:      "91.0",
+				unsafeSsl:           true,
 			},
+		},
+		{
+			name: "valid url, browsername and unsafeSsl but invalid activationThreshold should throw an error",
+			args: args{
+				config: &ScalerConfig{
+					TriggerMetadata: map[string]string{
+						"url":                 "http://selenium-hub:4444/graphql",
+						"browserName":         "chrome",
+						"browserVersion":      "91.0",
+						"unsafeSsl":           "true",
+						"activationThreshold": "AA",
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

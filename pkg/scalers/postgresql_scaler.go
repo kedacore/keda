@@ -23,11 +23,12 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue float64
-	connection       string
-	query            string
-	metricName       string
-	scalerIndex      int
+	targetQueryValue           float64
+	activationTargetQueryValue float64
+	connection                 string
+	query                      string
+	metricName                 string
+	scalerIndex                int
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
@@ -72,6 +73,15 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	switch {
@@ -163,7 +173,7 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
 func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {

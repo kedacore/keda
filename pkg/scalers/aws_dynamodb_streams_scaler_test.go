@@ -128,14 +128,16 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 		comment:    "metadata empty"},
 	{
 		metadata: map[string]string{
-			"tableName":  testAWSDynamoDBSmallTable,
-			"shardCount": "2",
-			"awsRegion":  testAWSDynamoDBStreamsRegion},
+			"tableName":            testAWSDynamoDBSmallTable,
+			"shardCount":           "2",
+			"activationShardCount": "1",
+			"awsRegion":            testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: 2,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
+			targetShardCount:           2,
+			activationTargetShardCount: 1,
+			tableName:                  testAWSDynamoDBSmallTable,
+			awsRegion:                  testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
@@ -176,9 +178,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: defaultTargetDBStreamsShardCount,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
+			targetShardCount:           defaultTargetDBStreamsShardCount,
+			activationTargetShardCount: defaultActivationTargetDBStreamsShardCount,
+			tableName:                  testAWSDynamoDBSmallTable,
+			awsRegion:                  testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,

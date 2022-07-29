@@ -31,6 +31,7 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "a", "podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "test", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
+	{map[string]string{"value": "1", "activationValue": "aa", "podSelector": "app=demo"}, "test", true},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {

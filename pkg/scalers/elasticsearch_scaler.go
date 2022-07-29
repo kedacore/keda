@@ -28,16 +28,17 @@ type elasticsearchScaler struct {
 }
 
 type elasticsearchMetadata struct {
-	addresses          []string
-	unsafeSsl          bool
-	username           string
-	password           string
-	indexes            []string
-	searchTemplateName string
-	parameters         []string
-	valueLocation      string
-	targetValue        int64
-	metricName         string
+	addresses             []string
+	unsafeSsl             bool
+	username              string
+	password              string
+	indexes               []string
+	searchTemplateName    string
+	parameters            []string
+	valueLocation         string
+	targetValue           float64
+	activationTargetValue float64
+	metricName            string
 }
 
 var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
@@ -122,9 +123,17 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseInt(targetValue, 10, 64)
+	meta.targetValue, err = strconv.ParseFloat(targetValue, 64)
 	if err != nil {
 		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+	}
+
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
 	}
 
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
@@ -170,7 +179,7 @@ func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
 		elasticsearchLog.Error(err, fmt.Sprintf("Error inspecting elasticsearch: %s", err))
 		return false, err
 	}
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetValue, nil
 }
 
 // getQueryResult returns result of the scaler query
@@ -243,7 +252,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

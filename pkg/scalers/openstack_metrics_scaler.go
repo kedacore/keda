@@ -28,13 +28,14 @@ const (
 /* expected structure declarations */
 
 type openstackMetricMetadata struct {
-	metricsURL        string
-	metricID          string
-	aggregationMethod string
-	granularity       int
-	threshold         float64
-	timeout           int
-	scalerIndex       int
+	metricsURL          string
+	metricID            string
+	aggregationMethod   string
+	granularity         int
+	threshold           float64
+	activationThreshold float64
+	timeout             int
+	scalerIndex         int
 }
 
 type openstackMetricAuthenticationMetadata struct {
@@ -161,6 +162,17 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 		meta.threshold = _threshold
 	}
 
+	if val, ok := triggerMetadata["activationThreshold"]; ok && val != "" {
+		// converts the string to float64 but its value is convertible to float32 without changing
+		activationThreshold, err := strconv.ParseFloat(val, 32)
+		if err != nil {
+			openstackMetricLog.Error(err, "error parsing openstack metric metadata", "activationThreshold", "activationThreshold")
+			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
+		}
+
+		meta.activationThreshold = activationThreshold
+	}
+
 	if val, ok := triggerMetadata["timeout"]; ok && val != "" {
 		httpClientTimeout, err := strconv.Atoi(val)
 		if err != nil {
@@ -239,7 +251,7 @@ func (a *openstackMetricScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > a.metadata.activationThreshold, nil
 }
 
 func (a *openstackMetricScaler) Close(context.Context) error {

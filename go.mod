@@ -21,8 +21,8 @@ require (
 	github.com/Shopify/sarama v1.32.0
 	github.com/aws/aws-sdk-go v1.44.46
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dysnix/predictkube-libs v0.0.3
-	github.com/dysnix/predictkube-proto v0.0.0-20211223141524-d309509b6b5f
+	github.com/dysnix/predictkube-libs v0.0.4-0.20220717101015-44c816c4fb9c
+	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
 	github.com/elastic/go-elasticsearch/v7 v7.17.1
 	github.com/go-logr/logr v1.2.3
 	github.com/go-playground/validator/v10 v10.11.0
@@ -33,11 +33,14 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.8
+	github.com/gophercloud/gophercloud v0.25.0
 	github.com/hashicorp/vault/api v1.7.2
 	github.com/imdario/mergo v0.3.12
 	github.com/influxdata/influxdb-client-go/v2 v2.9.1
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.5
+	github.com/microsoft/ApplicationInsights-Go v0.4.4
+	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/newrelic/newrelic-client-go v0.86.3
 	github.com/onsi/ginkgo v1.16.5
@@ -78,15 +81,15 @@ replace (
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
 	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 
+	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
+	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
+
 	// Needed for CVE-2020-28483 https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	// we need version github.com/gin-gonic/gin >= 1.7.0
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.3
 
-	// version < 1.34.0 is vulnerable to Directory Traversal
-	github.com/valyala/fasthttp => github.com/valyala/fasthttp v1.36.0
-
-	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-43565
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
+	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
 	golang.org/x/text => golang.org/x/text v0.3.7
@@ -95,6 +98,7 @@ replace (
 require (
 	cloud.google.com/go v0.102.1 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
+	code.cloudfoundry.org/clock v0.0.0-20180518195852-02e53af36e6c // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-amqp v0.16.4 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -140,6 +144,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
@@ -223,7 +228,7 @@ require (
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/ulikunitz/unixtime v0.1.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.31.0 // indirect
+	github.com/valyala/fasthttp v1.38.0 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect
 	github.com/wagslane/go-password-validator v0.3.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
