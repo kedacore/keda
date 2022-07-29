@@ -283,7 +283,8 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	points := series[0].GetPointlist()
 
-	if len(points) == 0 || len(points[0]) < 2 {
+	index := len(points) - 1
+	if len(points) == 0 || len(points[index]) < 2 {
 		if !s.metadata.useFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
@@ -291,7 +292,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	// Return the last point from the series
-	index := len(points) - 1
 	return *points[index][1], nil
 }
 
