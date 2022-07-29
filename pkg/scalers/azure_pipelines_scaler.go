@@ -43,7 +43,7 @@ type azurePipelinesMetadata struct {
 	personalAccessToken                  string
 	parent                               string
 	demands                              string
-  poolID                               int
+	poolID                               int
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
 	scalerIndex                          int
