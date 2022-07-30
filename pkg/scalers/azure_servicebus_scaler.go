@@ -25,51 +25,59 @@ import (
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	servicebus "github.com/Azure/azure-service-bus-go"
 	az "github.com/Azure/go-autorest/autorest/azure"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type entityType int
 
 const (
-	none                      entityType = 0
-	queue                     entityType = 1
-	subscription              entityType = 2
-	messageCountMetricName               = "messageCount"
-	defaultTargetMessageCount            = 5
+	none                             entityType = 0
+	queue                            entityType = 1
+	subscription                     entityType = 2
+	messageCountMetricName                      = "messageCount"
+	activationMessageCountMetricName            = "activationMessageCount"
+	defaultTargetMessageCount                   = 5
+	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
+	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
 
 type azureServiceBusScaler struct {
 	ctx         context.Context
+	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
 }
 
 type azureServiceBusMetadata struct {
-	targetLength     int64
-	queueName        string
-	topicName        string
-	subscriptionName string
-	connection       string
-	entityType       entityType
-	namespace        string
-	endpointSuffix   string
-	scalerIndex      int
+	targetLength           int64
+	activationTargetLength int64
+	queueName              string
+	topicName              string
+	subscriptionName       string
+	connection             string
+	entityType             entityType
+	namespace              string
+	endpointSuffix         string
+	scalerIndex            int
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
 func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
@@ -77,6 +85,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 
 	return &azureServiceBusScaler{
 		ctx:         ctx,
+		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -97,6 +106,16 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		} else {
 			meta.targetLength = messageCount
 		}
+	}
+
+	meta.activationTargetLength = 0
+	if val, ok := config.TriggerMetadata[activationMessageCountMetricName]; ok {
+		activationMessageCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
+			return nil, fmt.Errorf("error parsing azure queue metadata %s", activationMessageCountMetricName)
+		}
+		meta.activationTargetLength = activationMessageCount
 	}
 
 	// get queue name OR topic and subscription name & set entity type accordingly
@@ -136,7 +155,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
 		if config.AuthParams["connection"] != "" {
@@ -148,7 +167,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure:
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if val, ok := config.TriggerMetadata["namespace"]; ok {
 			meta.namespace = val
 		} else {
@@ -171,7 +190,7 @@ func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return length > 0, nil
+	return length > s.metadata.activationTargetLength, nil
 }
 
 // Close - nothing to close for SB
@@ -181,8 +200,6 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 
 // Returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetLengthQty := resource.NewQuantity(s.metadata.targetLength, resource.DecimalSI)
-
 	metricName := ""
 	if s.metadata.entityType == queue {
 		metricName = s.metadata.queueName
@@ -194,10 +211,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -212,34 +226,37 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 type azureTokenProvider struct {
-	httpClient *http.Client
-	ctx        context.Context
+	httpClient  *http.Client
+	ctx         context.Context
+	podIdentity kedav1alpha1.AuthPodIdentity
 }
 
 // GetToken implements TokenProvider interface for azureTokenProvider
 func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
 	ctx := a.ctx
-	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	token, err := azure.GetAzureADPodIdentityToken(ctx, a.httpClient, "https://servicebus.azure.net/")
+
+	var token azure.AADToken
+	var err error
+
+	switch a.podIdentity.Provider {
+	case kedav1alpha1.PodIdentityProviderAzure:
+		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, a.podIdentity.IdentityID, serviceBusResource)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, a.podIdentity.IdentityID, serviceBusResource)
+	default:
+		err = fmt.Errorf("unknown pod identity provider")
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &auth.Token{
-		TokenType: auth.CBSTokenTypeJWT,
-		Token:     token.AccessToken,
-		Expiry:    token.ExpiresOn,
-	}, nil
+	return auth.NewToken(auth.CBSTokenTypeJWT, token.AccessToken, token.ExpiresOn), nil
 }
 
 // Returns the length of the queue or subscription
@@ -265,19 +282,21 @@ func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*se
 	var namespace *servicebus.Namespace
 	var err error
 
-	if s.podIdentity == "" || s.podIdentity == kedav1alpha1.PodIdentityProviderNone {
+	switch s.podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
 		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
 		if err != nil {
 			return namespace, err
 		}
-	} else if s.podIdentity == kedav1alpha1.PodIdentityProviderAzure {
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		namespace, err = servicebus.NewNamespace()
 		if err != nil {
 			return namespace, err
 		}
 		namespace.TokenProvider = azureTokenProvider{
-			ctx:        ctx,
-			httpClient: s.httpClient,
+			ctx:         ctx,
+			httpClient:  s.httpClient,
+			podIdentity: s.podIdentity,
 		}
 		namespace.Name = s.metadata.namespace
 	}

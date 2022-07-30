@@ -68,14 +68,16 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		comment:    "metadata empty"},
 	{
 		metadata: map[string]string{
-			"streamName": testAWSKinesisStreamName,
-			"shardCount": "2",
-			"awsRegion":  testAWSRegion},
+			"streamName":           testAWSKinesisStreamName,
+			"shardCount":           "2",
+			"activationShardCount": "1",
+			"awsRegion":            testAWSRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsKinesisStreamMetadata{
-			targetShardCount: 2,
-			streamName:       testAWSKinesisStreamName,
-			awsRegion:        testAWSRegion,
+			targetShardCount:           2,
+			activationTargetShardCount: 1,
+			streamName:                 testAWSKinesisStreamName,
+			awsRegion:                  testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
@@ -111,14 +113,16 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 	},
 	{
 		metadata: map[string]string{
-			"streamName": testAWSKinesisStreamName,
-			"shardCount": "",
-			"awsRegion":  testAWSRegion},
+			"streamName":           testAWSKinesisStreamName,
+			"shardCount":           "",
+			"activationShardCount": "",
+			"awsRegion":            testAWSRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsKinesisStreamMetadata{
-			targetShardCount: 2,
-			streamName:       testAWSKinesisStreamName,
-			awsRegion:        testAWSRegion,
+			targetShardCount:           targetShardCountDefault,
+			activationTargetShardCount: activationTargetShardCountDefault,
+			streamName:                 testAWSKinesisStreamName,
+			awsRegion:                  testAWSRegion,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSKinesisAccessKeyID,
 				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
@@ -308,7 +312,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -321,7 +325,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsKinesisGetMetricTestData {
-		scaler := awsKinesisStreamScaler{meta, &mockKinesis{}}
+		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:

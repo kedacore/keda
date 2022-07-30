@@ -51,6 +51,13 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 		resolvedEnv: testMySQLResolvedEnv,
 		raisesError: false,
 	},
+	// Invalid activationQueryValue
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "activationQueryValue": "AA"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: true,
+	},
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{

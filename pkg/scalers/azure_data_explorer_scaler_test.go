@@ -70,6 +70,8 @@ var testDataExplorerMetadataWithClientAndSecret = []parseDataExplorerMetadataTes
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
 	// Missing threshold - fail
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
+	// Invalid activationThreshold - fail
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": "1", "activationThreshold": "A"}, true},
 	// known cloud
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
 		"cloud": "azureChinaCloud"}, false},
@@ -109,7 +111,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     ""})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{}})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -126,7 +128,24 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.PodIdentityProviderAzure})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
+
+	// Auth through Workload Identity
+	for _, testData := range testDataExplorerMetadataWithPodIdentity {
+		_, err := parseAzureDataExplorerMetadata(
+			&ScalerConfig{
+				ResolvedEnv:     dataExplorerResolvedEnv,
+				TriggerMetadata: testData.metadata,
+				AuthParams:      map[string]string{},
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -144,7 +163,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     "",
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{},
 				ScalerIndex:     testData.scalerIndex})
 		if err != nil {
 			t.Error("Failed to parse metadata:", err)

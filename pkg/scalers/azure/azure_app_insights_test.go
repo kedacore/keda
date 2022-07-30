@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -11,7 +12,7 @@ import (
 type testExtractAzAppInsightsTestData struct {
 	testName      string
 	isError       bool
-	expectedValue int64
+	expectedValue float64
 	info          AppInsightsInfo
 	metricResult  ApplicationInsightsMetric
 }
@@ -47,8 +48,6 @@ var testExtractAzAppInsightsData = []testExtractAzAppInsightsTestData{
 	{"metric not found", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("test/test", "avg", newMetricValue(0.0))},
 	{"metric is nil", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "avg", nil)},
 	{"incorrect aggregation type", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "max", newMetricValue(0.0))},
-	{"success round down value", false, 5, mockAppInsightsInfo("max"), mockAppInsightsMetric("testns/test", "max", newMetricValue(5.2))},
-	{"success round up value", false, 6, mockAppInsightsInfo("max"), mockAppInsightsMetric("testns/test", "max", newMetricValue(5.5))},
 }
 
 func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
@@ -72,27 +71,39 @@ func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
 
 type testAppInsightsAuthConfigTestData struct {
 	testName    string
-	expectMSI   bool
+	config      string
 	info        AppInsightsInfo
 	podIdentity kedav1alpha1.PodIdentityProvider
 }
 
+const (
+	msiConfig               = "msiConfig"
+	clientCredentialsConfig = "clientCredentialsConfig"
+	workloadIdentityConfig  = "workloadIdentityConfig"
+)
+
 var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure pod identity", true, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
+	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
+	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
+	{"azure pod identity", msiConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
+	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
 func TestAzAppInfoGetAuthConfig(t *testing.T) {
 	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(testData.info, testData.podIdentity)
-		if testData.expectMSI {
+		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
+		switch testData.config {
+		case msiConfig:
 			if _, ok := authConfig.(auth.MSIConfig); !ok {
 				t.Errorf("Test %v; incorrect auth config. expected MSI config", testData.testName)
 			}
-		} else {
+		case clientCredentialsConfig:
 			if _, ok := authConfig.(auth.ClientCredentialsConfig); !ok {
 				t.Errorf("Test: %v; incorrect auth config. expected client credentials config", testData.testName)
+			}
+		case workloadIdentityConfig:
+			if _, ok := authConfig.(ADWorkloadIdentityConfig); !ok {
+				t.Errorf("Test: %v; incorrect auth config. expected ad workload identity config", testData.testName)
 			}
 		}
 	}

@@ -6,8 +6,6 @@ import (
 	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,6 +29,7 @@ const (
 )
 
 type redisStreamsScaler struct {
+	metricType               v2beta2.MetricTargetType
 	metadata                 *redisStreamsMetadata
 	closeFn                  func() error
 	getPendingEntriesCountFn func(ctx context.Context) (int64, error)
@@ -49,27 +48,32 @@ var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
 func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	if isClustered {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createClusteredRedisStreamsScaler(ctx, meta)
+		return createClusteredRedisStreamsScaler(ctx, meta, metricType)
 	} else if isSentinel {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createSentinelRedisStreamsScaler(ctx, meta)
+		return createSentinelRedisStreamsScaler(ctx, meta, metricType)
 	}
 	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
-	return createRedisStreamsScaler(ctx, meta)
+	return createRedisStreamsScaler(ctx, meta, metricType)
 }
 
-func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
@@ -92,13 +96,14 @@ func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMe
 	}
 
 	return &redisStreamsScaler{
+		metricType:               metricType,
 		metadata:                 meta,
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
 	}, nil
 }
 
-func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
@@ -121,13 +126,14 @@ func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMet
 	}
 
 	return &redisStreamsScaler{
+		metricType:               metricType,
 		metadata:                 meta,
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
 	}, nil
 }
 
-func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (Scaler, error) {
+func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
@@ -150,6 +156,7 @@ func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata) (
 	}
 
 	return &redisStreamsScaler{
+		metricType:               metricType,
 		metadata:                 meta,
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
@@ -218,15 +225,11 @@ func (s *redisStreamsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetPendingEntriesCount := resource.NewQuantity(s.metadata.targetPendingEntriesCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetPendingEntriesCount,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetPendingEntriesCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -241,10 +244,6 @@ func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, 
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(pendingEntriesCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(pendingEntriesCount))
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

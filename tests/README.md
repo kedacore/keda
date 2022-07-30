@@ -1,87 +1,115 @@
 ## Prerequisites
 
-- [node](https://nodejs.org/en/)
+- [go](https://go.dev/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure-queue.test.ts` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure_queue_test.go` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 
+### All tests
+
+Make sure that you are in `keda/tests` directory.
+
 ```bash
-npm install
-npm test --verbose
+go test -v -tags e2e ./utils/setup_test.go        # Only needs to be run once.
+go test -v -tags e2e ./scalers_go/...
+go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep testing.
 ```
 
-### Run one test file:
+### Specific test
 
+```bash
+go test -v -tags e2e ./scalers_go/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
-npx ava scalers/prometheus.test.ts
-```
 
-## E2E test setup
+> **Note**
+> On macOS you might need to set following environment variable in order to run the tests: `GOOS="darwin"`
+>
+> eg. `GOOS="darwin" go test -v tags e2e ...`
 
-The test script will run 3 phases:
-- **Setup**: this is done in [`setup.test.ts`](setup.test.ts). If you're adding any tests for KEDA install/setup process add it to this file.`setup.test.ts` deploys KEDA to `keda` namespace in the cluster, and updates the image to `kedacore/keda:main`.
+Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
-    After `setup.test.ts` is done, we expect to have a cluster with KEDA setup in namespace `keda`. This is done through a `pretest` hook in npm. See [`"scripts"` in package.json](package.json#L14).
+## E2E Test Setup
 
-- **Tests**: Currently there are only scaler tests in `tests/scalers`. All files run in parallel, but tests within the file can run either in parallel or in series. More about tests below.
+The test script will run in 3 phases:
 
-- **Global clean up**: this is done in [`cleanup.test.ts`](cleanup.test.ts). This step cleans resources created in `setup.test.ts`.
+- **Setup:** This is done in [`utils/setup_test.go`](utils/setup_test.go). If you're adding any tests to the KEDA install / setup process, you need to add it to this file. `utils/setup_test.go` deploys KEDA to the `keda` namespace, updates the image to
+`kedacore/keda:main`.
 
+    After `utils/setup_test.go` is done, we expect to have KEDA setup in the `keda` namespace.
 
-## Adding tests:
+- **Tests:** Currently there are only scaler tests in `tests/scalers_go/`. Each test is kept in its own package. This is to prevent conflicting variable declarations for commoly used variables (**ex -** `testNamespace`). Individual scaler tests are run
+in parallel, but tests within a file can be run in parallel or in series. More about tests below.
 
-* Tests are written in TypeScript using [ava](https://github.com/avajs/ava) framework. See [ava docs here](https://github.com/avajs/ava/tree/main/docs)
-* Each scaler tests should be in a file. **e.g**: `azure-queue.tests.ts`, `kafka.tests.ts`, etc
-* All files in `scalers/**.ts` are run in parallel by default. Make sure your tests don't affect the global state of the cluster in a way that can break other tests.
-* Each test file is expected to do it's own setup and clean up for its resources.
+- **Global cleanup:** This is done in [`utils/cleanup_test.go`](utils/cleanup_test.go). It cleans up all the resources created in `utils/setup_test.go`.
 
-```ts
-// import test from ava framework
-import test from 'ava';
+## Adding tests
 
-test.before(t => {
-    // this runs once before all tests.
-    // do setup here. e.g:
-    //  - Create a namespace for your tests using the function createNamespace(namespace: string) available in helpers file
-    //  - Create deployment (using kubectl or kubernetes node-client)
-    //  - Setup event source (deploy redis, or configure azure storage, etc)
-    //  - etc
-});
+- Tests are written using `Go`'s default [`testing`](https://pkg.go.dev/testing) framework, and [`testify`](https://pkg.go.dev/github.com/stretchr/testify).
+- Each e2e test should be in its own package, **ex -** `scalers_go/azure_queue/azure_queue_test.go`, or `scalers_go/kafka/kafka_test.go`, etc
+- Each test file is expected to do its own setup and clean for resources.
 
+Test are split in different folders based on what it's testing:
+- `internals`: KEDA internals (ie: HPA related stuff).
+- `scalers_go`: Anything related with scalers.
+- `secret-providers`: Anything related with how KEDA gets the secrets for working (ie: pod-identity, vault, etc).
 
-// `test 1` and `test 2` will run in parallel.
-test('test 1', t => { });
-test('test 2', t => { });
+#### ⚠⚠ Important: ⚠⚠
+>
+> - Even though the cleaning of resources is expected inside each e2e test file, all test namespaces
+> (namespaces with label type=e2e) are  cleaned up to ensure not having dangling resources after global e2e
+> execution finishes. To not break this behaviour, it's mandatory to use the `CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string)` function from [`helper.go`](helper.go), instead of creating them manually.
 
-// `test 3` will run first, then `test 4`.
-// Tests will run in the order they are defined in.
-// All serial tests will run first before parallel tests above
-test.serial('test 3', t => { });
-test.serial('test 4', t => { });
+#### ⚠⚠ Important: ⚠⚠
+> - `Go` code can panic when performing forbidden operations such as accessing a nil pointer, or from code that
+> manually calls `panic()`. A function that `panics` passes the `panic` up the stack until program execution stops
+> or it is recovered using `recover()` (somewhat similar to `try-catch` in other languages).
+> - If a test panics, and is not recovered, `Go` will stop running the file, and no further tests will be run. This can
+> cause issues with clean up of resources.
+> - Ensure that you are not executing code that can lead to `panics`. If you think that there's a chance the test might
+> panic, call `recover()`, and cleanup the created resources.
+> - Read this [article](https://go.dev/blog/defer-panic-and-recover) for understanding more about `panic` and `recover` in `Go`.
 
-// Tests are expected to finish synchronously, or using async/await
-// if you need to use callbacks, then add `.cb` and call `t.end()` when done.
-test('test 6', t => { });
-test('test 7', async t => { });
-test.cb('test 8', t => { t.end() });
+#### **Example Test:** Let's say you want to add a test for `Redis`.
 
-test.after.always.cb('clean up always after all tests', t => {
-    // Clean up after your test here. without `always` this will only run if all tests are successful.
-    t.end();
-});
-```
->⚠⚠ **Important:** ⚠⚠ Even thought the cleaning of the resources is expected inside each e2e test file, all test namespaces are cleaned up to ensure not having dangling resources after global e2e execution finishes. For not breaking this behavior, it's mandatory the usage of the function `createNamespace(namespace: string)` instead of creating them manually.
+```go
+// +build e2e
+// ^ This is necessary to ensure the tests don't get run in the GitHub workflow.
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
 
-* **Example test:** for example if I want to add a test for redis
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/require"
+    // Other required imports
+    ...
+    ...
 
-```ts
-import * as sh from 'shelljs';
-import test from 'ava';
-import { createNamespace } from './helpers';
+	. "github.com/kedacore/keda/v2/tests/helper" // For helper methods
+)
 
-// you can include template in the file or in another file.
-const deployYaml = `apiVersion: apps/v1
+var _ = godotenv.Load("../../.env") // For loading env variables from .env
+
+const (
+    testName = "redis-test"
+    // Other constants required for your test
+    ...
+    ...
+)
+
+var (
+    testNamespace    = fmt.Sprintf("%s-ns", testName)
+    // Other variables required for your test
+    ...
+    ...
+)
+
+// YAML templates for your Kubernetes resources
+const (
+    deploymentTemplate = `
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-deployment
@@ -91,34 +119,78 @@ spec:
   replicas: 0
   ...
   ...
-  `
+`
+...
+...
+)
 
-test.before('install redis and create deployment' t => {
-    if (!sh.which('helm')) {
-        t.fail('redis tests require helm');
-    }
+type templateData struct {
+    // Fields used in your Kubernetes YAML templates
+    ...
+    ...
+}
 
-    sh.exec('helm install redis ......'); // install redis to the cluster
-    createNamespace("redis-test-deployment")
-    sh.exec('kubectl apply -f ....'); // create your deployment
-});
+// templateValues consists of templates and their names
+type templateValues map[string] string
 
-test.serial('deployment should scale when adding items in redis list', t => {
-    // use node redis client to add stuff to redis.
-    // maybe sleep or poll the replica count
-    const replicaCount = sh.exec(`kubectl get deployment.apps/test-deployment .. -o jsonpath="{.spec.replicas}"`).stdout;
-    t.is('10', replicaCount, 'expecting replica count to be 10');
-});
 
-test.after.always('remove redis and my deployment', t => {
-    sh.exec('kubectl delete ....');
-});
+func TestScaler(t *testing.T) {
+    setupTest(t)
+
+    kc := GetKubernetesClient(t)
+    data, templates := getTemplateData()
+
+    CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+    testScaleUp(t)
+
+    // Ensure that this gets run. Using defer is necessary
+    DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+    cleanupTest(t)
+}
+
+func setupTest(t *testing.T) {
+    t.Log("--- setting up ---")
+    _, err := ParseCommand("which helm").Output()
+    assert.NoErrorf(t, err, "redis test requires helm - %s", err)
+
+    _, err := ParseCommand("helm install redis .....").Output()
+    assert.NoErrorf(t, err, "error while installing redis - %s", err)
+}
+
+func getTemplateData() (templateData, map[string]string) {
+    return templateData{
+        // Populate fields required in YAML templates
+        ...
+        ...
+    }, templateValues{"deploymentTemplate":deploymentTemplate,  "scaledObjectTemplate":scaledObjectTemplate}
+}
+
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
+    t.Log("--- testing scale up ---")
+    // Use Go Redis Library to add stuff to redis to trigger scale up.
+    ...
+    ...
+    // Sleep / poll for replica count using helper method.
+    require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 1),
+		"replica count should be 10 after 1 minute")
+}
+
+func cleanupTest(t *testing.T) {
+    t.Log("--- cleaning up ---")
+    // Cleanup external resources (such as Blob Storage Container, RabbitMQ queue, Redis in this case)
+    ...
+    ...
+}
 ```
 
-* You can see [`azure-queue.test.ts`](scalers/azure-queue.test.ts) for a full example.
-* Ava has more options for asserting and writing tests. The docs are very good. https://github.com/avajs/ava/blob/main/docs/01-writing-tests.md
-* **debugging**: when debugging, you can force only 1 test to run by adding `only` to the test definition.
+#### Notes
 
-```ts
-test.serial.only('this will be the only test to run', t => { });
-```
+- You can see [`azure_queue_test.go`](scalers_go/azure_queue/azure_queue_test.go) for a full example.
+- All tests must have the `// +build e2e` build tag.
+- Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
+- Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
+you're trying to achieve is too complicated or tedious using above, use `ParseCommand` or `ExecuteCommand` from `helper.go`
+for executing shell commands.
+- Ensure, ensure, ensure that you're cleaning up resources.
+- You can use `VS Code` for easily debugging your tests.

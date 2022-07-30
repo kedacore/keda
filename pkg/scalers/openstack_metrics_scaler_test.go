@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 )
 
 type parseOpenstackMetricMetadataTestData struct {
@@ -64,6 +65,9 @@ var invalidOpenstackMetricMetadaTestData = []parseOpenstackMetricMetadataTestDat
 
 	// threshold 0
 	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0z"}},
+
+	// activation threshold invalid
+	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0", "activationThreshold": "z"}},
 }
 
 var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetadataTestData{
@@ -114,7 +118,7 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 			t.Fatal("could not parse openstack metric authentication metadata")
 		}
 
-		mockMetricsScaler := openstackMetricScaler{meta, openstack.Client{}}
+		mockMetricsScaler := openstackMetricScaler{"", meta, openstack.Client{}}
 		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricsSpec[0].External.Metric.Name
 

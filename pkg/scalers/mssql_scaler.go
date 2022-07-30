@@ -9,18 +9,17 @@ import (
 
 	// mssql driver required for this scaler
 	_ "github.com/denisenkom/go-mssqldb"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // mssqlScaler exposes a data pointer to mssqlMetadata and sql.DB connection
 type mssqlScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *mssqlMetadata
 	connection *sql.DB
 }
@@ -51,7 +50,10 @@ type mssqlMetadata struct {
 	query string
 	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
 	// +required
-	targetValue int64
+	targetValue float64
+	// The threshold that is used in activation phase
+	// +optional
+	activationTargetValue float64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
@@ -64,6 +66,11 @@ var mssqlLog = logf.Log.WithName("mssql_scaler")
 
 // NewMSSQLScaler creates a new mssql scaler
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing mssql metadata: %s", err)
@@ -75,6 +82,7 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &mssqlScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -93,13 +101,23 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 
 	// Target query value
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseInt(val, 10, 64)
+		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 		}
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given")
+	}
+
+	// Activation target value
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	// Connection string, which can either be provided explicitly or via the helper fields
@@ -210,15 +228,11 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
@@ -235,18 +249,14 @@ func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getQueryResult returns the result of the scaler query
-func (s *mssqlScaler) getQueryResult(ctx context.Context) (int64, error) {
-	var value int64
+func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
+	var value float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:
@@ -266,7 +276,7 @@ func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetValue, nil
 }
 
 // Close closes the mssql database connections

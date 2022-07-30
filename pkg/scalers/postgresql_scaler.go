@@ -9,8 +9,6 @@ import (
 	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,22 +17,29 @@ import (
 )
 
 type postgreSQLScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *postgreSQLMetadata
 	connection *sql.DB
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue int64
-	connection       string
-	query            string
-	metricName       string
-	scalerIndex      int
+	targetQueryValue           float64
+	activationTargetQueryValue float64
+	connection                 string
+	query                      string
+	metricName                 string
+	scalerIndex                int
 }
 
 var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
@@ -45,6 +50,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
 	}
 	return &postgreSQLScaler{
+		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
 	}, nil
@@ -60,13 +66,22 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	switch {
@@ -158,11 +173,11 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
-	var id int64
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
+	var id float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
@@ -173,16 +188,11 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(s.metadata.targetQueryValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -197,11 +207,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -21,22 +19,24 @@ import (
 )
 
 type artemisScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *artemisMetadata
 	httpClient *http.Client
 }
 
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
-	managementEndpoint string
-	queueName          string
-	brokerName         string
-	brokerAddress      string
-	username           string
-	password           string
-	restAPITemplate    string
-	queueLength        int64
-	corsHeader         string
-	scalerIndex        int
+	managementEndpoint    string
+	queueName             string
+	brokerName            string
+	brokerAddress         string
+	username              string
+	password              string
+	restAPITemplate       string
+	queueLength           int64
+	activationQueueLength int64
+	corsHeader            string
+	scalerIndex           int
 }
 
 //revive:enable:var-naming
@@ -48,10 +48,11 @@ type artemisMonitoring struct {
 }
 
 const (
-	artemisMetricType         = "External"
-	defaultArtemisQueueLength = 10
-	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
-	defaultCorsHeader         = "http://%s"
+	artemisMetricType                   = "External"
+	defaultArtemisQueueLength           = 10
+	defaultArtemisActivationQueueLength = 0
+	defaultRestAPITemplate              = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultCorsHeader                   = "http://%s"
 )
 
 var artemisLog = logf.Log.WithName("artemis_queue_scaler")
@@ -63,12 +64,18 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// the global client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
 	}
 
 	return &artemisScaler{
+		metricType: metricType,
 		metadata:   artemisMetadata,
 		httpClient: httpClient,
 	}, nil
@@ -78,6 +85,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
+	meta.activationQueueLength = defaultArtemisActivationQueueLength
 
 	if val, ok := config.TriggerMetadata["restApiTemplate"]; ok && val != "" {
 		meta.restAPITemplate = config.TriggerMetadata["restApiTemplate"]
@@ -121,6 +129,15 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		}
 
 		meta.queueLength = queueLength
+	}
+
+	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse activationQueueLength: %s", err)
+		}
+
+		meta.activationQueueLength = activationQueueLength
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
@@ -168,7 +185,7 @@ func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationQueueLength, nil
 }
 
 // getAPIParameters parse restAPITemplate to provide managementEndpoint , brokerName, brokerAddress, queueName
@@ -251,15 +268,11 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 }
 
 func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.queueLength, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -274,11 +287,7 @@ func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metri
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(messages, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(messages))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

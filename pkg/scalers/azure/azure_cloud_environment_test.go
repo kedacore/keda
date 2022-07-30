@@ -52,3 +52,40 @@ func TestParseEnvironmentProperty(t *testing.T) {
 		}
 	}
 }
+
+const testADEndpoint = "testADEndpoint"
+
+type parseActiveDirectoryEndpointTestData struct {
+	metadata           map[string]string
+	expectedADEndpoint string
+	isError            bool
+}
+
+var parseActiveDirectoryEndpointTestDataset = []parseActiveDirectoryEndpointTestData{
+	{metadata: map[string]string{}, isError: false, expectedADEndpoint: az.PublicCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{"cloud": "AzureChinaCloud"}, isError: false, expectedADEndpoint: az.ChinaCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{"cloud": "private", "activeDirectoryEndpoint": testADEndpoint}, isError: false,
+		expectedADEndpoint: testADEndpoint},
+	{metadata: map[string]string{"cloud": "private"}, isError: true},
+	{metadata: map[string]string{"cloud": "invalid"}, isError: true},
+}
+
+func TestParseActiveDirectoryEndpoint(t *testing.T) {
+	for _, testData := range parseActiveDirectoryEndpointTestDataset {
+		activeDirectoryEndpoint, err := ParseActiveDirectoryEndpoint(testData.metadata)
+		if !testData.isError && err != nil {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if err == nil {
+			if activeDirectoryEndpoint != testData.expectedADEndpoint {
+				t.Error(
+					"For", testData.metadata,
+					"expected activeDirectoryEndpoint=", testData.expectedADEndpoint,
+					"but got", activeDirectoryEndpoint)
+			}
+		}
+	}
+}

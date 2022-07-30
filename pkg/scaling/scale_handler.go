@@ -131,7 +131,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 		}
 		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
 	} else {
-		h.logger.V(1).Info("ScaleObject was not found in controller cache", "key", key)
+		h.logger.V(1).Info("ScaledObject was not found in controller cache", "key", key)
 	}
 
 	return nil
@@ -313,6 +313,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				AuthParams:        make(map[string]string),
 				GlobalHTTPTimeout: h.globalHTTPTimeout,
 				ScalerIndex:       triggerIndex,
+				MetricType:        trigger.MetricType,
 			}
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
@@ -356,6 +357,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAwsCloudwatchScaler(config)
 	case "aws-dynamodb":
 		return scalers.NewAwsDynamoDBScaler(config)
+	case "aws-dynamodb-streams":
+		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
@@ -365,9 +368,9 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
 	case "azure-data-explorer":
-		return scalers.NewAzureDataExplorerScaler(config)
+		return scalers.NewAzureDataExplorerScaler(ctx, config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(config)
+		return scalers.NewAzureEventHubScaler(ctx, config)
 	case "azure-log-analytics":
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
@@ -390,6 +393,9 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewElasticsearchScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
+	// TODO: use other way for test.
+	case "external-mock":
+		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "gcp-pubsub":

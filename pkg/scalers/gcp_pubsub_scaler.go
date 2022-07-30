@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -32,13 +30,15 @@ const (
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
 
 type pubsubScaler struct {
-	client   *StackDriverClient
-	metadata *pubsubMetadata
+	client     *StackDriverClient
+	metricType v2beta2.MetricTargetType
+	metadata   *pubsubMetadata
 }
 
 type pubsubMetadata struct {
-	mode  string
-	value int64
+	mode            string
+	value           int64
+	activationValue int64
 
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -49,13 +49,19 @@ var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
 
 // NewPubSubScaler creates a new pubsubScaler
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
 	}
 
 	return &pubsubScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -110,6 +116,15 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		return nil, fmt.Errorf("no subscription name given")
 	}
 
+	meta.activationValue = 0
+	if val, ok := config.TriggerMetadata["activationValue"]; ok {
+		activationValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationValue parsing error %s", err.Error())
+		}
+		meta.activationValue = activationValue
+	}
+
 	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -128,14 +143,14 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return size > 0, nil
+		return size > s.metadata.activationValue, nil
 	case pubsubModeOldestUnackedMessageAge:
-		_, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
+		delay, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			gcpPubSubLog.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return true, nil
+		return delay > s.metadata.activationValue, nil
 	default:
 		return false, errors.New("unknown mode")
 	}
@@ -155,17 +170,11 @@ func (s *pubsubScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(s.metadata.value, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValueQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.value),
 	}
 
 	// Create the metric spec for the HPA
@@ -197,11 +206,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 		}
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(value))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -233,7 +238,9 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64
 	subscriptionID, projectID := getSubscriptionData(s)
 	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
 
-	return s.client.GetMetrics(ctx, filter, projectID)
+	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
+	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
+	return s.client.GetMetrics(ctx, filter, projectID, nil)
 }
 
 func getSubscriptionData(s *pubsubScaler) (string, string) {

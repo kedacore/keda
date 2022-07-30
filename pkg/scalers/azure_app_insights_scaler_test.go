@@ -32,6 +32,14 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
 		},
 	}},
+	{name: "activation target value not a number", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "1", "activationTargetValue": "a1", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "", "tenantId": "1234",
+		},
+		AuthParams: map[string]string{
+			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
+		},
+	}},
 	{name: "empty app insights id", isError: true, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "", "tenantId": "1234",
@@ -103,6 +111,30 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 		AuthParams: map[string]string{
 			"activeDirectoryClientId": "5678", "activeDirectoryClientPassword": "pw",
 		},
+	}},
+	{name: "correct pod identity", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
+	}},
+	{name: "invalid pod Identity", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProvider("notAzure")},
+	}},
+	{name: "correct workload identity", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	}},
+	{name: "invalid workload Identity", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProvider("notAzureWorkload")},
 	}},
 	{name: "app insights id in auth", isError: false, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
@@ -216,7 +248,7 @@ func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
 			}
 			mockAzureAppInsightsScaler := azureAppInsightsScaler{
 				metadata:    meta,
-				podIdentity: kedav1alpha1.PodIdentityProviderAzure,
+				podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
 			}
 
 			metricSpec := mockAzureAppInsightsScaler.GetMetricSpecForScaling(ctx)

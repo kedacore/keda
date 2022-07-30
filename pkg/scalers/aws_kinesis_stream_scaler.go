@@ -5,16 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -23,32 +20,41 @@ import (
 )
 
 const (
-	targetShardCountDefault = 2
+	targetShardCountDefault           = 2
+	activationTargetShardCountDefault = 0
 )
 
 type awsKinesisStreamScaler struct {
+	metricType    v2beta2.MetricTargetType
 	metadata      *awsKinesisStreamMetadata
 	kinesisClient kinesisiface.KinesisAPI
 }
 
 type awsKinesisStreamMetadata struct {
-	targetShardCount int64
-	streamName       string
-	awsRegion        string
-	awsAuthorization awsAuthorizationMetadata
-	scalerIndex      int
+	targetShardCount           int64
+	activationTargetShardCount int64
+	streamName                 string
+	awsRegion                  string
+	awsAuthorization           awsAuthorizationMetadata
+	scalerIndex                int
 }
 
 var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
 func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsKinesisStreamMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
 
 	return &awsKinesisStreamScaler{
+		metricType:    metricType,
 		metadata:      meta,
 		kinesisClient: createKinesisClient(meta),
 	}, nil
@@ -65,6 +71,16 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
 		} else {
 			meta.targetShardCount = shardCount
+		}
+	}
+
+	if val, ok := config.TriggerMetadata["activationShardCount"]; ok && val != "" {
+		activationShardCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			meta.activationTargetShardCount = activationTargetShardCountDefault
+			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata activationShardCount, using default %n", activationTargetShardCountDefault)
+		} else {
+			meta.activationTargetShardCount = activationShardCount
 		}
 	}
 
@@ -125,7 +141,7 @@ func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return count > 0, nil
+	return count > s.metadata.activationTargetShardCount, nil
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
@@ -133,15 +149,11 @@ func (s *awsKinesisStreamScaler) Close(context.Context) error {
 }
 
 func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetShardCountQty := resource.NewQuantity(s.metadata.targetShardCount, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetShardCountQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -156,11 +168,7 @@ func (s *awsKinesisStreamScaler) GetMetrics(ctx context.Context, metricName stri
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(shardCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(shardCount))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

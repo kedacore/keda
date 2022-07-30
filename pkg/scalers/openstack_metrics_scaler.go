@@ -11,14 +11,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -29,13 +28,14 @@ const (
 /* expected structure declarations */
 
 type openstackMetricMetadata struct {
-	metricsURL        string
-	metricID          string
-	aggregationMethod string
-	granularity       int
-	threshold         float64
-	timeout           int
-	scalerIndex       int
+	metricsURL          string
+	metricID            string
+	aggregationMethod   string
+	granularity         int
+	threshold           float64
+	activationThreshold float64
+	timeout             int
+	scalerIndex         int
 }
 
 type openstackMetricAuthenticationMetadata struct {
@@ -47,6 +47,7 @@ type openstackMetricAuthenticationMetadata struct {
 }
 
 type openstackMetricScaler struct {
+	metricType   v2beta2.MetricTargetType
 	metadata     *openstackMetricMetadata
 	metricClient openstack.Client
 }
@@ -63,6 +64,11 @@ var openstackMetricLog = logf.Log.WithName("openstack_metric_scaler")
 func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	var keystoneAuth *openstack.KeystoneAuthRequest
 	var metricsClient openstack.Client
+
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
 
 	openstackMetricMetadata, err := parseOpenstackMetricMetadata(config)
 
@@ -103,6 +109,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 	}
 
 	return &openstackMetricScaler{
+		metricType:   metricType,
 		metadata:     openstackMetricMetadata,
 		metricClient: metricsClient,
 	}, nil
@@ -155,6 +162,17 @@ func parseOpenstackMetricMetadata(config *ScalerConfig) (*openstackMetricMetadat
 		meta.threshold = _threshold
 	}
 
+	if val, ok := triggerMetadata["activationThreshold"]; ok && val != "" {
+		// converts the string to float64 but its value is convertible to float32 without changing
+		activationThreshold, err := strconv.ParseFloat(val, 32)
+		if err != nil {
+			openstackMetricLog.Error(err, "error parsing openstack metric metadata", "activationThreshold", "activationThreshold")
+			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
+		}
+
+		meta.activationThreshold = activationThreshold
+	}
+
 	if val, ok := triggerMetadata["timeout"]; ok && val != "" {
 		httpClientTimeout, err := strconv.Atoi(val)
 		if err != nil {
@@ -196,17 +214,13 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 }
 
 func (a *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricVal := resource.NewQuantity(int64(a.metadata.threshold), resource.DecimalSI)
 	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", a.metadata.metricID))
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(a.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricVal,
-		},
+		Target: GetMetricTargetMili(a.metricType, a.metadata.threshold),
 	}
 
 	metricSpec := v2beta2.MetricSpec{
@@ -225,11 +239,7 @@ func (a *openstackMetricScaler) GetMetrics(ctx context.Context, metricName strin
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -241,7 +251,7 @@ func (a *openstackMetricScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > a.metadata.activationThreshold, nil
 }
 
 func (a *openstackMetricScaler) Close(context.Context) error {

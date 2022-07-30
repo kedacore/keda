@@ -9,13 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -33,17 +32,19 @@ type azurePipelinesPoolIDResponse struct {
 }
 
 type azurePipelinesScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *azurePipelinesMetadata
 	httpClient *http.Client
 }
 
 type azurePipelinesMetadata struct {
-	organizationURL            string
-	organizationName           string
-	personalAccessToken        string
-	poolID                     int
-	targetPipelinesQueueLength int64
-	scalerIndex                int
+	organizationURL                      string
+	organizationName                     string
+	personalAccessToken                  string
+	poolID                               int
+	targetPipelinesQueueLength           int64
+	activationTargetPipelinesQueueLength int64
+	scalerIndex                          int
 }
 
 var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
@@ -52,12 +53,18 @@ var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAzurePipelinesMetadata(ctx, config, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %s", err)
 	}
 
 	return &azurePipelinesScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -74,6 +81,16 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 
 		meta.targetPipelinesQueueLength = queueLength
+	}
+
+	meta.activationTargetPipelinesQueueLength = 0
+	if val, ok := config.TriggerMetadata["activationTargetPipelinesQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %s", err.Error())
+		}
+
+		meta.activationTargetPipelinesQueueLength = activationQueueLength
 	}
 
 	if val, ok := config.AuthParams["organizationURL"]; ok && val != "" {
@@ -118,6 +135,8 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 	}
 
+	// Trim any trailing new lines from the Azure Pipelines PAT
+	meta.personalAccessToken = strings.TrimSuffix(meta.personalAccessToken, "\n")
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
@@ -170,7 +189,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 		return []byte{}, err
 	}
 
-	req.SetBasicAuth("PAT", metadata.personalAccessToken)
+	req.SetBasicAuth("", metadata.personalAccessToken)
 
 	r, err := httpClient.Do(req)
 	if err != nil {
@@ -198,11 +217,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -238,15 +253,11 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetPipelinesQueueLengthQty := resource.NewQuantity(s.metadata.targetPipelinesQueueLength, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetPipelinesQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -260,7 +271,7 @@ func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return queuelen > 0, nil
+	return queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {

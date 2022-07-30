@@ -8,8 +8,6 @@ import (
 
 	"github.com/gocql/gocql"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,29 +17,36 @@ import (
 
 // cassandraScaler exposes a data pointer to CassandraMetadata and gocql.Session connection.
 type cassandraScaler struct {
-	metadata *CassandraMetadata
-	session  *gocql.Session
+	metricType v2beta2.MetricTargetType
+	metadata   *CassandraMetadata
+	session    *gocql.Session
 }
 
 // CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
 type CassandraMetadata struct {
-	username         string
-	password         string
-	clusterIPAddress string
-	port             int
-	consistency      gocql.Consistency
-	protocolVersion  int
-	keyspace         string
-	query            string
-	targetQueryValue int64
-	metricName       string
-	scalerIndex      int
+	username                   string
+	password                   string
+	clusterIPAddress           string
+	port                       int
+	consistency                gocql.Consistency
+	protocolVersion            int
+	keyspace                   string
+	query                      string
+	targetQueryValue           int64
+	activationTargetQueryValue int64
+	metricName                 string
+	scalerIndex                int
 }
 
 var cassandraLog = logf.Log.WithName("cassandra_scaler")
 
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := ParseCassandraMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
@@ -53,8 +58,9 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &cassandraScaler{
-		metadata: meta,
-		session:  session,
+		metricType: metricType,
+		metadata:   meta,
+		session:    session,
 	}, nil
 }
 
@@ -76,6 +82,15 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["username"]; ok {
@@ -170,20 +185,16 @@ func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
 func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(s.metadata.targetQueryValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -199,11 +210,7 @@ func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, met
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(num))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -11,6 +11,7 @@ exemptLabels:
   - security
   - Epic
   - dependencies
+  - enhancement
 
 # Label to use when marking an issue as stale
 staleLabel: stale

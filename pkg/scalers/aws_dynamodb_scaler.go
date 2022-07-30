@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -25,8 +23,9 @@ import (
 )
 
 type awsDynamoDBScaler struct {
-	metadata *awsDynamoDBMetadata
-	dbClient dynamodbiface.DynamoDBAPI
+	metricType v2beta2.MetricTargetType
+	metadata   *awsDynamoDBMetadata
+	dbClient   dynamodbiface.DynamoDBAPI
 }
 
 type awsDynamoDBMetadata struct {
@@ -36,6 +35,7 @@ type awsDynamoDBMetadata struct {
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
 	targetValue               int64
+	activationTargetValue     int64
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
 	metricName                string
@@ -44,14 +44,20 @@ type awsDynamoDBMetadata struct {
 var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseAwsDynamoDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %s", err)
 	}
 
 	return &awsDynamoDBScaler{
-		metadata: meta,
-		dbClient: createDynamoDBClient(meta),
+		metricType: metricType,
+		metadata:   meta,
+		dbClient:   createDynamoDBClient(meta),
 	}, nil
 }
 
@@ -111,6 +117,17 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		return nil, fmt.Errorf("no targetValue given")
 	}
 
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata targetValue")
+		}
+
+		meta.activationTargetValue = n
+	} else {
+		meta.activationTargetValue = 0
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -161,25 +178,17 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(metricValue, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, metricValue)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(c.metadata.targetValue, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: c.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTarget(c.metricType, c.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 
@@ -194,14 +203,14 @@ func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > float64(c.metadata.activationTargetValue), nil
 }
 
 func (c *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
+func (c *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(c.metadata.tableName),
 		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
@@ -215,7 +224,7 @@ func (c *awsDynamoDBScaler) GetQueryMetrics() (int64, error) {
 		return 0, err
 	}
 
-	return *res.Count, nil
+	return float64(*res.Count), nil
 }
 
 // json2Map convert Json to map[string]string

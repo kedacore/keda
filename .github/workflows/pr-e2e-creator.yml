@@ -1,0 +1,35 @@
+name: e2e-tests
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+
+env:
+  SKIP_E2E_TAG: skip-e2e
+  E2E_CHECK_NAME: e2e tests
+
+jobs:
+  check-creator:
+    name: check-creator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: LouisBrunner/checks-action@v1.2.0
+        name: Enqueue e2e
+        id: create
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          status: queued
+
+      - uses: LouisBrunner/checks-action@v1.2.0
+        name: Skip e2e
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          check_id: ${{ steps.create.outputs.check_id }}
+          conclusion: success
+          output: |
+            {"summary": "skipped by maintainer"}

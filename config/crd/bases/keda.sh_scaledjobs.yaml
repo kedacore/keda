@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
+    controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
   name: scaledjobs.keda.sh
 spec:
@@ -5860,8 +5859,8 @@ spec:
                                     constraint. - DoNotSchedule (default) tells the
                                     scheduler not to schedule it. - ScheduleAnyway
                                     tells the scheduler to schedule the pod in any
-                                    location,   but giving higher precedence to topologies
-                                    that would help reduce the   skew. A constraint
+                                    location, but giving higher precedence to topologies
+                                    that would help reduce the skew. A constraint
                                     is considered "Unsatisfiable" for an incoming
                                     pod if and only if every possible node assignment
                                     for that pod would violate "MaxSkew" on some topology.
@@ -6329,12 +6328,12 @@ spec:
                                     deleted when the pod is removed. \n Use this if:
                                     a) the volume is only needed while the pod runs,
                                     b) features of normal volumes like restoring from
-                                    snapshot or capacity    tracking are needed, c)
-                                    the storage driver is specified through a storage
+                                    snapshot or capacity tracking are needed, c) the
+                                    storage driver is specified through a storage
                                     class, and d) the storage driver supports dynamic
-                                    volume provisioning through    a PersistentVolumeClaim
-                                    (see EphemeralVolumeSource for more    information
-                                    on the connection between this volume type    and
+                                    volume provisioning through a PersistentVolumeClaim
+                                    (see EphemeralVolumeSource for more information
+                                    on the connection between this volume type and
                                     PersistentVolumeClaim). \n Use PersistentVolumeClaim
                                     or one of the vendor-specific APIs for volumes
                                     that persist for longer than the lifecycle of
@@ -6449,13 +6448,13 @@ spec:
                                                 differences between DataSource and
                                                 DataSourceRef: * While DataSource
                                                 only allows two specific types of
-                                                objects, DataSourceRef   allows any
+                                                objects, DataSourceRef allows any
                                                 non-core object, as well as PersistentVolumeClaim
                                                 objects. * While DataSource ignores
                                                 disallowed values (dropping them),
-                                                DataSourceRef   preserves all values,
+                                                DataSourceRef preserves all values,
                                                 and generates an error if a disallowed
-                                                value is   specified. (Alpha) Using
+                                                value is specified. (Alpha) Using
                                                 this field requires the AnyVolumeDataSource
                                                 feature gate to be enabled.'
                                               properties:
@@ -7595,6 +7594,14 @@ spec:
               pollingInterval:
                 format: int32
                 type: integer
+              rollout:
+                description: Rollout defines the strategy for job rollouts
+                properties:
+                  propagationPolicy:
+                    type: string
+                  strategy:
+                    type: string
+                type: object
               rolloutStrategy:
                 type: string
               scalingStrategy:
@@ -7639,6 +7646,11 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    metricType:
+                      description: MetricTargetType specifies the type of metric being
+                        targeted, and should be either "Value", "AverageValue", or
+                        "Utilization"
+                      type: string
                     name:
                       type: string
                     type:
@@ -7688,9 +7700,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

@@ -26,7 +26,7 @@ var sdFilter = "metric.type=\"storage.googleapis.com/storage/object_count\" reso
 var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationTargetValue": "5"}, false},
 	// all required properly formed
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing projectId
@@ -37,10 +37,20 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "7"}, true},
 	// malformed targetValue
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "targetValue": "aa", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// malformed activationTargetValue
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "activationTargetValue": "a"}, true},
 	// Credentials from AuthParams
 	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, false},
 	// Credentials from AuthParams with empty creds
 	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, true},
+	// With aggregation info
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "120", "alignmentAligner": "sum", "alignmentReducer": "percentile_99"}, false},
+	// With minimal aggregation info
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "120"}, false},
+	// With too short alignment period
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "30"}, true},
+	// With bad alignment period
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "a"}, true},
 }
 
 var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{
@@ -66,7 +76,7 @@ func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpStackdriverScaler := stackdriverScaler{nil, meta}
+		mockGcpStackdriverScaler := stackdriverScaler{nil, "", meta}
 
 		metricSpec := mockGcpStackdriverScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

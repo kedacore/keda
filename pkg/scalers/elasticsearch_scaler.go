@@ -14,8 +14,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -24,27 +22,34 @@ import (
 )
 
 type elasticsearchScaler struct {
-	metadata *elasticsearchMetadata
-	esClient *elasticsearch.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *elasticsearchMetadata
+	esClient   *elasticsearch.Client
 }
 
 type elasticsearchMetadata struct {
-	addresses          []string
-	unsafeSsl          bool
-	username           string
-	password           string
-	indexes            []string
-	searchTemplateName string
-	parameters         []string
-	valueLocation      string
-	targetValue        int64
-	metricName         string
+	addresses             []string
+	unsafeSsl             bool
+	username              string
+	password              string
+	indexes               []string
+	searchTemplateName    string
+	parameters            []string
+	valueLocation         string
+	targetValue           float64
+	activationTargetValue float64
+	metricName            string
 }
 
 var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
 
 // NewElasticsearchScaler creates a new elasticsearch scaler
 func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
@@ -55,8 +60,9 @@ func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting elasticsearch client: %s", err)
 	}
 	return &elasticsearchScaler{
-		metadata: meta,
-		esClient: esClient,
+		metricType: metricType,
+		metadata:   meta,
+		esClient:   esClient,
 	}, nil
 }
 
@@ -117,9 +123,17 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseInt(targetValue, 10, 64)
+	meta.targetValue, err = strconv.ParseFloat(targetValue, 64)
 	if err != nil {
 		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+	}
+
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
 	}
 
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
@@ -165,11 +179,11 @@ func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
 		elasticsearchLog.Error(err, fmt.Sprintf("Error inspecting elasticsearch: %s", err))
 		return false, err
 	}
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetValue, nil
 }
 
 // getQueryResult returns result of the scaler query
-func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (int64, error) {
+func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// Build the request body.
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(buildQuery(s.metadata)); err != nil {
@@ -216,11 +230,11 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 	return query
 }
 
-func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
+func getValueFromSearch(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number but got: '%s'"
 	if r.Type == gjson.String {
-		q, err := strconv.ParseInt(r.String(), 10, 64)
+		q, err := strconv.ParseFloat(r.String(), 64)
 		if err != nil {
 			return 0, fmt.Errorf(errorMsg, r.String())
 		}
@@ -229,21 +243,16 @@ func getValueFromSearch(body []byte, valueLocation string) (int64, error) {
 	if r.Type != gjson.Number {
 		return 0, fmt.Errorf(errorMsg, r.Type.String())
 	}
-	return int64(r.Num), nil
+	return r.Num, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetValue := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -258,11 +267,7 @@ func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string,
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting elasticsearch: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

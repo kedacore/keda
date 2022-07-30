@@ -11,8 +11,6 @@ import (
 	"github.com/Huawei/gophercloud/openstack"
 	"github.com/Huawei/gophercloud/openstack/ces/v1/metricdata"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,7 +27,8 @@ const (
 )
 
 type huaweiCloudeyeScaler struct {
-	metadata *huaweiCloudeyeMetadata
+	metricType v2beta2.MetricTargetType
+	metadata   *huaweiCloudeyeMetadata
 }
 
 type huaweiCloudeyeMetadata struct {
@@ -38,8 +37,8 @@ type huaweiCloudeyeMetadata struct {
 	dimensionName  string
 	dimensionValue string
 
-	targetMetricValue float64
-	minMetricValue    float64
+	targetMetricValue           float64
+	activationTargetMetricValue float64
 
 	metricCollectionTime int64
 	metricFilter         string
@@ -75,13 +74,19 @@ var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
 func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseHuaweiCloudeyeMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
 	}
 
 	return &huaweiCloudeyeScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
@@ -127,12 +132,22 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
+	meta.activationTargetMetricValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetMetricValue"]; ok && val != "" {
+		activationTargetMetricValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			cloudeyeLog.Error(err, "Error parsing activationTargetMetricValue metadata")
+		}
+		meta.activationTargetMetricValue = activationTargetMetricValue
+	}
+
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
 		} else {
-			meta.minMetricValue = minMetricValue
+			cloudeyeLog.Error(err, "minMetricValue is deprecated and will be removed in next versions, please use activationTargetMetricValue instead")
+			meta.activationTargetMetricValue = minMetricValue
 		}
 	} else {
 		return nil, fmt.Errorf("min Metric Value not given")
@@ -232,25 +247,16 @@ func (h *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(metricValue), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
-
+	metric := GenerateMetricInMili(metricName, metricValue)
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(int64(h.metadata.targetMetricValue), resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", h.metadata.metricsName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTargetMili(h.metricType, h.metadata.targetMetricValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -263,7 +269,7 @@ func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > h.metadata.minMetricValue, nil
+	return val > h.metadata.activationTargetMetricValue, nil
 }
 
 func (h *huaweiCloudeyeScaler) Close(context.Context) error {

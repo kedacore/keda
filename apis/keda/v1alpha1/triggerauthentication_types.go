@@ -95,12 +95,13 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone    PodIdentityProvider = "none"
-	PodIdentityProviderAzure   PodIdentityProvider = "azure"
-	PodIdentityProviderGCP     PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe  PodIdentityProvider = "spiffe"
-	PodIdentityProviderAwsEKS  PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAwsKiam PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderNone          PodIdentityProvider = "none"
+	PodIdentityProviderAzure         PodIdentityProvider = "azure"
+	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
+	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
+	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
+	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -114,6 +115,8 @@ const (
 // mechanism
 type AuthPodIdentity struct {
 	Provider PodIdentityProvider `json:"provider"`
+	// +optional
+	IdentityID string `json:"identityId"`
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
@@ -180,9 +183,10 @@ type VaultSecret struct {
 
 // AzureKeyVault is used to authenticate using Azure Key Vault
 type AzureKeyVault struct {
-	VaultURI    string                    `json:"vaultUri"`
+	VaultURI string                `json:"vaultUri"`
+	Secrets  []AzureKeyVaultSecret `json:"secrets"`
+	// +optional
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
-	Secrets     []AzureKeyVaultSecret     `json:"secrets"`
 	// +optional
 	Cloud *AzureKeyVaultCloudInfo `json:"cloud"`
 }

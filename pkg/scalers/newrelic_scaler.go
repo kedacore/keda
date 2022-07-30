@@ -9,8 +9,6 @@ import (
 	"github.com/newrelic/newrelic-client-go/newrelic"
 	"github.com/newrelic/newrelic-client-go/pkg/nrdb"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,8 +27,9 @@ const (
 )
 
 type newrelicScaler struct {
-	metadata *newrelicMetadata
-	nrClient *newrelic.NewRelic
+	metricType v2beta2.MetricTargetType
+	metadata   *newrelicMetadata
+	nrClient   *newrelic.NewRelic
 }
 
 type newrelicMetadata struct {
@@ -39,13 +38,18 @@ type newrelicMetadata struct {
 	queryKey    string
 	noDataError bool
 	nrql        string
-	threshold   int64
+	threshold   float64
 	scalerIndex int
 }
 
 var newrelicLog = logf.Log.WithName(fmt.Sprintf("%s_scaler", scalerName))
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseNewRelicMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %s", scalerName, err)
@@ -64,22 +68,25 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	newrelicLog.Info(logMsg)
 
 	return &newrelicScaler{
-		metadata: meta,
-		nrClient: nrClient}, nil
+		metricType: metricType,
+		metadata:   meta,
+		nrClient:   nrClient}, nil
 }
 
 func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	meta := newrelicMetadata{}
 	var err error
-	if val, ok := config.TriggerMetadata[account]; ok && val != "" {
-		t, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", account, err)
-		}
-		meta.account = t
-	} else {
+
+	val, err := GetFromAuthOrMeta(config, account)
+	if err != nil {
 		return nil, fmt.Errorf("no %s given", account)
 	}
+
+	t, err := strconv.Atoi(val)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %s: %s", account, err)
+	}
+	meta.account = t
 
 	if val, ok := config.TriggerMetadata[nrql]; ok && val != "" {
 		meta.nrql = val
@@ -99,7 +106,7 @@ func parseNewRelicMetadata(config *ScalerConfig) (*newrelicMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
-		t, err := strconv.ParseInt(val, 10, 64)
+		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s", threshold)
 		}
@@ -162,27 +169,19 @@ func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	metricName := kedautil.NormalizeString(scalerName)
 
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

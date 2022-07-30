@@ -1,49 +1,40 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Install prerequisite
 RUN apt update && \
     apt-get install software-properties-common -y
 RUN apt-add-repository ppa:git-core/ppa && \
     apt update && \
-    apt install -y wget curl build-essential git
+    apt install -y wget curl build-essential git git-lfs unzip
 
 # Use Bash instead of Dash
 RUN ln -sf bash /bin/sh
 
-# Install azure-cli
-RUN apt-get install apt-transport-https lsb-release dirmngr -y && \
-    curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
-        tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null && \
-    AZ_REPO=$(lsb_release -cs) && \
-    echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | \
-        tee /etc/apt/sources.list.d/azure-cli.list && \
-    apt-key --keyring /etc/apt/trusted.gpg.d/Microsoft.gpg adv \
-        --keyserver keyserver.ubuntu.com \
-        --recv-keys BC528686B50D79E339D3721CEB3E94ADBE1229CF && \
-    apt-get update && \
-    apt-get install -y azure-cli
+# Install python3
+RUN apt install -y python3 python3-pip
+
+# Install azure-cli (using pip)
+RUN python3 -m pip install azure.cli
 
 # Install docker
 RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release && \
     curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null && \
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" && \
+    add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" && \
     apt-get update &&\
     apt-get install -y docker-ce-cli
 
 # Install golang
-RUN GO_VERSION=1.17.3 && \
-    curl -LO https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    go_sha256=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c && \
-    echo "$go_sha256 go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
-    tar -C /usr/local -xvzf go${GO_VERSION}.linux-amd64.tar.gz && \
-    rm -rf go${GO_VERSION}.linux-amd64.tar.gz
+ARG GO_VERSION
+RUN curl -LO https://golang.org/dl/go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz && \
+    tar -C /usr/local -xvzf go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz && \
+    rm -rf go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz
 
 # Install kubectl
-RUN apt-get update && apt-get install -y apt-transport-https && \
-    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list && \
-    apt-get update && \
-    apt-get install -y kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/$(dpkg --print-architecture)/kubectl" && \
+    curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/$(dpkg --print-architecture)/kubectl.sha256" && \
+    echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check && \
+    chmod +x ./kubectl && mv ./kubectl /usr/bin/kubectl && \
+    rm kubectl.sha256
 
 # Install node
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
@@ -60,14 +51,13 @@ RUN RELEASE_VERSION=v1.0.1 && \
     cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && \
     rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 
-ENV PATH=${PATH}:/usr/local/go/bin \
-    GOROOT=/usr/local/go \
-    GOPATH=/go
+ENV PATH=${PATH}:/usr/local/go/bin
+ENV GOROOT=/usr/local/go
+ENV GOPATH=/go
+ENV PATH=${PATH}:${GOPATH}/bin
 
-# Install FOSSA tooling
-RUN curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
-
-# Install hub
-RUN curl -LJO https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz && \
-    tar zxvf hub-linux-amd64-2.14.2.tgz
-ENV PATH="/hub-linux-amd64-2.14.2/bin:${PATH}"
+# Install gh
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt update && \
+    apt install -y gh

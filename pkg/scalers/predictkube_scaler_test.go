@@ -9,13 +9,12 @@ import (
 	"testing"
 	"time"
 
+	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
+	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
-	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 )
 
 type server struct {
@@ -128,6 +127,12 @@ var testPredictKubeMetadata = []predictKubeMetadataTestData{
 
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
+	// malformed activation threshold
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "1", "activationThreshold": "one", "query": "up"},
+
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
 	// missing query
 	{
 		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": ""},
@@ -215,7 +220,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), predictKubeMetricPrefix, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
-		assert.Equal(t, result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI))
+		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))
 
 		t.Logf("get: %v, want: %v, predictMetric: %d", result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI), mockPredictServer.val)
 	}

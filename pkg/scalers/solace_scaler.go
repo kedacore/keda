@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +41,9 @@ const (
 	// Metric Targets
 	solaceMetaMsgCountTarget      = "messageCountTarget"
 	solaceMetaMsgSpoolUsageTarget = "messageSpoolUsageTarget"
+	// Metric Activation Targets
+	solaceMetaActivationMsgCountTarget      = "activationMessageCountTarget"
+	solaceMetaActivationMsgSpoolUsageTarget = "activationMessageSpoolUsageTarget"
 	// Trigger type identifiers
 	solaceTriggermsgcount      = "msgcount"
 	solaceTriggermsgspoolusage = "msgspoolusage"
@@ -57,6 +58,7 @@ type SolaceMetricValues struct {
 }
 
 type SolaceScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *SolaceMetadata
 	httpClient *http.Client
 }
@@ -75,6 +77,9 @@ type SolaceMetadata struct {
 	// Target Message Count
 	msgCountTarget      int64
 	msgSpoolUsageTarget int64 // Spool Use Target in Megabytes
+	// Activation Target Message Count
+	activationMsgCountTarget      int
+	activationMsgSpoolUsageTarget int // Spool Use Target in Megabytes
 	// Scaler index
 	scalerIndex int
 }
@@ -114,6 +119,11 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	// Parse Solace Metadata
 	solaceMetadata, err := parseSolaceMetadata(config)
 	if err != nil {
@@ -122,6 +132,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &SolaceScaler{
+		metricType: metricType,
 		metadata:   solaceMetadata,
 		httpClient: httpClient,
 	}, nil
@@ -170,6 +181,26 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	//	Check that we have at least one positive target value for the scaler
 	if meta.msgCountTarget < 1 && meta.msgSpoolUsageTarget < 1 {
 		return nil, fmt.Errorf("no target value found in the scaler configuration")
+	}
+
+	//	GET ACTIVATION METRIC TARGET VALUES
+	//	GET activationMsgCountTarget
+	meta.activationMsgCountTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaActivationMsgCountTarget]; ok && val != "" {
+		if activationMsgCountTarget, err := strconv.Atoi(val); err == nil {
+			meta.activationMsgCountTarget = activationMsgCountTarget
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgCountTarget, err)
+		}
+	}
+	//	GET activationMsgSpoolUsageTarget
+	meta.activationMsgSpoolUsageTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaActivationMsgSpoolUsageTarget]; ok && val != "" {
+		if activationMsgSpoolUsageTarget, err := strconv.Atoi(val); err == nil {
+			meta.activationMsgSpoolUsageTarget = activationMsgSpoolUsageTarget * 1024 * 1024
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgSpoolUsageTarget, err)
+		}
 	}
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
@@ -243,32 +274,24 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
-		targetMetricValue := resource.NewQuantity(s.metadata.msgCountTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
-		targetMetricValue := resource.NewQuantity(s.metadata.msgSpoolUsageTarget, resource.DecimalSI)
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2beta2.ExternalMetricSource{
 			Metric: v2beta2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
-				AverageValue: targetMetricValue,
-			},
+			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
 		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
@@ -336,17 +359,9 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 	var metric external_metrics.ExternalMetricValue
 	switch {
 	case strings.HasSuffix(metricName, solaceTriggermsgcount):
-		metric = external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(int64(metricValues.msgCount), resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
+		metric = GenerateMetricInMili(metricName, float64(metricValues.msgCount))
 	case strings.HasSuffix(metricName, solaceTriggermsgspoolusage):
-		metric = external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(int64(metricValues.msgSpoolUsage), resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
+		metric = GenerateMetricInMili(metricName, float64(metricValues.msgSpoolUsage))
 	default:
 		// Should never end up here
 		err := fmt.Errorf("unidentified metric: %s", metricName)
@@ -365,7 +380,7 @@ func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
 		solaceLog.Error(err, "call to semp endpoint failed")
 		return false, err
 	}
-	return (metricValues.msgCount > 0 || metricValues.msgSpoolUsage > 0), nil
+	return (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil
 }
 
 // Do Nothing - Satisfies Interface

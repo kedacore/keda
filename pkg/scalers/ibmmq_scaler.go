@@ -13,8 +13,6 @@ import (
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -23,27 +21,28 @@ import (
 
 // Default variables and settings
 const (
-	ibmMqQueueDepthMetricName = "currentQueueDepth"
-	defaultTargetQueueDepth   = 20
-	defaultTLSDisabled        = false
+	defaultTargetQueueDepth = 20
+	defaultTLSDisabled      = false
 )
 
 // IBMMQScaler assigns struct data pointer to metadata variable
 type IBMMQScaler struct {
+	metricType         v2beta2.MetricTargetType
 	metadata           *IBMMQMetadata
 	defaultHTTPTimeout time.Duration
 }
 
 // IBMMQMetadata Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
-	host             string
-	queueManager     string
-	queueName        string
-	username         string
-	password         string
-	targetQueueDepth int64
-	tlsDisabled      bool
-	scalerIndex      int
+	host                 string
+	queueManager         string
+	queueName            string
+	username             string
+	password             string
+	queueDepth           int64
+	activationQueueDepth int64
+	tlsDisabled          bool
+	scalerIndex          int
 }
 
 // CommandResponse Full structured response from MQ admin REST query
@@ -63,12 +62,18 @@ type Parameters struct {
 
 // NewIBMMQScaler creates a new IBM MQ scaler
 func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
 	}
 
 	return &IBMMQScaler{
+		metricType:         metricType,
 		metadata:           meta,
 		defaultHTTPTimeout: config.GlobalHTTPTimeout,
 	}, nil
@@ -108,12 +113,21 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["queueDepth"]; ok && val != "" {
 		queueDepth, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid targetQueueDepth - must be an integer")
+			return nil, fmt.Errorf("invalid queueDepth - must be an integer")
 		}
-		meta.targetQueueDepth = queueDepth
+		meta.queueDepth = queueDepth
 	} else {
 		fmt.Println("No target depth defined - setting default")
-		meta.targetQueueDepth = defaultTargetQueueDepth
+		meta.queueDepth = defaultTargetQueueDepth
+	}
+
+	meta.activationQueueDepth = 0
+	if val, ok := config.TriggerMetadata["activationQueueDepth"]; ok && val != "" {
+		activationQueueDepth, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationQueueDepth - must be an integer")
+		}
+		meta.activationQueueDepth = activationQueueDepth
 	}
 
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -154,7 +168,7 @@ func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
-	return queueDepth > 0, nil
+	return queueDepth > s.metadata.activationQueueDepth, nil
 }
 
 // getQueueDepthViaHTTP returns the depth of the MQ Queue from the Admin endpoint
@@ -202,15 +216,11 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueueLengthQty := resource.NewQuantity(s.metadata.targetQueueDepth, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueueLengthQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queueDepth),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2beta2.MetricSpec{metricSpec}
@@ -223,11 +233,7 @@ func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: ibmMqQueueDepthMetricName,
-		Value:      *resource.NewQuantity(queueDepth, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queueDepth))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

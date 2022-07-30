@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,23 +19,31 @@ const (
 )
 
 type stackdriverScaler struct {
-	client   *StackDriverClient
-	metadata *stackdriverMetadata
+	client     *StackDriverClient
+	metricType v2beta2.MetricTargetType
+	metadata   *stackdriverMetadata
 }
 
 type stackdriverMetadata struct {
-	projectID   string
-	filter      string
-	targetValue int64
-	metricName  string
+	projectID             string
+	filter                string
+	targetValue           int64
+	activationTargetValue int64
+	metricName            string
 
 	gcpAuthorization *gcpAuthorizationMetadata
+	aggregation      *monitoringpb.Aggregation
 }
 
 var gcpStackdriverLog = logf.Log.WithName("gcp_stackdriver_scaler")
 
 // NewStackdriverScaler creates a new stackdriverScaler
 func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseStackdriverMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %s", err)
@@ -49,8 +56,9 @@ func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, er
 	}
 
 	return &stackdriverScaler{
-		metadata: meta,
-		client:   client,
+		metricType: metricType,
+		metadata:   meta,
+		client:     client,
 	}, nil
 }
 
@@ -91,12 +99,49 @@ func parseStackdriverMetadata(config *ScalerConfig) (*stackdriverMetadata, error
 		meta.targetValue = targetValue
 	}
 
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
+	}
+
 	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
+
+	meta.aggregation, err = parseAggregation(config)
+	if err != nil {
+		return nil, err
+	}
+
 	return &meta, nil
+}
+
+func parseAggregation(config *ScalerConfig) (*monitoringpb.Aggregation, error) {
+	if period, ok := config.TriggerMetadata["alignmentPeriodSeconds"]; ok {
+		if period == "" {
+			return nil, nil
+		}
+
+		val, err := strconv.ParseInt(period, 10, 64)
+		if val < 60 {
+			gcpStackdriverLog.Error(err, "Error parsing alignmentPeriodSeconds - must be at least 60")
+			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds - must be at least 60")
+		}
+		if err != nil {
+			gcpStackdriverLog.Error(err, "Error parsing alignmentPeriodSeconds")
+			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds: %s", err.Error())
+		}
+
+		return NewStackdriverAggregator(val, config.TriggerMetadata["alignmentAligner"], config.TriggerMetadata["alignmentReducer"])
+	}
+
+	return nil, nil
 }
 
 func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcpAuthorizationMetadata) (*StackDriverClient, error) {
@@ -121,7 +166,7 @@ func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
 		gcpStackdriverLog.Error(err, "error getting metric value")
 		return false, err
 	}
-	return value > 0, nil
+	return value > s.metadata.activationTargetValue, nil
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {
@@ -138,17 +183,11 @@ func (s *stackdriverScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	// Construct the target value as a quantity
-	targetValueQty := resource.NewQuantity(s.metadata.targetValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetValueQty,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 
 	// Create the metric spec for the HPA
@@ -168,21 +207,21 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, m
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(value, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(value))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID)
+	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation)
 	if err == nil {
 		gcpStackdriverLog.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s and filter %s. Result: %d", s.metadata.projectID, s.metadata.filter, val))
+			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %d",
+				s.metadata.projectID,
+				s.metadata.filter,
+				s.metadata.aggregation,
+				val))
 	}
 
 	return val, err

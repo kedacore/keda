@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM golang:1.17.3 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.17.9 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -36,6 +36,7 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/bin/keda .
-USER nonroot:nonroot
+# 65532 is numeric for nonroot
+USER 65532:65532
 
 ENTRYPOINT ["/keda", "--zap-log-level=info", "--zap-encoder=console"]

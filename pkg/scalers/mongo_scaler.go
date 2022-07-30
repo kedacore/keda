@@ -13,8 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -24,8 +22,9 @@ import (
 
 // mongoDBScaler is support for mongoDB in keda.
 type mongoDBScaler struct {
-	metadata *mongoDBMetadata
-	client   *mongo.Client
+	metricType v2beta2.MetricTargetType
+	metadata   *mongoDBMetadata
+	client     *mongo.Client
 }
 
 // mongoDBMetadata specify mongoDB scaler params.
@@ -58,6 +57,9 @@ type mongoDBMetadata struct {
 	// A threshold that is used as targetAverageValue in HPA
 	// +required
 	queryValue int64
+	// A threshold that is used to check if scaler is active
+	// +optional
+	activationQueryValue int64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
 	// +optional
 	metricName string
@@ -76,6 +78,11 @@ var mongoDBLog = logf.Log.WithName("mongodb_scaler")
 
 // NewMongoDBScaler creates a new mongoDB scaler
 func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, mongoDBDefaultTimeOut)
 	defer cancel()
 
@@ -95,8 +102,9 @@ func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}
 
 	return &mongoDBScaler{
-		metadata: meta,
-		client:   client,
+		metricType: metricType,
+		metadata:   meta,
+		client:     client,
 	}, nil
 }
 
@@ -127,6 +135,15 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		meta.queryValue = queryValue
 	} else {
 		return nil, "", fmt.Errorf("no queryValue given")
+	}
+
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
 	}
 
 	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
@@ -191,7 +208,7 @@ func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
 		mongoDBLog.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
 		return false, err
 	}
-	return result > 0, nil
+	return result > s.metadata.activationQueryValue, nil
 }
 
 // Close disposes of mongoDB connections
@@ -234,27 +251,18 @@ func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metri
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(num))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // GetMetricSpecForScaling get the query value for scaling
 func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetQueryValue := resource.NewQuantity(s.metadata.queryValue, resource.DecimalSI)
-
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetQueryValue,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

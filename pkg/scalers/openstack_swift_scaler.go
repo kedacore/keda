@@ -10,36 +10,36 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	defaultOnlyFiles         = false
-	defaultObjectCount       = 2
-	defaultObjectLimit       = ""
-	defaultObjectPrefix      = ""
-	defaultObjectDelimiter   = ""
-	defaultHTTPClientTimeout = 30
+	defaultOnlyFiles             = false
+	defaultObjectCount           = 2
+	defaultActivationObjectCount = 0
+	defaultObjectLimit           = ""
+	defaultObjectPrefix          = ""
+	defaultObjectDelimiter       = ""
+	defaultHTTPClientTimeout     = 30
 )
 
 type openstackSwiftMetadata struct {
-	swiftURL          string
-	containerName     string
-	objectCount       int64
-	objectPrefix      string
-	objectDelimiter   string
-	objectLimit       string
-	httpClientTimeout int
-	onlyFiles         bool
-	scalerIndex       int
+	swiftURL              string
+	containerName         string
+	objectCount           int64
+	activationObjectCount int64
+	objectPrefix          string
+	objectDelimiter       string
+	objectLimit           string
+	httpClientTimeout     int
+	onlyFiles             bool
+	scalerIndex           int
 }
 
 type openstackSwiftAuthenticationMetadata struct {
@@ -53,6 +53,7 @@ type openstackSwiftAuthenticationMetadata struct {
 }
 
 type openstackSwiftScaler struct {
+	metricType  v2beta2.MetricTargetType
 	metadata    *openstackSwiftMetadata
 	swiftClient openstack.Client
 }
@@ -182,6 +183,11 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 
 	var swiftClient openstack.Client
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	openstackSwiftMetadata, err := parseOpenstackSwiftMetadata(config)
 
 	if err != nil {
@@ -233,6 +239,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	}
 
 	return &openstackSwiftScaler{
+		metricType:  metricType,
 		metadata:    openstackSwiftMetadata,
 		swiftClient: swiftClient,
 	}, nil
@@ -254,13 +261,23 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["objectCount"]; ok {
-		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
+		objectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("objectCount parsing error: %s", err.Error())
 		}
-		meta.objectCount = targetObjectCount
+		meta.objectCount = objectCount
 	} else {
 		meta.objectCount = defaultObjectCount
+	}
+
+	if val, ok := config.TriggerMetadata["activationObjectCount"]; ok {
+		activationObjectCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationObjectCount parsing error: %s", err.Error())
+		}
+		meta.activationObjectCount = activationObjectCount
+	} else {
+		meta.activationObjectCount = defaultActivationObjectCount
 	}
 
 	if val, ok := config.TriggerMetadata["objectPrefix"]; ok {
@@ -357,7 +374,7 @@ func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return objectCount > 0, nil
+	return objectCount > s.metadata.activationObjectCount, nil
 }
 
 func (s *openstackSwiftScaler) Close(context.Context) error {
@@ -372,18 +389,12 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(objectCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(objectCount))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetObjectCount := resource.NewQuantity(s.metadata.objectCount, resource.DecimalSI)
-
 	var metricName string
 
 	if s.metadata.objectPrefix != "" {
@@ -398,10 +409,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetObjectCount,
-		},
+		Target: GetMetricTarget(s.metricType, s.metadata.objectCount),
 	}
 
 	metricSpec := v2beta2.MetricSpec{

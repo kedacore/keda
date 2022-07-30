@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
+
 	"github.com/kedacore/keda/v2/pkg/scalers/liiklus"
 	mock_liiklus "github.com/kedacore/keda/v2/pkg/scalers/liiklus/mocks"
-	"github.com/pkg/errors"
 )
 
 type parseLiiklusMetadataTestData struct {
@@ -30,12 +31,13 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 	{map[string]string{"topic": "foo"}, errors.New("no liiklus API address provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565"}, errors.New("no consumer group provided"), "", "", "", 0},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup"}, nil, "bar:6565", "mygroup", "foo", 10},
+	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "activationLagThreshold": "aa"}, errors.New("error parsing activationLagThreshold: strconv.ParseInt: parsing \"aa\": invalid syntax"), "bar:6565", "mygroup", "foo", 10},
 	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "lagThreshold": "15"}, nil, "bar:6565", "mygroup", "foo", 15},
 }
 
 var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
-	{&parseLiiklusMetadataTestDataset[4], 0, "s0-liiklus-foo"},
-	{&parseLiiklusMetadataTestDataset[4], 1, "s1-liiklus-foo"},
+	{&parseLiiklusMetadataTestDataset[5], 0, "s0-liiklus-foo"},
+	{&parseLiiklusMetadataTestDataset[5], 1, "s1-liiklus-foo"},
 }
 
 func TestLiiklusParseMetadata(t *testing.T) {
@@ -171,7 +173,7 @@ func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockLiiklusScaler := liiklusScaler{meta, nil, nil}
+		mockLiiklusScaler := liiklusScaler{"", meta, nil, nil}
 
 		metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

@@ -10,8 +10,6 @@ import (
 	"strconv"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,24 +18,29 @@ import (
 )
 
 const (
-	grapServerAddress = "serverAddress"
-	grapMetricName    = "metricName"
-	grapQuery         = "query"
-	grapThreshold     = "threshold"
-	grapQueryTime     = "queryTime"
+	graphiteServerAddress              = "serverAddress"
+	graphiteMetricName                 = "metricName"
+	graphiteQuery                      = "query"
+	graphiteThreshold                  = "threshold"
+	graphiteActivationThreshold        = "activationThreshold"
+	graphiteQueryTime                  = "queryTime"
+	defaultGraphiteThreshold           = 100
+	defaultGraphiteActivationThreshold = 0
 )
 
 type graphiteScaler struct {
+	metricType v2beta2.MetricTargetType
 	metadata   *graphiteMetadata
 	httpClient *http.Client
 }
 
 type graphiteMetadata struct {
-	serverAddress string
-	metricName    string
-	query         string
-	threshold     int64
-	from          string
+	serverAddress       string
+	metricName          string
+	query               string
+	threshold           float64
+	activationThreshold float64
+	from                string
 
 	// basic auth
 	enableBasicAuth bool
@@ -49,13 +52,18 @@ type graphiteMetadata struct {
 type grapQueryResult []struct {
 	Target     string                 `json:"target"`
 	Tags       map[string]interface{} `json:"tags"`
-	Datapoints [][]float64            `json:"datapoints"`
+	Datapoints [][]*float64           `json:"datapoints,omitempty"`
 }
 
 var graphiteLog = logf.Log.WithName("graphite_scaler")
 
 // NewGraphiteScaler creates a new graphiteScaler
 func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+	}
+
 	meta, err := parseGraphiteMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing graphite metadata: %s", err)
@@ -64,6 +72,7 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	return &graphiteScaler{
+		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 	}, nil
@@ -72,37 +81,48 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	meta := graphiteMetadata{}
 
-	if val, ok := config.TriggerMetadata[grapServerAddress]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteServerAddress]; ok && val != "" {
 		meta.serverAddress = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapServerAddress)
+		return nil, fmt.Errorf("no %s given", graphiteServerAddress)
 	}
 
-	if val, ok := config.TriggerMetadata[grapQuery]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteQuery]; ok && val != "" {
 		meta.query = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapQuery)
+		return nil, fmt.Errorf("no %s given", graphiteQuery)
 	}
 
-	if val, ok := config.TriggerMetadata[grapMetricName]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteMetricName]; ok && val != "" {
 		meta.metricName = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapMetricName)
+		return nil, fmt.Errorf("no %s given", graphiteMetricName)
 	}
 
-	if val, ok := config.TriggerMetadata[grapQueryTime]; ok && val != "" {
+	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
 		meta.from = val
 	} else {
-		return nil, fmt.Errorf("no %s given", grapQueryTime)
+		return nil, fmt.Errorf("no %s given", graphiteQueryTime)
 	}
 
-	if val, ok := config.TriggerMetadata[grapThreshold]; ok && val != "" {
-		t, err := strconv.ParseInt(val, 10, 64)
+	meta.threshold = defaultGraphiteThreshold
+	if val, ok := config.TriggerMetadata[graphiteThreshold]; ok && val != "" {
+		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", grapThreshold, err)
+			return nil, fmt.Errorf("error parsing %s: %s", graphiteThreshold, err)
 		}
 
 		meta.threshold = t
+	}
+
+	meta.activationThreshold = defaultGraphiteActivationThreshold
+	if val, ok := config.TriggerMetadata[graphiteActivationThreshold]; ok {
+		t, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+
+		meta.activationThreshold = t
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -136,7 +156,7 @@ func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationThreshold, nil
 }
 
 func (s *graphiteScaler) Close(context.Context) error {
@@ -144,15 +164,11 @@ func (s *graphiteScaler) Close(context.Context) error {
 }
 
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.threshold, resource.DecimalSI)
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
-			AverageValue: targetMetricValue,
-		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2beta2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -198,10 +214,14 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 		return 0, nil
 	}
 
-	latestDatapoint := len(result[0].Datapoints) - 1
-	datapoint := result[0].Datapoints[latestDatapoint][0]
+	// Return the most recent non-null datapoint
+	for i := len(result[0].Datapoints) - 1; i >= 0; i-- {
+		if datapoint := result[0].Datapoints[i][0]; datapoint != nil {
+			return *datapoint, nil
+		}
+	}
 
-	return datapoint, nil
+	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.query)
 }
 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -211,11 +231,7 @@ func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(val), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

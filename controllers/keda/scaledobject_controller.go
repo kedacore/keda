@@ -122,7 +122,13 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		// predicate.GenerationChangedPredicate{} ignore updates to ScaledObject Status
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
-		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(
+			predicate.Or(
+				kedacontrollerutil.PausedReplicasPredicate{},
+				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
+				predicate.GenerationChangedPredicate{},
+			),
+		)).
 		Owns(&autoscalingv2beta2.HorizontalPodAutoscaler{}).
 		Complete(r)
 }
@@ -200,7 +206,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-// reconcileScaledObject implements reconciler logic for ScaleObject
+// reconcileScaledObject implements reconciler logic for ScaledObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
@@ -281,7 +287,9 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// do we need the scale to update the status later?
-	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil
+	_, present := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
+	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil || removePausedStatus
 
 	// check if we already know.
 	var scale *autoscalingv1.Scale
@@ -321,6 +329,10 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			status.OriginalReplicaCount = &scale.Spec.Replicas
 		}
 
+		if removePausedStatus {
+			status.PausedReplicaCount = nil
+		}
+
 		if err := kedacontrollerutil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
 			return gvkr, err
 		}
@@ -352,7 +364,12 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
-	hpaName := getHPAName(scaledObject)
+	var hpaName string
+	if scaledObject.Status.HpaName != "" {
+		hpaName = scaledObject.Status.HpaName
+	} else {
+		hpaName = getHPAName(scaledObject)
+	}
 	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
@@ -373,6 +390,16 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 		return false, err
 	}
 
+	// check if hpa name is changed, and if so we need to delete the old hpa before creating new one
+	if isHpaRenamed(scaledObject, foundHpa) {
+		err = r.renameHPA(ctx, logger, scaledObject, foundHpa, gvkr)
+		if err != nil {
+			return false, err
+		}
+		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
+		return true, nil
+	}
+
 	// HPA was found -> let's check if we need to update it
 	err = r.updateHPAIfNeeded(ctx, logger, scaledObject, foundHpa, gvkr)
 	if err != nil {
@@ -383,7 +410,16 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	return false, nil
 }
 
-// startScaleLoop starts ScaleLoop handler for the respective ScaledObject
+func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler) bool {
+	// if HPA name defined in SO -> check if equals to the found HPA
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
+		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != foundHpa.Name
+	}
+	// if HPA name not defined in SO -> check if the found HPA is equals to the default
+	return foundHpa.Name != getDefaultHpaName(scaledObject)
+}
+
+// requestScaleLoop tries to start ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
 
@@ -403,7 +439,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger lo
 	return nil
 }
 
-// stopScaleLoop stops ScaleLoop handler for the respective ScaleObject
+// stopScaleLoop stops ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	key, err := cache.MetaNamespaceKeyFunc(scaledObject)
 	if err != nil {
