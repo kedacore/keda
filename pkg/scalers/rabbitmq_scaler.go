@@ -64,7 +64,7 @@ type rabbitMQMetadata struct {
 	queueName             string
 	mode                  string        // QueueLength or MessageRate
 	value                 float64       // trigger value (queue length or publish/sec. rate)
-	activationValue       int64         // activation value
+	activationValue       float64       // activation value
 	host                  string        // connection string for either HTTP or AMQP protocol
 	protocol              string        // either http or amqp protocol
 	vhostName             *string       // override the vhost from the connection info
@@ -306,7 +306,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 
 	// Parse activation value
 	if activationValuePresent {
-		activation, err := strconv.ParseInt(activationValue, 10, 64)
+		activation, err := strconv.ParseFloat(activationValue, 64)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse %s: %s", rabbitActivationValueTriggerConfigName, err)
 		}
@@ -396,9 +396,9 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if s.metadata.mode == rabbitModeQueueLength {
-		return messages > s.metadata.activationValue, nil
+		return float64(messages) > s.metadata.activationValue, nil
 	}
-	return publishRate > float64(s.metadata.activationValue) || messages > s.metadata.activationValue, nil
+	return publishRate > s.metadata.activationValue || float64(messages) > s.metadata.activationValue, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
