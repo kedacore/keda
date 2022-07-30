@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -200,6 +201,22 @@ func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 		err = nil
 	}
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
+}
+
+func WaitForJobSuccess(t *testing.T, kc *kubernetes.Clientset, jobName, namespace string, iterations, interval int) bool {
+	for i := 0; i < iterations; i++ {
+		job, err := kc.BatchV1().Jobs(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot run job - %s", err)
+		}
+
+		if job.Status.Succeeded > 0 {
+			t.Logf("job %s ran successfully!", jobName)
+			return true // Job ran successfully
+		}
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
+	return false
 }
 
 func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
@@ -454,4 +471,38 @@ func GetRandomNumber() int {
 func RemoveANSI(input string) string {
 	reg := regexp.MustCompile(`(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]`)
 	return reg.ReplaceAllString(input, "")
+}
+
+func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string) []string {
+	var podLogs []string
+	t.Logf("Searching for pod logs.........")
+	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(),
+		metav1.ListOptions{LabelSelector: label})
+	if err != nil {
+		assert.NoErrorf(t, err, "no pod in the list - %s", err)
+	}
+	var podLogRequest *rest.Request
+	for _, v := range pods.Items {
+		podLogRequest = kc.CoreV1().Pods(namespace).GetLogs(v.Name, &corev1.PodLogOptions{})
+		stream, err := podLogRequest.Stream(context.TODO())
+		if err != nil {
+			assert.NoErrorf(t, err, "cannot open the stream - %s", err)
+		}
+		defer stream.Close()
+		for {
+			buf := make([]byte, 2000)
+			numBytes, err := stream.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if numBytes == 0 {
+				continue
+			}
+			if err != nil {
+				assert.NoErrorf(t, err, "cannot read log stream - %s", err)
+			}
+			podLogs = append(podLogs, string(buf[:numBytes]))
+		}
+	}
+	return podLogs
 }
