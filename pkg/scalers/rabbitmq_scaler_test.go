@@ -113,6 +113,8 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
 	// activationValue passed
 	{map[string]string{"activationValue": "10", "queueLength": "20", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
+	// invalid activationValue > queueLength
+	{map[string]string{"activationValue": "20", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 	// malformed activationValue
 	{map[string]string{"activationValue": "AA", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
 	// http and excludeUnacknowledged
