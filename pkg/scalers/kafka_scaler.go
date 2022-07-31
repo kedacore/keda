@@ -326,6 +326,12 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error listing cg offset: %s", err)
 		}
+
+		if listCGOffsetResponse.Err > 0 {
+			errMsg := fmt.Errorf("error listing cg offset: %s", listCGOffsetResponse.Err.Error())
+			kafkaLog.Error(errMsg, "")
+		}
+
 		for topicName := range listCGOffsetResponse.Blocks {
 			topicsToDescribe = append(topicsToDescribe, topicName)
 		}
@@ -344,6 +350,10 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 
 	topicPartitions := make(map[string][]int32, len(topicsMetadata))
 	for _, topicMetadata := range topicsMetadata {
+		if topicMetadata.Err > 0 {
+			errMsg := fmt.Errorf("error describing topics: %s", topicMetadata.Err.Error())
+			kafkaLog.Error(errMsg, "")
+		}
 		partitionMetadata := topicMetadata.Partitions
 		partitions := make([]int32, len(partitionMetadata))
 		for i, p := range partitionMetadata {
@@ -359,6 +369,10 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	if err != nil {
 		return nil, fmt.Errorf("error listing consumer group offsets: %s", err)
 	}
+	if offsets.Err > 0 {
+		errMsg := fmt.Errorf("error listing consumer group offsets: %s", offsets.Err.Error())
+		kafkaLog.Error(errMsg, "")
+	}
 	return offsets, nil
 }
 
@@ -369,6 +383,11 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		kafkaLog.Error(errMsg, "")
 		return 0, errMsg
 	}
+	if block.Err > 0 {
+		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
+		kafkaLog.Error(errMsg, "")
+	}
+
 	consumerOffset := block.Offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
 		retVal := int64(1)
