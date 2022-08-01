@@ -42,7 +42,7 @@ require (
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v0.86.3
+	github.com/newrelic/newrelic-client-go v0.88.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
