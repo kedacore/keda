@@ -6,7 +6,6 @@ package external_scale_sj_test
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -116,14 +115,14 @@ spec:
 func TestMinReplicaCount(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	minReplicaCount := 2
-	maxReplicaCount := 50
+	maxReplicaCount := 10
 	metricValue := 0
 
 	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, minReplicaCount, 60, 1),
+	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, minReplicaCount, 15, 1),
 		"job count should be %d after 1 minute", minReplicaCount)
 
 	testMinReplicaCountWithMetricValue(t, kc, data)
@@ -136,14 +135,14 @@ func TestMinReplicaCount(t *testing.T) {
 func testMinReplicaCountWithMetricValue(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing min replica count with metric value ---")
 
-	data.MinReplicaCount = 2
+	data.MinReplicaCount = 1
 	data.MaxReplicaCount = 10
 	data.MetricValue = 1
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	expectedTarget := data.MinReplicaCount + data.MetricValue
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, expectedTarget, 60, 1),
+	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, expectedTarget, 15, 1),
 		"job count should be %d after 1 minute", expectedTarget)
 }
 
@@ -152,10 +151,11 @@ func testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *tes
 
 	data.MinReplicaCount = 2
 	data.MaxReplicaCount = 1
+	data.MetricValue = 0
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, data.MaxReplicaCount, 60, 1),
+	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
 		"job count should be %d after 1 minute", data.MaxReplicaCount)
 }
 
@@ -163,12 +163,12 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 	t.Log("--- testing min replica count with metric value greater max replica count scales only to max replica count ---")
 
 	data.MinReplicaCount = 2
-	data.MaxReplicaCount = 3
-	data.MetricValue = 2
+	data.MaxReplicaCount = 4
+	data.MetricValue = 3
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, data.MaxReplicaCount, 60, 1),
+	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
 		"job count should be %d after 1 minute", data.MaxReplicaCount)
 }
 
@@ -178,7 +178,7 @@ func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) 
 			ServiceName:     serviceName,
 			ScalerName:      scalerName,
 			ScaledJobName:   scaledJobName,
-			MetricThreshold: 10,
+			MetricThreshold: 1,
 			MetricValue:     metricValue,
 			MinReplicaCount: minReplicaCount,
 			MaxReplicaCount: maxReplicaCount,
