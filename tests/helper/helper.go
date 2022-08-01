@@ -234,7 +234,6 @@ func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 
 func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
-
 	var isTargetAchieved = false
 
 	for i := 0; i < iterations; i++ {
