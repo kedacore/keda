@@ -22,10 +22,11 @@ const (
 )
 
 var (
-	testNamespace = fmt.Sprintf("%s-ns", testName)
-	serviceName   = fmt.Sprintf("%s-service", testName)
-	scalerName    = fmt.Sprintf("%s-scaler", testName)
-	scaledJobName = fmt.Sprintf("%s-sj", testName)
+	testNamespace  = fmt.Sprintf("%s-ns", testName)
+	serviceName    = fmt.Sprintf("%s-service", testName)
+	scalerName     = fmt.Sprintf("%s-scaler", testName)
+	scaledJobName  = fmt.Sprintf("%s-sj", testName)
+	iterationCount = 15
 )
 
 type templateData struct {
@@ -122,8 +123,8 @@ func TestMinReplicaCount(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, minReplicaCount, 15, 1),
-		"job count should be %d after 1 minute", minReplicaCount)
+	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, minReplicaCount, iterationCount, 1),
+		"job count should be %d after %d iterations", minReplicaCount, iterationCount)
 
 	testMinReplicaCountWithMetricValue(t, kc, data)
 	testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t, kc, data)
@@ -143,7 +144,7 @@ func testMinReplicaCountWithMetricValue(t *testing.T, kc *kubernetes.Clientset, 
 
 	expectedTarget := data.MinReplicaCount + data.MetricValue
 	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, expectedTarget, 15, 1),
-		"job count should be %d after 1 minute", expectedTarget)
+		"job count should be %d after %d iterations", expectedTarget, iterationCount)
 }
 
 func testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -156,7 +157,7 @@ func testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *tes
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
-		"job count should be %d after 1 minute", data.MaxReplicaCount)
+		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
 func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -169,7 +170,7 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
-		"job count should be %d after 1 minute", data.MaxReplicaCount)
+		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
 func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, templateValues) {
