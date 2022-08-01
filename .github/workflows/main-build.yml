@@ -180,7 +180,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Run Trivy vulnerability scanner in repo mode
-      uses: aquasecurity/trivy-action@0.5.1
+      uses: aquasecurity/trivy-action@0.6.1
       with:
         scan-type: 'fs'
         ignore-unfixed: false
@@ -211,7 +211,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Run Trivy on metrics-server
-        uses: aquasecurity/trivy-action@0.5.1
+        uses: aquasecurity/trivy-action@0.6.1
         with:
           scan-type: 'image'
           image-ref: ghcr.io/kedacore/keda-metrics-apiserver:main
@@ -239,7 +239,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Run Trivy on operator
-        uses: aquasecurity/trivy-action@0.5.1
+        uses: aquasecurity/trivy-action@0.6.1
         with:
           scan-type: 'image'
           image-ref: ghcr.io/kedacore/keda:main
