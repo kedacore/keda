@@ -112,6 +112,7 @@ jobs:
           filters: |
             tools:
               - 'tools/**'
+              - 'Makefile'
 
       - name: Set up QEMU
         if: steps.filter.outputs.tools == 'true'
