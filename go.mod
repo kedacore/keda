@@ -36,7 +36,7 @@ require (
 	github.com/gophercloud/gophercloud v0.25.0
 	github.com/hashicorp/vault/api v1.7.2
 	github.com/imdario/mergo v0.3.12
-	github.com/influxdata/influxdb-client-go/v2 v2.9.1
+	github.com/influxdata/influxdb-client-go/v2 v2.9.2
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.5
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
@@ -235,7 +235,7 @@ require (
 	github.com/xdg-go/scram v1.1.0 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect
 	github.com/xdg/stringprep v1.0.3 // indirect
-	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
+	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d
 	go.etcd.io/etcd/api/v3 v3.5.0 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.0 // indirect
