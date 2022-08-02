@@ -165,6 +165,11 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 			}
 		}
 	}
+
+	if scaledJob.MinReplicaCount() > 0 {
+		isActive = true
+	}
+
 	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
 	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 

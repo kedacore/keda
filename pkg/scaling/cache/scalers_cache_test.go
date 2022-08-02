@@ -70,7 +70,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	// Keep the current behavior
 	// Assme 1 trigger only
-	scaledJobSingle := createScaledObject(100, "") // testing default = max
+	scaledJobSingle := createScaledObject(0, 100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
 		Factory: func() (scalers.Scaler, error) {
@@ -120,7 +120,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}
 
 	for index, scalerTestData := range scalerTestDatam {
-		scaledJob := createScaledObject(scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
+		scaledJob := createScaledObject(scalerTestData.MinReplicaCount, scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalersToTest := []ScalerBuilder{{
 			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
 			Factory: func() (scalers.Scaler, error) {
@@ -156,6 +156,33 @@ func TestIsScaledJobActive(t *testing.T) {
 		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
 		cache.Close(context.Background())
 	}
+}
+
+func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
+	metricName := "s0-queueLength"
+	ctrl := gomock.NewController(t)
+	recorder := record.NewFakeRecorder(1)
+	// Keep the current behavior
+	// Assme 1 trigger only
+	scaledJobSingle := createScaledObject(1, 100, "") // testing default = max
+	scalerSingle := []ScalerBuilder{{
+		Scaler: createScaler(ctrl, int64(0), int64(1), true, metricName),
+		Factory: func() (scalers.Scaler, error) {
+			return createScaler(ctrl, int64(0), int64(1), true, metricName), nil
+		},
+	}}
+
+	cache := ScalersCache{
+		Scalers:  scalerSingle,
+		Logger:   logr.Discard(),
+		Recorder: recorder,
+	}
+
+	isActive, queueLength, maxValue := cache.IsScaledJobActive(context.TODO(), scaledJobSingle)
+	assert.Equal(t, true, isActive)
+	assert.Equal(t, int64(0), queueLength)
+	assert.Equal(t, int64(0), maxValue)
+	cache.Close(context.Background())
 }
 
 func newScalerTestData(
@@ -218,12 +245,14 @@ type scalerTestData struct {
 	ResultIsActive             bool
 	ResultQueueLength          int64
 	ResultMaxValue             int64
+	MinReplicaCount            int32
 }
 
-func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string) *kedav1alpha1.ScaledJob {
+func createScaledObject(minReplicaCount int32, maxReplicaCount int32, multipleScalersCalculation string) *kedav1alpha1.ScaledJob {
 	if multipleScalersCalculation != "" {
 		return &kedav1alpha1.ScaledJob{
 			Spec: kedav1alpha1.ScaledJobSpec{
+				MinReplicaCount: &minReplicaCount,
 				MaxReplicaCount: &maxReplicaCount,
 				ScalingStrategy: kedav1alpha1.ScalingStrategy{
 					MultipleScalersCalculation: multipleScalersCalculation,
@@ -233,6 +262,7 @@ func createScaledObject(maxReplicaCount int32, multipleScalersCalculation string
 	}
 	return &kedav1alpha1.ScaledJob{
 		Spec: kedav1alpha1.ScaledJobSpec{
+			MinReplicaCount: &minReplicaCount,
 			MaxReplicaCount: &maxReplicaCount,
 		},
 	}
