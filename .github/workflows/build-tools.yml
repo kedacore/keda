@@ -6,6 +6,8 @@ on:
       - v1
     paths:
       - 'tools/**'
+      - 'Makefile'
+
 jobs:
   validate:
     name: Validate

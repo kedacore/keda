@@ -46,7 +46,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
 	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
 
-	effectiveMaxScale := NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, scaledJob.MaxReplicaCount())
+	effectiveMaxScale, scaleTo := e.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, logger)
 
 	if effectiveMaxScale < 0 {
 		effectiveMaxScale = 0
@@ -84,6 +84,20 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
 	}
+}
+
+func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, runningJobCount int64, scaleTo int64, maxScale int64, pendingJobCount int64, logger logr.Logger) (int64, int64) {
+	var effectiveMaxScale int64
+	minReplicaCount := scaledJob.MinReplicaCount()
+
+	if runningJobCount < minReplicaCount {
+		scaleToMinReplica := minReplicaCount - runningJobCount
+		scaleTo = scaleToMinReplica
+		effectiveMaxScale = scaleToMinReplica
+	} else {
+		effectiveMaxScale = NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount-minReplicaCount, pendingJobCount, scaledJob.MaxReplicaCount())
+	}
+	return effectiveMaxScale, scaleTo
 }
 
 func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
