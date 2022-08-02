@@ -91,11 +91,11 @@ var _ = Describe("ScaledObjectController", func() {
 
 				for i, tm := range triggerMeta {
 					config := &scalers.ScalerConfig{
-						Name:            fmt.Sprintf("test.%d", i),
-						Namespace:       "test",
-						TriggerMetadata: tm,
-						ResolvedEnv:     nil,
-						AuthParams:      nil,
+						ScalableObjectName:      fmt.Sprintf("test.%d", i),
+						ScalableObjectNamespace: "test",
+						TriggerMetadata:         tm,
+						ResolvedEnv:             nil,
+						AuthParams:              nil,
 					}
 
 					s, err := scalers.NewPrometheusScaler(config)
@@ -141,11 +141,11 @@ var _ = Describe("ScaledObjectController", func() {
 				expectedExternalMetricNames := make([]string, 0)
 
 				config := &scalers.ScalerConfig{
-					Name:            "test",
-					Namespace:       "test",
-					TriggerMetadata: triggerMeta[0],
-					ResolvedEnv:     nil,
-					AuthParams:      nil,
+					ScalableObjectName:      "test",
+					ScalableObjectNamespace: "test",
+					TriggerMetadata:         triggerMeta[0],
+					ResolvedEnv:             nil,
+					AuthParams:              nil,
 				}
 
 				s, err := scalers.NewPrometheusScaler(config)
@@ -191,11 +191,11 @@ var _ = Describe("ScaledObjectController", func() {
 				testScalers := make([]cache.ScalerBuilder, 0)
 				for i := 0; i < 4; i++ {
 					config := &scalers.ScalerConfig{
-						Name:            fmt.Sprintf("test.%d", i),
-						Namespace:       "test",
-						TriggerMetadata: triggerMeta[0],
-						ResolvedEnv:     nil,
-						AuthParams:      nil,
+						ScalableObjectName:      fmt.Sprintf("test.%d", i),
+						ScalableObjectNamespace: "test",
+						TriggerMetadata:         triggerMeta[0],
+						ResolvedEnv:             nil,
+						AuthParams:              nil,
 					}
 
 					s, err := scalers.NewPrometheusScaler(config)

@@ -22,10 +22,10 @@ import (
 	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -42,15 +42,15 @@ type azureDataExplorerScaler struct {
 
 const adxName = "azure-data-explorer"
 
-var dataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
-
 func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	metadata, err := parseAzureDataExplorerMetadata(config)
+	logger := InitializeLogger(config, "azure_data_explorer_scaler")
+
+	metadata, err := parseAzureDataExplorerMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
 	}
@@ -64,13 +64,13 @@ func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scal
 		metricType: metricType,
 		metadata:   metadata,
 		client:     client,
-		name:       config.Name,
-		namespace:  config.Namespace,
+		name:       config.ScalableObjectName,
+		namespace:  config.ScalableObjectNamespace,
 	}, nil
 }
 
-func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
-	metadata, err := parseAzureDataExplorerAuthParams(config)
+func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
+	metadata, err := parseAzureDataExplorerAuthParams(config, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 	}
 	metadata.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
-	dataExplorerLogger.V(1).Info("Parsed azureDataExplorerMetadata",
+	logger.V(1).Info("Parsed azureDataExplorerMetadata",
 		"database", metadata.DatabaseName,
 		"endpoint", metadata.Endpoint,
 		"metricName", metadata.MetricName,
@@ -136,14 +136,14 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 	return metadata, nil
 }
 
-func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
+func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
 	metadata := azure.DataExplorerMetadata{}
 
 	switch config.PodIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		dataExplorerLogger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
+		logger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 
 		tenantID, err := getParameterFromConfig(config, "tenantId", true)
 		if err != nil {

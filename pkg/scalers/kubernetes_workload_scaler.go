@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -18,6 +19,7 @@ type kubernetesWorkloadScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *kubernetesWorkloadMetadata
 	kubeClient client.Client
+	logger     logr.Logger
 }
 
 const (
@@ -56,13 +58,14 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig)
 		metricType: metricType,
 		metadata:   meta,
 		kubeClient: kubeClient,
+		logger:     InitializeLogger(config, "kubernetes_workload_scaler"),
 	}, nil
 }
 
 func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, error) {
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
-	meta.namespace = config.Namespace
+	meta.namespace = config.ScalableObjectNamespace
 	meta.podSelector, err = labels.Parse(config.TriggerMetadata[podSelectorKey])
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")

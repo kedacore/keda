@@ -306,14 +306,15 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				}
 			}
 			config := &scalers.ScalerConfig{
-				Name:              withTriggers.Name,
-				Namespace:         withTriggers.Namespace,
-				TriggerMetadata:   trigger.Metadata,
-				ResolvedEnv:       resolvedEnv,
-				AuthParams:        make(map[string]string),
-				GlobalHTTPTimeout: h.globalHTTPTimeout,
-				ScalerIndex:       triggerIndex,
-				MetricType:        trigger.MetricType,
+				ScalableObjectName:      withTriggers.Name,
+				ScalableObjectNamespace: withTriggers.Namespace,
+				ScalableObjectType:      withTriggers.Kind,
+				TriggerMetadata:         trigger.Metadata,
+				ResolvedEnv:             resolvedEnv,
+				AuthParams:              make(map[string]string),
+				GlobalHTTPTimeout:       h.globalHTTPTimeout,
+				ScalerIndex:             triggerIndex,
+				MetricType:              trigger.MetricType,
 			}
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
