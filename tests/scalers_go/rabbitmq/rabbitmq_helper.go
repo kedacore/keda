@@ -4,6 +4,7 @@
 package rabbitmq
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/client-go/kubernetes"
@@ -197,6 +198,9 @@ func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName str
 		QueueName:    queueName,
 		MessageCount: messageCount,
 	}
+
+	// Before push messages remove previous jobs if any
+	_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-publish-%s --namespace %s", queueName, namespace))
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqPublishTemplate", publishTemplate)
 }

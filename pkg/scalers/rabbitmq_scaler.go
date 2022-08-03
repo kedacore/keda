@@ -27,14 +27,15 @@ func init() {
 }
 
 const (
-	rabbitQueueLengthMetricName  = "queueLength"
-	rabbitModeTriggerConfigName  = "mode"
-	rabbitValueTriggerConfigName = "value"
-	rabbitModeQueueLength        = "QueueLength"
-	rabbitModeMessageRate        = "MessageRate"
-	defaultRabbitMQQueueLength   = 20
-	rabbitMetricType             = "External"
-	rabbitRootVhostPath          = "/%2F"
+	rabbitQueueLengthMetricName            = "queueLength"
+	rabbitModeTriggerConfigName            = "mode"
+	rabbitValueTriggerConfigName           = "value"
+	rabbitActivationValueTriggerConfigName = "activationValue"
+	rabbitModeQueueLength                  = "QueueLength"
+	rabbitModeMessageRate                  = "MessageRate"
+	defaultRabbitMQQueueLength             = 20
+	rabbitMetricType                       = "External"
+	rabbitRootVhostPath                    = "/%2F"
 )
 
 const (
@@ -64,6 +65,7 @@ type rabbitMQMetadata struct {
 	queueName             string
 	mode                  string        // QueueLength or MessageRate
 	value                 float64       // trigger value (queue length or publish/sec. rate)
+	activationValue       float64       // activation value
 	host                  string        // connection string for either HTTP or AMQP protocol
 	protocol              string        // either http or amqp protocol
 	vhostName             *string       // override the vhost from the connection info
@@ -287,6 +289,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
 	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
 	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]
+	activationValue, activationValuePresent := config.TriggerMetadata[rabbitActivationValueTriggerConfigName]
 
 	// Initialize to default trigger settings
 	meta.mode = rabbitModeQueueLength
@@ -300,6 +303,15 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	// Only allow one of `queueLength` or `mode`/`value`
 	if deprecatedQueueLengthPresent && (modePresent || valuePresent) {
 		return nil, fmt.Errorf("queueLength is deprecated; configure only %s and %s", rabbitModeTriggerConfigName, rabbitValueTriggerConfigName)
+	}
+
+	// Parse activation value
+	if activationValuePresent {
+		activation, err := strconv.ParseFloat(activationValue, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse %s: %s", rabbitActivationValueTriggerConfigName, err)
+		}
+		meta.activationValue = activation
 	}
 
 	// Parse deprecated `queueLength` value
@@ -377,9 +389,9 @@ func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if s.metadata.mode == rabbitModeQueueLength {
-		return messages > 0, nil
+		return float64(messages) > s.metadata.activationValue, nil
 	}
-	return publishRate > 0 || messages > 0, nil
+	return publishRate > s.metadata.activationValue || float64(messages) > s.metadata.activationValue, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {

@@ -58,6 +58,7 @@ spec:
         hostFromEnv: RabbitApiHost
         mode: QueueLength
         value: '10'
+        activationValue: '5'
 `
 )
 
@@ -86,6 +87,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	testScaling(t, kc)
+
+	testActivationValue(t, kc)
 
 	// cleanup
 	t.Log("--- cleaning up ---")
@@ -116,4 +119,12 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
+}
+
+func testActivationValue(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation value ---")
+	messagesToQueue := 3
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
