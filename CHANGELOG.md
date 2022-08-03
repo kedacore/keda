@@ -46,7 +46,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
-- **General:** Add settings for configuring leader election ([#2836]https://github.com/kedacore/keda/issues/2836))
+- **General:** Add settings for configuring leader election ([#2836](https://github.com/kedacore/keda/issues/2836))
 - **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
 - **General:** Reference ScaledObject's/ScaledJob's name in the scalers log ([3419](https://github.com/kedacore/keda/issues/3419))
 - **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issue/3135))
