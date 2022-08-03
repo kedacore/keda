@@ -36,8 +36,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### New
 
-- **General:** Add support for `minReplicaCount` in ScaledJob ([3426](https://github.com/kedacore/keda/issues/3426))
-- **General:** Add support to customize HPA name ([3057](https://github.com/kedacore/keda/issues/3057))
+- **General:** Add support for `minReplicaCount` in ScaledJob ([#3426](https://github.com/kedacore/keda/issues/3426))
+- **General:** Add support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
 - **General:** Make propagation policy for ScaledJob rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910))
@@ -46,6 +46,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
+- **General:** Add settings for configuring leader election ([#2836]https://github.com/kedacore/keda/issues/2836))
 - **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
 - **General:** Reference ScaledObject's/ScaledJob's name in the scalers log ([3419](https://github.com/kedacore/keda/issues/3419))
 - **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issue/3135))
