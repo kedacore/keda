@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -43,6 +43,7 @@ type azureMonitorScaler struct {
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureMonitorMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
+	logger      logr.Logger
 }
 
 type azureMonitorMetadata struct {
@@ -52,8 +53,6 @@ type azureMonitorMetadata struct {
 	scalerIndex           int
 }
 
-var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
-
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
 func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -61,7 +60,9 @@ func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAzureMonitorMetadata(config)
+	logger := InitializeLogger(config, "azure_monitor_scaler")
+
+	meta, err := parseAzureMonitorMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %s", err)
 	}
@@ -70,10 +71,11 @@ func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
+		logger:      logger,
 	}, nil
 }
 
-func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, error) {
+func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
 		azureMonitorInfo: azure.MonitorInfo{},
 	}
@@ -81,7 +83,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	if val, ok := config.TriggerMetadata[targetValueName]; ok && val != "" {
 		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
+			logger.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
 			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
 		}
 		meta.targetValue = targetValue
@@ -92,7 +94,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig) (*azureMonitorMetadata, err
 	if val, ok := config.TriggerMetadata[activationTargetValueName]; ok && val != "" {
 		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			azureMonitorLog.Error(err, "Error parsing azure monitor metadata", "targetValue", activationTargetValueName)
+			logger.Error(err, "Error parsing azure monitor metadata", "targetValue", activationTargetValueName)
 			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", activationTargetValueName, err.Error())
 		}
 		meta.activationTargetValue = activationTargetValue
@@ -216,7 +218,7 @@ func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientP
 func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
-		azureMonitorLog.Error(err, "error getting azure monitor metric")
+		s.logger.Error(err, "error getting azure monitor metric")
 		return false, err
 	}
 
@@ -242,7 +244,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2beta2.
 func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
-		azureMonitorLog.Error(err, "error getting azure monitor metric")
+		s.logger.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

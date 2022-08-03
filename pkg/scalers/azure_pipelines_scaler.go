@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -35,6 +35,7 @@ type azurePipelinesScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *azurePipelinesMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type azurePipelinesMetadata struct {
@@ -46,8 +47,6 @@ type azurePipelinesMetadata struct {
 	activationTargetPipelinesQueueLength int64
 	scalerIndex                          int
 }
-
-var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
@@ -67,6 +66,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "azure_pipelines_scaler"),
 	}, nil
 }
 
@@ -213,7 +213,7 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
-		azurePipelinesLog.Error(err, "error getting pipelines queue length")
+		s.logger.Error(err, "error getting pipelines queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -267,7 +267,7 @@ func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
-		azurePipelinesLog.Error(err, "error)")
+		s.logger.Error(err, "error)")
 		return false, err
 	}
 

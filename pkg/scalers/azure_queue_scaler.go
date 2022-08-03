@@ -22,10 +22,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -44,6 +44,7 @@ type azureQueueScaler struct {
 	metadata    *azureQueueMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
+	logger      logr.Logger
 }
 
 type azureQueueMetadata struct {
@@ -56,8 +57,6 @@ type azureQueueMetadata struct {
 	scalerIndex                 int
 }
 
-var azureQueueLog = logf.Log.WithName("azure_queue_scaler")
-
 // NewAzureQueueScaler creates a new scaler for queue
 func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -65,7 +64,9 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, podIdentity, err := parseAzureQueueMetadata(config)
+	logger := InitializeLogger(config, "azure_queue_scaler")
+
+	meta, podIdentity, err := parseAzureQueueMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
 	}
@@ -75,17 +76,18 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 		metadata:    meta,
 		podIdentity: podIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		logger:      logger,
 	}, nil
 }
 
-func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQueueMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 
 	if val, ok := config.TriggerMetadata[queueLengthMetricName]; ok {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			azureQueueLog.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
+			logger.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, kedav1alpha1.AuthPodIdentity{},
 				fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
 		}
@@ -97,7 +99,7 @@ func parseAzureQueueMetadata(config *ScalerConfig) (*azureQueueMetadata, kedav1a
 	if val, ok := config.TriggerMetadata[activationQueueLengthMetricName]; ok {
 		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			azureQueueLog.Error(err, "Error parsing azure queue metadata", activationQueueLengthMetricName, activationQueueLengthMetricName)
+			logger.Error(err, "Error parsing azure queue metadata", activationQueueLengthMetricName, activationQueueLengthMetricName)
 			return nil, kedav1alpha1.AuthPodIdentity{},
 				fmt.Errorf("error parsing azure queue metadata %s: %s", activationQueueLengthMetricName, err.Error())
 		}
@@ -170,7 +172,7 @@ func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
 	)
 
 	if err != nil {
-		azureQueueLog.Error(err, "error)")
+		s.logger.Error(err, "error)")
 		return false, err
 	}
 
@@ -205,7 +207,7 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string, me
 	)
 
 	if err != nil {
-		azureQueueLog.Error(err, "error getting queue length")
+		s.logger.Error(err, "error getting queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
