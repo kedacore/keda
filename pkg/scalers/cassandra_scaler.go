@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gocql/gocql"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -20,6 +20,7 @@ type cassandraScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *CassandraMetadata
 	session    *gocql.Session
+	logger     logr.Logger
 }
 
 // CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
@@ -38,8 +39,6 @@ type CassandraMetadata struct {
 	scalerIndex                int
 }
 
-var cassandraLog = logf.Log.WithName("cassandra_scaler")
-
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -47,12 +46,14 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := ParseCassandraMetadata(config)
+	logger := InitializeLogger(config, "cassandra_scaler")
+
+	meta, err := parseCassandraMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
 	}
 
-	session, err := NewCassandraSession(meta)
+	session, err := newCassandraSession(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing cassandra session: %s", err)
 	}
@@ -61,11 +62,12 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		session:    session,
+		logger:     logger,
 	}, nil
 }
 
-// ParseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
-func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
+// parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
+func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	meta := CassandraMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -159,8 +161,8 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	return &meta, nil
 }
 
-// NewCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
-func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
+// newCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
+func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(meta.clusterIPAddress)
 	cluster.ProtoVersion = meta.protocolVersion
 	cluster.Consistency = meta.consistency
@@ -171,7 +173,7 @@ func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
 
 	session, err := cluster.CreateSession()
 	if err != nil {
-		cassandraLog.Error(err, "found error creating session")
+		logger.Error(err, "found error creating session")
 		return nil, err
 	}
 
@@ -220,7 +222,7 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 	var value int64
 	if err := s.session.Query(s.metadata.query).WithContext(ctx).Scan(&value); err != nil {
 		if err != gocql.ErrNotFound {
-			cassandraLog.Error(err, "query failed")
+			s.logger.Error(err, "query failed")
 			return 0, err
 		}
 	}

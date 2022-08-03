@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type cpuMemoryScaler struct {
@@ -24,11 +24,11 @@ type cpuMemoryMetadata struct {
 	AverageUtilization *int32
 }
 
-var cpuMemoryLog = logf.Log.WithName("cpu_memory_scaler")
-
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Scaler, error) {
-	meta, parseErr := parseResourceMetadata(config)
+	logger := InitializeLogger(config, "cpu_memory_scaler")
+
+	meta, parseErr := parseResourceMetadata(config, logger)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %s", resourceName, parseErr)
 	}
@@ -39,7 +39,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 	}, nil
 }
 
-func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
+func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemoryMetadata, error) {
 	meta := &cpuMemoryMetadata{}
 	var value string
 	var ok bool
@@ -48,7 +48,7 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 	case ok && value != "" && config.MetricType != "":
 		return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 	case ok && value != "":
-		cpuMemoryLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		meta.Type = v2beta2.MetricTargetType(value)
 	case config.MetricType != "":
 		meta.Type = config.MetricType

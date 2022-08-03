@@ -9,10 +9,10 @@ import (
 	"time"
 
 	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -20,6 +20,7 @@ import (
 type datadogScaler struct {
 	metadata  *datadogMetadata
 	apiClient *datadog.APIClient
+	logger    logr.Logger
 }
 
 type datadogMetadata struct {
@@ -36,8 +37,6 @@ type datadogMetadata struct {
 	fillValue            float64
 }
 
-var datadogLog = logf.Log.WithName("datadog_scaler")
-
 var filter *regexp.Regexp
 
 func init() {
@@ -46,7 +45,9 @@ func init() {
 
 // NewDatadogScaler creates a new Datadog scaler
 func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	meta, err := parseDatadogMetadata(config)
+	logger := InitializeLogger(config, "datadog_scaler")
+
+	meta, err := parseDatadogMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Datadog metadata: %s", err)
 	}
@@ -58,6 +59,7 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	return &datadogScaler{
 		metadata:  meta,
 		apiClient: apiClient,
+		logger:    logger,
 	}, nil
 }
 
@@ -71,7 +73,7 @@ func parseDatadogQuery(q string) (bool, error) {
 	return true, nil
 }
 
-func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
+func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
 	if val, ok := config.TriggerMetadata["age"]; ok {
@@ -82,7 +84,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		meta.age = age
 
 		if age < 60 {
-			datadogLog.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
+			logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
 		}
 	} else {
 		meta.age = 90 // Default window 90 seconds
@@ -128,7 +130,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
-		datadogLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
 			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 		}
@@ -313,7 +315,7 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metri
 func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		datadogLog.Error(err, "error getting metrics from Datadog")
+		s.logger.Error(err, "error getting metrics from Datadog")
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metrics from Datadog: %s", err)
 	}
 
