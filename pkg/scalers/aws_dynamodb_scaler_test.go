@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -275,7 +276,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb", selector)
 			switch meta.tableName {
@@ -293,7 +294,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 func TestDynamoGetQueryMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.GetQueryMetrics()
 			switch meta.tableName {
@@ -311,7 +312,7 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 func TestDynamoIsActive(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.IsActive(context.Background())
 			switch meta.tableName {

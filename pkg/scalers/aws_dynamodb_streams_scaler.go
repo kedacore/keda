@@ -13,12 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -33,6 +33,7 @@ type awsDynamoDBStreamsScaler struct {
 	metadata       *awsDynamoDBStreamsMetadata
 	streamArn      *string
 	dbStreamClient dynamodbstreamsiface.DynamoDBStreamsAPI
+	logger         logr.Logger
 }
 
 type awsDynamoDBStreamsMetadata struct {
@@ -44,8 +45,6 @@ type awsDynamoDBStreamsMetadata struct {
 	scalerIndex                int
 }
 
-var dynamodbStreamLog = logf.Log.WithName("aws_dynamodb_streams_scaler")
-
 // NewAwsDynamoDBStreamsScaler creates a new awsDynamoDBStreamsScaler
 func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -53,7 +52,9 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Sca
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAwsDynamoDBStreamsMetadata(config)
+	logger := InitializeLogger(config, "aws_dynamodb_streams_scaler")
+
+	meta, err := parseAwsDynamoDBStreamsMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %s", err)
 	}
@@ -70,10 +71,11 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Sca
 		metadata:       meta,
 		streamArn:      streamArn,
 		dbStreamClient: dbStreamClient,
+		logger:         logger,
 	}, nil
 }
 
-func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig) (*awsDynamoDBStreamsMetadata, error) {
+func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (*awsDynamoDBStreamsMetadata, error) {
 	meta := awsDynamoDBStreamsMetadata{}
 	meta.targetShardCount = defaultTargetDBStreamsShardCount
 
@@ -93,7 +95,7 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig) (*awsDynamoDBStreamsM
 		shardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetShardCount = defaultTargetDBStreamsShardCount
-			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamsShardCount)
+			logger.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamsShardCount)
 		} else {
 			meta.targetShardCount = shardCount
 		}
@@ -102,7 +104,7 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig) (*awsDynamoDBStreamsM
 		shardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.activationTargetShardCount = defaultActivationTargetDBStreamsShardCount
-			dynamodbStreamLog.Error(err, "error parsing dyanmodb stream metadata activationTargetShardCount, using default %n", defaultActivationTargetDBStreamsShardCount)
+			logger.Error(err, "error parsing dyanmodb stream metadata activationTargetShardCount, using default %n", defaultActivationTargetDBStreamsShardCount)
 		} else {
 			meta.activationTargetShardCount = shardCount
 		}
@@ -193,7 +195,7 @@ func (s *awsDynamoDBStreamsScaler) GetMetrics(ctx context.Context, metricName st
 	shardCount, err := s.GetDynamoDBStreamShardCount(ctx)
 
 	if err != nil {
-		dynamodbStreamLog.Error(err, "error getting shard count")
+		s.logger.Error(err, "error getting shard count")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

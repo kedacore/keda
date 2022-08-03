@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -291,7 +292,7 @@ var awsKinesisGetMetricTestData = []*awsKinesisStreamMetadata{
 
 func TestKinesisParseMetadata(t *testing.T) {
 	for _, testData := range testAWSKinesisMetadata {
-		result, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams, ScalerIndex: testData.scalerIndex})
+		result, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -308,11 +309,11 @@ func TestKinesisParseMetadata(t *testing.T) {
 func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsKinesisMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAwsKinesisStreamMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -325,7 +326,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsKinesisGetMetricTestData {
-		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}}
+		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:

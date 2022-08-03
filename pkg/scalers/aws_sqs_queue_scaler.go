@@ -13,10 +13,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -27,18 +27,16 @@ const (
 	defaultScaleOnInFlight             = true
 )
 
-var (
-	awsSqsQueueMetricNames = []string{
-		"ApproximateNumberOfMessages",
-		"ApproximateNumberOfMessagesNotVisible",
-	}
-	sqsQueueLog = logf.Log.WithName("aws_sqs_queue_scaler")
-)
+var awsSqsQueueMetricNames = []string{
+	"ApproximateNumberOfMessages",
+	"ApproximateNumberOfMessagesNotVisible",
+}
 
 type awsSqsQueueScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *awsSqsQueueMetadata
 	sqsClient  sqsiface.SQSAPI
+	logger     logr.Logger
 }
 
 type awsSqsQueueMetadata struct {
@@ -59,7 +57,9 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAwsSqsQueueMetadata(config)
+	logger := InitializeLogger(config, "aws_sqs_queue_scaler")
+
+	meta, err := parseAwsSqsQueueMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
 	}
@@ -68,10 +68,11 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		sqsClient:  createSqsClient(meta),
+		logger:     logger,
 	}, nil
 }
 
-func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error) {
+func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 	meta.scaleOnInFlight = defaultScaleOnInFlight
@@ -80,7 +81,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetQueueLength = targetQueueLengthDefault
-			sqsQueueLog.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
+			logger.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
 		} else {
 			meta.targetQueueLength = queueLength
 		}
@@ -90,7 +91,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.activationTargetQueueLength = activationTargetQueueLengthDefault
-			sqsQueueLog.Error(err, "Error parsing SQS queue metadata activationQueueLength, using default %n", activationTargetQueueLengthDefault)
+			logger.Error(err, "Error parsing SQS queue metadata activationQueueLength, using default %n", activationTargetQueueLengthDefault)
 		} else {
 			meta.activationTargetQueueLength = activationQueueLength
 		}
@@ -100,7 +101,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig) (*awsSqsQueueMetadata, error
 		scaleOnInFlight, err := strconv.ParseBool(val)
 		if err != nil {
 			meta.scaleOnInFlight = defaultScaleOnInFlight
-			sqsQueueLog.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
+			logger.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
 		} else {
 			meta.scaleOnInFlight = scaleOnInFlight
 		}
@@ -206,7 +207,7 @@ func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string, m
 	queuelen, err := s.getAwsSqsQueueLength()
 
 	if err != nil {
-		sqsQueueLog.Error(err, "Error getting queue length")
+		s.logger.Error(err, "Error getting queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -254,7 +255,7 @@ var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams})
+		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -267,11 +268,11 @@ func TestSQSParseMetadata(t *testing.T) {
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
+		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -284,7 +285,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsSQSGetMetricTestData {
-		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
+		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:
