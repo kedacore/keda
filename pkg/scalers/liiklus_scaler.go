@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,6 +23,7 @@ type liiklusScaler struct {
 	metadata   *liiklusMetadata
 	connection *grpc.ClientConn
 	client     liiklus_service.LiiklusServiceClient
+	logger     logr.Logger
 }
 
 type liiklusMetadata struct {
@@ -68,6 +70,7 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 		client:     c,
 		metricType: metricType,
 		metadata:   lm,
+		logger:     InitializeLogger(config, "liiklus_scaler"),
 	}
 	return &scaler, nil
 }

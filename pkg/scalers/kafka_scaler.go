@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,6 +22,7 @@ type kafkaScaler struct {
 	metadata   kafkaMetadata
 	client     sarama.Client
 	admin      sarama.ClusterAdmin
+	logger     logr.Logger
 }
 
 type kafkaMetadata struct {
@@ -77,8 +78,6 @@ const (
 	invalidOffset            = -1
 )
 
-var kafkaLog = logf.Log.WithName("kafka_scaler")
-
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -86,7 +85,9 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	kafkaMetadata, err := parseKafkaMetadata(config)
+	logger := InitializeLogger(config, "kafka_scaler")
+
+	kafkaMetadata, err := parseKafkaMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -101,6 +102,7 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		admin:      admin,
 		metricType: metricType,
 		metadata:   kafkaMetadata,
+		logger:     logger,
 	}, nil
 }
 
@@ -156,7 +158,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	return nil
 }
 
-func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
+func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
@@ -183,7 +185,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = config.TriggerMetadata["topic"]
 	default:
 		meta.topic = ""
-		kafkaLog.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
+		logger.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
@@ -263,7 +265,7 @@ func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
 			if err != nil && lag == invalidOffset {
 				return true, nil
 			}
-			kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, topic, partitionID))
+			s.logger.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, topic, partitionID))
 
 			// Return as soon as a lag was detected for any partitionID
 			if lag > 0 {
@@ -335,7 +337,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 
 		if listCGOffsetResponse.Err > 0 {
 			errMsg := fmt.Errorf("error listing cg offset: %s", listCGOffsetResponse.Err.Error())
-			kafkaLog.Error(errMsg, "")
+			s.logger.Error(errMsg, "")
 		}
 
 		for topicName := range listCGOffsetResponse.Blocks {
@@ -358,7 +360,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	for _, topicMetadata := range topicsMetadata {
 		if topicMetadata.Err > 0 {
 			errMsg := fmt.Errorf("error describing topics: %s", topicMetadata.Err.Error())
-			kafkaLog.Error(errMsg, "")
+			s.logger.Error(errMsg, "")
 		}
 		partitionMetadata := topicMetadata.Partitions
 		partitions := make([]int32, len(partitionMetadata))
@@ -377,7 +379,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	}
 	if offsets.Err > 0 {
 		errMsg := fmt.Errorf("error listing consumer group offsets: %s", offsets.Err.Error())
-		kafkaLog.Error(errMsg, "")
+		s.logger.Error(errMsg, "")
 	}
 	return offsets, nil
 }
@@ -386,12 +388,12 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
-		kafkaLog.Error(errMsg, "")
+		s.logger.Error(errMsg, "")
 		return 0, errMsg
 	}
 	if block.Err > 0 {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
-		kafkaLog.Error(errMsg, "")
+		s.logger.Error(errMsg, "")
 	}
 
 	consumerOffset := block.Offset
@@ -403,7 +405,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		msg := fmt.Sprintf(
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
 			topic, s.metadata.group, partitionID, retVal)
-		kafkaLog.V(0).Info(msg)
+		s.logger.V(0).Info(msg)
 		return retVal, nil
 	}
 
@@ -504,7 +506,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		}
 		totalTopicPartitions += (int64)(len(partitionsOffsets))
 	}
-	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
+	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
 	if !s.metadata.allowIdleConsumers {
 		// don't scale out beyond the number of topicPartitions
