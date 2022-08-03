@@ -110,6 +110,8 @@ Guidance on how to release it can be found in our [contribution guide](https://g
 
 As per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we need to create a new shipping cycle in our [project settings](https://github.com/orgs/kedacore/projects/2/settings/fields/1647216) with a target date in 3 months after the last cycle.
 
+We need to make sure that the current sprint's items are changed from status `Ready to ship` to `Done`.
+
 Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
 
 ## 9. Tweet! 🐦
