@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,6 +22,7 @@ type artemisScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *artemisMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
@@ -55,8 +56,6 @@ const (
 	defaultCorsHeader                   = "http://%s"
 )
 
-var artemisLog = logf.Log.WithName("artemis_queue_scaler")
-
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	// do we need to guarantee this timeout for a specific
@@ -78,6 +77,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   artemisMetadata,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "artemis_queue_scaler"),
 	}, nil
 }
 
@@ -181,7 +181,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
 	}
 
@@ -262,7 +262,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 		return -1, fmt.Errorf("artemis management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
 
-	artemisLog.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
+	s.logger.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
 
 	return messageCount, nil
 }
@@ -283,7 +283,7 @@ func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metri
 	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {
-		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

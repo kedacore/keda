@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -111,7 +113,8 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.AuthPodIdentity{}})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{}},
+			logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -128,7 +131,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -145,7 +148,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -164,7 +167,8 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      map[string]string{},
 				PodIdentity:     kedav1alpha1.AuthPodIdentity{},
-				ScalerIndex:     testData.scalerIndex})
+				ScalerIndex:     testData.scalerIndex},
+			logr.Discard())
 		if err != nil {
 			t.Error("Failed to parse metadata:", err)
 		}

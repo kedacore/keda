@@ -22,12 +22,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -64,14 +66,17 @@ type PushScaler interface {
 
 // ScalerConfig contains config fields common for all scalers
 type ScalerConfig struct {
-	// Name used for external scalers
-	Name string
+	// ScalableObjectName specifies name of the ScaledObject/ScaledJob that owns this scaler
+	ScalableObjectName string
+
+	// ScalableObjectNamespace specifies name of the ScaledObject/ScaledJob that owns this scaler
+	ScalableObjectNamespace string
+
+	// ScalableObjectType specifies whether this Scaler is owned by ScaledObject or ScaledJob
+	ScalableObjectType string
 
 	// The timeout to be used on all HTTP requests from the controller
 	GlobalHTTPTimeout time.Duration
-
-	// Namespace used for external scalers
-	Namespace string
 
 	// TriggerMetadata
 	TriggerMetadata map[string]string
@@ -125,6 +130,10 @@ func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, erro
 	}
 
 	return metricNameWithoutIndex, nil
+}
+
+func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
+	return logf.Log.WithName(scalerName).WithValues("type", config.ScalableObjectType, "namespace", config.ScalableObjectNamespace, "name", config.ScalableObjectName)
 }
 
 // GetMetricTargetType helps getting the metric target type of the scaler

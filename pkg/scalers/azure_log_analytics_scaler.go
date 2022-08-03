@@ -32,10 +32,10 @@ import (
 	"time"
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -55,6 +55,7 @@ type azureLogAnalyticsScaler struct {
 	name       string
 	namespace  string
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type azureLogAnalyticsMetadata struct {
@@ -109,8 +110,6 @@ var tokenCache = struct {
 	m map[string]tokenData
 }{m: make(map[string]tokenData)}
 
-var logAnalyticsLog = logf.Log.WithName("azure_log_analytics_scaler")
-
 var logAnalyticsResourceURLInCloud = map[string]string{
 	"AZUREPUBLICCLOUD":       "https://api.loganalytics.io",
 	"AZUREUSGOVERNMENTCLOUD": "https://api.loganalytics.us",
@@ -126,16 +125,17 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 
 	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.Name, config.Namespace, err)
+		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.ScalableObjectName, config.ScalableObjectNamespace, err)
 	}
 
 	return &azureLogAnalyticsScaler{
 		metricType: metricType,
 		metadata:   azureLogAnalyticsMetadata,
 		cache:      &sessionCache{metricValue: -1, metricThreshold: -1},
-		name:       config.Name,
-		namespace:  config.Namespace,
+		name:       config.ScalableObjectName,
+		namespace:  config.ScalableObjectNamespace,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		logger:     InitializeLogger(config, "azure_log_analytics_scaler"),
 	}, nil
 }
 
@@ -268,7 +268,7 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) [
 	err := s.updateCache(ctx)
 
 	if err != nil {
-		logAnalyticsLog.V(1).Info("failed to get metric spec.", "Scaled object", s.name, "Namespace", s.namespace, "Inner Error", err)
+		s.logger.V(1).Info("failed to get metric spec.", "Scaled object", s.name, "Namespace", s.namespace, "Inner Error", err)
 		return nil
 	}
 
@@ -330,7 +330,7 @@ func (s *azureLogAnalyticsScaler) getMetricData(ctx context.Context) (metricsDat
 		return metricsData{}, err
 	}
 
-	logAnalyticsLog.V(1).Info("Providing metric value", "metrics value", metricsInfo.value, "scaler name", s.name, "namespace", s.namespace)
+	s.logger.V(1).Info("Providing metric value", "metrics value", metricsInfo.value, "scaler name", s.name, "namespace", s.namespace)
 
 	return metricsInfo, nil
 }
@@ -355,10 +355,10 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 
 		switch s.metadata.podIdentity.Provider {
 		case "", kedav1alpha1.PodIdentityProviderNone:
-			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
+			s.logger.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, newTokenInfo)
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
+			s.logger.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider), newTokenInfo)
 		}
 
@@ -384,10 +384,10 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 
 		switch s.metadata.podIdentity.Provider {
 		case "", kedav1alpha1.PodIdentityProviderNone:
-			logAnalyticsLog.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
+			s.logger.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, tokenInfo)
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-			logAnalyticsLog.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
+			s.logger.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider), tokenInfo)
 		}
 
@@ -492,7 +492,7 @@ func (s *azureLogAnalyticsScaler) refreshAccessToken(ctx context.Context) (token
 	if currentTimeSec < tokenInfo.NotBefore {
 		if currentTimeSec < tokenInfo.NotBefore+10 {
 			sleepDurationSec := int(tokenInfo.NotBefore - currentTimeSec + 1)
-			logAnalyticsLog.V(1).Info("AAD token not ready", "delay (seconds)", sleepDurationSec, "scaler name", s.name, "namespace", s.namespace)
+			s.logger.V(1).Info("AAD token not ready", "delay (seconds)", sleepDurationSec, "scaler name", s.name, "namespace", s.namespace)
 			time.Sleep(time.Duration(sleepDurationSec) * time.Second)
 		} else {
 			return tokenData{}, fmt.Errorf("error getting access token. Details: AAD token has been received, but start date begins in %d seconds, so current operation will be skipped", tokenInfo.NotBefore-currentTimeSec)

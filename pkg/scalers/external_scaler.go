@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/mitchellh/hashstructure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -15,7 +16,6 @@ import (
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
@@ -24,6 +24,7 @@ type externalScaler struct {
 	metricType      v2beta2.MetricTargetType
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
+	logger          logr.Logger
 }
 
 type externalPushScaler struct {
@@ -44,8 +45,6 @@ type connectionGroup struct {
 // a pool of connectionGroup per metadata hash
 var connectionPool sync.Map
 
-var externalLog = logf.Log.WithName("external_scaler")
-
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
@@ -63,10 +62,11 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		scaledObjectRef: pb.ScaledObjectRef{
-			Name:           config.Name,
-			Namespace:      config.Namespace,
+			Name:           config.ScalableObjectName,
+			Namespace:      config.ScalableObjectNamespace,
 			ScalerMetadata: meta.originalMetadata,
 		},
+		logger: InitializeLogger(config, "external_scaler"),
 	}, nil
 }
 
@@ -87,10 +87,11 @@ func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 			metricType: metricType,
 			metadata:   meta,
 			scaledObjectRef: pb.ScaledObjectRef{
-				Name:           config.Name,
-				Namespace:      config.Namespace,
+				Name:           config.ScalableObjectName,
+				Namespace:      config.ScalableObjectNamespace,
 				ScalerMetadata: meta.originalMetadata,
 			},
+			logger: InitializeLogger(config, "external_push_scaler"),
 		},
 	}, nil
 }
@@ -137,7 +138,7 @@ func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
 
 	response, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
-		externalLog.Error(err, "error calling IsActive on external scaler")
+		s.logger.Error(err, "error calling IsActive on external scaler")
 		return false, err
 	}
 
@@ -154,13 +155,13 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.
 
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
-		externalLog.Error(err, "error building grpc connection")
+		s.logger.Error(err, "error building grpc connection")
 		return result
 	}
 
 	response, err := grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
 	if err != nil {
-		externalLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return nil
 	}
 
@@ -205,7 +206,7 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 	response, err := grpcClient.GetMetrics(ctx, request)
 	if err != nil {
-		externalLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -224,11 +225,11 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	runWithLog := func() {
 		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
-			externalLog.Error(err, "error running internalRun")
+			s.logger.Error(err, "error running internalRun")
 			return
 		}
 		if err := handleIsActiveStream(ctx, s.scaledObjectRef, grpcClient, active); err != nil {
-			externalLog.Error(err, "error running internalRun")
+			s.logger.Error(err, "error running internalRun")
 			return
 		}
 	}

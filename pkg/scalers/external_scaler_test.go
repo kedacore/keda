@@ -55,7 +55,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	for i := 0; i < serverCount*iterationCount; i++ {
 		id := i % serverCount
-		pushScaler, _ := NewExternalPushScaler(&ScalerConfig{Name: "app", Namespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
+		pushScaler, _ := NewExternalPushScaler(&ScalerConfig{ScalableObjectName: "app", ScalableObjectNamespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
 		go pushScaler.Run(ctx, replyCh[i])
 	}
 

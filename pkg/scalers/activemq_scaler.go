@@ -12,10 +12,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -24,6 +24,7 @@ type activeMQScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *activeMQMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type activeMQMetadata struct {
@@ -52,8 +53,6 @@ const (
 	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
 
-var activeMQLog = logf.Log.WithName("activeMQ_scaler")
-
 // NewActiveMQScaler creates a new activeMQ Scaler
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -71,6 +70,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "active_mq_scaler"),
 	}, nil
 }
 
@@ -170,7 +170,7 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		activeMQLog.Error(err, "Unable to access activeMQ management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access activeMQ management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
 	}
 
@@ -260,7 +260,7 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error
 		return -1, fmt.Errorf("ActiveMQ management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
 
-	activeMQLog.V(1).Info(fmt.Sprintf("ActiveMQ scaler: Providing metrics based on current queue size %d queue size limit %d", queueMessageCount, s.metadata.targetQueueSize))
+	s.logger.V(1).Info(fmt.Sprintf("ActiveMQ scaler: Providing metrics based on current queue size %d queue size limit %d", queueMessageCount, s.metadata.targetQueueSize))
 
 	return queueMessageCount, nil
 }
