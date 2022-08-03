@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -234,6 +235,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 					ignoreNullValues: testData.ignoreNullValues,
 				},
 				httpClient: http.DefaultClient,
+				logger:     logr.Discard(),
 			}
 
 			value, err := scaler.ExecutePromQuery(context.TODO())

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/go-redis/redis/v8"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -29,6 +29,7 @@ type redisScaler struct {
 	metadata        *redisMetadata
 	closeFn         func() error
 	getListLengthFn func(context.Context) (int64, error)
+	logger          logr.Logger
 }
 
 type redisConnectionInfo struct {
@@ -51,8 +52,6 @@ type redisMetadata struct {
 	scalerIndex      int
 }
 
-var redisLog = logf.Log.WithName("redis_scaler")
-
 // NewRedisScaler creates a new redisScaler
 func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
 	luaScript := `
@@ -74,28 +73,30 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "redis_scaler")
+
 	if isClustered {
 		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 		}
-		return createClusteredRedisScaler(ctx, meta, luaScript, metricType)
+		return createClusteredRedisScaler(ctx, meta, luaScript, metricType, logger)
 	} else if isSentinel {
 		meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 		}
-		return createSentinelRedisScaler(ctx, meta, luaScript, metricType)
+		return createSentinelRedisScaler(ctx, meta, luaScript, metricType, logger)
 	}
 
 	meta, err := parseRedisMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
-	return createRedisScaler(ctx, meta, luaScript, metricType)
+	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
 }
 
-func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
@@ -103,7 +104,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
-			redisLog.Error(err, "error closing redis client")
+			logger.Error(err, "error closing redis client")
 			return err
 		}
 		return nil
@@ -123,31 +124,32 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 		metadata:        meta,
 		closeFn:         closeFn,
 		getListLengthFn: listLengthFn,
+		logger:          logger,
 	}, nil
 }
 
-func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType), nil
+	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
 }
 
-func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType), nil
+	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
 }
 
-func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType) Scaler {
+func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) Scaler {
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
-			redisLog.Error(err, "error closing redis client")
+			logger.Error(err, "error closing redis client")
 			return err
 		}
 		return nil
@@ -211,7 +213,7 @@ func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := s.getListLengthFn(ctx)
 
 	if err != nil {
-		redisLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return false, err
 	}
 
@@ -242,7 +244,7 @@ func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricS
 	listLen, err := s.getListLengthFn(ctx)
 
 	if err != nil {
-		redisLog.Error(err, "error getting list length")
+		s.logger.Error(err, "error getting list length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
