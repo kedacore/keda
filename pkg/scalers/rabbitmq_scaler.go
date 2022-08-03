@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/streadway/amqp"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -57,6 +57,7 @@ type rabbitMQScaler struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type rabbitMQMetadata struct {
@@ -96,8 +97,6 @@ type publishDetail struct {
 	Rate float64 `json:"rate"`
 }
 
-var rabbitmqLog = logf.Log.WithName("rabbitmq_scaler")
-
 // NewRabbitMQScaler creates a new rabbitMQ scaler
 func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	s := &rabbitMQScaler{}
@@ -107,6 +106,8 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 	s.metricType = metricType
+
+	s.logger = InitializeLogger(config, "rabbitmq_scaler")
 
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
@@ -361,7 +362,7 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	if s.connection != nil {
 		err := s.connection.Close()
 		if err != nil {
-			rabbitmqLog.Error(err, "Error closing rabbitmq connection")
+			s.logger.Error(err, "Error closing rabbitmq connection")
 			return err
 		}
 	}

@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -61,6 +61,7 @@ type SolaceScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *SolaceMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type SolaceMetadata struct {
@@ -111,9 +112,6 @@ type solaceSEMPMetadata struct {
 	ResponseCode int `json:"responseCode"`
 }
 
-//	Solace Logger
-var solaceLog = logf.Log.WithName(solaceScalerID + "_scaler")
-
 //	Constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
@@ -124,10 +122,12 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, solaceScalerID+"_scaler")
+
 	// Parse Solace Metadata
 	solaceMetadata, err := parseSolaceMetadata(config)
 	if err != nil {
-		solaceLog.Error(err, "Error parsing Solace Trigger Metadata or missing values")
+		logger.Error(err, "Error parsing Solace Trigger Metadata or missing values")
 		return nil, err
 	}
 
@@ -135,6 +135,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   solaceMetadata,
 		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -351,7 +352,7 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 	var metricValues, mv SolaceMetricValues
 	var mve error
 	if mv, mve = s.getSolaceQueueMetricsFromSEMP(ctx); mve != nil {
-		solaceLog.Error(mve, "call to semp endpoint failed")
+		s.logger.Error(mve, "call to semp endpoint failed")
 		return []external_metrics.ExternalMetricValue{}, mve
 	}
 	metricValues = mv
@@ -365,7 +366,7 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 	default:
 		// Should never end up here
 		err := fmt.Errorf("unidentified metric: %s", metricName)
-		solaceLog.Error(err, "returning error to calling app")
+		s.logger.Error(err, "returning error to calling app")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
@@ -377,7 +378,7 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
 	metricValues, err := s.getSolaceQueueMetricsFromSEMP(ctx)
 	if err != nil {
-		solaceLog.Error(err, "call to semp endpoint failed")
+		s.logger.Error(err, "call to semp endpoint failed")
 		return false, err
 	}
 	return (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil

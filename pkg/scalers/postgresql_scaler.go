@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -20,6 +20,7 @@ type postgreSQLScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *postgreSQLMetadata
 	connection *sql.DB
+	logger     logr.Logger
 }
 
 type postgreSQLMetadata struct {
@@ -31,8 +32,6 @@ type postgreSQLMetadata struct {
 	scalerIndex                int
 }
 
-var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
-
 // NewPostgreSQLScaler creates a new postgreSQL scaler
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -40,12 +39,14 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "postgresql_scaler")
+
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
 	}
 
-	conn, err := getConnection(meta)
+	conn, err := getConnection(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
 	}
@@ -53,6 +54,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
+		logger:     logger,
 	}, nil
 }
 
@@ -142,15 +144,15 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	return &meta, nil
 }
 
-func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
+func getConnection(meta *postgreSQLMetadata, logger logr.Logger) (*sql.DB, error) {
 	db, err := sql.Open("postgres", meta.connection)
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
 	}
 	err = db.Ping()
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
 		return nil, err
 	}
 	return db, nil
@@ -160,7 +162,7 @@ func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
 func (s *postgreSQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
-		postgreSQLLog.Error(err, "Error closing postgreSQL connection")
+		s.logger.Error(err, "Error closing postgreSQL connection")
 		return err
 	}
 	return nil
@@ -180,7 +182,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 	var id float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
+		s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
 		return 0, fmt.Errorf("could not query postgreSQL: %s", err)
 	}
 	return id, nil

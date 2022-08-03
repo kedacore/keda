@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -33,6 +33,7 @@ type redisStreamsScaler struct {
 	metadata                 *redisStreamsMetadata
 	closeFn                  func() error
 	getPendingEntriesCountFn func(ctx context.Context) (int64, error)
+	logger                   logr.Logger
 }
 
 type redisStreamsMetadata struct {
@@ -44,8 +45,6 @@ type redisStreamsMetadata struct {
 	scalerIndex               int
 }
 
-var redisStreamsLog = logf.Log.WithName("redis_streams_scaler")
-
 // NewRedisStreamsScaler creates a new redisStreamsScaler
 func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -53,27 +52,29 @@ func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, co
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "redis_streams_scaler")
+
 	if isClustered {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createClusteredRedisStreamsScaler(ctx, meta, metricType)
+		return createClusteredRedisStreamsScaler(ctx, meta, metricType, logger)
 	} else if isSentinel {
 		meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 		}
-		return createSentinelRedisStreamsScaler(ctx, meta, metricType)
+		return createSentinelRedisStreamsScaler(ctx, meta, metricType, logger)
 	}
 	meta, err := parseRedisStreamsMetadata(config, parseRedisAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis streams metadata: %s", err)
 	}
-	return createRedisStreamsScaler(ctx, meta, metricType)
+	return createRedisStreamsScaler(ctx, meta, metricType, logger)
 }
 
-func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
@@ -81,7 +82,7 @@ func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMe
 
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
-			redisStreamsLog.Error(err, "error closing redis client")
+			logger.Error(err, "error closing redis client")
 			return err
 		}
 		return nil
@@ -103,7 +104,7 @@ func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMe
 	}, nil
 }
 
-func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
@@ -111,7 +112,7 @@ func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMet
 
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
-			redisStreamsLog.Error(err, "error closing redis client")
+			logger.Error(err, "error closing redis client")
 			return err
 		}
 		return nil
@@ -133,7 +134,7 @@ func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMet
 	}, nil
 }
 
-func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType) (Scaler, error) {
+func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
@@ -141,7 +142,7 @@ func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, m
 
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
-			redisStreamsLog.Error(err, "error closing redis client")
+			logger.Error(err, "error closing redis client")
 			return err
 		}
 		return nil
@@ -160,6 +161,7 @@ func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, m
 		metadata:                 meta,
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
+		logger:                   logger,
 	}, nil
 }
 
@@ -212,7 +214,7 @@ func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
 	count, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {
-		redisStreamsLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return false, err
 	}
 
@@ -240,7 +242,7 @@ func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, 
 	pendingEntriesCount, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {
-		redisStreamsLog.Error(err, "error fetching pending entries count")
+		s.logger.Error(err, "error fetching pending entries count")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -88,6 +89,7 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 			meta,
 			closeFn,
 			lengthFn,
+			logr.Discard(),
 		}
 
 		metricSpec := mockRedisScaler.GetMetricSpecForScaling(context.Background())
