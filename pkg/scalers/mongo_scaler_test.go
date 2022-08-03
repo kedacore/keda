@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -86,7 +87,7 @@ func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockMongoDBScaler := mongoDBScaler{"", meta, &mongo.Client{}}
+		mockMongoDBScaler := mongoDBScaler{"", meta, &mongo.Client{}, logr.Discard()}
 
 		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

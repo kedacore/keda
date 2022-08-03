@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -25,6 +25,7 @@ type metricsAPIScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *metricsAPIScalerMetadata
 	client     *http.Client
+	logger     logr.Logger
 }
 
 type metricsAPIScalerMetadata struct {
@@ -63,8 +64,6 @@ const (
 	methodValueQuery = "query"
 )
 
-var httpLog = logf.Log.WithName("metrics_api_scaler")
-
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -92,6 +91,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		client:     httpClient,
+		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
 
@@ -252,7 +252,7 @@ func (s *metricsAPIScaler) Close(context.Context) error {
 func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 	v, err := s.getMetricValue(ctx)
 	if err != nil {
-		httpLog.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
 		return false, err
 	}
 

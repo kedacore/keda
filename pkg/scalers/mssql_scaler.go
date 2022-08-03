@@ -9,10 +9,10 @@ import (
 
 	// mssql driver required for this scaler
 	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,6 +22,7 @@ type mssqlScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *mssqlMetadata
 	connection *sql.DB
+	logger     logr.Logger
 }
 
 // mssqlMetadata defines metadata used by KEDA to query a Microsoft SQL database
@@ -62,8 +63,6 @@ type mssqlMetadata struct {
 	scalerIndex int
 }
 
-var mssqlLog = logf.Log.WithName("mssql_scaler")
-
 // NewMSSQLScaler creates a new mssql scaler
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -71,12 +70,14 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "mssql_scaler")
+
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing mssql metadata: %s", err)
 	}
 
-	conn, err := newMSSQLConnection(meta)
+	conn, err := newMSSQLConnection(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing mssql connection: %s", err)
 	}
@@ -85,6 +86,7 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
+		logger:     logger,
 	}, nil
 }
 
@@ -175,18 +177,18 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 }
 
 // newMSSQLConnection returns a new, opened SQL connection for the provided mssqlMetadata
-func newMSSQLConnection(meta *mssqlMetadata) (*sql.DB, error) {
+func newMSSQLConnection(meta *mssqlMetadata, logger logr.Logger) (*sql.DB, error) {
 	connStr := getMSSQLConnectionString(meta)
 
 	db, err := sql.Open("sqlserver", connStr)
 	if err != nil {
-		mssqlLog.Error(err, fmt.Sprintf("Found error opening mssql: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error opening mssql: %s", err))
 		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
-		mssqlLog.Error(err, fmt.Sprintf("Found error pinging mssql: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error pinging mssql: %s", err))
 		return nil, err
 	}
 
@@ -262,7 +264,7 @@ func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	case err == sql.ErrNoRows:
 		value = 0
 	case err != nil:
-		mssqlLog.Error(err, fmt.Sprintf("Could not query mssql database: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Could not query mssql database: %s", err))
 		return 0, err
 	}
 
@@ -283,7 +285,7 @@ func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
 func (s *mssqlScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
-		mssqlLog.Error(err, "Error closing mssql connection")
+		s.logger.Error(err, "Error closing mssql connection")
 		return err
 	}
 
