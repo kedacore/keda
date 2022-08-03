@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -20,6 +20,7 @@ type influxDBScaler struct {
 	client     influxdb2.Client
 	metricType v2beta2.MetricTargetType
 	metadata   *influxDBMetadata
+	logger     logr.Logger
 }
 
 type influxDBMetadata struct {
@@ -33,8 +34,6 @@ type influxDBMetadata struct {
 	scalerIndex      int
 }
 
-var influxDBLog = logf.Log.WithName("influxdb_scaler")
-
 // NewInfluxDBScaler creates a new influx db scaler
 func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -42,12 +41,14 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "influxdb_scaler")
+
 	meta, err := parseInfluxDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing influxdb metadata: %s", err)
 	}
 
-	influxDBLog.Info("starting up influxdb client")
+	logger.Info("starting up influxdb client")
 	client := influxdb2.NewClientWithOptions(
 		meta.serverURL,
 		meta.authToken,
@@ -57,6 +58,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		client:     client,
 		metricType: metricType,
 		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 

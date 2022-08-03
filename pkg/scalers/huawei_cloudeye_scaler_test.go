@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 var (
@@ -158,7 +160,7 @@ var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
 
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 	for _, testData := range testHuaweiCloudeyeMetadata {
-		_, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}
@@ -170,11 +172,11 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 
 func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range huaweiCloudeyeMetricIdentifiers {
-		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{"", meta}
+		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{"", meta, logr.Discard()}
 
 		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
