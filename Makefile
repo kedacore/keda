@@ -21,7 +21,8 @@ IMAGE_REPO     ?= kedacore
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
 
-IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:main
+BUILD_TOOLS_GO_VERSION = 1.17.13
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:$(BUILD_TOOLS_GO_VERSION)
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -311,11 +312,11 @@ help: ## Display this help.
 
 .PHONY: docker-build-tools
 docker-build-tools: ## Build build-tools image
-	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) .
+	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
 
 .PHONY: publish-build-tools
 publish-build-tools: ## Build and push multi-arch Docker image for build-tools.
-	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
+	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile -t ${IMAGE_BUILD_TOOLS} --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
 
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image

@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"text/template"
@@ -232,6 +233,29 @@ func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	return false
 }
 
+func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	var isTargetAchieved = false
+
+	for i := 0; i < iterations; i++ {
+		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		count := len(jobList.Items)
+
+		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
+			namespace, count, target)
+
+		if count == target {
+			isTargetAchieved = true
+		} else {
+			isTargetAchieved = false
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return isTargetAchieved
+}
+
 // Waits until deployment count hits target or number of iterations are done.
 func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
@@ -425,4 +449,9 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 
 func GetRandomNumber() int {
 	return random.Intn(10000)
+}
+
+func RemoveANSI(input string) string {
+	reg := regexp.MustCompile(`(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]`)
+	return reg.ReplaceAllString(input, "")
 }

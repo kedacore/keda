@@ -89,6 +89,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, TLS cert/key and assumed public CA
 	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key + key password and assumed public CA
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
 	// success, TLS CA only
 	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
@@ -204,6 +206,9 @@ func TestKafkaAuthParams(t *testing.T) {
 			}
 			if meta.key != testData.authParams["key"] {
 				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			}
+			if meta.keyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
 			}
 		}
 	}

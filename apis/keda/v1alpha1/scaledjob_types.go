@@ -57,6 +57,8 @@ type ScaledJobSpec struct {
 	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
+	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
+	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
 	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
@@ -111,8 +113,19 @@ func init() {
 // MaxReplicaCount returns MaxReplicaCount
 func (s ScaledJob) MaxReplicaCount() int64 {
 	if s.Spec.MaxReplicaCount != nil {
-		return int64(*s.Spec.MaxReplicaCount)
+		return int64(*s.Spec.MaxReplicaCount) - s.MinReplicaCount()
 	}
 
 	return 100
+}
+
+// MinReplicaCount returns MinReplicaCount
+func (s ScaledJob) MinReplicaCount() int64 {
+	if s.Spec.MinReplicaCount != nil {
+		if *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
+			return int64(*s.Spec.MaxReplicaCount)
+		}
+		return int64(*s.Spec.MinReplicaCount)
+	}
+	return 0
 }

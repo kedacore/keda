@@ -84,15 +84,16 @@ type PredictKubeScaler struct {
 }
 
 type predictKubeMetadata struct {
-	predictHorizon    time.Duration
-	historyTimeWindow time.Duration
-	stepDuration      time.Duration
-	apiKey            string
-	prometheusAddress string
-	prometheusAuth    *authentication.AuthMeta
-	query             string
-	threshold         float64
-	scalerIndex       int
+	predictHorizon      time.Duration
+	historyTimeWindow   time.Duration
+	stepDuration        time.Duration
+	apiKey              string
+	prometheusAddress   string
+	prometheusAuth      *authentication.AuthMeta
+	query               string
+	threshold           float64
+	activationThreshold float64
+	scalerIndex         int
 }
 
 var predictKubeLog = logf.Log.WithName("predictkube_scaler")
@@ -181,23 +182,26 @@ func (s *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
 	resp, err := s.healthClient.Check(ctx, &health.HealthCheckRequest{})
 
 	if resp == nil {
-		return len(results) > 0, fmt.Errorf("can't connect grpc server: empty server response, code: %v", codes.Unknown)
+		return false, fmt.Errorf("can't connect grpc server: empty server response, code: %v", codes.Unknown)
 	}
 
 	if err != nil {
-		return len(results) > 0, fmt.Errorf("can't connect grpc server: %v, code: %v", err, status.Code(err))
+		return false, fmt.Errorf("can't connect grpc server: %v, code: %v", err, status.Code(err))
 	}
 
-	var y int64
+	var y float64
 	if len(results) > 0 {
-		y = int64(results[len(results)-1].Value)
+		y = results[len(results)-1].Value
 	}
 
-	return y > 0, nil
+	return y > s.metadata.activationThreshold, nil
 }
 
 func (s *PredictKubeScaler) Close(_ context.Context) error {
-	return s.grpcConn.Close()
+	if s != nil && s.grpcConn != nil {
+		return s.grpcConn.Close()
+	}
+	return nil
 }
 
 func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
@@ -424,6 +428,14 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		}
 	} else {
 		return nil, fmt.Errorf("no threshold given")
+	}
+
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		meta.activationThreshold, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
+		}
 	}
 
 	meta.scalerIndex = config.ScalerIndex

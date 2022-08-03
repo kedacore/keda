@@ -36,6 +36,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### New
 
+- **General:** Add support for `minReplicaCount` in ScaledJob ([#3426](https://github.com/kedacore/keda/issues/3426))
 - **General:** Add support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Basic setup for migrating e2e tests to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
 - **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
@@ -51,6 +52,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issue/3066))
 - **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 - **GCP Stackdriver Scaler:** Added aggregation parameters ([#3008](https://github.com/kedacore/keda/issues/3008))
+- **Kafka Scaler:** Handle Sarama errors properly ([#3056](https://github.com/kedacore/keda/issues/3056))
+- **Kafka Scaler:** Support of passphrase encrypted PKCS #\8 private key ([3449](https://github.com/kedacore/keda/issues/3449))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
 - **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
@@ -65,8 +68,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
 - **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
 - **Azure Pipelines Scaler:** Fix issue with Azure Pipelines wrong PAT Auth. ([#3159](https://github.com/kedacore/keda/issues/3159))
+- **Datadog Scaler:** Ensure that returns the same element that has been checked ([#3448](https://github.com/kedacore/keda/issues/3448))
 - **Kafka Scaler:** Check `lagThreshold` is a positive number ([#3366](https://github.com/kedacore/keda/issues/3366))
-
 
 ### Deprecations
 
