@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -28,6 +28,7 @@ type awsKinesisStreamScaler struct {
 	metricType    v2beta2.MetricTargetType
 	metadata      *awsKinesisStreamMetadata
 	kinesisClient kinesisiface.KinesisAPI
+	logger        logr.Logger
 }
 
 type awsKinesisStreamMetadata struct {
@@ -39,8 +40,6 @@ type awsKinesisStreamMetadata struct {
 	scalerIndex                int
 }
 
-var kinesisStreamLog = logf.Log.WithName("aws_kinesis_stream_scaler")
-
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
 func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -48,7 +47,9 @@ func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAwsKinesisStreamMetadata(config)
+	logger := InitializeLogger(config, "aws_kinesis_stream_scaler")
+
+	meta, err := parseAwsKinesisStreamMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
 	}
@@ -57,10 +58,11 @@ func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 		metricType:    metricType,
 		metadata:      meta,
 		kinesisClient: createKinesisClient(meta),
+		logger:        logger,
 	}, nil
 }
 
-func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetadata, error) {
+func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*awsKinesisStreamMetadata, error) {
 	meta := awsKinesisStreamMetadata{}
 	meta.targetShardCount = targetShardCountDefault
 
@@ -68,7 +70,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 		shardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetShardCount = targetShardCountDefault
-			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
+			logger.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
 		} else {
 			meta.targetShardCount = shardCount
 		}
@@ -78,7 +80,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig) (*awsKinesisStreamMetad
 		activationShardCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.activationTargetShardCount = activationTargetShardCountDefault
-			kinesisStreamLog.Error(err, "Error parsing Kinesis stream metadata activationShardCount, using default %n", activationTargetShardCountDefault)
+			logger.Error(err, "Error parsing Kinesis stream metadata activationShardCount, using default %n", activationTargetShardCountDefault)
 		} else {
 			meta.activationTargetShardCount = activationShardCount
 		}
@@ -164,7 +166,7 @@ func (s *awsKinesisStreamScaler) GetMetrics(ctx context.Context, metricName stri
 	shardCount, err := s.GetAwsKinesisOpenShardCount()
 
 	if err != nil {
-		kinesisStreamLog.Error(err, "Error getting shard count")
+		s.logger.Error(err, "Error getting shard count")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

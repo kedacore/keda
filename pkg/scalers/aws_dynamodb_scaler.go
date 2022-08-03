@@ -13,11 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -26,6 +26,7 @@ type awsDynamoDBScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
 	dbClient   dynamodbiface.DynamoDBAPI
+	logger     logr.Logger
 }
 
 type awsDynamoDBMetadata struct {
@@ -40,8 +41,6 @@ type awsDynamoDBMetadata struct {
 	scalerIndex               int
 	metricName                string
 }
-
-var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -58,6 +57,7 @@ func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		dbClient:   createDynamoDBClient(meta),
+		logger:     InitializeLogger(config, "aws_dynamodb_scaler"),
 	}, nil
 }
 
@@ -171,10 +171,10 @@ func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	return dbClient
 }
 
-func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	metricValue, err := c.GetQueryMetrics()
+func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+	metricValue, err := s.GetQueryMetrics()
 	if err != nil {
-		dynamoDBLog.Error(err, "Error getting metric value")
+		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -183,12 +183,12 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	externalMetric := &v2beta2.ExternalMetricSource{
 		Metric: v2beta2.MetricIdentifier{
-			Name: c.metadata.metricName,
+			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(c.metricType, c.metadata.targetValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
 
@@ -197,30 +197,30 @@ func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.M
 	}
 }
 
-func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := c.GetQueryMetrics()
+func (s *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
+	messages, err := s.GetQueryMetrics()
 	if err != nil {
 		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
 	}
 
-	return messages > float64(c.metadata.activationTargetValue), nil
+	return messages > float64(s.metadata.activationTargetValue), nil
 }
 
-func (c *awsDynamoDBScaler) Close(context.Context) error {
+func (s *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
+func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
-		TableName:                 aws.String(c.metadata.tableName),
-		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
-		ExpressionAttributeNames:  c.metadata.expressionAttributeNames,
-		ExpressionAttributeValues: c.metadata.expressionAttributeValues,
+		TableName:                 aws.String(s.metadata.tableName),
+		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
+		ExpressionAttributeNames:  s.metadata.expressionAttributeNames,
+		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
-	res, err := c.dbClient.Query(&dimensions)
+	res, err := s.dbClient.Query(&dimensions)
 	if err != nil {
-		dynamoDBLog.Error(err, "Failed to get output")
+		s.logger.Error(err, "Failed to get output")
 		return 0, err
 	}
 
