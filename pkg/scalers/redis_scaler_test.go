@@ -46,6 +46,8 @@ var testRedisMetadata = []parseRedisMetadataTestData{
 	{map[string]string{"listName": "mylist", "listLength": "10", "address": "", "password": ""}, true, map[string]string{}},
 	// improperly formed listLength
 	{map[string]string{"listName": "mylist", "listLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}},
+	// improperly formed activationListLength
+	{map[string]string{"listName": "mylist", "listLength": "1", "activationListLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}},
 	// address does not resolve
 	{map[string]string{"listName": "mylist", "listLength": "0", "addressFromEnv": "REDIS_WRONG", "password": ""}, true, map[string]string{}},
 	// password is defined in the authParams
@@ -153,8 +155,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"addresses": ":7001, :7002",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
 				},
@@ -171,8 +173,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"ports": "1, 2, 3",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -192,8 +194,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"username": "username",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -213,8 +215,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			},
 			authParams: map[string]string{},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -235,8 +237,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -257,8 +259,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"password": "password",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -279,8 +281,8 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -364,8 +366,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"addresses": ":7001, :7002",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
 				},
@@ -382,8 +384,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"ports": "1, 2, 3",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -402,8 +404,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"ports": "1, 2, 3",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -423,8 +425,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"username": "username",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -444,8 +446,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			},
 			authParams: map[string]string{},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -466,8 +468,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -488,8 +490,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"password": "password",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -510,8 +512,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -532,8 +534,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"sentinelUsername": "sentinelUsername",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
 					hosts:            []string{"a", "b", "c"},
@@ -553,8 +555,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			},
 			authParams: map[string]string{},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
 					hosts:            []string{"a", "b", "c"},
@@ -575,8 +577,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
 					hosts:            []string{"a", "b", "c"},
@@ -597,8 +599,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"sentinelPassword": "sentinelPassword",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
 					hosts:            []string{"a", "b", "c"},
@@ -619,8 +621,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
 					hosts:            []string{"a", "b", "c"},
@@ -641,8 +643,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"sentinelMaster": "sentinelMaster",
 			},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
 					hosts:          []string{"a", "b", "c"},
@@ -662,8 +664,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			},
 			authParams: map[string]string{},
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
 					hosts:          []string{"a", "b", "c"},
@@ -684,8 +686,8 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			authParams:  map[string]string{},
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisMetadata{
-				targetListLength: 5,
-				listName:         "mylist",
+				listLength: 5,
+				listName:   "mylist",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
 					hosts:          []string{"a", "b", "c"},
