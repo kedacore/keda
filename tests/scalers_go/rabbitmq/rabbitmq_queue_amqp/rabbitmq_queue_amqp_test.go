@@ -127,9 +127,5 @@ func testActivationValue(t *testing.T, kc *kubernetes.Clientset) {
 	messagesToQueue := 3
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue)
 
-	// Wait for replicas
-	time.Sleep(60 * time.Second)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
