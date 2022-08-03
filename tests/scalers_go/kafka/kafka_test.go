@@ -28,11 +28,14 @@ var (
 	kafkaClientName        = fmt.Sprintf("%s-client", testName)
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
 	bootstrapServer        = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
-	strimziOperatorVersion = "0.23.0"
-	minReplicaCount        = 0
-	maxReplicaCount        = 2
+	strimziOperatorVersion = "0.30.0"
 	topic1                 = "kafka-topic"
 	topic2                 = "kafka-topic2"
+	zeroInvalidOffsetTopic = "kafka-topic-zero-invalid-offset"
+	oneInvalidOffsetTopic  = "kafka-topic-one-invalid-offset"
+	invalidOffsetGroup     = "invalidOffset"
+	defaultKafkaClient     = "kafka-client"
+	topicPartitions        = 3
 )
 
 type templateData struct {
@@ -48,14 +51,15 @@ type templateData struct {
 	Topic2Name           string
 	BootstrapServer      string
 	ResetPolicy          string
-	MinReplicaCount      int
-	MaxReplicaCount      int
+	Params               string
+	Commit               string
+	ScaleToZeroOnInvalid string
 }
 
 type templateValues map[string]string
 
 const (
-	deploymentTemplate = `
+	singleDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -64,6 +68,37 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      # only recent version of kafka-console-consumer support flag "include"
+      # old version's equiv flag will violate language-matters commit hook
+      # work around -> create two consumer container joining the same group
+      - name: kafka-consumer
+        image: confluentinc/cp-kafka:5.2.1
+        command:
+          - sh
+          - -c
+          - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} {{.Params}} --consumer-property enable.auto.commit={{.Commit}}"  
+`
+
+	multiDeploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
   selector:
     matchLabels:
       app: kafka-consumer
@@ -90,7 +125,7 @@ spec:
           - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} --topic '{{.Topic2Name}}' --group multiTopic --from-beginning --consumer-property enable.auto.commit=false"
 `
 
-	scaledObjectTemplate = `
+	singleScaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -110,6 +145,46 @@ spec:
       lagThreshold: '1'
       offsetResetPolicy: {{.ResetPolicy}}`
 
+	multiScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup: multiTopic
+      lagThreshold: '1'
+      offsetResetPolicy: 'latest'`
+
+	invalidOffsetScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers:
+  - type: kafka
+    metadata:
+      topic: {{.TopicName}}
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup: {{.ResetPolicy}}
+      lagThreshold: '1'
+      scaleToZeroOnInvalidOffset: '{{.ScaleToZeroOnInvalid}}'
+      offsetResetPolicy: 'latest'`
+
 	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -117,7 +192,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   kafka:
-    version: "2.6.0"
+    version: "3.1.0"
     replicas: 1
     listeners:
       - name: plain
@@ -172,10 +247,10 @@ spec:
     command:
       - sh
       - -c
-      - "exec tail -f /dev/null`
+      - "exec tail -f /dev/null"`
 )
 
-func TestDatadogScaler(t *testing.T) {
+func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	// Create kubernetes resources
@@ -184,34 +259,171 @@ func TestDatadogScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	installKafkaOperator(t)
 	addCluster(t, data)
-	addTopic(t, data, topic1, 3)
-	addTopic(t, data, topic2, 3)
-
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	addTopic(t, data, topic1, topicPartitions)
+	addTopic(t, data, topic2, topicPartitions)
+	addTopic(t, data, zeroInvalidOffsetTopic, 1)
+	addTopic(t, data, oneInvalidOffsetTopic, 1)
 
 	// test scaling
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc, data)
+	testEarliestPolicy(t, kc, data)
+	testLatestPolicy(t, kc, data)
+	testMultiTopic(t, kc, data)
+	testZeroOnInvalidOffset(t, kc, data)
+	testOneOnInvalidOffset(t, kc, data)
 
 	// cleanup
 	uninstallKafkaOperator(t)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing earliest policy: scale up ---")
+	data.Params = fmt.Sprintf("--topic %s --group earliest --from-beginning", topic1)
+	data.Commit = "false"
+	data.TopicName = topic1
+	data.ResetPolicy = "earliest"
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	// Shouldn't scale pods applying earliest policy
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
+	// Scale application with kafka messages
+	messages := 2
+	for i := 0; i < messages; i++ {
+		publishMessage(t, topic1)
+	}
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, messages, 60, 2),
+		"replica count should be %d after 2 minute", messages)
+
+	// Scale application beyond partition max.
+	messages = 5
+	for i := 0; i < messages; i++ {
+		publishMessage(t, topic1)
+	}
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
+		"replica count should be %d after 2 minute", messages)
+
+	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing latest policy: scale up ---")
+	commitPartition(t, topic1, "latest")
+	data.Params = fmt.Sprintf("--topic %s --group latest", topic1)
+	data.Commit = "false"
+	data.TopicName = topic1
+	data.ResetPolicy = "latest"
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
+
+	// Shouldn't scale pods
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
+	// Scale application with kafka messages
+	messages := 2
+	for i := 0; i < messages; i++ {
+		publishMessage(t, topic1)
+	}
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, messages, 60, 2),
+		"replica count should be %d after 2 minute", messages)
+
+	// Scale application beyond partition max.
+	messages = 5
+	for i := 0; i < messages; i++ {
+		publishMessage(t, topic1)
+	}
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
+		"replica count should be %d after 2 minute", messages)
+
+	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
+}
+
+func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing multi topic: scale up ---")
+	commitPartition(t, topic1, "multiTopic")
+	commitPartition(t, topic2, "multiTopic")
+	data.Topic1Name = topic1
+	data.Topic2Name = topic2
+	KubectlApplyWithTemplate(t, data, "multiDeploymentTemplate", multiDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
+
+	// Shouldn't scale pods
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
+	// Scale application with kafka messages in topic 1
+	publishMessage(t, topic1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minute", 1)
+
+	// Scale application with kafka messages in topic 2
+	// // produce one more msg to the different topic within the same group
+	// // will turn total consumer group lag to 2.
+	// // with lagThreshold as 1 -> making hpa AverageValue to 1
+	// // this should turn nb of replicas to 2
+	// // as desiredReplicaCount = totalLag / avgThreshold
+	publishMessage(t, topic2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be %d after 2 minute", 2)
+
+	KubectlDeleteWithTemplate(t, data, "multiDeploymentTemplate", multiDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
+}
+
+func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing zeroInvalidOffsetTopic: scale up ---")
+	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, invalidOffsetGroup)
+	data.Commit = "true"
+	data.TopicName = zeroInvalidOffsetTopic
+	data.ResetPolicy = invalidOffsetGroup
+	data.ScaleToZeroOnInvalid = "true"
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+
+	// Shouldn't scale pods
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
+	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+}
+
+func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing oneInvalidOffsetTopic: scale up ---")
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
+	data.Commit = "true"
+	data.TopicName = oneInvalidOffsetTopic
+	data.ResetPolicy = invalidOffsetGroup
+	data.ScaleToZeroOnInvalid = "false"
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+
+	// Should scale to 1
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minute", 1)
+
+	commitPartition(t, oneInvalidOffsetTopic, invalidOffsetGroup)
+	publishMessage(t, oneInvalidOffsetTopic)
+
+	// Should scale to 0
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 10),
+		"replica count should be %d after 10 minute", 0)
+
+	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+}
+
+func publishMessage(t *testing.T, topic string) {
+	_, _, err := ExecCommandOnSpecificPod(t, kafkaClientName, testNamespace, fmt.Sprintf(`echo "{"text": "foo"}" | kafka-console-producer --broker-list %s --topic %s`, bootstrapServer, topic))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func commitPartition(t *testing.T, topic string, group string) {
+	_, _, err := ExecCommandOnSpecificPod(t, kafkaClientName, testNamespace, fmt.Sprintf(`kafka-console-consumer --bootstrap-server %s --topic %s --group %s --from-beginning --consumer-property enable.auto.commit=true --timeout-ms 15000`, bootstrapServer, topic, group))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func installKafkaOperator(t *testing.T) {
@@ -227,7 +439,7 @@ func installKafkaOperator(t *testing.T) {
 }
 
 func uninstallKafkaOperator(t *testing.T) {
-	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s --wait %s`,
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,
 		testNamespace,
 		testName))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -257,11 +469,9 @@ func getTemplateData() (templateData, map[string]string) {
 			TopicName:        topic1,
 			Topic1Name:       topic1,
 			Topic2Name:       topic2,
-			ResetPolicy:      "earliest",
+			ResetPolicy:      "",
 			ScaledObjectName: scaledObjectName,
-			MinReplicaCount:  minReplicaCount,
-			MaxReplicaCount:  maxReplicaCount,
 		}, templateValues{
-			"deploymentTemplate": deploymentTemplate,
+			"kafkaClientTemplate": kafkaClientTemplate,
 		}
 }
