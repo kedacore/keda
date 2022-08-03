@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
@@ -40,7 +41,7 @@ func TestCPUMemoryParseMetadata(t *testing.T) {
 			TriggerMetadata: testData.metadata,
 			MetricType:      testData.metricType,
 		}
-		_, err := parseResourceMetadata(config)
+		_, err := parseResourceMetadata(config, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

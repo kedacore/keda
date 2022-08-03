@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -25,6 +25,7 @@ type elasticsearchScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *elasticsearchMetadata
 	esClient   *elasticsearch.Client
+	logger     logr.Logger
 }
 
 type elasticsearchMetadata struct {
@@ -41,8 +42,6 @@ type elasticsearchMetadata struct {
 	metricName            string
 }
 
-var elasticsearchLog = logf.Log.WithName("elasticsearch_scaler")
-
 // NewElasticsearchScaler creates a new elasticsearch scaler
 func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -50,12 +49,14 @@ func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "elasticsearch_scaler")
+
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
 	}
 
-	esClient, err := newElasticsearchClient(meta)
+	esClient, err := newElasticsearchClient(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error getting elasticsearch client: %s", err)
 	}
@@ -63,6 +64,7 @@ func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		esClient:   esClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -141,7 +143,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 }
 
 // newElasticsearchClient creates elasticsearch db connection
-func newElasticsearchClient(meta *elasticsearchMetadata) (*elasticsearch.Client, error) {
+func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*elasticsearch.Client, error) {
 	config := elasticsearch.Config{Addresses: meta.addresses}
 	if meta.username != "" {
 		config.Username = meta.username
@@ -156,13 +158,13 @@ func newElasticsearchClient(meta *elasticsearchMetadata) (*elasticsearch.Client,
 
 	esClient, err := elasticsearch.NewClient(config)
 	if err != nil {
-		elasticsearchLog.Error(err, fmt.Sprintf("Found error when creating client: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error when creating client: %s", err))
 		return nil, err
 	}
 
 	_, err = esClient.Info()
 	if err != nil {
-		elasticsearchLog.Error(err, fmt.Sprintf("Found error when pinging search engine: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error when pinging search engine: %s", err))
 		return nil, err
 	}
 	return esClient, nil
@@ -176,7 +178,7 @@ func (s *elasticsearchScaler) Close(ctx context.Context) error {
 func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := s.getQueryResult(ctx)
 	if err != nil {
-		elasticsearchLog.Error(err, fmt.Sprintf("Error inspecting elasticsearch: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Error inspecting elasticsearch: %s", err))
 		return false, err
 	}
 	return messages > s.metadata.activationTargetValue, nil
@@ -187,7 +189,7 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	// Build the request body.
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(buildQuery(s.metadata)); err != nil {
-		elasticsearchLog.Error(err, "Error encoding query: %s", err)
+		s.logger.Error(err, "Error encoding query: %s", err)
 	}
 
 	// Run the templated search
@@ -197,7 +199,7 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 		s.esClient.SearchTemplate.WithContext(ctx),
 	)
 	if err != nil {
-		elasticsearchLog.Error(err, fmt.Sprintf("Could not query elasticsearch: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Could not query elasticsearch: %s", err))
 		return 0, err
 	}
 

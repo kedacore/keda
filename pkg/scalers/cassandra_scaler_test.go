@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/gocql/gocql"
 )
 
@@ -50,7 +51,7 @@ var cassandraMetricIdentifiers = []cassandraMetricIdentifier{
 func TestCassandraParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testCassandraMetadata {
-		_, err := ParseCassandraMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseCassandraMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
@@ -63,13 +64,13 @@ func TestCassandraParseMetadata(t *testing.T) {
 
 func TestCassandraGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cassandraMetricIdentifiers {
-		meta, err := ParseCassandraMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex, AuthParams: testData.metadataTestData.authParams})
+		meta, err := parseCassandraMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		cluster := gocql.NewCluster(meta.clusterIPAddress)
 		session, _ := cluster.CreateSession()
-		mockCassandraScaler := cassandraScaler{"", meta, session}
+		mockCassandraScaler := cassandraScaler{"", meta, session, logr.Discard()}
 
 		metricSpec := mockCassandraScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
