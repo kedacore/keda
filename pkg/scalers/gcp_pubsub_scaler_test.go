@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 var testPubSubResolvedEnv = map[string]string{
@@ -68,7 +70,7 @@ var gcpSubscriptionNameTests = []gcpPubSubSubscription{
 
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
-		_, err := parsePubSubMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
+		_, err := parsePubSubMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -80,11 +82,11 @@ func TestPubSubParseMetadata(t *testing.T) {
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex})
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta}
+		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
 
 		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -96,11 +98,11 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 
 func TestGcpPubSubSubscriptionName(t *testing.T) {
 	for _, testData := range gcpSubscriptionNameTests {
-		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex})
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta}
+		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
 		subscriptionID, projectID := getSubscriptionData(&mockGcpPubSubScaler)
 
 		if subscriptionID != testData.name || projectID != testData.projectID {

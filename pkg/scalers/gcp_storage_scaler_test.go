@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 var testGcsResolvedEnv = map[string]string{
@@ -50,7 +52,7 @@ var gcpGcsMetricIdentifiers = []gcpGcsMetricIdentifier{
 
 func TestGcsParseMetadata(t *testing.T) {
 	for _, testData := range testGcsMetadata {
-		_, err := parseGcsMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcsResolvedEnv})
+		_, err := parseGcsMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcsResolvedEnv}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -62,11 +64,11 @@ func TestGcsParseMetadata(t *testing.T) {
 
 func TestGcsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpGcsMetricIdentifiers {
-		meta, err := parseGcsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, ScalerIndex: testData.scalerIndex})
+		meta, err := parseGcsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcsScaler := gcsScaler{nil, nil, "", meta}
+		mockGcsScaler := gcsScaler{nil, nil, "", meta, logr.Discard()}
 
 		metricSpec := mockGcsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

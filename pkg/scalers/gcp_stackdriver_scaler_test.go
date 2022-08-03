@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 var testStackdriverResolvedEnv = map[string]string{
@@ -60,7 +62,7 @@ var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{
 
 func TestStackdriverParseMetadata(t *testing.T) {
 	for _, testData := range testStackdriverMetadata {
-		_, err := parseStackdriverMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testStackdriverResolvedEnv})
+		_, err := parseStackdriverMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testStackdriverResolvedEnv}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -72,11 +74,11 @@ func TestStackdriverParseMetadata(t *testing.T) {
 
 func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpStackdriverMetricIdentifiers {
-		meta, err := parseStackdriverMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, ScalerIndex: testData.scalerIndex})
+		meta, err := parseStackdriverMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpStackdriverScaler := stackdriverScaler{nil, "", meta}
+		mockGcpStackdriverScaler := stackdriverScaler{nil, "", meta, logr.Discard()}
 
 		metricSpec := mockGcpStackdriverScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

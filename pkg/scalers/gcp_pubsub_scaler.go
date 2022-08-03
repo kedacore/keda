@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -33,6 +33,7 @@ type pubsubScaler struct {
 	client     *StackDriverClient
 	metricType v2beta2.MetricTargetType
 	metadata   *pubsubMetadata
+	logger     logr.Logger
 }
 
 type pubsubMetadata struct {
@@ -45,8 +46,6 @@ type pubsubMetadata struct {
 	scalerIndex      int
 }
 
-var gcpPubSubLog = logf.Log.WithName("gcp_pub_sub_scaler")
-
 // NewPubSubScaler creates a new pubsubScaler
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -54,7 +53,9 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parsePubSubMetadata(config)
+	logger := InitializeLogger(config, "gcp_pub_sub_scaler")
+
+	meta, err := parsePubSubMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
 	}
@@ -62,10 +63,11 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	return &pubsubScaler{
 		metricType: metricType,
 		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 
-func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
+func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{}
 	meta.mode = pubsubModeSubscriptionSize
 
@@ -76,7 +78,7 @@ func parsePubSubMetadata(config *ScalerConfig) (*pubsubMetadata, error) {
 		if modePresent || valuePresent {
 			return nil, errors.New("you can use either mode and value fields or subscriptionSize field")
 		}
-		gcpPubSubLog.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
+		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
 		subSizeValue, err := strconv.ParseInt(subSize, 10, 64)
 		if err != nil {
@@ -140,14 +142,14 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 	case pubsubModeSubscriptionSize:
 		size, err := s.getMetrics(ctx, pubSubStackDriverSubscriptionSizeMetricName)
 		if err != nil {
-			gcpPubSubLog.Error(err, "error getting Active Status")
+			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
 		return size > s.metadata.activationValue, nil
 	case pubsubModeOldestUnackedMessageAge:
 		delay, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
-			gcpPubSubLog.Error(err, "error getting Active Status")
+			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
 		return delay > s.metadata.activationValue, nil
@@ -161,7 +163,7 @@ func (s *pubsubScaler) Close(context.Context) error {
 		err := s.client.metricsClient.Close()
 		s.client = nil
 		if err != nil {
-			gcpPubSubLog.Error(err, "error closing StackDriver client")
+			s.logger.Error(err, "error closing StackDriver client")
 		}
 	}
 
@@ -195,13 +197,13 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 	case pubsubModeSubscriptionSize:
 		value, err = s.getMetrics(ctx, pubSubStackDriverSubscriptionSizeMetricName)
 		if err != nil {
-			gcpPubSubLog.Error(err, "error getting subscription size")
+			s.logger.Error(err, "error getting subscription size")
 			return []external_metrics.ExternalMetricValue{}, err
 		}
 	case pubsubModeOldestUnackedMessageAge:
 		value, err = s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
-			gcpPubSubLog.Error(err, "error getting oldest unacked message age")
+			s.logger.Error(err, "error getting oldest unacked message age")
 			return []external_metrics.ExternalMetricValue{}, err
 		}
 	}
