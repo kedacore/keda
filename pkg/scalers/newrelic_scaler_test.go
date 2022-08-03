@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parseNewRelicMetadataTestData struct {
@@ -56,7 +58,7 @@ var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
 
 func TestNewRelicParseMetadata(t *testing.T) {
 	for _, testData := range testNewRelicMetadata {
-		_, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
@@ -69,7 +71,7 @@ func TestNewRelicParseMetadata(t *testing.T) {
 }
 func TestNewRelicGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range newrelicMetricIdentifiers {
-		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

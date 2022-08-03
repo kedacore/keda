@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -112,7 +113,7 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse auth metadata:", err)
 		}
 
-		mockSwiftScaler := openstackSwiftScaler{"", meta, openstack.Client{}}
+		mockSwiftScaler := openstackSwiftScaler{"", meta, openstack.Client{}, logr.Discard()}
 
 		metricSpec := mockSwiftScaler.GetMetricSpecForScaling(context.Background())
 
