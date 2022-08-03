@@ -25,10 +25,10 @@ import (
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	servicebus "github.com/Azure/azure-service-bus-go"
 	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -48,14 +48,13 @@ const (
 	serviceBusResource = "https://servicebus.azure.net/"
 )
 
-var azureServiceBusLog = logf.Log.WithName("azure_servicebus_scaler")
-
 type azureServiceBusScaler struct {
 	ctx         context.Context
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
+	logger      logr.Logger
 }
 
 type azureServiceBusMetadata struct {
@@ -78,7 +77,9 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAzureServiceBusMetadata(config)
+	logger := InitializeLogger(config, "azure_servicebus_scaler")
+
+	meta, err := parseAzureServiceBusMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
 	}
@@ -89,11 +90,12 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		logger:      logger,
 	}, nil
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
 	meta.targetLength = defaultTargetMessageCount
@@ -102,7 +104,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
 		messageCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
+			logger.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
 		} else {
 			meta.targetLength = messageCount
 		}
@@ -112,7 +114,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 	if val, ok := config.TriggerMetadata[activationMessageCountMetricName]; ok {
 		activationMessageCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			azureServiceBusLog.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
+			logger.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
 			return nil, fmt.Errorf("error parsing azure queue metadata %s", activationMessageCountMetricName)
 		}
 		meta.activationTargetLength = activationMessageCount
@@ -186,7 +188,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig) (*azureServiceBusMetadat
 func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
 	length, err := s.getAzureServiceBusLength(ctx)
 	if err != nil {
-		azureServiceBusLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return false, err
 	}
 
@@ -222,7 +224,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 	queuelen, err := s.getAzureServiceBusLength(ctx)
 
 	if err != nil {
-		azureServiceBusLog.Error(err, "error getting service bus entity length")
+		s.logger.Error(err, "error getting service bus entity length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
