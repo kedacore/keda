@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	"github.com/go-redis/redis/v8"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -101,6 +102,7 @@ func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMe
 		metadata:                 meta,
 		closeFn:                  closeFn,
 		getPendingEntriesCountFn: pendingEntriesCountFn,
+		logger:                   logger,
 	}, nil
 }
 
@@ -110,28 +112,7 @@ func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMet
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
 	}
 
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
-
-	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
-		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
-		if err != nil {
-			return -1, err
-		}
-		return pendingEntries.Count, nil
-	}
-
-	return &redisStreamsScaler{
-		metricType:               metricType,
-		metadata:                 meta,
-		closeFn:                  closeFn,
-		getPendingEntriesCountFn: pendingEntriesCountFn,
-	}, nil
+	return createScaler(client, meta, metricType, logger)
 }
 
 func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
@@ -140,6 +121,10 @@ func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, m
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
 	}
 
+	return createScaler(client, meta, metricType, logger)
+}
+
+func createScaler(client *redis.Client, meta *redisStreamsMetadata, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
 			logger.Error(err, "error closing redis client")

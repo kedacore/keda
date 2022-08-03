@@ -38,6 +38,7 @@ type azureDataExplorerScaler struct {
 	client     *kusto.Client
 	name       string
 	namespace  string
+	logger     logr.Logger
 }
 
 const adxName = "azure-data-explorer"
@@ -66,6 +67,7 @@ func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scal
 		client:     client,
 		name:       config.ScalableObjectName,
 		namespace:  config.ScalableObjectNamespace,
+		logger:     logger,
 	}, nil
 }
 

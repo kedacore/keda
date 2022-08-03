@@ -178,6 +178,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 			client:    nil,
 			name:      "mock_scaled_object",
 			namespace: "mock_namespace",
+			logger:    logr.Discard(),
 		}
 
 		metricSpec := mockDataExplorerScaler.GetMetricSpecForScaling(context.Background())
