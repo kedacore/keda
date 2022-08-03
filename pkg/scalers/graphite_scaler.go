@@ -9,10 +9,10 @@ import (
 	url_pkg "net/url"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -32,6 +32,7 @@ type graphiteScaler struct {
 	metricType v2beta2.MetricTargetType
 	metadata   *graphiteMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type graphiteMetadata struct {
@@ -55,8 +56,6 @@ type grapQueryResult []struct {
 	Datapoints [][]*float64           `json:"datapoints,omitempty"`
 }
 
-var graphiteLog = logf.Log.WithName("graphite_scaler")
-
 // NewGraphiteScaler creates a new graphiteScaler
 func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -75,6 +74,7 @@ func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "graphite_scaler"),
 	}, nil
 }
 
@@ -152,7 +152,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
-		graphiteLog.Error(err, "error executing graphite query")
+		s.logger.Error(err, "error executing graphite query")
 		return false, err
 	}
 
@@ -227,7 +227,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
-		graphiteLog.Error(err, "error executing graphite query")
+		s.logger.Error(err, "error executing graphite query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

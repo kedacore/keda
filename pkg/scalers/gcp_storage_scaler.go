@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/go-logr/logr"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -29,6 +29,7 @@ type gcsScaler struct {
 	bucket     *storage.BucketHandle
 	metricType v2beta2.MetricTargetType
 	metadata   *gcsMetadata
+	logger     logr.Logger
 }
 
 type gcsMetadata struct {
@@ -40,8 +41,6 @@ type gcsMetadata struct {
 	activationTargetObjectCount int64
 }
 
-var gcsLog = logf.Log.WithName("gcp_storage_scaler")
-
 // NewGcsScaler creates a new gcsScaler
 func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -49,7 +48,9 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseGcsMetadata(config)
+	logger := InitializeLogger(config, "gcp_storage_scaler")
+
+	meta, err := parseGcsMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing GCP storage metadata: %s", err)
 	}
@@ -78,37 +79,38 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to create a handle to bucket %s", meta.bucketName)
 	}
 
-	gcsLog.Info(fmt.Sprintf("Metadata %v", meta))
+	logger.Info(fmt.Sprintf("Metadata %v", meta))
 
 	return &gcsScaler{
 		client:     client,
 		bucket:     bucket,
 		metricType: metricType,
 		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 
-func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
+func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, error) {
 	meta := gcsMetadata{}
 	meta.targetObjectCount = defaultTargetObjectCount
 	meta.maxBucketItemsToScan = defaultMaxBucketItemsToScan
 
 	if val, ok := config.TriggerMetadata["bucketName"]; ok {
 		if val == "" {
-			gcsLog.Error(nil, "no bucket name given")
+			logger.Error(nil, "no bucket name given")
 			return nil, fmt.Errorf("no bucket name given")
 		}
 
 		meta.bucketName = val
 	} else {
-		gcsLog.Error(nil, "no bucket name given")
+		logger.Error(nil, "no bucket name given")
 		return nil, fmt.Errorf("no bucket name given")
 	}
 
 	if val, ok := config.TriggerMetadata["targetObjectCount"]; ok {
 		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			gcsLog.Error(err, "Error parsing targetObjectCount")
+			logger.Error(err, "Error parsing targetObjectCount")
 			return nil, fmt.Errorf("error parsing targetObjectCount: %s", err.Error())
 		}
 
@@ -127,7 +129,7 @@ func parseGcsMetadata(config *ScalerConfig) (*gcsMetadata, error) {
 	if val, ok := config.TriggerMetadata["maxBucketItemsToScan"]; ok {
 		maxBucketItemsToScan, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			gcsLog.Error(err, "Error parsing maxBucketItemsToScan")
+			logger.Error(err, "Error parsing maxBucketItemsToScan")
 			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %s", err.Error())
 		}
 
@@ -192,7 +194,7 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 	query := &storage.Query{Prefix: ""}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
-		gcsLog.Error(err, "failed to set attribute selection")
+		s.logger.Error(err, "failed to set attribute selection")
 		return 0, err
 	}
 
@@ -206,15 +208,15 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 		}
 		if err != nil {
 			if strings.Contains(err.Error(), "bucket doesn't exist") {
-				gcsLog.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
+				s.logger.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
 				return 0, nil
 			}
-			gcsLog.Error(err, "failed to enumerate items in bucket "+s.metadata.bucketName)
+			s.logger.Error(err, "failed to enumerate items in bucket "+s.metadata.bucketName)
 			return count, err
 		}
 		count++
 	}
 
-	gcsLog.V(1).Info(fmt.Sprintf("Counted %d items with a limit of %d", count, maxCount))
+	s.logger.V(1).Info(fmt.Sprintf("Counted %d items with a limit of %d", count, maxCount))
 	return count, nil
 }
