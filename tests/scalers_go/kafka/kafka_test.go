@@ -143,6 +143,7 @@ spec:
       bootstrapServers: {{.BootstrapServer}}
       consumerGroup: {{.ResetPolicy}}
       lagThreshold: '1'
+      activationLagThreshold: '1'
       offsetResetPolicy: {{.ResetPolicy}}`
 
 	multiScaledObjectTemplate = `
@@ -288,16 +289,17 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	// Shouldn't scale pods applying earliest policy
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 
+	// Shouldn't scale pods with only 1 message due to activation value
+	publishMessage(t, topic1)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
 	// Scale application with kafka messages
-	messages := 2
-	for i := 0; i < messages; i++ {
-		publishMessage(t, topic1)
-	}
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, messages, 60, 2),
-		"replica count should be %d after 2 minute", messages)
+	publishMessage(t, topic1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be %d after 2 minute", 2)
 
 	// Scale application beyond partition max.
-	messages = 5
+	messages := 5
 	for i := 0; i < messages; i++ {
 		publishMessage(t, topic1)
 	}
@@ -322,16 +324,17 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 	// Shouldn't scale pods
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 
+	// Shouldn't scale pods with only 1 message due to activation value
+	publishMessage(t, topic1)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
 	// Scale application with kafka messages
-	messages := 2
-	for i := 0; i < messages; i++ {
-		publishMessage(t, topic1)
-	}
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, messages, 60, 2),
-		"replica count should be %d after 2 minute", messages)
+	publishMessage(t, topic1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be %d after 2 minute", 2)
 
 	// Scale application beyond partition max.
-	messages = 5
+	messages := 5
 	for i := 0; i < messages; i++ {
 		publishMessage(t, topic1)
 	}
