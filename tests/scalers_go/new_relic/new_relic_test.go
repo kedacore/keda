@@ -134,10 +134,10 @@ kind: Service
 metadata:
   labels:
     name: {{.ServiceName}}
-    namespace: {{.TestNamespace}}
   annotations:
     prometheus.io/scrape: "true"
   name: {{.ServiceName}}
+  namespace: {{.TestNamespace}}
 spec:
   ports:
   - name: http
