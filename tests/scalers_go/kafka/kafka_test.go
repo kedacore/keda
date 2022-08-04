@@ -86,7 +86,7 @@ spec:
         command:
           - sh
           - -c
-          - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} {{.Params}} --consumer-property enable.auto.commit={{.Commit}}"  
+          - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} {{.Params}} --consumer-property enable.auto.commit={{.Commit}}"
 `
 
 	multiDeploymentTemplate = `
@@ -116,7 +116,7 @@ spec:
         command:
           - sh
           - -c
-          - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} --topic '{{.Topic1Name}}'  --group multiTopic --from-beginning --consumer-property enable.auto.commit=false"  
+          - "kafka-console-consumer --bootstrap-server {{.BootstrapServer}} --topic '{{.Topic1Name}}'  --group multiTopic --from-beginning --consumer-property enable.auto.commit=false"
       - name: kafka-consumer-2
         image: confluentinc/cp-kafka:5.2.1
         command:
