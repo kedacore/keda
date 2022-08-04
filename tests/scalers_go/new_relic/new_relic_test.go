@@ -172,7 +172,8 @@ spec:
       metadata:
         account: "{{.NewRelicAccountID}}"
         region: {{.NewRelicRegion}}
-        threshold: "3"
+        threshold: "2"
+        activationThreshold: "3"
         nrql: SELECT rate(sum(http_requests_total), 1 SECONDS) FROM Metric where serviceName='{{.ServiceName}}' and namespaceName='{{.TestNamespace}}' since 120 seconds ago
       authenticationRef:
         name: {{.TriggerAuthName}}
@@ -188,7 +189,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.9; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
