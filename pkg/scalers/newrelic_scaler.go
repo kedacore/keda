@@ -34,13 +34,14 @@ type newrelicScaler struct {
 }
 
 type newrelicMetadata struct {
-	account     int
-	region      string
-	queryKey    string
-	noDataError bool
-	nrql        string
-	threshold   float64
-	scalerIndex int
+	account             int
+	region              string
+	queryKey            string
+	noDataError         bool
+	nrql                string
+	threshold           float64
+	activationThreshold float64
+	scalerIndex         int
 }
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
@@ -116,6 +117,15 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 		return nil, fmt.Errorf("missing %s value", threshold)
 	}
 
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+		}
+		meta.activationThreshold = activationThreshold
+	}
+
 	// If Query Return an Empty Data , shall we treat it as an error or not
 	// default is NO error is returned when query result is empty/no data
 	if val, ok := config.TriggerMetadata[noDataError]; ok {
@@ -137,7 +147,7 @@ func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
 		s.logger.Error(err, "error executing NRQL")
 		return false, err
 	}
-	return val > 0, nil
+	return val > s.metadata.activationThreshold, nil
 }
 
 func (s *newrelicScaler) Close(context.Context) error {
