@@ -20,6 +20,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - id: go-paths
         run: |
           echo ::set-output name=mod_cache::$(go env GOMODCACHE)

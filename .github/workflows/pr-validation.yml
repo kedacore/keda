@@ -20,6 +20,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Check go version
         run: go version
 
@@ -76,6 +79,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -100,6 +106,9 @@ jobs:
           name: amd64
     steps:
       - uses: actions/checkout@v3
+
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - uses: dorny/paths-filter@v2
         id: filter
@@ -133,6 +142,9 @@ jobs:
           name: amd64
     steps:
       - uses: actions/checkout@v3
+
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - uses: dorny/paths-filter@v2
         id: filter
