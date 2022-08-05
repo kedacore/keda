@@ -36,10 +36,6 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
     chmod +x ./kubectl && mv ./kubectl /usr/bin/kubectl && \
     rm kubectl.sha256
 
-# Install node
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
-    apt-get install -y nodejs
-
 # Install operator-sdk
 RUN RELEASE_VERSION=v1.0.1 && \
     curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && \
