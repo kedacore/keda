@@ -5,9 +5,9 @@ DIR=$(dirname "$0")
 cd $DIR
 
 test_files=(
-    "scalers_go/kubernetes_workload/kubernetes_workload_test.go"
-    "scalers_go/activemq/activemq_test.go"
-    "scalers_go/cron/cron_test.go"
+    "scalers/kubernetes_workload/kubernetes_workload_test.go"
+    "scalers/activemq/activemq_test.go"
+    "scalers/cron/cron_test.go"
 )
 
 concurrent_tests_limit=5

@@ -1,9 +1,7 @@
 #! /bin/bash
 set -u
 
-# TODO - Remove TypeScript regex after all tests have been migrated to Go.
-E2E_REGEX_GO="./*${E2E_TEST_REGEX:-*_test.go}"
-E2E_REGEX_TS="./*${E2E_TEST_REGEX:-*.test.ts}"
+E2E_REGEX="./*${E2E_TEST_REGEX:-*_test.go}"
 
 DIR=$(dirname "$0")
 cd $DIR
@@ -23,22 +21,15 @@ function run_setup {
 function run_tests {
     counter=0
     # randomize tests order using shuf
-    # TODO - Remove TypeScript regex after all tests have been migrated to Go.
-    for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX_GO" -o -wholename "$E2E_REGEX_TS" | shuf)
+    for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX" | shuf)
     do
-        if [[ $test_case != *_test.go && $test_case != *.test.ts ]] # Skip helper files
+        if [[ $test_case != *_test.go ]] # Skip helper files
         then
             continue
         fi
 
         counter=$((counter+1))
-        # TODO - Remove condition after all tests have been migrated to Go.
-        if [[ $test_case == *_test.go ]]
-        then
-            go test -v -tags e2e -timeout 20m $test_case > "${test_case}.log" 2>&1 &
-        else
-            ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
-        fi
+        go test -v -tags e2e -timeout 20m $test_case > "${test_case}.log" 2>&1 &
 
         pid=$!
         echo "Running $test_case with pid: $pid"
@@ -72,13 +63,7 @@ function run_tests {
         for test_case in "${retry_lookup[@]}"
         do
             counter=$((counter+1))
-            # TODO - Remove condition after all tests have been migrated to Go.
-            if [[ $test_case == *_test.go ]]
-            then
-                go test -v -tags e2e -timeout 20m $test_case > "${test_case}.retry.log" 2>&1 &
-            else
-                ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
-            fi
+            go test -v -tags e2e -timeout 20m $test_case > "${test_case}.retry.log" 2>&1 &
 
             pid=$!
             echo "Rerunning $test_case with pid: $pid"
