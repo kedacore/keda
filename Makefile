@@ -89,13 +89,10 @@ get-cluster-context: ## Get Azure cluster context.
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
 	TERM=linux
-	npm install --prefix tests
-
 	./tests/run-all.sh
 
 .PHONY: e2e-test-local
 e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	npm install --prefix tests
 	./tests/run-all.sh
 
 .PHONY: e2e-test-clean-crds
@@ -108,7 +105,6 @@ e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e
 
 .PHONY: arm-smoke-test
 arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	npm install --prefix tests
 	./tests/run-arm-smoke-tests.sh
 
 ##################################################
