@@ -87,7 +87,7 @@ jobs:
       - name: Install prerequisites
         run: |
           apt update
-          apt install curl npm make ca-certificates gcc libc-dev -y
+          apt install curl make ca-certificates gcc libc-dev -y
         env:
           DEBIAN_FRONTEND: noninteractive
 
