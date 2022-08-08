@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parsePulsarMetadataTestData struct {
@@ -160,7 +162,7 @@ func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 			}
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPulsarScaler := pulsarScaler{meta, nil}
+		mockPulsarScaler := pulsarScaler{meta, nil, logr.Discard()}
 
 		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
