@@ -116,8 +116,6 @@ spec:
 `
 
 const scaledObjectTemplate = `
-
----
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
