@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -23,13 +23,12 @@ const (
 	defaultJetStreamLagThreshold = 10
 )
 
-var jsLog = logf.Log.WithName("nats_jetstream_scaler")
-
 type natsJetStreamScaler struct {
 	metricType v2beta2.MetricTargetType
 	stream     *streamDetail
 	metadata   natsJetStreamMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type natsJetStreamMetadata struct {
@@ -103,6 +102,7 @@ func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
 		stream:     &streamDetail{},
 		metadata:   jsMetadata,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		logger:     InitializeLogger(config, "nats_jetstream_scaler"),
 	}, nil
 }
 
@@ -166,14 +166,14 @@ func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		jsLog.Error(err, "unable to access NATS JetStream monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.monitoringEndpoint)
+		s.logger.Error(err, "unable to access NATS JetStream monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.monitoringEndpoint)
 		return false, err
 	}
 
 	defer resp.Body.Close()
 	var jsAccountResp jetStreamEndpointResponse
 	if err = json.NewDecoder(resp.Body).Decode(&jsAccountResp); err != nil {
-		jsLog.Error(err, "unable to decode JetStream account response")
+		s.logger.Error(err, "unable to decode JetStream account response")
 		return false, err
 	}
 
@@ -223,14 +223,14 @@ func (s *natsJetStreamScaler) GetMetrics(ctx context.Context, metricName string,
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		jsLog.Error(err, "unable to access NATS JetStream monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.monitoringEndpoint)
+		s.logger.Error(err, "unable to access NATS JetStream monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.monitoringEndpoint)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	defer resp.Body.Close()
 	var jsAccountResp jetStreamEndpointResponse
 	if err = json.NewDecoder(resp.Body).Decode(&jsAccountResp); err != nil {
-		jsLog.Error(err, "unable to decode JetStream account details")
+		s.logger.Error(err, "unable to decode JetStream account details")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -246,7 +246,7 @@ func (s *natsJetStreamScaler) GetMetrics(ctx context.Context, metricName string,
 	}
 
 	totalLag := s.getMaxMsgLag()
-	jsLog.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
+	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
