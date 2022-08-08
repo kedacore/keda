@@ -26,26 +26,28 @@ type influxDBMetricIdentifier struct {
 }
 
 var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
-	// nothing passed
+	// 1 nothing passed
 	{map[string]string{}, true, map[string]string{}},
-	// everything is passed in verbatim
+	// 2 everything is passed in verbatim
 	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
-	// everything is passed in (environment variables)
+	// 3 everything is passed in (environment variables)
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationNameFromEnv": "INFLUX_ORG", "query": "from(bucket: hello)", "thresholdValue": "10", "authTokenFromEnv": "INFLUX_TOKEN", "unsafeSsl": "false"}, false, map[string]string{}},
-	// no serverURL passed
+	// 4 no serverURL passed
 	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
-	// no organization name passed
+	// 5 no organization name passed
 	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
-	// no query passed
+	// 6 no query passed
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
-	// no threshold value passed
+	// 7 no threshold value passed
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
-	// no auth token passed
+	// 8 no auth token passed
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{}},
-	// authToken, organizationName, and serverURL are defined in authParams
+	// 9 authToken, organizationName, and serverURL are defined in authParams
 	{map[string]string{"query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "authToken": "myToken"}},
-	// no sunsafeSsl value passed
+	// 10 no sunsafeSsl value passed
 	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false, map[string]string{}},
+	// 11 wrong activationThreshold valuequeryInfluxDB
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "activationThresholdValue": "aa", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
 }
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
