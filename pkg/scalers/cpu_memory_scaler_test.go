@@ -21,10 +21,16 @@ var validCPUMemoryMetadata = map[string]string{
 	"type":  "Utilization",
 	"value": "50",
 }
+var validContainerCPUMemoryMetadata = map[string]string{
+	"type":          "Utilization",
+	"value":         "50",
+	"containerName": "foo",
+}
 
 var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 	{"", map[string]string{}, true},
 	{"", validCPUMemoryMetadata, false},
+	{"", validContainerCPUMemoryMetadata, false},
 	{"", map[string]string{"type": "Utilization", "value": "50"}, false},
 	{v2beta2.UtilizationMetricType, map[string]string{"value": "50"}, false},
 	{"", map[string]string{"type": "AverageValue", "value": "50"}, false},
@@ -74,4 +80,31 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 	assert.Equal(t, metricSpec[0].Type, v2beta2.ResourceMetricSourceType)
 	assert.Equal(t, metricSpec[0].Resource.Name, v1.ResourceCPU)
 	assert.Equal(t, metricSpec[0].Resource.Target.Type, v2beta2.UtilizationMetricType)
+}
+
+func TestGetContainerMetricSpecForScaling(t *testing.T) {
+	// Using trigger.metadata.type field for type
+	config := &ScalerConfig{
+		TriggerMetadata: validContainerCPUMemoryMetadata,
+	}
+	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
+	metricSpec := scaler.GetMetricSpecForScaling(context.Background())
+
+	assert.Equal(t, metricSpec[0].Type, v2beta2.ContainerResourceMetricSourceType)
+	assert.Equal(t, metricSpec[0].ContainerResource.Name, v1.ResourceCPU)
+	assert.Equal(t, metricSpec[0].ContainerResource.Target.Type, v2beta2.UtilizationMetricType)
+	assert.Equal(t, metricSpec[0].ContainerResource.Container, validContainerCPUMemoryMetadata["containerName"])
+
+	// Using trigger.metricType field for type
+	config = &ScalerConfig{
+		TriggerMetadata: map[string]string{"value": "50", "containerName": "bar"},
+		MetricType:      v2beta2.UtilizationMetricType,
+	}
+	scaler, _ = NewCPUMemoryScaler(v1.ResourceCPU, config)
+	metricSpec = scaler.GetMetricSpecForScaling(context.Background())
+
+	assert.Equal(t, metricSpec[0].Type, v2beta2.ContainerResourceMetricSourceType)
+	assert.Equal(t, metricSpec[0].ContainerResource.Name, v1.ResourceCPU)
+	assert.Equal(t, metricSpec[0].ContainerResource.Target.Type, v2beta2.UtilizationMetricType)
+	assert.Equal(t, metricSpec[0].ContainerResource.Container, "bar")
 }

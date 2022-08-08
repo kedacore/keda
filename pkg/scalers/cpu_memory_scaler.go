@@ -22,6 +22,7 @@ type cpuMemoryMetadata struct {
 	Type               v2beta2.MetricTargetType
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
+	ContainerName      string
 }
 
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
@@ -73,6 +74,11 @@ func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemory
 	default:
 		return nil, fmt.Errorf("unsupported metric type, allowed values are 'Utilization' or 'AverageValue'")
 	}
+
+	if value, ok = config.TriggerMetadata["containerName"]; ok && value != "" {
+		meta.ContainerName = value
+	}
+
 	return meta, nil
 }
 
@@ -88,15 +94,31 @@ func (s *cpuMemoryScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	cpuMemoryMetric := &v2beta2.ResourceMetricSource{
-		Name: s.resourceName,
-		Target: v2beta2.MetricTarget{
-			Type:               s.metadata.Type,
-			AverageUtilization: s.metadata.AverageUtilization,
-			AverageValue:       s.metadata.AverageValue,
-		},
+	var metricSpec v2beta2.MetricSpec
+
+	if s.metadata.ContainerName != "" {
+		containerCPUMemoryMetric := &v2beta2.ContainerResourceMetricSource{
+			Name: s.resourceName,
+			Target: v2beta2.MetricTarget{
+				Type:               s.metadata.Type,
+				AverageUtilization: s.metadata.AverageUtilization,
+				AverageValue:       s.metadata.AverageValue,
+			},
+			Container: s.metadata.ContainerName,
+		}
+		metricSpec = v2beta2.MetricSpec{ContainerResource: containerCPUMemoryMetric, Type: v2beta2.ContainerResourceMetricSourceType}
+	} else {
+		cpuMemoryMetric := &v2beta2.ResourceMetricSource{
+			Name: s.resourceName,
+			Target: v2beta2.MetricTarget{
+				Type:               s.metadata.Type,
+				AverageUtilization: s.metadata.AverageUtilization,
+				AverageValue:       s.metadata.AverageValue,
+			},
+		}
+		metricSpec = v2beta2.MetricSpec{Resource: cpuMemoryMetric, Type: v2beta2.ResourceMetricSourceType}
 	}
-	metricSpec := v2beta2.MetricSpec{Resource: cpuMemoryMetric, Type: v2beta2.ResourceMetricSourceType}
+
 	return []v2beta2.MetricSpec{metricSpec}
 }
 
