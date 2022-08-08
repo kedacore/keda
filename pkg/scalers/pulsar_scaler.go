@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,13 +22,15 @@ import (
 type pulsarScaler struct {
 	metadata pulsarMetadata
 	client   *http.Client
+	logger   logr.Logger
 }
 
 type pulsarMetadata struct {
-	adminURL            string
-	topic               string
-	subscription        string
-	msgBacklogThreshold int64
+	adminURL                      string
+	topic                         string
+	subscription                  string
+	msgBacklogThreshold           int64
+	activationMsgBacklogThreshold int64
 
 	// TLS
 	enableTLS bool
@@ -36,10 +38,8 @@ type pulsarMetadata struct {
 	key       string
 	ca        string
 
-	statsURL                      string
-	metricName                    string
-	activationMsgBacklogThreshold int64
-
+	statsURL    string
+	metricName  string
 	scalerIndex int
 }
 
@@ -49,8 +49,6 @@ const (
 	defaultMsgBacklogThreshold = 10
 	enable                     = "enable"
 )
-
-var pulsarLog = logf.Log.WithName("pulsar_scaler")
 
 type pulsarSubscription struct {
 	Msgrateout                       float64       `json:"msgRateOut"`
@@ -101,7 +99,6 @@ type pulsarStats struct {
 func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	pulsarMetadata, err := parsePulsarMetadata(config)
 	if err != nil {
-		pulsarLog.Error(err, "error parsing pulsar metadata")
 		return nil, fmt.Errorf("error parsing pulsar metadata: %s", err)
 	}
 
@@ -118,6 +115,7 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	return &pulsarScaler{
 		client:   client,
 		metadata: pulsarMetadata,
+		logger:   InitializeLogger(config, "pulsar_scaler"),
 	}, nil
 }
 
@@ -252,7 +250,7 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 
 	if !found {
-		pulsarLog.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
+		s.logger.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
 		return false, nil
 	}
 
