@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -406,7 +405,7 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
-	tempFile, err := ioutil.TempFile("", templateName)
+	tempFile, err := os.CreateTemp("", templateName)
 	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
 
 	defer os.Remove(tempFile.Name())
@@ -433,7 +432,7 @@ func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, con
 	tmpl, err := template.New("kubernetes resource template").Parse(config)
 	assert.NoErrorf(t, err, "cannot parse template - %s", err)
 
-	tempFile, err := ioutil.TempFile("", templateName)
+	tempFile, err := os.CreateTemp("", templateName)
 	assert.NoErrorf(t, err, "cannot delete temp file - %s", err)
 
 	defer os.Remove(tempFile.Name())

@@ -142,7 +142,7 @@ func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) 
 	)
 }
 
-//  Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
+// Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
 func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
 

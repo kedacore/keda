@@ -112,7 +112,7 @@ type solaceSEMPMetadata struct {
 	ResponseCode int `json:"responseCode"`
 }
 
-//	Constructor for SolaceScaler
+// Constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -139,7 +139,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-//	Called by constructor
+// Called by constructor
 func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	meta := SolaceMetadata{}
 	//	GET THE SEMP API ENDPOINT
@@ -263,14 +263,14 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 	return u, p, nil
 }
 
-//	INTERFACE METHOD
-//	DEFINE METRIC FOR SCALING
-//	CURRENT SUPPORTED METRICS ARE:
-//	- QUEUE MESSAGE COUNT (msgCount)
-//	- QUEUE SPOOL USAGE   (msgSpoolUsage in MBytes)
-//	METRIC IDENTIFIER HAS THE SIGNATURE:
-//	- solace-[Queue_Name]-[metric_type]
-//	e.g. solace-QUEUE1-msgCount
+// INTERFACE METHOD
+// DEFINE METRIC FOR SCALING
+// CURRENT SUPPORTED METRICS ARE:
+// - QUEUE MESSAGE COUNT (msgCount)
+// - QUEUE SPOOL USAGE   (msgSpoolUsage in MBytes)
+// METRIC IDENTIFIER HAS THE SIGNATURE:
+// - solace-[Queue_Name]-[metric_type]
+// e.g. solace-QUEUE1-msgCount
 func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
 	var metricSpecList []v2beta2.MetricSpec
 	// Message Count Target Spec
@@ -300,7 +300,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 	return metricSpecList
 }
 
-//	returns SolaceMetricValues struct populated from broker  SEMP endpoint
+// returns SolaceMetricValues struct populated from broker  SEMP endpoint
 func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (SolaceMetricValues, error) {
 	var scaledMetricEndpointURL = s.metadata.endpointURL
 	var httpClient = s.httpClient
@@ -345,9 +345,9 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	return metricValues, nil
 }
 
-//	INTERFACE METHOD
-//	Call SEMP API to retrieve metrics
-//	returns value for named metric
+// INTERFACE METHOD
+// Call SEMP API to retrieve metrics
+// returns value for named metric
 func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	var metricValues, mv SolaceMetricValues
 	var mve error
@@ -372,9 +372,9 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string, metric
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-//	INTERFACE METHOD
-//	Call SEMP API to retrieve metrics
-//	IsActive returns true if queue messageCount > 0 || msgSpoolUsage > 0
+// INTERFACE METHOD
+// Call SEMP API to retrieve metrics
+// IsActive returns true if queue messageCount > 0 || msgSpoolUsage > 0
 func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
 	metricValues, err := s.getSolaceQueueMetricsFromSEMP(ctx)
 	if err != nil {

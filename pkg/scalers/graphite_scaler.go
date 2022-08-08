@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
@@ -191,7 +191,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 		return -1, err
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return -1, err
 	}
