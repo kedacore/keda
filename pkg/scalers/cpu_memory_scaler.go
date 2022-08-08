@@ -97,7 +97,7 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Met
 	var metricSpec v2beta2.MetricSpec
 
 	if s.metadata.ContainerName != "" {
-		containerCpuMemoryMetric := &v2beta2.ContainerResourceMetricSource{
+		containerCPUMemoryMetric := &v2beta2.ContainerResourceMetricSource{
 			Name: s.resourceName,
 			Target: v2beta2.MetricTarget{
 				Type:               s.metadata.Type,
@@ -106,7 +106,7 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Met
 			},
 			Container: s.metadata.ContainerName,
 		}
-		metricSpec = v2beta2.MetricSpec{ContainerResource: containerCpuMemoryMetric, Type: v2beta2.ContainerResourceMetricSourceType}
+		metricSpec = v2beta2.MetricSpec{ContainerResource: containerCPUMemoryMetric, Type: v2beta2.ContainerResourceMetricSourceType}
 	} else {
 		cpuMemoryMetric := &v2beta2.ResourceMetricSource{
 			Name: s.resourceName,
