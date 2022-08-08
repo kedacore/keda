@@ -86,6 +86,11 @@ issues:
     - path: nats_jetstream_scaler.go
       linters:
         - dupl
+  # Exclude for stan_scaler and nats_jetstream_scaler, reason:
+  # pkg/scalers/stan_scaler.go:83: 83-127 lines are duplicate of `pkg/scalers/nats_jetstream_scaler.go:109-153` (dupl)
+    - path: stan_scaler.go
+      linters:
+        - dupl
 
 linters-settings:
   funlen:

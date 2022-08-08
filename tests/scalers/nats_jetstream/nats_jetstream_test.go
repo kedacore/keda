@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package nats_jetstream_test
+package natsjetstream_test
 
 import (
 	"fmt"
