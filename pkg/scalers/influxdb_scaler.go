@@ -24,14 +24,15 @@ type influxDBScaler struct {
 }
 
 type influxDBMetadata struct {
-	authToken        string
-	metricName       string
-	organizationName string
-	query            string
-	serverURL        string
-	unsafeSsl        bool
-	thresholdValue   float64
-	scalerIndex      int
+	authToken                string
+	metricName               string
+	organizationName         string
+	query                    string
+	serverURL                string
+	unsafeSsl                bool
+	thresholdValue           float64
+	activationThresholdValue float64
+	scalerIndex              int
 }
 
 // NewInfluxDBScaler creates a new influx db scaler
@@ -71,6 +72,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var serverURL string
 	var unsafeSsl bool
 	var thresholdValue float64
+	var activationThresholdValue float64
 
 	val, ok := config.TriggerMetadata["authToken"]
 	switch {
@@ -124,6 +126,14 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
 	}
 
+	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
+		value, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %s", err.Error())
+		}
+		activationThresholdValue = value
+	}
+
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -143,14 +153,15 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	return &influxDBMetadata{
-		authToken:        authToken,
-		metricName:       metricName,
-		organizationName: organizationName,
-		query:            query,
-		serverURL:        serverURL,
-		thresholdValue:   thresholdValue,
-		unsafeSsl:        unsafeSsl,
-		scalerIndex:      config.ScalerIndex,
+		authToken:                authToken,
+		metricName:               metricName,
+		organizationName:         organizationName,
+		query:                    query,
+		serverURL:                serverURL,
+		thresholdValue:           thresholdValue,
+		activationThresholdValue: activationThresholdValue,
+		unsafeSsl:                unsafeSsl,
+		scalerIndex:              config.ScalerIndex,
 	}, nil
 }
 
@@ -163,7 +174,7 @@ func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return value > 0, nil
+	return value > s.metadata.activationThresholdValue, nil
 }
 
 // Close closes the connection of the client to the server
