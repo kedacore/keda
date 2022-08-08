@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.17.9
+FROM golang:1.17.13
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -49,9 +49,9 @@ RUN apt-get update \
         github.com/cweill/gotests/... \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
-        github.com/alecthomas/gometalinter \
-        github.com/mgechev/revive \
-        github.com/derekparker/delve/cmd/dlv 2>&1 \
+        github.com/alecthomas/gometalinter 2>&1 \
+        # github.com/mgechev/revive \  # This pkg deps use generics, we cannot use it till we use go 1.18
+        # github.com/derekparker/delve/cmd/dlv 2>&1 \ # This pkg deps use generics, we cannot use it till we use go 1.18
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
     # Install golangci-lint

@@ -42,6 +42,8 @@ type azurePipelinesMetadata struct {
 	organizationURL                      string
 	organizationName                     string
 	personalAccessToken                  string
+	parent                               string
+	demands                              string
 	poolID                               int
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
@@ -115,6 +117,18 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.personalAccessToken = config.ResolvedEnv[config.TriggerMetadata["personalAccessTokenFromEnv"]]
 	} else {
 		return nil, fmt.Errorf("no personalAccessToken given")
+	}
+
+	if val, ok := config.TriggerMetadata["parent"]; ok && val != "" {
+		meta.parent = config.TriggerMetadata["parent"]
+	} else {
+		meta.parent = ""
+	}
+
+	if val, ok := config.TriggerMetadata["demands"]; ok && val != "" {
+		meta.demands = config.TriggerMetadata["demands"]
+	} else {
+		meta.demands = ""
 	}
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
@@ -242,14 +256,65 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data despite successful code. url: %s", url)
 	}
 
+	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	for _, value := range jobs {
 		v := value.(map[string]interface{})
 		if v["result"] == nil {
-			count++
+			if s.metadata.parent == "" && s.metadata.demands == "" {
+				// no plan defined, just add a count
+				count++
+			} else {
+				if s.metadata.parent == "" {
+					// doesn't use parent, switch to demand
+					if getCanAgentDemandFulfilJob(v, s.metadata) {
+						count++
+					}
+				} else {
+					// does use parent
+					if getCanAgentParentFulfilJob(v, s.metadata) {
+						count++
+					}
+				}
+			}
+		}
+	}
+	return count, err
+}
+
+// Determine if the scaledjob has the right demands to spin up
+func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	var demandsReq = v["demands"].([]interface{})
+	var demandsAvail = strings.Split(metadata.demands, ",")
+	var countDemands = 0
+	for _, dr := range demandsReq {
+		for _, da := range demandsAvail {
+			strDr := fmt.Sprintf("%v", dr)
+			if !strings.HasPrefix(strDr, "Agent.Version") {
+				if strDr == da {
+					countDemands++
+				}
+			}
 		}
 	}
 
-	return count, err
+	return countDemands == len(demandsReq)-1
+}
+
+// Determine if the Job and Parent Agent Template have matching capabilities
+func getCanAgentParentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	matchedAgents, ok := v["matchedAgents"].([]interface{})
+	if !ok {
+		// ADO is already processing
+		return false
+	}
+
+	for _, m := range matchedAgents {
+		n := m.(map[string]interface{})
+		if metadata.parent == n["name"].(string) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {

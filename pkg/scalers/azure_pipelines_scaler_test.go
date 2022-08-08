@@ -168,3 +168,109 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
+	meta := azurePipelinesMetadata{}
+	meta.organizationName = "testOrg"
+	meta.organizationURL = url
+	meta.parent = "test-keda-template"
+	meta.personalAccessToken = "testPAT"
+	meta.poolID = 1
+	meta.targetPipelinesQueueLength = 1
+
+	return &meta
+}
+
+func TestAzurePipelinesMatchedAgent(t *testing.T) {
+	var response = `{"count":1,"value":[{"demands":["Agent.Version -gtVersion 2.144.0"],"matchedAgents":[{"id":1,"name":"test-keda-template"}]}]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
+
+func getDemandJobMetaData(url string) *azurePipelinesMetadata {
+	meta := getMatchedAgentMetaData(url)
+	meta.parent = ""
+	meta.demands = "testDemand,kubernetes"
+
+	return meta
+}
+
+func getMismatchDemandJobMetaData(url string) *azurePipelinesMetadata {
+	meta := getMatchedAgentMetaData(url)
+	meta.parent = ""
+	meta.demands = "testDemand,iamnotademand"
+
+	return meta
+}
+
+func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
+	var response = `{"count":1,"value":[{"demands":["Agent.Version -gtVersion 2.144.0", "testDemand", "kubernetes"],"matchedAgents":[{"id":1,"name":"test-keda-template"}]}]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
+
+func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
+	var response = `{"count":1,"value":[{"demands":["Agent.Version -gtVersion 2.144.0", "testDemand", "kubernetes"],"matchedAgents":[{"id":1,"name":"test-keda-template"}]}]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMismatchDemandJobMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen > 0 {
+		t.Fail()
+	}
+}

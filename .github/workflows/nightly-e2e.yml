@@ -9,12 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: e2e-tests
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: ghcr.io/kedacore/build-tools:main
+    container: ghcr.io/kedacore/build-tools:1.17.13
     steps:
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
+
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Run end to end test
         env:
@@ -84,7 +87,7 @@ jobs:
       - name: Install prerequisites
         run: |
           apt update
-          apt install curl npm make ca-certificates gcc libc-dev -y
+          apt install curl make ca-certificates gcc libc-dev -y
         env:
           DEBIAN_FRONTEND: noninteractive
 
