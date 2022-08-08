@@ -38,7 +38,7 @@ The test script will run in 3 phases:
 
     After `utils/setup_test.go` is done, we expect to have KEDA setup in the `keda` namespace.
 
-- **Tests:** Currently there are only scaler tests in `tests/scalers/`. Each test is kept in its own package. This is to prevent conflicting variable declarations for commoly used variables (**ex -** `testNamespace`). Individual scaler tests are run
+- **Tests:** Currently there are only scaler tests in `tests/scalers/`. Each test is kept in its own package. This is to prevent conflicting variable declarations for commonly used variables (**ex -** `testNamespace`). Individual scaler tests are run
 in parallel, but tests within a file can be run in parallel or in series. More about tests below.
 
 - **Global cleanup:** This is done in [`utils/cleanup_test.go`](utils/cleanup_test.go). It cleans up all the resources created in `utils/setup_test.go`.
