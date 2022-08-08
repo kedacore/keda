@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -250,7 +249,7 @@ func getClusterObjectNamespace() (string, error) {
 		clusterObjectNamespaceCache = &env
 		return env, nil
 	}
-	data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", err
 	}

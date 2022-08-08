@@ -19,7 +19,7 @@ package resolver
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
@@ -112,7 +112,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		}
 
 		// Get the JWT from POD
-		jwt, err := ioutil.ReadFile(vh.vault.Credential.ServiceAccount)
+		jwt, err := os.ReadFile(vh.vault.Credential.ServiceAccount)
 		if err != nil {
 			return token, err
 		}

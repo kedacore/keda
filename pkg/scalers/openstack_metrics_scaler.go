@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -331,7 +331,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		bodyError, readError := ioutil.ReadAll(resp.Body)
+		bodyError, readError := io.ReadAll(resp.Body)
 
 		if readError != nil {
 			s.logger.Error(readError, "Request failed with code: %s for URL: %s", resp.StatusCode, s.metadata.metricsURL)
@@ -342,7 +342,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 	}
 
 	m := measureResult{}
-	body, errConvertJSON := ioutil.ReadAll(resp.Body)
+	body, errConvertJSON := io.ReadAll(resp.Body)
 
 	if errConvertJSON != nil {
 		s.logger.Error(errConvertJSON, "Failed to convert Body format response to json")

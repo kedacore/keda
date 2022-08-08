@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	neturl "net/url"
 	"strconv"
@@ -232,7 +232,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 		return 0, errors.New(msg)
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return 0, err
 	}

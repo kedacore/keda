@@ -3,7 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -114,7 +114,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 
 	defer resp.Body.Close()
 
-	body, readError := ioutil.ReadAll(resp.Body)
+	body, readError := io.ReadAll(resp.Body)
 
 	if readError != nil {
 		s.logger.Error(readError, "could not read response body from Swift API")
