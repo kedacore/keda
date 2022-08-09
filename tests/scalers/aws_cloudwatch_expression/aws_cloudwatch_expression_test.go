@@ -40,7 +40,6 @@ type templateData struct {
 	CloudWatchMetricNamespace  string
 	CloudwatchMetricExpression string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `apiVersion: v1
@@ -220,7 +219,7 @@ func createCloudWatchClient() *cloudwatch.CloudWatch {
 	})
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:              testNamespace,
 			DeploymentName:             deploymentName,
@@ -232,8 +231,10 @@ func getTemplateData() (templateData, templateValues) {
 			CloudWatchMetricName:       cloudwatchMetricName,
 			CloudWatchMetricNamespace:  cloudwatchMetricNamespace,
 			CloudwatchMetricExpression: cloudwatchMetricExpression,
-		}, templateValues{"secretTemplate": secretTemplate,
-			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"scaledObjectTemplate":          scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }

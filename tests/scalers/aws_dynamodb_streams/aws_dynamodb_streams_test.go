@@ -62,8 +62,6 @@ type templateData struct {
 	ActivationShardCount int64
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -247,7 +245,7 @@ func getDynamoDBStreamShardCount(dbs dynamodbstreamsiface.DynamoDBStreamsAPI, st
 	return int64(len(des.StreamDescription.Shards)), nil
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64AwsAccessKey := base64.StdEncoding.EncodeToString([]byte(awsAccessKey))
 	base64AwsSecretKey := base64.StdEncoding.EncodeToString([]byte(awsSecretKey))
 
@@ -262,11 +260,12 @@ func getTemplateData() (templateData, templateValues) {
 			ScaledObjectName: scaledObjectName,
 			TableName:        tableName,
 			ShardCount:       int64(shardCount),
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

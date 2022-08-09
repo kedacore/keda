@@ -53,8 +53,6 @@ type templateData struct {
 	ActiveMQDestination    string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -514,7 +512,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:          testNamespace,
 			DeploymentName:         deploymentName,
@@ -525,13 +523,13 @@ func getTemplateData() (templateData, map[string]string) {
 			ActiveMQConf:           activemqConf,
 			ActiveMQHome:           activemqHome,
 			ActiveMQDestination:    activemqDestination,
-		}, templateValues{
-			"secretTemplate":                secretTemplate,
-			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-			"activemqServiceTemplate":       activemqServiceTemplate,
-			"activemqConfigTemplate":        activemqConfigTemplate,
-			"activemqSteatefulTemplate":     activemqSteatefulTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"scaledObjectTemplate":          scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "activemqServiceTemplate", Config: activemqServiceTemplate},
+			{Name: "activemqConfigTemplate", Config: activemqConfigTemplate},
+			{Name: "activemqSteatefulTemplate", Config: activemqSteatefulTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

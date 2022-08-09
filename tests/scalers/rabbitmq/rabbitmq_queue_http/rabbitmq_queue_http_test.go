@@ -71,7 +71,6 @@ type templateData struct {
 	QueueName                    string
 	Connection, Base64Connection string
 }
-type templateValues map[string]string
 
 func TestScaler(t *testing.T) {
 	// setup
@@ -95,7 +94,7 @@ func TestScaler(t *testing.T) {
 	RMQUninstall(t, kc, rmqNamespace, user, password, vhost)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
@@ -104,9 +103,10 @@ func getTemplateData() (templateData, templateValues) {
 			QueueName:        queueName,
 			Connection:       connectionString,
 			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
-		}, templateValues{
-			"deploymentTemplate":   RMQTargetDeploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {

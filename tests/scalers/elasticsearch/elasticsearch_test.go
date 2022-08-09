@@ -49,8 +49,6 @@ type templateData struct {
 	SearchTemplateName    string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -368,7 +366,7 @@ func getElasticsearchDoc() (interface{}, error) {
 	return result, err
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			DeploymentName:        deploymentName,
@@ -378,12 +376,12 @@ func getTemplateData() (templateData, map[string]string) {
 			ElasticPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
 			IndexName:             indexName,
 			SearchTemplateName:    searchTemplateName,
-		}, templateValues{
-			"secretTemplate":                  secretTemplate,
-			"triggerAuthenticationTemplate":   triggerAuthenticationTemplate,
-			"serviceTemplate":                 serviceTemplate,
-			"elasticsearchDeploymentTemplate": elasticsearchDeploymentTemplate,
-			"deploymentTemplate":              deploymentTemplate,
-			"scaledObjectTemplate":            scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "elasticsearchDeploymentTemplate", Config: elasticsearchDeploymentTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

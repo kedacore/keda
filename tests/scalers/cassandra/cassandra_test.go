@@ -53,8 +53,6 @@ type templateData struct {
 	CassandraTableName      string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -321,7 +319,7 @@ func getCassandraInsertCmd(insertDataTemplate string) (string, error) {
 	return result, err
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
@@ -330,13 +328,13 @@ func getTemplateData() (templateData, map[string]string) {
 			CassandraPasswordBase64: base64.StdEncoding.EncodeToString([]byte(cassandraPassword)),
 			CassandraKeyspace:       cassandraKeyspace,
 			CassandraTableName:      cassandraTableName,
-		}, templateValues{
-			"secretTemplate":                    secretTemplate,
-			"triggerAuthenticationTemplate":     triggerAuthenticationTemplate,
-			"serviceTemplate":                   serviceTemplate,
-			"cassandraDeploymentTemplate":       cassandraDeploymentTemplate,
-			"cassandraClientDeploymentTemplate": cassandraClientDeploymentTemplate,
-			"deploymentTemplate":                deploymentTemplate,
-			"scaledObjectTemplate":              scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "cassandraDeploymentTemplate", Config: cassandraDeploymentTemplate},
+			{Name: "cassandraClientDeploymentTemplate", Config: cassandraClientDeploymentTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

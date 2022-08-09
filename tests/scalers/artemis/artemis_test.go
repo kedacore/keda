@@ -42,8 +42,6 @@ type templateData struct {
 	ArtemisUserBase64     string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -324,16 +322,14 @@ func TestArtemisScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"triggerJobTemplate": producerJob}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "triggerJobTemplate", producerJob)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"triggerJobTemplate": producerJob}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "triggerJobTemplate", producerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -346,7 +342,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			DeploymentName:        deploymentName,
@@ -354,13 +350,13 @@ func getTemplateData() (templateData, map[string]string) {
 			SecretName:            secretName,
 			ArtemisPasswordBase64: base64.StdEncoding.EncodeToString([]byte(artemisPassword)),
 			ArtemisUserBase64:     base64.StdEncoding.EncodeToString([]byte(artemisUser)),
-		}, templateValues{
-			"secretTemplate":                secretTemplate,
-			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-			"artemisServiceTemplate":        artemisServiceTemplate,
-			"artemisConfigTemplate":         artemisConfigTemplate,
-			"artemisDeploymentTemplate":     artemisDeploymentTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"scaledObjectTemplate":          scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "artemisServiceTemplate", Config: artemisServiceTemplate},
+			{Name: "artemisConfigTemplate", Config: artemisConfigTemplate},
+			{Name: "artemisDeploymentTemplate", Config: artemisDeploymentTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

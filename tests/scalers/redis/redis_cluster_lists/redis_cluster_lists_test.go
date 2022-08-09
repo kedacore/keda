@@ -55,8 +55,6 @@ type templateData struct {
 	ItemsToWrite              int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -190,18 +188,16 @@ func TestScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
 	data.ItemsToWrite = 5
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"insertJobTemplate": insertJobTemplate}
 	data.ItemsToWrite = 200
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -231,11 +227,11 @@ var data = templateData{
 	ItemsToWrite:              0,
 }
 
-func getTemplateData() (templateData, map[string]string) {
-	return data, templateValues{
-		"secretTemplate":                secretTemplate,
-		"deploymentTemplate":            deploymentTemplate,
-		"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-		"scaledObjectTemplate":          scaledObjectTemplate,
+func getTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }

@@ -48,8 +48,6 @@ type templateData struct {
 	MaxReplicaCount             string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -233,7 +231,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:               testNamespace,
 			DeploymentName:              deploymentName,
@@ -246,12 +244,12 @@ func getTemplateData() (templateData, map[string]string) {
 			MinReplicaCount:             fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:             fmt.Sprintf("%v", maxReplicaCount),
 			MetricValue:                 0,
-		}, templateValues{
-			"secretTemplate":                  secretTemplate,
-			"metricsServerdeploymentTemplate": metricsServerdeploymentTemplate,
-			"serviceTemplate":                 serviceTemplate,
-			"triggerAuthenticationTemplate":   triggerAuthenticationTemplate,
-			"deploymentTemplate":              deploymentTemplate,
-			"scaledObjectTemplate":            scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "metricsServerdeploymentTemplate", Config: metricsServerdeploymentTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

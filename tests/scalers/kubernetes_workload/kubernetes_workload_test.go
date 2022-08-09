@@ -31,8 +31,6 @@ type templateData struct {
 	ScaledObjectName        string
 }
 
-type templateValues map[string]string
-
 const (
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -153,11 +151,15 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 0 after 1 minute")
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
-		TestNamespace:           testNamespace,
-		MonitoredDeploymentName: monitoredDeploymentName,
-		SutDeploymentName:       sutDeploymentName,
-		ScaledObjectName:        scaledObjectName,
-	}, templateValues{"monitoredDeploymentTemplate": monitoredDeploymentTemplate, "sutDeploymentTemplate": sutDeploymentTemplate, "scaledObjectTemplate": scaledObjectTemplate}
+			TestNamespace:           testNamespace,
+			MonitoredDeploymentName: monitoredDeploymentName,
+			SutDeploymentName:       sutDeploymentName,
+			ScaledObjectName:        scaledObjectName,
+		}, []Template{
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+			{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }

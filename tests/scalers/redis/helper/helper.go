@@ -13,8 +13,6 @@ import (
 	"github.com/kedacore/keda/v2/tests/helper"
 )
 
-type templateValues map[string]string
-
 type templateData struct {
 	Namespace     string
 	RedisName     string
@@ -22,18 +20,18 @@ type templateData struct {
 }
 
 var (
-	redisStandaloneTemplates = templateValues{
-		"standaloneRedisTemplate":        standaloneRedisTemplate,
-		"standaloneRedisServiceTemplate": standaloneRedisServiceTemplate,
+	redisStandaloneTemplates = []helper.Template{
+		{Name: "standaloneRedisTemplate", Config: standaloneRedisTemplate},
+		{Name: "standaloneRedisServiceTemplate", Config: standaloneRedisServiceTemplate},
 	}
 
-	redisClusterTemplates = templateValues{
-		"clusterRedisSecretTemplate":          clusterRedisSecretTemplate,
-		"clusterRedisConfig1Template":         clusterRedisConfig1Template,
-		"clusterRedisConfig2Template":         clusterRedisConfig2Template,
-		"clusterRedisHeadlessServiceTemplate": clusterRedisHeadlessServiceTemplate,
-		"clusterRedisServiceTemplate":         clusterRedisServiceTemplate,
-		"clusterRedisStatefulSetTemplate":     clusterRedisStatefulSetTemplate,
+	redisClusterTemplates = []helper.Template{
+		{Name: "clusterRedisSecretTemplate", Config: clusterRedisSecretTemplate},
+		{Name: "clusterRedisConfig1Template", Config: clusterRedisConfig1Template},
+		{Name: "clusterRedisConfig2Template", Config: clusterRedisConfig2Template},
+		{Name: "clusterRedisHeadlessServiceTemplate", Config: clusterRedisHeadlessServiceTemplate},
+		{Name: "clusterRedisServiceTemplate", Config: clusterRedisServiceTemplate},
+		{Name: "clusterRedisStatefulSetTemplate", Config: clusterRedisStatefulSetTemplate},
 	}
 )
 

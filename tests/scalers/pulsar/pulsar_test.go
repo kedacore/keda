@@ -177,9 +177,7 @@ spec:
     app: pulsar
 `
 
-type templateValues map[string]string
-
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:          testNamespace,
 			StatefulSetName:        statefulSetName,
@@ -190,9 +188,9 @@ func getTemplateData() (templateData, templateValues) {
 			MinReplicaCount:        minReplicaCount,
 			MaxReplicaCount:        maxReplicaCount,
 			MsgBacklog:             msgBacklog,
-		}, templateValues{
-			"statefulsetTemplate": statefulsetTemplate,
-			"serviceTemplate":     serviceTemplate,
+		}, []Template{
+			{Name: "statefulsetTemplate", Config: statefulsetTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
 		}
 }
 

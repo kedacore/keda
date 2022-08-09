@@ -47,8 +47,6 @@ type templateData struct {
 	QueueName        string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -178,18 +176,23 @@ func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
 	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-		TestNamespace:    testNamespace,
-		SecretName:       secretName,
-		Connection:       base64ConnectionString,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		ScaledObjectName: scaledObjectName,
-		QueueName:        queueName,
-	}, templateValues{"secretTemplate": secretTemplate, "deploymentTemplate": deploymentTemplate, "triggerAuthTemplate": triggerAuthTemplate, "scaledObjectTemplate": scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			SecretName:       secretName,
+			Connection:       base64ConnectionString,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			QueueName:        queueName,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {

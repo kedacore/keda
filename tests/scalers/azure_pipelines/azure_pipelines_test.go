@@ -57,7 +57,6 @@ type templateData struct {
 	PoolName         string
 	PoolID           string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -268,7 +267,7 @@ func clearAllBuilds(t *testing.T, connection *azuredevops.Connection) {
 	}
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64Pat := base64.StdEncoding.EncodeToString([]byte(personalAccessToken))
 
 	return templateData{
@@ -282,10 +281,11 @@ func getTemplateData() (templateData, templateValues) {
 			URL:              organizationURL,
 			PoolName:         poolName,
 			PoolID:           poolID,
-		}, templateValues{
-			"secretTemplate":             secretTemplate,
-			"deploymentTemplate":         deploymentTemplate,
-			"poolIdscaledObjectTemplate": poolIdscaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "poolIdscaledObjectTemplate", Config: poolIdscaledObjectTemplate},
+		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {

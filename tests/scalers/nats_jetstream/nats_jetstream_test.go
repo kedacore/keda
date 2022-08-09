@@ -40,8 +40,6 @@ type templateData struct {
 	NumberOfMessages             int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -142,15 +140,15 @@ spec:
   `
 )
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:                testNamespace,
 			NatsAddress:                  natsAddress,
 			NatsServerMonitoringEndpoint: natsServerMonitoringEndpoint,
 			NumberOfMessages:             messagePublishCount,
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 
@@ -183,17 +181,15 @@ func TestNATSJetStreamScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *k8s.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"activationPublishJobTemplate": activationPublishJobTemplate}
 	data.NumberOfMessages = 10
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "activationPublishJobTemplate", activationPublishJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *k8s.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerDeployment := templateValues{"publishJobTemplate": publishJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerDeployment)
+	KubectlApplyWithTemplate(t, data, "publishJobTemplate", publishJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
