@@ -60,7 +60,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **Kafka Scaler:** Support of passphrase encrypted PKCS #\8 private key ([3449](https://github.com/kedacore/keda/issues/3449))
 - **Prometheus Scaler:** Add ignoreNullValues to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 - **Selenium Grid Scaler:** Edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
-- **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.c>>>>>>> mainom/kedacore/keda/issues/3061))
+- **Selenium Grid Scaler:** Max Sessions implementation issue ([#3061](https://github.com/kedacore/keda/issues/3061))
 
 ### Fixes
 
