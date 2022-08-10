@@ -94,6 +94,9 @@ replace (
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
 	golang.org/x/text => golang.org/x/text v0.3.7
+
+	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
+	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
