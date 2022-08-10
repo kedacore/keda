@@ -14,8 +14,8 @@ For the full release process, we recommend reading [this document](https://githu
 
 - [ ] Prepare changelog
 - [ ] Add the new version to GitHub Bug report template
-- [ ] Publish new documentation version
 - [ ] Create KEDA release
+- [ ] Publish new documentation version
 - [ ] Setup continous container scanning with Snyk
 - [ ] Prepare & ship Helm chart
 - [ ] Prepare next release
