@@ -115,18 +115,16 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
-	allowedQueryAggregators := []string{avgString, maxString}
-
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
 		queryAggregator := strings.ToLower(val)
-		_, found := FindStringInSlice(allowedQueryAggregators, queryAggregator)
-		if found {
+		switch queryAggregator {
+		case avgString, maxString:
 			meta.queryAggegrator = queryAggregator
-		} else {
-			return nil, fmt.Errorf("queryAggregator has to be one of %+q", queryAggregator)
+		default:
+			return nil, fmt.Errorf("queryAggregator value %s has to be one of '%s, %s'", queryAggregator, avgString, maxString)
 		}
 	} else {
-		meta.queryAggegrator = maxString
+		meta.queryAggegrator = ""
 	}
 
 	meta.activationQueryValue = 0
@@ -297,6 +295,11 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return s.metadata.fillValue, nil
 	}
 
+	// Require queryAggregator be set explicitly for multi-query
+	if len(series) > 1 && s.metadata.queryAggegrator == "" {
+		return 0, fmt.Errorf("query returned more than 1 series, and 'queryAggregator' is not set")
+	}
+
 	// Collect all latest point values from any/all series
 	results := make([]float64, len(series))
 	for i := 0; i < len(series); i++ {
@@ -346,17 +349,6 @@ func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metri
 	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-// Takes a slice of strings, and looks for a string in it. If found it will
-// return it's key/index, otherwise it will return -1 and a bool of false.
-func FindStringInSlice(slice []string, val string) (int, bool) {
-	for i, item := range slice {
-		if item == val {
-			return i, true
-		}
-	}
-	return -1, false
 }
 
 // Find the largest value in a slice of floats
