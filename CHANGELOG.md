@@ -57,7 +57,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Execute trivy scan (on PRs) only if there are changes in deps ([#3540](https://github.com/kedacore/keda/issues/3540))
 
 ## v2.8.0
 

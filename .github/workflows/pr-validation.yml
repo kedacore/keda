@@ -216,7 +216,16 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          deps:
+            - 'go.mod'
+            - 'go.sum'
+
     - name: Run Trivy vulnerability scanner in repo mode
+      if: steps.filter.outputs.deps == 'true'
       uses: aquasecurity/trivy-action@0.6.1
       with:
         scan-type: 'fs'
