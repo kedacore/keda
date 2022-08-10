@@ -297,7 +297,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	// Require queryAggregator be set explicitly for multi-query
 	if len(series) > 1 && s.metadata.queryAggegrator == "" {
-		return 0, fmt.Errorf("query returned more than 1 series, and 'queryAggregator' is not set")
+		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
 
 	// Collect all latest point values from any/all series
