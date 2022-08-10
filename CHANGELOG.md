@@ -72,9 +72,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - **General:** Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
 - **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
 - **Azure Pipelines Scaler:** Support for Azure Pipelines to support demands (capabilities) ([#2328](https://github.com/kedacore/keda/issues/2328))
-- **CPU/Memory Scaler:** Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
+- **CPU Scaler:** Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
 - **GCP Stackdriver Scaler:** Added aggregation parameters ([#3008](https://github.com/kedacore/keda/issues/3008))
 - **Kafka Scaler:** Support of passphrase encrypted PKCS #\8 private key ([3449](https://github.com/kedacore/keda/issues/3449))
+- **Memory Scaler:** Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
 - **Prometheus Scaler:** Add `ignoreNullValues` to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 
 ### Improvements
