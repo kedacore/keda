@@ -41,7 +41,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **Datadog Scaler:** Support multi-query metrics, and aggregation ([#3423](https://github.com/kedacore/keda/issues/3423))
 
 ### Fixes
 

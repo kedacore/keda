@@ -29,6 +29,7 @@ type datadogMetadata struct {
 	datadogSite          string
 	query                string
 	queryValue           float64
+	queryAggegrator      string
 	activationQueryValue float64
 	vType                v2beta2.MetricTargetType
 	metricName           string
@@ -36,6 +37,9 @@ type datadogMetadata struct {
 	useFiller            bool
 	fillValue            float64
 }
+
+const maxString = "max"
+const avgString = "average"
 
 var filter *regexp.Regexp
 
@@ -111,6 +115,20 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		return nil, fmt.Errorf("no queryValue given")
 	}
 
+	allowedQueryAggregators := []string{avgString, maxString}
+
+	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
+		queryAggregator := strings.ToLower(val)
+		_, found := FindStringInSlice(allowedQueryAggregators, queryAggregator)
+		if found {
+			meta.queryAggegrator = queryAggregator
+		} else {
+			return nil, fmt.Errorf("queryAggregator has to be one of %+q", queryAggregator)
+		}
+	} else {
+		meta.queryAggegrator = maxString
+	}
+
 	meta.activationQueryValue = 0
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
@@ -136,7 +154,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		}
 		val = strings.ToLower(val)
 		switch val {
-		case "average":
+		case avgString:
 			meta.vType = v2beta2.AverageValueMetricType
 		case "global":
 			meta.vType = v2beta2.ValueMetricType
@@ -272,10 +290,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	series := resp.GetSeries()
 
-	if len(series) > 1 {
-		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series")
-	}
-
 	if len(series) == 0 {
 		if !s.metadata.useFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
@@ -283,18 +297,28 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return s.metadata.fillValue, nil
 	}
 
-	points := series[0].GetPointlist()
-
-	index := len(points) - 1
-	if len(points) == 0 || len(points[index]) < 2 {
-		if !s.metadata.useFiller {
-			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+	// Collect all latest point values from any/all series
+	results := make([]float64, len(series))
+	for i := 0; i < len(series); i++ {
+		points := series[i].GetPointlist()
+		if len(points) == 0 || len(points[0]) < 2 {
+			if !s.metadata.useFiller {
+				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+			}
+			return s.metadata.fillValue, nil
 		}
-		return s.metadata.fillValue, nil
+		// Return the last point from the series
+		index := len(points) - 1
+		results[i] = *points[index][1]
 	}
 
-	// Return the last point from the series
-	return *points[index][1], nil
+	switch s.metadata.queryAggegrator {
+	case avgString:
+		return AvgFloatFromSlice(results), nil
+	default:
+		// Aggregate Results - default Max value:
+		return MaxFloatFromSlice(results), nil
+	}
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -322,4 +346,35 @@ func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metri
 	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+// Takes a slice of strings, and looks for a string in it. If found it will
+// return it's key/index, otherwise it will return -1 and a bool of false.
+func FindStringInSlice(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// Find the largest value in a slice of floats
+func MaxFloatFromSlice(results []float64) float64 {
+	max := results[0]
+	for _, result := range results {
+		if result > max {
+			max = result
+		}
+	}
+	return max
+}
+
+// Find the average value in a slice of floats
+func AvgFloatFromSlice(results []float64) float64 {
+	total := 0.0
+	for _, result := range results {
+		total += result
+	}
+	return total / float64(len(results))
 }
