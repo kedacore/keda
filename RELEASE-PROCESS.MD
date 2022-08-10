@@ -21,12 +21,7 @@ It should not include every single change but solely what matters to our custome
 
 Add the new released version to the list in `KEDA Version` dropdown in [3_bug_report.yml](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml).
 
-## 3. Publish documentation for new version
-
-Publish documentation for new version on https://keda.sh.
-For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
-
-## 4. Create KEDA release on GitHub
+## 3. Create KEDA release on GitHub
 
 Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.4.0).
 
@@ -86,6 +81,11 @@ In order to generate a list of new contributors, use the `Auto-generate release 
 
 ![image](https://user-images.githubusercontent.com/4345663/148563945-ad75816d-739b-4e8d-a063-aa0e77f6e98d.png)
 </details>
+
+## 4. Publish documentation for new version
+
+Publish documentation for new version on https://keda.sh.
+For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
 ## 5. Setup continous container scanning with Snyk
 
