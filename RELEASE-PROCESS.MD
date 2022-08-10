@@ -51,7 +51,7 @@ Here are some highlights:
 
 Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INSERT-CORRECT-VERSION/deploy/).
 
-🗓️ The next KEDA release is currently being estimated for Nov 3rd, 2022, learn more in our [roadmap](https://github.com/kedacore/keda/blob/main/ROADMAP.md#upcoming-release-cycles).
+🗓️ The next KEDA release is currently being estimated for <date>, learn more in our [roadmap](https://github.com/kedacore/keda/blob/main/ROADMAP.md#upcoming-release-cycles).
   
 ### New
 
