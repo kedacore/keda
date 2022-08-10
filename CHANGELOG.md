@@ -65,6 +65,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
 - **General:** Introduce new NATS JetStream scaler ([#2391](https://github.com/kedacore/keda/issues/2391))
+- **General:** Introduce `activationThreshold`/`minMetricValue` for all scalers ([#2800](https://github.com/kedacore/keda/issues/2800))
 - **General:** Support for `minReplicaCount` in ScaledJob ([#3426](https://github.com/kedacore/keda/issues/3426))
 - **General:** Support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
 - **General:** Make propagation policy for ScaledJob rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910))
