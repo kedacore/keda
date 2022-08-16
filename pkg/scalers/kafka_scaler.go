@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -386,11 +387,15 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
 		s.logger.Error(errMsg, "")
-		return 0, errMsg
+		s.logger.Error(fmt.Errorf("exiting to due to custom exit"), "")
+		os.Exit(1)
+		//return 0, errMsg
 	}
 	if block.Err > 0 {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
 		s.logger.Error(errMsg, "")
+		s.logger.Error(fmt.Errorf("exiting to due to custom exit"), "")
+		os.Exit(1)
 	}
 
 	consumerOffset := block.Offset

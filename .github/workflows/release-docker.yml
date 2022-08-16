@@ -67,4 +67,4 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
           IMAGE_REGISTRY: gcr.io/dev-in-309805
-          IMAGE_REPO: 100mlive
+          IMAGE_REPO: 100mslive
