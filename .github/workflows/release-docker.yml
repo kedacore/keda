@@ -1,0 +1,70 @@
+name: Build docker
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build docker
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+      id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
+
+    env:
+      ENV: qa
+      VAULT_PREFIX: in2
+      DEPLOYMENT_NAME: keda
+      RELEASE_NAME: keda
+      GCP_PROJECT_ID: qa-in2
+      GCP_REGION: asia-south1
+      GCP_NAMESPACE: ion2
+      GCP_CLUSTER: qa-in2
+      DOCKER_GIT_TOKEN: ${{ secrets.DOCKER_GIT_TOKEN }}
+
+    container: ghcr.io/kedacore/build-tools:1.17.13
+
+    steps:
+      - name: Set up Repo Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.1
+        with:
+          service_account_key: ${{ secrets.GKE_SA_KEY }}
+          export_default_credentials: true
+
+      - name: install yq
+        id: install-yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/download/v4.5.0/yq_linux_amd64
+          chmod +x yq_linux_amd64
+          sudo mv yq_linux_amd64 /usr/local/bin/yq
+          yq -V
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+          token: ${{ secrets.DOCKER_GIT_TOKEN }}
+
+      - name: Go modules sync
+        run: go mod tidy -compat=1.17
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+
+      - name: Release Deployment YAML file
+        run: make release
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Publish KEDA images
+        run: make publish
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          IMAGE_REGISTRY: gcr.io/dev-in-309805
+          IMAGE_REPO: 100mlive
