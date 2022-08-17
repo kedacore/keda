@@ -116,7 +116,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
 		meta.queueURL = val
 	} else if val, ok := config.TriggerMetadata["queueURLFromEnv"]; ok && val != "" {
-		meta.queueURL = config.ResolvedEnv[config.TriggerMetadata["queueURLFromEnv"]]
+		meta.queueURL = config.ResolvedEnv[val]
 	} else {
 		return nil, fmt.Errorf("no queueURL given")
 	}
