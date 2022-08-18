@@ -28,6 +28,12 @@ const (
 	testAWSSQSBadDataQueueURL = "https://sqs.eu-west-1.amazonaws.com/account_id/BadData"
 )
 
+var testSQSResolvedEnv = map[string]string{
+	"awsAccessKeyId":     testAWSSQSAccessKeyID,
+	"awsSecretAccessKey": testAWSSQSSecretAccessKey,
+	"QUEUE_URL":          testAWSSQSProperQueueURL,
+}
+
 var testAWSSQSAuthentication = map[string]string{
 	"awsAccessKeyId":     testAWSSQSAccessKeyID,
 	"awsSecretAccessKey": testAWSSQSSecretAccessKey,
@@ -240,6 +246,19 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue and region"},
+	{map[string]string{
+		"queueURLFromEnv": "QUEUE_URL",
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1"},
+		testSQSResolvedEnv,
+		false,
+		"properly formed queue loaded from env"},
+	{map[string]string{
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		testSQSResolvedEnv,
+		true,
+		"missing queue url from both queueURL and queueURLFromEnv"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
