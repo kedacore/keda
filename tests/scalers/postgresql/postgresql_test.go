@@ -54,8 +54,6 @@ type templateData struct {
 	MaxReplicaCount                  int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -282,16 +280,14 @@ func TestPostreSQLScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"lowLevelRecordsJobTemplate": lowLevelRecordsJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"insertRecordsJobTemplate": insertRecordsJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -319,18 +315,18 @@ var data = templateData{
 	PostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
 }
 
-func getPostgreSQLTemplateData() (templateData, map[string]string) {
-	return data, templateValues{
-		"postgreSQLStatefulSetTemplate": postgreSQLStatefulSetTemplate,
-		"postgreSQLServiceTemplate":     postgreSQLServiceTemplate,
+func getPostgreSQLTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "postgreSQLStatefulSetTemplate", Config: postgreSQLStatefulSetTemplate},
+		{Name: "postgreSQLServiceTemplate", Config: postgreSQLServiceTemplate},
 	}
 }
 
-func getTemplateData() (templateData, map[string]string) {
-	return data, templateValues{
-		"secretTemplate":                secretTemplate,
-		"deploymentTemplate":            deploymentTemplate,
-		"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-		"scaledObjectTemplate":          scaledObjectTemplate,
+func getTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }

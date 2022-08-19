@@ -37,7 +37,6 @@ type templateData struct {
 	MetricThreshold, MetricValue     int
 	MinReplicaCount, MaxReplicaCount int
 }
-type templateValues map[string]string
 
 const (
 	serviceTemplate = `
@@ -173,7 +172,7 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
-func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, templateValues) {
+func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, []Template) {
 	return templateData{
 			TestNamespace:   testNamespace,
 			ServiceName:     serviceName,
@@ -183,8 +182,9 @@ func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) 
 			MetricValue:     metricValue,
 			MinReplicaCount: minReplicaCount,
 			MaxReplicaCount: maxReplicaCount,
-		}, templateValues{
-			"scalerTemplate":    scalerTemplate,
-			"serviceTemplate":   serviceTemplate,
-			"scaledJobTemplate": scaledJobTemplate}
+		}, []Template{
+			{Name: "scalerTemplate", Config: scalerTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+		}
 }

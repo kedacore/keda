@@ -46,8 +46,6 @@ type templateData struct {
 	QueueName           string
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -178,15 +176,19 @@ func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
 	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		TriggerAuthName:  triggerAuthName,
-		IdentityID:       azureADClientID,
-		ScaledObjectName: scaledObjectName,
-		QueueName:        queueName,
-	}, templateValues{"deploymentTemplate": deploymentTemplate, "triggerAuthTemplate": triggerAuthTemplate, "scaledObjectTemplate": scaledObjectTemplate}
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			IdentityID:       azureADClientID,
+			ScaledObjectName: scaledObjectName,
+			QueueName:        queueName,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {

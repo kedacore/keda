@@ -39,8 +39,6 @@ type templateData struct {
 	SqsQueue           string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -220,15 +218,20 @@ func createSqsClient() *sqs.SQS {
 	})
 }
 
-func getTemplateData(sqsQueue string) (templateData, templateValues) {
+func getTemplateData(sqsQueue string) (templateData, []Template) {
 	return templateData{
-		TestNamespace:      testNamespace,
-		DeploymentName:     deploymentName,
-		ScaledObjectName:   scaledObjectName,
-		SecretName:         secretName,
-		AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-		AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-		AwsRegion:          awsRegion,
-		SqsQueue:           sqsQueue,
-	}, templateValues{"secretTemplate": secretTemplate, "triggerAuthenticationTemplate": triggerAuthenticationTemplate, "deploymentTemplate": deploymentTemplate, "scaledObjectTemplate": scaledObjectTemplate}
+			TestNamespace:      testNamespace,
+			DeploymentName:     deploymentName,
+			ScaledObjectName:   scaledObjectName,
+			SecretName:         secretName,
+			AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+			AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+			AwsRegion:          awsRegion,
+			SqsQueue:           sqsQueue,
+		}, []Template{
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }

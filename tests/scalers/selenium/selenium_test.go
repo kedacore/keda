@@ -52,8 +52,6 @@ type templateData struct {
 	MaxReplicaCount       int
 }
 
-type templateValues map[string]string
-
 const (
 	eventBusConfigTemplate = `
 apiVersion: v1
@@ -520,7 +518,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %s after 3 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			ChromeDeploymentName:  chromeDeploymentName,
@@ -533,18 +531,18 @@ func getTemplateData() (templateData, map[string]string) {
 			ScaledObjectName:      scaledObjectName,
 			MinReplicaCount:       minReplicaCount,
 			MaxReplicaCount:       maxReplicaCount,
-		}, templateValues{
-			"eventBusConfigTemplate":        eventBusConfigTemplate,
-			"hubDeploymentTemplate":         hubDeploymentTemplate,
-			"hubServiceTemplate":            hubServiceTemplate,
-			"chromeNodeServiceTemplate":     chromeNodeServiceTemplate,
-			"chromeNodeDeploymentTemplate":  chromeNodeDeploymentTemplate,
-			"chromeScaledObjectTemplate":    chromeScaledObjectTemplate,
-			"firefoxNodeServiceTemplate":    firefoxNodeServiceTemplate,
-			"firefoxNodeDeploymentTemplate": firefoxNodeDeploymentTemplate,
-			"firefoxScaledObjectTemplate":   firefoxScaledObjectTemplate,
-			"edgeNodeServiceTemplate":       edgeNodeServiceTemplate,
-			"edgeNodeDeploymentTemplate":    edgeNodeDeploymentTemplate,
-			"edgeScaledObjectTemplate":      edgeScaledObjectTemplate,
+		}, []Template{
+			{Name: "eventBusConfigTemplate", Config: eventBusConfigTemplate},
+			{Name: "hubDeploymentTemplate", Config: hubDeploymentTemplate},
+			{Name: "hubServiceTemplate", Config: hubServiceTemplate},
+			{Name: "chromeNodeServiceTemplate", Config: chromeNodeServiceTemplate},
+			{Name: "chromeNodeDeploymentTemplate", Config: chromeNodeDeploymentTemplate},
+			{Name: "chromeScaledObjectTemplate", Config: chromeScaledObjectTemplate},
+			{Name: "firefoxNodeServiceTemplate", Config: firefoxNodeServiceTemplate},
+			{Name: "firefoxNodeDeploymentTemplate", Config: firefoxNodeDeploymentTemplate},
+			{Name: "firefoxScaledObjectTemplate", Config: firefoxScaledObjectTemplate},
+			{Name: "edgeNodeServiceTemplate", Config: edgeNodeServiceTemplate},
+			{Name: "edgeNodeDeploymentTemplate", Config: edgeNodeDeploymentTemplate},
+			{Name: "edgeScaledObjectTemplate", Config: edgeScaledObjectTemplate},
 		}
 }

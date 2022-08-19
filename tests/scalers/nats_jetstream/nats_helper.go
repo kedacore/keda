@@ -11,8 +11,6 @@ import (
 	"github.com/kedacore/keda/v2/tests/helper"
 )
 
-type templateValues map[string]string
-
 type templateData struct {
 	NatsNamespace string
 	TestNamespace string
@@ -196,10 +194,7 @@ func InstallServerWithJetStream(t *testing.T, kc *k8s.Clientset, namespace strin
 		NatsNamespace: namespace,
 	}
 
-	natsServerTemplateValue := templateValues{
-		"natsServerTemplate": natsServerTemplate,
-	}
-	helper.KubectlApplyMultipleWithTemplate(t, data, natsServerTemplateValue)
+	helper.KubectlApplyWithTemplate(t, data, "natsServerTemplate", natsServerTemplate)
 }
 
 // RemoveServer will remove the NATS server and delete the namespace.
@@ -207,10 +202,8 @@ func RemoveServer(t *testing.T, kc *k8s.Clientset, namespace string) {
 	data := templateData{
 		NatsNamespace: namespace,
 	}
-	natsServerTemplateValue := templateValues{
-		"natsServerTemplate": natsServerTemplate,
-	}
-	helper.KubectlApplyMultipleWithTemplate(t, data, natsServerTemplateValue)
+
+	helper.KubectlDeleteWithTemplate(t, data, "natsServerTemplate", natsServerTemplate)
 	helper.DeleteNamespace(t, kc, namespace)
 }
 
@@ -220,8 +213,6 @@ func InstallStreamAndConsumer(t *testing.T, kc *k8s.Clientset, namespace, natsAd
 		TestNamespace: namespace,
 		NatsAddress:   natsAddress,
 	}
-	streamAndConsumerJob := templateValues{
-		"streamAndConsumerTemplate": streamAndConsumerTemplate,
-	}
-	helper.KubectlApplyMultipleWithTemplate(t, data, streamAndConsumerJob)
+
+	helper.KubectlApplyWithTemplate(t, data, "streamAndConsumerTemplate", streamAndConsumerTemplate)
 }

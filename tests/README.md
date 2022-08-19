@@ -130,10 +130,6 @@ type templateData struct {
     ...
 }
 
-// templateValues consists of templates and their names
-type templateValues map[string] string
-
-
 func TestScaler(t *testing.T) {
     setupTest(t)
 
@@ -158,12 +154,15 @@ func setupTest(t *testing.T) {
     assert.NoErrorf(t, err, "error while installing redis - %s", err)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
     return templateData{
         // Populate fields required in YAML templates
         ...
         ...
-    }, templateValues{"deploymentTemplate":deploymentTemplate,  "scaledObjectTemplate":scaledObjectTemplate}
+    }, []Template{
+        {Name: "deploymentTemplate", Config: deploymentTemplate},
+        {Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+    }
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {

@@ -60,8 +60,6 @@ type templateData struct {
 	MaxReplicaCount               string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -216,7 +214,7 @@ func setMetricValue(client appinsights.TelemetryClient, value float64, stopCh <-
 	}
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 	base64ClientID := base64.StdEncoding.EncodeToString([]byte(azureADClientID))
 	base64TenantID := base64.StdEncoding.EncodeToString([]byte(azureADTenantID))
@@ -236,9 +234,10 @@ func getTemplateData() (templateData, templateValues) {
 			ApplicationInsightsRole:       appInsightsRole,
 			MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }

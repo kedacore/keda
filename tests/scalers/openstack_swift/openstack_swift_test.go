@@ -68,8 +68,6 @@ type templateData struct {
 	MaxReplicaCount           int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -206,7 +204,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.S
 		"replica count should be %d after 5 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:             testNamespace,
 			DeploymentName:            deploymentName,
@@ -220,10 +218,10 @@ func getTemplateData() (templateData, map[string]string) {
 			Container:                 containerName,
 			MinReplicaCount:           minReplicaCount,
 			MaxReplicaCount:           maxReplicaCount,
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"secretTemplate":       secretTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

@@ -51,8 +51,6 @@ type templateData struct {
 	OrgName                    string
 }
 
-type templateValues map[string]string
-
 const (
 	influxdbStatefulsetTemplate = `
 apiVersion: apps/v1
@@ -248,7 +246,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templateValues{"influxdbStatefulsetTemplate": influxdbStatefulsetTemplate})
+	CreateKubernetesResources(t, kc, testNamespace, data, []Template{{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate}})
 
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, influxdbStatefulsetName, testNamespace, 1, 60, 1),
 		"replica count should be 0 after a minute")
@@ -282,7 +280,7 @@ func runWriteJob(t *testing.T, kc *kubernetes.Clientset) templateData {
 	return data
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:              testNamespace,
 			InfluxdbStatefulsetName:    influxdbStatefulsetName,
@@ -294,14 +292,14 @@ func getTemplateData() (templateData, templateValues) {
 			BasicDeploymentIntName:     basicDeploymentIntName,
 			AuthToken:                  authToken,
 			OrgName:                    orgName,
-		}, templateValues{
-			"influxdbStatefulsetTemplate":    influxdbStatefulsetTemplate,
-			"scaledObjectTemplateFloat":      scaledObjectTemplateFloat,
-			"scaledObjectTemplateInt":        scaledObjectTemplateInt,
-			"scaledObjectActivationTemplate": scaledObjectActivationTemplate,
-			"basicDeploymentFloatTemplate":   basicDeploymentFloatTemplate,
-			"basicDeploymentIntTemplate":     basicDeploymentIntTemplate,
-			"influxdbWriteJobTemplate":       influxdbWriteJobTemplate,
+		}, []Template{
+			{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate},
+			{Name: "scaledObjectTemplateFloat", Config: scaledObjectTemplateFloat},
+			{Name: "scaledObjectTemplateInt", Config: scaledObjectTemplateInt},
+			{Name: "scaledObjectActivationTemplate", Config: scaledObjectActivationTemplate},
+			{Name: "basicDeploymentFloatTemplate", Config: basicDeploymentFloatTemplate},
+			{Name: "basicDeploymentIntTemplate", Config: basicDeploymentIntTemplate},
+			{Name: "influxdbWriteJobTemplate", Config: influxdbWriteJobTemplate},
 		}
 }
 

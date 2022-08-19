@@ -47,7 +47,6 @@ type templateData struct {
 	ScaledObjectName string
 	ContainerName    string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -168,7 +167,7 @@ func createContainer(t *testing.T) azblob.ContainerURL {
 	return containerURL
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
@@ -178,10 +177,11 @@ func getTemplateData() (templateData, templateValues) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			ContainerName:    containerName,
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {

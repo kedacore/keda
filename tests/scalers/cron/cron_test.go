@@ -37,8 +37,6 @@ type templateData struct {
 	EndMin           string
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -112,16 +110,16 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			StartMin:         strconv.Itoa(start),
 			EndMin:           strconv.Itoa(end),
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 

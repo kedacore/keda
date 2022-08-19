@@ -24,8 +24,6 @@ type templateData struct {
 	CustomHpaName    string
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -128,7 +126,10 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data := getTemplateData(testNamespace, deploymentName, scaledObjectName, customHpaName)
-	templates := templateValues{"deploymentTemplate": deploymentTemplate, "firstSOTemplate": firstSOTemplate}
+	templates := []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "firstSOTemplate", Config: firstSOTemplate},
+	}
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -137,7 +138,7 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	assert.Equal(t, firstHpaName, hpa.Name)
 
 	t.Log("--- change hpa name ---")
-	templatesCustomName := templateValues{"secondSOTemplate": secondSOTemplate}
+	templatesCustomName := []Template{{Name: "secondSOTemplate", Config: secondSOTemplate}}
 	KubectlApplyMultipleWithTemplate(t, data, templatesCustomName)
 
 	t.Logf("--- validate new hpa is with %s name ---", secondHpaDescription)
