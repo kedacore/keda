@@ -18,6 +18,8 @@ type EventHubInfo struct {
 	EventHubConnection       string
 	EventHubConsumerGroup    string
 	StorageConnection        string
+	StorageAccountName       string
+	BlobStorageEndpoint      string
 	BlobContainer            string
 	Namespace                string
 	EventHubName             string
