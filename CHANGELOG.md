@@ -41,7 +41,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Event Hub Scale:** Support Pod Identity for Storage Blobs ([#3569](https://github.com/kedacore/keda/issues/3569))
 
 ### Fixes
 

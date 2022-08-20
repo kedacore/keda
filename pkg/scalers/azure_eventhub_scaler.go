@@ -121,10 +121,6 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.StorageConnection = config.ResolvedEnv[config.TriggerMetadata["storageConnectionFromEnv"]]
 	}
 
-	if len(meta.eventHubInfo.StorageConnection) == 0 {
-		return nil, fmt.Errorf("no storage connection string given")
-	}
-
 	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
 	if val, ok := config.TriggerMetadata["consumerGroup"]; ok {
 		meta.eventHubInfo.EventHubConsumerGroup = val
@@ -169,6 +165,10 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	meta.eventHubInfo.PodIdentity = config.PodIdentity
 	switch config.PodIdentity.Provider {
 	case "", v1alpha1.PodIdentityProviderNone:
+		if len(meta.eventHubInfo.StorageConnection) == 0 {
+			return nil, fmt.Errorf("no storage connection string given")
+		}
+
 		if config.AuthParams["connection"] != "" {
 			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
 		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
@@ -179,6 +179,23 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 			return nil, fmt.Errorf("no event hub connection string given")
 		}
 	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
+		storageEndpointSuffixProvider := func(env az.Environment) (string, error) {
+			return env.StorageEndpointSuffix, nil
+		}
+		storageEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultStorageSuffixKey, storageEndpointSuffixProvider)
+		if err != nil {
+			return nil, err
+		}
+		meta.eventHubInfo.BlobStorageEndpoint = "blob." + storageEndpointSuffix
+		meta.eventHubInfo.StorageAccountName = ""
+		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
+			meta.eventHubInfo.StorageAccountName = val
+		}
+
+		if len(meta.eventHubInfo.StorageConnection) == 0 && len(meta.eventHubInfo.StorageAccountName) == 0 {
+			return nil, fmt.Errorf("no storage connection string or storage account name for pod identity based authentication given")
+		}
+
 		if config.TriggerMetadata["eventHubNamespace"] != "" {
 			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]
 		} else if config.TriggerMetadata["eventHubNamespaceFromEnv"] != "" {
