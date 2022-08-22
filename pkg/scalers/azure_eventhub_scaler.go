@@ -70,7 +70,9 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	parsedMetadata, err := parseAzureEventHubMetadata(config)
+	logger := InitializeLogger(config, "azure_eventhub_scaler")
+
+	parsedMetadata, err := parseAzureEventHubMetadata(logger, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
@@ -85,12 +87,12 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 		metadata:   parsedMetadata,
 		client:     hub,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
-		logger:     InitializeLogger(config, "azure_eventhub_scaler"),
+		logger:     logger,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error) {
+func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*eventHubMetadata, error) {
 	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
@@ -179,17 +181,22 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 			return nil, fmt.Errorf("no event hub connection string given")
 		}
 	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
-		storageEndpointSuffixProvider := func(env az.Environment) (string, error) {
-			return env.StorageEndpointSuffix, nil
-		}
-		storageEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultStorageSuffixKey, storageEndpointSuffixProvider)
-		if err != nil {
-			return nil, err
-		}
-		meta.eventHubInfo.BlobStorageEndpoint = "blob." + storageEndpointSuffix
 		meta.eventHubInfo.StorageAccountName = ""
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
 			meta.eventHubInfo.StorageAccountName = val
+		} else {
+			logger.Info("no 'storageAccountName' provided to enable identity based authentication to Blob Storage. Attempting to use connection string instead.")
+		}
+
+		if len(meta.eventHubInfo.StorageAccountName) != 0 {
+			storageEndpointSuffixProvider := func(env az.Environment) (string, error) {
+				return env.StorageEndpointSuffix, nil
+			}
+			storageEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultStorageSuffixKey, storageEndpointSuffixProvider)
+			if err != nil {
+				return nil, err
+			}
+			meta.eventHubInfo.BlobStorageEndpoint = "blob." + storageEndpointSuffix
 		}
 
 		if len(meta.eventHubInfo.StorageConnection) == 0 && len(meta.eventHubInfo.StorageAccountName) == 0 {
