@@ -167,12 +167,18 @@ func testHPAScalerMetricValue(t *testing.T, kc *kubernetes.Clientset) {
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
 	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
+		var found bool
 		metrics := val.GetMetric()
-		assert.Equal(t, int(1), len(metrics))
 		for _, metric := range metrics {
-			assert.Equal(t, float64(4), *metric.Gauge.Value)
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+					assert.Equal(t, float64(4), *metric.Gauge.Value)
+					found = true
+				}
+			}
 		}
-
+		assert.Equal(t, true, found)
 	} else {
 		t.Errorf("metric not available")
 	}
