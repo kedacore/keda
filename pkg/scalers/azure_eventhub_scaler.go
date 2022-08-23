@@ -185,7 +185,7 @@ func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*even
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
 			meta.eventHubInfo.StorageAccountName = val
 		} else {
-			logger.Info("no 'storageAccountName' provided to enable identity based authentication to Blob Storage. Attempting to use connection string instead.")
+			logger.Info("no 'storageAccountName' provided to enable identity based authentication to Blob Storage. Attempting to use connection string instead")
 		}
 
 		if len(meta.eventHubInfo.StorageAccountName) != 0 {
