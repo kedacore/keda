@@ -124,7 +124,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
 				} else {
 					for _, metric := range metrics {
-						metricValue, _ := metric.Value.AsInt64()
+						metricValue := metric.Value.AsApproximateFloat64()
 						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
