@@ -45,7 +45,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Fixes
 
-- **General:** Metrics endpoint returns correct value ([#3554](https://github.com/kedacore/keda/issues/3554))
+- **General:** Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
 
 ### Deprecations
 
