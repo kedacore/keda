@@ -10,7 +10,6 @@ import (
 
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -133,7 +132,7 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2 after 2 minute")
 
-	testHPAScalerMetricValue(t, kc)
+	testHPAScalerMetricValue(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -154,7 +153,7 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testHPAScalerMetricValue(t *testing.T, kc *kubernetes.Clientset) {
+func testHPAScalerMetricValue(t *testing.T) {
 	t.Log("--- testing hpa scaler metric value ---")
 
 	out, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
@@ -162,7 +161,7 @@ func testHPAScalerMetricValue(t *testing.T, kc *kubernetes.Clientset) {
 
 	parser := expfmt.TextParser{}
 	// Ensure EOL
-	reader := strings.NewReader(strings.Replace(out, "\r\n", "\n", -1))
+	reader := strings.NewReader(strings.ReplaceAll(out, "\r\n", "\n"))
 	family, err := parser.TextToMetricFamilies(reader)
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
