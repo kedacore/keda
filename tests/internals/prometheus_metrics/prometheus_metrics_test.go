@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package metrics_endpoint_test
+package prometheus_metrics_test
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	testName = "metrics-endpoint-test"
+	testName = "prometheus-metrics-test"
 )
 
 var (
