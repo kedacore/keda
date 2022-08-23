@@ -172,7 +172,7 @@ Follow these instructions if you want to debug the KEDA metrics server using VS 
             "mode": "auto",
             "program": "${workspaceFolder}/adapter/main.go",
             "env": {"WATCH_NAMESPACE": ""},
-            "args": [                
+            "args": [
                 "--authentication-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
                 "--authentication-skip-lookup",
                 "--authorization-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
