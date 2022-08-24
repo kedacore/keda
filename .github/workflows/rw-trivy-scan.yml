@@ -1,4 +1,4 @@
-name: Reusable workflow to run smoke tests
+name: Reusable workflow to run trivy scan
 
 on:
   workflow_call:
