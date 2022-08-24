@@ -211,7 +211,7 @@ subjects:
 
 **NOTE:** This granting allows to any unauthenticated user to do any operation in external metrics API, this is potentially unsecure, and we strongly discourage doing it on production clusters.
 
-You can query list metrics executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/` or query a specific metrics value executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/namespaces/NAMESPACE/METRIC_NAME` ([similar to the process with using `kubectl get --raw`](https://keda.sh/docs/2.8/operate/metrics-server/#querying-metrics-exposed-by-keda-metrics-server) but using `curl --insecure https://localhost:6443` instead)
+You can query list metrics executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/` or query a specific metrics value executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/namespaces/NAMESPACE/METRIC_NAME` ([similar to the process using `kubectl get --raw`](https://keda.sh/docs/2.8/operate/metrics-server/#querying-metrics-exposed-by-keda-metrics-server) but using `curl --insecure https://localhost:6443` instead)
 
 If you prefer to use an authenticated user, you can use a user or service account with access over external metrics API adding their token as authorization header in `curl`, ie: `curl -H "Authorization:Bearer TOKEN" --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/`
 
