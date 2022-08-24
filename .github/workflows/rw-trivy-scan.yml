@@ -22,7 +22,7 @@ on:
       publish:
         required: true
         type: boolean
- 
+
 jobs:
   trivy-scan:
     name: Trivy - ${{ inputs.runs-on }} - ${{ inputs.scan-type }} ${{ inputs.image-ref }}
