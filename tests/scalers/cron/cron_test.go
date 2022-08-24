@@ -25,8 +25,8 @@ var (
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 
 	now   = time.Now().Local()
-	start = (now.Minute() + 1)
-	end   = (start + 1)
+	start = (now.Minute() + 1) % 60
+	end   = (start + 1) % 60
 )
 
 type templateData struct {
