@@ -118,7 +118,13 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	}
 
 	// Generate metricName.
-	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
+	metadataName, _ := getParameterFromConfig(config, "metricName", false)
+	if err != nil {
+		// metadataName is not defined
+		metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
+	} else {
+		metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", adxName, metadata.DatabaseName, metadataName)))
+	}
 
 	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
