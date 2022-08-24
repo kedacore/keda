@@ -210,7 +210,7 @@ jobs:
       uses: github/codeql-action/analyze@v2
 
   trivy-scan:
-    uses: kedacore/keda/.github/workflows/rw-trivy-scan.yml@reusable-workflows
+    uses: kedacore/keda/.github/workflows/rw-trivy-scan.yml@main
     with:
       runs-on: 'ubuntu-latest'
       scan-type: 'fs'

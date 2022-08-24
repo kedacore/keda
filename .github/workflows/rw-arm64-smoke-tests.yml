@@ -6,7 +6,7 @@ on:
 jobs:
   smoke-tests-ARM64:
     name: ARM64
-    uses: kedacore/keda/.github/workflows/rw-smoke-tests.yml@reusable-workflows
+    uses: kedacore/keda/.github/workflows/rw-smoke-tests.yml@main
     with:
       runs-on: ARM64
       kubernetesVersion: v1.24
