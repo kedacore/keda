@@ -147,7 +147,7 @@ jobs:
 
   validate-arm64:
     needs: build
-    uses: kedacore/keda/.github/workflows/workflow-templates/smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/smoke-tests-reusable-workflow.yml@main
     with:
       runs-on: ARM64
 
