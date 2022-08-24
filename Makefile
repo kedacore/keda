@@ -103,9 +103,9 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
 
-.PHONY: arm-smoke-test
-arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	./tests/run-arm-smoke-tests.sh
+.PHONY: smoke-test
+smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	./tests/run-smoke-tests.sh
 
 ##################################################
 # Development                                    #
