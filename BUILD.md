@@ -122,9 +122,9 @@ to deploy it as part of KEDA. Do the following:
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
     ```
 
-## Debugging Operator
+## Debugging with VS Code
 
-### Using VS Code
+### Operator
 
 Follow these instructions if you want to debug the KEDA operator using VS Code.
 
@@ -155,9 +155,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
 4. Set breakpoints in the code as required.
 5. Select `Run > Start Debugging` or press `F5` to start debugging.
 
-## Debugging Metrics server
-
-### Using VS Code
+### Metrics server
 
 Follow these instructions if you want to debug the KEDA metrics server using VS Code.
 
