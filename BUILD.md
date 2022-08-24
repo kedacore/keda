@@ -122,9 +122,9 @@ to deploy it as part of KEDA. Do the following:
     kubectl logs -l app=keda-metrics-apiserver -n keda -f
     ```
 
-## Debugging
+## Debugging with VS Code
 
-### Using VS Code
+### Operator
 
 Follow these instructions if you want to debug the KEDA operator using VS Code.
 
@@ -133,7 +133,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
    {
     "configurations": [
          {
-            "name": "Launch file",
+            "name": "Launch operator",
             "type": "go",
             "request": "launch",
             "mode": "debug",
@@ -154,6 +154,66 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
    ```
 4. Set breakpoints in the code as required.
 5. Select `Run > Start Debugging` or press `F5` to start debugging.
+
+### Metrics server
+
+Follow these instructions if you want to debug the KEDA metrics server using VS Code.
+
+1. Create a `launch.json` file inside the `.vscode/` folder in the repo with the following configuration:
+   ```json
+   {
+    "configurations": [
+        {
+            "name": "Launch metrics-server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/adapter/main.go",
+            "env": {"WATCH_NAMESPACE": ""},
+            "args": [
+                "--authentication-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
+                "--authentication-skip-lookup",
+                "--authorization-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
+                "--lister-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
+                "--secure-port=6443",
+                "--v=5"
+            ],
+        }
+    ]
+   }
+   ```
+   Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
+2. Deploy CRDs and KEDA into `keda` namespace
+   ```bash
+   make deploy
+   ```
+3. Set breakpoints in the code as required.
+4. Select `Run > Start Debugging` or press `F5` to start debugging.
+
+In order to perform queries against the metrics server, you need to use an authenticated user (with enough permissions) or give permissions over external metrics API to `system:anonymous`.
+
+To grant access over external metrics API to `system:anonymous`, you only need to deploy this manifest (and remove it once you have finished):
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+   name: grant-anonymous-access-to-external-metrics
+roleRef:
+   apiGroup: rbac.authorization.k8s.io
+   kind: ClusterRole
+   name: keda-external-metrics-reader
+subjects:
+- kind: User
+  name: system:anonymous
+  namespace: default
+```
+
+**NOTE:** This granting allows to any unauthenticated user to do any operation in external metrics API, this is potentially unsecure, and we strongly discourage doing it on production clusters.
+
+You can query list metrics executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/` or query a specific metrics value executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/namespaces/NAMESPACE/METRIC_NAME` ([similar to the process using `kubectl get --raw`](https://keda.sh/docs/latest/operate/metrics-server/#querying-metrics-exposed-by-keda-metrics-server) but using `curl --insecure https://localhost:6443` instead)
+
+If you prefer to use an authenticated user, you can use a user or service account with access over external metrics API adding their token as authorization header in `curl`, ie: `curl -H "Authorization:Bearer TOKEN" --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/`
 
 ## Miscellaneous
 
