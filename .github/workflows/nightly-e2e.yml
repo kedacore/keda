@@ -75,32 +75,7 @@ jobs:
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
 
   validate-arm64:
-    name: validate-arm64
-    runs-on: ARM64
-    concurrency: arm-smoke-tests
-    steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-
-      - name: Install prerequisites
-        run: |
-          apt update
-          apt install curl make ca-certificates gcc libc-dev -y
-        env:
-          DEBIAN_FRONTEND: noninteractive
-
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-
-      - name: Create k8s v1.23 Kind Cluster
-        uses: helm/kind-action@main
-        with:
-          node_image: kindest/node:v1.23.0@sha256:49824ab1727c04e56a21a5d8372a402fcd32ea51ac96a2706a12af38934f81ac
-          cluster_name: smoke-tests-cluster
-
-      - name: Run smoke test
-        run: make arm-smoke-test
+    needs: build
+    uses: kedacore/keda/.github/workflows/workflow-templates/smoke-tests.yml@main
+    with:
+      runs-on: ARM64
