@@ -58,6 +58,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Other
 
 - **General:** Execute trivy scan (on PRs) only if there are changes in deps ([#3540](https://github.com/kedacore/keda/issues/3540))
+- **General:** Use re-usable workflows for GitHub Actions ([#2569](https://github.com/kedacore/keda/issues/2569))
 
 ## v2.8.0
 
