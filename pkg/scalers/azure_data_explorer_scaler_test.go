@@ -43,6 +43,7 @@ var (
 	aadAppSecret          = "test_app_secret"
 	azureTenantID         = "8fe57c22-02b1-4b87-8c24-ae21dea4fa6a"
 	databaseName          = "test_database"
+	metricName            = "test_metric"
 	dataExplorerQuery     = "print 3"
 	dataExplorerThreshold = "1"
 	dataExplorerEndpoint  = "https://test-keda-e2e.eastus.kusto.windows.net"
@@ -100,9 +101,23 @@ var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestDat
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
 }
 
+var testDataExplorerMetadataWithPodIdentityWithMetricNameSet = []parseDataExplorerMetadataTestData{
+	// Empty metadata - fail
+	{map[string]string{}, true},
+	// Missing endpoint - fail
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold, "metricName": metricName}, true},
+	// Missing query - fail
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold, "metricName": metricName}, true},
+	// Missing threshold - fail
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": "", "metricName": metricName}, true},
+	// All parameters set - pass
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold, "metricName": metricName}, false},
+}
+
 var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
 	{&testDataExplorerMetadataWithClientAndSecret[len(testDataExplorerMetadataWithClientAndSecret)-1], 0, GenerateMetricNameWithIndex(0, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
 	{&testDataExplorerMetadataWithPodIdentity[len(testDataExplorerMetadataWithPodIdentity)-1], 1, GenerateMetricNameWithIndex(1, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
+	{&testDataExplorerMetadataWithPodIdentityWithMetricNameSet[len(testDataExplorerMetadataWithPodIdentity)-1], 1, GenerateMetricNameWithIndex(1, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", adxName, databaseName, metricName)))},
 }
 
 func TestDataExplorerParseMetadata(t *testing.T) {

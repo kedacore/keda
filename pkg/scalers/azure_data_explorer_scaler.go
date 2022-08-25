@@ -119,7 +119,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 
 	// Generate metricName.
 	metadataName, _ := getParameterFromConfig(config, "metricName", false)
-	if err != nil {
+	if metadataName == "" {
 		// metadataName is not defined
 		metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 	} else {
