@@ -32,9 +32,9 @@ var (
 	queueName            = "hello"
 	user                 = fmt.Sprintf("%s-user", testName)
 	password             = fmt.Sprintf("%s-password", testName)
-	vhost                = fmt.Sprintf("%s-vhost", testName)
-	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/%s", user, password, rmqNamespace, vhost)
-	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/%s", user, password, rmqNamespace, vhost)
+	vhost                = "/"
+	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
+	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
 	messageCount         = 100
 )
 
