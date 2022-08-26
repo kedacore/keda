@@ -122,6 +122,8 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 			password = config.AuthParams["password"]
 		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
 			password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+		} else if config.TriggerMetadata["password"] != "" {
+			password = config.TriggerMetadata["password"]
 		}
 
 		meta.connection = fmt.Sprintf(
