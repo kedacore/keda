@@ -69,6 +69,7 @@ type azureServiceBusMetadata struct {
 	fullyQualifiedNamespace string
 	useRegex                bool
 	regexPattern            *regexp.Regexp
+	entityNameRegex         *regexp.Regexp
 	operation               string
 	scalerIndex             int
 }
@@ -154,13 +155,13 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		}
 
 		if meta.useRegex {
-			regexPattern, err := regexp.Compile(meta.queueName)
+			entityNameRegex, err := regexp.Compile(meta.queueName)
 			if err != nil {
 				return nil, fmt.Errorf("queueName is not a valid regular expression")
 			}
-			regexPattern.Longest()
+			entityNameRegex.Longest()
 
-			meta.regexPattern = regexPattern
+			meta.entityNameRegex = entityNameRegex
 		}
 	}
 
@@ -178,13 +179,13 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		}
 
 		if meta.useRegex {
-			regexPattern, err := regexp.Compile(meta.subscriptionName)
+			entityNameRegex, err := regexp.Compile(meta.subscriptionName)
 			if err != nil {
 				return nil, fmt.Errorf("subscriptionName is not a valid regular expression")
 			}
-			regexPattern.Longest()
+			entityNameRegex.Longest()
 
-			meta.regexPattern = regexPattern
+			meta.entityNameRegex = entityNameRegex
 		}
 	}
 	if meta.entityType == none {
@@ -403,9 +404,9 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta 
 
 	messageCounts := make([]int64, 0)
 
-	queuePager := adminClient.NewListSubscriptionsRuntimePropertiesPager(meta.topicName, nil)
-	for queuePager.More() {
-		page, err := queuePager.NextPage(ctx)
+	subscriptionPager := adminClient.NewListSubscriptionsRuntimePropertiesPager(meta.topicName, nil)
+	for subscriptionPager.More() {
+		page, err := subscriptionPager.NextPage(ctx)
 		if err != nil {
 			return -1, err
 		}
