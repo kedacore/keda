@@ -157,7 +157,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
 
 ### Metrics server
 
-> **Note:** You will be able to manually query metrics to your local metrics server, you won't replace the cluster metrics server or being able to use it from the cluster.
+> **Note:** You will be able to manually query metrics to your local version of the KEDA Metrics server. You won't replace the KEDA Metrics server deployed on the Kubernetes cluster.
 
 Follow these instructions if you want to debug the KEDA metrics server using VS Code.
 
