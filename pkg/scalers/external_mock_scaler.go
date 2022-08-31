@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	v2 "k8s.io/api/autoscaling/v2"
-	v2beta2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -73,7 +72,7 @@ func getMockMetricsSpecs() []v2.MetricSpec {
 					Name: MockMetricName,
 				},
 				Target: v2.MetricTarget{
-					Type:  v2beta2.ValueMetricType,
+					Type:  v2.ValueMetricType,
 					Value: resource.NewQuantity(MockMetricValue, resource.DecimalSI),
 				},
 			},
