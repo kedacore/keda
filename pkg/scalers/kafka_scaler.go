@@ -10,7 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -18,7 +18,7 @@ import (
 )
 
 type kafkaScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   kafkaMetadata
 	client     sarama.Client
 	admin      sarama.ClusterAdmin
@@ -427,7 +427,7 @@ func (s *kafkaScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
 	if s.metadata.topic != "" {
 		metricName = fmt.Sprintf("kafka-%s", s.metadata.topic)
@@ -435,14 +435,14 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.group)
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 type consumerOffsetResult struct {

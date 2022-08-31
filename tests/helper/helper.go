@@ -19,7 +19,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -375,11 +375,11 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 }
 
 func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
-	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+	iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	var err error
 	for i := 0; i < iterations; i++ {
-		hpa, err = kc.AutoscalingV2beta2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		hpa, err = kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		t.Log("Waiting for hpa creation")
 		if err == nil {
 			return hpa, err

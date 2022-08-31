@@ -10,7 +10,7 @@ import (
 
 	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -31,7 +31,7 @@ type datadogMetadata struct {
 	queryValue           float64
 	queryAggegrator      string
 	activationQueryValue float64
-	vType                v2beta2.MetricTargetType
+	vType                v2.MetricTargetType
 	metricName           string
 	age                  int
 	useFiller            bool
@@ -153,9 +153,9 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		val = strings.ToLower(val)
 		switch val {
 		case avgString:
-			meta.vType = v2beta2.AverageValueMetricType
+			meta.vType = v2.AverageValueMetricType
 		case "global":
-			meta.vType = v2beta2.ValueMetricType
+			meta.vType = v2.ValueMetricType
 		default:
 			return nil, fmt.Errorf("type has to be global or average")
 		}
@@ -325,17 +325,17 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.queryValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

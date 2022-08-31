@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-redis/redis/v8"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -26,7 +26,7 @@ const (
 type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
 
 type redisScaler struct {
-	metricType      v2beta2.MetricTargetType
+	metricType      v2.MetricTargetType
 	metadata        *redisMetadata
 	closeFn         func() error
 	getListLengthFn func(context.Context) (int64, error)
@@ -98,7 +98,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
 }
 
-func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
+func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
@@ -130,7 +130,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 	}, nil
 }
 
-func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
+func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
@@ -139,7 +139,7 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
 }
 
-func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) (Scaler, error) {
+func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %s", err)
@@ -148,7 +148,7 @@ func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
 }
 
-func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2beta2.MetricTargetType, logger logr.Logger) Scaler {
+func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) Scaler {
 	closeFn := func() error {
 		if err := client.Close(); err != nil {
 			logger.Error(err, "error closing redis client")
@@ -236,18 +236,18 @@ func (s *redisScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.listLength),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Redis and finds the length of the list

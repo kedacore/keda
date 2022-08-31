@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -273,20 +273,20 @@ func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labe
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(s.metadata.metricName)),
 		},
-		Target: v2beta2.MetricTarget{
-			Type:         v2beta2.AverageValueMetricType,
+		Target: v2.MetricTarget{
+			Type:         v2.AverageValueMetricType,
 			AverageValue: targetMetricValue,
 		},
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: pulsarMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: pulsarMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *pulsarScaler) Close(context.Context) error {

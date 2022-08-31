@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -58,7 +58,7 @@ type SolaceMetricValues struct {
 }
 
 type SolaceScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *SolaceMetadata
 	httpClient *http.Client
 	logger     logr.Logger
@@ -271,30 +271,30 @@ func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err err
 // METRIC IDENTIFIER HAS THE SIGNATURE:
 // - solace-[Queue_Name]-[metric_type]
 // e.g. solace-QUEUE1-msgCount
-func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	var metricSpecList []v2beta2.MetricSpec
+func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	var metricSpecList []v2.MetricSpec
 	// Message Count Target Spec
 	if s.metadata.msgCountTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
-		externalMetric := &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
-		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
+		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	// Message Spool Usage Target Spec
 	if s.metadata.msgSpoolUsageTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
-		externalMetric := &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
-		metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
+		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	return metricSpecList

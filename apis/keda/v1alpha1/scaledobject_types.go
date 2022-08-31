@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -103,7 +103,7 @@ type AdvancedConfig struct {
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
 type HorizontalPodAutoscalerConfig struct {
 	// +optional
-	Behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+	Behavior *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
 }
@@ -128,7 +128,7 @@ type ScaleTriggers struct {
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
 	// +optional
-	MetricType autoscalingv2beta2.MetricTargetType `json:"metricType,omitempty"`
+	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true

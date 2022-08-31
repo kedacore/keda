@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -21,7 +21,7 @@ import (
 )
 
 type externalScaler struct {
-	metricType      v2beta2.MetricTargetType
+	metricType      v2.MetricTargetType
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
 	logger          logr.Logger
@@ -150,8 +150,8 @@ func (s *externalScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	var result []v2beta2.MetricSpec
+func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var result []v2.MetricSpec
 
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
@@ -166,15 +166,15 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.
 	}
 
 	for _, spec := range response.MetricSpecs {
-		externalMetric := &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
 			Target: GetMetricTarget(s.metricType, spec.TargetSize),
 		}
 
 		// Create the metric spec for the HPA
-		metricSpec := v2beta2.MetricSpec{
+		metricSpec := v2.MetricSpec{
 			External: externalMetric,
 			Type:     externalMetricType,
 		}
