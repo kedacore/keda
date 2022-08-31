@@ -141,6 +141,9 @@ func createIsActiveChannels(count int) []chan bool {
 }
 
 type testExternalScaler struct {
+	// Embed the unimplemented server
+	pb.UnimplementedExternalScalerServer
+
 	t      *testing.T
 	active chan bool
 }
