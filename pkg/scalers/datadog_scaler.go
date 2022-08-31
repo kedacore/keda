@@ -286,7 +286,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	points := series[0].GetPointlist()
 
 	index := len(points) - 1
-	if len(points) == 0 || len(points[index]) < 2 {
+	if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
 		if !s.metadata.useFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
