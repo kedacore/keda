@@ -14,6 +14,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.8.1](#v281)
 - [v2.8.0](#v280)
 - [v2.7.1](#v271)
 - [v2.7.0](#v270)
@@ -33,29 +34,33 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Deprecations
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.8.1
 
 ### Fixes
 
 - **General:** Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
 - **Datadog Scaler:** Fix: panic in datadog scaler ([#3448](https://github.com/kedacore/keda/issues/3448))
 - **RabbitMQ Scaler:** Parse vhost correctly if it's provided in the host url ([#3602](https://github.com/kedacore/keda/issues/3602))
-
-### Deprecations
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Other
 
