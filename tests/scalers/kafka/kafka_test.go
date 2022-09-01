@@ -57,8 +57,6 @@ type templateData struct {
 	ScaleToZeroOnInvalid string
 }
 
-type templateValues map[string]string
-
 const (
 	singleDeploymentTemplate = `
 apiVersion: apps/v1
@@ -463,7 +461,7 @@ func addCluster(t *testing.T, data templateData) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
@@ -475,7 +473,7 @@ func getTemplateData() (templateData, map[string]string) {
 			Topic2Name:       topic2,
 			ResetPolicy:      "",
 			ScaledObjectName: scaledObjectName,
-		}, templateValues{
-			"kafkaClientTemplate": kafkaClientTemplate,
+		}, []Template{
+			{Name: "kafkaClientTemplate", Config: kafkaClientTemplate},
 		}
 }

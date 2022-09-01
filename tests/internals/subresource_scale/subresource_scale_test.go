@@ -35,8 +35,6 @@ type templateData struct {
 	ScaledObjectName        string
 }
 
-type templateValues map[string]string
-
 const (
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -181,16 +179,17 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 0 after 1 minute")
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:           testNamespace,
 			MonitoredDeploymentName: monitoredDeploymentName,
 			ArgoRolloutName:         argoRolloutName,
 			ScaledObjectName:        scaledObjectName,
-		}, templateValues{
-			"monitoredDeploymentTemplate": monitoredDeploymentTemplate,
-			"argoRolloutTemplate":         argoRolloutTemplate,
-			"scaledObjectTemplate":        scaledObjectTemplate}
+		}, []Template{
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+			{Name: "argoRolloutTemplate", Config: argoRolloutTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func waitForArgoRolloutReplicaCount(t *testing.T, name, namespace string, target int) bool {

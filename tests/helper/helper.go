@@ -399,6 +399,10 @@ func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name stri
 	}
 }
 
+type Template struct {
+	Name, Config string
+}
+
 func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
 	t.Logf("Applying template: %s", templateName)
 
@@ -420,9 +424,10 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
-	for templateName, config := range configs {
-		KubectlApplyWithTemplate(t, data, templateName, config)
+// Apply templates in order of slice
+func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, templates []Template) {
+	for _, tmpl := range templates {
+		KubectlApplyWithTemplate(t, data, tmpl.Name, tmpl.Config)
 	}
 }
 
@@ -447,19 +452,21 @@ func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, con
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, configs map[string]string) {
-	for templateName, config := range configs {
-		KubectlDeleteWithTemplate(t, data, templateName, config)
+// Delete templates in reverse order of slice
+func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, templates []Template) {
+	for idx := len(templates) - 1; idx >= 0; idx-- {
+		tmpl := templates[idx]
+		KubectlDeleteWithTemplate(t, data, tmpl.Name, tmpl.Config)
 	}
 }
 
-func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
+func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
 	CreateNamespace(t, kc, nsName)
-	KubectlApplyMultipleWithTemplate(t, data, configs)
+	KubectlApplyMultipleWithTemplate(t, data, templates)
 }
 
-func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, configs map[string]string) {
-	KubectlDeleteMultipleWithTemplate(t, data, configs)
+func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
+	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	DeleteNamespace(t, kc, nsName)
 	deleted := WaitForNamespaceDeletion(t, kc, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)

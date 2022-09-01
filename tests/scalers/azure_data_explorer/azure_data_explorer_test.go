@@ -57,8 +57,6 @@ type templateData struct {
 	ScaleMetricValue     int
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -160,8 +158,8 @@ func TestScaler(t *testing.T) {
 	testScaleDown(t, kc, data)
 
 	// cleanup
-	templates["triggerAuthTemplate"] = triggerAuthTemplate
-	templates["scaledObjectTemplate"] = scaledObjectTemplate
+	templates = append(templates, Template{Name: "triggerAuthTemplate", Config: triggerAuthTemplate})
+	templates = append(templates, Template{Name: "scaledObjectTemplate", Config: scaledObjectTemplate})
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
@@ -195,7 +193,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 1 minute", scaleInReplicaCount)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
@@ -210,7 +208,8 @@ func getTemplateData() (templateData, templateValues) {
 			DataExplorerDB:       dataExplorerDB,
 			DataExplorerEndpoint: dataExplorerEndpoint,
 			ScaleReplicaCount:    scaleInReplicaCount,
-		}, templateValues{
-			"secretTemplate":     secretTemplate,
-			"deploymentTemplate": deploymentTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+		}
 }

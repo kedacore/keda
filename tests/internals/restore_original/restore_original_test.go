@@ -30,7 +30,6 @@ type templateData struct {
 	ScaledObjectName        string
 	MonitoredDeploymentName string
 }
-type templateValues map[string]string
 
 const (
 	monitoredDeploymentTemplate = `
@@ -123,15 +122,15 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
-		}, templateValues{
-			"deploymentTemplate":          deploymentTemplate,
-			"monitoredDeploymentTemplate": monitoredDeploymentTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 		}
 }
 

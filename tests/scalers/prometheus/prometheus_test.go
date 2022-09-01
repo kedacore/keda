@@ -44,8 +44,6 @@ type templateData struct {
 	MaxReplicaCount       int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -234,16 +232,14 @@ func TestPrometheusScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"generateLowLevelLoadJobTemplate": generateLowLevelLoadJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generateLowLevelLoadJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerDeployment := templateValues{"generateLoadJobTemplate": generateLoadJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerDeployment)
+	KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -255,7 +251,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 5 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			DeploymentName:        deploymentName,
@@ -265,10 +261,10 @@ func getTemplateData() (templateData, map[string]string) {
 			PrometheusServerName:  prometheusServerName,
 			MinReplicaCount:       minReplicaCount,
 			MaxReplicaCount:       maxReplicaCount,
-		}, templateValues{
-			"deploymentTemplate":             deploymentTemplate,
-			"monitoredAppDeploymentTemplate": monitoredAppDeploymentTemplate,
-			"monitoredAppServiceTemplate":    monitoredAppServiceTemplate,
-			"scaledObjectTemplate":           scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
+			{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

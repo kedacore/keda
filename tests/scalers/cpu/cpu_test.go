@@ -26,8 +26,6 @@ type templateData struct {
 	ScaledObjectName string
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -132,7 +130,7 @@ func TestCpuScaler(t *testing.T) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying job ---")
 
-	templateTriggerJob := templateValues{"triggerJobTemplate": triggerJob}
+	templateTriggerJob := []Template{{Name: "triggerJobTemplate", Config: triggerJob}}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
@@ -150,14 +148,14 @@ func TestCpuScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string) (templateData, map[string]string) {
+func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string) (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"serviceTemplate":      serviceTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

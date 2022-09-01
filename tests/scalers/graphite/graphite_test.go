@@ -38,8 +38,6 @@ type templateData struct {
 	MaxReplicaCount  int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -536,16 +534,14 @@ func TestGraphiteScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"lowLevelRequestsJobTemplate": lowLevelRequestsJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "lowLevelRequestsJobTemplate", lowLevelRequestsJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"requestsJobTemplate": requestsJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "requestsJobTemplate", requestsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -553,26 +549,25 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale down ---")
-	templateTriggerJob := templateValues{"emptyRequestsJobTemplate": emptyRequestsJobTemplate}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "emptyRequestsJobTemplate", emptyRequestsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			MinReplicaCount:  minReplicaCount,
 			MaxReplicaCount:  maxReplicaCount,
-		}, templateValues{
-			"graphiteStatsdConfigMapTemplate": graphiteStatsdConfigMapTemplate,
-			"graphiteConfigMapTemplate":       graphiteConfigMapTemplate,
-			"graphiteServiceTemplate":         graphiteServiceTemplate,
-			"graphiteStatefulSetTemplate":     graphiteStatefulSetTemplate,
-			"deploymentTemplate":              deploymentTemplate,
-			"scaledObjectTemplate":            scaledObjectTemplate,
+		}, []Template{
+			{Name: "graphiteStatsdConfigMapTemplate", Config: graphiteStatsdConfigMapTemplate},
+			{Name: "graphiteConfigMapTemplate", Config: graphiteConfigMapTemplate},
+			{Name: "graphiteServiceTemplate", Config: graphiteServiceTemplate},
+			{Name: "graphiteStatefulSetTemplate", Config: graphiteStatefulSetTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

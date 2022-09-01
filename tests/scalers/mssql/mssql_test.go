@@ -53,8 +53,6 @@ type templateData struct {
 	MaxReplicaCount           int
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -284,8 +282,7 @@ func TestMssqlScaler(t *testing.T) {
 // insert 10 records in the table -> activation should not happen (activationTargetValue = 15)
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	templateTriggerJob := templateValues{"insertRecordsJobTemplate1": insertRecordsJobTemplate1}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate1", insertRecordsJobTemplate1)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
@@ -293,8 +290,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 // insert another 10 records in the table, which in total is 20 -> should be scaled up
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale up ---")
-	templateTriggerJob := templateValues{"insertRecordsJobTemplate2": insertRecordsJobTemplate2}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate2", insertRecordsJobTemplate2)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -322,18 +318,18 @@ var data = templateData{
 	MssqlConnectionString:     mssqlConnectionString,
 }
 
-func getMssqlTemplateData() (templateData, map[string]string) {
-	return data, templateValues{
-		"mssqlStatefulSetTemplate": mssqlStatefulSetTemplate,
-		"mssqlServiceTemplate":     mssqlServiceTemplate,
+func getMssqlTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "mssqlStatefulSetTemplate", Config: mssqlStatefulSetTemplate},
+		{Name: "mssqlServiceTemplate", Config: mssqlServiceTemplate},
 	}
 }
 
-func getTemplateData() (templateData, map[string]string) {
-	return data, templateValues{
-		"secretTemplate":                secretTemplate,
-		"deploymentTemplate":            deploymentTemplate,
-		"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-		"scaledObjectTemplate":          scaledObjectTemplate,
+func getTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }

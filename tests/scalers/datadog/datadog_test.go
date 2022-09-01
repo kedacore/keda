@@ -59,8 +59,6 @@ type templateData struct {
 	MaxReplicaCount         string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -310,7 +308,7 @@ func installDatadog(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
@@ -326,13 +324,13 @@ func getTemplateData() (templateData, map[string]string) {
 			KuberneteClusterName:    kuberneteClusterName,
 			MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
-		}, templateValues{
-			"secretTemplate":                secretTemplate,
-			"configTemplate":                configTemplate,
-			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-			"serviceTemplate":               serviceTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"monitoredDeploymentTemplate":   monitoredDeploymentTemplate,
-			"scaledObjectTemplate":          scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "configTemplate", Config: configTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

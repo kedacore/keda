@@ -1,20 +1,21 @@
 //go:build e2e
 // +build e2e
 
-package idle_replicas_test
+package prometheus_metrics_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
-	testName = "idle-replicas-test"
+	testName = "prometheus-metrics-test"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	clientName              = fmt.Sprintf("%s-client", testName)
 )
 
 type templateData struct {
@@ -29,6 +31,7 @@ type templateData struct {
 	DeploymentName          string
 	ScaledObjectName        string
 	MonitoredDeploymentName string
+	ClientName              string
 }
 
 const (
@@ -41,7 +44,7 @@ metadata:
   labels:
     app: {{.MonitoredDeploymentName}}
 spec:
-  replicas: 0
+  replicas: 4
   selector:
     matchLabels:
       app: {{.MonitoredDeploymentName}}
@@ -64,7 +67,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -89,8 +92,8 @@ spec:
     name: {{.DeploymentName}}
   pollingInterval: 5
   idleReplicaCount: 0
-  minReplicaCount: 2
-  maxReplicaCount: 4
+  minReplicaCount: 1
+  maxReplicaCount: 2
   cooldownPeriod: 10
   triggers:
     - type: kubernetes-workload
@@ -98,6 +101,21 @@ spec:
         podSelector: 'app={{.MonitoredDeploymentName}}'
         value: '1'
 `
+
+	clientTemplate = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{.ClientName}}
+  namespace: {{.TestNamespace}}
+spec:
+  containers:
+  - name: {{.ClientName}}
+    image: curlimages/curl
+    command:
+      - sh
+      - -c
+      - "exec tail -f /dev/null"`
 )
 
 func TestScaler(t *testing.T) {
@@ -110,15 +128,11 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	// scaling to idle replica count
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	// scaling to max replica count to ensure the counter is registered before we test it
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be 2 after 2 minute")
 
-	// test scaling
-	// till min replica count
-	testScaleUp(t, kc)
-	// back to idle replica count
-	testScaleDown(t, kc)
+	testHPAScalerMetricValue(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -130,32 +144,41 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
+			ClientName:              clientName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+			{Name: "clientTemplate", Config: clientTemplate},
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testHPAScalerMetricValue(t *testing.T) {
+	t.Log("--- testing hpa scaler metric value ---")
 
-	t.Log("--- scale to min replicas ---")
-	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	out, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
-	t.Log("--- scale to max replicas ---")
-	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 4, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
-		"replica count should be 4 after 1 minute")
-}
+	parser := expfmt.TextParser{}
+	// Ensure EOL
+	reader := strings.NewReader(strings.ReplaceAll(out, "\r\n", "\n"))
+	family, err := parser.TextToMetricFamilies(reader)
+	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
-
-	t.Log("--- scale to idle replicas ---")
-	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+					assert.Equal(t, float64(4), *metric.Gauge.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
 }

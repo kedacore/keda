@@ -27,8 +27,6 @@ type templateData struct {
 	UtilizationValue int32
 }
 
-type templateValues map[string]string
-
 const (
 	deploymentTemplate = `
 apiVersion: apps/v1
@@ -101,7 +99,7 @@ func TestMemoryScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleUpValue)
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templateValues{"deploymentTemplate": deploymentTemplate})
+	CreateKubernetesResources(t, kc, testNamespace, data, []Template{{Name: "deploymentTemplate", Config: deploymentTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
@@ -109,7 +107,7 @@ func TestMemoryScaler(t *testing.T) {
 	t.Log("--- testing scale up ---")
 	t.Log("--- applying scaled object with scaled up utilization ---")
 
-	KubectlApplyMultipleWithTemplate(t, data, templateValues{"scaledObjectTemplate": scaledObjectTemplate})
+	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"Replica count should scale up in next 3 minutes")
@@ -118,7 +116,7 @@ func TestMemoryScaler(t *testing.T) {
 	t.Log("--- applying scaled object with scaled down utilization ---")
 
 	data, _ = getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleDownValue)
-	KubectlApplyMultipleWithTemplate(t, data, templateValues{"scaledObjectTemplate": scaledObjectTemplate})
+	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"Replica count should be 1 in next 3 minutes")
@@ -127,14 +125,14 @@ func TestMemoryScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, utilizationValue int32) (templateData, map[string]string) {
+func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, utilizationValue int32) (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			UtilizationValue: utilizationValue,
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

@@ -47,8 +47,6 @@ type templateData struct {
 	Database, Collection         string
 }
 
-type templateValues map[string]string
-
 const (
 	mongoTemplate = `
 apiVersion: apps/v1
@@ -174,7 +172,7 @@ func TestScaler(t *testing.T) {
 	cleanupMongo(t, kc)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	connectionString := fmt.Sprintf("mongodb://%s:%s@mongodb-svc.%s.svc.cluster.local:27017/%s",
 		mongoUser, mongoPassword, mongoNamespace, mongoDBName)
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
@@ -189,10 +187,11 @@ func getTemplateData() (templateData, templateValues) {
 			Collection:       mongoCollection,
 			Connection:       connectionString,
 			Base64Connection: base64ConnectionString,
-		}, templateValues{
-			"secretTemplate":      secretTemplate,
-			"triggerAuthTemplate": triggerAuthTemplate,
-			"scaledJobTemplate":   scaledJobTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+		}
 }
 
 func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {

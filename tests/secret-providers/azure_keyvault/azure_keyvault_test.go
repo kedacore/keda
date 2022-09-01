@@ -58,8 +58,6 @@ type templateData struct {
 	AzureADTenantID  string
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -197,7 +195,7 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	return queueURL, messageURL
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
@@ -213,11 +211,12 @@ func getTemplateData() (templateData, templateValues) {
 			AzureADClientID:  azureADClientID,
 			AzureADSecret:    base64ClientSecret,
 			AzureADTenantID:  azureADTenantID,
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {

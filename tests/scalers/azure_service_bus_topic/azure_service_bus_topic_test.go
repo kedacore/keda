@@ -48,7 +48,6 @@ type templateData struct {
 	TopicName        string
 	SubscriptionName string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -191,7 +190,7 @@ func createTopicAndSubscription(t *testing.T, sbNamespace *servicebus.Namespace,
 	assert.NoErrorf(t, err, "cannot create subscription for topic - %s", err)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
@@ -203,11 +202,11 @@ func getTemplateData() (templateData, templateValues) {
 			ScaledObjectName: scaledObjectName,
 			TopicName:        topicName,
 			SubscriptionName: subscriptionName,
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"triggerAuthTemplate":  triggerAuthTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 

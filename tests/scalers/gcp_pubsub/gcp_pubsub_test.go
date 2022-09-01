@@ -57,8 +57,6 @@ type templateData struct {
 	ActivationThreshold int
 }
 
-type templateValues map[string]string
-
 const (
 	secretTemplate = `
 apiVersion: v1
@@ -236,7 +234,7 @@ func cleanupPubsub(t *testing.T) {
 	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub topics delete %s", gsPrefix, topicID))
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
@@ -249,11 +247,12 @@ func getTemplateData() (templateData, templateValues) {
 			SubscriptionName:    subscriptionName,
 			MaxReplicaCount:     maxReplicaCount,
 			ActivationThreshold: activationThreshold,
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
-			"gcpSdkTemplate":       gcpSdkTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
+		}
 }
 
 func publishMessages(t *testing.T, count int) {

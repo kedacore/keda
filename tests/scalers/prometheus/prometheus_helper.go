@@ -12,21 +12,19 @@ import (
 	"github.com/kedacore/keda/v2/tests/helper"
 )
 
-type templateValues map[string]string
-
 type templateData struct {
 	Namespace            string
 	PrometheusServerName string
 }
 
 var (
-	prometheusTemplates = templateValues{
-		"prometheusServerServiceAccountTemplate":     prometheusServerServiceAccountTemplate,
-		"standaloneRedisServiceTemplate":             prometheusServerConfigMapTemplate,
-		"prometheusServerClusterRoleTemplate":        prometheusServerClusterRoleTemplate,
-		"prometheusServerClusterRoleBindingTemplate": prometheusServerClusterRoleBindingTemplate,
-		"prometheusServerDeploymentTemplate":         prometheusServerDeploymentTemplate,
-		"prometheusServerServiceTemplate":            prometheusServerServiceTemplate,
+	prometheusTemplates = []helper.Template{
+		{Name: "prometheusServerServiceAccountTemplate", Config: prometheusServerServiceAccountTemplate},
+		{Name: "standaloneRedisServiceTemplate", Config: prometheusServerConfigMapTemplate},
+		{Name: "prometheusServerClusterRoleTemplate", Config: prometheusServerClusterRoleTemplate},
+		{Name: "prometheusServerClusterRoleBindingTemplate", Config: prometheusServerClusterRoleBindingTemplate},
+		{Name: "prometheusServerDeploymentTemplate", Config: prometheusServerDeploymentTemplate},
+		{Name: "prometheusServerServiceTemplate", Config: prometheusServerServiceTemplate},
 	}
 )
 

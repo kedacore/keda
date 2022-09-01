@@ -37,7 +37,6 @@ type templateData struct {
 	ScaledObjectName             string
 	MetricThreshold, MetricValue int
 }
-type templateValues map[string]string
 
 const (
 	serviceTemplate = `
@@ -147,7 +146,7 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			ServiceName:      serviceName,
@@ -156,11 +155,12 @@ func getTemplateData() (templateData, templateValues) {
 			ScaledObjectName: scaledObjectName,
 			MetricThreshold:  10,
 			MetricValue:      0,
-		}, templateValues{
-			"scalerTemplate":       scalerTemplate,
-			"serviceTemplate":      serviceTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "scalerTemplate", Config: scalerTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {

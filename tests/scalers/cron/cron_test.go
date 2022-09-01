@@ -25,8 +25,8 @@ var (
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 
 	now   = time.Now().Local()
-	start = (now.Minute() + 1)
-	end   = (start + 1)
+	start = (now.Minute() + 1) % 60
+	end   = (start + 1) % 60
 )
 
 type templateData struct {
@@ -36,8 +36,6 @@ type templateData struct {
 	StartMin         string
 	EndMin           string
 }
-
-type templateValues map[string]string
 
 const (
 	deploymentTemplate = `
@@ -112,16 +110,16 @@ func TestScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func getTemplateData() (templateData, map[string]string) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			StartMin:         strconv.Itoa(start),
 			EndMin:           strconv.Itoa(end),
-		}, templateValues{
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 

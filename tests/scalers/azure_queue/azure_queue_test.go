@@ -47,7 +47,6 @@ type templateData struct {
 	ScaledObjectName string
 	QueueName        string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `
@@ -160,7 +159,7 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 	return queueURL, messageURL
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
@@ -170,10 +169,11 @@ func getTemplateData() (templateData, templateValues) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			QueueName:        queueName,
-		}, templateValues{
-			"secretTemplate":       secretTemplate,
-			"deploymentTemplate":   deploymentTemplate,
-			"scaledObjectTemplate": scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {

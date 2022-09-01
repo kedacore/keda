@@ -59,7 +59,6 @@ type templateData struct {
 	MinReplicaCount         string
 	MaxReplicaCount         string
 }
-type templateValues map[string]string
 
 const (
 	secretTemplate = `apiVersion: v1
@@ -272,7 +271,7 @@ func installNewRelic(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func getTemplateData() (templateData, templateValues) {
+func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
@@ -288,11 +287,12 @@ func getTemplateData() (templateData, templateValues) {
 			DeploymentReplicas:      fmt.Sprintf("%v", deploymentReplicas),
 			NewRelicAccountID:       newRelicAccountID,
 			NewRelicAPIKey:          base64.StdEncoding.EncodeToString([]byte(newRelicAPIKey)),
-		}, templateValues{
-			"secretTemplate":                secretTemplate,
-			"triggerAuthenticationTemplate": triggerAuthenticationTemplate,
-			"serviceTemplate":               serviceTemplate,
-			"monitoredDeploymentTemplate":   monitoredDeploymentTemplate,
-			"deploymentTemplate":            deploymentTemplate,
-			"scaledObjectTemplate":          scaledObjectTemplate}
+		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
