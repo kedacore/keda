@@ -304,15 +304,14 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	results := make([]float64, len(series))
 	for i := 0; i < len(series); i++ {
 		points := series[i].GetPointlist()
-    index := len(points) - 1
-	  if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
+		index := len(points) - 1
+		if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
 			if !s.metadata.useFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
 			return s.metadata.fillValue, nil
 		}
 		// Return the last point from the series
-		index := len(points) - 1
 		results[i] = *points[index][1]
 	}
 
