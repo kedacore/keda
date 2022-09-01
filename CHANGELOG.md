@@ -11,6 +11,8 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Deprecations
 
+To learn more about active deprecations, we recommend checking [GitHub Discussions](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
 ## History
 
 - [Unreleased](#unreleased)
@@ -34,6 +36,12 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
+## Unreleased
+
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
 ### Improvements
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
@@ -55,6 +63,10 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ## v2.8.1
+
+### New
+
+None.
 
 ### Improvements
 
