@@ -19,7 +19,7 @@ on:
       severity:
         required: false
         type: string
-        default: "CRITICAL,HIGH"  
+        default: "CRITICAL,HIGH"
       exit-code:
         required: true
         type: number
