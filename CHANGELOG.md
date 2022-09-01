@@ -56,11 +56,23 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## v2.8.1
 
+### Improvements
+
+None.
+
 ### Fixes
 
 - **General:** Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
 - **Datadog Scaler:** Fix: panic in datadog scaler ([#3448](https://github.com/kedacore/keda/issues/3448))
 - **RabbitMQ Scaler:** Parse vhost correctly if it's provided in the host url ([#3602](https://github.com/kedacore/keda/issues/3602))
+
+### Deprecations
+
+None.
+
+### Breaking Changes
+
+None.
 
 ### Other
 
