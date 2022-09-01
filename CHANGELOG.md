@@ -14,6 +14,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.8.1](#v281)
 - [v2.8.0](#v280)
 - [v2.7.1](#v271)
 - [v2.7.0](#v270)
@@ -33,15 +34,31 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
+### Improvements
 
-### New
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Deprecations
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.8.1
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+None.
 
 ### Fixes
 
@@ -51,11 +68,11 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+None.
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+None.
 
 ### Other
 
