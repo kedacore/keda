@@ -22,7 +22,7 @@ jobs:
         - kubernetesVersion: v1.20
           kindImage: kindest/node:v1.20.15@sha256:a6ce604504db064c5e25921c6c0fffea64507109a1f2a512b1b562ac37d652f3
 
-    uses: kedacore/keda/.github/workflows/rw-smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
       runs-on: ubuntu-latest
       kubernetesVersion: ${{ matrix.kubernetesVersion }}

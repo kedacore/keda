@@ -5,11 +5,11 @@ on:
 
 jobs:
   validate:
-    uses: kedacore/keda/.github/workflows/rw-main-e2e-test.yml@main
+    uses: kedacore/keda/.github/workflows/template-main-e2e-test.yml@main
     secrets: inherit
 
   validate-arm64:
-    uses: kedacore/keda/.github/workflows/rw-arm64-smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
 
   validate-k8s-versions:
-    uses: kedacore/keda/.github/workflows/rw-versions-smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/template-versions-smoke-tests.yml@main

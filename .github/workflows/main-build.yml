@@ -76,20 +76,20 @@ jobs:
 
   validate:
     needs: build
-    uses: kedacore/keda/.github/workflows/rw-main-e2e-test.yml@main
+    uses: kedacore/keda/.github/workflows/template-main-e2e-test.yml@main
     secrets: inherit
 
   validate-arm64:
     needs: build
-    uses: kedacore/keda/.github/workflows/rw-arm64-smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
 
   validate-k8s-versions:
     needs: build
-    uses: kedacore/keda/.github/workflows/rw-versions-smoke-tests.yml@main
+    uses: kedacore/keda/.github/workflows/template-versions-smoke-tests.yml@main
 
   trivy-scan:
     needs: build
-    uses: kedacore/keda/.github/workflows/rw-trivy-scan.yml@main
+    uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: 'ubuntu-latest'
       scan-type: 'fs'
@@ -102,7 +102,7 @@ jobs:
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
-    uses: kedacore/keda/.github/workflows/rw-trivy-scan.yml@main
+    uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
       scan-type: 'image'
@@ -116,7 +116,7 @@ jobs:
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
-    uses: kedacore/keda/.github/workflows/rw-trivy-scan.yml@main
+    uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
       scan-type: 'image'
