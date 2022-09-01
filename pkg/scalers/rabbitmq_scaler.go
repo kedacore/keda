@@ -68,7 +68,7 @@ type rabbitMQMetadata struct {
 	activationValue       float64       // activation value
 	host                  string        // connection string for either HTTP or AMQP protocol
 	protocol              string        // either http or amqp protocol
-	vhostName             *string       // override the vhost from the connection info
+	vhostName             string        // override the vhost from the connection info
 	useRegex              bool          // specify if the queueName contains a rexeg
 	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	pageSize              int64         // specify the page size if useRegex is enabled
@@ -121,12 +121,12 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.host
-		if meta.vhostName != nil {
+		if meta.vhostName != "" {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
 			}
-			hostURI.Vhost = *meta.vhostName
+			hostURI.Vhost = meta.vhostName
 			host = hostURI.String()
 		}
 
@@ -193,7 +193,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve vhostName
 	if val, ok := config.TriggerMetadata["vhostName"]; ok {
-		meta.vhostName = &val
+		meta.vhostName = val
 	}
 
 	err := parseRabbitMQHttpProtocolMetadata(config, &meta)
@@ -457,24 +457,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	// Extract vhost from URL's path.
 	vhost := parsedURL.Path
 
-	// If the URL's path only contains a slash, it represents the trailing slash and
-	// must be ignored because it may cause confusion with the '/' vhost.
-	if vhost == "/" {
-		vhost = ""
+	if s.metadata.vhostName != "" {
+		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
 	}
 
-	// Override vhost if requested.
-	if s.metadata.vhostName != nil {
-		// If the desired vhost is "All" vhosts, no path is necessary
-		if *s.metadata.vhostName == "" {
-			vhost = ""
-		} else {
-			vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
-		}
-	}
-
-	// Encode the '/' vhost if necessary.
-	if vhost == "//" {
+	if vhost == "" || vhost == "/" || vhost == "//" {
 		vhost = rabbitRootVhostPath
 	}
 

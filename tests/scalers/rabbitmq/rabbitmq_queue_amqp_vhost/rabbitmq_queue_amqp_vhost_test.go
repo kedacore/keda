@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package rabbitmq_queue_http_regex_test
+package rabbitmq_queue_amqp_vhost_test
 
 import (
 	"encoding/base64"
@@ -20,23 +20,21 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "rmq-queue-http-regex-test"
+	testName = "rmq-queue-amqp-vhost-test"
 )
 
 var (
-	testNamespace        = fmt.Sprintf("%s-ns", testName)
-	rmqNamespace         = fmt.Sprintf("%s-rmq", testName)
-	deploymentName       = fmt.Sprintf("%s-deployment", testName)
-	secretName           = fmt.Sprintf("%s-secret", testName)
-	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	queueName            = "hello"
-	queueRegex           = "^hell.{1}$"
-	user                 = fmt.Sprintf("%s-user", testName)
-	password             = fmt.Sprintf("%s-password", testName)
-	vhost                = "/"
-	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
-	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
-	messageCount         = 100
+	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	rmqNamespace     = fmt.Sprintf("%s-rmq", testName)
+	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	secretName       = fmt.Sprintf("%s-secret", testName)
+	scaledObjectName = fmt.Sprintf("%s-so", testName)
+	queueName        = "hello"
+	user             = fmt.Sprintf("%s-user", testName)
+	password         = fmt.Sprintf("%s-password", testName)
+	vhost            = fmt.Sprintf("%s-vhost", testName)
+	connectionString = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/%s", user, password, rmqNamespace, vhost)
+	messageCount     = 100
 )
 
 const (
@@ -58,11 +56,9 @@ spec:
       metadata:
         queueName: {{.QueueName}}
         hostFromEnv: RabbitApiHost
-        protocol: http
         mode: QueueLength
         value: '10'
-        useRegex: 'true'
-        operation: sum
+        activationValue: '5'
 `
 )
 
@@ -91,6 +87,8 @@ func TestScaler(t *testing.T) {
 
 	testScaling(t, kc)
 
+	testActivationValue(t, kc)
+
 	// cleanup
 	t.Log("--- cleaning up ---")
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -103,9 +101,9 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			SecretName:       secretName,
-			QueueName:        queueRegex,
+			QueueName:        queueName,
 			Connection:       connectionString,
-			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+			Base64Connection: base64.StdEncoding.EncodeToString([]byte(connectionString)),
 		}, []Template{
 			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
@@ -115,14 +113,18 @@ func getTemplateData() (templateData, []Template) {
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
-	// dummies
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-1", queueName), messageCount)
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-%s", queueName, queueName), messageCount)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 2 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
+		"replica count should be 4 after 1 minute")
 
 	t.Log("--- testing scale down ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
+}
+
+func testActivationValue(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation value ---")
+	messagesToQueue := 3
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
