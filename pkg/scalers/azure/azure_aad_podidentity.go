@@ -30,7 +30,7 @@ func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, i
 
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
-		return token, err
+		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
 	}
 	req.Header = map[string][]string{
 		"Metadata": {"true"},
@@ -38,18 +38,18 @@ func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, i
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return token, err
+		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return token, err
+		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
 	}
 
 	err = json.Unmarshal(body, &token)
 	if err != nil {
-		return token, errors.New(string(body))
+		return token, fmt.Errorf("error getting aad-pod-identity token - %w", errors.New(string(body)))
 	}
 
 	return token, nil
