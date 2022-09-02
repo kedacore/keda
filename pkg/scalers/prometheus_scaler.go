@@ -29,6 +29,7 @@ const (
 	promCortexScopeOrgID    = "cortexOrgID"
 	promCortexHeaderKey     = "X-Scope-OrgID"
 	ignoreNullValues        = "ignoreNullValues"
+	unsafeSsl               = "unsafeSsl"
 )
 
 var (
@@ -57,6 +58,7 @@ type prometheusMetadata struct {
 	// change to false/f if can not accept prometheus return null values
 	// https://github.com/kedacore/keda/issues/3065
 	ignoreNullValues bool
+	unsafeSsl        bool
 }
 
 type promQueryResult struct {
@@ -85,7 +87,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
 		// create http.RoundTripper with auth settings from ScalerConfig
@@ -164,6 +166,16 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 				"please use true or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
+		unsafeSslValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %s", unsafeSsl, err)
+		}
+
+		meta.unsafeSsl = unsafeSslValue
 	}
 
 	meta.scalerIndex = config.ScalerIndex
