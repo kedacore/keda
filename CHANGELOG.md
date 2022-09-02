@@ -46,6 +46,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General:** Add explicit seccompProfile type to securityContext config ([#3561](https://github.com/kedacore/keda/issues/3561))
 - **General:** Improve error messages in aad-pod-identity integration ([#3610](https://github.com/kedacore/keda/issues/3610))
+- **Azure AD Pod Identity Authentication:** Improve error messages to emphasize problems around the integration with aad-pod-identity itself ([#3610](https://github.com/kedacore/keda/issues/3610))
 - **Prometheus Scaler:** Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
 
 ### Fixes
