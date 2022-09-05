@@ -8,7 +8,7 @@ assignees: tomkerkhove,zroubalik,jorturfer
 
 This issue template is used to track the rollout of a new KEDA version.
 
-For the full release process, we recommend reading [this document](https://github.com/kedacore/keda/blob/main/RELEASE-PROCESS.MD).
+For the full release process, we recommend reading [this document](https://github.com/kedacore/keda/blob/main/RELEASE-PROCESS.md).
 
 ## Progress
 

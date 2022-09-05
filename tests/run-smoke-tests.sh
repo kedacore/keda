@@ -4,6 +4,7 @@ set -u
 DIR=$(dirname "$0")
 cd $DIR
 
+# use only e2e test which support running on ARM
 test_files=(
     "scalers/kubernetes_workload/kubernetes_workload_test.go"
     "scalers/activemq/activemq_test.go"

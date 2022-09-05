@@ -59,10 +59,13 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 		return AADToken{}, fmt.Errorf("error reading service account token - %w", err)
 	}
 
-	cred, err := confidential.NewCredFromAssertion(signedAssertion)
-	if err != nil {
-		return AADToken{}, fmt.Errorf("error getting credentials from service account token - %w", err)
+	if signedAssertion == "" {
+		return AADToken{}, fmt.Errorf("assertion can't be empty string")
 	}
+
+	cred := confidential.NewCredFromAssertionCallback(func(context.Context, confidential.AssertionRequestOptions) (string, error) {
+		return signedAssertion, nil
+	})
 
 	authorityOption := confidential.WithAuthority(fmt.Sprintf("%s%s/oauth2/token", authorityHost, tenantID))
 	confidentialClient, err := confidential.New(

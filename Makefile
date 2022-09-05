@@ -103,9 +103,9 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
 
-.PHONY: arm-smoke-test
-arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	./tests/run-arm-smoke-tests.sh
+.PHONY: smoke-test
+smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	./tests/run-smoke-tests.sh
 
 ##################################################
 # Development                                    #
@@ -154,8 +154,16 @@ clientset-generate: ## Generate client-go clientset, listers and informers.
 	rm -rf vendor
 
 # Generate Liiklus proto
-pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
-	protoc -I hack/ hack/LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+pkg/scalers/liiklus/LiiklusService.pb.go: protoc-gen-go
+	protoc --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+
+# Generate ExternalScaler proto
+pkg/scalers/externalscaler/externalscaler.pb.go: protoc-gen-go
+	protoc --proto_path=pkg/scalers/externalscaler externalscaler.proto --go-grpc_out=pkg/scalers/externalscaler
+
+protoc-gen-go: ## Download protoc-gen-go
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 
 .PHONY: mockgen-gen
 mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
@@ -168,7 +176,7 @@ pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Di
 	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
 pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
-pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
+pkg/scalers/liiklus/mocks/mock_liiklus.go:
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 
 ##################################################

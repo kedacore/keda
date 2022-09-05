@@ -10,11 +10,11 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
@@ -177,8 +177,8 @@ func (s StackDriverClient) GetMetrics(
 	var req = &monitoringpb.ListTimeSeriesRequest{
 		Filter: filter,
 		Interval: &monitoringpb.TimeInterval{
-			StartTime: &timestamp.Timestamp{Seconds: startTime.Unix()},
-			EndTime:   &timestamp.Timestamp{Seconds: endTime.Unix()},
+			StartTime: &timestamppb.Timestamp{Seconds: startTime.Unix()},
+			EndTime:   &timestamppb.Timestamp{Seconds: endTime.Unix()},
 		},
 		Aggregation: aggregation,
 	}

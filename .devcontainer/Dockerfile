@@ -20,7 +20,7 @@ ENV GO111MODULE=auto
 
 # Configure apt, install packages and tools
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
+    && apt-get -y install --no-install-recommends apt-utils dialog unzip 2>&1 \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
     && apt-get -y install git iproute2 procps lsb-release \
@@ -54,6 +54,12 @@ RUN apt-get update \
         # github.com/derekparker/delve/cmd/dlv 2>&1 \ # This pkg deps use generics, we cannot use it till we use go 1.18
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
+    # Protocol Buffer Compiler
+    && if [ $(dpkg --print-architecture) == "amd64" ]; then PROTOC_ARCH="x86_64"; else PROTOC_ARCH="aarch_64" ; fi \
+    && curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.1/protoc-3.20.1-linux-$PROTOC_ARCH.zip" \
+    && unzip "protoc-3.20.1-linux-$PROTOC_ARCH.zip" -d $HOME/.local \
+    && mv $HOME/.local/bin/protoc /usr/local/bin/protoc \
+    && mv $HOME/.local/include/ /usr/local/bin/include/ \
     # Install golangci-lint
     && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2 \
     #

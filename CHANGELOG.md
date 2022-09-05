@@ -11,9 +11,12 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ## Deprecations
 
+To learn more about active deprecations, we recommend checking [GitHub Discussions](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.8.1](#v281)
 - [v2.8.0](#v280)
 - [v2.7.1](#v271)
 - [v2.7.0](#v270)
@@ -37,7 +40,35 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Improvements
+
+- **General:** Add explicit seccompProfile type to securityContext config ([#3561](https://github.com/kedacore/keda/issues/3561))
+- **Azure AD Pod Identity Authentication:** Improve error messages to emphasize problems around the integration with aad-pod-identity itself ([#3610](https://github.com/kedacore/keda/issues/3610))
+- **Prometheus Scaler:** Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Deprecations
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.8.1
+
+### New
+
+None.
 
 ### Improvements
 
@@ -47,18 +78,20 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 - **General:** Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
 - **Datadog Scaler:** Fix: panic in datadog scaler ([#3448](https://github.com/kedacore/keda/issues/3448))
+- **RabbitMQ Scaler:** Parse vhost correctly if it's provided in the host url ([#3602](https://github.com/kedacore/keda/issues/3602))
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+None.
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+None.
 
 ### Other
 
 - **General:** Execute trivy scan (on PRs) only if there are changes in deps ([#3540](https://github.com/kedacore/keda/issues/3540))
+- **General:** Use re-usable workflows for GitHub Actions ([#2569](https://github.com/kedacore/keda/issues/2569))
 
 ## v2.8.0
 

@@ -228,7 +228,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 			s.logger.Error(err, "error running internalRun")
 			return
 		}
-		if err := handleIsActiveStream(ctx, s.scaledObjectRef, grpcClient, active); err != nil {
+		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
 			s.logger.Error(err, "error running internalRun")
 			return
 		}
@@ -264,8 +264,8 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 }
 
 // handleIsActiveStream calls blocks on a stream call from the GRPC server. It'll only terminate on error, stream completion, or ctx cancellation.
-func handleIsActiveStream(ctx context.Context, scaledObjectRef pb.ScaledObjectRef, grpcClient pb.ExternalScalerClient, active chan<- bool) error {
-	stream, err := grpcClient.StreamIsActive(ctx, &scaledObjectRef)
+func handleIsActiveStream(ctx context.Context, scaledObjectRef *pb.ScaledObjectRef, grpcClient pb.ExternalScalerClient, active chan<- bool) error {
+	stream, err := grpcClient.StreamIsActive(ctx, scaledObjectRef)
 	if err != nil {
 		return err
 	}
