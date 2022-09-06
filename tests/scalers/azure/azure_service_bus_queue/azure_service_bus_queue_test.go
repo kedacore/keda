@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_service_bus_topic_test
+package azure_service_bus_queue_test
 
 import (
 	"context"
@@ -21,10 +21,10 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-service-bus-topic-test"
+	testName = "azure-service-bus-queue-test"
 )
 
 var (
@@ -34,8 +34,7 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	topicName        = fmt.Sprintf("%s-topic-%d", testName, GetRandomNumber())
-	subscriptionName = fmt.Sprintf("%s-subscription-%d", testName, GetRandomNumber())
+	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -45,8 +44,7 @@ type templateData struct {
 	DeploymentName   string
 	TriggerAuthName  string
 	ScaledObjectName string
-	TopicName        string
-	SubscriptionName string
+	QueueName        string
 }
 
 const (
@@ -113,8 +111,7 @@ spec:
   triggers:
   - type: azure-servicebus
     metadata:
-      topicName: {{.TopicName}}
-      subscriptionName: {{.SubscriptionName}}
+      queueName: {{.QueueName}}
       activationMessageCount: "5"
     authenticationRef:
       name: {{.TriggerAuthName}}
@@ -126,7 +123,7 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
-	client, adminClient := setupServiceBusTopicAndSubscription(t)
+	client, adminClient := setupServiceBusQueue(t)
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -143,20 +140,18 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupServiceBusTopic(t, adminClient)
+	cleanupServiceBusQueue(t, adminClient)
 }
 
-func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *admin.Client) {
+func setupServiceBusQueue(t *testing.T) (*azservicebus.Client, *admin.Client) {
 	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	// Delete the topic if already exists
-	_, _ = adminClient.DeleteTopic(context.Background(), topicName, nil)
+	// Delete the queue if already exists
+	_, _ = adminClient.DeleteQueue(context.Background(), queueName, nil)
 
-	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
-	_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
-	assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
+	_, err = adminClient.CreateQueue(context.Background(), queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 
 	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
@@ -174,8 +169,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:   deploymentName,
 			TriggerAuthName:  triggerAuthName,
 			ScaledObjectName: scaledObjectName,
-			TopicName:        topicName,
-			SubscriptionName: subscriptionName,
+			QueueName:        queueName,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
@@ -186,7 +180,7 @@ func getTemplateData() (templateData, []Template) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
 	t.Log("--- testing activation ---")
-	addMessages(t, client, 4)
+	addMessages(t, client, 3)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
@@ -202,19 +196,17 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Cl
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
 	t.Log("--- testing scale down ---")
 
-	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot delete the topic - %s", err)
-	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
-	_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
-	assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
+	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
+	assert.NoErrorf(t, err, "cannot delete the queue - %s", err)
+	_, err = adminClient.CreateQueue(context.Background(), queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
 func addMessages(t *testing.T, client *azservicebus.Client, count int) {
-	sender, err := client.NewSender(topicName, nil)
+	sender, err := client.NewSender(queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
 	for i := 0; i < count; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
@@ -224,8 +216,8 @@ func addMessages(t *testing.T, client *azservicebus.Client, count int) {
 	}
 }
 
-func cleanupServiceBusTopic(t *testing.T, adminClient *admin.Client) {
+func cleanupServiceBusQueue(t *testing.T, adminClient *admin.Client) {
 	t.Log("--- cleaning up ---")
-	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot delete service bus topic - %s", err)
+	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
+	assert.NoErrorf(t, err, "cannot delete service bus queue - %s", err)
 }

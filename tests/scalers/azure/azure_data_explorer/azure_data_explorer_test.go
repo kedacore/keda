@@ -18,7 +18,7 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
 	testName = "azure-data-explorer-test"
