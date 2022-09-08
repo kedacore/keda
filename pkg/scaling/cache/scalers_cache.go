@@ -42,14 +42,23 @@ type ScalersCache struct {
 }
 
 type ScalerBuilder struct {
-	Scaler  scalers.Scaler
-	Factory func() (scalers.Scaler, error)
+	Scaler      scalers.Scaler
+	TriggerName string
+	Factory     func() (scalers.Scaler, error)
 }
 
-func (c *ScalersCache) GetScalers() []scalers.Scaler {
-	result := make([]scalers.Scaler, 0, len(c.Scalers))
+type ScalerPair struct {
+	Scaler      scalers.Scaler
+	TriggerName string
+}
+
+func (c *ScalersCache) GetScalers() []ScalerPair {
+	result := make([]ScalerPair, 0, len(c.Scalers))
 	for _, s := range c.Scalers {
-		result = append(result, s.Scaler)
+		result = append(result, ScalerPair{
+			Scaler:      s.Scaler,
+			TriggerName: s.TriggerName,
+		})
 	}
 	return result
 }
