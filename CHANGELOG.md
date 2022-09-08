@@ -62,7 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Bump Golang to 1.18.6 ([#3205](https://github.com/kedacore/keda/issues/3205))
 
 ## v2.8.1
 
