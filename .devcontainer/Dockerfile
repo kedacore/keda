@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.17.13
+FROM golang:1.18.6
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -50,8 +50,8 @@ RUN apt-get update \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
         github.com/alecthomas/gometalinter 2>&1 \
-        # github.com/mgechev/revive \  # This pkg deps use generics, we cannot use it till we use go 1.18
-        # github.com/derekparker/delve/cmd/dlv 2>&1 \ # This pkg deps use generics, we cannot use it till we use go 1.18
+        github.com/mgechev/revive \
+        github.com/derekparker/delve/cmd/dlv 2>&1 \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
     # Protocol Buffer Compiler
@@ -61,7 +61,7 @@ RUN apt-get update \
     && mv $HOME/.local/bin/protoc /usr/local/bin/protoc \
     && mv $HOME/.local/include/ /usr/local/bin/include/ \
     # Install golangci-lint
-    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2 \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
