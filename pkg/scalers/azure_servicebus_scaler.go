@@ -19,11 +19,10 @@ limitations under the License.
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 
-	"github.com/Azure/azure-amqp-common-go/v3/auth"
-	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
@@ -44,8 +43,6 @@ const (
 	messageCountMetricName                      = "messageCount"
 	activationMessageCountMetricName            = "activationMessageCount"
 	defaultTargetMessageCount                   = 5
-	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 type azureServiceBusScaler struct {
@@ -53,21 +50,20 @@ type azureServiceBusScaler struct {
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
-	httpClient  *http.Client
+	credentials *azidentity.DefaultAzureCredential
 	logger      logr.Logger
 }
 
 type azureServiceBusMetadata struct {
-	targetLength           int64
-	activationTargetLength int64
-	queueName              string
-	topicName              string
-	subscriptionName       string
-	connection             string
-	entityType             entityType
-	namespace              string
-	endpointSuffix         string
-	scalerIndex            int
+	targetLength            int64
+	activationTargetLength  int64
+	queueName               string
+	topicName               string
+	subscriptionName        string
+	connection              string
+	entityType              entityType
+	fullyQualifiedNamespace string
+	scalerIndex             int
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -89,7 +85,6 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 		logger:      logger,
 	}, nil
 }
@@ -143,20 +138,10 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 			return nil, fmt.Errorf("no subscription name provided with topic name")
 		}
 	}
-
-	envSuffixProvider := func(env az.Environment) (string, error) {
-		return env.ServiceBusEndpointSuffix, nil
-	}
-
-	endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
-	if err != nil {
-		return nil, err
-	}
-	meta.endpointSuffix = endpointSuffix
-
 	if meta.entityType == none {
 		return nil, fmt.Errorf("no service bus entity type set")
 	}
+
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
@@ -170,11 +155,26 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 			return nil, fmt.Errorf("no connection setting given")
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if val, ok := config.TriggerMetadata["namespace"]; ok {
-			meta.namespace = val
+		if val, ok := config.TriggerMetadata["fullyQualifiedNamespace"]; ok {
+			meta.fullyQualifiedNamespace = val
 		} else {
-			return nil, fmt.Errorf("namespace is required when using pod identity")
+			if val, ok := config.TriggerMetadata["namespace"]; ok {
+				logger.Info("Warning: namespace field has been deprecated in favor of fullyQualifiedNamespace")
+
+				envSuffixProvider := func(env az.Environment) (string, error) {
+					return env.ServiceBusEndpointSuffix, nil
+				}
+
+				endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
+				if err != nil {
+					return nil, err
+				}
+				meta.fullyQualifiedNamespace = fmt.Sprintf("%s.%s", val, endpointSuffix)
+			} else {
+				return nil, fmt.Errorf("fullyQualifiedNamespace or namespace are required when using pod identity")
+			}
 		}
+
 	default:
 		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity)
 	}
@@ -233,105 +233,69 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-type azureTokenProvider struct {
-	httpClient  *http.Client
-	ctx         context.Context
-	podIdentity kedav1alpha1.AuthPodIdentity
-}
-
-// GetToken implements TokenProvider interface for azureTokenProvider
-func (a azureTokenProvider) GetToken(uri string) (*auth.Token, error) {
-	ctx := a.ctx
-
-	var token azure.AADToken
-	var err error
-
-	switch a.podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = azure.GetAzureADPodIdentityToken(ctx, a.httpClient, a.podIdentity.IdentityID, serviceBusResource)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, err = azure.GetAzureADWorkloadIdentityToken(ctx, a.podIdentity.IdentityID, serviceBusResource)
-	default:
-		err = fmt.Errorf("unknown pod identity provider")
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return auth.NewToken(auth.CBSTokenTypeJWT, token.AccessToken, token.ExpiresOn), nil
-}
-
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
-	// get namespace
-	namespace, err := s.getServiceBusNamespace(ctx)
+	// get adminClient
+	adminClient, err := s.getServiceBusAdminClient(ctx)
 	if err != nil {
 		return -1, err
 	}
 	// switch case for queue vs topic here
 	switch s.metadata.entityType {
 	case queue:
-		return getQueueEntityFromNamespace(ctx, namespace, s.metadata.queueName)
+		return getQueueLength(ctx, adminClient, s.metadata.queueName)
 	case subscription:
-		return getSubscriptionEntityFromNamespace(ctx, namespace, s.metadata.topicName, s.metadata.subscriptionName)
+		return getSubscriptionLength(ctx, adminClient, s.metadata.topicName, s.metadata.subscriptionName)
 	default:
 		return -1, fmt.Errorf("no entity type")
 	}
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusNamespace(ctx context.Context) (*servicebus.Namespace, error) {
-	var namespace *servicebus.Namespace
+func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*admin.Client, error) {
+	var adminClient *admin.Client
 	var err error
 
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		namespace, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(s.metadata.connection))
+		adminClient, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
 		if err != nil {
-			return namespace, err
+			return nil, err
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		namespace, err = servicebus.NewNamespace()
+		if s.credentials == nil {
+			credentials, err := azidentity.NewDefaultAzureCredential(nil)
+			if err != nil {
+				return nil, err
+			}
+			s.credentials = credentials
+		}
+
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, s.credentials, nil)
 		if err != nil {
-			return namespace, err
+			return nil, err
 		}
-		namespace.TokenProvider = azureTokenProvider{
-			ctx:         ctx,
-			httpClient:  s.httpClient,
-			podIdentity: s.podIdentity,
-		}
-		namespace.Name = s.metadata.namespace
 	}
 
-	namespace.Suffix = s.metadata.endpointSuffix
-	return namespace, nil
+	// var endpoint = azure.GermanCloud.ServiceBusEndpointSuffix
+
+	return adminClient, nil
 }
 
-func getQueueEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, queueName string) (int64, error) {
-	// get queue manager from namespace
-	queueManager := ns.NewQueueManager()
-
-	// queue manager.get(ctx, queueName) -> QueueEntitity
-	queueEntity, err := queueManager.Get(ctx, queueName)
+func getQueueLength(ctx context.Context, adminClient *admin.Client, queueName string) (int64, error) {
+	queueEntity, err := adminClient.GetQueueRuntimeProperties(ctx, queueName, &admin.GetQueueRuntimePropertiesOptions{})
 	if err != nil {
 		return -1, err
 	}
 
-	return int64(*queueEntity.CountDetails.ActiveMessageCount), nil
+	return int64(queueEntity.ActiveMessageCount), nil
 }
 
-func getSubscriptionEntityFromNamespace(ctx context.Context, ns *servicebus.Namespace, topicName, subscriptionName string) (int64, error) {
-	// get subscription manager from namespace
-	subscriptionManager, err := ns.NewSubscriptionManager(topicName)
+func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, topicName, subscriptionName string) (int64, error) {
+	subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, topicName, subscriptionName, &admin.GetSubscriptionRuntimePropertiesOptions{})
 	if err != nil {
 		return -1, err
 	}
 
-	// subscription manager.get(ctx, subName) -> SubscriptionEntity
-	subscriptionEntity, err := subscriptionManager.Get(ctx, subscriptionName)
-	if err != nil {
-		return -1, err
-	}
-
-	return int64(*subscriptionEntity.CountDetails.ActiveMessageCount), nil
+	return int64(subscriptionEntity.ActiveMessageCount), nil
 }
