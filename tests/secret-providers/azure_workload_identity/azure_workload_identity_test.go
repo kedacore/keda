@@ -184,7 +184,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.
 
 	receiver, err := client.NewReceiverForQueue(queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the receiver - %s", err)
-	messages, err := receiver.ReceiveMessages(ctx, 1000, nil)
+	messages, _ := receiver.ReceiveMessages(ctx, 1000, nil)
+
 	for _, message := range messages {
 		_ = receiver.CompleteMessage(ctx, message, nil)
 	}
