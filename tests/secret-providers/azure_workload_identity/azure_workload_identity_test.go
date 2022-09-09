@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,11 +108,11 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
-	sbNamespace, sbQueueManager, sbQueue := setupServiceBusQueue(t)
+	client, adminClient, namespace := setupServiceBusQueue(t)
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	data.ServiceBusNamespace = sbNamespace.Name
+	data.ServiceBusNamespace = namespace
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -119,45 +120,31 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc, sbQueue)
-	testScaleDown(t, kc, sbQueue)
+	testScaleUp(t, kc, client)
+	testScaleDown(t, kc, client)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupServiceBusQueue(t, sbQueueManager)
+	cleanupServiceBusQueue(t, adminClient)
 }
 
-func setupServiceBusQueue(t *testing.T) (*servicebus.Namespace, *servicebus.QueueManager, *servicebus.Queue) {
-	// Connect to service bus namespace.
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
+func setupServiceBusQueue(t *testing.T) (*azservicebus.Client, *admin.Client, string) {
+	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	sbQueueManager := sbNamespace.NewQueueManager()
+	// Delete the queue if already exists
+	_, _ = adminClient.DeleteQueue(context.Background(), queueName, nil)
 
-	createQueue(t, sbQueueManager)
+	_, err = adminClient.CreateQueue(context.Background(), queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 
-	sbQueue, err := sbNamespace.NewQueue(queueName)
-	assert.NoErrorf(t, err, "cannot create client for queue - %s", err)
+	namespace, err := adminClient.GetNamespaceProperties(context.Background(), nil)
+	assert.NoErrorf(t, err, "cannot get namespace info - %s", err)
 
-	return sbNamespace, sbQueueManager, sbQueue
-}
+	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
+	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-func createQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
-	// delete queue if already exists
-	sbQueues, err := sbQueueManager.List(context.Background())
-	assert.NoErrorf(t, err, "cannot fetch queue list for service bus namespace - %s", err)
-
-	for _, queue := range sbQueues {
-		if queue.Name == queueName {
-			t.Log("Service Bus Queue already exists. Deleting.")
-			err := sbQueueManager.Delete(context.Background(), queueName)
-			assert.NoErrorf(t, err, "cannot delete existing service bus queue - %s", err)
-		}
-	}
-
-	// create queue
-	_, err = sbQueueManager.Put(context.Background(), queueName)
-	assert.NoErrorf(t, err, "cannot create service bus queue - %s", err)
+	return client, adminClient, namespace.Name
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -174,34 +161,40 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
 	t.Log("--- testing scale up ---")
+	sender, err := client.NewSender(queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
-		_ = sbQueue.Send(context.Background(), servicebus.NewMessageFromString(msg))
+		_ = sender.SendMessage(context.Background(), &azservicebus.Message{
+			Body: []byte(msg),
+		}, nil)
 	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, sbQueue *servicebus.Queue) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
 	t.Log("--- testing scale down ---")
-	var messageHandlerFunc servicebus.HandlerFunc = func(ctx context.Context, msg *servicebus.Message) error {
-		return msg.Complete(ctx)
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_ = sbQueue.Receive(ctx, messageHandlerFunc)
+	receiver, err := client.NewReceiverForQueue(queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the receiver - %s", err)
+	messages, err := receiver.ReceiveMessages(ctx, 1000, nil)
+	for _, message := range messages {
+		receiver.CompleteMessage(ctx, message, nil)
+	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
-func cleanupServiceBusQueue(t *testing.T, sbQueueManager *servicebus.QueueManager) {
+func cleanupServiceBusQueue(t *testing.T, adminClient *admin.Client) {
 	t.Log("--- cleaning up ---")
-	err := sbQueueManager.Delete(context.Background(), queueName)
+	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
 	assert.NoErrorf(t, err, "cannot delete service bus queue - %s", err)
 }

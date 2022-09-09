@@ -148,14 +148,9 @@ func setupServiceBusQueue(t *testing.T) (*azservicebus.Client, *admin.Client) {
 	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	list := adminClient.NewListQueuesPager(&admin.ListQueuesOptions{})
-	for list.More() {
-		page, err := list.NextPage(context.TODO())
-		assert.NoErrorf(t, err, "cannot get queues - %s", err)
-		for _, queue := range page.Queues {
-			adminClient.DeleteQueue(context.Background(), queue.QueueName, nil)
-		}
-	}
+	// Delete the queue if already exists
+	_, _ = adminClient.DeleteQueue(context.Background(), queueName, nil)
+
 	_, err = adminClient.CreateQueue(context.Background(), queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 
