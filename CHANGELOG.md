@@ -63,6 +63,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Other
 
 - **General**: Bump Golang to 1.18.6 ([#3205](https://github.com/kedacore/keda/issues/3205))
+- **General**: Bump `github.com/Azure/azure-event-hubs-go/v3` ([#2986](https://github.com/kedacore/keda/issues/2986))
+- **General**: Migrate from `azure-service-bus-go` to `azservicebus` ([#3394](https://github.com/kedacore/keda/issues/3394))
 
 ## v2.8.1
 
