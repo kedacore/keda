@@ -186,7 +186,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.
 	assert.NoErrorf(t, err, "cannot create the receiver - %s", err)
 	messages, err := receiver.ReceiveMessages(ctx, 1000, nil)
 	for _, message := range messages {
-		receiver.CompleteMessage(ctx, message, nil)
+		_ = receiver.CompleteMessage(ctx, message, nil)
 	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),

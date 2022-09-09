@@ -50,7 +50,7 @@ type azureServiceBusScaler struct {
 	metricType  v2beta2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
-	credentials *azidentity.DefaultAzureCredential
+	client      *admin.Client
 	logger      logr.Logger
 }
 
@@ -236,7 +236,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
 	// get adminClient
-	adminClient, err := s.getServiceBusAdminClient(ctx)
+	adminClient, err := s.getServiceBusAdminClient()
 	if err != nil {
 		return -1, err
 	}
@@ -252,7 +252,11 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*admin.Client, error) {
+func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error) {
+	if s.client != nil {
+		return s.client, nil
+	}
+
 	var adminClient *admin.Client
 	var err error
 
@@ -263,15 +267,11 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 			return nil, err
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if s.credentials == nil {
-			credentials, err := azidentity.NewDefaultAzureCredential(nil)
-			if err != nil {
-				return nil, err
-			}
-			s.credentials = credentials
+		credentials, err := azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			return nil, err
 		}
-
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, s.credentials, nil)
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, credentials, nil)
 		if err != nil {
 			return nil, err
 		}
