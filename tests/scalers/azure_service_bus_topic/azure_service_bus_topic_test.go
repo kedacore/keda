@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
@@ -140,7 +139,7 @@ func TestScaler(t *testing.T) {
 	// test scaling
 	testActivation(t, kc, client)
 	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, client)
+	testScaleDown(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -156,6 +155,8 @@ func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *a
 
 	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
 	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
+	_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
+	assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
 
 	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
@@ -198,19 +199,15 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Cl
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
 	t.Log("--- testing scale down ---")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	receiver, err := client.NewReceiverForSubscription(topicName, subscriptionName, nil)
-	assert.NoErrorf(t, err, "cannot create the receiver - %s", err)
-	messages, _ := receiver.ReceiveMessages(ctx, 1000, nil)
-
-	for _, message := range messages {
-		_ = receiver.CompleteMessage(ctx, message, nil)
-	}
+	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
+	assert.NoErrorf(t, err, "cannot delete the topic - %s", err)
+	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
+	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
+	_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
+	assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")

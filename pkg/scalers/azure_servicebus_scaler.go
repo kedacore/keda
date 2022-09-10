@@ -287,6 +287,9 @@ func getQueueLength(ctx context.Context, adminClient *admin.Client, queueName st
 	if err != nil {
 		return -1, err
 	}
+	if queueEntity == nil {
+		return -1, fmt.Errorf("queue %s doesn't exist", queueName)
+	}
 
 	return int64(queueEntity.ActiveMessageCount), nil
 }
@@ -295,6 +298,9 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, topic
 	subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, topicName, subscriptionName, &admin.GetSubscriptionRuntimePropertiesOptions{})
 	if err != nil {
 		return -1, err
+	}
+	if subscriptionEntity == nil {
+		return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", subscriptionName, topicName)
 	}
 
 	return int64(subscriptionEntity.ActiveMessageCount), nil
