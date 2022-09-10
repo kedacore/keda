@@ -271,7 +271,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 			return nil, err
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		//Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
+		// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
 		// https://github.com/Azure/azure-sdk-for-go/issues/15615
 		var creds []azcore.TokenCredential
 		options := &azidentity.DefaultAzureCredentialOptions{}
