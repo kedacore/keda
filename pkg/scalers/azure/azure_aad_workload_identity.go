@@ -25,6 +25,8 @@ import (
 	"time"
 
 	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
@@ -122,6 +124,48 @@ func NewAzureADWorkloadIdentityConfig(ctx context.Context, identityID, resource 
 func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
 	return autorest.NewBearerAuthorizer(NewAzureADWorkloadIdentityTokenProvider(
 		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.Resource)), nil
+}
+
+// ADWorkloadIdentityCredential is a type that implements the TokenCredential interface.
+// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
+// https://github.com/Azure/azure-sdk-for-go/issues/15615
+type ADWorkloadIdentityCredential struct {
+	ctx        context.Context
+	IdentityID string
+	Resource   string
+	aadToken   AADToken
+}
+
+func NewADWorkloadIdentityCredential(ctx context.Context, identityID, resource string) *ADWorkloadIdentityCredential {
+	return &ADWorkloadIdentityCredential{ctx: ctx, IdentityID: identityID, Resource: resource}
+}
+
+func (wiCredential *ADWorkloadIdentityCredential) refresh() error {
+	if time.Now().Before(wiCredential.aadToken.ExpiresOnTimeObject) {
+		return nil
+	}
+
+	aadToken, err := GetAzureADWorkloadIdentityToken(wiCredential.ctx, wiCredential.IdentityID, wiCredential.Resource)
+	if err != nil {
+		return err
+	}
+
+	wiCredential.aadToken = aadToken
+	return nil
+}
+
+// GetToken is for implementing the TokenCredential interface
+func (wiCredential *ADWorkloadIdentityCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	accessToken := azcore.AccessToken{}
+	err := wiCredential.refresh()
+	if err != nil {
+		return accessToken, err
+	}
+
+	accessToken.Token = wiCredential.aadToken.AccessToken
+	accessToken.ExpiresOn = wiCredential.aadToken.ExpiresOnTimeObject
+
+	return accessToken, nil
 }
 
 // ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.

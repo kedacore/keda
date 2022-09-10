@@ -19,8 +19,10 @@ limitations under the License.
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	az "github.com/Azure/go-autorest/autorest/azure"
@@ -43,6 +45,8 @@ const (
 	messageCountMetricName                      = "messageCount"
 	activationMessageCountMetricName            = "activationMessageCount"
 	defaultTargetMessageCount                   = 5
+	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
+	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 type azureServiceBusScaler struct {
@@ -236,7 +240,7 @@ func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName strin
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
 	// get adminClient
-	adminClient, err := s.getServiceBusAdminClient()
+	adminClient, err := s.getServiceBusAdminClient(ctx)
 	if err != nil {
 		return -1, err
 	}
@@ -252,7 +256,7 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error) {
+func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*admin.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
@@ -267,17 +271,42 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 			return nil, err
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		credentials, err := azidentity.NewDefaultAzureCredential(nil)
+		//Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
+		// https://github.com/Azure/azure-sdk-for-go/issues/15615
+		var creds []azcore.TokenCredential
+		options := &azidentity.DefaultAzureCredentialOptions{}
+
+		envCred, err := azidentity.NewEnvironmentCredential(&azidentity.EnvironmentCredentialOptions{ClientOptions: options.ClientOptions})
+		if err == nil {
+			creds = append(creds, envCred)
+		}
+
+		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{TenantID: options.TenantID})
+		if err == nil {
+			creds = append(creds, cliCred)
+		}
+
+		wiCred := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
+		creds = append(creds, wiCred)
+
+		managedIdentityOptions := &azidentity.ManagedIdentityCredentialOptions{ClientOptions: options.ClientOptions}
+		if ID, ok := os.LookupEnv("AZURE_CLIENT_ID"); ok {
+			managedIdentityOptions.ID = azidentity.ClientID(ID)
+		}
+		msiCred, err := azidentity.NewManagedIdentityCredential(managedIdentityOptions)
+		if err == nil {
+			creds = append(creds, msiCred)
+		}
+
+		chain, err := azidentity.NewChainedTokenCredential(creds, nil)
 		if err != nil {
 			return nil, err
 		}
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, credentials, nil)
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, chain, nil)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	// var endpoint = azure.GermanCloud.ServiceBusEndpointSuffix
 
 	return adminClient, nil
 }
