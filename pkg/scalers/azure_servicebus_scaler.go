@@ -19,7 +19,6 @@ limitations under the License.
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -270,16 +269,21 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 		if err != nil {
 			return nil, err
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzure:
+		// Once azure-sdk-for-go supports Workload Identity we can use this for Workload identity too
+		chain, err := azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			return nil, err
+		}
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, chain, nil)
+		if err != nil {
+			return nil, err
+		}
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
 		// https://github.com/Azure/azure-sdk-for-go/issues/15615
 		var creds []azcore.TokenCredential
 		options := &azidentity.DefaultAzureCredentialOptions{}
-
-		envCred, err := azidentity.NewEnvironmentCredential(&azidentity.EnvironmentCredentialOptions{ClientOptions: options.ClientOptions})
-		if err == nil {
-			creds = append(creds, envCred)
-		}
 
 		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{TenantID: options.TenantID})
 		if err == nil {
@@ -288,15 +292,6 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 
 		wiCred := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
 		creds = append(creds, wiCred)
-
-		managedIdentityOptions := &azidentity.ManagedIdentityCredentialOptions{ClientOptions: options.ClientOptions}
-		if ID, ok := os.LookupEnv("AZURE_CLIENT_ID"); ok {
-			managedIdentityOptions.ID = azidentity.ClientID(ID)
-		}
-		msiCred, err := azidentity.NewManagedIdentityCredential(managedIdentityOptions)
-		if err == nil {
-			creds = append(creds, msiCred)
-		}
 
 		chain, err := azidentity.NewChainedTokenCredential(creds, nil)
 		if err != nil {
