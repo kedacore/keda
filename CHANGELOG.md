@@ -72,7 +72,7 @@ None.
 
 ### Improvements
 
-None.
+- **Datadog Scaler:** Support multi-query metrics, and aggregation ([#3423](https://github.com/kedacore/keda/issues/3423))
 
 ### Fixes
 
