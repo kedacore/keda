@@ -104,8 +104,6 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 	// invalid activation message count
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount, "activationMessageCount": "AA"}, true, queue, defaultSuffix, map[string]string{}, ""},
-	// fullyQualifiedNamespace
-	{map[string]string{"queueName": queueName, "fullyQualifiedNamespace": defaultSuffix}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
