@@ -158,24 +158,18 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 			return nil, fmt.Errorf("no connection setting given")
 		}
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if val, ok := config.TriggerMetadata["fullyQualifiedNamespace"]; ok {
-			meta.fullyQualifiedNamespace = val
-		} else {
-			if val, ok := config.TriggerMetadata["namespace"]; ok {
-				logger.Info("Warning: namespace field has been deprecated in favor of fullyQualifiedNamespace")
-
-				envSuffixProvider := func(env az.Environment) (string, error) {
-					return env.ServiceBusEndpointSuffix, nil
-				}
-
-				endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
-				if err != nil {
-					return nil, err
-				}
-				meta.fullyQualifiedNamespace = fmt.Sprintf("%s.%s", val, endpointSuffix)
-			} else {
-				return nil, fmt.Errorf("fullyQualifiedNamespace or namespace are required when using pod identity")
+		if val, ok := config.TriggerMetadata["namespace"]; ok {
+			envSuffixProvider := func(env az.Environment) (string, error) {
+				return env.ServiceBusEndpointSuffix, nil
 			}
+
+			endpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, envSuffixProvider)
+			if err != nil {
+				return nil, err
+			}
+			meta.fullyQualifiedNamespace = fmt.Sprintf("%s.%s", val, endpointSuffix)
+		} else {
+			return nil, fmt.Errorf("namespace are required when using pod identity")
 		}
 
 	default:
