@@ -83,3 +83,17 @@ You can find contributing guide [here](./CONTRIBUTING.md).
 
 ### Building & deploying locally
 Learn how to build & deploy KEDA locally [here](./BUILD.md).
+
+## Compatibility matrix
+
+We strive to be compatible with the widest range of Kubernetes versions as possible, but some changes to Kubernetes itself require us to break compatibility with older Kubernetes versions, be it because of code incompatibilities, or in the name of maintainability. Every released will support a specific range of Kubernetes versions, to be determined at the latest during the release.
+
+The KEDA *might* work on versions outside the given range, but when opening new issues, please make sure to test your scenario on a supported version.
+
+| KEDA                   | Kubernetes           |
+|------------------------|----------------------|
+| v2.9.0                 | >v1.23               |
+| v2.8.1                 | v1.20 to v1.25       |
+| v2.8.0                 | v1.20 to v1.25       |
+| v2.7.1                 | v1.19 to v1.25       |
+| v2.7.0                 | v1.19 to v1.25       |
