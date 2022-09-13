@@ -17,15 +17,11 @@ Add a new section in [CHANGELOG.md](CHANGELOG.md) for the new version that is be
 
 It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
 
-## 2. Compatibility Matrix
-
-Ensure the new version is already listed in the [compatibility matrix](README.md#compatibility-matrix) and versions ranges are set (or only the minimum if there isn't any known upper bound at this moment)
-
-## 3. Add the new version to GitHub Bug report template
+## 2. Add the new version to GitHub Bug report template
 
 Add the new released version to the list in `KEDA Version` dropdown in [3_bug_report.yml](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml).
 
-## 4. Create KEDA release on GitHub
+## 3. Create KEDA release on GitHub
 
 Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.4.0).
 
@@ -91,12 +87,12 @@ In order to generate a list of new contributors, use the `Auto-generate release 
 ![image](https://user-images.githubusercontent.com/4345663/148563945-ad75816d-739b-4e8d-a063-aa0e77f6e98d.png)
 </details>
 
-## 5. Publish documentation for new version
+## 4. Publish documentation for new version
 
 Publish documentation for new version on https://keda.sh.
 For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
-## 6. Setup continous container scanning with Snyk
+## 5. Setup continous container scanning with Snyk
 
 In order to continuously scan our new container image, they must be imported in our [Snyk project](https://app.snyk.io/org/keda/projects) for all newly introduced tags.
 
@@ -104,18 +100,18 @@ Learn more on how to do this through the [Snyk documentation](https://docs.snyk.
 
 > Note: Remember to enable the check `Without issues` in order to get the new version listed since probably it hasn't got any issue.
 
-## 7. Prepare our Helm Chart
+## 6. Prepare our Helm Chart
 
 Before we can release our new Helm chart version, we need to prepare it:
 
 - Update the `version` and `appVersion` in our [chart definition](https://github.com/kedacore/charts/blob/master/keda/Chart.yaml).
 - Update the CRDs & Kubernetes resources based on the release artifact (YAML)
 
-## 8. Ship new Helm chart
+## 7. Ship new Helm chart
 
 Guidance on how to release it can be found in our [contribution guide](https://github.com/kedacore/charts/blob/master/CONTRIBUTING.md#shipping-a-new-version).
 
-## 9. Prepare next release
+## 8. Prepare next release
 
 As per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we need to create a new shipping cycle in our [project settings](https://github.com/orgs/kedacore/projects/2/settings/fields/1647216) with a target date in 3 months after the last cycle.
 
@@ -123,7 +119,7 @@ We need to make sure that the current sprint's items are changed from status `Re
 
 Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
 
-## 10. Tweet! 🐦
+## 9. Tweet! 🐦
 
 Prepare a tweet with some highlights and send it out on [@kedaorg](https://twitter.com/kedaorg)!
 
