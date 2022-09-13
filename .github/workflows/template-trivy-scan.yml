@@ -12,6 +12,10 @@ on:
       format:
         required: true
         type: string
+      output:
+        required: false
+        type: string
+        default: trivy.sarif
       image-ref:
         required: false
         type: string
@@ -41,7 +45,7 @@ jobs:
           image-ref: ${{ inputs.image-ref }}
           ignore-unfixed: false
           format: ${{ inputs.format }}
-          output: trivy.sarif
+          output: ${{ inputs.output }}
           exit-code: ${{ inputs.exit-code }}
           severity: ${{ inputs.severity }}
 
@@ -49,4 +53,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         if: ${{ inputs.publish }}
         with:
-          sarif_file: trivy.sarif
+          sarif_file: ${{ inputs.output }}
