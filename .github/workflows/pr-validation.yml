@@ -216,5 +216,6 @@ jobs:
       runs-on: 'ubuntu-latest'
       scan-type: 'fs'
       format: 'table'
+      output: ''
       exit-code: 1
       publish: false
