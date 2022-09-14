@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,7 +19,7 @@ type cpuMemoryScaler struct {
 }
 
 type cpuMemoryMetadata struct {
-	Type               v2beta2.MetricTargetType
+	Type               v2.MetricTargetType
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
 	ContainerName      string
@@ -50,7 +50,7 @@ func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemory
 		return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 	case ok && value != "":
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
-		meta.Type = v2beta2.MetricTargetType(value)
+		meta.Type = v2.MetricTargetType(value)
 	case config.MetricType != "":
 		meta.Type = config.MetricType
 	default:
@@ -61,10 +61,10 @@ func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemory
 		return nil, fmt.Errorf("no value given")
 	}
 	switch meta.Type {
-	case v2beta2.AverageValueMetricType:
+	case v2.AverageValueMetricType:
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
-	case v2beta2.UtilizationMetricType:
+	case v2.UtilizationMetricType:
 		valueNum, err := strconv.ParseInt(value, 10, 32)
 		if err != nil {
 			return nil, err
@@ -93,33 +93,33 @@ func (s *cpuMemoryScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	var metricSpec v2beta2.MetricSpec
+func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	var metricSpec v2.MetricSpec
 
 	if s.metadata.ContainerName != "" {
-		containerCPUMemoryMetric := &v2beta2.ContainerResourceMetricSource{
+		containerCPUMemoryMetric := &v2.ContainerResourceMetricSource{
 			Name: s.resourceName,
-			Target: v2beta2.MetricTarget{
+			Target: v2.MetricTarget{
 				Type:               s.metadata.Type,
 				AverageUtilization: s.metadata.AverageUtilization,
 				AverageValue:       s.metadata.AverageValue,
 			},
 			Container: s.metadata.ContainerName,
 		}
-		metricSpec = v2beta2.MetricSpec{ContainerResource: containerCPUMemoryMetric, Type: v2beta2.ContainerResourceMetricSourceType}
+		metricSpec = v2.MetricSpec{ContainerResource: containerCPUMemoryMetric, Type: v2.ContainerResourceMetricSourceType}
 	} else {
-		cpuMemoryMetric := &v2beta2.ResourceMetricSource{
+		cpuMemoryMetric := &v2.ResourceMetricSource{
 			Name: s.resourceName,
-			Target: v2beta2.MetricTarget{
+			Target: v2.MetricTarget{
 				Type:               s.metadata.Type,
 				AverageUtilization: s.metadata.AverageUtilization,
 				AverageValue:       s.metadata.AverageValue,
 			},
 		}
-		metricSpec = v2beta2.MetricSpec{Resource: cpuMemoryMetric, Type: v2beta2.ResourceMetricSourceType}
+		metricSpec = v2.MetricSpec{Resource: cpuMemoryMetric, Type: v2.ResourceMetricSourceType}
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics no need for cpu/memory scaler

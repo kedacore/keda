@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	labels "k8s.io/apimachinery/pkg/labels"
 	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 )
@@ -52,10 +52,10 @@ func (mr *MockScalerMockRecorder) Close(ctx interface{}) *gomock.Call {
 }
 
 // GetMetricSpecForScaling mocks base method.
-func (m *MockScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
+func (m *MockScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricSpecForScaling", ctx)
-	ret0, _ := ret[0].([]v2beta2.MetricSpec)
+	ret0, _ := ret[0].([]v2.MetricSpec)
 	return ret0
 }
 
@@ -133,10 +133,10 @@ func (mr *MockPushScalerMockRecorder) Close(ctx interface{}) *gomock.Call {
 }
 
 // GetMetricSpecForScaling mocks base method.
-func (m *MockPushScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
+func (m *MockPushScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricSpecForScaling", ctx)
-	ret0, _ := ret[0].([]v2beta2.MetricSpec)
+	ret0, _ := ret[0].([]v2.MetricSpec)
 	return ret0
 }
 

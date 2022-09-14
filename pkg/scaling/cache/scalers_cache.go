@@ -22,7 +22,7 @@ import (
 	"math"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
@@ -216,8 +216,8 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	return ns, nil
 }
 
-func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	var spec []v2beta2.MetricSpec
+func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var spec []v2.MetricSpec
 	for _, s := range c.Scalers {
 		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
 	}
@@ -311,7 +311,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	return scalersMetrics
 }
 
-func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) float64 {
+func getTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
 	var targetAverageValue float64
 	var metricValue float64
 	for _, metric := range metricSpecs {

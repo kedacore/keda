@@ -24,7 +24,7 @@ import (
 	"unicode"
 
 	"github.com/go-logr/logr"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,14 +70,14 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
+func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2.HorizontalPodAutoscaler, error) {
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
 	if err != nil {
 		return nil, err
 	}
 
-	var behavior *autoscalingv2beta2.HorizontalPodAutoscalerBehavior
-	if r.kubeVersion.MinorVersion >= 18 && scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
+	var behavior *autoscalingv2.HorizontalPodAutoscalerBehavior
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
 		behavior = scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior
 	} else {
 		behavior = nil
@@ -117,13 +117,13 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		maxReplicas = *pausedCount
 	}
 
-	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{
-		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{
+		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 			MinReplicas: minReplicas,
 			MaxReplicas: maxReplicas,
 			Metrics:     scaledObjectMetricSpecs,
 			Behavior:    behavior,
-			ScaleTargetRef: autoscalingv2beta2.CrossVersionObjectReference{
+			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
 				Name:       scaledObject.Spec.ScaleTargetRef.Name,
 				Kind:       gvkr.Kind,
 				APIVersion: gvkr.GroupVersion().String(),
@@ -135,7 +135,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 			Annotations: scaledObject.Annotations,
 		},
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v2beta2",
+			APIVersion: "v2",
 		},
 	}
 
@@ -148,7 +148,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 }
 
 // updateHPAIfNeeded checks whether update of HPA is needed
-func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpa, err := r.newHPAForScaledObject(ctx, logger, scaledObject, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", getHPAName(scaledObject))
@@ -163,8 +163,6 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
-		// check if scaledObject.spec.behavior was defined, because it is supported only on k8s >= 1.18
-		r.checkMinK8sVersionforHPABehavior(logger, scaledObject)
 
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
@@ -183,7 +181,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 }
 
 // deleteAndCreateHpa delete old HPA and create new one
-func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2beta2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	logger.Info("Deleting old HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", foundHpa.Name)
 	if err := r.Client.Delete(ctx, foundHpa); err != nil {
 		logger.Error(err, "Failed to delete old HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -194,8 +192,8 @@ func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logg
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
-func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2beta2.MetricSpec, error) {
-	var scaledObjectMetricSpecs []autoscalingv2beta2.MetricSpec
+func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2.MetricSpec, error) {
+	var scaledObjectMetricSpecs []autoscalingv2.MetricSpec
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
@@ -258,15 +256,6 @@ func updateHealthStatus(scaledObject *kedav1alpha1.ScaledObject, externalMetricN
 		}
 	}
 	status.Health = newHealth
-}
-
-// checkMinK8sVersionforHPABehavior min version (k8s v1.18) for HPA Behavior
-func (r *ScaledObjectReconciler) checkMinK8sVersionforHPABehavior(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) {
-	if r.kubeVersion.MinorVersion < 18 {
-		if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior != nil {
-			logger.Info("Warning: Ignoring scaledObject.spec.behavior, it is only supported on kubernetes version >= 1.18", "kubernetes.version", r.kubeVersion.PrettyVersion)
-		}
-	}
 }
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter

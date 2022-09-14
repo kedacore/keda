@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -20,19 +20,19 @@ import (
 
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
-	specs := []v2beta2.MetricSpec{}
+	specs := []v2.MetricSpec{}
 	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, float64(0), targetAverageValue)
 	// 1 1
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(1, metricName),
 		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, float64(1), targetAverageValue)
 	// 5 5 3 -> 4.333333333333333
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
 		createMetricSpec(3, metricName),
@@ -41,7 +41,7 @@ func TestTargetAverageValue(t *testing.T) {
 	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
 	// 5 5 4 -> 4.666666666666667
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
 		createMetricSpec(4, metricName),
@@ -50,14 +50,14 @@ func TestTargetAverageValue(t *testing.T) {
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
 
-func createMetricSpec(averageValue int64, metricName string) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Target: v2beta2.MetricTarget{
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
 				AverageValue: qty,
 			},
-			Metric: v2beta2.MetricIdentifier{
+			Metric: v2.MetricIdentifier{
 				Name: metricName,
 			},
 		},
@@ -270,7 +270,7 @@ func createScaledObject(minReplicaCount int32, maxReplicaCount int32, multipleSc
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool, metricName string) *mock_scalers.MockScaler {
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue, metricName)}
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(averageValue, metricName)}
 
 	metrics := []external_metrics.ExternalMetricValue{
 		{

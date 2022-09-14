@@ -22,7 +22,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/api/autoscaling/v2"
 	"k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -375,7 +375,7 @@ func (in *HorizontalPodAutoscalerConfig) DeepCopyInto(out *HorizontalPodAutoscal
 	*out = *in
 	if in.Behavior != nil {
 		in, out := &in.Behavior, &out.Behavior
-		*out = new(v2beta2.HorizontalPodAutoscalerBehavior)
+		*out = new(v2.HorizontalPodAutoscalerBehavior)
 		(*in).DeepCopyInto(*out)
 	}
 }

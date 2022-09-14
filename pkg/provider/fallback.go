@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -29,12 +29,12 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) bool {
+func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
 	if scaledObject.Spec.Fallback == nil {
 		return false
 	}
 
-	if metricSpec.External.Target.Type != v2beta2.AverageValueMetricType {
+	if metricSpec.External.Target.Type != v2.AverageValueMetricType {
 		logger.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue")
 		return false
 	}
@@ -42,7 +42,7 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2bet
 	return true
 }
 
-func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
@@ -77,7 +77,7 @@ func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []ext
 	}
 }
 
-func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec) bool {
+func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
 	if !isFallbackEnabled(scaledObject, metricSpec) || !validateFallback(scaledObject) {
 		return false
 	}
@@ -96,7 +96,7 @@ func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		scaledObject.Spec.Fallback.Replicas >= 0
 }
 
-func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
+func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
 	normalisationValue, _ := metricSpec.External.Target.AverageValue.AsInt64()
 	metric := external_metrics.ExternalMetricValue{
@@ -110,7 +110,7 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2beta2.Metr
 	return fallbackMetrics
 }
 
-func (p *KedaProvider) updateStatus(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2beta2.MetricSpec) {
+func (p *KedaProvider) updateStatus(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
 	if fallbackExistsInScaledObject(scaledObject, metricSpec) {

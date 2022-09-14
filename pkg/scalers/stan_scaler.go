@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -38,7 +38,7 @@ type monitorSubscriberInfo struct {
 
 type stanScaler struct {
 	channelInfo *monitorChannelInfo
-	metricType  v2beta2.MetricTargetType
+	metricType  v2.MetricTargetType
 	metadata    stanMetadata
 	httpClient  *http.Client
 	logger      logr.Logger
@@ -211,18 +211,18 @@ func (s *stanScaler) hasPendingMessage() bool {
 	return false
 }
 
-func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("stan-%s", s.metadata.subject))
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: stanMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

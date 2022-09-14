@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -24,7 +24,7 @@ const (
 )
 
 type natsJetStreamScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	stream     *streamDetail
 	metadata   natsJetStreamMetadata
 	httpClient *http.Client
@@ -201,18 +201,18 @@ func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
 	return s.stream.State.LastSequence
 }
 
-func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("nats-jetstream-%s", s.metadata.stream))
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: jetStreamMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *natsJetStreamScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {

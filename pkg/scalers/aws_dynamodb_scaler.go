@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -23,7 +23,7 @@ import (
 )
 
 type awsDynamoDBScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
 	dbClient   dynamodbiface.DynamoDBAPI
 	logger     logr.Logger
@@ -183,16 +183,16 @@ func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 
-	return []v2beta2.MetricSpec{
+	return []v2.MetricSpec{
 		metricSpec,
 	}
 }

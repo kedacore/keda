@@ -58,7 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Change API version of HPA from `autoscaling/v2beta2` to `autoscaling/v2` ([#2462](https://github.com/kedacore/keda/issues/2462))
 
 ### Other
 

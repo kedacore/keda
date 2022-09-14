@@ -24,7 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -48,7 +48,7 @@ type Scaler interface {
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
-	GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec
+	GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec
 
 	IsActive(ctx context.Context) (bool, error)
 
@@ -94,7 +94,7 @@ type ScalerConfig struct {
 	ScalerIndex int
 
 	// MetricType
-	MetricType v2beta2.MetricTargetType
+	MetricType v2.MetricTargetType
 }
 
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
@@ -137,27 +137,27 @@ func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
 }
 
 // GetMetricTargetType helps getting the metric target type of the scaler
-func GetMetricTargetType(config *ScalerConfig) (v2beta2.MetricTargetType, error) {
+func GetMetricTargetType(config *ScalerConfig) (v2.MetricTargetType, error) {
 	switch config.MetricType {
-	case v2beta2.UtilizationMetricType:
+	case v2.UtilizationMetricType:
 		return "", fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
 	case "":
 		// Use AverageValue if no metric type was provided
-		return v2beta2.AverageValueMetricType, nil
+		return v2.AverageValueMetricType, nil
 	default:
 		return config.MetricType, nil
 	}
 }
 
 // GetMetricTarget returns a metric target for a valid given metric target type (Value or AverageValue) and value
-func GetMetricTarget(metricType v2beta2.MetricTargetType, metricValue int64) v2beta2.MetricTarget {
-	target := v2beta2.MetricTarget{
+func GetMetricTarget(metricType v2.MetricTargetType, metricValue int64) v2.MetricTarget {
+	target := v2.MetricTarget{
 		Type: metricType,
 	}
 
 	// Construct the target size as a quantity
 	targetQty := resource.NewQuantity(metricValue, resource.DecimalSI)
-	if metricType == v2beta2.AverageValueMetricType {
+	if metricType == v2.AverageValueMetricType {
 		target.AverageValue = targetQty
 	} else {
 		target.Value = targetQty
@@ -167,15 +167,15 @@ func GetMetricTarget(metricType v2beta2.MetricTargetType, metricValue int64) v2b
 }
 
 // GetMetricTargetMili returns a metric target for a valid given metric target type (Value or AverageValue) and value in mili scale
-func GetMetricTargetMili(metricType v2beta2.MetricTargetType, metricValue float64) v2beta2.MetricTarget {
-	target := v2beta2.MetricTarget{
+func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2.MetricTarget {
+	target := v2.MetricTarget{
 		Type: metricType,
 	}
 
 	// Construct the target size as a quantity
 	metricValueMili := int64(metricValue * 1000)
 	targetQty := resource.NewMilliQuantity(metricValueMili, resource.DecimalSI)
-	if metricType == v2beta2.AverageValueMetricType {
+	if metricType == v2.AverageValueMetricType {
 		target.AverageValue = targetQty
 	} else {
 		target.Value = targetQty

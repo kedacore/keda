@@ -33,7 +33,7 @@ import (
 
 	"github.com/Azure/azure-amqp-common-go/v3/auth"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -49,7 +49,7 @@ const (
 )
 
 type azureLogAnalyticsScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *azureLogAnalyticsMetadata
 	cache      *sessionCache
 	name       string
@@ -264,7 +264,7 @@ func (s *azureLogAnalyticsScaler) IsActive(ctx context.Context) (bool, error) {
 	return s.cache.metricValue > s.metadata.activationThreshold, nil
 }
 
-func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
+func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	err := s.updateCache(ctx)
 
 	if err != nil {
@@ -272,14 +272,14 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) [
 		return nil
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.cache.metricThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

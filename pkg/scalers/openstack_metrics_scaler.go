@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -47,7 +47,7 @@ type openstackMetricAuthenticationMetadata struct {
 }
 
 type openstackMetricScaler struct {
-	metricType   v2beta2.MetricTargetType
+	metricType   v2.MetricTargetType
 	metadata     *openstackMetricMetadata
 	metricClient openstack.Client
 	logger       logr.Logger
@@ -215,22 +215,22 @@ func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstack
 	return authMeta, nil
 }
 
-func (s *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", s.metadata.metricID))
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric,
 		Type:     externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *openstackMetricScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {

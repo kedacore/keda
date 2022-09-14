@@ -26,7 +26,7 @@ import (
 	servicebus "github.com/Azure/azure-service-bus-go"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -50,7 +50,7 @@ const (
 
 type azureServiceBusScaler struct {
 	ctx         context.Context
-	metricType  v2beta2.MetricTargetType
+	metricType  v2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	httpClient  *http.Client
@@ -201,7 +201,7 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 }
 
 // Returns the metric spec to be used by the HPA
-func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := ""
 	if s.metadata.entityType == queue {
 		metricName = s.metadata.queueName
@@ -209,14 +209,14 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2bet
 		metricName = s.metadata.topicName
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // Returns the current metrics to be served to the HPA

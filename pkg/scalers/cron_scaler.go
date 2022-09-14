@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -22,7 +22,7 @@ const (
 )
 
 type cronScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *cronMetadata
 	logger     logr.Logger
 }
@@ -157,16 +157,16 @@ func parseCronTimeFormat(s string) string {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var specReplicas int64 = 1
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
 		Target: GetMetricTarget(s.metricType, specReplicas),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: cronMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics finds the current value of the metric

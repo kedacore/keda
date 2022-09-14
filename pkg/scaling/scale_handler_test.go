@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -80,7 +80,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(1)}
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(1)}
 
 	activeFactory := func() (scalers.Scaler, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
@@ -134,11 +134,11 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, true, isError)
 }
 
-func createMetricSpec(averageValue int64) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int64) v2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Target: v2beta2.MetricTarget{
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
 				AverageValue: qty,
 			},
 		},
