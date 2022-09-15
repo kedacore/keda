@@ -66,6 +66,7 @@ var (
 	prometheusMetricsPath     string
 	adapterClientRequestQPS   float32
 	adapterClientRequestBurst int
+	metricsAPIServerPort      int
 )
 
 func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
@@ -115,12 +116,14 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
+	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:        scheme,
-		Namespace:     namespace,
-		LeaseDuration: leaseDuration,
-		RenewDeadline: renewDeadline,
-		RetryPeriod:   retryPeriod,
+		MetricsBindAddress: metricsBindAddress,
+		Scheme:             scheme,
+		Namespace:          namespace,
+		LeaseDuration:      leaseDuration,
+		RenewDeadline:      renewDeadline,
+		RetryPeriod:        retryPeriod,
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")
@@ -201,6 +204,7 @@ func main() {
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
+	cmd.Flags().IntVar(&metricsAPIServerPort, "port", 8080, "Set the port for the metrics API server")
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
