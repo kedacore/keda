@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,12 +51,13 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	GlobalHTTPTimeout time.Duration
-	Recorder          record.EventRecorder
-
+	Scheme               *runtime.Scheme
+	GlobalHTTPTimeout    time.Duration
+	Recorder             record.EventRecorder
 	scaledJobGenerations *sync.Map
 	scaleHandler         scaling.ScaleHandler
+	SecretsLister        corev1listers.SecretLister
+	SecretsSynced        cache.InformerSynced
 }
 
 type scaledJobMetricsData struct {
@@ -75,9 +77,8 @@ func init() {
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"), r.SecretsLister)
 	r.scaledJobGenerations = &sync.Map{}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
