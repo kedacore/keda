@@ -21,17 +21,16 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	v2 "k8s.io/api/autoscaling/v2"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	v2 "k8s.io/api/autoscaling/v2"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("hpa", func() {

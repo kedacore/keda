@@ -141,7 +141,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		logger.Error(err, "Unable to get cluster object namespace")
 		return nil, nil, err
 	}
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Second, kubeinformers.WithNamespace(objectNamespace))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Hour, kubeinformers.WithNamespace(objectNamespace))
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder, secretInformer.Lister())

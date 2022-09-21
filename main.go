@@ -167,7 +167,7 @@ func main() {
 		setupLog.Error(err, "Unable to get cluster object namespace")
 		os.Exit(1)
 	}
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Second, kubeinformers.WithNamespace(objectNamespace))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Hour, kubeinformers.WithNamespace(objectNamespace))
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	scaleClient, kubeVersion, err := k8s.InitScaleClient(mgr)
