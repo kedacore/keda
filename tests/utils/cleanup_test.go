@@ -21,7 +21,7 @@ func TestRemoveKEDA(t *testing.T) {
 }
 
 func TestRemoveWorkloadIdentityComponents(t *testing.T) {
-	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == "false" {
+	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
 	}
 
@@ -34,7 +34,7 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 }
 
 func TestRemoveAwsIdentityComponents(t *testing.T) {
-	if AwsIdentityTests == "" || AwsIdentityTests == "false" {
+	if AwsIdentityTests == "" || AwsIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
 	}
 

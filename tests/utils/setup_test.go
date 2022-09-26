@@ -55,7 +55,7 @@ func TestSetupHelm(t *testing.T) {
 }
 
 func TestSetupWorkloadIdentityComponents(t *testing.T) {
-	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == "false" {
+	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
 	}
 
@@ -98,7 +98,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 }
 
 func TestSetupAwsIdentityComponents(t *testing.T) {
-	if AwsIdentityTests == "" || AwsIdentityTests == "false" {
+	if AwsIdentityTests == "" || AwsIdentityTests == StringFalse {
 		t.Skip("skipping aws identity tests are disabled")
 	}
 

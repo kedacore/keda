@@ -38,6 +38,9 @@ const (
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
 
 	DefaultHTTPTimeOut = 3000
+
+	StringFalse = "false"
+	StringTrue  = "true"
 )
 
 var _ = godotenv.Load()
