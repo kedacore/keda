@@ -206,7 +206,7 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		"query": []string{s.metadata.query},
 	}.Encode()
 
-	req, err := http.NewRequestWithContext(context.Background(), "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return -1, err
 	}
