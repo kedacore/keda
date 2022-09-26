@@ -394,10 +394,10 @@ func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templa
 func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing oneInvalidOffsetTopic: scale up ---")
 	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
-	data.Commit = trueString
+	data.Commit = StringTrue
 	data.TopicName = oneInvalidOffsetTopic
 	data.ResetPolicy = invalidOffsetGroup
-	data.ScaleToZeroOnInvalid = falseString
+	data.ScaleToZeroOnInvalid = StringFalse
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
