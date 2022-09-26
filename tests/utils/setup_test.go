@@ -111,33 +111,23 @@ func TestSetupAwsIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update jkroepke")
 	require.NoErrorf(t, err, "cannot update jkroepke helm repo - %s", err)
 
+	_, err = ExecuteCommand("helm repo add jetstack https://charts.jetstack.io")
+	require.NoErrorf(t, err, "cannot add jetstack helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update jetstack")
+	require.NoErrorf(t, err, "cannot update jetstack helm repo - %s", err)
+
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AwsIdentityNamespace)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set fullnameOverride=aws-identity-webhook",
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install cert-manager jetstack/cert-manager --namespace %s --set installCRDs=true --wait",
+		AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot install cert-manager - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set fullnameOverride=aws-identity-webhook --wait",
 		AwsIdentityNamespace))
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
-
-	identityDeploymentName := "aws-identity-webhook"
-	success := false
-	for i := 0; i < 20; i++ {
-		deployment, err := KubeClient.AppsV1().Deployments(AwsIdentityNamespace).Get(context.Background(), identityDeploymentName, v1.GetOptions{})
-		require.NoErrorf(t, err, "unable to get aws identity webhook deployment - %s", err)
-
-		readyReplicas := deployment.Status.ReadyReplicas
-		if readyReplicas != 1 {
-			t.Log("aws identity webhook is not ready. sleeping")
-			time.Sleep(5 * time.Second)
-		} else {
-			t.Log("aws identity webhook is ready")
-			success = true
-
-			time.Sleep(2 * time.Minute) // sleep for some time for webhook to setup properly
-			break
-		}
-	}
-
-	require.True(t, success, "expected aws identity webhook deployment to start 1 pods successfully")
+	time.Sleep(2 * time.Minute) // sleep for some time for webhook to setup properly
 }
 
 func TestDeployKEDA(t *testing.T) {

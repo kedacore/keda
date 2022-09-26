@@ -41,6 +41,9 @@ func TestRemoveAwsIdentityComponents(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall aws-identity-webhook --namespace %s", AwsIdentityNamespace))
 	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
 
+	_, err = ExecuteCommand(fmt.Sprintf("helm uninstall cert-manager --namespace %s", AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot uninstall cert-manager - %s", err)
+
 	KubeClient = GetKubernetesClient(t)
 
 	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
