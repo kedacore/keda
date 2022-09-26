@@ -219,6 +219,10 @@ If you prefer to use an authenticated user, you can use a user or service accoun
 
 ## Miscellaneous
 
+### How to use devcontainers and a local Kubernetes cluster
+
+If you are working with devcontainers, Visual Studio Code is running from the container, so if you are using any local Kubernetes cluster like Kind or minikube, you don't have access from the container as default. To solve this and be able to work with devcontainers and a local cluster, you should follow [this official documentation from Microsoft](https://github.com/Microsoft/vscode-dev-containers/tree/main/containers/kubernetes-helm).
+
 ### Setting log levels
 
 You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses
