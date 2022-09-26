@@ -119,10 +119,11 @@ spec:
                                   - value
                                   type: object
                                 type: array
+                                x-kubernetes-list-type: atomic
                               selectPolicy:
                                 description: selectPolicy is used to specify which
                                   policy should be used. If not set, the default value
-                                  MaxPolicySelect is used.
+                                  Max is used.
                                 type: string
                               stabilizationWindowSeconds:
                                 description: 'StabilizationWindowSeconds is the number
@@ -175,10 +176,11 @@ spec:
                                   - value
                                   type: object
                                 type: array
+                                x-kubernetes-list-type: atomic
                               selectPolicy:
                                 description: selectPolicy is used to specify which
                                   policy should be used. If not set, the default value
-                                  MaxPolicySelect is used.
+                                  Max is used.
                                 type: string
                               stabilizationWindowSeconds:
                                 description: 'StabilizationWindowSeconds is the number

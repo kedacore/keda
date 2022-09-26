@@ -419,6 +419,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
+	case "loki":
+		return scalers.NewLokiScaler(config)
 	case "memory":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
