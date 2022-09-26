@@ -254,6 +254,10 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 		$(KUSTOMIZE) edit add annotation --force azure.workload.identity/client-id:${AZURE_SP_APP_ID} azure.workload.identity/tenant-id:${AZURE_SP_TENANT}; \
 	fi
+	if [ "$(AWS_RUN_IDENTITY_TESTS)" = true ]; then \
+		cd config/service_account && \
+		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:arn:aws:iam::${AWS_ACCOUNT_ID}:role/${TEST_CLUSTER_NAME}; \
+	fi
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml

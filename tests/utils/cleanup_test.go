@@ -32,3 +32,16 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 
 	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 }
+
+func TestRemoveAwsIdentityComponents(t *testing.T) {
+	if AwsIdentityTests == "" || AwsIdentityTests == "false" {
+		t.Skip("skipping as workload identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall aws-identity-webhook --namespace %s", AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
+}

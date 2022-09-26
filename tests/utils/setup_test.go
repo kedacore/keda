@@ -97,6 +97,49 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	require.True(t, success, "expected workload identity webhook deployment to start 2 pods successfully")
 }
 
+func TestSetupAwsIdentityComponents(t *testing.T) {
+	if AwsIdentityTests == "" || AwsIdentityTests == "false" {
+		t.Skip("skipping aws identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add jkroepke https://jkroepke.github.io/helm-charts")
+	require.NoErrorf(t, err, "cannot add jkroepke helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update jkroepke")
+	require.NoErrorf(t, err, "cannot update jkroepke helm repo - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, AwsIdentityNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set fullnameOverride=aws-identity-webhook",
+		AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
+
+	identityDeploymentName := "aws-identity-webhook"
+	success := false
+	for i := 0; i < 20; i++ {
+		deployment, err := KubeClient.AppsV1().Deployments(AwsIdentityNamespace).Get(context.Background(), identityDeploymentName, v1.GetOptions{})
+		require.NoErrorf(t, err, "unable to get aws identity webhook deployment - %s", err)
+
+		readyReplicas := deployment.Status.ReadyReplicas
+		if readyReplicas != 1 {
+			t.Log("aws identity webhook is not ready. sleeping")
+			time.Sleep(5 * time.Second)
+		} else {
+			t.Log("aws identity webhook is ready")
+			success = true
+
+			time.Sleep(2 * time.Minute) // sleep for some time for webhook to setup properly
+			break
+		}
+	}
+
+	require.True(t, success, "expected aws identity webhook deployment to start 1 pods successfully")
+}
+
 func TestDeployKEDA(t *testing.T) {
 	out, err := ExecuteCommandWithDir("make deploy", "../..")
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
