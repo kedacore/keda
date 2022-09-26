@@ -127,7 +127,9 @@ jobs:
         id: test
         env:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_RUN_IDENTITY_TESTS: true
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
           AZURE_APP_INSIGHTS_APP_ID: ${{ secrets.AZURE_APP_INSIGHTS_APP_ID }}
           AZURE_APP_INSIGHTS_CONNECTION_STRING: ${{ secrets.AZURE_APP_INSIGHTS_CONNECTION_STRING }}
