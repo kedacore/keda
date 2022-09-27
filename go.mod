@@ -90,6 +90,9 @@ replace (
 	// we need version github.com/gin-gonic/gin >= 1.7.0
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
 
+	// we need a version with license
+	github.com/gobwas/pool => github.com/gobwas/pool v0.2.1
+
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 
