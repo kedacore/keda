@@ -65,6 +65,7 @@ type lokiQueryResult struct {
 	} `json:"data"`
 }
 
+// NewLokiScaler returns a new lokiScaler
 func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -166,6 +167,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	return meta, nil
 }
 
+// IsActive validates the loki query result against the activation threshold
 func (s *lokiScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := s.ExecuteLokiQuery(ctx)
 	if err != nil {
@@ -176,10 +178,12 @@ func (s *lokiScaler) IsActive(ctx context.Context) (bool, error) {
 	return val > s.metadata.activationThreshold, nil
 }
 
+// Close returns a nil error
 func (s *lokiScaler) Close(context.Context) error {
 	return nil
 }
 
+// GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("loki-%s", s.metadata.metricName))
 	externalMetric := &v2.ExternalMetricSource{
@@ -194,6 +198,7 @@ func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
+// ExecuteLokiQuery returns the result of the LogQL query execution
 func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 
 	u, err := url.ParseRequestURI(s.metadata.serverAddress)
@@ -277,10 +282,11 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 	return v, nil
 }
 
+// GetMetrics returns an external metric value for the loki
 func (s *lokiScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecuteLokiQuery(ctx)
 	if err != nil {
-		s.logger.Error(err, "error executing prometheus query")
+		s.logger.Error(err, "error executing loki query")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
