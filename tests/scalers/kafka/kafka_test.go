@@ -35,8 +35,6 @@ var (
 	oneInvalidOffsetTopic  = "kafka-topic-one-invalid-offset"
 	invalidOffsetGroup     = "invalidOffset"
 	topicPartitions        = 3
-	falseString            = "false"
-	trueString             = "true"
 )
 
 type templateData struct {
@@ -279,7 +277,7 @@ func TestScaler(t *testing.T) {
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing earliest policy: scale up ---")
 	data.Params = fmt.Sprintf("--topic %s --group earliest --from-beginning", topic1)
-	data.Commit = falseString
+	data.Commit = StringFalse
 	data.TopicName = topic1
 	data.ResetPolicy = "earliest"
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -314,7 +312,7 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 	t.Log("--- testing latest policy: scale up ---")
 	commitPartition(t, topic1, "latest")
 	data.Params = fmt.Sprintf("--topic %s --group latest", topic1)
-	data.Commit = falseString
+	data.Commit = StringFalse
 	data.TopicName = topic1
 	data.ResetPolicy = "latest"
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -379,10 +377,10 @@ func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing zeroInvalidOffsetTopic: scale up ---")
 	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, invalidOffsetGroup)
-	data.Commit = trueString
+	data.Commit = StringTrue
 	data.TopicName = zeroInvalidOffsetTopic
 	data.ResetPolicy = invalidOffsetGroup
-	data.ScaleToZeroOnInvalid = trueString
+	data.ScaleToZeroOnInvalid = StringTrue
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
@@ -396,10 +394,10 @@ func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templa
 func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing oneInvalidOffsetTopic: scale up ---")
 	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
-	data.Commit = trueString
+	data.Commit = StringTrue
 	data.TopicName = oneInvalidOffsetTopic
 	data.ResetPolicy = invalidOffsetGroup
-	data.ScaleToZeroOnInvalid = falseString
+	data.ScaleToZeroOnInvalid = StringFalse
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_dynamodb_test
+package aws_dynamodb_pod_identity_test
 
 import (
 	"context"
@@ -24,10 +24,10 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-dynamodb-test"
+	testName = "aws-dynamodb-pod-identity-test"
 )
 
 type templateData struct {
@@ -45,29 +45,14 @@ type templateData struct {
 }
 
 const (
-	secretTemplate = `apiVersion: v1
-kind: Secret
-metadata:
-  name: {{.SecretName}}
-  namespace: {{.TestNamespace}}
-data:
-  AWS_ACCESS_KEY_ID: {{.AwsAccessKeyID}}
-  AWS_SECRET_ACCESS_KEY: {{.AwsSecretAccessKey}}
-`
-
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-trigger-auth-aws-credentials
   namespace: {{.TestNamespace}}
 spec:
-  secretTargetRef:
-  - parameter: awsAccessKeyID     # Required.
-    name: {{.SecretName}}         # Required.
-    key: AWS_ACCESS_KEY_ID        # Required.
-  - parameter: awsSecretAccessKey # Required.
-    name: {{.SecretName}}         # Required.
-    key: AWS_SECRET_ACCESS_KEY    # Required.
+  podIdentity:
+    provider: aws-eks
 `
 
 	deploymentTemplate = `
@@ -88,6 +73,7 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
+      serviceAccountName: default
       containers:
       - name: nginx
         image: nginx:1.14.2
@@ -121,6 +107,7 @@ spec:
         expressionAttributeValues: '{{.ExpressionAttributeValues}}'
         targetValue: '1'
         activationTargetValue: '4'
+        identityOwner: operator
 `
 )
 
@@ -278,7 +265,6 @@ func getTemplateData() (templateData, []Template) {
 			KeyConditionExpression:    keyConditionExpression,
 			ExpressionAttributeValues: expressionAttributeValues,
 		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
