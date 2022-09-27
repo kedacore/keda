@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_expression_test
+package aws_cloudwatch_pod_identity_test
 
 import (
 	"context"
@@ -22,49 +22,35 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-cloudwatch-expression-test"
+	testName = "aws-cloudwatch-pod-identity-test"
 )
 
 type templateData struct {
-	TestNamespace              string
-	DeploymentName             string
-	ScaledObjectName           string
-	SecretName                 string
-	AwsAccessKeyID             string
-	AwsSecretAccessKey         string
-	AwsRegion                  string
-	CloudWatchMetricName       string
-	CloudWatchMetricNamespace  string
-	CloudwatchMetricExpression string
+	TestNamespace                  string
+	DeploymentName                 string
+	ScaledObjectName               string
+	SecretName                     string
+	AwsAccessKeyID                 string
+	AwsSecretAccessKey             string
+	AwsRegion                      string
+	CloudWatchMetricName           string
+	CloudWatchMetricNamespace      string
+	CloudWatchMetricDimensionName  string
+	CloudWatchMetricDimensionValue string
 }
 
 const (
-	secretTemplate = `apiVersion: v1
-kind: Secret
-metadata:
-  name: {{.SecretName}}
-  namespace: {{.TestNamespace}}
-data:
-  AWS_ACCESS_KEY_ID: {{.AwsAccessKeyID}}
-  AWS_SECRET_ACCESS_KEY: {{.AwsSecretAccessKey}}
-`
-
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-trigger-auth-aws-credentials
   namespace: {{.TestNamespace}}
 spec:
-  secretTargetRef:
-  - parameter: awsAccessKeyID     # Required.
-    name: {{.SecretName}}         # Required.
-    key: AWS_ACCESS_KEY_ID        # Required.
-  - parameter: awsSecretAccessKey # Required.
-    name: {{.SecretName}}         # Required.
-    key: AWS_SECRET_ACCESS_KEY    # Required.
+  podIdentity:
+    provider: aws-eks
 `
 
 	deploymentTemplate = `
@@ -85,6 +71,7 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
+      serviceAccountName: default
       containers:
       - name: nginx
         image: nginx:1.14.2
@@ -113,13 +100,15 @@ spec:
       metadata:
         awsRegion: {{.AwsRegion}}
         namespace: {{.CloudWatchMetricNamespace}}
-        expression: {{.CloudwatchMetricExpression}}
+        dimensionName: {{.CloudWatchMetricDimensionName}}
+        dimensionValue: {{.CloudWatchMetricDimensionValue}}
         metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
         activationTargetMetricValue: "5"
         minMetricValue: "0"
         metricCollectionTime: "120"
         metricStatPeriod: "30"
+        identityOwner: operator
 `
 )
 
@@ -132,15 +121,14 @@ var (
 	awsAccessKeyID                 = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey             = os.Getenv("AWS_SECRET_KEY")
 	awsRegion                      = os.Getenv("AWS_REGION")
-	cloudwatchMetricNamespace      = "KEDA_EXPRESSION"
+	cloudwatchMetricNamespace      = "KEDA"
 	cloudwatchMetricDimensionName  = "dimensionName"
 	cloudwatchMetricDimensionValue = "dimensionValue"
-	cloudwatchMetricExpression     = fmt.Sprintf("SELECT MAX(\"%s\") FROM \"%s\" WHERE %s = '%s'", cloudwatchMetricName, cloudwatchMetricNamespace, cloudwatchMetricDimensionName, cloudwatchMetricDimensionValue)
 	maxReplicaCount                = 2
 	minReplicaCount                = 0
 )
 
-func TestCloudWatchExpressionScaler(t *testing.T) {
+func TestCloudWatchScaler(t *testing.T) {
 	// setup cloudwatch
 	cloudwatchClient := createCloudWatchClient()
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
@@ -221,18 +209,18 @@ func createCloudWatchClient() *cloudwatch.CloudWatch {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:              testNamespace,
-			DeploymentName:             deploymentName,
-			ScaledObjectName:           scaledObjectName,
-			SecretName:                 secretName,
-			AwsAccessKeyID:             base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-			AwsSecretAccessKey:         base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsRegion:                  awsRegion,
-			CloudWatchMetricName:       cloudwatchMetricName,
-			CloudWatchMetricNamespace:  cloudwatchMetricNamespace,
-			CloudwatchMetricExpression: cloudwatchMetricExpression,
+			TestNamespace:                  testNamespace,
+			DeploymentName:                 deploymentName,
+			ScaledObjectName:               scaledObjectName,
+			SecretName:                     secretName,
+			AwsAccessKeyID:                 base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+			AwsSecretAccessKey:             base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+			AwsRegion:                      awsRegion,
+			CloudWatchMetricName:           cloudwatchMetricName,
+			CloudWatchMetricNamespace:      cloudwatchMetricNamespace,
+			CloudWatchMetricDimensionName:  cloudwatchMetricDimensionName,
+			CloudWatchMetricDimensionValue: cloudwatchMetricDimensionValue,
 		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
