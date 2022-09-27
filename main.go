@@ -174,12 +174,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
-	if err = (&kedacontrollers.PrometheusMetricsReconciler{
-		Client: mgr.GetClient(),
-	}).SetupWithManager(mgr, namespace); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "PrometheusMetrics")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

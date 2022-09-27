@@ -36,10 +36,14 @@ func init() {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 }
 
-func SetTriggerTotals(triggerTotals map[string]int) {
-	triggerTotalsGaugeVec.Reset()
+func IncrementTriggerTotal(triggerType string) {
+	if triggerType != "" {
+		triggerTotalsGaugeVec.WithLabelValues(triggerType).Inc()
+	}
+}
 
-	for triggerType, value := range triggerTotals {
-		triggerTotalsGaugeVec.WithLabelValues(triggerType).Set(float64(value))
+func DecrementTriggerTotal(triggerType string) {
+	if triggerType != "" {
+		triggerTotalsGaugeVec.WithLabelValues(triggerType).Dec()
 	}
 }
