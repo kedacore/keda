@@ -216,7 +216,9 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		return -1, err
 	}
 
-	if s.metadata.lokiAuth != nil && s.metadata.lokiAuth.EnableBasicAuth {
+	if s.metadata.lokiAuth != nil && s.metadata.lokiAuth.EnableBearerAuth {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.lokiAuth.BearerToken))
+	} else if s.metadata.lokiAuth != nil && s.metadata.lokiAuth.EnableBasicAuth {
 		req.SetBasicAuth(s.metadata.lokiAuth.Username, s.metadata.lokiAuth.Password)
 	}
 

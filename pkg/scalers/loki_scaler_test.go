@@ -25,27 +25,27 @@ type lokiMetricIdentifier struct {
 var testLokiMetadata = []parseLokiMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, false},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, false},
 	// all properly formed, with ignoreNullValues
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "ignoreNullValues": "false"}, false},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "ignoreNullValues": "false"}, false},
 	// all properly formed, with activationThreshold
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "activationThreshold": "50"}, false},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "activationThreshold": "50"}, false},
 	// missing serverAddress
-	{map[string]string{"serverAddress": "", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
+	{map[string]string{"serverAddress": "", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
 	// missing metricName
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
 	// missing threshold
 	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
 	// malformed threshold
 	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "one", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
 	// malformed threshold
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "activationThreshold": "one", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "activationThreshold": "one", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)"}, true},
 	// missing query
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": ""}, true},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": ""}, true},
 	// ignoreNullValues with wrong value
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "ignoreNullValues": "xxxx"}, true},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "ignoreNullValues": "xxxx"}, true},
 
-	{map[string]string{"serverAddress": "https://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "unsafeSsl": "true"}, false},
+	{map[string]string{"serverAddress": "https://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "unsafeSsl": "true"}, false},
 }
 
 var lokiMetricIdentifiers = []lokiMetricIdentifier{
@@ -60,10 +60,14 @@ type lokiAuthMetadataTestData struct {
 }
 
 var testLokiAuthMetadata = []lokiAuthMetadataTestData{
+	// success bearer default
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "bearer"}, map[string]string{"bearerToken": "dummy-token"}, false},
+	// fail bearerAuth with no token
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "bearer"}, map[string]string{}, true},
 	// success basicAuth
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
-	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "100", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "basic"}, map[string]string{}, true},
+	{map[string]string{"serverAddress": "http://localhost:3100", "metricName": "syslog_write_total", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "authModes": "basic"}, map[string]string{}, true},
 }
 
 func TestLokiParseMetadata(t *testing.T) {
