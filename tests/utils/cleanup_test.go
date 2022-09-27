@@ -21,7 +21,7 @@ func TestRemoveKEDA(t *testing.T) {
 }
 
 func TestRemoveWorkloadIdentityComponents(t *testing.T) {
-	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == "false" {
+	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
 	}
 
@@ -31,4 +31,20 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 
 	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
+}
+
+func TestRemoveAwsIdentityComponents(t *testing.T) {
+	if AwsIdentityTests == "" || AwsIdentityTests == StringFalse {
+		t.Skip("skipping as workload identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall aws-identity-webhook --namespace %s", AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm uninstall cert-manager --namespace %s", AwsIdentityNamespace))
+	require.NoErrorf(t, err, "cannot uninstall cert-manager - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
 }

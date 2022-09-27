@@ -32,11 +32,15 @@ import (
 
 const (
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
+	AwsIdentityNamespace           = "aws-identity-system"
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
 
 	DefaultHTTPTimeOut = 3000
+
+	StringFalse = "false"
+	StringTrue  = "true"
 )
 
 var _ = godotenv.Load()
@@ -47,6 +51,7 @@ var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
 	AzureADTenantID               = os.Getenv("AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
+	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 )
 
 var (
