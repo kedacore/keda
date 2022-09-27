@@ -135,13 +135,13 @@ spec:
     metadata:
       timezone: Etc/UTC
       start: 0 * * * *
-      end: 0 * * * *
+      end: 1 * * * *
       desiredReplicas: '4'
   - type: cron
     metadata:
       timezone: Etc/UTC
-      start: 0 * * * *
-      end: 0 * * * *
+      start: 1 * * * *
+      end: 2 * * * *
       desiredReplicas: '4'
 `
 
