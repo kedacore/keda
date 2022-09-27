@@ -40,6 +40,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Provide Prometheus metrics for total number of triggers per trigger type. ([#3663](https://github.com/kedacore/keda/issues/3663))
 - **Azure Service Bus**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
 
 ### Improvements
