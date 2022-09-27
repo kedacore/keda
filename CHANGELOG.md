@@ -40,7 +40,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
 
 ### Deprecations
 

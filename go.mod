@@ -61,15 +61,15 @@ require (
 	google.golang.org/genproto v0.0.0-20220829175752-36a9c930ecbf
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.24.3
-	k8s.io/apimachinery v0.24.3
-	k8s.io/apiserver v0.24.3
-	k8s.io/client-go v0.24.3
-	k8s.io/code-generator v0.24.3
+	k8s.io/api v0.24.5
+	k8s.io/apimachinery v0.24.5
+	k8s.io/apiserver v0.24.4
+	k8s.io/client-go v0.24.5
+	k8s.io/code-generator v0.24.4
 	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
 	k8s.io/metrics v0.24.3
-	knative.dev/pkg v0.0.0-20220826162920-93b66e6a8700
+	knative.dev/pkg v0.0.0-20220909150730-20aabd56be23
 	sigs.k8s.io/controller-runtime v0.12.3
 	sigs.k8s.io/custom-metrics-apiserver v1.24.0
 )
@@ -96,6 +96,9 @@ replace (
 
 	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
+
+	// Needed for CVE-2022-3172 https://bugzilla.redhat.com/show_bug.cgi?id=2127804
+	k8s.io/apimachinery => k8s.io/apimachinery v0.24.5
 )
 
 require (
@@ -276,8 +279,8 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.24.2 // indirect
-	k8s.io/component-base v0.24.3 // indirect
+	k8s.io/apiextensions-apiserver v0.24.4 // indirect
+	k8s.io/component-base v0.24.5 // indirect
 	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
