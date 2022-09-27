@@ -221,7 +221,9 @@ If you prefer to use an authenticated user, you can use a user or service accoun
 
 ### How to use devcontainers and a local Kubernetes cluster
 
-If you are working with devcontainers, Visual Studio Code is running from the container, so if you are using any local Kubernetes cluster like Kind or minikube, you don't have access from the container as default. To solve this and be able to work with devcontainers and a local cluster, you should follow [this official documentation from Microsoft](https://github.com/Microsoft/vscode-dev-containers/tree/main/containers/kubernetes-helm).
+When you are working with devcontainers, Visual Studio Code and all the related programs (like `kubectl` or debugging binary) run inside the container. This means that if you are using local clusters like Kind or minikube you won't be able to access them because localhost is the container itself and not the host machine where the cluster is running.
+
+To solve this and be able to work with devcontainers and a local cluster, you should follow [this official documentation from Microsoft](https://github.com/Microsoft/vscode-dev-containers/tree/main/containers/kubernetes-helm).
 
 ### Setting log levels
 
