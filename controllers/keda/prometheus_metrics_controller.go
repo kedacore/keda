@@ -57,15 +57,23 @@ func (r *PrometheusMetricsReconciler) SetupWithManager(mgr ctrl.Manager, watchNa
 func (r *PrometheusMetricsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.Log.WithValues("controller", "PrometheusMetrics")
 
+	if err := r.updateTriggerTotals(ctx, logger); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *PrometheusMetricsReconciler) updateTriggerTotals(ctx context.Context, logger logr.Logger) error {
 	scaledObjects, scaledJobs, err := r.listScaledObjectsAndJobs(ctx, logger)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	triggerTotals := r.countTriggerTotals(scaledObjects, scaledJobs)
 
 	metrics.SetTriggerTotals(triggerTotals)
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *PrometheusMetricsReconciler) listScaledObjectsAndJobs(ctx context.Context, logger logr.Logger) ([]kedav1alpha1.ScaledObject, []kedav1alpha1.ScaledJob, error) {
