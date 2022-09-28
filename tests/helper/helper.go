@@ -28,6 +28,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 )
 
 const (
@@ -55,8 +57,9 @@ var (
 )
 
 var (
-	KubeClient *kubernetes.Clientset
-	KubeConfig *rest.Config
+	KubeClient     *kubernetes.Clientset
+	KedaKubeClient *v1alpha1.KedaV1alpha1Client
+	KubeConfig     *rest.Config
 )
 
 type ExecutionError struct {
@@ -176,6 +179,21 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
 
 	return KubeClient
+}
+
+func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {
+	if KedaKubeClient != nil && KubeConfig != nil {
+		return KedaKubeClient
+	}
+
+	var err error
+	KubeConfig, err = config.GetConfig()
+	assert.NoErrorf(t, err, "cannot fetch kube config file - %s", err)
+
+	KedaKubeClient, err = v1alpha1.NewForConfig(KubeConfig)
+	assert.NoErrorf(t, err, "cannot create keda kubernetes client - %s", err)
+
+	return KedaKubeClient
 }
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.

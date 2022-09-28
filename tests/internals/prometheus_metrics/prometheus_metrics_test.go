@@ -4,6 +4,7 @@
 package prometheus_metrics_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	promModel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -191,7 +194,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be 2 after 2 minute")
 
 	testHPAScalerMetricValue(t)
-	testTriggerTotalMetric(t, data)
+	testTriggerTotalMetric(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -251,15 +254,46 @@ func testHPAScalerMetricValue(t *testing.T) {
 	}
 }
 
-func testTriggerTotalMetric(t *testing.T, data templateData) {
+func testTriggerTotalMetric(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing trigger total metric ---")
-	testTriggerTotalMetricValue(t, map[string]int{"kubernetes-workload": 1})
+	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
 
 	KubectlApplyWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
-	testTriggerTotalMetricValue(t, map[string]int{"kubernetes-workload": 1, "cron": 2})
+	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
 
 	KubectlDeleteWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
-	testTriggerTotalMetricValue(t, map[string]int{"kubernetes-workload": 1})
+	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
+}
+
+func getTriggerTotalsManually(t *testing.T, kc *kubernetes.Clientset) map[string]int {
+	kedaKc := GetKedaKubernetesClient(t)
+
+	triggerTotals := make(map[string]int)
+
+	namespaceList, err := kc.CoreV1().Namespaces().List(context.Background(), v1.ListOptions{})
+	assert.NoErrorf(t, err, "failed to list namespaces - %s", err)
+
+	for _, namespace := range namespaceList.Items {
+		scaledObjectList, err := kedaKc.ScaledObjects(namespace.Name).List(context.Background(), v1.ListOptions{})
+		assert.NoErrorf(t, err, "failed to list scaledObjects in namespace - %s with err - %s", namespace.Name, err)
+
+		for _, scaledObject := range scaledObjectList.Items {
+			for _, trigger := range scaledObject.Spec.Triggers {
+				triggerTotals[trigger.Type]++
+			}
+		}
+
+		scaledJobList, err := kedaKc.ScaledJobs(namespace.Name).List(context.Background(), v1.ListOptions{})
+		assert.NoErrorf(t, err, "failed to list scaledJobs in namespace - %s with err - %s", namespace.Name, err)
+
+		for _, scaledJob := range scaledJobList.Items {
+			for _, trigger := range scaledJob.Spec.Triggers {
+				triggerTotals[trigger.Type]++
+			}
+		}
+	}
+
+	return triggerTotals
 }
 
 func testTriggerTotalMetricValue(t *testing.T, expected map[string]int) {
