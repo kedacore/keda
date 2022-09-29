@@ -48,6 +48,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/metrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -76,14 +77,22 @@ type ScaledObjectReconciler struct {
 	kubeVersion              kedautil.K8sVersion
 }
 
-// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
-var isScalableCache *sync.Map
+var (
+	// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
+	isScalableCache *sync.Map
+
+	scaledObjectTriggers     map[string][]string
+	scaledObjectTriggersLock *sync.Mutex
+)
 
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
 	isScalableCache = &sync.Map{}
 	isScalableCache.Store("deployments.apps", true)
 	isScalableCache.Store("statefulsets.apps", true)
+
+	scaledObjectTriggers = make(map[string][]string)
+	scaledObjectTriggersLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
@@ -166,8 +175,9 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledObject.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject)
+		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject, req.NamespacedName.String())
 	}
+	r.updateTriggerTotals(reqLogger, scaledObject, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
@@ -468,4 +478,46 @@ func (r *ScaledObjectReconciler) scaledObjectGenerationChanged(logger logr.Logge
 		}
 	}
 	return true, nil
+}
+
+func (r *ScaledObjectReconciler) updateTriggerTotals(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
+	specChanged, err := r.scaledObjectGenerationChanged(logger, scaledObject)
+	if err != nil {
+		logger.Error(err, "failed to update trigger totals")
+		return
+	}
+
+	if !specChanged {
+		return
+	}
+
+	scaledObjectTriggersLock.Lock()
+	defer scaledObjectTriggersLock.Unlock()
+
+	if triggerTypes, ok := scaledObjectTriggers[namespacedName]; ok {
+		for _, triggerType := range triggerTypes {
+			metrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
+	for _, trigger := range scaledObject.Spec.Triggers {
+		metrics.IncrementTriggerTotal(trigger.Type)
+		triggerTypes = append(triggerTypes, trigger.Type)
+	}
+
+	scaledObjectTriggers[namespacedName] = triggerTypes
+}
+
+func (r *ScaledObjectReconciler) updateTriggerTotalsOnDelete(namespacedName string) {
+	scaledObjectTriggersLock.Lock()
+	defer scaledObjectTriggersLock.Unlock()
+
+	if triggerTypes, ok := scaledObjectTriggers[namespacedName]; ok {
+		for _, triggerType := range triggerTypes {
+			metrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	delete(scaledObjectTriggers, namespacedName)
 }
