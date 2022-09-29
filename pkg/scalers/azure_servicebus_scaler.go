@@ -68,7 +68,6 @@ type azureServiceBusMetadata struct {
 	entityType              entityType
 	fullyQualifiedNamespace string
 	useRegex                bool
-	regexPattern            *regexp.Regexp
 	entityNameRegex         *regexp.Regexp
 	operation               string
 	scalerIndex             int
@@ -381,7 +380,7 @@ func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureS
 		}
 
 		for _, queue := range page.QueueRuntimeProperties {
-			if meta.regexPattern.FindString(queue.QueueName) == queue.QueueName {
+			if meta.entityNameRegex.FindString(queue.QueueName) == queue.QueueName {
 				messageCounts = append(messageCounts, int64(queue.ActiveMessageCount))
 			}
 		}
@@ -400,6 +399,8 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta 
 		if subscriptionEntity == nil {
 			return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", meta.subscriptionName, meta.topicName)
 		}
+
+		return int64(subscriptionEntity.ActiveMessageCount), nil
 	}
 
 	messageCounts := make([]int64, 0)
@@ -412,7 +413,7 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta 
 		}
 
 		for _, subscription := range page.SubscriptionRuntimeProperties {
-			if meta.regexPattern.FindString(subscription.SubscriptionName) == subscription.SubscriptionName {
+			if meta.entityNameRegex.FindString(subscription.SubscriptionName) == subscription.SubscriptionName {
 				messageCounts = append(messageCounts, int64(subscription.ActiveMessageCount))
 			}
 		}

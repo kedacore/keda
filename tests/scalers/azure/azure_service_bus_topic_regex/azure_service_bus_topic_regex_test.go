@@ -10,7 +10,8 @@ import (
 	"os"
 	"testing"
 
-	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,7 +134,7 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
-	sbTopicManager, sbTopic := setupServiceBusTopicAndSubscription(t)
+	client, adminClient := setupServiceBusTopicAndSubscription(t)
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -144,68 +145,48 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc, sbTopic, data)
+	testScale(t, kc, client, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupServiceBusTopic(t, sbTopicManager)
+	cleanupServiceBusTopic(t, adminClient, topicName)
 }
 
-func setupServiceBusTopicAndSubscription(t *testing.T) (*servicebus.TopicManager, *servicebus.Topic) {
-	// Connect to service bus namespace.
-	sbNamespace, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connectionString))
+func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *admin.Client) {
+	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	sbTopicManager := sbNamespace.NewTopicManager()
+	// Delete the topic if already exists
+	_, _ = adminClient.DeleteTopic(context.Background(), topicName, nil)
 
-	createTopicAndSubscriptions(t, sbNamespace, sbTopicManager)
+	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
+	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
 
-	sbTopic, err := sbNamespace.NewTopic(topicName)
-	assert.NoErrorf(t, err, "cannot create client for topic - %s", err)
+	subscriptionName1 := fmt.Sprintf("%s-1", subscriptionPrefix)
+	setupSubscription(t, adminClient, topicName, subscriptionName1)
+	subscriptionName2 := fmt.Sprintf("%s-2", subscriptionPrefix)
+	setupSubscription(t, adminClient, topicName, subscriptionName2)
 
-	return sbTopicManager, sbTopic
+	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
+	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
+
+	return client, adminClient
 }
 
-func createTopicAndSubscriptions(t *testing.T, sbNamespace *servicebus.Namespace, sbTopicManager *servicebus.TopicManager) {
-	// Delete service bus topic if already exists.
-	sbTopics, err := sbTopicManager.List(context.Background())
-	assert.NoErrorf(t, err, "cannot fetch topic list for service bus namespace - %s", err)
+func setupSubscription(t *testing.T, adminClient *admin.Client, topicName, subscriptionName string) {
+	_, err := adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
+	assert.NoErrorf(t, err, "cannot create the subscription 1 - %s", err)
 
-	// Delete service bus topic if already exists.
-	for _, topic := range sbTopics {
-		if topic.Name == topicName {
-			t.Log("Service Bus Topic already exists. Deleting.")
-			err := sbTopicManager.Delete(context.Background(), topicName)
-			assert.NoErrorf(t, err, "cannot delete existing service bus topic - %s", err)
-		}
-	}
+	_, err = adminClient.DeleteRule(context.Background(), topicName, subscriptionName, "$Default", &admin.DeleteRuleOptions{})
+	assert.NoErrorf(t, err, "cannot delete default filter rule for subscription - %s", err)
 
-	// Create service bus topic.
-	_, err = sbTopicManager.Put(context.Background(), topicName)
-	assert.NoErrorf(t, err, "cannot create service bus topic - %s", err)
-
-	// Create subscription within topic
-	sbSubscriptionManager, err := sbNamespace.NewSubscriptionManager(topicName)
-	assert.NoErrorf(t, err, "cannot create subscription manager for topic - %s", err)
-
-	sbSub1, err := sbSubscriptionManager.Put(context.Background(), fmt.Sprintf("%s-1", subscriptionPrefix))
-	assert.NoErrorf(t, err, "cannot create subscription 1 for topic - %s", err)
-
-	err = sbSubscriptionManager.DeleteRule(context.Background(), sbSub1.Name, "$Default")
-	assert.NoErrorf(t, err, "cannot delete default rule for subscription 1 - %s", err)
-
-	label1 := "SUB1"
-	_, err = sbSubscriptionManager.PutRule(context.Background(), sbSub1.Name, "testRule", servicebus.CorrelationFilter{Label: &label1})
-	assert.NoErrorf(t, err, "cannot create filter rule for subscription 1 - %s", err)
-
-	sbSub2, err := sbSubscriptionManager.Put(context.Background(), fmt.Sprintf("%s-2", subscriptionPrefix))
-	assert.NoErrorf(t, err, "cannot create subscription 2 for topic - %s", err)
-
-	err = sbSubscriptionManager.DeleteRule(context.Background(), sbSub2.Name, "$Default")
-	assert.NoErrorf(t, err, "cannot delete default rule for subscription 2 - %s", err)
-
-	label2 := "SUB2"
-	_, err = sbSubscriptionManager.PutRule(context.Background(), sbSub2.Name, "testRule", servicebus.CorrelationFilter{Label: &label2})
+	ruleName := "filterRule"
+	_, err = adminClient.CreateRule(context.Background(), topicName, subscriptionName, &admin.CreateRuleOptions{
+		Name: &ruleName,
+		Filter: &admin.CorrelationFilter{
+			To: &subscriptionName,
+		},
+	})
 	assert.NoErrorf(t, err, "cannot create filter rule for subscription - %s", err)
 }
 
@@ -230,13 +211,13 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Topic, data templateData) {
+func testScale(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client, data templateData) {
 	t.Log("--- testing scale up ---")
 
 	// send messages to subscription 1
-	addMessages(sbTopic, 2, "SUB1")
+	addMessages(t, client, fmt.Sprintf("%s-1", subscriptionPrefix), 2)
 	// send messages to subscription 2
-	addMessages(sbTopic, 4, "SUB2")
+	addMessages(t, client, fmt.Sprintf("%s-2", subscriptionPrefix), 4)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 6, 60, 1),
 		"replica count should be 1 after 1 minute")
@@ -253,18 +234,20 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, sbTopic *servicebus.Top
 		"replica count should be 3 after 1 minute")
 }
 
-func addMessages(sbTopic *servicebus.Topic, count int, label string) {
+func addMessages(t *testing.T, client *azservicebus.Client, subscriptionName string, count int) {
+	sender, err := client.NewSender(topicName, nil)
+	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
 	for i := 0; i < count; i++ {
-		msg := servicebus.NewMessageFromString(fmt.Sprintf("Message - %d", i))
-		if label != "" {
-			msg.Label = label
-		}
-		_ = sbTopic.Send(context.Background(), msg)
+		msg := fmt.Sprintf("Message - %d", i)
+		_ = sender.SendMessage(context.Background(), &azservicebus.Message{
+			Body: []byte(msg),
+			To:   &subscriptionName,
+		}, nil)
 	}
 }
 
-func cleanupServiceBusTopic(t *testing.T, sbTopicManager *servicebus.TopicManager) {
+func cleanupServiceBusTopic(t *testing.T, adminClient *admin.Client, topicName string) {
 	t.Log("--- cleaning up ---")
-	err := sbTopicManager.Delete(context.Background(), topicName)
+	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
 	assert.NoErrorf(t, err, "cannot delete service bus topic - %s", err)
 }
