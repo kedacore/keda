@@ -104,6 +104,27 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 	// invalid activation message count
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount, "activationMessageCount": "AA"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// queue with incorrect useRegex value
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "ababa"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// properly formed queues with regex
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "false"}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": avgOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": sumOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": maxOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "random"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// queue with invalid regex string
+	{map[string]string{"queueName": "*", "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "avg"}, true, queue, defaultSuffix, map[string]string{}, ""},
+
+	// subscription with incorrect useRegex value
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "ababa"}, true, subscription, defaultSuffix, map[string]string{}, ""},
+	// properly formed subscriptions with regex
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "false"}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": avgOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": sumOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": maxOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "random"}, true, subscription, defaultSuffix, map[string]string{}, ""},
+	// subscription with invalid regex string
+	{map[string]string{"topicName": topicName, "subscriptionName": "*", "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "avg"}, true, subscription, defaultSuffix, map[string]string{}, ""},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{

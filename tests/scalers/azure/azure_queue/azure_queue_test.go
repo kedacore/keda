@@ -1,17 +1,17 @@
 //go:build e2e
 // +build e2e
 
-package azure_blob_test
+package azure_queue_test
 
 import (
 	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
+	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-storage-queue-go/azqueue"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,10 +24,10 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-blob-test"
+	testName = "azure-queue-test"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	containerName    = fmt.Sprintf("%s-container-%d", testName, GetRandomNumber())
+	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
 )
 
 type templateData struct {
@@ -45,7 +45,7 @@ type templateData struct {
 	Connection       string
 	DeploymentName   string
 	ScaledObjectName string
-	ContainerName    string
+	QueueName        string
 }
 
 const (
@@ -77,23 +77,14 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-      nodeSelector:
-        kubernetes.io/os: linux
       containers:
         - name: {{.DeploymentName}}
-          image: slurplk/blob-consumer:latest
+          image: ghcr.io/kedacore/tests-azure-queue
           resources:
           env:
             - name: FUNCTIONS_WORKER_RUNTIME
-              value: dotnet
-            - name: AzureFunctionsWebHost__hostid
-              value: {{.DeploymentName}}
+              value: node
             - name: AzureWebJobsStorage
-              valueFrom:
-                secretKeyRef:
-                  name: {{.SecretName}}
-                  key: AzureWebJobsStorage
-            - name: TEST_STORAGE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
                   name: {{.SecretName}}
@@ -109,26 +100,25 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 10
+  pollingInterval: 5
   minReplicaCount: 0
-  maxReplicaCount: 2
+  maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
-    - type: azure-blob
+    - type: azure-queue
       metadata:
-        blobContainerName: {{.ContainerName}}
-        blobCount: '1'
-        activationBlobCount: '5'
+        queueName: {{.QueueName}}
         connectionFromEnv: AzureWebJobsStorage
+        activationQueueLength: "5"
 `
 )
 
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure blob test")
+	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
 
-	containerURL := createContainer(t)
+	queueURL, messageURL := createQueue(t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -140,31 +130,33 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testActivation(t, kc, containerURL)
-	testScaleUp(t, kc, containerURL)
-	testScaleDown(t, kc, containerURL)
+	testActivation(t, kc, messageURL)
+	testScaleUp(t, kc, messageURL)
+	testScaleDown(t, kc, messageURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupContainer(t, containerURL)
+	cleanupQueue(t, queueURL)
 }
 
-func createContainer(t *testing.T) azblob.ContainerURL {
-	// Create Blob Container
+func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
+	// Create Queue
 	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
-	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
+	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
 		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		connectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(containerName)
+	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
+	serviceURL := azqueue.NewServiceURL(*endpoint, p)
+	queueURL := serviceURL.NewQueueURL(queueName)
 
-	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessContainer)
-	assert.NoErrorf(t, err, "cannot create blob container - %s", err)
+	_, err = queueURL.Create(context.Background(), azqueue.Metadata{})
+	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 
-	return containerURL
+	messageURL := queueURL.NewMessagesURL()
+	t.Logf("Queue %s created", queueName)
+	return queueURL, messageURL
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -176,7 +168,7 @@ func getTemplateData() (templateData, []Template) {
 			Connection:       base64ConnectionString,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
-			ContainerName:    containerName,
+			QueueName:        queueName,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
@@ -184,53 +176,42 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing activation ---")
-	addFiles(t, containerURL, 4)
+	addMessages(t, messageURL, 3)
+
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing scale up ---")
-	addFiles(t, containerURL, 10)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	addMessages(t, messageURL, 5)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
 	t.Log("--- testing scale down ---")
-
-	for i := 0; i < 10; i++ {
-		blobName := fmt.Sprintf("blob-%d", i)
-		blobURL := containerURL.NewBlockBlobURL(blobName)
-
-		_, err := blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude,
-			azblob.BlobAccessConditions{})
-
-		assert.NoErrorf(t, err, "cannot delete blob - %s", err)
-	}
+	_, err := messageURL.Clear(context.Background())
+	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
-func addFiles(t *testing.T, containerURL azblob.ContainerURL, count int) {
-	data := "Hello World!"
-
+func addMessages(t *testing.T, messageURL azqueue.MessagesURL, count int) {
 	for i := 0; i < count; i++ {
-		blobName := fmt.Sprintf("blob-%d", i)
-		blobURL := containerURL.NewBlockBlobURL(blobName)
-
-		_, err := blobURL.Upload(context.Background(), strings.NewReader(data),
-			azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{},
-			azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
-
-		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
+		msg := fmt.Sprintf("Message - %d", i)
+		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
+		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
+		t.Logf("Message queued")
 	}
 }
 
-func cleanupContainer(t *testing.T, containerURL azblob.ContainerURL) {
+func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
 	t.Log("--- cleaning up ---")
-	_, err := containerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
-	assert.NoErrorf(t, err, "cannot delete storage container - %s", err)
+	_, err := queueURL.Delete(context.Background())
+	assert.NoErrorf(t, err, "cannot delete storage queue - %s", err)
+	t.Logf("Queue %s deleted", queueName)
 }
