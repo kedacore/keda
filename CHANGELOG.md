@@ -71,6 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Prometheus Scaler:** Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
 - **Pulsar Scaler:** Add support for bearer token and basic auth ([#3844](https://github.com/kedacore/keda/issues/3844))
 - **Pulsar Scaler:** Add support for partitioned topics ([#3833](https://github.com/kedacore/keda/issues/3833))
+- **Eventhub Scaler:** Add new Checkpoint Strategy for Dapr ([#3022](https://github.com/kedacore/keda/issues/3022))
 
 ### Fixes
 
