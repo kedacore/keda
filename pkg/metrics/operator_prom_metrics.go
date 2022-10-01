@@ -30,10 +30,20 @@ var (
 		},
 		[]string{"type"},
 	)
+
+	crdTotalsGaugeVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "keda_operator",
+			Subsystem: "crd",
+			Name:      "totals",
+		},
+		[]string{"type", "namespace"},
+	)
 )
 
 func init() {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
+	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 }
 
 func IncrementTriggerTotal(triggerType string) {
@@ -46,4 +56,20 @@ func DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerTotalsGaugeVec.WithLabelValues(triggerType).Dec()
 	}
+}
+
+func IncrementCRDTotal(crdType, namespace string) {
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Inc()
+}
+
+func DecrementCRDTotal(crdType, namespace string) {
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
 }

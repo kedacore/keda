@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/metrics"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -38,6 +40,20 @@ type TriggerAuthenticationReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+}
+
+type triggerAuthMetricsData struct {
+	namespace string
+}
+
+var (
+	triggerAuthMetricsMap  map[string]triggerAuthMetricsData
+	triggerAuthMetricsLock *sync.Mutex
+)
+
+func init() {
+	triggerAuthMetricsMap = make(map[string]triggerAuthMetricsData)
+	triggerAuthMetricsLock = &sync.Mutex{}
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=triggerauthentications;triggerauthentications/status,verbs="*"
@@ -50,6 +66,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	err := r.Client.Get(ctx, req.NamespacedName, triggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			r.updateMetricsOnDelete(req.NamespacedName.String())
 			return ctrl.Result{}, nil
 		}
 		reqLogger.Error(err, "Failed ot get TriggerAuthentication")
@@ -57,9 +74,11 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	if triggerAuthentication.GetDeletionTimestamp() != nil {
+		r.updateMetricsOnDelete(req.NamespacedName.String())
 		r.Recorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationDeleted, "TriggerAuthentication was deleted")
 		return ctrl.Result{}, nil
 	}
+	r.updateMetrics(triggerAuthentication, req.NamespacedName.String())
 
 	if triggerAuthentication.ObjectMeta.Generation == 1 {
 		r.Recorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationAdded, "New TriggerAuthentication configured")
@@ -73,4 +92,28 @@ func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) err
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
+}
+
+func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) {
+	triggerAuthMetricsLock.Lock()
+	defer triggerAuthMetricsLock.Unlock()
+
+	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
+		metrics.DecrementCRDTotal("trigger_authentication", metricsData.namespace)
+	}
+
+	metrics.IncrementCRDTotal("trigger_authentication", triggerAuth.Namespace)
+	triggerAuthMetricsMap[namespacedName] = triggerAuthMetricsData{namespace: triggerAuth.Namespace}
+}
+
+// this method is idempotent, so it can be called multiple times without side-effects
+func (r *TriggerAuthenticationReconciler) updateMetricsOnDelete(namespacedName string) {
+	triggerAuthMetricsLock.Lock()
+	defer triggerAuthMetricsLock.Unlock()
+
+	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
+		metrics.DecrementCRDTotal("trigger_authentication", metricsData.namespace)
+	}
+
+	delete(triggerAuthMetricsMap, namespacedName)
 }
