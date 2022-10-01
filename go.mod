@@ -3,7 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.18
 
 require (
-	cloud.google.com/go/compute v1.9.0
+	cloud.google.com/go/compute v1.10.0
 	cloud.google.com/go/monitoring v1.6.0
 	cloud.google.com/go/storage v1.26.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
@@ -60,8 +60,8 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	go.mongodb.org/mongo-driver v1.10.2
-	google.golang.org/api v0.95.0
-	google.golang.org/genproto v0.0.0-20220909194730-69f6226f97e5
+	google.golang.org/api v0.96.0
+	google.golang.org/genproto v0.0.0-20220915135415-7fd63a7952de
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
 	k8s.io/api v0.24.5
