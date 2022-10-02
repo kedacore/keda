@@ -67,7 +67,7 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   connection: {{.EventHubConnection}}
-  storageConnection: {{.StorageConnection}} 
+  storageConnection: {{.StorageConnection}}
 `
 
 	deploymentTemplate = `
