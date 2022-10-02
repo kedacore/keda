@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/metrics"
 )
 
 // ClusterTriggerAuthenticationReconciler reconciles a ClusterTriggerAuthentication object
@@ -38,6 +40,20 @@ type ClusterTriggerAuthenticationReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+}
+
+type clusterTriggerAuthMetricsData struct {
+	namespace string
+}
+
+var (
+	clusterTriggerAuthMetricsMap  map[string]clusterTriggerAuthMetricsData
+	clusterTriggerAuthMetricsLock *sync.Mutex
+)
+
+func init() {
+	clusterTriggerAuthMetricsMap = make(map[string]clusterTriggerAuthMetricsData)
+	clusterTriggerAuthMetricsLock = &sync.Mutex{}
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;clustertriggerauthentications/status,verbs="*"
@@ -50,6 +66,7 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	err := r.Client.Get(ctx, req.NamespacedName, clusterTriggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			r.updateMetricsOnDelete(req.NamespacedName.String())
 			return ctrl.Result{}, nil
 		}
 		reqLogger.Error(err, "Failed ot get ClusterTriggerAuthentication")
@@ -57,9 +74,11 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	}
 
 	if clusterTriggerAuthentication.GetDeletionTimestamp() != nil {
+		r.updateMetricsOnDelete(req.NamespacedName.String())
 		r.Recorder.Event(clusterTriggerAuthentication, corev1.EventTypeNormal, eventreason.ClusterTriggerAuthenticationDeleted, "ClusterTriggerAuthentication was deleted")
 		return ctrl.Result{}, nil
 	}
+	r.updateMetrics(clusterTriggerAuthentication, req.NamespacedName.String())
 
 	if clusterTriggerAuthentication.ObjectMeta.Generation == 1 {
 		r.Recorder.Event(clusterTriggerAuthentication, corev1.EventTypeNormal, eventreason.ClusterTriggerAuthenticationAdded, "New ClusterTriggerAuthentication configured")
@@ -72,4 +91,28 @@ func (r *ClusterTriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manag
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.ClusterTriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
+}
+
+func (r *ClusterTriggerAuthenticationReconciler) updateMetrics(clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication, namespacedName string) {
+	clusterTriggerAuthMetricsLock.Lock()
+	defer clusterTriggerAuthMetricsLock.Unlock()
+
+	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
+		metrics.DecrementCRDTotal("cluster_trigger_authentication", metricsData.namespace)
+	}
+
+	metrics.IncrementCRDTotal("cluster_trigger_authentication", clusterTriggerAuth.Namespace)
+	clusterTriggerAuthMetricsMap[namespacedName] = clusterTriggerAuthMetricsData{namespace: clusterTriggerAuth.Namespace}
+}
+
+// this method is idempotent, so it can be called multiple times without side-effects
+func (r *ClusterTriggerAuthenticationReconciler) updateMetricsOnDelete(namespacedName string) {
+	clusterTriggerAuthMetricsLock.Lock()
+	defer clusterTriggerAuthMetricsLock.Unlock()
+
+	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
+		metrics.DecrementCRDTotal("cluster_trigger_authentication", metricsData.namespace)
+	}
+
+	delete(clusterTriggerAuthMetricsMap, namespacedName)
 }
