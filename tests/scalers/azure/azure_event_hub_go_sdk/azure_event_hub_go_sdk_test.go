@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_event_hub_go_sdk
+package azure_event_hub_go_sdk_test
 
 import (
 	"context"

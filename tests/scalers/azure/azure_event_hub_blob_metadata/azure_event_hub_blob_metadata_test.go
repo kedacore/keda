@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_event_hub_blob_metadata
+package azure_event_hub_blob_metadata_test
 
 import (
 	"context"
