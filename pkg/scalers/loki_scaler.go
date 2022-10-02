@@ -24,8 +24,8 @@ const (
 	lokiThreshold           = "threshold"
 	lokiActivationThreshold = "activationThreshold"
 	lokiNamespace           = "namespace"
-	lokiCortexScopeOrgID    = "cortexOrgID"
-	lokiCortexHeaderKey     = "X-Scope-OrgID"
+	tenantName              = "tenantName"
+	tenantNameHeaderKey     = "X-Scope-OrgID"
 	lokiIgnoreNullValues    = "ignoreNullValues"
 )
 
@@ -48,7 +48,7 @@ type lokiMetadata struct {
 	activationThreshold float64
 	lokiAuth            *authentication.AuthMeta
 	scalerIndex         int
-	cortexOrgID         string
+	tenantName          string
 	ignoreNullValues    bool
 	unsafeSsl           bool
 }
@@ -132,8 +132,8 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 		meta.activationThreshold = t
 	}
 
-	if val, ok := config.TriggerMetadata[lokiCortexScopeOrgID]; ok && val != "" {
-		meta.cortexOrgID = val
+	if val, ok := config.TriggerMetadata[tenantName]; ok && val != "" {
+		meta.tenantName = val
 	}
 
 	meta.ignoreNullValues = lokiDefaultIgnoreNullValues
@@ -222,20 +222,20 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		req.SetBasicAuth(s.metadata.lokiAuth.Username, s.metadata.lokiAuth.Password)
 	}
 
-	if s.metadata.cortexOrgID != "" {
-		req.Header.Add(lokiCortexHeaderKey, s.metadata.cortexOrgID)
+	if s.metadata.tenantName != "" {
+		req.Header.Add(tenantNameHeaderKey, s.metadata.tenantName)
 	}
 
 	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
 	}
+	defer r.Body.Close()
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return -1, err
 	}
-	_ = r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
 		err := fmt.Errorf("loki query api returned error. status: %d response: %s", r.StatusCode, string(b))

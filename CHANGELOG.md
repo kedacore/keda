@@ -37,11 +37,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.0.0](#v100)
 
 ## Unreleased
-- **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
 
 ### New
 
 - **Azure Service Bus**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
+- **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
 
 ### Improvements
 

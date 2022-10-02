@@ -257,10 +257,10 @@ func TestLokiScalerCortexHeader(t *testing.T) {
 		isError:          false,
 		ignoreNullValues: true,
 	}
-	cortexOrgValue := "my-org"
+	tenantName := "Tenant1"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		reqHeader := request.Header.Get(promCortexHeaderKey)
-		assert.Equal(t, reqHeader, cortexOrgValue)
+		assert.Equal(t, reqHeader, tenantName)
 		writer.WriteHeader(testData.responseStatus)
 		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
 			t.Fatal(err)
@@ -270,7 +270,7 @@ func TestLokiScalerCortexHeader(t *testing.T) {
 	scaler := lokiScaler{
 		metadata: &lokiMetadata{
 			serverAddress:    server.URL,
-			cortexOrgID:      cortexOrgValue,
+			tenantName:       tenantName,
 			ignoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
