@@ -6,12 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -21,6 +19,7 @@ import (
 const (
 	azureAppInsightsMetricID                      = "metricId"
 	azureAppInsightsTargetValueName               = "targetValue"
+	azureAppInsightsActivationTargetValueName     = "activationTargetValue"
 	azureAppInsightsAppIDName                     = "applicationInsightsId"
 	azureAppInsightsMetricAggregationTimespanName = "metricAggregationTimespan"
 	azureAppInsightsMetricAggregationTypeName     = "metricAggregationType"
@@ -29,17 +28,17 @@ const (
 )
 
 type azureAppInsightsMetadata struct {
-	azureAppInsightsInfo azure.AppInsightsInfo
-	targetValue          int64
-	scalerIndex          int
+	azureAppInsightsInfo  azure.AppInsightsInfo
+	targetValue           float64
+	activationTargetValue float64
+	scalerIndex           int
 }
 
-var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
-
 type azureAppInsightsScaler struct {
-	metricType  v2beta2.MetricTargetType
+	metricType  v2.MetricTargetType
 	metadata    *azureAppInsightsMetadata
-	podIdentity kedav1alpha1.PodIdentityProvider
+	podIdentity kedav1alpha1.AuthPodIdentity
+	logger      logr.Logger
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
@@ -49,7 +48,9 @@ func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseAzureAppInsightsMetadata(config)
+	logger := InitializeLogger(config, "azure_app_insights_scaler")
+
+	meta, err := parseAzureAppInsightsMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %s", err)
 	}
@@ -58,10 +59,11 @@ func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
+		logger:      logger,
 	}, nil
 }
 
-func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetadata, error) {
+func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
 	meta := azureAppInsightsMetadata{
 		azureAppInsightsInfo: azure.AppInsightsInfo{},
 	}
@@ -70,10 +72,20 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseInt(val, 10, 64)
+	meta.targetValue, err = strconv.ParseFloat(val, 64)
 	if err != nil {
-		azureAppInsightsLog.Error(err, "Error parsing azure app insights metadata", "targetValue", targetValueName)
-		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", targetValueName, err.Error())
+		logger.Error(err, "Error parsing azure app insights metadata", azureAppInsightsTargetValueName, azureAppInsightsTargetValueName)
+		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsTargetValueName, err.Error())
+	}
+
+	meta.activationTargetValue = 0
+	val, err = getParameterFromConfig(config, azureAppInsightsActivationTargetValueName, false)
+	if err == nil {
+		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		if err != nil {
+			logger.Error(err, "Error parsing azure app insights metadata", azureAppInsightsActivationTargetValueName, azureAppInsightsActivationTargetValueName)
+			return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsActivationTargetValueName, err.Error())
+		}
 	}
 
 	val, err = getParameterFromConfig(config, azureAppInsightsMetricID, false)
@@ -156,41 +168,37 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig) (*azureAppInsightsMetad
 func (s *azureAppInsightsScaler) IsActive(ctx context.Context) (bool, error) {
 	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
 	if err != nil {
-		azureAppInsightsLog.Error(err, "error getting azure app insights metric")
+		s.logger.Error(err, "error getting azure app insights metric")
 		return false, err
 	}
 
-	return val > 0, nil
+	return val > s.metadata.activationTargetValue, nil
 }
 
 func (s *azureAppInsightsScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
 	if err != nil {
-		azureAppInsightsLog.Error(err, "error getting azure app insights metric")
+		s.logger.Error(err, "error getting azure app insights metric")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(val, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -2,8 +2,6 @@ name: FOSSA
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build:
@@ -12,8 +10,10 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version: 1.18
       - run: go version
       - uses: fossas/fossa-action@main
+        name: Scanning with FOSSA
         with:
-          api-key: "b0bfb312cf03c6c63752afaa5c98c7c8"
+          api-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
+          branch: main

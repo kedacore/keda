@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parseNewRelicMetadataTestData struct {
@@ -23,7 +25,7 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	// all properly formed
 	{map[string]string{"account": "0", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, false},
 	// all properly formed
-	{map[string]string{"account": "0", "region": "EU", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, false},
+	{map[string]string{"account": "0", "region": "EU", "threshold": "100", "activationThreshold": "20", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, false},
 	// account passed via auth params
 	{map[string]string{"region": "EU", "threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{"account": "0"}, false},
 	// region passed via auth params
@@ -36,6 +38,8 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 	{map[string]string{"threshold": "100", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, true},
 	// malformed threshold
 	{map[string]string{"account": "0", "threshold": "one", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, true},
+	// malformed activationThreshold
+	{map[string]string{"account": "0", "threshold": "100", "activationThreshold": "notanint", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, true},
 	// missing threshold
 	{map[string]string{"account": "0", "queryKey": "somekey", "nrql": "SELECT average(cpuUsedCores) as result FROM K8sContainerSample WHERE containerName='coredns'"}, map[string]string{}, true},
 	// missing query
@@ -56,7 +60,7 @@ var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
 
 func TestNewRelicParseMetadata(t *testing.T) {
 	for _, testData := range testNewRelicMetadata {
-		_, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
@@ -69,7 +73,7 @@ func TestNewRelicParseMetadata(t *testing.T) {
 }
 func TestNewRelicGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range newrelicMetricIdentifiers {
-		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -28,7 +28,6 @@ testbin/*
 # KEDA artifacts
 dist/
 .DS_Store
-node_modules
 *.log
 
 apiserver.local.config/
@@ -44,3 +43,6 @@ cover.out
 
 # GO debug binary
 cmd/manager/debug.test
+
+# GO Test result
+report.xml

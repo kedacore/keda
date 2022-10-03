@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-logr/logr"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -51,6 +53,8 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": ""}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// improperly formed queueLength
 	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
+	// improperly formed activationQueueLength
+	{map[string]string{"connectionFromEnv": "CONNECTION", "queueName": "sample", "queueLength": "1", "activationQueueLength": "AA"}, true, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity with account name
 	{map[string]string{"useAAdPodIdentity": "true", "accountName": "sample_acc", "queueName": "sample_queue"}, false, testAzQueueResolvedEnv, map[string]string{}, ""},
 	// Deprecated: useAAdPodIdentity without account name
@@ -95,19 +99,22 @@ var testAzQueueMetadata = []parseAzQueueMetadataTestData{
 
 var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
 	{&testAzQueueMetadata[1], 0, "s0-azure-queue-sample"},
-	{&testAzQueueMetadata[4], 1, "s1-azure-queue-sample_queue"},
+	{&testAzQueueMetadata[5], 1, "s1-azure-queue-sample_queue"},
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
-		_, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
+		_, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata,
+			ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}},
+			logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success. testData: %v", testData)
 		}
-		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
+		if testData.podIdentity != "" && testData.podIdentity != podIdentity.Provider && err == nil {
 			t.Error("Expected success but got error: podIdentity value is not returned as expected")
 		}
 	}
@@ -115,7 +122,10 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
+		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
+			ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, ScalerIndex: testData.scalerIndex},
+			logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -1,0 +1,13 @@
+name: Reusable workflow to run smoke tests on ARM64
+
+on:
+  workflow_call:
+
+jobs:
+  smoke-tests-ARM64:
+    name: ARM64
+    uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
+    with:
+      runs-on: ARM64
+      kubernetesVersion: v1.25
+      kindImage: kindest/node:v1.25.0@sha256:428aaa17ec82ccde0131cb2d1ca6547d13cf5fdabcc0bbecf749baa935387cbf

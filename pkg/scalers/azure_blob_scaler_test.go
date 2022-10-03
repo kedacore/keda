@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-logr/logr"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -53,6 +55,8 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": ""}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// improperly formed blobCount
 	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "AA"}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
+	// improperly formed activationBlobCount
+	{map[string]string{"connectionFromEnv": "CONNECTION", "blobContainerName": "sample", "blobCount": "1", "activationBlobCount": "AA"}, true, testAzBlobResolvedEnv, map[string]string{}, ""},
 	// podIdentity = azure with account name
 	{map[string]string{"accountName": "sample_acc", "blobContainerName": "sample_container"}, false, testAzBlobResolvedEnv, map[string]string{}, kedav1alpha1.PodIdentityProviderAzure},
 	// podIdentity = azure without account name
@@ -102,19 +106,20 @@ var testAzBlobMetadata = []parseAzBlobMetadataTestData{
 var azBlobMetricIdentifiers = []azBlobMetricIdentifier{
 	{&testAzBlobMetadata[1], 0, "s0-azure-blob-sample"},
 	{&testAzBlobMetadata[2], 1, "s1-azure-blob-customname"},
-	{&testAzBlobMetadata[5], 2, "s2-azure-blob-sample_container"},
+	{&testAzBlobMetadata[6], 2, "s2-azure-blob-sample_container"},
 }
 
 func TestAzBlobParseMetadata(t *testing.T) {
 	for _, testData := range testAzBlobMetadata {
-		_, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
+		_, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv,
+			AuthParams: testData.authParams, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success. testData: %v", testData)
 		}
-		if testData.podIdentity != "" && testData.podIdentity != podIdentity && err == nil {
+		if testData.podIdentity != "" && testData.podIdentity != podIdentity.Provider && err == nil {
 			t.Error("Expected success but got error: podIdentity value is not returned as expected")
 		}
 	}
@@ -123,7 +128,9 @@ func TestAzBlobParseMetadata(t *testing.T) {
 func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azBlobMetricIdentifiers {
 		ctx := context.Background()
-		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, ScalerIndex: testData.scalerIndex})
+		meta, podIdentity, err := parseAzureBlobMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
+			ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

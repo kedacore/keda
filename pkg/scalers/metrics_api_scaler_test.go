@@ -24,6 +24,8 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42"}, raisesError: false},
 	// Target not an int
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
+	// Activation target not an int
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "1", "activationTargetValue": "aa"}, raisesError: true},
 	// Missing metric name
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "targetValue": "aa"}, raisesError: true},
 	// Missing url
@@ -118,32 +120,32 @@ func TestGetValueFromResponse(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v.CmpInt64(32) != 0 {
-		t.Errorf("Expected %d got %d", 32, v.AsDec())
+	if v != 32 {
+		t.Errorf("Expected %d got %f", 32, v)
 	}
 
 	v, err = GetValueFromResponse(d, "count")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v.CmpInt64(2) != 0 {
-		t.Errorf("Expected %d got %d", 2, v.AsDec())
+	if v != 2.43 {
+		t.Errorf("Expected %d got %f", 2, v)
 	}
 
 	v, err = GetValueFromResponse(d, "components.0.str")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v.CmpInt64(64) != 0 {
-		t.Errorf("Expected %d got %d", 64, v.AsDec())
+	if v != 64 {
+		t.Errorf("Expected %d got %f", 64, v)
 	}
 
 	v, err = GetValueFromResponse(d, "components.0.k")
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if v.CmpInt64(1000) != 0 {
-		t.Errorf("Expected %d got %d", 1000, v.AsDec())
+	if v != 1000 {
+		t.Errorf("Expected %d got %f", 1000, v)
 	}
 
 	_, err = GetValueFromResponse(d, "components.0.wrong")

@@ -21,7 +21,8 @@ IMAGE_REPO     ?= kedacore
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
 
-IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:main
+BUILD_TOOLS_GO_VERSION = 1.18.6
+IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:$(BUILD_TOOLS_GO_VERSION)
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -49,7 +50,7 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.22
+ENVTEST_K8S_VERSION = 1.23
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -88,23 +89,23 @@ get-cluster-context: ## Get Azure cluster context.
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
 	TERM=linux
-	npm install --prefix tests
-
 	./tests/run-all.sh
 
 .PHONY: e2e-test-local
 e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	npm install --prefix tests
 	./tests/run-all.sh
+
+.PHONY: e2e-test-clean-crds
+e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
+	./tests/clean-crds.sh
 
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
 
-.PHONY: arm-smoke-test
-arm-smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	npm install --prefix tests
-	./tests/run-arm-smoke-tests.sh
+.PHONY: smoke-test
+smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+	./tests/run-smoke-tests.sh
 
 ##################################################
 # Development                                    #
@@ -153,8 +154,16 @@ clientset-generate: ## Generate client-go clientset, listers and informers.
 	rm -rf vendor
 
 # Generate Liiklus proto
-pkg/scalers/liiklus/LiiklusService.pb.go: hack/LiiklusService.proto
-	protoc -I hack/ hack/LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+pkg/scalers/liiklus/LiiklusService.pb.go: protoc-gen-go
+	protoc --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+
+# Generate ExternalScaler proto
+pkg/scalers/externalscaler/externalscaler.pb.go: protoc-gen-go
+	protoc --proto_path=pkg/scalers/externalscaler externalscaler.proto --go-grpc_out=pkg/scalers/externalscaler
+
+protoc-gen-go: ## Download protoc-gen-go
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 
 .PHONY: mockgen-gen
 mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
@@ -167,7 +176,7 @@ pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Di
 	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
 pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
 	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
-pkg/scalers/liiklus/mocks/mock_liiklus.go: pkg/scalers/liiklus/LiiklusService.pb.go
+pkg/scalers/liiklus/mocks/mock_liiklus.go:
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 
 ##################################################
@@ -245,23 +254,27 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 		$(KUSTOMIZE) edit add annotation --force azure.workload.identity/client-id:${AZURE_SP_APP_ID} azure.workload.identity/tenant-id:${AZURE_SP_TENANT}; \
 	fi
+	if [ "$(AWS_RUN_IDENTITY_TESTS)" = true ]; then \
+		cd config/service_account && \
+		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:arn:aws:iam::${AWS_ACCOUNT_ID}:role/${TEST_CLUSTER_NAME}; \
+	fi
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+undeploy: e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.0)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.10.0)
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.5)
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
@@ -280,7 +293,7 @@ TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
@@ -306,12 +319,12 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: docker-build-tools
-docker-build-tools: ## Build multi-arch Docker image for build-tools.
-	docker buildx build --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
+docker-build-tools: ## Build build-tools image
+	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
 
 .PHONY: publish-build-tools
 publish-build-tools: ## Build and push multi-arch Docker image for build-tools.
-	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile  -t ${IMAGE_BUILD_TOOLS} .
+	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile -t ${IMAGE_BUILD_TOOLS} --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
 
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image

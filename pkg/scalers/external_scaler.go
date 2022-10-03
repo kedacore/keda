@@ -7,24 +7,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/mitchellh/hashstructure"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
 
 type externalScaler struct {
-	metricType      v2beta2.MetricTargetType
+	metricType      v2.MetricTargetType
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
+	logger          logr.Logger
 }
 
 type externalPushScaler struct {
@@ -40,13 +40,10 @@ type externalScalerMetadata struct {
 
 type connectionGroup struct {
 	grpcConnection *grpc.ClientConn
-	waitGroup      *sync.WaitGroup
 }
 
 // a pool of connectionGroup per metadata hash
 var connectionPool sync.Map
-
-var externalLog = logf.Log.WithName("external_scaler")
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
@@ -65,10 +62,11 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		scaledObjectRef: pb.ScaledObjectRef{
-			Name:           config.Name,
-			Namespace:      config.Namespace,
+			Name:           config.ScalableObjectName,
+			Namespace:      config.ScalableObjectNamespace,
 			ScalerMetadata: meta.originalMetadata,
 		},
+		logger: InitializeLogger(config, "external_scaler"),
 	}, nil
 }
 
@@ -89,10 +87,11 @@ func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 			metricType: metricType,
 			metadata:   meta,
 			scaledObjectRef: pb.ScaledObjectRef{
-				Name:           config.Name,
-				Namespace:      config.Namespace,
+				Name:           config.ScalableObjectName,
+				Namespace:      config.ScalableObjectNamespace,
 				ScalerMetadata: meta.originalMetadata,
 			},
+			logger: InitializeLogger(config, "external_push_scaler"),
 		},
 	}, nil
 }
@@ -132,15 +131,14 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 
 // IsActive checks if there are any messages in the subscription
 func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
-	grpcClient, done, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		return false, err
 	}
-	defer done()
 
 	response, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
-		externalLog.Error(err, "error calling IsActive on external scaler")
+		s.logger.Error(err, "error calling IsActive on external scaler")
 		return false, err
 	}
 
@@ -152,32 +150,31 @@ func (s *externalScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	var result []v2beta2.MetricSpec
+func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var result []v2.MetricSpec
 
-	grpcClient, done, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
-		externalLog.Error(err, "error building grpc connection")
+		s.logger.Error(err, "error building grpc connection")
 		return result
 	}
-	defer done()
 
 	response, err := grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
 	if err != nil {
-		externalLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return nil
 	}
 
 	for _, spec := range response.MetricSpecs {
-		externalMetric := &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
 			},
 			Target: GetMetricTarget(s.metricType, spec.TargetSize),
 		}
 
 		// Create the metric spec for the HPA
-		metricSpec := v2beta2.MetricSpec{
+		metricSpec := v2.MetricSpec{
 			External: externalMetric,
 			Type:     externalMetricType,
 		}
@@ -191,11 +188,10 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.
 // GetMetrics connects calls the gRPC interface to get the metrics with a specific name
 func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	var metrics []external_metrics.ExternalMetricValue
-	grpcClient, done, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		return metrics, err
 	}
-	defer done()
 
 	// Remove the sX- prefix as the external scaler shouldn't have to know about it
 	metricNameWithoutIndex, err := RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
@@ -210,17 +206,12 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metr
 
 	response, err := grpcClient.GetMetrics(ctx, request)
 	if err != nil {
-		externalLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
 	for _, metricResult := range response.MetricValues {
-		metric := external_metrics.ExternalMetricValue{
-			MetricName: metricName,
-			Value:      *resource.NewQuantity(metricResult.MetricValue, resource.DecimalSI),
-			Timestamp:  metav1.Now(),
-		}
-
+		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
 		metrics = append(metrics, metric)
 	}
 
@@ -232,16 +223,15 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
 	runWithLog := func() {
-		grpcClient, done, err := getClientForConnectionPool(s.metadata)
+		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
-			externalLog.Error(err, "error running internalRun")
+			s.logger.Error(err, "error running internalRun")
 			return
 		}
-		if err := handleIsActiveStream(ctx, s.scaledObjectRef, grpcClient, active); err != nil {
-			externalLog.Error(err, "error running internalRun")
+		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
+			s.logger.Error(err, "error running internalRun")
 			return
 		}
-		done()
 	}
 
 	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 1 minute
@@ -274,8 +264,8 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 }
 
 // handleIsActiveStream calls blocks on a stream call from the GRPC server. It'll only terminate on error, stream completion, or ctx cancellation.
-func handleIsActiveStream(ctx context.Context, scaledObjectRef pb.ScaledObjectRef, grpcClient pb.ExternalScalerClient, active chan<- bool) error {
-	stream, err := grpcClient.StreamIsActive(ctx, &scaledObjectRef)
+func handleIsActiveStream(ctx context.Context, scaledObjectRef *pb.ScaledObjectRef, grpcClient pb.ExternalScalerClient, active chan<- bool) error {
+	stream, err := grpcClient.StreamIsActive(ctx, scaledObjectRef)
 	if err != nil {
 		return err
 	}
@@ -294,7 +284,7 @@ var connectionPoolMutex sync.Mutex
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
 // in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, func(), error) {
+func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 
@@ -312,45 +302,63 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
 	// in the metadata, they will share the same grpc.ClientConn
-	key, err := hashstructure.Hash(metadata, nil)
+	key, err := hashstructure.Hash(metadata.scalerAddress, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if i, ok := connectionPool.Load(key); ok {
 		if connGroup, ok := i.(*connectionGroup); ok {
-			connGroup.waitGroup.Add(1)
-			return pb.NewExternalScalerClient(connGroup.grpcConnection), func() {
-				connGroup.waitGroup.Done()
-			}, nil
+			return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
 		}
 	}
 
 	conn, err := buildGRPCConnection(metadata)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	waitGroup := &sync.WaitGroup{}
-	waitGroup.Add(1)
-	connGroup := connectionGroup{
+	connGroup := &connectionGroup{
 		grpcConnection: conn,
-		waitGroup:      waitGroup,
 	}
 
 	connectionPool.Store(key, connGroup)
 
 	go func() {
 		// clean up goroutine.
-		// once all waitGroup is done, remove the connection from the pool and Close() grpc.ClientConn
-		connGroup.waitGroup.Wait()
+		// once gRPC client is shutdown, remove the connection from the pool and Close() grpc.ClientConn
+		<-waitForState(context.TODO(), connGroup.grpcConnection, connectivity.Shutdown)
 		connectionPoolMutex.Lock()
 		defer connectionPoolMutex.Unlock()
 		connectionPool.Delete(key)
 		connGroup.grpcConnection.Close()
 	}()
 
-	return pb.NewExternalScalerClient(connGroup.grpcConnection), func() {
-		connGroup.waitGroup.Done()
-	}, nil
+	return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
+}
+
+func waitForState(ctx context.Context, conn *grpc.ClientConn, states ...connectivity.State) (done chan struct{}) {
+	done = make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for {
+			changeState := conn.WaitForStateChange(ctx, conn.GetState())
+			if !changeState {
+				// ctx is done, return
+				continue
+			}
+
+			nowState := conn.GetState()
+			for _, state := range states {
+				if state == nowState {
+					// match one of the state passed return
+					return
+				}
+			}
+		}
+	}()
+
+	return done
 }

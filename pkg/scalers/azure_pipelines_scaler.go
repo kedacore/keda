@@ -4,17 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -34,21 +32,23 @@ type azurePipelinesPoolIDResponse struct {
 }
 
 type azurePipelinesScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *azurePipelinesMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type azurePipelinesMetadata struct {
-	organizationURL            string
-	organizationName           string
-	personalAccessToken        string
-	poolID                     int
-	targetPipelinesQueueLength int64
-	scalerIndex                int
+	organizationURL                      string
+	organizationName                     string
+	personalAccessToken                  string
+	parent                               string
+	demands                              string
+	poolID                               int
+	targetPipelinesQueueLength           int64
+	activationTargetPipelinesQueueLength int64
+	scalerIndex                          int
 }
-
-var azurePipelinesLog = logf.Log.WithName("azure_pipelines_scaler")
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
@@ -68,6 +68,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "azure_pipelines_scaler"),
 	}, nil
 }
 
@@ -82,6 +83,16 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 
 		meta.targetPipelinesQueueLength = queueLength
+	}
+
+	meta.activationTargetPipelinesQueueLength = 0
+	if val, ok := config.TriggerMetadata["activationTargetPipelinesQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %s", err.Error())
+		}
+
+		meta.activationTargetPipelinesQueueLength = activationQueueLength
 	}
 
 	if val, ok := config.AuthParams["organizationURL"]; ok && val != "" {
@@ -108,6 +119,18 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		return nil, fmt.Errorf("no personalAccessToken given")
 	}
 
+	if val, ok := config.TriggerMetadata["parent"]; ok && val != "" {
+		meta.parent = config.TriggerMetadata["parent"]
+	} else {
+		meta.parent = ""
+	}
+
+	if val, ok := config.TriggerMetadata["demands"]; ok && val != "" {
+		meta.demands = config.TriggerMetadata["demands"]
+	} else {
+		meta.demands = ""
+	}
+
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
 		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
@@ -126,6 +149,8 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		}
 	}
 
+	// Trim any trailing new lines from the Azure Pipelines PAT
+	meta.personalAccessToken = strings.TrimSuffix(meta.personalAccessToken, "\n")
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
@@ -178,14 +203,14 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 		return []byte{}, err
 	}
 
-	req.SetBasicAuth("PAT", metadata.personalAccessToken)
+	req.SetBasicAuth("", metadata.personalAccessToken)
 
 	r, err := httpClient.Do(req)
 	if err != nil {
 		return []byte{}, err
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -202,15 +227,11 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
-		azurePipelinesLog.Error(err, "error getting pipelines queue length")
+		s.logger.Error(err, "error getting pipelines queue length")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(queuelen, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -235,36 +256,87 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data despite successful code. url: %s", url)
 	}
 
+	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	for _, value := range jobs {
 		v := value.(map[string]interface{})
 		if v["result"] == nil {
-			count++
+			if s.metadata.parent == "" && s.metadata.demands == "" {
+				// no plan defined, just add a count
+				count++
+			} else {
+				if s.metadata.parent == "" {
+					// doesn't use parent, switch to demand
+					if getCanAgentDemandFulfilJob(v, s.metadata) {
+						count++
+					}
+				} else {
+					// does use parent
+					if getCanAgentParentFulfilJob(v, s.metadata) {
+						count++
+					}
+				}
+			}
 		}
 	}
-
 	return count, err
 }
 
-func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+// Determine if the scaledjob has the right demands to spin up
+func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	var demandsReq = v["demands"].([]interface{})
+	var demandsAvail = strings.Split(metadata.demands, ",")
+	var countDemands = 0
+	for _, dr := range demandsReq {
+		for _, da := range demandsAvail {
+			strDr := fmt.Sprintf("%v", dr)
+			if !strings.HasPrefix(strDr, "Agent.Version") {
+				if strDr == da {
+					countDemands++
+				}
+			}
+		}
+	}
+
+	return countDemands == len(demandsReq)-1
+}
+
+// Determine if the Job and Parent Agent Template have matching capabilities
+func getCanAgentParentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
+	matchedAgents, ok := v["matchedAgents"].([]interface{})
+	if !ok {
+		// ADO is already processing
+		return false
+	}
+
+	for _, m := range matchedAgents {
+		n := m.(map[string]interface{})
+		if metadata.parent == n["name"].(string) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
-		azurePipelinesLog.Error(err, "error)")
+		s.logger.Error(err, "error)")
 		return false, err
 	}
 
-	return queuelen > 0, nil
+	return queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {

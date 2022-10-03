@@ -4,34 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	neturl "net/url"
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type metricsAPIScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *metricsAPIScalerMetadata
 	client     *http.Client
+	logger     logr.Logger
 }
 
 type metricsAPIScalerMetadata struct {
-	targetValue   int
-	url           string
-	valueLocation string
+	targetValue           float64
+	activationTargetValue float64
+	url                   string
+	valueLocation         string
 
 	// apiKeyAuth
 	enableAPIKeyAuth bool
@@ -63,8 +64,6 @@ const (
 	methodValueQuery = "query"
 )
 
-var httpLog = logf.Log.WithName("metrics_api_scaler")
-
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -92,6 +91,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		client:     httpClient,
+		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
 
@@ -100,13 +100,22 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	meta.scalerIndex = config.ScalerIndex
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.Atoi(val)
+		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 		}
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given in metadata")
+	}
+
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	if val, ok := config.TriggerMetadata["url"]; ok {
@@ -190,46 +199,46 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
-func GetValueFromResponse(body []byte, valueLocation string) (*resource.Quantity, error) {
+func GetValueFromResponse(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
 	if r.Type == gjson.String {
-		q, err := resource.ParseQuantity(r.String())
+		v, err := resource.ParseQuantity(r.String())
 		if err != nil {
-			return nil, fmt.Errorf(errorMsg, r.String())
+			return 0, fmt.Errorf(errorMsg, r.String())
 		}
-		return &q, nil
+		return v.AsApproximateFloat64(), nil
 	}
 	if r.Type != gjson.Number {
-		return nil, fmt.Errorf(errorMsg, r.Type.String())
+		return 0, fmt.Errorf(errorMsg, r.Type.String())
 	}
-	return resource.NewQuantity(int64(r.Num), resource.DecimalSI), nil
+	return r.Num, nil
 }
 
-func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (*resource.Quantity, error) {
+func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) {
 	request, err := getMetricAPIServerRequest(ctx, s.metadata)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	r, err := s.client.Do(request)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
 		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
-		return nil, errors.New(msg)
+		return 0, errors.New(msg)
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	v, err := GetValueFromResponse(b, s.metadata.valueLocation)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return v, nil
 }
@@ -243,39 +252,35 @@ func (s *metricsAPIScaler) Close(context.Context) error {
 func (s *metricsAPIScaler) IsActive(ctx context.Context) (bool, error) {
 	v, err := s.getMetricValue(ctx)
 	if err != nil {
-		httpLog.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Error when checking metric value: %s", err))
 		return false, err
 	}
 
-	return v.AsApproximateFloat64() > 0.0, nil
+	return v > s.metadata.activationTargetValue, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.targetValue)),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	v, err := s.getMetricValue(ctx)
+	val, err := s.getMetricValue(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting metrics endpoint: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *v,
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, val)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

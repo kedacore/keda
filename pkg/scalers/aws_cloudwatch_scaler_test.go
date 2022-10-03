@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -49,50 +50,54 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 	{map[string]string{}, testAWSAuthentication, true, "Empty structures"},
 	// properly formed cloudwatch query and awsRegion
 	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+		"namespace":                   "AWS/SQS",
+		"dimensionName":               "QueueName",
+		"dimensionValue":              "keda",
+		"metricName":                  "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":           "2",
+		"activationTargetMetricValue": "0",
+		"minMetricValue":              "0",
+		"awsRegion":                   "eu-west-1"},
 		testAWSAuthentication,
 		false,
 		"properly formed cloudwatch query and awsRegion"},
 	// properly formed cloudwatch expression query and awsRegion
 	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"expression":        "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+		"namespace":                   "AWS/SQS",
+		"expression":                  "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+		"metricName":                  "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":           "2",
+		"activationTargetMetricValue": "0",
+		"minMetricValue":              "0",
+		"awsRegion":                   "eu-west-1"},
 		testAWSAuthentication,
 		false,
 		"properly formed cloudwatch expression query and awsRegion"},
 	// Properly formed cloudwatch query with optional parameters
 	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
+		"namespace":                   "AWS/SQS",
+		"dimensionName":               "QueueName",
+		"dimensionValue":              "keda",
+		"metricName":                  "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":           "2",
+		"activationTargetMetricValue": "0",
+		"minMetricValue":              "0",
+		"metricCollectionTime":        "300",
+		"metricStat":                  "Average",
+		"metricStatPeriod":            "300",
+		"awsRegion":                   "eu-west-1"},
 		testAWSAuthentication, false,
 		"Properly formed cloudwatch query with optional parameters"},
 	// properly formed cloudwatch query but Region is empty
 	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         ""},
+		"namespace":                   "AWS/SQS",
+		"dimensionName":               "QueueName",
+		"dimensionValue":              "keda",
+		"metricName":                  "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":           "2",
+		"activationTargetMetricValue": "0",
+		"minMetricValue":              "0",
+		"awsRegion":                   ""},
 		testAWSAuthentication,
 		true,
 		"properly formed cloudwatch query but Region is empty"},
@@ -483,7 +488,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", meta, &mockCloudwatch{}}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", meta, &mockCloudwatch{}, logr.Discard()}
 
 		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -496,7 +501,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsCloudwatchGetMetricTestData {
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}, logr.Discard()}
 		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName, selector)
 		switch meta.metricsName {
 		case testAWSCloudwatchErrorMetric:

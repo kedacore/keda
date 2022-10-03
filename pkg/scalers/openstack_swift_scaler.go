@@ -3,43 +3,43 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"strings"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	defaultOnlyFiles         = false
-	defaultObjectCount       = 2
-	defaultObjectLimit       = ""
-	defaultObjectPrefix      = ""
-	defaultObjectDelimiter   = ""
-	defaultHTTPClientTimeout = 30
+	defaultOnlyFiles             = false
+	defaultObjectCount           = 2
+	defaultActivationObjectCount = 0
+	defaultObjectLimit           = ""
+	defaultObjectPrefix          = ""
+	defaultObjectDelimiter       = ""
+	defaultHTTPClientTimeout     = 30
 )
 
 type openstackSwiftMetadata struct {
-	swiftURL          string
-	containerName     string
-	objectCount       int64
-	objectPrefix      string
-	objectDelimiter   string
-	objectLimit       string
-	httpClientTimeout int
-	onlyFiles         bool
-	scalerIndex       int
+	swiftURL              string
+	containerName         string
+	objectCount           int64
+	activationObjectCount int64
+	objectPrefix          string
+	objectDelimiter       string
+	objectLimit           string
+	httpClientTimeout     int
+	onlyFiles             bool
+	scalerIndex           int
 }
 
 type openstackSwiftAuthenticationMetadata struct {
@@ -53,12 +53,11 @@ type openstackSwiftAuthenticationMetadata struct {
 }
 
 type openstackSwiftScaler struct {
-	metricType  v2beta2.MetricTargetType
+	metricType  v2.MetricTargetType
 	metadata    *openstackSwiftMetadata
 	swiftClient openstack.Client
+	logger      logr.Logger
 }
-
-var openstackSwiftLog = logf.Log.WithName("openstack_swift_scaler")
 
 func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context.Context) (int64, error) {
 	var containerName = s.metadata.containerName
@@ -67,7 +66,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 	isValid, err := s.swiftClient.IsTokenValid(ctx)
 
 	if err != nil {
-		openstackSwiftLog.Error(err, "scaler could not validate the token for authentication")
+		s.logger.Error(err, "scaler could not validate the token for authentication")
 		return 0, err
 	}
 
@@ -75,7 +74,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 		err := s.swiftClient.RenewToken(ctx)
 
 		if err != nil {
-			openstackSwiftLog.Error(err, "error requesting token for authentication")
+			s.logger.Error(err, "error requesting token for authentication")
 			return 0, err
 		}
 	}
@@ -85,7 +84,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 	swiftContainerURL, err := url.Parse(swiftURL)
 
 	if err != nil {
-		openstackSwiftLog.Error(err, fmt.Sprintf("the swiftURL is invalid: %s. You might have forgotten to provide the either 'http' or 'https' in the URL. Check our documentation to see if you missed something", swiftURL))
+		s.logger.Error(err, fmt.Sprintf("the swiftURL is invalid: %s. You might have forgotten to provide the either 'http' or 'https' in the URL. Check our documentation to see if you missed something", swiftURL))
 		return 0, fmt.Errorf("the swiftURL is invalid: %s", err.Error())
 	}
 
@@ -109,16 +108,16 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 	resp, requestError := s.swiftClient.HTTPClient.Do(swiftRequest)
 
 	if requestError != nil {
-		openstackSwiftLog.Error(requestError, fmt.Sprintf("error getting metrics for container '%s'. You probably specified the wrong swift URL or the URL is not reachable", containerName))
+		s.logger.Error(requestError, fmt.Sprintf("error getting metrics for container '%s'. You probably specified the wrong swift URL or the URL is not reachable", containerName))
 		return 0, requestError
 	}
 
 	defer resp.Body.Close()
 
-	body, readError := ioutil.ReadAll(resp.Body)
+	body, readError := io.ReadAll(resp.Body)
 
 	if readError != nil {
-		openstackSwiftLog.Error(readError, "could not read response body from Swift API")
+		s.logger.Error(readError, "could not read response body from Swift API")
 		return 0, readError
 	}
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
@@ -137,7 +136,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 				objectLimit, conversionError := strconv.ParseInt(s.metadata.objectLimit, 10, 64)
 
 				if conversionError != nil {
-					openstackSwiftLog.Error(err, fmt.Sprintf("the objectLimit value provided is invalid: %v", s.metadata.objectLimit))
+					s.logger.Error(err, fmt.Sprintf("the objectLimit value provided is invalid: %v", s.metadata.objectLimit))
 					return 0, conversionError
 				}
 
@@ -160,17 +159,17 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		openstackSwiftLog.Error(nil, "the retrieved token is not a valid token. Provide the correct auth credentials so the scaler can retrieve a valid access token (Unauthorized)")
+		s.logger.Error(nil, "the retrieved token is not a valid token. Provide the correct auth credentials so the scaler can retrieve a valid access token (Unauthorized)")
 		return 0, fmt.Errorf("the retrieved token is not a valid token. Provide the correct auth credentials so the scaler can retrieve a valid access token (Unauthorized)")
 	}
 
 	if resp.StatusCode == http.StatusForbidden {
-		openstackSwiftLog.Error(nil, "the retrieved token is a valid token, but it does not have sufficient permission to retrieve Swift and/or container metadata (Forbidden)")
+		s.logger.Error(nil, "the retrieved token is a valid token, but it does not have sufficient permission to retrieve Swift and/or container metadata (Forbidden)")
 		return 0, fmt.Errorf("the retrieved token is a valid token, but it does not have sufficient permission to retrieve Swift and/or container metadata (Forbidden)")
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		openstackSwiftLog.Error(nil, fmt.Sprintf("the container '%s' does not exist (Not Found)", containerName))
+		s.logger.Error(nil, fmt.Sprintf("the container '%s' does not exist (Not Found)", containerName))
 		return 0, fmt.Errorf("the container '%s' does not exist (Not Found)", containerName)
 	}
 
@@ -187,6 +186,8 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
+
+	logger := InitializeLogger(config, "openstack_swift_scaler")
 
 	openstackSwiftMetadata, err := parseOpenstackSwiftMetadata(config)
 
@@ -242,6 +243,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 		metricType:  metricType,
 		metadata:    openstackSwiftMetadata,
 		swiftClient: swiftClient,
+		logger:      logger,
 	}, nil
 }
 
@@ -261,13 +263,23 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	}
 
 	if val, ok := config.TriggerMetadata["objectCount"]; ok {
-		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
+		objectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("objectCount parsing error: %s", err.Error())
 		}
-		meta.objectCount = targetObjectCount
+		meta.objectCount = objectCount
 	} else {
 		meta.objectCount = defaultObjectCount
+	}
+
+	if val, ok := config.TriggerMetadata["activationObjectCount"]; ok {
+		activationObjectCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationObjectCount parsing error: %s", err.Error())
+		}
+		meta.activationObjectCount = activationObjectCount
+	} else {
+		meta.activationObjectCount = defaultActivationObjectCount
 	}
 
 	if val, ok := config.TriggerMetadata["objectPrefix"]; ok {
@@ -364,7 +376,7 @@ func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return objectCount > 0, nil
+	return objectCount > s.metadata.activationObjectCount, nil
 }
 
 func (s *openstackSwiftScaler) Close(context.Context) error {
@@ -375,20 +387,16 @@ func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string
 	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
 
 	if err != nil {
-		openstackSwiftLog.Error(err, "error getting objectCount")
+		s.logger.Error(err, "error getting objectCount")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(objectCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(objectCount))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
 
 	if s.metadata.objectPrefix != "" {
@@ -399,16 +407,16 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2beta
 
 	metricName = kedautil.NormalizeString(fmt.Sprintf("openstack-swift-%s", metricName))
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.objectCount),
 	}
 
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }

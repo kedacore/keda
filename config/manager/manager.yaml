@@ -68,6 +68,8 @@ spec:
               - ALL
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux

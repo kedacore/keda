@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parseKafkaMetadataTestData struct {
@@ -56,6 +58,12 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is negative value
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is 0
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, activationLagThreshold is not int
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success, more brokers
@@ -85,6 +93,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, TLS cert/key and assumed public CA
 	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key + key password and assumed public CA
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
 	// success, TLS CA only
 	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
@@ -118,14 +128,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[7], 0, "s0-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[7], 1, "s1-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -149,7 +159,7 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
-		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams})
+		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -180,7 +190,7 @@ func TestGetBrokers(t *testing.T) {
 
 func TestKafkaAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -201,17 +211,20 @@ func TestKafkaAuthParams(t *testing.T) {
 			if meta.key != testData.authParams["key"] {
 				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
 			}
+			if meta.keyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
+			}
 		}
 	}
 }
 
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaScaler{"", meta, nil, nil}
+		mockKafkaScaler := kafkaScaler{"", meta, nil, nil, logr.Discard()}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

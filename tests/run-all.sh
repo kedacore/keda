@@ -1,12 +1,12 @@
 #! /bin/bash
-set -eu
+set -u
 
-E2E_REGEX=${E2E_TEST_REGEX:-*.test.ts}
+E2E_REGEX="./*${E2E_TEST_REGEX:-*_test.go}"
 
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=6
+concurrent_tests_limit=8
 pids=()
 lookup=()
 failed_count=0
@@ -15,21 +15,22 @@ counter=0
 executed_count=0
 
 function run_setup {
-    ./node_modules/.bin/ava setup.test.ts
+    go test -v -tags e2e utils/setup_test.go
 }
 
 function run_tests {
     counter=0
     # randomize tests order using shuf
-    for test_case in $(find scalers -name "$E2E_REGEX" | shuf)
+    for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX" | shuf)
     do
-        if [[ $test_case != *.test.ts ]] # Skip helper files
+        if [[ $test_case != *_test.go ]] # Skip helper files
         then
             continue
         fi
 
         counter=$((counter+1))
-        ./node_modules/.bin/ava $test_case > "${test_case}.log" 2>&1 &
+        go test -v -tags e2e -timeout 20m $test_case > "${test_case}.log" 2>&1 &
+
         pid=$!
         echo "Running $test_case with pid: $pid"
         pids+=($pid)
@@ -62,7 +63,8 @@ function run_tests {
         for test_case in "${retry_lookup[@]}"
         do
             counter=$((counter+1))
-            ./node_modules/.bin/ava $test_case > "${test_case}.retry.log" 2>&1 &
+            go test -v -tags e2e -timeout 20m $test_case > "${test_case}.retry.log" 2>&1 &
+
             pid=$!
             echo "Rerunning $test_case with pid: $pid"
             pids+=($pid)
@@ -94,7 +96,7 @@ function wait_for_jobs {
 }
 
 function print_logs {
-    for test_log in $(find scalers -name "*.log")
+    for test_log in $(find . -name "*.log")
     do
         echo ">>> $test_log <<<"
         cat $test_log
@@ -114,7 +116,7 @@ function print_logs {
 }
 
 function run_cleanup {
-    ./node_modules/.bin/ava cleanup.test.ts
+    go test -v -tags e2e utils/cleanup_test.go
 }
 
 function print_failed {

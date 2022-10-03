@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 )
 
 type testSolaceMetadata struct {
@@ -158,6 +158,40 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 			solaceMetaPassword:            soltestValidPassword,
 			solaceMetaQueueName:           soltestValidQueueName,
 			solaceMetaMsgSpoolUsageTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
+	},
+	// -Case - activationMsgSpoolUsageTarget non-numeric
+	{
+		"#011 - msgSpoolUsageTarget non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:              soltestValidBaseURL,
+			solaceMetaMsgVpn:                   soltestValidVpn,
+			solaceMetaUsernameFromEnv:          "",
+			solaceMetaPasswordFromEnv:          "",
+			solaceMetaUsername:                 soltestValidUsername,
+			solaceMetaPassword:                 soltestValidPassword,
+			solaceMetaQueueName:                soltestValidQueueName,
+			solaceMetaMsgCountTarget:           "1",
+			solaceMetaActivationMsgCountTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
+	},
+	// -Case - activationMsgSpoolUsage non-numeric
+	{
+		"#012 - msgSpoolUsage non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:                   soltestValidBaseURL,
+			solaceMetaMsgVpn:                        soltestValidVpn,
+			solaceMetaUsernameFromEnv:               "",
+			solaceMetaPasswordFromEnv:               "",
+			solaceMetaUsername:                      soltestValidUsername,
+			solaceMetaPassword:                      soltestValidPassword,
+			solaceMetaQueueName:                     soltestValidQueueName,
+			solaceMetaMsgSpoolUsageTarget:           "1",
+			solaceMetaActivationMsgSpoolUsageTarget: "NOT_AN_INTEGER",
 		},
 		1,
 		true,
@@ -433,7 +467,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 				httpClient: http.DefaultClient,
 			}
 
-			var metric []v2beta2.MetricSpec
+			var metric []v2.MetricSpec
 			if metric = testSolaceScaler.GetMetricSpecForScaling(context.Background()); len(metric) == 0 {
 				err = fmt.Errorf("metric value not found")
 			} else {

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -299,7 +299,7 @@ func TestShouldParseCheckpointForFunctionWithPodIdentity(t *testing.T) {
 		EventHubName:             "hub-test",
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
-		PodIdentity:              kedav1alpha1.PodIdentityProviderAzure,
+		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
@@ -307,7 +307,7 @@ func TestShouldParseCheckpointForFunctionWithPodIdentity(t *testing.T) {
 
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 
-	eventHubInfo.PodIdentity = kedav1alpha1.PodIdentityProviderAzureWorkload
+	eventHubInfo.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}
 	cp = newCheckpointer(eventHubInfo, "0")
 	url, _ = cp.resolvePath(eventHubInfo)
 
@@ -321,7 +321,7 @@ func TestShouldParseCheckpointForFunctionWithCheckpointStrategyAndPodIdentity(t 
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
 		CheckpointStrategy:       "azureFunction",
-		PodIdentity:              kedav1alpha1.PodIdentityProviderAzure,
+		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
@@ -329,7 +329,7 @@ func TestShouldParseCheckpointForFunctionWithCheckpointStrategyAndPodIdentity(t 
 
 	assert.Equal(t, url.Path, "/azure-webjobs-eventhub/eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 
-	eventHubInfo.PodIdentity = kedav1alpha1.PodIdentityProviderAzureWorkload
+	eventHubInfo.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}
 	cp = newCheckpointer(eventHubInfo, "0")
 	url, _ = cp.resolvePath(eventHubInfo)
 
@@ -412,7 +412,8 @@ func TestShouldParseCheckpointForGoSdk(t *testing.T) {
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
 	ctx := context.Background()
 
-	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", StorageConnectionString, "", "")
+	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, StorageConnectionString, "", "")
 
 	// Create container
 	path, _ := url.Parse(containerName)

@@ -6,36 +6,34 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type influxDBScaler struct {
 	client     influxdb2.Client
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *influxDBMetadata
+	logger     logr.Logger
 }
 
 type influxDBMetadata struct {
-	authToken        string
-	metricName       string
-	organizationName string
-	query            string
-	serverURL        string
-	unsafeSsl        bool
-	thresholdValue   float64
-	scalerIndex      int
+	authToken                string
+	metricName               string
+	organizationName         string
+	query                    string
+	serverURL                string
+	unsafeSsl                bool
+	thresholdValue           float64
+	activationThresholdValue float64
+	scalerIndex              int
 }
-
-var influxDBLog = logf.Log.WithName("influxdb_scaler")
 
 // NewInfluxDBScaler creates a new influx db scaler
 func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
@@ -44,12 +42,14 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "influxdb_scaler")
+
 	meta, err := parseInfluxDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing influxdb metadata: %s", err)
 	}
 
-	influxDBLog.Info("starting up influxdb client")
+	logger.Info("starting up influxdb client")
 	client := influxdb2.NewClientWithOptions(
 		meta.serverURL,
 		meta.authToken,
@@ -59,6 +59,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		client:     client,
 		metricType: metricType,
 		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 
@@ -71,6 +72,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var serverURL string
 	var unsafeSsl bool
 	var thresholdValue float64
+	var activationThresholdValue float64
 
 	val, ok := config.TriggerMetadata["authToken"]
 	switch {
@@ -124,6 +126,14 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
 	}
 
+	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
+		value, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %s", err.Error())
+		}
+		activationThresholdValue = value
+	}
+
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -143,14 +153,15 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	return &influxDBMetadata{
-		authToken:        authToken,
-		metricName:       metricName,
-		organizationName: organizationName,
-		query:            query,
-		serverURL:        serverURL,
-		thresholdValue:   thresholdValue,
-		unsafeSsl:        unsafeSsl,
-		scalerIndex:      config.ScalerIndex,
+		authToken:                authToken,
+		metricName:               metricName,
+		organizationName:         organizationName,
+		query:                    query,
+		serverURL:                serverURL,
+		thresholdValue:           thresholdValue,
+		activationThresholdValue: activationThresholdValue,
+		unsafeSsl:                unsafeSsl,
+		scalerIndex:              config.ScalerIndex,
 	}, nil
 }
 
@@ -163,7 +174,7 @@ func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return value > 0, nil
+	return value > s.metadata.activationThresholdValue, nil
 }
 
 // Close closes the connection of the client to the server
@@ -206,25 +217,21 @@ func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string, metr
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(int64(value), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
-func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, int64(s.metadata.thresholdValue)),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.thresholdValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }

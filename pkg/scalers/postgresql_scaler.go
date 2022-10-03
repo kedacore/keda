@@ -6,33 +6,31 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type postgreSQLScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *postgreSQLMetadata
 	connection *sql.DB
+	logger     logr.Logger
 }
 
 type postgreSQLMetadata struct {
-	targetQueryValue int64
-	connection       string
-	query            string
-	metricName       string
-	scalerIndex      int
+	targetQueryValue           float64
+	activationTargetQueryValue float64
+	connection                 string
+	query                      string
+	metricName                 string
+	scalerIndex                int
 }
-
-var postgreSQLLog = logf.Log.WithName("postgreSQL_scaler")
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
@@ -41,12 +39,14 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "postgresql_scaler")
+
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
 	}
 
-	conn, err := getConnection(meta)
+	conn, err := getConnection(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
 	}
@@ -54,6 +54,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
+		logger:     logger,
 	}, nil
 }
 
@@ -67,13 +68,22 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	}
 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	switch {
@@ -134,15 +144,15 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	return &meta, nil
 }
 
-func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
+func getConnection(meta *postgreSQLMetadata, logger logr.Logger) (*sql.DB, error) {
 	db, err := sql.Open("postgres", meta.connection)
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
 	}
 	err = db.Ping()
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
 		return nil, err
 	}
 	return db, nil
@@ -152,7 +162,7 @@ func getConnection(meta *postgreSQLMetadata) (*sql.DB, error) {
 func (s *postgreSQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
-		postgreSQLLog.Error(err, "Error closing postgreSQL connection")
+		s.logger.Error(err, "Error closing postgreSQL connection")
 		return err
 	}
 	return nil
@@ -165,31 +175,31 @@ func (s *postgreSQLScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
-func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (int64, error) {
-	var id int64
+func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
+	var id float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
-		postgreSQLLog.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
+		s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
 		return 0, fmt.Errorf("could not query postgreSQL: %s", err)
 	}
 	return id, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -199,11 +209,7 @@ func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, me
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

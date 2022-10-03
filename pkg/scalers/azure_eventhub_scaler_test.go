@@ -53,6 +53,8 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
 	// missing unprocessed event threshold - should replace with default
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting}, false},
+	// invalid activation unprocessed event threshold
+	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "activationUnprocessedEventThreshold": "AA"}, true},
 	// added blob container details
 	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName, "checkpointStrategy": "azureFunction"}, false},
 }
@@ -115,7 +117,8 @@ func TestParseEventHubMetadata(t *testing.T) {
 	}
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.PodIdentityProviderAzure})
+		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
+			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -126,7 +129,8 @@ func TestParseEventHubMetadata(t *testing.T) {
 	}
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload})
+		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
+			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -148,7 +152,8 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
+			kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()

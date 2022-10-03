@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -145,7 +146,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 		}
 		closeFn := func() error { return nil }
 		getPendingEntriesCountFn := func(ctx context.Context) (int64, error) { return -1, nil }
-		mockRedisStreamsScaler := redisStreamsScaler{"", meta, closeFn, getPendingEntriesCountFn}
+		mockRedisStreamsScaler := redisStreamsScaler{"", meta, closeFn, getPendingEntriesCountFn, logr.Discard()}
 
 		metricSpec := mockRedisStreamsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

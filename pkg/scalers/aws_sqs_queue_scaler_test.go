@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -118,6 +119,22 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"properly formed queue, invalid queueLength"},
 	{map[string]string{
+		"queueURL":              testAWSSQSProperQueueURL,
+		"queueLength":           "1",
+		"activationQueueLength": "1",
+		"awsRegion":             "eu-west-1"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue, integer activationQueueLength"},
+	{map[string]string{
+		"queueURL":              testAWSSQSProperQueueURL,
+		"queueLength":           "1",
+		"activationQueueLength": "a",
+		"awsRegion":             "eu-west-1"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue, invalid activationQueueLength"},
+	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
@@ -207,6 +224,22 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		testAWSSQSAuthentication,
 		false,
 		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "false"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "true"},
+		testAWSSQSAuthentication,
+		false,
+		"properly formed queue and region"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
@@ -222,7 +255,7 @@ var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams})
+		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -235,11 +268,11 @@ func TestSQSParseMetadata(t *testing.T) {
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
+		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -252,7 +285,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	var selector labels.Selector
 	for _, meta := range awsSQSGetMetricTestData {
-		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}}
+		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
 		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:
@@ -260,7 +293,11 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
-			assert.EqualValues(t, int64(300.0), value[0].Value.Value())
+			if meta.scaleOnInFlight {
+				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
+			} else {
+				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
+			}
 		}
 	}
 }

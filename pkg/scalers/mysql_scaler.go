@@ -7,36 +7,34 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/go-sql-driver/mysql"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type mySQLScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *mySQLMetadata
 	connection *sql.DB
+	logger     logr.Logger
 }
 
 type mySQLMetadata struct {
-	connectionString string // Database connection string
-	username         string
-	password         string
-	host             string
-	port             string
-	dbName           string
-	query            string
-	queryValue       int64
-	metricName       string
+	connectionString     string // Database connection string
+	username             string
+	password             string
+	host                 string
+	port                 string
+	dbName               string
+	query                string
+	queryValue           float64
+	activationQueryValue float64
+	metricName           string
 }
-
-var mySQLLog = logf.Log.WithName("mysql_scaler")
 
 // NewMySQLScaler creates a new MySQL scaler
 func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
@@ -45,12 +43,14 @@ func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "mysql_scaler")
+
 	meta, err := parseMySQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing MySQL metadata: %s", err)
 	}
 
-	conn, err := newMySQLConnection(meta)
+	conn, err := newMySQLConnection(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing MySQL connection: %s", err)
 	}
@@ -58,6 +58,7 @@ func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
+		logger:     logger,
 	}, nil
 }
 
@@ -71,13 +72,22 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseInt(val, 10, 64)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
 		meta.queryValue = queryValue
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
+	}
+
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationQueryValue parsing error %s", err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
 	}
 
 	switch {
@@ -147,16 +157,16 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 }
 
 // newMySQLConnection creates MySQL db connection
-func newMySQLConnection(meta *mySQLMetadata) (*sql.DB, error) {
+func newMySQLConnection(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error) {
 	connStr := metadataToConnectionStr(meta)
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
-		mySQLLog.Error(err, fmt.Sprintf("Found error when opening connection: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error when opening connection: %s", err))
 		return nil, err
 	}
 	err = db.Ping()
 	if err != nil {
-		mySQLLog.Error(err, fmt.Sprintf("Found error when pinging database: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error when pinging database: %s", err))
 		return nil, err
 	}
 	return db, nil
@@ -177,7 +187,7 @@ func parseMySQLDbNameFromConnectionStr(connectionString string) string {
 func (s *mySQLScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
-		mySQLLog.Error(err, "Error closing MySQL connection")
+		s.logger.Error(err, "Error closing MySQL connection")
 		return err
 	}
 	return nil
@@ -187,35 +197,35 @@ func (s *mySQLScaler) Close(context.Context) error {
 func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := s.getQueryResult(ctx)
 	if err != nil {
-		mySQLLog.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
 		return false, err
 	}
-	return messages > 0, nil
+	return messages > s.metadata.activationQueryValue, nil
 }
 
 // getQueryResult returns result of the scaler query
-func (s *mySQLScaler) getQueryResult(ctx context.Context) (int64, error) {
-	var value int64
+func (s *mySQLScaler) getQueryResult(ctx context.Context) (float64, error) {
+	var value float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
 	if err != nil {
-		mySQLLog.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
 		return 0, err
 	}
 	return value, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
@@ -225,11 +235,7 @@ func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting MySQL: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(num, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }

@@ -9,12 +9,10 @@ import (
 	"time"
 
 	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,22 +20,26 @@ import (
 type datadogScaler struct {
 	metadata  *datadogMetadata
 	apiClient *datadog.APIClient
+	logger    logr.Logger
 }
 
 type datadogMetadata struct {
-	apiKey      string
-	appKey      string
-	datadogSite string
-	query       string
-	queryValue  int64
-	vType       v2beta2.MetricTargetType
-	metricName  string
-	age         int
-	useFiller   bool
-	fillValue   float64
+	apiKey               string
+	appKey               string
+	datadogSite          string
+	query                string
+	queryValue           float64
+	queryAggegrator      string
+	activationQueryValue float64
+	vType                v2.MetricTargetType
+	metricName           string
+	age                  int
+	useFiller            bool
+	fillValue            float64
 }
 
-var datadogLog = logf.Log.WithName("datadog_scaler")
+const maxString = "max"
+const avgString = "average"
 
 var filter *regexp.Regexp
 
@@ -47,7 +49,9 @@ func init() {
 
 // NewDatadogScaler creates a new Datadog scaler
 func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	meta, err := parseDatadogMetadata(config)
+	logger := InitializeLogger(config, "datadog_scaler")
+
+	meta, err := parseDatadogMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Datadog metadata: %s", err)
 	}
@@ -59,6 +63,7 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	return &datadogScaler{
 		metadata:  meta,
 		apiClient: apiClient,
+		logger:    logger,
 	}, nil
 }
 
@@ -72,7 +77,7 @@ func parseDatadogQuery(q string) (bool, error) {
 	return true, nil
 }
 
-func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
+func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
 	if val, ok := config.TriggerMetadata["age"]; ok {
@@ -83,7 +88,7 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 		meta.age = age
 
 		if age < 60 {
-			datadogLog.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
+			logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
 		}
 	} else {
 		meta.age = 90 // Default window 90 seconds
@@ -101,13 +106,34 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseInt(val, 10, 64)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
 		}
 		meta.queryValue = queryValue
 	} else {
 		return nil, fmt.Errorf("no queryValue given")
+	}
+
+	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
+		queryAggregator := strings.ToLower(val)
+		switch queryAggregator {
+		case avgString, maxString:
+			meta.queryAggegrator = queryAggregator
+		default:
+			return nil, fmt.Errorf("queryAggregator value %s has to be one of '%s, %s'", queryAggregator, avgString, maxString)
+		}
+	} else {
+		meta.queryAggegrator = ""
+	}
+
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+		}
+		meta.activationQueryValue = activationQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
@@ -120,16 +146,16 @@ func parseDatadogMetadata(config *ScalerConfig) (*datadogMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
-		datadogLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
 			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 		}
 		val = strings.ToLower(val)
 		switch val {
-		case "average":
-			meta.vType = v2beta2.AverageValueMetricType
+		case avgString:
+			meta.vType = v2.AverageValueMetricType
 		case "global":
-			meta.vType = v2beta2.ValueMetricType
+			meta.vType = v2.ValueMetricType
 		default:
 			return nil, fmt.Errorf("type has to be global or average")
 		}
@@ -213,7 +239,7 @@ func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return num > 0, nil
+	return num > s.metadata.activationQueryValue, nil
 }
 
 // getQueryResult returns result of the scaler query
@@ -262,10 +288,6 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	series := resp.GetSeries()
 
-	if len(series) > 1 {
-		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series")
-	}
-
 	if len(series) == 0 {
 		if !s.metadata.useFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
@@ -273,47 +295,78 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return s.metadata.fillValue, nil
 	}
 
-	points := series[0].GetPointlist()
-
-	if len(points) == 0 || len(points[0]) < 2 {
-		if !s.metadata.useFiller {
-			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
-		}
-		return s.metadata.fillValue, nil
+	// Require queryAggregator be set explicitly for multi-query
+	if len(series) > 1 && s.metadata.queryAggegrator == "" {
+		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
 
-	// Return the last point from the series
-	index := len(points) - 1
-	return *points[index][1], nil
+	// Collect all latest point values from any/all series
+	results := make([]float64, len(series))
+	for i := 0; i < len(series); i++ {
+		points := series[i].GetPointlist()
+		index := len(points) - 1
+		if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
+			if !s.metadata.useFiller {
+				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
+			}
+			return s.metadata.fillValue, nil
+		}
+		// Return the last point from the series
+		results[i] = *points[index][1]
+	}
+
+	switch s.metadata.queryAggegrator {
+	case avgString:
+		return AvgFloatFromSlice(results), nil
+	default:
+		// Aggregate Results - default Max value:
+		return MaxFloatFromSlice(results), nil
+	}
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metadata.vType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.queryValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		datadogLog.Error(err, "error getting metrics from Datadog")
+		s.logger.Error(err, "error getting metrics from Datadog")
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metrics from Datadog: %s", err)
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: s.metadata.metricName,
-		Value:      *resource.NewMilliQuantity(int64(num*1000), resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+// Find the largest value in a slice of floats
+func MaxFloatFromSlice(results []float64) float64 {
+	max := results[0]
+	for _, result := range results {
+		if result > max {
+			max = result
+		}
+	}
+	return max
+}
+
+// Find the average value in a slice of floats
+func AvgFloatFromSlice(results []float64) float64 {
+	total := 0.0
+	for _, result := range results {
+		total += result
+	}
+	return total / float64(len(results))
 }

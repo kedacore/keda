@@ -44,7 +44,7 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	// missing queueName
 	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{}},
 	// host defined in authParams
-	{map[string]string{"queueLength": "10"}, true, map[string]string{"host": host}},
+	{map[string]string{"queueLength": "10", "hostFromEnv": host}, true, map[string]string{"host": host}},
 	// properly formed metadata with http protocol
 	{map[string]string{"queueLength": "10", "queueName": "sample", "host": host, "protocol": "http"}, false, map[string]string{}},
 	// queue name with slashes
@@ -111,6 +111,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "-1"}, true, map[string]string{}},
 	// invalid pageSize
 	{map[string]string{"mode": "MessageRate", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "pageSize": "a"}, true, map[string]string{}},
+	// activationValue passed
+	{map[string]string{"activationValue": "10", "queueLength": "20", "queueName": "sample", "hostFromEnv": host}, false, map[string]string{}},
+	// malformed activationValue
+	{map[string]string{"activationValue": "AA", "queueLength": "10", "queueName": "sample", "hostFromEnv": host}, true, map[string]string{}},
+	// http and excludeUnacknowledged
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "excludeUnacknowledged": "true"}, false, map[string]string{}},
+	// amqp and excludeUnacknowledged
+	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "useRegex": "true", "excludeUnacknowledged": "true"}, true, map[string]string{}},
 }
 
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -217,18 +225,8 @@ func TestGetQueueInfo(t *testing.T) {
 	for _, testData := range allTestData {
 		testData := testData
 
-		var expectedVhostPath string
-		switch testData.vhostPath {
-		case "/myhost":
-			expectedVhostPath = "/myhost"
-		case rabbitRootVhostPath, "//":
-			expectedVhostPath = rabbitRootVhostPath
-		default:
-			expectedVhostPath = ""
-		}
-
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues%s/evaluate_trials", expectedVhostPath)
+			expectedPath := fmt.Sprintf("/api/queues%s/evaluate_trials", getExpectedVhost(testData.vhostPath))
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -293,6 +291,13 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
+	// sum queue length + ignoreUnacknowledged
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
 	// max queue length
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
@@ -300,12 +305,26 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
+	// max queue length + excludeUnacknowledged
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
 	// avg queue length
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
 	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
+	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
+	// avg queue length + excludeUnacknowledged
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
+	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
+	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
 	// sum message rate
 	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
@@ -344,7 +363,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 
 	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", testData.vhostPath)
+			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", getExpectedVhost(testData.vhostPath))
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -424,7 +443,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", testData.queueInfo.vhostPath, testData.pageSize)
+			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", getExpectedVhost(testData.queueInfo.vhostPath), testData.pageSize)
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -546,7 +565,7 @@ var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
 func TestRegexQueueMissingError(t *testing.T) {
 	for _, testData := range testRegexQueueInfoNavigationTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
+			expectedPath := "/api/queues/%2F?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
 			if r.RequestURI != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
@@ -588,5 +607,20 @@ func TestRegexQueueMissingError(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+func getExpectedVhost(vhostPath string) string {
+	switch vhostPath {
+	case "":
+		return rabbitRootVhostPath
+	case "/":
+		return rabbitRootVhostPath
+	case "//":
+		return rabbitRootVhostPath
+	case rabbitRootVhostPath:
+		return rabbitRootVhostPath
+	default:
+		return vhostPath
 	}
 }

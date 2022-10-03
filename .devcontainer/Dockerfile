@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.17.9
+FROM golang:1.18.6
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,7 +20,7 @@ ENV GO111MODULE=auto
 
 # Configure apt, install packages and tools
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
+    && apt-get -y install --no-install-recommends apt-utils dialog unzip 2>&1 \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
     && apt-get -y install git iproute2 procps lsb-release \
@@ -49,13 +49,20 @@ RUN apt-get update \
         github.com/cweill/gotests/... \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/lint/golint \
-        github.com/alecthomas/gometalinter \
+        github.com/alecthomas/gometalinter 2>&1 \
         github.com/mgechev/revive \
         github.com/derekparker/delve/cmd/dlv 2>&1 \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
+    # Protocol Buffer Compiler
+    && if [ $(dpkg --print-architecture) = "amd64" ]; then PROTOC_ARCH="x86_64"; else PROTOC_ARCH="aarch_64" ; fi \
+    && curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.1/protoc-3.20.1-linux-$PROTOC_ARCH.zip" \
+    && unzip "protoc-3.20.1-linux-$PROTOC_ARCH.zip" -d $HOME/.local \
+    && mv $HOME/.local/bin/protoc /usr/local/bin/protoc \
+    && mv $HOME/.local/include/ /usr/local/bin/include/ \
+    && protoc --version \
     # Install golangci-lint
-    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.45.0 \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0 \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \

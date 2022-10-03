@@ -8,7 +8,7 @@ In order to develop a scaler, a developer should do the following:
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods defined in the [scaler interface](#scaler-interface) section.
 4. Create a constructor according to [this](#constructor).
-5. Change the `getScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
+5. Change the `buildScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally
@@ -52,15 +52,15 @@ For example:
 
 >**Note:** There is a naming helper function `GenerateMetricNameWithIndex(scalerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
 >```golang
->func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
->	externalMetric := &v2beta2.ExternalMetricSource{
->		Metric: v2beta2.MetricIdentifier{
+>func (s *artemisScaler) GetMetricSpecForScaling() []v2.MetricSpec {
+>	externalMetric := &v2.ExternalMetricSource{
+>		Metric: v2.MetricIdentifier{
 >			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
 >		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 >	}
->	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
->	return []v2beta2.MetricSpec{metricSpec}
+>	metricSpec := v2.MetricSpec{External: externalMetric, Type: artemisMetricType}
+>	return []v2.MetricSpec{metricSpec}
 >}
 >```
 

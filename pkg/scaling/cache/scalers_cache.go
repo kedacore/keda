@@ -19,9 +19,10 @@ package cache
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
@@ -116,8 +117,8 @@ func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *k
 }
 
 func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
-	var queueLength int64
-	var maxValue int64
+	var queueLength float64
+	var maxValue float64
 	isActive := false
 
 	logger := logf.Log.WithName("scalemetrics")
@@ -132,8 +133,8 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 			}
 		}
 	case "avg":
-		queueLengthSum := int64(0)
-		maxValueSum := int64(0)
+		queueLengthSum := float64(0)
+		maxValueSum := float64(0)
 		length := 0
 		for _, metrics := range scalersMetrics {
 			if metrics.isActive {
@@ -144,8 +145,8 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 			}
 		}
 		if length != 0 {
-			queueLength = divideWithCeil(queueLengthSum, int64(length))
-			maxValue = divideWithCeil(maxValueSum, int64(length))
+			queueLength = queueLengthSum / float64(length)
+			maxValue = maxValueSum / float64(length)
 		}
 	case "sum":
 		for _, metrics := range scalersMetrics {
@@ -164,10 +165,15 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 			}
 		}
 	}
-	maxValue = min(scaledJob.MaxReplicaCount(), maxValue)
+
+	if scaledJob.MinReplicaCount() > 0 {
+		isActive = true
+	}
+
+	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
 	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 
-	return isActive, queueLength, maxValue
+	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
 }
 
 func (c *ScalersCache) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -210,8 +216,8 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	return ns, nil
 }
 
-func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	var spec []v2beta2.MetricSpec
+func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var spec []v2.MetricSpec
 	for _, s := range c.Scalers {
 		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
 	}
@@ -230,18 +236,18 @@ func (c *ScalersCache) Close(ctx context.Context) {
 }
 
 type scalerMetrics struct {
-	queueLength int64
-	maxValue    int64
+	queueLength float64
+	maxValue    float64
 	isActive    bool
 }
 
 func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
 	var scalersMetrics []scalerMetrics
 	for i, s := range c.Scalers {
-		var queueLength int64
-		var targetAverageValue int64
+		var queueLength float64
+		var targetAverageValue float64
 		isActive := false
-		maxValue := int64(0)
+		maxValue := float64(0)
 		scalerType := fmt.Sprintf("%T:", s)
 
 		scalerLogger := c.Logger.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
@@ -278,11 +284,11 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			continue
 		}
 
-		var metricValue int64
+		var metricValue float64
 
 		for _, m := range metrics {
 			if m.MetricName == metricSpecs[0].External.Metric.Name {
-				metricValue, _ = m.Value.AsInt64()
+				metricValue = m.Value.AsApproximateFloat64()
 				queueLength += metricValue
 			}
 		}
@@ -293,7 +299,8 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		}
 
 		if targetAverageValue != 0 {
-			maxValue = min(scaledJob.MaxReplicaCount(), divideWithCeil(queueLength, targetAverageValue))
+			averageLength := queueLength / targetAverageValue
+			maxValue = min(float64(scaledJob.MaxReplicaCount()), averageLength)
 		}
 		scalersMetrics = append(scalersMetrics, scalerMetrics{
 			queueLength: queueLength,
@@ -304,40 +311,31 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	return scalersMetrics
 }
 
-func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) int64 {
-	var targetAverageValue int64
-	var metricValue int64
-	var flag bool
+func getTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
+	var targetAverageValue float64
+	var metricValue float64
 	for _, metric := range metricSpecs {
 		if metric.External.Target.AverageValue == nil {
 			metricValue = 0
 		} else {
-			metricValue, flag = metric.External.Target.AverageValue.AsInt64()
-			if !flag {
-				metricValue = 0
-			}
+			metricValue = metric.External.Target.AverageValue.AsApproximateFloat64()
 		}
 
 		targetAverageValue += metricValue
 	}
-	count := int64(len(metricSpecs))
+	count := float64(len(metricSpecs))
 	if count != 0 {
 		return targetAverageValue / count
 	}
 	return 0
 }
 
-func divideWithCeil(x, y int64) int64 {
-	ans := x / y
-	remainder := x % y
-	if remainder != 0 {
-		return ans + 1
-	}
-	return ans
+func ceilToInt64(x float64) int64 {
+	return int64(math.Ceil(x))
 }
 
-// Min function for int64
-func min(x, y int64) int64 {
+// Min function for float64
+func min(x, y float64) float64 {
 	if x > y {
 		return y
 	}

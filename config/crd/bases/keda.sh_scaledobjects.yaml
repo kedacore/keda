@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
+    controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
   name: scaledobjects.keda.sh
 spec:
@@ -120,10 +119,11 @@ spec:
                                   - value
                                   type: object
                                 type: array
+                                x-kubernetes-list-type: atomic
                               selectPolicy:
                                 description: selectPolicy is used to specify which
                                   policy should be used. If not set, the default value
-                                  MaxPolicySelect is used.
+                                  Max is used.
                                 type: string
                               stabilizationWindowSeconds:
                                 description: 'StabilizationWindowSeconds is the number
@@ -140,10 +140,9 @@ spec:
                             type: object
                           scaleUp:
                             description: 'scaleUp is scaling policy for scaling Up.
-                              If not set, the default value is the higher of:   *
-                              increase no more than 4 pods per 60 seconds   * double
-                              the number of pods per 60 seconds No stabilization is
-                              used.'
+                              If not set, the default value is the higher of: * increase
+                              no more than 4 pods per 60 seconds * double the number
+                              of pods per 60 seconds No stabilization is used.'
                             properties:
                               policies:
                                 description: policies is a list of potential scaling
@@ -177,10 +176,11 @@ spec:
                                   - value
                                   type: object
                                 type: array
+                                x-kubernetes-list-type: atomic
                               selectPolicy:
                                 description: selectPolicy is used to specify which
                                   policy should be used. If not set, the default value
-                                  MaxPolicySelect is used.
+                                  Max is used.
                                 type: string
                               stabilizationWindowSeconds:
                                 description: 'StabilizationWindowSeconds is the number
@@ -196,6 +196,8 @@ spec:
                                 type: integer
                             type: object
                         type: object
+                      name:
+                        type: string
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
@@ -327,6 +329,8 @@ spec:
                       type: string
                   type: object
                 type: object
+              hpaName:
+                type: string
               lastActiveTime:
                 format: date-time
                 type: string
@@ -368,9 +372,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
