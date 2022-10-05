@@ -19,7 +19,6 @@ import (
 
 const (
 	lokiServerAddress       = "serverAddress"
-	lokiMetricName          = "metricName"
 	lokiQuery               = "query"
 	lokiThreshold           = "threshold"
 	lokiActivationThreshold = "activationThreshold"
@@ -42,7 +41,6 @@ type lokiScaler struct {
 
 type lokiMetadata struct {
 	serverAddress       string
-	metricName          string
 	query               string
 	threshold           float64
 	activationThreshold float64
@@ -103,12 +101,6 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no %s given", lokiQuery)
-	}
-
-	if val, ok := config.TriggerMetadata[lokiMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		return nil, fmt.Errorf("no %s given", lokiMetricName)
 	}
 
 	if val, ok := config.TriggerMetadata[lokiThreshold]; ok && val != "" {
@@ -185,7 +177,7 @@ func (s *lokiScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("loki-%s", s.metadata.metricName))
+	metricName := kedautil.NormalizeString("loki")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -256,7 +248,7 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("loki metrics %s target may be lost, the result is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("loki metrics may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("loki query %s returned multiple elements", s.metadata.query)
 	}
@@ -266,7 +258,7 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("loki metrics %s target may be lost, the value list is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("loki metrics may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("loki query %s didn't return enough values", s.metadata.query)
 	}
