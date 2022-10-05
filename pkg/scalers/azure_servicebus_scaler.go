@@ -19,6 +19,7 @@ limitations under the License.
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -66,6 +67,9 @@ type azureServiceBusMetadata struct {
 	connection              string
 	entityType              entityType
 	fullyQualifiedNamespace string
+	useRegex                bool
+	entityNameRegex         *regexp.Regexp
+	operation               string
 	scalerIndex             int
 }
 
@@ -118,6 +122,28 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		meta.activationTargetLength = activationMessageCount
 	}
 
+	meta.useRegex = false
+	if val, ok := config.TriggerMetadata["useRegex"]; ok {
+		useRegex, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("useRegex has invalid value")
+		}
+		meta.useRegex = useRegex
+	}
+
+	meta.operation = sumOperation
+	if meta.useRegex {
+		if val, ok := config.TriggerMetadata["operation"]; ok {
+			meta.operation = val
+		}
+
+		switch meta.operation {
+		case avgOperation, maxOperation, sumOperation:
+		default:
+			return nil, fmt.Errorf("operation must be one of avg, max, or sum")
+		}
+	}
+
 	// get queue name OR topic and subscription name & set entity type accordingly
 	if val, ok := config.TriggerMetadata["queueName"]; ok {
 		meta.queueName = val
@@ -125,6 +151,16 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 
 		if _, ok := config.TriggerMetadata["subscriptionName"]; ok {
 			return nil, fmt.Errorf("subscription name provided with queue name")
+		}
+
+		if meta.useRegex {
+			entityNameRegex, err := regexp.Compile(meta.queueName)
+			if err != nil {
+				return nil, fmt.Errorf("queueName is not a valid regular expression")
+			}
+			entityNameRegex.Longest()
+
+			meta.entityNameRegex = entityNameRegex
 		}
 	}
 
@@ -139,6 +175,16 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 			meta.subscriptionName = val
 		} else {
 			return nil, fmt.Errorf("no subscription name provided with topic name")
+		}
+
+		if meta.useRegex {
+			entityNameRegex, err := regexp.Compile(meta.subscriptionName)
+			if err != nil {
+				return nil, fmt.Errorf("subscriptionName is not a valid regular expression")
+			}
+			entityNameRegex.Longest()
+
+			meta.entityNameRegex = entityNameRegex
 		}
 	}
 	if meta.entityType == none {
@@ -200,10 +246,18 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 // Returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := ""
+
+	var entityType string
 	if s.metadata.entityType == queue {
 		metricName = s.metadata.queueName
+		entityType = "queue"
 	} else {
 		metricName = s.metadata.topicName
+		entityType = "topic"
+	}
+
+	if s.metadata.useRegex {
+		metricName = fmt.Sprintf("%s-regex", entityType)
 	}
 
 	externalMetric := &v2.ExternalMetricSource{
@@ -240,9 +294,9 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 	// switch case for queue vs topic here
 	switch s.metadata.entityType {
 	case queue:
-		return getQueueLength(ctx, adminClient, s.metadata.queueName)
+		return getQueueLength(ctx, adminClient, s.metadata)
 	case subscription:
-		return getSubscriptionLength(ctx, adminClient, s.metadata.topicName, s.metadata.subscriptionName)
+		return getSubscriptionLength(ctx, adminClient, s.metadata)
 	default:
 		return -1, fmt.Errorf("no entity type")
 	}
@@ -303,26 +357,87 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 	return adminClient, nil
 }
 
-func getQueueLength(ctx context.Context, adminClient *admin.Client, queueName string) (int64, error) {
-	queueEntity, err := adminClient.GetQueueRuntimeProperties(ctx, queueName, &admin.GetQueueRuntimePropertiesOptions{})
-	if err != nil {
-		return -1, err
-	}
-	if queueEntity == nil {
-		return -1, fmt.Errorf("queue %s doesn't exist", queueName)
+func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {
+	if !meta.useRegex {
+		queueEntity, err := adminClient.GetQueueRuntimeProperties(ctx, meta.queueName, &admin.GetQueueRuntimePropertiesOptions{})
+		if err != nil {
+			return -1, err
+		}
+		if queueEntity == nil {
+			return -1, fmt.Errorf("queue %s doesn't exist", meta.queueName)
+		}
+
+		return int64(queueEntity.ActiveMessageCount), nil
 	}
 
-	return int64(queueEntity.ActiveMessageCount), nil
+	messageCounts := make([]int64, 0)
+
+	queuePager := adminClient.NewListQueuesRuntimePropertiesPager(nil)
+	for queuePager.More() {
+		page, err := queuePager.NextPage(ctx)
+		if err != nil {
+			return -1, err
+		}
+
+		for _, queue := range page.QueueRuntimeProperties {
+			if meta.entityNameRegex.FindString(queue.QueueName) == queue.QueueName {
+				messageCounts = append(messageCounts, int64(queue.ActiveMessageCount))
+			}
+		}
+	}
+
+	return performOperation(messageCounts, meta.operation), nil
 }
 
-func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, topicName, subscriptionName string) (int64, error) {
-	subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, topicName, subscriptionName, &admin.GetSubscriptionRuntimePropertiesOptions{})
-	if err != nil {
-		return -1, err
-	}
-	if subscriptionEntity == nil {
-		return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", subscriptionName, topicName)
+func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {
+	if !meta.useRegex {
+		subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, meta.topicName, meta.subscriptionName,
+			&admin.GetSubscriptionRuntimePropertiesOptions{})
+		if err != nil {
+			return -1, err
+		}
+		if subscriptionEntity == nil {
+			return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", meta.subscriptionName, meta.topicName)
+		}
+
+		return int64(subscriptionEntity.ActiveMessageCount), nil
 	}
 
-	return int64(subscriptionEntity.ActiveMessageCount), nil
+	messageCounts := make([]int64, 0)
+
+	subscriptionPager := adminClient.NewListSubscriptionsRuntimePropertiesPager(meta.topicName, nil)
+	for subscriptionPager.More() {
+		page, err := subscriptionPager.NextPage(ctx)
+		if err != nil {
+			return -1, err
+		}
+
+		for _, subscription := range page.SubscriptionRuntimeProperties {
+			if meta.entityNameRegex.FindString(subscription.SubscriptionName) == subscription.SubscriptionName {
+				messageCounts = append(messageCounts, int64(subscription.ActiveMessageCount))
+			}
+		}
+	}
+
+	return performOperation(messageCounts, meta.operation), nil
+}
+
+func performOperation(messageCounts []int64, operation string) int64 {
+	var result int64
+	for _, val := range messageCounts {
+		switch operation {
+		case avgOperation, sumOperation:
+			result += val
+		case maxOperation:
+			if val > result {
+				result = val
+			}
+		}
+	}
+
+	total := int64(len(messageCounts))
+	if operation == "avg" && total != 0 {
+		return result / total
+	}
+	return result
 }

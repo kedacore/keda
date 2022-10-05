@@ -39,7 +39,7 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 				return nil, errors.New("no bearer token provided")
 			}
 			if out.EnableBasicAuth {
-				return nil, errors.New("beare and basic authentication can not be set both")
+				return nil, errors.New("both bearer and basic authentication can not be set")
 			}
 
 			out.BearerToken = authParams["bearerToken"]
@@ -49,7 +49,7 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 				return nil, errors.New("no username given")
 			}
 			if out.EnableBearerAuth {
-				return nil, errors.New("beare and basic authentication can not be set both")
+				return nil, errors.New("both bearer and basic authentication can not be set")
 			}
 
 			out.Username = authParams["username"]
@@ -70,7 +70,7 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			out.Key = authParams["key"]
 			out.EnableTLS = true
 		default:
-			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", t)
+			return nil, fmt.Errorf("incorrect value for authMode is given: %s", t)
 		}
 	}
 
