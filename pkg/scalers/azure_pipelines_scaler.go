@@ -28,19 +28,19 @@ type JobRequests struct {
 }
 
 type JobRequest struct {
-	RequestID int       `json:"requestId"`
-	QueueTime time.Time `json:"queueTime"`
+	RequestID     int       `json:"requestId"`
+	QueueTime     time.Time `json:"queueTime"`
 	AssignTime    time.Time `json:"assignTime,omitempty"`
 	ReceiveTime   time.Time `json:"receiveTime,omitempty"`
 	LockedUntil   time.Time `json:"lockedUntil,omitempty"`
-	ServiceOwner string  `json:"serviceOwner"`
-	HostID       string  `json:"hostId"`
-	Result   *string `json:"result"`
-	ScopeID  string  `json:"scopeId"`
-	PlanType string `json:"planType"`
-	PlanID  string   `json:"planId"`
-	JobID   string   `json:"jobId"`
-	Demands []string `json:"demands"`
+	ServiceOwner  string    `json:"serviceOwner"`
+	HostID        string    `json:"hostId"`
+	Result        *string   `json:"result"`
+	ScopeID       string    `json:"scopeId"`
+	PlanType      string    `json:"planType"`
+	PlanID        string    `json:"planId"`
+	JobID         string    `json:"jobId"`
+	Demands       []string  `json:"demands"`
 	ReservedAgent *struct {
 		Links struct {
 			Self struct {
