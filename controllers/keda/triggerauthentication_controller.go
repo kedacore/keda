@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metrics"
 )
@@ -45,6 +47,10 @@ type TriggerAuthenticationReconciler struct {
 type triggerAuthMetricsData struct {
 	namespace string
 }
+
+const (
+	triggerAuthenticationFinalizer = "finalizer.keda.sh"
+)
 
 var (
 	triggerAuthMetricsMap  map[string]triggerAuthMetricsData
@@ -66,17 +72,18 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	err := r.Client.Get(ctx, req.NamespacedName, triggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.updateMetricsOnDelete(req.NamespacedName.String())
 			return ctrl.Result{}, nil
 		}
-		reqLogger.Error(err, "Failed ot get TriggerAuthentication")
+		reqLogger.Error(err, "Failed to get TriggerAuthentication")
 		return ctrl.Result{}, err
 	}
 
 	if triggerAuthentication.GetDeletionTimestamp() != nil {
-		r.updateMetricsOnDelete(req.NamespacedName.String())
-		r.Recorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationDeleted, "TriggerAuthentication was deleted")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, r.finalizeTriggerAuthentication(ctx, reqLogger, triggerAuthentication, req.NamespacedName.String())
+	}
+
+	if err := r.ensureFinalizer(ctx, reqLogger, triggerAuthentication); err != nil {
+		return ctrl.Result{}, err
 	}
 	r.updateMetrics(triggerAuthentication, req.NamespacedName.String())
 
@@ -92,6 +99,38 @@ func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) err
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
+}
+
+func (r *TriggerAuthenticationReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, triggerAuth *kedav1alpha1.TriggerAuthentication) error {
+	if !util.Contains(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer) {
+		logger.Info("Adding Finalizer for the TriggerAuthentication")
+		triggerAuth.SetFinalizers(append(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer))
+
+		// Update CR
+		err := r.Client.Update(ctx, triggerAuth)
+		if err != nil {
+			logger.Error(err, "Failed to update TriggerAuthentication with a finalizer", "finalizer", triggerAuthenticationFinalizer)
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *TriggerAuthenticationReconciler) finalizeTriggerAuthentication(ctx context.Context, logger logr.Logger,
+	triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) error {
+	if util.Contains(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer) {
+		triggerAuth.SetFinalizers(util.Remove(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer))
+		if err := r.Client.Update(ctx, triggerAuth); err != nil {
+			logger.Error(err, "Failed to update TriggerAuthentication after removing a finalizer", "finalizer", triggerAuthenticationFinalizer)
+			return err
+		}
+
+		r.updateMetricsOnDelete(namespacedName)
+	}
+
+	logger.Info("Successfully finalized TriggerAuthentication")
+	r.Recorder.Event(triggerAuth, corev1.EventTypeNormal, eventreason.TriggerAuthenticationDeleted, "TriggerAuthentication was deleted")
+	return nil
 }
 
 func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) {

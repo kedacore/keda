@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metrics"
 )
@@ -45,6 +47,10 @@ type ClusterTriggerAuthenticationReconciler struct {
 type clusterTriggerAuthMetricsData struct {
 	namespace string
 }
+
+const (
+	clusterTriggerAuthenticationFinalizer = "finalizer.keda.sh"
+)
 
 var (
 	clusterTriggerAuthMetricsMap  map[string]clusterTriggerAuthMetricsData
@@ -66,17 +72,18 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	err := r.Client.Get(ctx, req.NamespacedName, clusterTriggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.updateMetricsOnDelete(req.NamespacedName.String())
 			return ctrl.Result{}, nil
 		}
-		reqLogger.Error(err, "Failed ot get ClusterTriggerAuthentication")
+		reqLogger.Error(err, "Failed to get ClusterTriggerAuthentication")
 		return ctrl.Result{}, err
 	}
 
 	if clusterTriggerAuthentication.GetDeletionTimestamp() != nil {
-		r.updateMetricsOnDelete(req.NamespacedName.String())
-		r.Recorder.Event(clusterTriggerAuthentication, corev1.EventTypeNormal, eventreason.ClusterTriggerAuthenticationDeleted, "ClusterTriggerAuthentication was deleted")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, r.finalizeClusterTriggerAuthentication(ctx, reqLogger, clusterTriggerAuthentication, req.NamespacedName.String())
+	}
+
+	if err := r.ensureFinalizer(ctx, reqLogger, clusterTriggerAuthentication); err != nil {
+		return ctrl.Result{}, err
 	}
 	r.updateMetrics(clusterTriggerAuthentication, req.NamespacedName.String())
 
@@ -91,6 +98,38 @@ func (r *ClusterTriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manag
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.ClusterTriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
+}
+
+func (r *ClusterTriggerAuthenticationReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication) error {
+	if !util.Contains(clusterTriggerAuth.GetFinalizers(), clusterTriggerAuthenticationFinalizer) {
+		logger.Info("Adding Finalizer for the ClusterTriggerAuthentication")
+		clusterTriggerAuth.SetFinalizers(append(clusterTriggerAuth.GetFinalizers(), clusterTriggerAuthenticationFinalizer))
+
+		// Update CR
+		err := r.Client.Update(ctx, clusterTriggerAuth)
+		if err != nil {
+			logger.Error(err, "Failed to update ClusterTriggerAuthentication with a finalizer", "finalizer", clusterTriggerAuthenticationFinalizer)
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ClusterTriggerAuthenticationReconciler) finalizeClusterTriggerAuthentication(ctx context.Context, logger logr.Logger,
+	clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication, namespacedName string) error {
+	if util.Contains(clusterTriggerAuth.GetFinalizers(), clusterTriggerAuthenticationFinalizer) {
+		clusterTriggerAuth.SetFinalizers(util.Remove(clusterTriggerAuth.GetFinalizers(), clusterTriggerAuthenticationFinalizer))
+		if err := r.Client.Update(ctx, clusterTriggerAuth); err != nil {
+			logger.Error(err, "Failed to update ClusterTriggerAuthentication after removing a finalizer", "finalizer", clusterTriggerAuthenticationFinalizer)
+			return err
+		}
+
+		r.updateMetricsOnDelete(namespacedName)
+	}
+
+	logger.Info("Successfully finalized ClusterTriggerAuthentication")
+	r.Recorder.Event(clusterTriggerAuth, corev1.EventTypeNormal, eventreason.TriggerAuthenticationDeleted, "ClusterTriggerAuthentication was deleted")
+	return nil
 }
 
 func (r *ClusterTriggerAuthenticationReconciler) updateMetrics(clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication, namespacedName string) {
