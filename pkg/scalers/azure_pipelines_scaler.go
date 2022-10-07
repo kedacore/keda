@@ -28,19 +28,19 @@ type JobRequests struct {
 }
 
 type JobRequest struct {
-	RequestId     int       `json:"requestId"`
-	QueueTime     time.Time `json:"queueTime"`
+	RequestID int       `json:"requestId"`
+	QueueTime time.Time `json:"queueTime"`
 	AssignTime    time.Time `json:"assignTime,omitempty"`
 	ReceiveTime   time.Time `json:"receiveTime,omitempty"`
 	LockedUntil   time.Time `json:"lockedUntil,omitempty"`
-	ServiceOwner  string    `json:"serviceOwner"`
-	HostId        string    `json:"hostId"`
-	Result        *string   `json:"result"`
-	ScopeId       string    `json:"scopeId"`
-	PlanType      string    `json:"planType"`
-	PlanId        string    `json:"planId"`
-	JobId         string    `json:"jobId"`
-	Demands       []string  `json:"demands"`
+	ServiceOwner string  `json:"serviceOwner"`
+	HostID       string  `json:"hostId"`
+	Result   *string `json:"result"`
+	ScopeID  string  `json:"scopeId"`
+	PlanType string `json:"planType"`
+	PlanID  string   `json:"planId"`
+	JobID   string   `json:"jobId"`
+	Demands []string `json:"demands"`
 	ReservedAgent *struct {
 		Links struct {
 			Self struct {
@@ -50,7 +50,7 @@ type JobRequest struct {
 				Href string `json:"href"`
 			} `json:"web"`
 		} `json:"_links"`
-		Id                int    `json:"id"`
+		ID                int    `json:"id"`
 		Name              string `json:"name"`
 		Version           string `json:"version"`
 		OsDescription     string `json:"osDescription"`
@@ -68,7 +68,7 @@ type JobRequest struct {
 				Href string `json:"href"`
 			} `json:"self"`
 		} `json:"_links"`
-		Id   int    `json:"id"`
+		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"definition"`
 	Owner struct {
@@ -80,15 +80,15 @@ type JobRequest struct {
 				Href string `json:"href"`
 			} `json:"self"`
 		} `json:"_links"`
-		Id   int    `json:"id"`
+		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"owner"`
 	Data struct {
 		ParallelismTag string `json:"ParallelismTag"`
 		IsScheduledKey string `json:"IsScheduledKey"`
 	} `json:"data"`
-	PoolId          int    `json:"poolId"`
-	OrchestrationId string `json:"orchestrationId"`
+	PoolID          int    `json:"poolId"`
+	OrchestrationID string `json:"orchestrationId"`
 	Priority        int    `json:"priority"`
 	MatchedAgents   *[]struct {
 		Links struct {
@@ -99,7 +99,7 @@ type JobRequest struct {
 				Href string `json:"href"`
 			} `json:"web"`
 		} `json:"_links"`
-		Id                int    `json:"id"`
+		ID                int    `json:"id"`
 		Name              string `json:"name"`
 		Version           string `json:"version"`
 		Enabled           bool   `json:"enabled"`

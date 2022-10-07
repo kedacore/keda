@@ -189,7 +189,7 @@ func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
 func TestAzurePipelinesMatchedAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(buildLoadJson())
+		_, _ = w.Write(buildLoadJSON())
 	}))
 
 	meta := getMatchedAgentMetaData(apiStub.URL)
@@ -208,7 +208,6 @@ func TestAzurePipelinesMatchedAgent(t *testing.T) {
 	if queuelen < 1 {
 		t.Fail()
 	}
-
 }
 
 func getDemandJobMetaData(url string) *azurePipelinesMetadata {
@@ -230,7 +229,7 @@ func getMismatchDemandJobMetaData(url string) *azurePipelinesMetadata {
 func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(buildLoadJson())
+		_, _ = w.Write(buildLoadJSON())
 	}))
 
 	meta := getDemandJobMetaData(apiStub.URL)
@@ -249,13 +248,12 @@ func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 	if queuelen < 1 {
 		t.Fail()
 	}
-
 }
 
 func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(buildLoadJson())
+		_, _ = w.Write(buildLoadJSON())
 	}))
 
 	meta := getMismatchDemandJobMetaData(apiStub.URL)
@@ -274,16 +272,15 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 	if queuelen > 0 {
 		t.Fail()
 	}
-
 }
 
-func buildLoadJson() []byte {
+func buildLoadJSON() []byte {
 	output := testJobRequestResponse[0 : len(testJobRequestResponse)-2]
 	for i := 1; i < loadCount; i++ {
 		output = output + "," + deadJob
 	}
 
-	output = output + "]}"
+	output += "]}"
 
 	return []byte(output)
 }
