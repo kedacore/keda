@@ -50,7 +50,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 			return err
 		}
 
-		r.updateTriggerTotalsOnDelete(namespacedName)
+		r.updateMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info("Successfully finalized ScaledJob")

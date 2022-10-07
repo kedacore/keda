@@ -511,7 +511,7 @@ func (r *ScaledObjectReconciler) updateMetrics(scaledObject *kedav1alpha1.Scaled
 	scaledObjectMetricsMap[namespacedName] = metricsData
 }
 
-func (r *ScaledObjectReconciler) updateTriggerTotalsOnDelete(namespacedName string) {
+func (r *ScaledObjectReconciler) updateMetricsOnDelete(namespacedName string) {
 	scaledObjectMetricsLock.Lock()
 	defer scaledObjectMetricsLock.Unlock()
 
