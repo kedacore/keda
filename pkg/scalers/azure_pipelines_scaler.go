@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -20,6 +21,92 @@ import (
 const (
 	defaultTargetPipelinesQueueLength = 1
 )
+
+type JobRequests struct {
+	Count int          `json:"count"`
+	Value []JobRequest `json:"value"`
+}
+
+type JobRequest struct {
+	RequestId     int       `json:"requestId"`
+	QueueTime     time.Time `json:"queueTime"`
+	AssignTime    time.Time `json:"assignTime,omitempty"`
+	ReceiveTime   time.Time `json:"receiveTime,omitempty"`
+	LockedUntil   time.Time `json:"lockedUntil,omitempty"`
+	ServiceOwner  string    `json:"serviceOwner"`
+	HostId        string    `json:"hostId"`
+	Result        *string   `json:"result"`
+	ScopeId       string    `json:"scopeId"`
+	PlanType      string    `json:"planType"`
+	PlanId        string    `json:"planId"`
+	JobId         string    `json:"jobId"`
+	Demands       []string  `json:"demands"`
+	ReservedAgent *struct {
+		Links struct {
+			Self struct {
+				Href string `json:"href"`
+			} `json:"self"`
+			Web struct {
+				Href string `json:"href"`
+			} `json:"web"`
+		} `json:"_links"`
+		Id                int    `json:"id"`
+		Name              string `json:"name"`
+		Version           string `json:"version"`
+		OsDescription     string `json:"osDescription"`
+		Enabled           bool   `json:"enabled"`
+		Status            string `json:"status"`
+		ProvisioningState string `json:"provisioningState"`
+		AccessPoint       string `json:"accessPoint"`
+	} `json:"reservedAgent,omitempty"`
+	Definition struct {
+		Links struct {
+			Web struct {
+				Href string `json:"href"`
+			} `json:"web"`
+			Self struct {
+				Href string `json:"href"`
+			} `json:"self"`
+		} `json:"_links"`
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"definition"`
+	Owner struct {
+		Links struct {
+			Web struct {
+				Href string `json:"href"`
+			} `json:"web"`
+			Self struct {
+				Href string `json:"href"`
+			} `json:"self"`
+		} `json:"_links"`
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"owner"`
+	Data struct {
+		ParallelismTag string `json:"ParallelismTag"`
+		IsScheduledKey string `json:"IsScheduledKey"`
+	} `json:"data"`
+	PoolId          int    `json:"poolId"`
+	OrchestrationId string `json:"orchestrationId"`
+	Priority        int    `json:"priority"`
+	MatchedAgents   *[]struct {
+		Links struct {
+			Self struct {
+				Href string `json:"href"`
+			} `json:"self"`
+			Web struct {
+				Href string `json:"href"`
+			} `json:"web"`
+		} `json:"_links"`
+		Id                int    `json:"id"`
+		Name              string `json:"name"`
+		Version           string `json:"version"`
+		Enabled           bool   `json:"enabled"`
+		Status            string `json:"status"`
+		ProvisioningState string `json:"provisioningState"`
+	} `json:"matchedAgents,omitempty"`
+}
 
 type azurePipelinesPoolNameResponse struct {
 	Value []struct {
@@ -243,47 +330,51 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, err
 	}
 
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
+	var jrs JobRequests
+	err = json.Unmarshal(body, &jrs)
 	if err != nil {
 		return -1, err
 	}
 
-	var count int64
-	jobs, ok := result["value"].([]interface{})
-
-	if !ok {
-		return -1, fmt.Errorf("the Azure DevOps REST API result returned no value data despite successful code. url: %s", url)
-	}
-
 	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
-	for _, value := range jobs {
-		v := value.(map[string]interface{})
-		if v["result"] == nil {
+	var count int64
+	for _, job := range stripDeadJobs(jrs.Value) {
+		if job.Result == nil {
 			if s.metadata.parent == "" && s.metadata.demands == "" {
 				// no plan defined, just add a count
 				count++
 			} else {
 				if s.metadata.parent == "" {
 					// doesn't use parent, switch to demand
-					if getCanAgentDemandFulfilJob(v, s.metadata) {
+					if getCanAgentDemandFulfilJob(job, s.metadata) {
 						count++
 					}
 				} else {
 					// does use parent
-					if getCanAgentParentFulfilJob(v, s.metadata) {
+					if getCanAgentParentFulfilJob(job, s.metadata) {
 						count++
 					}
 				}
 			}
 		}
 	}
+
 	return count, err
 }
 
+func stripDeadJobs(jobs []JobRequest) []JobRequest {
+	var filtered []JobRequest
+	for _, job := range jobs {
+		if job.Result == nil {
+			filtered = append(filtered, job)
+		}
+	}
+	return filtered
+}
+
 // Determine if the scaledjob has the right demands to spin up
-func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
-	var demandsReq = v["demands"].([]interface{})
+func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
+	var demandsReq = jr.Demands
 	var demandsAvail = strings.Split(metadata.demands, ",")
 	var countDemands = 0
 	for _, dr := range demandsReq {
@@ -301,16 +392,15 @@ func getCanAgentDemandFulfilJob(v map[string]interface{}, metadata *azurePipelin
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
-func getCanAgentParentFulfilJob(v map[string]interface{}, metadata *azurePipelinesMetadata) bool {
-	matchedAgents, ok := v["matchedAgents"].([]interface{})
-	if !ok {
-		// ADO is already processing
+func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
+	matchedAgents := jr.MatchedAgents
+
+	if matchedAgents == nil {
 		return false
 	}
 
-	for _, m := range matchedAgents {
-		n := m.(map[string]interface{})
-		if metadata.parent == n["name"].(string) {
+	for _, m := range *matchedAgents {
+		if metadata.parent == m.Name {
 			return true
 		}
 	}
