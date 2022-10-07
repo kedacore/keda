@@ -333,27 +333,26 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	var jrs JobRequests
 	err = json.Unmarshal(body, &jrs)
 	if err != nil {
+		s.logger.Error(err, "Cannot unmarshal ADO JobRequests API response")
 		return -1, err
 	}
 
 	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
 	for _, job := range stripDeadJobs(jrs.Value) {
-		if job.Result == nil {
-			if s.metadata.parent == "" && s.metadata.demands == "" {
-				// no plan defined, just add a count
-				count++
+		if s.metadata.parent == "" && s.metadata.demands == "" {
+			// no plan defined, just add a count
+			count++
+		} else {
+			if s.metadata.parent == "" {
+				// doesn't use parent, switch to demand
+				if getCanAgentDemandFulfilJob(job, s.metadata) {
+					count++
+				}
 			} else {
-				if s.metadata.parent == "" {
-					// doesn't use parent, switch to demand
-					if getCanAgentDemandFulfilJob(job, s.metadata) {
-						count++
-					}
-				} else {
-					// does use parent
-					if getCanAgentParentFulfilJob(job, s.metadata) {
-						count++
-					}
+				// does use parent
+				if getCanAgentParentFulfilJob(job, s.metadata) {
+					count++
 				}
 			}
 		}
