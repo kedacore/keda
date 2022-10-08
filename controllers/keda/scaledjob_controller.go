@@ -51,9 +51,10 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Scheme               *runtime.Scheme
-	GlobalHTTPTimeout    time.Duration
-	Recorder             record.EventRecorder
+	Scheme            *runtime.Scheme
+	GlobalHTTPTimeout time.Duration
+	Recorder          record.EventRecorder
+
 	scaledJobGenerations *sync.Map
 	scaleHandler         scaling.ScaleHandler
 	SecretsLister        corev1listers.SecretLister
