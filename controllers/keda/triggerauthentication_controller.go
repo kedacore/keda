@@ -20,10 +20,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -32,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metrics"
 )
@@ -40,17 +37,12 @@ import (
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
 type TriggerAuthenticationReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	record.EventRecorder
 }
 
 type triggerAuthMetricsData struct {
 	namespace string
 }
-
-const (
-	triggerAuthenticationFinalizer = "finalizer.keda.sh"
-)
 
 var (
 	triggerAuthMetricsMap  map[string]triggerAuthMetricsData
@@ -88,7 +80,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	r.updateMetrics(triggerAuthentication, req.NamespacedName.String())
 
 	if triggerAuthentication.ObjectMeta.Generation == 1 {
-		r.Recorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationAdded, "New TriggerAuthentication configured")
+		r.EventRecorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationAdded, "New TriggerAuthentication configured")
 	}
 
 	return ctrl.Result{}, nil
@@ -99,38 +91,6 @@ func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) err
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
-}
-
-func (r *TriggerAuthenticationReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, triggerAuth *kedav1alpha1.TriggerAuthentication) error {
-	if !util.Contains(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer) {
-		logger.Info("Adding Finalizer for the TriggerAuthentication")
-		triggerAuth.SetFinalizers(append(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer))
-
-		// Update CR
-		err := r.Client.Update(ctx, triggerAuth)
-		if err != nil {
-			logger.Error(err, "Failed to update TriggerAuthentication with a finalizer", "finalizer", triggerAuthenticationFinalizer)
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *TriggerAuthenticationReconciler) finalizeTriggerAuthentication(ctx context.Context, logger logr.Logger,
-	triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) error {
-	if util.Contains(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer) {
-		triggerAuth.SetFinalizers(util.Remove(triggerAuth.GetFinalizers(), triggerAuthenticationFinalizer))
-		if err := r.Client.Update(ctx, triggerAuth); err != nil {
-			logger.Error(err, "Failed to update TriggerAuthentication after removing a finalizer", "finalizer", triggerAuthenticationFinalizer)
-			return err
-		}
-
-		r.updateMetricsOnDelete(namespacedName)
-	}
-
-	logger.Info("Successfully finalized TriggerAuthentication")
-	r.Recorder.Event(triggerAuth, corev1.EventTypeNormal, eventreason.TriggerAuthenticationDeleted, "TriggerAuthentication was deleted")
-	return nil
 }
 
 func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) {
@@ -146,7 +106,7 @@ func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha
 }
 
 // this method is idempotent, so it can be called multiple times without side-effects
-func (r *TriggerAuthenticationReconciler) updateMetricsOnDelete(namespacedName string) {
+func (r *TriggerAuthenticationReconciler) UpdateMetricsOnDelete(namespacedName string) {
 	triggerAuthMetricsLock.Lock()
 	defer triggerAuthMetricsLock.Unlock()
 
