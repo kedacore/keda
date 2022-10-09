@@ -38,7 +38,6 @@ require (
 	github.com/hashicorp/vault/api v1.7.2
 	github.com/imdario/mergo v0.3.13
 	github.com/influxdata/influxdb-client-go/v2 v2.10.0
-	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
@@ -106,6 +105,8 @@ replace (
 	// Needed for CVE-2022-3172 https://bugzilla.redhat.com/show_bug.cgi?id=2127804
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.5
 )
+
+require github.com/joho/godotenv v1.3.0
 
 require (
 	cloud.google.com/go v0.104.0 // indirect
