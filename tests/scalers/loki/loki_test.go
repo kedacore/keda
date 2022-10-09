@@ -28,7 +28,7 @@ var (
 	scaledObjectName      = fmt.Sprintf("%s-so", testName)
 	lokiServerName        = fmt.Sprintf("%s-server", testName)
 	minReplicaCount       = 0
-	maxReplicaCount       = 2
+	maxReplicaCount       = 3
 )
 
 type templateData struct {
@@ -122,10 +122,10 @@ spec:
   pollingInterval: 3
   cooldownPeriod:  1
   triggers:
-  - type: prometheus
+  - type: loki
     metadata:
-      serverAddress: http://{{.LokiServerName}}.{{.TestNamespace}}.svc.cluster.local:3100
-      threshold: '0.5'
+      serverAddress: http://loki.{{.TestNamespace}}.svc
+      threshold: '1'
       query: sum(rate({namespace="{{.TestNamespace}}"}[1m])) by (level)
 `
 
