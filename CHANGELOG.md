@@ -41,6 +41,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 ### Fixes
 
 - **General:** Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
+- **General:** Respect optional parameter inside envs for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
 
 ### Deprecations
 
