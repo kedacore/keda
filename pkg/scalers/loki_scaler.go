@@ -10,11 +10,12 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (

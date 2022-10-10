@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
-	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -28,7 +29,7 @@ var (
 	scaledObjectName      = fmt.Sprintf("%s-so", testName)
 	lokiServerName        = fmt.Sprintf("%s-server", testName)
 	minReplicaCount       = 0
-	maxReplicaCount       = 3
+	maxReplicaCount       = 2
 )
 
 type templateData struct {
@@ -38,6 +39,7 @@ type templateData struct {
 	PublishDeploymentName string
 	ScaledObjectName      string
 	LokiServerName        string
+	BackTick              string
 	MinReplicaCount       int
 	MaxReplicaCount       int
 }
@@ -62,17 +64,10 @@ spec:
         type: keda-testing
     spec:
       containers:
-      - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
 ---
 `
 
@@ -95,17 +90,10 @@ spec:
         type: {{.MonitoredAppName}}
     spec:
       containers:
-      - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
 ---
 `
 
@@ -124,9 +112,9 @@ spec:
   triggers:
   - type: loki
     metadata:
-      serverAddress: http://loki.{{.TestNamespace}}.svc
-      threshold: '1'
-      query: sum(rate({namespace="{{.TestNamespace}}"}[1m])) by (level)
+      serverAddress: http://loki.{{.TestNamespace}}.svc.cluster.local:3100
+      threshold: '0.5'
+      query: sum(rate({namespace="test"} |= {{.BackTick}}keda-scaler{{.BackTick}} [1m]))
 `
 
 	generateLowLevelLoadJobTemplate = `apiVersion: batch/v1
@@ -141,7 +129,7 @@ spec:
       - image: quay.io/zroubalik/hey
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 60);do echo \"keda-scaler $i\";sleep 1;done"]
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -167,7 +155,7 @@ spec:
       - image: quay.io/zroubalik/hey
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo $i;echo $((i*2));sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 60);do echo \"keda-scaler $i\";echo \"keda-scaler $((i*2))\";sleep 1;done"]
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -188,7 +176,7 @@ spec:
 func TestLokiScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	InstallLoki(t, testNamespace)
+	installLoki(t, kc, testNamespace)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
@@ -204,7 +192,7 @@ func TestLokiScaler(t *testing.T) {
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	UninstallLoki(t, kc, testNamespace)
+	uninstallLoki(t, kc, testNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -238,6 +226,7 @@ func getTemplateData() (templateData, []Template) {
 			LokiServerName:        lokiServerName,
 			MinReplicaCount:       minReplicaCount,
 			MaxReplicaCount:       maxReplicaCount,
+			BackTick:              "`",
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
@@ -245,16 +234,17 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func InstallLoki(t *testing.T, namespace string) {
+func installLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+	CreateNamespace(t, kc, namespace)
 	_, err := ExecuteCommand("helm repo add grafana https://grafana.github.io/helm-charts")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install loki grafana/loki-stack --wait --namespace=%s --create-namespace", namespace))
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install loki grafana/loki-stack --wait --namespace=%s", namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func UninstallLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+func uninstallLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall loki --wait --namespace=%s", namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	DeleteNamespace(t, kc, namespace)
