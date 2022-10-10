@@ -44,6 +44,10 @@ type kafkaMetadata struct {
 	username string
 	password string
 
+	// OAUTHBEARER
+	scopes                []string
+	oauthTokenEndpointURI string
+
 	// TLS
 	enableTLS   bool
 	cert        string
@@ -69,6 +73,7 @@ const (
 	KafkaSASLTypePlaintext   kafkaSaslType = "plaintext"
 	KafkaSASLTypeSCRAMSHA256 kafkaSaslType = "scram_sha256"
 	KafkaSASLTypeSCRAMSHA512 kafkaSaslType = "scram_sha512"
+	KafkaSASLTypeOAuthbearer kafkaSaslType = "oauthbearer"
 )
 
 const (
@@ -115,7 +120,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
-		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
+		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
 				return errors.New("no username given")
 			}
@@ -126,6 +131,15 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			}
 			meta.password = strings.TrimSpace(config.AuthParams["password"])
 			meta.saslType = mode
+
+			if mode == KafkaSASLTypeOAuthbearer {
+				meta.scopes = strings.Split(config.AuthParams["scopes"], ",")
+
+				if config.AuthParams["oauthTokenEndpointUri"] == "" {
+					return errors.New("no oauth token endpoint uri given")
+				}
+				meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+			}
 		} else {
 			return fmt.Errorf("err SASL mode %s given", mode)
 		}
@@ -304,6 +318,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	if metadata.saslType == KafkaSASLTypeSCRAMSHA512 {
 		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
+	}
+
+	if metadata.saslType == KafkaSASLTypeOAuthbearer {
+		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
+		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes)
 	}
 
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)

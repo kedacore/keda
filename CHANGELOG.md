@@ -40,17 +40,21 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **Azure Service Bus**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
+- **General**: Provide Prometheus metric with indication of total number of triggers per trigger type in `ScaledJob`/`ScaledObject`. ([#3663](https://github.com/kedacore/keda/issues/3663))
+- **Azure Service Bus Scaler**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
+- **Azure Service Bus Scaler:** Support regex usage in queueName / subscriptionName parameters. ([#1624](https://github.com/kedacore/keda/issues/1624))
 
 ### Improvements
 
 - **General:** Add explicit seccompProfile type to securityContext config ([#3561](https://github.com/kedacore/keda/issues/3561))
 - **General:** Add `Min` column to ScaledJob visualization ([#3689](https://github.com/kedacore/keda/issues/3689))
+- **Apache Kafka Scaler:** SASL/OAuthbearer Implementation ([#3681](https://github.com/kedacore/keda/issues/3681))
 - **Azure AD Pod Identity Authentication:** Improve error messages to emphasize problems around the integration with aad-pod-identity itself ([#3610](https://github.com/kedacore/keda/issues/3610))
 - **Prometheus Scaler:** Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
 
 ### Fixes
 
+- **General:** Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
 - **General:** Respect optional parameter inside envs for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
 
 ### Deprecations
@@ -66,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Bump Golang to 1.18.6 ([#3205](https://github.com/kedacore/keda/issues/3205))
 - **General**: Bump `github.com/Azure/azure-event-hubs-go/v3` ([#2986](https://github.com/kedacore/keda/issues/2986))
 - **General**: Migrate from `azure-service-bus-go` to `azservicebus` ([#3394](https://github.com/kedacore/keda/issues/3394))
+- **Azure EventHub**: Add e2e tests ([#2792](https://github.com/kedacore/keda/issues/2792))
 
 ## v2.8.1
 
