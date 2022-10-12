@@ -113,8 +113,9 @@ spec:
   - type: loki
     metadata:
       serverAddress: http://loki.{{.TestNamespace}}.svc.cluster.local:3100
-      threshold: '0.5'
-      query: sum(rate({namespace="test"} |= {{.BackTick}}keda-scaler{{.BackTick}} [1m]))
+      threshold: '0.85'
+      activationThreshold: '0.85'
+      query: sum(rate({namespace="{{.TestNamespace}}"} |= {{.BackTick}}keda-scaler{{.BackTick}} != {{.BackTick}}level=info{{.BackTick}} [1m]))
 `
 
 	generateLowLevelLoadJobTemplate = `apiVersion: batch/v1
@@ -129,7 +130,7 @@ spec:
       - image: quay.io/zroubalik/hey
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo \"keda-scaler $i\";sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 30);do echo \"keda-scaler $i\";sleep 1;done"]
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -155,7 +156,7 @@ spec:
       - image: quay.io/zroubalik/hey
         name: test
         command: ["/bin/sh"]
-        args: ["-c", "for i in $(seq 1 60);do echo \"keda-scaler $i\";echo \"keda-scaler $((i*2))\";sleep 1;done"]
+        args: ["-c", "for i in $(seq 1 30);do echo \"keda-scaler $i\";echo \"keda-scaler $((i*2))\";sleep 1;done"]
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
