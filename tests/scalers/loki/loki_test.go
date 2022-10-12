@@ -22,26 +22,22 @@ const (
 )
 
 var (
-	testNamespace         = fmt.Sprintf("%s-ns", testName)
-	deploymentName        = fmt.Sprintf("%s-deployment", testName)
-	monitoredAppName      = fmt.Sprintf("%s-monitored-app", testName)
-	publishDeploymentName = fmt.Sprintf("%s-publish", testName)
-	scaledObjectName      = fmt.Sprintf("%s-so", testName)
-	lokiServerName        = fmt.Sprintf("%s-server", testName)
-	minReplicaCount       = 0
-	maxReplicaCount       = 2
+	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName = fmt.Sprintf("%s-so", testName)
+	lokiServerName   = fmt.Sprintf("%s-server", testName)
+	minReplicaCount  = 0
+	maxReplicaCount  = 2
 )
 
 type templateData struct {
-	TestNamespace         string
-	DeploymentName        string
-	MonitoredAppName      string
-	PublishDeploymentName string
-	ScaledObjectName      string
-	LokiServerName        string
-	BackTick              string
-	MinReplicaCount       int
-	MaxReplicaCount       int
+	TestNamespace    string
+	DeploymentName   string
+	ScaledObjectName string
+	LokiServerName   string
+	BackTick         string
+	MinReplicaCount  int
+	MaxReplicaCount  int
 }
 
 const (
@@ -62,32 +58,6 @@ spec:
       labels:
         app: test-app
         type: keda-testing
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
----
-`
-
-	monitoredAppDeploymentTemplate = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: {{.MonitoredAppName}}
-  name: {{.MonitoredAppName}}
-  namespace: {{.TestNamespace}}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: {{.MonitoredAppName}}
-  template:
-    metadata:
-      labels:
-        app: {{.MonitoredAppName}}
-        type: {{.MonitoredAppName}}
     spec:
       containers:
       - name: nginx
@@ -182,8 +152,6 @@ func TestLokiScaler(t *testing.T) {
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredAppName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
@@ -219,18 +187,15 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			PublishDeploymentName: publishDeploymentName,
-			ScaledObjectName:      scaledObjectName,
-			MonitoredAppName:      monitoredAppName,
-			LokiServerName:        lokiServerName,
-			MinReplicaCount:       minReplicaCount,
-			MaxReplicaCount:       maxReplicaCount,
-			BackTick:              "`",
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			LokiServerName:   lokiServerName,
+			MinReplicaCount:  minReplicaCount,
+			MaxReplicaCount:  maxReplicaCount,
+			BackTick:         "`",
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

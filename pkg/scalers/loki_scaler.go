@@ -89,7 +89,6 @@ func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
-
 	meta = &lokiMetadata{}
 
 	if val, ok := config.TriggerMetadata[lokiServerAddress]; ok && val != "" {
@@ -178,10 +177,9 @@ func (s *lokiScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString("loki")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "loki"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
@@ -193,7 +191,6 @@ func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 
 // ExecuteLokiQuery returns the result of the LogQL query execution
 func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
-
 	u, err := url.ParseRequestURI(s.metadata.serverAddress)
 	if err != nil {
 		return -1, err
