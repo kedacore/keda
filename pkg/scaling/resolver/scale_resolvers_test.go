@@ -143,6 +143,78 @@ var testMetadatas = []testMetadata{
 			}},
 		},
 	},
+	{
+		isError: false,
+		comment: "configmap does not exist, but it is marked as an optional, there should not be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-optional-explicitly",
+						},
+						Key:      "test",
+						Optional: &trueValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: false,
+		comment: "secret does not exist, but it is marked as an optional, there should not be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-optional-explicitly",
+						},
+						Key:      "test",
+						Optional: &trueValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: true,
+		comment: "configmap does not exist, and it is not marked as an optional, there should be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-not-optional",
+						},
+						Key:      "test",
+						Optional: &falseValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: true,
+		comment: "secret does not exist, and it is not marked as an optional, there should be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-not-optional",
+						},
+						Key:      "test",
+						Optional: &falseValue,
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {

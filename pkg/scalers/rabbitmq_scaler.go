@@ -201,11 +201,11 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, err
 	}
 
-	if meta.useRegex && meta.protocol == amqpProtocol {
+	if meta.useRegex && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("configure only useRegex with http protocol")
 	}
 
-	if meta.excludeUnacknowledged && meta.protocol == amqpProtocol {
+	if meta.excludeUnacknowledged && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("configure excludeUnacknowledged=true with http protocol only")
 	}
 
