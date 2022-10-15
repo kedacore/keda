@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -43,7 +44,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/version"
-	kubeinformers "k8s.io/client-go/informers"
 	//+kubebuilder:scaffold:imports
 )
 
