@@ -99,8 +99,8 @@ replace (
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 
-	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
-	golang.org/x/text => golang.org/x/text v0.3.7
+	// https://nvd.nist.gov/vuln/detail/CVE-2022-32149
+	golang.org/x/text => golang.org/x/text v0.4.0
 
 	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
@@ -272,7 +272,7 @@ require (
 	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7 // indirect
 	golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2 // indirect
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
