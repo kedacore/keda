@@ -303,7 +303,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 			return 0, nil
 		}
 		err := fmt.Errorf("promtheus query returns %f", v)
-		s.logger.Error(err, "Error recovering prometheus value")
+		s.logger.Error(err, "Error converting prometheus value")
 		return -1, err
 	}
 
