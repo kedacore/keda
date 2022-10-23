@@ -46,13 +46,17 @@ const (
 var kedaNamespace, _ = util.GetClusterObjectNamespace()
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
-func isSecretAccessRestricted() bool {
+func isSecretAccessRestricted(logger logr.Logger) bool {
 	const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
 	restrictSecretAccess, found := os.LookupEnv(RestrictSecretAccessEnvVar)
 	if !found {
 		return false
 	}
-	return strings.ToLower(restrictSecretAccess) == "true"
+	if strings.ToLower(restrictSecretAccess) == "true" {
+		logger.V(1).Info("Secret Access is restricted to be in KEDA namespace, pls. use ClusterTriggerAuthentication instead of TriggerAuthentication", "Env Var", RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
+		return true
+	}
+	return false
 }
 
 // ResolveScaleTargetPodSpec for given scalableObject inspects the scale target workload,
@@ -294,7 +298,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
 				}
 			} else if source.SecretRef != nil {
-				secretsMap, err := resolveSecretMap(ctx, client, source.SecretRef, namespace, secretsLister)
+				secretsMap, err := resolveSecretMap(ctx, client, logger, source.SecretRef, namespace, secretsLister)
 				switch {
 				case err == nil:
 					for k, v := range secretsMap {
@@ -324,7 +328,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 				switch {
 				case envVar.ValueFrom.SecretKeyRef != nil:
 					// env is a secret selector
-					value, err = resolveSecretValue(ctx, client, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace, secretsLister)
+					value, err = resolveSecretValue(ctx, client, logger, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace, secretsLister)
 					if err != nil {
 						if envVar.ValueFrom.SecretKeyRef.Optional != nil && *envVar.ValueFrom.SecretKeyRef.Optional {
 							continue
@@ -414,10 +418,10 @@ func resolveConfigMap(ctx context.Context, client client.Client, configMapRef *c
 	return configMap.Data, nil
 }
 
-func resolveSecretMap(ctx context.Context, client client.Client, secretMapRef *corev1.SecretEnvSource, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {
+func resolveSecretMap(ctx context.Context, client client.Client, logger logr.Logger, secretMapRef *corev1.SecretEnvSource, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {
 	secret := &corev1.Secret{}
 	var err error
-	if isSecretAccessRestricted() {
+	if isSecretAccessRestricted(logger) {
 		secret, err = secretsLister.Secrets(kedaNamespace).Get(secretMapRef.Name)
 	} else {
 		err = client.Get(ctx, types.NamespacedName{Name: secretMapRef.Name, Namespace: namespace}, secret)
@@ -433,10 +437,10 @@ func resolveSecretMap(ctx context.Context, client client.Client, secretMapRef *c
 	return secretsStr, nil
 }
 
-func resolveSecretValue(ctx context.Context, client client.Client, secretKeyRef *corev1.SecretKeySelector, keyName, namespace string, secretsLister corev1listers.SecretLister) (string, error) {
+func resolveSecretValue(ctx context.Context, client client.Client, logger logr.Logger, secretKeyRef *corev1.SecretKeySelector, keyName, namespace string, secretsLister corev1listers.SecretLister) (string, error) {
 	secret := &corev1.Secret{}
 	var err error
-	if isSecretAccessRestricted() {
+	if isSecretAccessRestricted(logger) {
 		secret, err = secretsLister.Secrets(kedaNamespace).Get(secretKeyRef.Name)
 	} else {
 		err = client.Get(ctx, types.NamespacedName{Name: secretKeyRef.Name, Namespace: namespace}, secret)
@@ -464,7 +468,7 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 
 	secret := &corev1.Secret{}
 	var err error
-	if isSecretAccessRestricted() {
+	if isSecretAccessRestricted(logger) {
 		secret, err = secretsLister.Secrets(kedaNamespace).Get(name)
 	} else {
 		err = client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
