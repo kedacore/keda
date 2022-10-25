@@ -6,6 +6,7 @@ on:
 jobs:
   smoke-tests-ARM64:
     name: ARM64
+    concurrency: arm-smoke-tests
     uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
       runs-on: ARM64
