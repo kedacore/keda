@@ -44,13 +44,13 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 - **Global cleanup:** This is done in [`utils/cleanup_test.go`](utils/cleanup_test.go). It cleans up all the resources created in `utils/setup_test.go`.
 
 > **Note**
-> Your IDE might give you errors upon trying to import certain packages that use the `e2e` build tag. To overcome this, you will need to specify in your IDE settings to use the `e2e` build tag. 
+> Your IDE might give you errors upon trying to import certain packages that use the `e2e` build tag. To overcome this, you will need to specify in your IDE settings to use the `e2e` build tag.
 >
 > As an example, in VSCode, it can be achieved by creating a `.vscode` directory within the project directory (if not present) and creating a `settings.json` file in that directory (or updating it) with the following content:
 > ```json
 > {
 >   "go.buildFlags": [
->       "-tags=e2e"   
+>       "-tags=e2e"
 >   ],
 >   "go.testTags": "e2e",
 > }
