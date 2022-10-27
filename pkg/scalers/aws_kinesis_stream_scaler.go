@@ -36,6 +36,7 @@ type awsKinesisStreamMetadata struct {
 	activationTargetShardCount int64
 	streamName                 string
 	awsRegion                  string
+	awsEndpoint                string
 	awsAuthorization           awsAuthorizationMetadata
 	scalerIndex                int
 }
@@ -98,6 +99,10 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -112,7 +117,8 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 
 func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
+		Region:   aws.String(metadata.awsRegion),
+		Endpoint: aws.String(metadata.awsEndpoint),
 	}))
 
 	var kinesisClinent *kinesis.Kinesis
@@ -125,11 +131,13 @@ func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
 
 		kinesisClinent = kinesis.New(sess, &aws.Config{
 			Region:      aws.String(metadata.awsRegion),
+			Endpoint:    aws.String(metadata.awsEndpoint),
 			Credentials: creds,
 		})
 	} else {
 		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
 		})
 	}
 	return kinesisClinent

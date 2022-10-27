@@ -32,6 +32,7 @@ type awsDynamoDBScaler struct {
 type awsDynamoDBMetadata struct {
 	tableName                 string
 	awsRegion                 string
+	awsEndpoint               string
 	keyConditionExpression    string
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
@@ -74,6 +75,10 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
+	}
+
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
 	}
 
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
@@ -144,14 +149,16 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 
 func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(meta.awsRegion),
+		Region:   aws.String(meta.awsRegion),
+		Endpoint: aws.String(meta.awsEndpoint),
 	}))
 
 	var dbClient *dynamodb.DynamoDB
 
 	if !meta.awsAuthorization.podIdentityOwner {
 		dbClient = dynamodb.New(sess, &aws.Config{
-			Region: aws.String(meta.awsRegion),
+			Region:   aws.String(meta.awsRegion),
+			Endpoint: aws.String(meta.awsEndpoint),
 		})
 
 		return dbClient
@@ -165,6 +172,7 @@ func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 
 	dbClient = dynamodb.New(sess, &aws.Config{
 		Region:      aws.String(meta.awsRegion),
+		Endpoint:    aws.String(meta.awsEndpoint),
 		Credentials: creds,
 	})
 

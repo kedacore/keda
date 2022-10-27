@@ -45,6 +45,7 @@ type awsSqsQueueMetadata struct {
 	queueURL                    string
 	queueName                   string
 	awsRegion                   string
+	awsEndpoint                 string
 	awsAuthorization            awsAuthorizationMetadata
 	scalerIndex                 int
 	scaleOnInFlight             bool
@@ -145,6 +146,10 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -159,7 +164,8 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 
 func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
+		Region:   aws.String(metadata.awsRegion),
+		Endpoint: aws.String(metadata.awsEndpoint),
 	}))
 
 	var sqsClient *sqs.SQS
@@ -172,11 +178,13 @@ func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
 
 		sqsClient = sqs.New(sess, &aws.Config{
 			Region:      aws.String(metadata.awsRegion),
+			Endpoint:    aws.String(metadata.awsEndpoint),
 			Credentials: creds,
 		})
 	} else {
 		sqsClient = sqs.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
 		})
 	}
 	return sqsClient

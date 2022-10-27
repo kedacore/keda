@@ -52,7 +52,8 @@ type awsCloudwatchMetadata struct {
 	metricStatPeriod     int64
 	metricEndTimeOffset  int64
 
-	awsRegion string
+	awsRegion   string
+	awsEndpoint string
 
 	awsAuthorization awsAuthorizationMetadata
 
@@ -113,7 +114,8 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 
 func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWatch {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
+		Region:   aws.String(metadata.awsRegion),
+		Endpoint: aws.String(metadata.awsEndpoint),
 	}))
 
 	var cloudwatchClient *cloudwatch.CloudWatch
@@ -126,11 +128,13 @@ func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWa
 
 		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
 			Region:      aws.String(metadata.awsRegion),
+			Endpoint:    aws.String(metadata.awsEndpoint),
 			Credentials: creds,
 		})
 	} else {
 		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
 		})
 	}
 
@@ -232,6 +236,10 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
+	}
+
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
 	}
 
 	meta.awsAuthorization, err = getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)

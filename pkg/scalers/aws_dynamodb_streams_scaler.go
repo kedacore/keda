@@ -41,6 +41,7 @@ type awsDynamoDBStreamsMetadata struct {
 	activationTargetShardCount int64
 	tableName                  string
 	awsRegion                  string
+	awsEndpoint                string
 	awsAuthorization           awsAuthorizationMetadata
 	scalerIndex                int
 }
@@ -85,6 +86,10 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	if val, ok := config.TriggerMetadata["tableName"]; ok && val != "" {
 		meta.tableName = val
 	} else {
@@ -123,7 +128,8 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 
 func createClientsForDynamoDBStreamsScaler(metadata *awsDynamoDBStreamsMetadata) (*dynamodb.DynamoDB, *dynamodbstreams.DynamoDBStreams) {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
+		Region:   aws.String(metadata.awsRegion),
+		Endpoint: aws.String(metadata.awsEndpoint),
 	}))
 
 	var dbClient *dynamodb.DynamoDB
@@ -136,18 +142,22 @@ func createClientsForDynamoDBStreamsScaler(metadata *awsDynamoDBStreamsMetadata)
 		}
 		dbClient = dynamodb.New(sess, &aws.Config{
 			Region:      aws.String(metadata.awsRegion),
+			Endpoint:    aws.String(metadata.awsEndpoint),
 			Credentials: creds,
 		})
 		dbStreamClient = dynamodbstreams.New(sess, &aws.Config{
 			Region:      aws.String(metadata.awsRegion),
+			Endpoint:    aws.String(metadata.awsEndpoint),
 			Credentials: creds,
 		})
 	} else {
 		dbClient = dynamodb.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
 		})
 		dbStreamClient = dynamodbstreams.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
 		})
 	}
 	return dbClient, dbStreamClient

@@ -93,6 +93,15 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1",
+		"awsEndpoint": "http://localhost:4566"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"properly formed queue and region with custom endpoint"},
+	{map[string]string{
 		"queueURL":    testAWSSQSImproperQueueURL1,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
