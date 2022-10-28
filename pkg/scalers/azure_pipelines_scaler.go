@@ -22,6 +22,8 @@ const (
 	defaultTargetPipelinesQueueLength = 1
 )
 
+var IsScalerActive = false
+
 type JobRequests struct {
 	Count int          `json:"count"`
 	Value []JobRequest `json:"value"`
@@ -126,6 +128,7 @@ type azurePipelinesScaler struct {
 }
 
 type azurePipelinesMetadata struct {
+	scalerPrefix                         string
 	organizationURL                      string
 	organizationName                     string
 	personalAccessToken                  string
@@ -162,6 +165,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, error) {
 	meta := azurePipelinesMetadata{}
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
+	meta.scalerPrefix = config.ScalableObjectName
 
 	if val, ok := config.TriggerMetadata["targetPipelinesQueueLength"]; ok {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
@@ -358,6 +362,12 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		}
 	}
 
+	if count > 0 {
+		IsScalerActive = true
+	} else {
+		IsScalerActive = false
+	}
+
 	return count, err
 }
 
@@ -394,16 +404,22 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
 	matchedAgents := jr.MatchedAgents
 
-	if matchedAgents == nil {
+	// kill queue status
+	if matchedAgents == nil && jr.ReservedAgent == nil {
 		return false
 	}
 
-	for _, m := range *matchedAgents {
-		if metadata.parent == m.Name {
-			return true
+	// grab pending jobs
+	if matchedAgents != nil {
+		for _, m := range *matchedAgents {
+			if metadata.parent == m.Name {
+				return true
+			}
 		}
 	}
-	return false
+
+	// return active jobs
+	return strings.HasPrefix(jr.ReservedAgent.Name, metadata.scalerPrefix)
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -418,14 +434,7 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.Met
 }
 
 func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
-	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error)")
-		return false, err
-	}
-
-	return queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
+	return IsScalerActive, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {
