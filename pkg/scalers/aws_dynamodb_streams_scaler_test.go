@@ -25,6 +25,7 @@ const (
 	testAWSDynamoDBStreamsSecretAccessKey  = "none"
 	testAWSDynamoDBStreamsSessionToken     = "none"
 	testAWSDynamoDBStreamsRegion           = "ap-northeast-1"
+	testAWSDynamoDBStreamsEndpoint         = "http://localhost:4566"
 	testAWSDynamoDBStreamsArnForSmallTable = "smallstreamarn"
 	testAWSDynamoDBStreamsArnForBigTable   = "bigstreamarn"
 	testAWSDynamoDBStreamsErrorArn         = "errorarn"
@@ -139,6 +140,31 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			activationTargetShardCount: 1,
 			tableName:                  testAWSDynamoDBSmallTable,
 			awsRegion:                  testAWSDynamoDBStreamsRegion,
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				podIdentityOwner:   true,
+			},
+			scalerIndex: 0,
+		},
+		isError:     false,
+		comment:     "properly formed dynamodb table name and region",
+		scalerIndex: 0,
+	},
+	{
+		metadata: map[string]string{
+			"tableName":            testAWSDynamoDBSmallTable,
+			"shardCount":           "2",
+			"activationShardCount": "1",
+			"awsRegion":            testAWSDynamoDBStreamsRegion,
+			"awsEndpoint":          testAWSDynamoDBStreamsEndpoint},
+		authParams: testAWSKinesisAuthentication,
+		expected: &awsDynamoDBStreamsMetadata{
+			targetShardCount:           2,
+			activationTargetShardCount: 1,
+			tableName:                  testAWSDynamoDBSmallTable,
+			awsRegion:                  testAWSDynamoDBStreamsRegion,
+			awsEndpoint:                testAWSDynamoDBStreamsEndpoint,
 			awsAuthorization: awsAuthorizationMetadata{
 				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,

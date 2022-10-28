@@ -1,6 +1,13 @@
 package scalers
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/session"
+)
 
 type awsAuthorizationMetadata struct {
 	awsRoleArn string
@@ -10,6 +17,43 @@ type awsAuthorizationMetadata struct {
 	awsSessionToken    string
 
 	podIdentityOwner bool
+}
+
+type awsConfigMetadata struct {
+	awsRegion        string
+	awsEndpoint      string
+	awsAuthorization awsAuthorizationMetadata
+}
+
+func getAwsConfig(awsRegion string, awsEndpoint string, awsAuthorization awsAuthorizationMetadata) (*session.Session, *aws.Config) {
+	metadata := &awsConfigMetadata{
+		awsRegion:        awsRegion,
+		awsEndpoint:      awsEndpoint,
+		awsAuthorization: awsAuthorization}
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region:   aws.String(metadata.awsRegion),
+		Endpoint: aws.String(metadata.awsEndpoint),
+	}))
+
+	if !metadata.awsAuthorization.podIdentityOwner {
+		return sess, &aws.Config{
+			Region:   aws.String(metadata.awsRegion),
+			Endpoint: aws.String(metadata.awsEndpoint),
+		}
+	}
+
+	creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+
+	if metadata.awsAuthorization.awsRoleArn != "" {
+		creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+	}
+
+	return sess, &aws.Config{
+		Region:      aws.String(metadata.awsRegion),
+		Endpoint:    aws.String(metadata.awsEndpoint),
+		Credentials: creds,
+	}
 }
 
 func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (awsAuthorizationMetadata, error) {
