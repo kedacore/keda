@@ -38,6 +38,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **AWS Scalers**: Add support for override the AWS endpoint url. ([#3337](https://github.com/kedacore/keda/issues/3337))
+
 ### New
 
 - **General**: Expand Prometheus metric with label "ScalerName" to distinguish different triggers. The scaleName is defined per Trigger.Name ([#3588](https://github.com/kedacore/keda/issues/3588)
