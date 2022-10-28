@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
@@ -127,39 +123,16 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 }
 
 func createClientsForDynamoDBStreamsScaler(metadata *awsDynamoDBStreamsMetadata) (*dynamodb.DynamoDB, *dynamodbstreams.DynamoDBStreams) {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region:   aws.String(metadata.awsRegion),
-		Endpoint: aws.String(metadata.awsEndpoint),
-	}))
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
 	var dbClient *dynamodb.DynamoDB
 	var dbStreamClient *dynamodbstreams.DynamoDBStreams
 
-	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
-		if metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
-		}
-		dbClient = dynamodb.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Endpoint:    aws.String(metadata.awsEndpoint),
-			Credentials: creds,
-		})
-		dbStreamClient = dynamodbstreams.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Endpoint:    aws.String(metadata.awsEndpoint),
-			Credentials: creds,
-		})
-	} else {
-		dbClient = dynamodb.New(sess, &aws.Config{
-			Region:   aws.String(metadata.awsRegion),
-			Endpoint: aws.String(metadata.awsEndpoint),
-		})
-		dbStreamClient = dynamodbstreams.New(sess, &aws.Config{
-			Region:   aws.String(metadata.awsRegion),
-			Endpoint: aws.String(metadata.awsEndpoint),
-		})
-	}
+	dbClient = dynamodb.New(sess, config)
+	dbStreamClient = dynamodbstreams.New(sess, config)
+
 	return dbClient, dbStreamClient
 }
 

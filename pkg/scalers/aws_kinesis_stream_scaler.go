@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/go-logr/logr"
@@ -116,31 +112,11 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 }
 
 func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region:   aws.String(metadata.awsRegion),
-		Endpoint: aws.String(metadata.awsEndpoint),
-	}))
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var kinesisClinent *kinesis.Kinesis
-	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
-
-		if metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
-		}
-
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Endpoint:    aws.String(metadata.awsEndpoint),
-			Credentials: creds,
-		})
-	} else {
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region:   aws.String(metadata.awsRegion),
-			Endpoint: aws.String(metadata.awsEndpoint),
-		})
-	}
-	return kinesisClinent
+	return kinesis.New(sess, config)
 }
 
 // IsActive determines if we need to scale from zero

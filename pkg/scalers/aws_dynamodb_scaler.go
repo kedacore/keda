@@ -8,9 +8,6 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/go-logr/logr"
@@ -147,36 +144,12 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	return &meta, nil
 }
 
-func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region:   aws.String(meta.awsRegion),
-		Endpoint: aws.String(meta.awsEndpoint),
-	}))
+func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var dbClient *dynamodb.DynamoDB
-
-	if !meta.awsAuthorization.podIdentityOwner {
-		dbClient = dynamodb.New(sess, &aws.Config{
-			Region:   aws.String(meta.awsRegion),
-			Endpoint: aws.String(meta.awsEndpoint),
-		})
-
-		return dbClient
-	}
-
-	creds := credentials.NewStaticCredentials(meta.awsAuthorization.awsAccessKeyID, meta.awsAuthorization.awsSecretAccessKey, "")
-
-	if meta.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, meta.awsAuthorization.awsRoleArn)
-	}
-
-	dbClient = dynamodb.New(sess, &aws.Config{
-		Region:      aws.String(meta.awsRegion),
-		Endpoint:    aws.String(meta.awsEndpoint),
-		Credentials: creds,
-	})
-
-	return dbClient
+	return dynamodb.New(sess, config)
 }
 
 func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
