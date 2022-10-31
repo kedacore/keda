@@ -167,7 +167,7 @@ func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
 		s.logger.Error(err, "error getting metric value")
 		return false, err
 	}
-	return value > s.metadata.activationTargetValue, nil
+	return value > float64(s.metadata.activationTargetValue), nil
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {
@@ -208,17 +208,17 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string) (
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(value))
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
+func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
 	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation)
 	if err == nil {
 		s.logger.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %d",
+			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %f",
 				s.metadata.projectID,
 				s.metadata.filter,
 				s.metadata.aggregation,

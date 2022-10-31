@@ -144,14 +144,14 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return size > s.metadata.activationValue, nil
+		return size > float64(s.metadata.activationValue), nil
 	case pubsubModeOldestUnackedMessageAge:
 		delay, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return delay > s.metadata.activationValue, nil
+		return delay > float64(s.metadata.activationValue), nil
 	default:
 		return false, errors.New("unknown mode")
 	}
@@ -189,7 +189,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	var value int64
+	var value float64
 	var err error
 
 	switch s.metadata.mode {
@@ -207,7 +207,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string) ([]ext
 		}
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(value))
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -229,7 +229,7 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64, error) {
+func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
