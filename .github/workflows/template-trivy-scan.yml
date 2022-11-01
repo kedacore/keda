@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@0.7.1
+        uses: aquasecurity/trivy-action@0.8.0
         with:
           scan-type: ${{ inputs.scan-type }}
           image-ref: ${{ inputs.image-ref }}
