@@ -57,7 +57,7 @@ jobs:
         run: make test
 
       - name: Create test Summary
-        uses: test-summary/action@v1
+        uses: test-summary/action@v2
         with:
           paths: "report.xml"
         if: always()
