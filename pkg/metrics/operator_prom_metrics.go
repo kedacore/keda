@@ -34,7 +34,7 @@ var (
 	crdTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "keda_operator",
-			Subsystem: "crd",
+			Subsystem: "cr",
 			Name:      "totals",
 		},
 		[]string{"type", "namespace"},

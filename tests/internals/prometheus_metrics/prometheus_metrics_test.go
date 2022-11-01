@@ -317,7 +317,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 	kedaKc := GetKedaKubernetesClient(t)
 
 	triggerTotals := make(map[string]int)
-	crdTotals := map[string]map[string]int{
+	crTotals := map[string]map[string]int{
 		"scaled_object":                  {},
 		"scaled_job":                     {},
 		"trigger_authentication":         {},
@@ -335,7 +335,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		if namespace == "" {
 			namespace = "default"
 		}
-		crdTotals["cluster_trigger_authentication"][namespace]++
+		crTotals["cluster_trigger_authentication"][namespace]++
 	}
 
 	for _, namespace := range namespaceList.Items {
@@ -347,7 +347,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledObjectList, err := kedaKc.ScaledObjects(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledObjects in namespace - %s with err - %s", namespace.Name, err)
 
-		crdTotals["scaled_object"][namespaceName] = len(scaledObjectList.Items)
+		crTotals["scaled_object"][namespaceName] = len(scaledObjectList.Items)
 		for _, scaledObject := range scaledObjectList.Items {
 			for _, trigger := range scaledObject.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -357,7 +357,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledJobList, err := kedaKc.ScaledJobs(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledJobs in namespace - %s with err - %s", namespace.Name, err)
 
-		crdTotals["scaled_job"][namespaceName] = len(scaledJobList.Items)
+		crTotals["scaled_job"][namespaceName] = len(scaledJobList.Items)
 		for _, scaledJob := range scaledJobList.Items {
 			for _, trigger := range scaledJob.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -367,18 +367,18 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		triggerAuthList, err := kedaKc.TriggerAuthentications(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list triggerAuthentications in namespace - %s with err - %s", namespace.Name, err)
 
-		crdTotals["trigger_authentication"][namespaceName] = len(triggerAuthList.Items)
+		crTotals["trigger_authentication"][namespaceName] = len(triggerAuthList.Items)
 	}
 
-	return triggerTotals, crdTotals
+	return triggerTotals, crTotals
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure http://%s.keda:8080/metrics", serviceName))
-	expectedTriggerTotals, expectedCrdTotals := getOperatorMetricsManually(t, kc)
+	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
 
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
-	checkCRDTotalValues(t, families, expectedCrdTotals)
+	checkCRTotalValues(t, families, expectedCrTotals)
 }
 
 func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]int) {
@@ -410,10 +410,10 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.Metric
 	assert.Equal(t, 0, len(expected))
 }
 
-func checkCRDTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
-	t.Log("--- testing crd total metrics ---")
+func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
+	t.Log("--- testing cr total metrics ---")
 
-	family, ok := families["keda_operator_crd_totals"]
+	family, ok := families["keda_operator_cr_totals"]
 	if !ok {
 		t.Errorf("metric not available")
 		return
@@ -422,19 +422,19 @@ func checkCRDTotalValues(t *testing.T, families map[string]*promModel.MetricFami
 	metrics := family.GetMetric()
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
-		var namespace, crdType string
+		var namespace, crType string
 		for _, label := range labels {
 			if *label.Name == "type" {
-				crdType = *label.Value
+				crType = *label.Value
 			} else if *label.Name == "namespace" {
 				namespace = *label.Value
 			}
 		}
 
 		metricValue := *metric.Gauge.Value
-		expectedMetricValue := float64(expected[crdType][namespace])
+		expectedMetricValue := float64(expected[crType][namespace])
 
-		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for crd type %s & namespace %s",
-			expectedMetricValue, metricValue, crdType, namespace)
+		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for cr type %s & namespace %s",
+			expectedMetricValue, metricValue, crType, namespace)
 	}
 }
