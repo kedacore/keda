@@ -105,9 +105,10 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 
 	scalerError := false
 
-	for scalerIndex, scaler := range cache.GetScalers() {
-		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
-		scalerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
+	for scalerIndex, scalerPair := range cache.GetScalers() {
+		metricSpecs := scalerPair.Scaler.GetMetricSpecForScaling(ctx)
+		scalerName := strings.Replace(fmt.Sprintf("%T", scalerPair.Scaler), "*scalers.", "", 1)
+		triggerName := scalerPair.TriggerName
 
 		for _, metricSpec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -118,18 +119,17 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
 				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric, metricSelector)
 				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
-
 				if err != nil {
 					scalerError = true
-					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
+					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerPair.Scaler)
 				} else {
 					for _, metric := range metrics {
 						metricValue := metric.Value.AsApproximateFloat64()
-						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
+						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, triggerName, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
+				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, triggerName, info.Metric, err)
 			}
 		}
 	}

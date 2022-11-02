@@ -5,7 +5,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
       matrix:
         include:
@@ -57,7 +57,7 @@ jobs:
         run: make test
 
       - name: Create test Summary
-        uses: test-summary/action@v1
+        uses: test-summary/action@v2
         with:
           paths: "report.xml"
         if: always()
@@ -65,7 +65,7 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:
@@ -96,7 +96,7 @@ jobs:
   validate-build-tools:
     name: Validate build-tools - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:
@@ -133,7 +133,7 @@ jobs:
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:

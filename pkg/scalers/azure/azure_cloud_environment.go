@@ -15,6 +15,9 @@ const (
 
 	// Default Endpoint key in trigger metadata
 	DefaultEndpointSuffixKey string = "endpointSuffix"
+
+	// Default Storage Endpoint key in trigger metadata
+	DefaultStorageSuffixKey string = "storageEndpointSuffix"
 )
 
 // EnvironmentPropertyProvider for different types of Azure scalers

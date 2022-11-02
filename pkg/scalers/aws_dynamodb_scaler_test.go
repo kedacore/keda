@@ -196,6 +196,36 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			},
 		},
 	},
+	{
+		name: "properly formed dynamo name and region with custom endpoint",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"awsEndpoint":               "http://localhost:4566",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams:    testAWSDynamoAuthentication,
+		expectedError: nil,
+		expectedMetadata: &awsDynamoDBMetadata{
+			tableName:                 "test",
+			awsRegion:                 "eu-west-1",
+			awsEndpoint:               "http://localhost:4566",
+			keyConditionExpression:    "#yr = :yyyy",
+			expressionAttributeNames:  map[string]*string{"#yr": &year},
+			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
+			targetValue:               3,
+			scalerIndex:               1,
+			metricName:                "s1-aws-dynamodb-test",
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     "none",
+				awsSecretAccessKey: "none",
+				podIdentityOwner:   true,
+			},
+		},
+	},
 }
 
 func TestParseDynamoMetadata(t *testing.T) {

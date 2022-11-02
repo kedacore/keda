@@ -339,8 +339,9 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		}
 
 		result = append(result, cache.ScalerBuilder{
-			Scaler:  scaler,
-			Factory: factory,
+			Scaler:      scaler,
+			TriggerName: trigger.Name,
+			Factory:     factory,
 		})
 	}
 

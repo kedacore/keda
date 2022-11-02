@@ -31,6 +31,8 @@ var parseEnvironmentPropertyTestDataset = []parseEnvironmentPropertyTestData{
 	{map[string]string{"cloud": "Private", "endpointSuffix": "suffix.private.cloud"}, "suffix.private.cloud", DefaultEndpointSuffixKey, testPropertyProvider, false},
 	{map[string]string{"endpointSuffix": "ignored"}, "AzurePublicCloud.suffix", DefaultEndpointSuffixKey, testPropertyProvider, false},
 	{map[string]string{"cloud": "Private", "endpointSuffixDiff": "suffix.private.cloud"}, "suffix.private.cloud", "endpointSuffixDiff", testPropertyProvider, false},
+	{map[string]string{"cloud": "Private", "storageEndpointSuffix": "suffix.private.cloud"}, "suffix.private.cloud", DefaultStorageSuffixKey, testPropertyProvider, false},
+	{map[string]string{"cloud": "Private"}, "suffix.private.cloud", DefaultStorageSuffixKey, testPropertyProvider, true},
 }
 
 func TestParseEnvironmentProperty(t *testing.T) {
