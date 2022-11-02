@@ -152,7 +152,7 @@ func TestVerifyKEDA(t *testing.T) {
 
 		if operatorReadyReplicas != 1 || metricsServerReadyReplicas != 1 {
 			t.Log("KEDA is not ready. sleeping")
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 		} else {
 			t.Logf("KEDA is running 1 pod for %s and 1 pod for %s", KEDAOperator, KEDAMetricsAPIServer)
 			success = true

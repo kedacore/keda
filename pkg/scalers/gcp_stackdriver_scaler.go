@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/go-logr/logr"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
