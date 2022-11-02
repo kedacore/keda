@@ -123,6 +123,8 @@ type ScaleTarget struct {
 type ScaleTriggers struct {
 	Type string `json:"type"`
 	// +optional
+	DependsOn []string `json:"dependsOn,omitempty"`
+	// +optional
 	Name     string            `json:"name,omitempty"`
 	Metadata map[string]string `json:"metadata"`
 	// +optional

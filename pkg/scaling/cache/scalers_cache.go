@@ -32,6 +32,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"golang.org/x/exp/slices"
 )
 
 type ScalersCache struct {
@@ -81,36 +82,95 @@ func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricNa
 	return ns.GetMetrics(ctx, metricName, metricSelector)
 }
 
-func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, []external_metrics.ExternalMetricValue) {
+func (c *ScalersCache) IsTriggerActive(ctx context.Context,
+	isTriggerActiveMap *map[int]map[string]bool,
+	scaledObject *kedav1alpha1.ScaledObject,
+	index int,
+	dependencyNodes *[]string,
+	logger logr.Logger,
+	isError *bool) bool {
+	triggerName := scaledObject.Spec.Triggers[index].Name
+
+	nodeIdx := slices.IndexFunc(*dependencyNodes, func(node string) bool { return node == triggerName })
+
+	if nodeIdx != -1 {
+		*isError = true
+		error := fmt.Errorf("Dependecies of trigger '%s' are not valid, they lead to an infinite loop (e.g. trigger A depends on trigger B && trigger B depends on trigger A)!", triggerName)
+		logger.Error(error, "Error in the dependency evaluation")
+		return false
+	}
+
+	*dependencyNodes = append(*dependencyNodes, triggerName)
+
+	if value, result := (*isTriggerActiveMap)[index]; result {
+		return value[triggerName]
+	}
+
 	isActive := false
-	isError := false
-	// Let's collect status of all scalers, no matter if any scaler raises error or is active
-	for i, s := range c.Scalers {
-		isTriggerActive, err := s.Scaler.IsActive(ctx)
+	dependsOnArray := scaledObject.Spec.Triggers[index].DependsOn
+	areDependenciesActive := false
+
+	for _, dependentTriggerName := range scaledObject.Spec.Triggers[index].DependsOn {
+		idx := slices.IndexFunc(scaledObject.Spec.Triggers, func(t kedav1alpha1.ScaleTriggers) bool { return t.Name == dependentTriggerName })
+		if idx == -1 {
+			// defined dependency not found
+			return false
+		}
+		if value, result := (*isTriggerActiveMap)[idx]; result {
+			// whether the trigger is active has already been evaluated earlier
+			areDependenciesActive = value[dependentTriggerName]
+		} else {
+			areDependenciesActive = c.IsTriggerActive(ctx, isTriggerActiveMap, scaledObject, idx, dependencyNodes, logger, isError)
+		}
+
+		if !areDependenciesActive {
+			break
+		}
+	}
+
+	if areDependenciesActive || (dependsOnArray == nil || len(dependsOnArray) < 1) {
+		isTriggerActive, err := c.Scalers[index].Scaler.IsActive(ctx)
 		if err != nil {
 			var ns scalers.Scaler
-			ns, err = c.refreshScaler(ctx, i)
+			ns, err = c.refreshScaler(ctx, index)
 			if err == nil {
 				isTriggerActive, err = ns.IsActive(ctx)
 			}
 		}
-
-		logger := c.Logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace,
-			"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
-
 		if err != nil {
-			isError = true
+			*isError = true
 			logger.Error(err, "Error getting scale decision")
 			c.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		} else if isTriggerActive {
 			isActive = true
-			if externalMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
+
+			if externalMetricsSpec := c.Scalers[index].Scaler.GetMetricSpecForScaling(ctx)[0].External; externalMetricsSpec != nil {
 				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", externalMetricsSpec.Metric.Name)
 			}
-			if resourceMetricsSpec := s.Scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
+			if resourceMetricsSpec := c.Scalers[index].Scaler.GetMetricSpecForScaling(ctx)[0].Resource; resourceMetricsSpec != nil {
 				logger.V(1).Info("Scaler for scaledObject is active", "Metrics Name", resourceMetricsSpec.Name)
 			}
 		}
+	}
+
+	(*isTriggerActiveMap)[index] = map[string]bool{triggerName: isActive}
+	return isActive
+}
+
+func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, []external_metrics.ExternalMetricValue) {
+	isActive := false
+	isError := false
+	// map[index]map[triggerName]isActive
+	isTriggerActiveMap := make(map[int]map[string]bool)
+
+	// Let's collect status of all scalers, no matter if any scaler raises error or is active
+	for i, _ := range c.Scalers {
+		dependencyNodes := make([]string, 0)
+		logger := c.Logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace,
+			"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
+
+		isTriggerActive := c.IsTriggerActive(ctx, &isTriggerActiveMap, scaledObject, i, &dependencyNodes, logger, &isError)
+		isActive = isTriggerActive || isActive
 	}
 
 	return isActive, isError, []external_metrics.ExternalMetricValue{}
