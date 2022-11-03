@@ -39,6 +39,8 @@ type gcsMetadata struct {
 	metricName                  string
 	targetObjectCount           int64
 	activationTargetObjectCount int64
+	blobDelimiter               string
+	blobPrefix                  string
 }
 
 // NewGcsScaler creates a new gcsScaler
@@ -136,6 +138,14 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		meta.maxBucketItemsToScan = maxBucketItemsToScan
 	}
 
+	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok {
+		meta.blobDelimiter = val
+	}
+
+	if val, ok := config.TriggerMetadata["blobPrefix"]; ok {
+		meta.blobPrefix = val
+	}
+
 	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -191,7 +201,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 
 // getItemCount gets the number of items in the bucket, up to maxCount
 func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, error) {
-	query := &storage.Query{Prefix: ""}
+	query := &storage.Query{Delimiter: s.metadata.blobDelimiter, Prefix: s.metadata.blobPrefix}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
 		s.logger.Error(err, "failed to set attribute selection")
