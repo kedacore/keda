@@ -192,9 +192,12 @@ type AzureKeyVault struct {
 }
 
 type AzureKeyVaultCredentials struct {
-	ClientID     string                     `json:"clientId"`
+	ClientID string `json:"clientId"`
+	TenantID string `json:"tenantId"`
+	// +optional
 	ClientSecret *AzureKeyVaultClientSecret `json:"clientSecret"`
-	TenantID     string                     `json:"tenantId"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity,omitempty"`
 }
 
 type AzureKeyVaultClientSecret struct {

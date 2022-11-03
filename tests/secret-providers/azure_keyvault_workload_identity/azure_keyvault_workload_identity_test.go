@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_keyvault_test
+package azure_keyvault_workload_identity_test
 
 import (
 	"context"
@@ -27,14 +27,13 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-keyvault-queue-test"
+	testName = "azure-keyvault-workload-identity-queue-test"
 )
 
 var (
 	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 	keyvaultURI      = os.Getenv("AZURE_KEYVAULT_URI")
 	azureADClientID  = os.Getenv("AZURE_SP_APP_ID")
-	azureADSecret    = os.Getenv("AZURE_SP_KEY")
 	azureADTenantID  = os.Getenv("AZURE_SP_TENANT")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
@@ -114,11 +113,8 @@ spec:
     credentials:
       clientId: {{.AzureADClientID}}
       tenantId: {{.AzureADTenantID}}
-      clientSecret:
-        valueFrom:
-          secretKeyRef:
-            name: {{.SecretName}}
-            key: clientSecret
+      podIdentity:
+        provider: azure-workload
     secrets:
       - parameter: connection
         name: E2E-Storage-ConnectionString
