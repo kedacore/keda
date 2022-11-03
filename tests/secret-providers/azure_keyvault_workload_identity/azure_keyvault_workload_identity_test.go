@@ -53,7 +53,6 @@ type templateData struct {
 	QueueName        string
 	KeyVaultURI      string
 	AzureADClientID  string
-	AzureADSecret    string
 	AzureADTenantID  string
 }
 
@@ -148,7 +147,6 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for key vault tests")
 	require.NotEmpty(t, keyvaultURI, "AZURE_KEYVAULT_URI env variable is required for key vault tests")
 	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for key vault tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for key vault tests")
 	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for key vault tests")
 
 	queueURL, messageURL := createQueue(t)
@@ -193,7 +191,6 @@ func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
 
 func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
-	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
 			TestNamespace:    testNamespace,
@@ -205,7 +202,6 @@ func getTemplateData() (templateData, []Template) {
 			QueueName:        queueName,
 			KeyVaultURI:      keyvaultURI,
 			AzureADClientID:  azureADClientID,
-			AzureADSecret:    base64ClientSecret,
 			AzureADTenantID:  azureADTenantID,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
