@@ -65,7 +65,7 @@ spec:
     spec:
       containers:
       - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
+        image: ghcr.io/kedacore/tests-prometheus:latest
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -98,7 +98,7 @@ spec:
     spec:
       containers:
       - name: prom-test-app
-        image: quay.io/zroubalik/prometheus-app:latest
+        image: ghcr.io/kedacore/tests-prometheus:latest
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
