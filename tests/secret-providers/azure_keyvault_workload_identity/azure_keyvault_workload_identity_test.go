@@ -65,7 +65,6 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   AzureWebJobsStorage: {{.Connection}}
-  clientSecret: {{.AzureADSecret}}
 `
 
 	deploymentTemplate = `
