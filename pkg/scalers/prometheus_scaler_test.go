@@ -228,6 +228,42 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		ignoreNullValues: true,
 		unsafeSsl:        true,
 	},
+	{
+		name:             "+Inf",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "+Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "+Inf but shouldn't ignore ",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "+Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "-Inf",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "-Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "-Inf but shouldn't ignore ",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "-Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
+		unsafeSsl:        true,
+	},
 }
 
 func TestPrometheusScalerExecutePromQuery(t *testing.T) {

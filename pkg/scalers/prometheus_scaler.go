@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
@@ -295,6 +296,15 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 			s.logger.Error(err, "Error converting prometheus value", "prometheus_value", str)
 			return -1, err
 		}
+	}
+
+	if math.IsInf(v, 0) {
+		if s.metadata.ignoreNullValues {
+			return 0, nil
+		}
+		err := fmt.Errorf("promtheus query returns %f", v)
+		s.logger.Error(err, "Error converting prometheus value")
+		return -1, err
 	}
 
 	return v, nil
