@@ -411,9 +411,9 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.Metric
 }
 
 func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
-	t.Log("--- testing customresource total metrics ---")
+	t.Log("--- testing resource total metrics ---")
 
-	family, ok := families["keda_operator_customresource_totals"]
+	family, ok := families["keda_operator_resource_totals"]
 	if !ok {
 		t.Errorf("metric not available")
 		return
