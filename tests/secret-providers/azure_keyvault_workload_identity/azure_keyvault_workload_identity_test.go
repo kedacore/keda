@@ -33,8 +33,6 @@ const (
 var (
 	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 	keyvaultURI      = os.Getenv("AZURE_KEYVAULT_URI")
-	azureADClientID  = os.Getenv("AZURE_SP_APP_ID")
-	azureADTenantID  = os.Getenv("AZURE_SP_TENANT")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
@@ -52,8 +50,6 @@ type templateData struct {
 	ScaledObjectName string
 	QueueName        string
 	KeyVaultURI      string
-	AzureADClientID  string
-	AzureADTenantID  string
 }
 
 const (
@@ -142,8 +138,6 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for key vault tests")
 	require.NotEmpty(t, keyvaultURI, "AZURE_KEYVAULT_URI env variable is required for key vault tests")
-	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for key vault tests")
-	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for key vault tests")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -197,8 +191,6 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName: scaledObjectName,
 			QueueName:        queueName,
 			KeyVaultURI:      keyvaultURI,
-			AzureADClientID:  azureADClientID,
-			AzureADTenantID:  azureADTenantID,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
