@@ -215,7 +215,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.AzureKeyVault != nil && len(triggerAuthSpec.AzureKeyVault.Secrets) > 0 {
-				vaultHandler := NewAzureKeyVaultHandler(triggerAuthSpec.AzureKeyVault, podIdentity)
+				vaultHandler := NewAzureKeyVaultHandler(triggerAuthSpec.AzureKeyVault)
 				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace)
 				if err != nil {
 					logger.Error(err, "Error authenticating to Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
