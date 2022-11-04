@@ -102,7 +102,7 @@ func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) 
 
 func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string) (auth.AuthorizerConfig, error) {
-	podIdentity := vh.vault.Credentials.PodIdentity
+	podIdentity := vh.vault.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
 	}
@@ -128,12 +128,12 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = keyVaultResourceURL
-		config.ClientID = vh.vault.Credentials.PodIdentity.IdentityID
+		config.ClientID = podIdentity.IdentityID
 
 		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return azure.NewAzureADWorkloadIdentityConfig(ctx, vh.vault.Credentials.PodIdentity.IdentityID, keyVaultResourceURL), nil
+		return azure.NewAzureADWorkloadIdentityConfig(ctx, podIdentity.IdentityID, keyVaultResourceURL), nil
 	default:
-		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", vh.vault.Credentials.PodIdentity)
+		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", podIdentity)
 	}
 }

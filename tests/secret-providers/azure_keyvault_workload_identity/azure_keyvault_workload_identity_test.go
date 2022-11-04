@@ -108,11 +108,8 @@ metadata:
 spec:
   azureKeyVault:
     vaultUri: {{.KeyVaultURI}}
-    credentials:
-      clientId: {{.AzureADClientID}}
-      tenantId: {{.AzureADTenantID}}
-      podIdentity:
-        provider: azure-workload
+    podIdentity:
+      provider: azure-workload
     secrets:
       - parameter: connection
         name: E2E-Storage-ConnectionString

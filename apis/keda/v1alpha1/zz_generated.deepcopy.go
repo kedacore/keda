@@ -105,6 +105,11 @@ func (in *AzureKeyVault) DeepCopyInto(out *AzureKeyVault) {
 		*out = new(AzureKeyVaultCredentials)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PodIdentity != nil {
+		in, out := &in.PodIdentity, &out.PodIdentity
+		*out = new(AuthPodIdentity)
+		**out = **in
+	}
 	if in.Cloud != nil {
 		in, out := &in.Cloud, &out.Cloud
 		*out = new(AzureKeyVaultCloudInfo)
@@ -159,11 +164,6 @@ func (in *AzureKeyVaultCredentials) DeepCopyInto(out *AzureKeyVaultCredentials) 
 	if in.ClientSecret != nil {
 		in, out := &in.ClientSecret, &out.ClientSecret
 		*out = new(AzureKeyVaultClientSecret)
-		**out = **in
-	}
-	if in.PodIdentity != nil {
-		in, out := &in.PodIdentity, &out.PodIdentity
-		*out = new(AuthPodIdentity)
 		**out = **in
 	}
 }
