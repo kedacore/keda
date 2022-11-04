@@ -13,6 +13,14 @@ type PausedReplicasPredicate struct {
 	predicate.Funcs
 }
 
+// define annotation as a constant "Paused = "autoscaling.keda.sh/paused""
+// define a predicate that checks if the annotation is present and if it is, return true
+const Paused = "autoscaling.keda.sh/paused"
+
+type PausedPredicate struct {
+	predicate.Funcs
+}
+
 func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld == nil || e.ObjectNew == nil {
 		return false

@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -38,6 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/metrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -51,18 +54,34 @@ type ScaledJobReconciler struct {
 	GlobalHTTPTimeout time.Duration
 	Recorder          record.EventRecorder
 
-	scaleHandler scaling.ScaleHandler
+	scaledJobGenerations *sync.Map
+	scaleHandler         scaling.ScaleHandler
+}
+
+var (
+	scaledJobTriggers     map[string][]string
+	scaledJobTriggersLock *sync.Mutex
+)
+
+func init() {
+	scaledJobTriggers = make(map[string][]string)
+	scaledJobTriggersLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
+	r.scaledJobGenerations = &sync.Map{}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
-		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(
+			predicate.Or(
+				kedacontrollerutil.PausedPredicate{},
+				predicate.GenerationChangedPredicate{},
+			))).
 		Complete(r)
 }
 
@@ -90,8 +109,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check if the ScaledJob instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledJob.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob)
+		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob, req.NamespacedName.String())
 	}
+	r.updateTriggerTotals(reqLogger, scaledJob, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledJob); err != nil {
@@ -104,6 +124,11 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+	// check if scaledJob.Status.IsPaused constant is not an empty string, if not an empty string then stopScaleLoop
+	if scaledJob.Status.Paused != "" {
+		reqLogger.Info("ScaledJob is paused, stopping scale loop")
+		return ctrl.Result{}, r.Paused(ctx, reqLogger, scaledJob)
 	}
 
 	// Check jobTargetRef is specified
@@ -162,13 +187,28 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	if err != nil {
 		return "Failed to start a new scale loop with scaling logic", err
 	}
+	// scaledJob.Status.Paused is set to true so pause the ScaleLoop
+	err = r.Paused(ctx, logger, scaledJob)
+	if err != nil {
+		return "Failed to pause the scale loop", err
+	}
+
 	logger.Info("Initializing Scaling logic according to ScaledJob Specification")
 	return "ScaledJob is defined correctly and is ready to scaling", nil
+
 }
 
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	switch scaledJob.Spec.RolloutStrategy {
+	var rolloutStrategy string
+	if len(scaledJob.Spec.RolloutStrategy) > 0 {
+		logger.Info("RolloutStrategy is deprecated, please us Rollout.Strategy in order to define the desired strategy for job rollouts")
+		rolloutStrategy = scaledJob.Spec.RolloutStrategy
+	} else {
+		rolloutStrategy = scaledJob.Spec.Rollout.Strategy
+	}
+
+	switch rolloutStrategy {
 	case "gradual":
 		logger.Info("RolloutStrategy: gradual, Not deleting jobs owned by the previous version of the scaleJob")
 	default:
@@ -187,7 +227,12 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 		}
 		for _, job := range jobs.Items {
 			job := job
-			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(metav1.DeletePropagationBackground))
+
+			propagationPolicy := metav1.DeletePropagationBackground
+			if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
+				propagationPolicy = metav1.DeletePropagationForeground
+			}
+			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
 			if err != nil {
 				return "Not able to delete job: " + job.Name, err
 			}
@@ -200,11 +245,107 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-	return r.scaleHandler.HandleScalableObject(ctx, scaledJob)
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledJob")
+		return err
+	}
+
+	if err = r.scaleHandler.HandleScalableObject(ctx, scaledJob); err != nil {
+		return err
+	}
+
+	r.scaledJobGenerations.Store(key, scaledJob.Generation)
+
+	return nil
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Stopping a ScaleLoop")
-	return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledJob")
+		return err
+	}
+
+	if err = r.scaleHandler.DeleteScalableObject(ctx, scaledJob); err != nil {
+		return err
+	}
+
+	r.scaledJobGenerations.Delete(key)
+	return nil
+}
+
+// scaledJobGenerationChanged returns true if ScaledJob's Generation was changed, ie. ScaledJob.Spec was changed
+func (r *ScaledJobReconciler) scaledJobGenerationChanged(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (bool, error) {
+	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledJob")
+		return true, err
+	}
+
+	value, loaded := r.scaledJobGenerations.Load(key)
+	if loaded {
+		generation := value.(int64)
+		if generation == scaledJob.Generation {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (r *ScaledJobReconciler) updateTriggerTotals(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
+	specChanged, err := r.scaledJobGenerationChanged(logger, scaledJob)
+	if err != nil {
+		logger.Error(err, "failed to update trigger totals")
+		return
+	}
+
+	if !specChanged {
+		return
+	}
+
+	scaledJobTriggersLock.Lock()
+	defer scaledJobTriggersLock.Unlock()
+
+	if triggerTypes, ok := scaledJobTriggers[namespacedName]; ok {
+		for _, triggerType := range triggerTypes {
+			metrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
+	for _, trigger := range scaledJob.Spec.Triggers {
+		metrics.IncrementTriggerTotal(trigger.Type)
+		triggerTypes = append(triggerTypes, trigger.Type)
+	}
+
+	scaledJobTriggers[namespacedName] = triggerTypes
+}
+
+func (r *ScaledJobReconciler) updateTriggerTotalsOnDelete(namespacedName string) {
+	scaledJobTriggersLock.Lock()
+	defer scaledJobTriggersLock.Unlock()
+
+	if triggerTypes, ok := scaledJobTriggers[namespacedName]; ok {
+		for _, triggerType := range triggerTypes {
+			metrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	delete(scaledJobTriggers, namespacedName)
+}
+
+// stopScaleLoops when scaledJob.Status.IsPaused() is set
+func (r *ScaledJobReconciler) Paused(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	if scaledJob.Annotations["scaledjob.keda.sh/paused"] == "true" {
+		logger.V(1).Info("Stopping a ScaleLoop when scaledJob is paused")
+		// stopScaleLoop
+		return r.stopScaleLoop(ctx, logger, scaledJob)
+		// return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
+	}
+	return nil
 }
