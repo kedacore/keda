@@ -45,18 +45,20 @@ type stanScaler struct {
 }
 
 type stanMetadata struct {
-	natsServerMonitoringEndpoint string
-	queueGroup                   string
-	durableName                  string
-	subject                      string
-	lagThreshold                 int64
-	activationLagThreshold       int64
-	scalerIndex                  int
+	natsServerMonitoringEndpoint         string
+	natsServerMonitoringEndpointProtocol string
+	queueGroup                           string
+	durableName                          string
+	subject                              string
+	lagThreshold                         int64
+	activationLagThreshold               int64
+	scalerIndex                          int
 }
 
 const (
-	stanMetricType          = "External"
-	defaultStanLagThreshold = 10
+	stanMetricType                    = "External"
+	defaultStanLagThreshold           = 10
+	defaultMonitoringEndpointProtocol = "http"
 )
 
 // NewStanScaler creates a new stanScaler
@@ -123,6 +125,12 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	}
 
 	meta.scalerIndex = config.ScalerIndex
+
+	meta.natsServerMonitoringEndpointProtocol = defaultMonitoringEndpointProtocol
+	if val, ok := config.TriggerMetadata["natsServerMonitoringEndpointProtocol"]; ok {
+		meta.natsServerMonitoringEndpointProtocol = val
+	}
+
 	return meta, nil
 }
 
@@ -168,7 +176,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *stanScaler) getSTANChannelsEndpoint() string {
-	return "http://" + s.metadata.natsServerMonitoringEndpoint + "/streaming/channelsz"
+	return fmt.Sprintf("%s://%s/streaming/channelsz", s.metadata.natsServerMonitoringEndpointProtocol, s.metadata.natsServerMonitoringEndpoint)
 }
 
 func (s *stanScaler) getMonitoringEndpoint() string {

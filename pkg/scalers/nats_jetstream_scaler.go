@@ -32,13 +32,14 @@ type natsJetStreamScaler struct {
 }
 
 type natsJetStreamMetadata struct {
-	monitoringEndpoint     string
-	account                string
-	stream                 string
-	consumer               string
-	lagThreshold           int64
-	activationLagThreshold int64
-	scalerIndex            int
+	monitoringEndpoint         string
+	monitoringEndpointProtocol string
+	account                    string
+	stream                     string
+	consumer                   string
+	lagThreshold               int64
+	activationLagThreshold     int64
+	scalerIndex                int
 }
 
 type jetStreamEndpointResponse struct {
@@ -149,11 +150,16 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 	}
 
 	meta.scalerIndex = config.ScalerIndex
+
+	meta.monitoringEndpointProtocol = defaultMonitoringEndpointProtocol
+	if val, ok := config.TriggerMetadata["monitoringEndpointProtocol"]; ok {
+		meta.monitoringEndpointProtocol = val
+	}
 	return meta, nil
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamEndpoint() string {
-	return fmt.Sprintf("http://%s/jsz?acc=%s&consumers=true&config=true", s.metadata.monitoringEndpoint, s.metadata.account)
+	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", s.metadata.monitoringEndpointProtocol, s.metadata.monitoringEndpoint, s.metadata.account)
 }
 
 func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {
