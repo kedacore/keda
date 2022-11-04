@@ -492,13 +492,13 @@ func (r *ScaledObjectReconciler) updateMetrics(scaledObject *kedav1alpha1.Scaled
 	metricsData, ok := scaledObjectMetricsMap[namespacedName]
 
 	if ok {
-		metrics.DecrementCRDTotal("scaled_object", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	metrics.IncrementCRDTotal("scaled_object", scaledObject.Namespace)
+	metrics.IncrementCRDTotal(metrics.ScaledObjectResource, scaledObject.Namespace)
 	metricsData.namespace = scaledObject.Namespace
 
 	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
@@ -516,7 +516,7 @@ func (r *ScaledObjectReconciler) updateMetricsOnDelete(namespacedName string) {
 	defer scaledObjectMetricsLock.Unlock()
 
 	if metricsData, ok := scaledObjectMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("scaled_object", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}

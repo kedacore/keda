@@ -275,13 +275,13 @@ func (r *ScaledJobReconciler) updateMetrics(scaledJob *kedav1alpha1.ScaledJob, n
 	metricsData, ok := scaledJobMetricsMap[namespacedName]
 
 	if ok {
-		metrics.DecrementCRDTotal("scaled_job", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ScaledJobResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	metrics.IncrementCRDTotal("scaled_job", scaledJob.Namespace)
+	metrics.IncrementCRDTotal(metrics.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
 	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
@@ -299,7 +299,7 @@ func (r *ScaledJobReconciler) updateMetricsOnDelete(namespacedName string) {
 	defer scaledJobMetricsLock.Unlock()
 
 	if metricsData, ok := scaledJobMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("scaled_job", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ScaledJobResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}

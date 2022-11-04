@@ -98,10 +98,10 @@ func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha
 	defer triggerAuthMetricsLock.Unlock()
 
 	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("trigger_authentication", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.TriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	metrics.IncrementCRDTotal("trigger_authentication", triggerAuth.Namespace)
+	metrics.IncrementCRDTotal(metrics.TriggerAuthenticationResource, triggerAuth.Namespace)
 	triggerAuthMetricsMap[namespacedName] = triggerAuthMetricsData{namespace: triggerAuth.Namespace}
 }
 
@@ -111,7 +111,7 @@ func (r *TriggerAuthenticationReconciler) UpdateMetricsOnDelete(namespacedName s
 	defer triggerAuthMetricsLock.Unlock()
 
 	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("trigger_authentication", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.TriggerAuthenticationResource, metricsData.namespace)
 	}
 
 	delete(triggerAuthMetricsMap, namespacedName)

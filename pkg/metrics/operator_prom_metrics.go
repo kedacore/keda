@@ -21,6 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const (
+	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"
+	TriggerAuthenticationResource        = "trigger_authentication"
+	ScaledObjectResource                 = "scaled_object"
+	ScaledJobResource                    = "scaled_job"
+)
+
 var (
 	triggerTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -97,10 +97,10 @@ func (r *ClusterTriggerAuthenticationReconciler) updateMetrics(clusterTriggerAut
 	defer clusterTriggerAuthMetricsLock.Unlock()
 
 	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("cluster_trigger_authentication", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	metrics.IncrementCRDTotal("cluster_trigger_authentication", clusterTriggerAuth.Namespace)
+	metrics.IncrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, clusterTriggerAuth.Namespace)
 	clusterTriggerAuthMetricsMap[namespacedName] = clusterTriggerAuthMetricsData{namespace: clusterTriggerAuth.Namespace}
 }
 
@@ -110,7 +110,7 @@ func (r *ClusterTriggerAuthenticationReconciler) UpdateMetricsOnDelete(namespace
 	defer clusterTriggerAuthMetricsLock.Unlock()
 
 	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal("cluster_trigger_authentication", metricsData.namespace)
+		metrics.DecrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
 	delete(clusterTriggerAuthMetricsMap, namespacedName)
