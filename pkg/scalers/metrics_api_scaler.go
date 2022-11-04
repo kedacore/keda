@@ -98,15 +98,14 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 	meta.scalerIndex = config.ScalerIndex
-	var err error
 
+	meta.unsafeSsl = false
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		meta.unsafeSsl, err = strconv.ParseBool(val)
+		unsafeSsl, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
 		}
-	} else {
-		meta.unsafeSsl = false
+		meta.unsafeSsl = unsafeSsl
 	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {

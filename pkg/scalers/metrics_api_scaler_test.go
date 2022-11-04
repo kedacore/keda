@@ -71,6 +71,8 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "true"}, map[string]string{}, false},
 	// success unsafeSsl false
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "false"}, map[string]string{}, false},
+	// failed unsafeSsl non bool
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "yes"}, map[string]string{}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
