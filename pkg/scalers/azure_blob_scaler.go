@@ -68,6 +68,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 		metadata:    meta,
 		podIdentity: podIdentity,
 		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		logger:      logger,
 	}, nil
 }
 
@@ -190,7 +191,7 @@ func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
 	)
 
 	if err != nil {
-		s.logger.Error(err, "error)")
+		s.logger.Error(err, "error")
 		return false, err
 	}
 
