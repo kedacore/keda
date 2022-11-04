@@ -110,7 +110,7 @@ var testDataset = []testData{
 
 func TestGetPropertiesForCloud(t *testing.T) {
 	for _, testData := range testDataset {
-		vh := NewAzureKeyVaultHandler(&testData.vault, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone})
+		vh := NewAzureKeyVaultHandler(&testData.vault)
 
 		kvResourceURL, adEndpoint, err := vh.getPropertiesForCloud()
 
