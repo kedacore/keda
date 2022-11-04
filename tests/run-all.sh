@@ -15,7 +15,7 @@ counter=0
 executed_count=0
 
 function run_setup {
-    go test -v -tags e2e utils/setup_test.go
+    go test -v -tags e2e -timeout 15m utils/setup_test.go
 }
 
 function run_tests {
