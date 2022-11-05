@@ -21,8 +21,8 @@ import (
 const (
 	jetStreamMetricType          = "External"
 	defaultJetStreamLagThreshold = 10
-	natsHttpProtocol             = "http"
-	natsHttpsProtocol            = "https"
+	natsHTTPProtocol             = "http"
+	natsHTTPSProtocol            = "https"
 )
 
 type natsJetStreamScaler struct {
@@ -35,7 +35,7 @@ type natsJetStreamScaler struct {
 
 type natsJetStreamMetadata struct {
 	monitoringEndpoint     string
-	useHttps               bool
+	useHTTPS               bool
 	account                string
 	stream                 string
 	consumer               string
@@ -153,21 +153,21 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.useHttps = false
-	if val, ok := config.TriggerMetadata["useHttps"]; ok {
-		useHttps, err := strconv.ParseBool(val)
+	meta.useHTTPS = false
+	if val, ok := config.TriggerMetadata["useHTTPS"]; ok {
+		useHTTPS, err := strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("useHttps parsing error %s", err.Error())
+			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
 		}
-		meta.useHttps = useHttps
+		meta.useHTTPS = useHTTPS
 	}
 	return meta, nil
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamEndpoint() string {
-	protocol := natsHttpProtocol
-	if s.metadata.useHttps {
-		protocol = natsHttpsProtocol
+	protocol := natsHTTPProtocol
+	if s.metadata.useHTTPS {
+		protocol = natsHTTPSProtocol
 	}
 	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", protocol, s.metadata.monitoringEndpoint, s.metadata.account)
 }

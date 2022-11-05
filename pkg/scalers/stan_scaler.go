@@ -46,7 +46,7 @@ type stanScaler struct {
 
 type stanMetadata struct {
 	natsServerMonitoringEndpoint string
-	useHttps                     bool
+	useHTTPS                     bool
 	queueGroup                   string
 	durableName                  string
 	subject                      string
@@ -58,8 +58,8 @@ type stanMetadata struct {
 const (
 	stanMetricType             = "External"
 	defaultStanLagThreshold    = 10
-	natsStreamingHttpProtocol  = "http"
-	natsStreamingHttpsProtocol = "https"
+	natsStreamingHTTPProtocol  = "http"
+	natsStreamingHTTPSProtocol = "https"
 )
 
 // NewStanScaler creates a new stanScaler
@@ -127,13 +127,13 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.useHttps = false
-	if val, ok := config.TriggerMetadata["useHttps"]; ok {
-		useHttps, err := strconv.ParseBool(val)
+	meta.useHTTPS = false
+	if val, ok := config.TriggerMetadata["useHTTPS"]; ok {
+		useHTTPS, err := strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("useHttps parsing error %s", err.Error())
+			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
 		}
-		meta.useHttps = useHttps
+		meta.useHTTPS = useHTTPS
 	}
 
 	return meta, nil
@@ -181,9 +181,9 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *stanScaler) getSTANChannelsEndpoint() string {
-	protocol := natsStreamingHttpProtocol
-	if s.metadata.useHttps {
-		protocol = natsStreamingHttpsProtocol
+	protocol := natsStreamingHTTPProtocol
+	if s.metadata.useHTTPS {
+		protocol = natsStreamingHTTPSProtocol
 	}
 	return fmt.Sprintf("%s://%s/streaming/channelsz", protocol, s.metadata.natsServerMonitoringEndpoint)
 }
