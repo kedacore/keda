@@ -154,7 +154,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 	meta.scalerIndex = config.ScalerIndex
 
 	meta.useHTTPS = false
-	if val, ok := config.TriggerMetadata["useHTTPS"]; ok {
+	if val, ok := config.TriggerMetadata["useHttps"]; ok {
 		useHTTPS, err := strconv.ParseBool(val)
 		if err != nil {
 			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
