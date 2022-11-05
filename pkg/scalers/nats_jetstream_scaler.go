@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	jetStreamMetricType                   = "External"
-	defaultJetStreamLagThreshold          = 10
-	defaultNatsMonitoringEndpointProtocol = "http"
+	jetStreamMetricType          = "External"
+	defaultJetStreamLagThreshold = 10
+	natsHttpProtocol             = "http"
+	natsHttpsProtocol            = "https"
 )
 
 type natsJetStreamScaler struct {
@@ -164,9 +165,9 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamEndpoint() string {
-	protocol := "http"
+	protocol := natsHttpProtocol
 	if s.metadata.useHttps {
-		protocol = "https"
+		protocol = natsHttpsProtocol
 	}
 	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", protocol, s.metadata.monitoringEndpoint, s.metadata.account)
 }

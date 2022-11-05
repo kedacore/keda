@@ -56,8 +56,10 @@ type stanMetadata struct {
 }
 
 const (
-	stanMetricType          = "External"
-	defaultStanLagThreshold = 10
+	stanMetricType             = "External"
+	defaultStanLagThreshold    = 10
+	natsStreamingHttpProtocol  = "http"
+	natsStreamingHttpsProtocol = "https"
 )
 
 // NewStanScaler creates a new stanScaler
@@ -179,9 +181,9 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *stanScaler) getSTANChannelsEndpoint() string {
-	protocol := "http"
+	protocol := natsStreamingHttpProtocol
 	if s.metadata.useHttps {
-		protocol = "https"
+		protocol = natsStreamingHttpsProtocol
 	}
 	return fmt.Sprintf("%s://%s/streaming/channelsz", protocol, s.metadata.natsServerMonitoringEndpoint)
 }
