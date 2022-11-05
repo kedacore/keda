@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	jetStreamMetricType          = "External"
-	defaultJetStreamLagThreshold = 10
+	jetStreamMetricType                   = "External"
+	defaultJetStreamLagThreshold          = 10
+	defaultNatsMonitoringEndpointProtocol = "http"
 )
 
 type natsJetStreamScaler struct {
@@ -32,14 +33,14 @@ type natsJetStreamScaler struct {
 }
 
 type natsJetStreamMetadata struct {
-	monitoringEndpoint         string
-	monitoringEndpointProtocol string
-	account                    string
-	stream                     string
-	consumer                   string
-	lagThreshold               int64
-	activationLagThreshold     int64
-	scalerIndex                int
+	monitoringEndpoint     string
+	useHttps               bool
+	account                string
+	stream                 string
+	consumer               string
+	lagThreshold           int64
+	activationLagThreshold int64
+	scalerIndex            int
 }
 
 type jetStreamEndpointResponse struct {
@@ -151,15 +152,23 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.monitoringEndpointProtocol = defaultMonitoringEndpointProtocol
-	if val, ok := config.TriggerMetadata["monitoringEndpointProtocol"]; ok {
-		meta.monitoringEndpointProtocol = val
+	meta.useHttps = false
+	if val, ok := config.TriggerMetadata["useHttps"]; ok {
+		useHttps, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("useHttps parsing error %s", err.Error())
+		}
+		meta.useHttps = useHttps
 	}
 	return meta, nil
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamEndpoint() string {
-	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", s.metadata.monitoringEndpointProtocol, s.metadata.monitoringEndpoint, s.metadata.account)
+	protocol := "http"
+	if s.metadata.useHttps {
+		protocol = "https"
+	}
+	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", protocol, s.metadata.monitoringEndpoint, s.metadata.account)
 }
 
 func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {

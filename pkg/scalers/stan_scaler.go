@@ -45,20 +45,19 @@ type stanScaler struct {
 }
 
 type stanMetadata struct {
-	natsServerMonitoringEndpoint         string
-	natsServerMonitoringEndpointProtocol string
-	queueGroup                           string
-	durableName                          string
-	subject                              string
-	lagThreshold                         int64
-	activationLagThreshold               int64
-	scalerIndex                          int
+	natsServerMonitoringEndpoint string
+	useHttps                     bool
+	queueGroup                   string
+	durableName                  string
+	subject                      string
+	lagThreshold                 int64
+	activationLagThreshold       int64
+	scalerIndex                  int
 }
 
 const (
-	stanMetricType                    = "External"
-	defaultStanLagThreshold           = 10
-	defaultMonitoringEndpointProtocol = "http"
+	stanMetricType          = "External"
+	defaultStanLagThreshold = 10
 )
 
 // NewStanScaler creates a new stanScaler
@@ -126,9 +125,13 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.natsServerMonitoringEndpointProtocol = defaultMonitoringEndpointProtocol
-	if val, ok := config.TriggerMetadata["natsServerMonitoringEndpointProtocol"]; ok {
-		meta.natsServerMonitoringEndpointProtocol = val
+	meta.useHttps = false
+	if val, ok := config.TriggerMetadata["useHttps"]; ok {
+		useHttps, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("useHttps parsing error %s", err.Error())
+		}
+		meta.useHttps = useHttps
 	}
 
 	return meta, nil
@@ -176,7 +179,11 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 func (s *stanScaler) getSTANChannelsEndpoint() string {
-	return fmt.Sprintf("%s://%s/streaming/channelsz", s.metadata.natsServerMonitoringEndpointProtocol, s.metadata.natsServerMonitoringEndpoint)
+	protocol := "http"
+	if s.metadata.useHttps {
+		protocol = "https"
+	}
+	return fmt.Sprintf("%s://%s/streaming/channelsz", protocol, s.metadata.natsServerMonitoringEndpoint)
 }
 
 func (s *stanScaler) getMonitoringEndpoint() string {

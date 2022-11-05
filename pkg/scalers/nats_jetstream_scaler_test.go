@@ -30,13 +30,15 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	// Missing nats server monitoring endpoint, should fail
 	{map[string]string{"account": "$G", "stream": "mystream"}, map[string]string{}, true},
 	// All good.
-	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{}, false},
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "true"}, map[string]string{}, false},
 	// All good + activationLagThreshold
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "activationLagThreshold": "10"}, map[string]string{}, false},
 	// natsServerMonitoringEndpoint is defined in authParams
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
 	// Missing nats server monitoring endpoint , should fail
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": ""}, true},
+	// Misconfigured https, should fail
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "error"}, map[string]string{}, true},
 }
 
 var natsJetStreamMetricIdentifiers = []natsJetStreamMetricIdentifier{
