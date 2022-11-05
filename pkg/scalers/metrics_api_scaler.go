@@ -33,6 +33,7 @@ type metricsAPIScalerMetadata struct {
 	activationTargetValue float64
 	url                   string
 	valueLocation         string
+	unsafeSsl             bool
 
 	// apiKeyAuth
 	enableAPIKeyAuth bool
@@ -76,14 +77,13 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	if meta.enableTLS || len(meta.ca) > 0 {
 		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
 		if err != nil {
 			return nil, err
 		}
-
 		httpClient.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
@@ -98,6 +98,15 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 	meta.scalerIndex = config.ScalerIndex
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		unsafeSsl, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.ParseFloat(val, 64)

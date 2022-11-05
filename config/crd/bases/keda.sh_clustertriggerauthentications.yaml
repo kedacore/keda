@@ -98,6 +98,18 @@ spec:
                     - clientSecret
                     - tenantId
                     type: object
+                  podIdentity:
+                    description: AuthPodIdentity allows users to select the platform
+                      native identity mechanism
+                    properties:
+                      identityId:
+                        type: string
+                      provider:
+                        description: PodIdentityProvider contains the list of providers
+                        type: string
+                    required:
+                    - provider
+                    type: object
                   secrets:
                     items:
                       properties:
