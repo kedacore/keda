@@ -35,7 +35,6 @@ type natsJetStreamScaler struct {
 
 type natsJetStreamMetadata struct {
 	monitoringEndpoint     string
-	useHTTPS               bool
 	account                string
 	stream                 string
 	consumer               string
@@ -111,11 +110,6 @@ func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, error) {
 	meta := natsJetStreamMetadata{}
-	var err error
-	meta.monitoringEndpoint, err = GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
-	if err != nil {
-		return meta, err
-	}
 
 	if config.TriggerMetadata["account"] == "" {
 		return meta, errors.New("no account name given")
@@ -153,27 +147,33 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.useHTTPS = false
+	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	if err != nil {
+		return meta, err
+	}
+	useHTTPS := false
 	if val, ok := config.TriggerMetadata["useHttps"]; ok {
-		useHTTPS, err := strconv.ParseBool(val)
+		useHTTPS, err = strconv.ParseBool(val)
 		if err != nil {
 			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
 		}
-		meta.useHTTPS = useHTTPS
 	}
+	meta.monitoringEndpoint = getNATSJetStreamEndpoint(useHTTPS, natsServerEndpoint, meta.account)
+
 	return meta, nil
 }
 
-func (s *natsJetStreamScaler) getNATSJetStreamEndpoint() string {
+func getNATSJetStreamEndpoint(useHTTPS bool, natsServerEndpoint string, account string) string {
 	protocol := natsHTTPProtocol
-	if s.metadata.useHTTPS {
+	if useHTTPS {
 		protocol = natsHTTPSProtocol
 	}
-	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", protocol, s.metadata.monitoringEndpoint, s.metadata.account)
+
+	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", protocol, natsServerEndpoint, account)
 }
 
 func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {
-	monitoringEndpoint := s.getNATSJetStreamEndpoint()
+	monitoringEndpoint := s.metadata.monitoringEndpoint
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, monitoringEndpoint, nil)
 	if err != nil {
@@ -232,7 +232,7 @@ func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 func (s *natsJetStreamScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.getNATSJetStreamEndpoint(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.metadata.monitoringEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}

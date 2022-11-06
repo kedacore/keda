@@ -45,14 +45,14 @@ type stanScaler struct {
 }
 
 type stanMetadata struct {
-	natsServerMonitoringEndpoint string
-	useHTTPS                     bool
-	queueGroup                   string
-	durableName                  string
-	subject                      string
-	lagThreshold                 int64
-	activationLagThreshold       int64
-	scalerIndex                  int
+	monitoringEndpoint     string
+	stanChannelsEndpoint   string
+	queueGroup             string
+	durableName            string
+	subject                string
+	lagThreshold           int64
+	activationLagThreshold int64
+	scalerIndex            int
 }
 
 const (
@@ -85,11 +85,6 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
-	var err error
-	meta.natsServerMonitoringEndpoint, err = GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
-	if err != nil {
-		return meta, err
-	}
 
 	if config.TriggerMetadata["queueGroup"] == "" {
 		return meta, errors.New("no queue group given")
@@ -127,21 +122,27 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 
 	meta.scalerIndex = config.ScalerIndex
 
-	meta.useHTTPS = false
+	var err error
+	useHTTPS := false
 	if val, ok := config.TriggerMetadata["useHttps"]; ok {
-		useHTTPS, err := strconv.ParseBool(val)
+		useHTTPS, err = strconv.ParseBool(val)
 		if err != nil {
 			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
 		}
-		meta.useHTTPS = useHTTPS
 	}
+	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	if err != nil {
+		return meta, err
+	}
+	meta.stanChannelsEndpoint = getSTANChannelsEndpoint(useHTTPS, natsServerEndpoint)
+	meta.monitoringEndpoint = getMonitoringEndpoint(meta.stanChannelsEndpoint, meta.subject)
 
 	return meta, nil
 }
 
 // IsActive determines if we need to scale from zero
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
-	monitoringEndpoint := s.getMonitoringEndpoint()
+	monitoringEndpoint := s.metadata.monitoringEndpoint
 
 	req, err := http.NewRequestWithContext(ctx, "GET", monitoringEndpoint, nil)
 	if err != nil {
@@ -149,12 +150,12 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		s.logger.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
+		s.logger.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.monitoringEndpoint)
 		return false, err
 	}
 
 	if resp.StatusCode == 404 {
-		req, err := http.NewRequestWithContext(ctx, "GET", s.getSTANChannelsEndpoint(), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.stanChannelsEndpoint, nil)
 		if err != nil {
 			return false, err
 		}
@@ -166,7 +167,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 		if baseResp.StatusCode == 404 {
 			s.logger.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
 		} else {
-			s.logger.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
+			s.logger.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "monitoringEndpoint", s.metadata.monitoringEndpoint)
 		}
 
 		return false, err
@@ -180,16 +181,16 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 	return s.hasPendingMessage() || s.getMaxMsgLag() > s.metadata.activationLagThreshold, nil
 }
 
-func (s *stanScaler) getSTANChannelsEndpoint() string {
+func getSTANChannelsEndpoint(useHTTPS bool, natsServerEndpoint string) string {
 	protocol := natsStreamingHTTPProtocol
-	if s.metadata.useHTTPS {
+	if useHTTPS {
 		protocol = natsStreamingHTTPSProtocol
 	}
-	return fmt.Sprintf("%s://%s/streaming/channelsz", protocol, s.metadata.natsServerMonitoringEndpoint)
+	return fmt.Sprintf("%s://%s/streaming/channelsz", protocol, natsServerEndpoint)
 }
 
-func (s *stanScaler) getMonitoringEndpoint() string {
-	return s.getSTANChannelsEndpoint() + "?channel=" + s.metadata.subject + "&subs=1"
+func getMonitoringEndpoint(stanChannelsEndpoint string, subject string) string {
+	return fmt.Sprintf("%s?channel=%s&subs=1", stanChannelsEndpoint, subject)
 }
 
 func (s *stanScaler) getMaxMsgLag() int64 {
@@ -244,14 +245,14 @@ func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
 func (s *stanScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", s.getMonitoringEndpoint(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.monitoringEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := s.httpClient.Do(req)
 
 	if err != nil {
-		s.logger.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "natsServerMonitoringEndpoint", s.metadata.natsServerMonitoringEndpoint)
+		s.logger.Error(err, "Unable to access the nats streaming broker monitoring endpoint", "monitoringEndpoint", s.metadata.monitoringEndpoint)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

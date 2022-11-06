@@ -3,7 +3,10 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type parseNATSJetStreamMetadataTestData struct {
@@ -52,7 +55,7 @@ func TestNATSJetStreamParseMetadata(t *testing.T) {
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Error("Expected error but got success" + testData.authParams["natsServerMonitoringEndpoint"] + "foo")
 		}
 	}
 }
@@ -76,4 +79,16 @@ func TestNATSJetStreamGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
+}
+
+func TestGetNATSJetStreamEndpointHTTPS(t *testing.T) {
+	endpoint := getNATSJetStreamEndpoint(true, "nats.nats:8222", "$G")
+
+	assert.True(t, strings.HasPrefix(endpoint, "https:"))
+}
+
+func TestGetNATSJetStreamEndpointHTTP(t *testing.T) {
+	endpoint := getNATSJetStreamEndpoint(false, "nats.nats:8222", "$G")
+
+	assert.True(t, strings.HasPrefix(endpoint, "http:"))
 }

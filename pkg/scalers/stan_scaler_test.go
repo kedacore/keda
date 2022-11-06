@@ -3,7 +3,10 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type parseStanMetadataTestData struct {
@@ -74,4 +77,16 @@ func TestStanGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
+}
+
+func TestGetSTANChannelsEndpointHTTPS(t *testing.T) {
+	endpoint := getSTANChannelsEndpoint(true, "stan-nats-ss")
+
+	assert.True(t, strings.HasPrefix(endpoint, "https:"))
+}
+
+func TestGetSTANChannelsEndpointHTTP(t *testing.T) {
+	endpoint := getSTANChannelsEndpoint(false, "stan-nats-ss")
+
+	assert.True(t, strings.HasPrefix(endpoint, "http:"))
 }
