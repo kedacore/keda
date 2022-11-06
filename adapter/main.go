@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -133,21 +132,19 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	broadcaster := record.NewBroadcaster()
 	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
 	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder)
-	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
-	externalMetricsInfoLock := &sync.RWMutex{}
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 	stopCh := make(chan struct{})
 
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+	if err := runScaledObjectController(ctx, mgr, handler, logger, maxConcurrentReconciles, stopCh); err != nil {
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), namespace), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
+func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
 		Client:       mgr.GetClient(),
 		ScaleHandler: scaleHandler,

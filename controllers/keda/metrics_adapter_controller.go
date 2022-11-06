@@ -18,8 +18,6 @@ package keda
 
 import (
 	"context"
-	"sync"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -37,10 +35,6 @@ type MetricsScaledObjectReconciler struct {
 	ScaleHandler            scaling.ScaleHandler
 	MaxConcurrentReconciles int
 }
-
-var (
-	scaledObjectsMetricsLock = &sync.Mutex{}
-)
 
 func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)

@@ -19,9 +19,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
-	"sync"
-
 	"github.com/go-logr/logr"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,6 +27,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"strings"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
@@ -50,7 +48,7 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
 		client:           client,
 		scaleHandler:     scaleHandler,
