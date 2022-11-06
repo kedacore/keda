@@ -38,12 +38,10 @@ import (
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
-	client                  client.Client
-	scaleHandler            scaling.ScaleHandler
-	watchedNamespace        string
-	ctx                     context.Context
-	externalMetricsInfo     *[]provider.ExternalMetricInfo
-	externalMetricsInfoLock *sync.RWMutex
+	client           client.Client
+	scaleHandler     scaling.ScaleHandler
+	watchedNamespace string
+	ctx              context.Context
 }
 
 var (
@@ -54,12 +52,10 @@ var (
 // NewProvider returns an instance of KedaProvider
 func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
 	provider := &KedaProvider{
-		client:                  client,
-		scaleHandler:            scaleHandler,
-		watchedNamespace:        watchedNamespace,
-		ctx:                     ctx,
-		externalMetricsInfo:     externalMetricsInfo,
-		externalMetricsInfoLock: externalMetricsInfoLock,
+		client:           client,
+		scaleHandler:     scaleHandler,
+		watchedNamespace: watchedNamespace,
+		ctx:              ctx,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
