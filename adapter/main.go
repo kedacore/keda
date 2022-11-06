@@ -149,10 +149,8 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 
 func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
-		Client:                  mgr.GetClient(),
-		ScaleHandler:            scaleHandler,
-		ExternalMetricsInfo:     externalMetricsInfo,
-		ExternalMetricsInfoLock: externalMetricsInfoLock,
+		Client:       mgr.GetClient(),
+		ScaleHandler: scaleHandler,
 	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}); err != nil {
 		return err
 	}

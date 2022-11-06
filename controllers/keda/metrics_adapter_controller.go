@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -36,13 +35,10 @@ import (
 type MetricsScaledObjectReconciler struct {
 	Client                  client.Client
 	ScaleHandler            scaling.ScaleHandler
-	ExternalMetricsInfo     *[]provider.ExternalMetricInfo
-	ExternalMetricsInfoLock *sync.RWMutex
 	MaxConcurrentReconciles int
 }
 
 var (
-	scaledObjectsMetrics     = map[string][]string{}
 	scaledObjectsMetricsLock = &sync.Mutex{}
 )
 
@@ -61,7 +57,6 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 			if err != nil {
 				reqLogger.Error(err, "error clearing scalers cache")
 			}
-			r.removeFromMetricsCache(req.NamespacedName.String())
 			return ctrl.Result{}, err
 		}
 		// Error reading the object - requeue the request.
@@ -77,7 +72,6 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 		if err != nil {
 			reqLogger.Error(err, "error clearing scalers cache")
 		}
-		r.removeFromMetricsCache(req.NamespacedName.String())
 		return ctrl.Result{}, err
 	}
 
@@ -88,7 +82,6 @@ func (r *MetricsScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	r.addToMetricsCache(req.NamespacedName.String(), scaledObject.Status.ExternalMetricNames)
 	err = r.ScaleHandler.ClearScalersCache(ctx, scaledObject)
 	if err != nil {
 		reqLogger.Error(err, "error clearing scalers cache")
@@ -102,48 +95,4 @@ func (r *MetricsScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, optio
 		Owns(&kedav1alpha1.ScaledObject{}).
 		WithOptions(options).
 		Complete(r)
-}
-
-func (r *MetricsScaledObjectReconciler) addToMetricsCache(namespacedName string, metrics []string) {
-	scaledObjectsMetricsLock.Lock()
-	defer scaledObjectsMetricsLock.Unlock()
-	scaledObjectsMetrics[namespacedName] = metrics
-	extMetrics := populateExternalMetrics(scaledObjectsMetrics)
-
-	r.ExternalMetricsInfoLock.Lock()
-	defer r.ExternalMetricsInfoLock.Unlock()
-	(*r.ExternalMetricsInfo) = extMetrics
-}
-
-func (r *MetricsScaledObjectReconciler) removeFromMetricsCache(namespacedName string) {
-	scaledObjectsMetricsLock.Lock()
-	defer scaledObjectsMetricsLock.Unlock()
-	delete(scaledObjectsMetrics, namespacedName)
-	extMetrics := populateExternalMetrics(scaledObjectsMetrics)
-
-	// the metric could have been already removed by the previous call
-	// in this case we don't have to rewrite r.ExternalMetricsInfo
-	changed := false
-	r.ExternalMetricsInfoLock.RLock()
-	if len(*r.ExternalMetricsInfo) != len(extMetrics) {
-		changed = true
-	}
-	r.ExternalMetricsInfoLock.RUnlock()
-
-	if changed {
-		r.ExternalMetricsInfoLock.Lock()
-		defer r.ExternalMetricsInfoLock.Unlock()
-		(*r.ExternalMetricsInfo) = extMetrics
-	}
-}
-
-func populateExternalMetrics(scaledObjectsMetrics map[string][]string) []provider.ExternalMetricInfo {
-	externalMetrics := []provider.ExternalMetricInfo{}
-	for _, metrics := range scaledObjectsMetrics {
-		for _, m := range metrics {
-			externalMetrics = append(externalMetrics, provider.ExternalMetricInfo{Metric: m})
-		}
-	}
-
-	return externalMetrics
 }
