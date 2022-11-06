@@ -156,11 +156,11 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 // ListAllExternalMetrics returns the supported external metrics for this provider
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	logger.V(1).Info("KEDA Metrics Server received request for list of all provided external metrics names")
-
-	p.externalMetricsInfoLock.RLock()
-	defer p.externalMetricsInfoLock.RUnlock()
-	externalMetricsInfo := *p.externalMetricsInfo
-
+	externalMetricsInfo := make([]provider.ExternalMetricInfo, 0, 1)
+	info := provider.ExternalMetricInfo{
+		Metric: "scaledobjects",
+	}
+	externalMetricsInfo = append(externalMetricsInfo, info)
 	return externalMetricsInfo
 }
 
