@@ -22,8 +22,6 @@ const (
 	defaultTargetPipelinesQueueLength = 1
 )
 
-var IsScalerActive = false
-
 type JobRequests struct {
 	Count int          `json:"count"`
 	Value []JobRequest `json:"value"`
@@ -120,11 +118,14 @@ type azurePipelinesPoolIDResponse struct {
 	ID int `json:"id"`
 }
 
+// added count and activerequests to prevent double queueing
 type azurePipelinesScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *azurePipelinesMetadata
-	httpClient *http.Client
-	logger     logr.Logger
+	metricType     v2.MetricTargetType
+	metadata       *azurePipelinesMetadata
+	httpClient     *http.Client
+	logger         logr.Logger
+	activeRequests []int
+	count          int64
 }
 
 type azurePipelinesMetadata struct {
@@ -315,70 +316,56 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 }
 
 func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error getting pipelines queue length")
-		return []external_metrics.ExternalMetricValue{}, err
-	}
-
-	metric := GenerateMetricInMili(metricName, float64(queuelen))
+	metric := GenerateMetricInMili(metricName, float64(s.count))
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) error {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
-		return -1, err
+		return err
 	}
 
 	var jrs JobRequests
 	err = json.Unmarshal(body, &jrs)
 	if err != nil {
 		s.logger.Error(err, "Cannot unmarshal ADO JobRequests API response")
-		return -1, err
+		return err
 	}
 
 	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
-	for _, job := range stripDeadJobs(jrs.Value) {
-		if s.metadata.parent == "" && s.metadata.demands == "" {
-			// no plan defined, just add a count
-			count++
-		} else {
-			if s.metadata.parent == "" {
-				// doesn't use parent, switch to demand
-				if getCanAgentDemandFulfilJob(job, s.metadata) {
-					count++
-				}
+	for _, job := range s.stripDeadJobs(jrs.Value) {
+		if !contains(s.activeRequests, job.RequestID) {
+			if s.metadata.parent == "" && s.metadata.demands == "" {
+				// no plan defined, just add a count
+				count++
+				s.activeRequests = append(s.activeRequests, job.RequestID)
 			} else {
-				// does use parent
-				if getCanAgentParentFulfilJob(job, s.metadata) {
-					count++
+				if s.metadata.parent == "" {
+					// doesn't use parent, switch to demand
+					if getCanAgentDemandFulfilJob(job, s.metadata) {
+						fmt.Println(job.RequestID)
+						count++
+						s.activeRequests = append(s.activeRequests, job.RequestID)
+					}
+				} else {
+					// does use parent
+					if s.getCanAgentParentFulfilJob(job, s.metadata) {
+						count++
+						s.activeRequests = append(s.activeRequests, job.RequestID)
+					}
 				}
 			}
 		}
 	}
 
-	if count > 0 {
-		IsScalerActive = true
-	} else {
-		IsScalerActive = false
-	}
+	s.activeRequests = removeCompletedJobs(s.activeRequests, jrs.Value)
+	s.count = count
 
-	return count, err
-}
-
-func stripDeadJobs(jobs []JobRequest) []JobRequest {
-	var filtered []JobRequest
-	for _, job := range jobs {
-		if job.Result == nil {
-			filtered = append(filtered, job)
-		}
-	}
-	return filtered
+	return err
 }
 
 // Determine if the scaledjob has the right demands to spin up
@@ -401,7 +388,7 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
-func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
+func (s *azurePipelinesScaler) getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
 	matchedAgents := jr.MatchedAgents
 
 	// kill queue status
@@ -416,10 +403,42 @@ func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 				return true
 			}
 		}
+		return false
 	}
 
-	// return active jobs
-	return strings.HasPrefix(jr.ReservedAgent.Name, metadata.scalerPrefix)
+	return false
+}
+
+func (s *azurePipelinesScaler) stripDeadJobs(jobs []JobRequest) []JobRequest {
+	var filtered []JobRequest
+	for _, job := range jobs {
+		if job.Result == nil {
+			filtered = append(filtered, job)
+		}
+	}
+	return filtered
+}
+
+func removeCompletedJobs(queue []int, jobs []JobRequest) []int {
+	list := []int{}
+	for _, item := range queue {
+		for _, job := range jobs {
+			if item == job.RequestID {
+				list = append(list, item)
+			}
+		}
+	}
+	return list
+}
+
+func contains(ids []int, id int) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -434,7 +453,15 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.Met
 }
 
 func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
-	return IsScalerActive, nil
+	// removed extra call to AzDO here as it was causing issues with the API throttling
+	err := s.GetAzurePipelinesQueueLength(ctx)
+
+	if err != nil {
+		s.logger.Error(err, "error getting pipelines queue length")
+		return false, err
+	}
+
+	return s.count > 0, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {
