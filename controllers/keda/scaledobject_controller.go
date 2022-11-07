@@ -48,7 +48,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -86,8 +86,8 @@ var (
 	// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
 	isScalableCache *sync.Map
 
-	scaledObjectMetricsMap  map[string]scaledObjectMetricsData
-	scaledObjectMetricsLock *sync.Mutex
+	scaledObjectPromMetricsMap  map[string]scaledObjectMetricsData
+	scaledObjectPromMetricsLock *sync.Mutex
 )
 
 func init() {
@@ -96,8 +96,8 @@ func init() {
 	isScalableCache.Store("deployments.apps", true)
 	isScalableCache.Store("statefulsets.apps", true)
 
-	scaledObjectMetricsMap = make(map[string]scaledObjectMetricsData)
-	scaledObjectMetricsLock = &sync.Mutex{}
+	scaledObjectPromMetricsMap = make(map[string]scaledObjectMetricsData)
+	scaledObjectPromMetricsLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
@@ -182,7 +182,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if scaledObject.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject, req.NamespacedName.String())
 	}
-	r.updateMetrics(scaledObject, req.NamespacedName.String())
+	r.updatePromMetrics(scaledObject, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
@@ -485,42 +485,42 @@ func (r *ScaledObjectReconciler) scaledObjectGenerationChanged(logger logr.Logge
 	return true, nil
 }
 
-func (r *ScaledObjectReconciler) updateMetrics(scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
-	scaledObjectMetricsLock.Lock()
-	defer scaledObjectMetricsLock.Unlock()
+func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
+	scaledObjectPromMetricsLock.Lock()
+	defer scaledObjectPromMetricsLock.Unlock()
 
-	metricsData, ok := scaledObjectMetricsMap[namespacedName]
+	metricsData, ok := scaledObjectPromMetricsMap[namespacedName]
 
 	if ok {
-		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			metrics.DecrementTriggerTotal(triggerType)
+			prommetrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	metrics.IncrementCRDTotal(metrics.ScaledObjectResource, scaledObject.Namespace)
+	prommetrics.IncrementCRDTotal(prommetrics.ScaledObjectResource, scaledObject.Namespace)
 	metricsData.namespace = scaledObject.Namespace
 
 	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
 	for _, trigger := range scaledObject.Spec.Triggers {
-		metrics.IncrementTriggerTotal(trigger.Type)
+		prommetrics.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
 	}
 	metricsData.triggerTypes = triggerTypes
 
-	scaledObjectMetricsMap[namespacedName] = metricsData
+	scaledObjectPromMetricsMap[namespacedName] = metricsData
 }
 
-func (r *ScaledObjectReconciler) updateMetricsOnDelete(namespacedName string) {
-	scaledObjectMetricsLock.Lock()
-	defer scaledObjectMetricsLock.Unlock()
+func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string) {
+	scaledObjectPromMetricsLock.Lock()
+	defer scaledObjectPromMetricsLock.Unlock()
 
-	if metricsData, ok := scaledObjectMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
+	if metricsData, ok := scaledObjectPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			metrics.DecrementTriggerTotal(triggerType)
+			prommetrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	delete(scaledObjectMetricsMap, namespacedName)
+	delete(scaledObjectPromMetricsMap, namespacedName)
 }

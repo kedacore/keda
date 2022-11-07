@@ -79,7 +79,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 			return err
 		}
 
-		r.updateMetricsOnDelete(namespacedName)
+		r.updatePromMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info("Successfully finalized ScaledObject")

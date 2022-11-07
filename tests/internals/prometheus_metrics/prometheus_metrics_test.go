@@ -15,7 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -336,7 +336,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		if namespace == "" {
 			namespace = "default"
 		}
-		crTotals[metrics.ClusterTriggerAuthenticationResource][namespace]++
+		crTotals[prommetrics.ClusterTriggerAuthenticationResource][namespace]++
 	}
 
 	for _, namespace := range namespaceList.Items {
@@ -348,7 +348,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledObjectList, err := kedaKc.ScaledObjects(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledObjects in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[metrics.ScaledObjectResource][namespaceName] = len(scaledObjectList.Items)
+		crTotals[prommetrics.ScaledObjectResource][namespaceName] = len(scaledObjectList.Items)
 		for _, scaledObject := range scaledObjectList.Items {
 			for _, trigger := range scaledObject.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -358,7 +358,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledJobList, err := kedaKc.ScaledJobs(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledJobs in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[metrics.ScaledJobResource][namespaceName] = len(scaledJobList.Items)
+		crTotals[prommetrics.ScaledJobResource][namespaceName] = len(scaledJobList.Items)
 		for _, scaledJob := range scaledJobList.Items {
 			for _, trigger := range scaledJob.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -368,7 +368,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		triggerAuthList, err := kedaKc.TriggerAuthentications(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list triggerAuthentications in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[metrics.TriggerAuthenticationResource][namespaceName] = len(triggerAuthList.Items)
+		crTotals[prommetrics.TriggerAuthenticationResource][namespaceName] = len(triggerAuthList.Items)
 	}
 
 	return triggerTotals, crTotals

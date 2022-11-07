@@ -31,7 +31,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 )
 
 // ClusterTriggerAuthenticationReconciler reconciles a ClusterTriggerAuthentication object
@@ -45,13 +45,13 @@ type clusterTriggerAuthMetricsData struct {
 }
 
 var (
-	clusterTriggerAuthMetricsMap  map[string]clusterTriggerAuthMetricsData
-	clusterTriggerAuthMetricsLock *sync.Mutex
+	clusterTriggerAuthPromMetricsMap  map[string]clusterTriggerAuthMetricsData
+	clusterTriggerAuthPromMetricsLock *sync.Mutex
 )
 
 func init() {
-	clusterTriggerAuthMetricsMap = make(map[string]clusterTriggerAuthMetricsData)
-	clusterTriggerAuthMetricsLock = &sync.Mutex{}
+	clusterTriggerAuthPromMetricsMap = make(map[string]clusterTriggerAuthMetricsData)
+	clusterTriggerAuthPromMetricsLock = &sync.Mutex{}
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;clustertriggerauthentications/status,verbs="*"
@@ -77,7 +77,7 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	if err := r.ensureFinalizer(ctx, reqLogger, clusterTriggerAuthentication); err != nil {
 		return ctrl.Result{}, err
 	}
-	r.updateMetrics(clusterTriggerAuthentication, req.NamespacedName.String())
+	r.updatePromMetrics(clusterTriggerAuthentication, req.NamespacedName.String())
 
 	if clusterTriggerAuthentication.ObjectMeta.Generation == 1 {
 		r.EventRecorder.Event(clusterTriggerAuthentication, corev1.EventTypeNormal, eventreason.ClusterTriggerAuthenticationAdded, "New ClusterTriggerAuthentication configured")
@@ -92,26 +92,26 @@ func (r *ClusterTriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manag
 		Complete(r)
 }
 
-func (r *ClusterTriggerAuthenticationReconciler) updateMetrics(clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication, namespacedName string) {
-	clusterTriggerAuthMetricsLock.Lock()
-	defer clusterTriggerAuthMetricsLock.Unlock()
+func (r *ClusterTriggerAuthenticationReconciler) updatePromMetrics(clusterTriggerAuth *kedav1alpha1.ClusterTriggerAuthentication, namespacedName string) {
+	clusterTriggerAuthPromMetricsLock.Lock()
+	defer clusterTriggerAuthPromMetricsLock.Unlock()
 
-	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
+	if metricsData, ok := clusterTriggerAuthPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	metrics.IncrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, clusterTriggerAuth.Namespace)
-	clusterTriggerAuthMetricsMap[namespacedName] = clusterTriggerAuthMetricsData{namespace: clusterTriggerAuth.Namespace}
+	prommetrics.IncrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, clusterTriggerAuth.Namespace)
+	clusterTriggerAuthPromMetricsMap[namespacedName] = clusterTriggerAuthMetricsData{namespace: clusterTriggerAuth.Namespace}
 }
 
-// this method is idempotent, so it can be called multiple times without side-effects
-func (r *ClusterTriggerAuthenticationReconciler) UpdateMetricsOnDelete(namespacedName string) {
-	clusterTriggerAuthMetricsLock.Lock()
-	defer clusterTriggerAuthMetricsLock.Unlock()
+// UpdatePromMetricsOnDelete is idempotent, so it can be called multiple times without side-effects
+func (r *ClusterTriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
+	clusterTriggerAuthPromMetricsLock.Lock()
+	defer clusterTriggerAuthPromMetricsLock.Unlock()
 
-	if metricsData, ok := clusterTriggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal(metrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
+	if metricsData, ok := clusterTriggerAuthPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	delete(clusterTriggerAuthMetricsMap, namespacedName)
+	delete(clusterTriggerAuthPromMetricsMap, namespacedName)
 }
