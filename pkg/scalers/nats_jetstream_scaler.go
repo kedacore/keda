@@ -173,9 +173,7 @@ func getNATSJetStreamEndpoint(useHTTPS bool, natsServerEndpoint string, account 
 }
 
 func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {
-	monitoringEndpoint := s.metadata.monitoringEndpoint
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, monitoringEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.metadata.monitoringEndpoint, nil)
 	if err != nil {
 		return false, err
 	}

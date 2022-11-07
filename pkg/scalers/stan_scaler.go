@@ -142,9 +142,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
-	monitoringEndpoint := s.metadata.monitoringEndpoint
-
-	req, err := http.NewRequestWithContext(ctx, "GET", monitoringEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.monitoringEndpoint, nil)
 	if err != nil {
 		return false, err
 	}
@@ -165,7 +163,7 @@ func (s *stanScaler) IsActive(ctx context.Context) (bool, error) {
 		}
 		defer baseResp.Body.Close()
 		if baseResp.StatusCode == 404 {
-			s.logger.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", monitoringEndpoint, "channelName", s.metadata.subject)
+			s.logger.Info("Streaming broker endpoint returned 404. Please ensure it has been created", "url", s.metadata.monitoringEndpoint, "channelName", s.metadata.subject)
 		} else {
 			s.logger.Info("Unable to connect to STAN. Please ensure you have configured the ScaledObject with the correct endpoint.", "baseResp.StatusCode", baseResp.StatusCode, "monitoringEndpoint", s.metadata.monitoringEndpoint)
 		}
