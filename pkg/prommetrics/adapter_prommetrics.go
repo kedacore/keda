@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	metricLabels      = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex", "scalerName"}
+	metricLabels      = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
 	scalerErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "keda_metrics_adapter",
@@ -100,21 +100,21 @@ func (metricsServer PrometheusMetricServer) NewServer(address string, pattern st
 }
 
 // RecordHPAScalerMetric create a measurement of the external metric used by the HPA
-func (metricsServer PrometheusMetricServer) RecordHPAScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, scalerName string, metric string, value float64) {
-	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, scalerName, metric)).Set(value)
+func (metricsServer PrometheusMetricServer) RecordHPAScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
 // RecordHPAScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, scalerName string, metric string, err error) {
+func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
-		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, scalerName, metric)).Inc()
+		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
 		// scaledObjectErrors.With(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}).Inc()
 		metricsServer.RecordScalerObjectError(namespace, scaledObject, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, scalerName, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
 	if errscaler != nil {
 		log.Fatalf("Unable to write to serve custom metrics: %v", errscaler)
 	}
@@ -135,6 +135,6 @@ func (metricsServer PrometheusMetricServer) RecordScalerObjectError(namespace st
 	}
 }
 
-func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, scalerName string, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "scalerName": scalerName, "metric": metric}
+func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
+	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
 }

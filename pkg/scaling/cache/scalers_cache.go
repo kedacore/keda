@@ -42,25 +42,20 @@ type ScalersCache struct {
 }
 
 type ScalerBuilder struct {
-	Scaler      scalers.Scaler
-	TriggerName string
-	Factory     func() (scalers.Scaler, error)
+	Scaler       scalers.Scaler
+	ScalerConfig scalers.ScalerConfig
+	Factory      func() (scalers.Scaler, *scalers.ScalerConfig, error)
 }
 
-type ScalerPair struct {
-	Scaler      scalers.Scaler
-	TriggerName string
-}
-
-func (c *ScalersCache) GetScalers() []ScalerPair {
-	result := make([]ScalerPair, 0, len(c.Scalers))
+func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
+	scalersList := make([]scalers.Scaler, 0, len(c.Scalers))
+	configsList := make([]scalers.ScalerConfig, 0, len(c.Scalers))
 	for _, s := range c.Scalers {
-		result = append(result, ScalerPair{
-			Scaler:      s.Scaler,
-			TriggerName: s.TriggerName,
-		})
+		scalersList = append(scalersList, s.Scaler)
+		configsList = append(configsList, s.ScalerConfig)
 	}
-	return result
+
+	return scalersList, configsList
 }
 
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
@@ -211,14 +206,15 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	}
 
 	sb := c.Scalers[id]
-	ns, err := sb.Factory()
+	ns, sConfig, err := sb.Factory()
 	if err != nil {
 		return nil, err
 	}
 
 	c.Scalers[id] = ScalerBuilder{
-		Scaler:  ns,
-		Factory: sb.Factory,
+		Scaler:       ns,
+		ScalerConfig: *sConfig,
+		Factory:      sb.Factory,
 	}
 	sb.Scaler.Close(ctx)
 

@@ -103,12 +103,15 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
 
+	// let's check metrics for all scalers in a ScaledObject
 	scalerError := false
-
-	for scalerIndex, scalerPair := range cache.GetScalers() {
-		metricSpecs := scalerPair.Scaler.GetMetricSpecForScaling(ctx)
-		scalerName := strings.Replace(fmt.Sprintf("%T", scalerPair.Scaler), "*scalers.", "", 1)
-		triggerName := scalerPair.TriggerName
+	scalers, scalerConfigs := cache.GetScalers()
+	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
+		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
+		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)
+		if scalerConfigs[scalerIndex].TriggerName != "" {
+			scalerName = scalerConfigs[scalerIndex].TriggerName
+		}
 
 		for _, metricSpec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -121,15 +124,15 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true
-					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerPair.Scaler)
+					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerName)
 				} else {
 					for _, metric := range metrics {
 						metricValue := metric.Value.AsApproximateFloat64()
-						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, triggerName, metric.MetricName, metricValue)
+						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, triggerName, info.Metric, err)
+				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
 	}

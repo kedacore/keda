@@ -39,13 +39,13 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
 
-	factory := func() (scalers.Scaler, error) {
+	factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	scaler, err := factory()
+	scaler, _, err := factory()
 	assert.Nil(t, err)
 
 	scaledObject := kedav1alpha1.ScaledObject{
@@ -82,23 +82,23 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1)}
 
-	activeFactory := func() (scalers.Scaler, error) {
+	activeFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(true, nil)
 		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Times(2).Return(metricsSpecs)
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	activeScaler, err := activeFactory()
+	activeScaler, _, err := activeFactory()
 	assert.Nil(t, err)
 
-	failingFactory := func() (scalers.Scaler, error) {
+	failingFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	failingScaler, err := failingFactory()
+	failingScaler, _, err := failingFactory()
 	assert.Nil(t, err)
 
 	scaledObject := &kedav1alpha1.ScaledObject{
