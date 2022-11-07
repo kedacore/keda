@@ -428,3 +428,10 @@ func min(x, y int64) int64 {
 	}
 	return x
 }
+//check if scaledJob has Paused annotation, if it does, pause the scaledjob
+func (e *scaleExecutor) Pause(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	if scaledJob.Annotations["scaledjob.keda.sh/paused"] == "true" {
+		return e.client.Status().Update(ctx, scaledJob)
+	}
+	return nil
+}

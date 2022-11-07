@@ -73,6 +73,8 @@ type ScaledJobStatus struct {
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
+	// +optional
+	Paused string `json:"isPaused,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob

@@ -35,6 +35,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+- **General:** Introduce autoscaling is paused annotation for ScaledJobs ([#3303](https://github.com/kedacore/keda/issues/3303))
 
 ### New
 

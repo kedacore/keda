@@ -77,7 +77,11 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options control
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
-		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(
+			predicate.Or(
+				kedacontrollerutil.PausedPredicate{},
+				predicate.GenerationChangedPredicate{},
+			))).
 		Complete(r)
 }
 
@@ -120,6 +124,11 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+	// check if scaledJob.Status.IsPaused constant is not an empty string, if not an empty string then stopScaleLoop
+	if scaledJob.Status.Paused != "" {
+		reqLogger.Info("ScaledJob is paused, stopping scale loop")
+		return ctrl.Result{}, r.Pause(ctx, reqLogger, scaledJob)
 	}
 
 	// Check jobTargetRef is specified
@@ -321,4 +330,14 @@ func (r *ScaledJobReconciler) updateTriggerTotalsOnDelete(namespacedName string)
 	}
 
 	delete(scaledJobTriggers, namespacedName)
+}
+//stopScaleLoop when scaledJob.Status.IsPaused constant is set
+func (r *ScaledJobReconciler) Pause(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	if scaledJob.Annotations["scaledjob.keda.sh/paused"] == "true" {
+		logger.V(1).Info("Stopping a ScaleLoop when scaledJob is paused")
+		// stopScaleLoop
+		return r.stopScaleLoop(ctx, logger, scaledJob)
+		//return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
+	}
+	return nil
 }

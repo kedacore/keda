@@ -9,6 +9,8 @@ import (
 
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 
+const Paused = "autoscaling.keda.sh/paused"
+
 type PausedReplicasPredicate struct {
 	predicate.Funcs
 }
@@ -59,5 +61,25 @@ func (ScaleObjectReadyConditionPredicate) Update(e event.UpdateEvent) bool {
 		return true
 	}
 
+	return false
+}
+type PausedPredicate struct {
+	predicate.Funcs
+}
+func (PausedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+
+	newAnnotations := e.ObjectNew.GetAnnotations()
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+	if newAnnotations != nil && oldAnnotations != nil {
+		if newVal, ok1 := newAnnotations[Paused]; ok1 {
+			if oldVal, ok2 := oldAnnotations[Paused]; ok2 {
+				return newVal != oldVal
+			}
+			return true
+		}
+	}
 	return false
 }
