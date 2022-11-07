@@ -31,7 +31,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -45,13 +45,13 @@ type triggerAuthMetricsData struct {
 }
 
 var (
-	triggerAuthMetricsMap  map[string]triggerAuthMetricsData
-	triggerAuthMetricsLock *sync.Mutex
+	triggerAuthPromMetricsMap  map[string]triggerAuthMetricsData
+	triggerAuthPromMetricsLock *sync.Mutex
 )
 
 func init() {
-	triggerAuthMetricsMap = make(map[string]triggerAuthMetricsData)
-	triggerAuthMetricsLock = &sync.Mutex{}
+	triggerAuthPromMetricsMap = make(map[string]triggerAuthMetricsData)
+	triggerAuthPromMetricsLock = &sync.Mutex{}
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=triggerauthentications;triggerauthentications/status,verbs="*"
@@ -77,7 +77,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	if err := r.ensureFinalizer(ctx, reqLogger, triggerAuthentication); err != nil {
 		return ctrl.Result{}, err
 	}
-	r.updateMetrics(triggerAuthentication, req.NamespacedName.String())
+	r.updatePromMetrics(triggerAuthentication, req.NamespacedName.String())
 
 	if triggerAuthentication.ObjectMeta.Generation == 1 {
 		r.EventRecorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationAdded, "New TriggerAuthentication configured")
@@ -93,26 +93,26 @@ func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) err
 		Complete(r)
 }
 
-func (r *TriggerAuthenticationReconciler) updateMetrics(triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) {
-	triggerAuthMetricsLock.Lock()
-	defer triggerAuthMetricsLock.Unlock()
+func (r *TriggerAuthenticationReconciler) updatePromMetrics(triggerAuth *kedav1alpha1.TriggerAuthentication, namespacedName string) {
+	triggerAuthPromMetricsLock.Lock()
+	defer triggerAuthPromMetricsLock.Unlock()
 
-	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal(metrics.TriggerAuthenticationResource, metricsData.namespace)
+	if metricsData, ok := triggerAuthPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.TriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	metrics.IncrementCRDTotal(metrics.TriggerAuthenticationResource, triggerAuth.Namespace)
-	triggerAuthMetricsMap[namespacedName] = triggerAuthMetricsData{namespace: triggerAuth.Namespace}
+	prommetrics.IncrementCRDTotal(prommetrics.TriggerAuthenticationResource, triggerAuth.Namespace)
+	triggerAuthPromMetricsMap[namespacedName] = triggerAuthMetricsData{namespace: triggerAuth.Namespace}
 }
 
-// this method is idempotent, so it can be called multiple times without side-effects
-func (r *TriggerAuthenticationReconciler) UpdateMetricsOnDelete(namespacedName string) {
-	triggerAuthMetricsLock.Lock()
-	defer triggerAuthMetricsLock.Unlock()
+// UpdatePromMetricsOnDelete is idempotent, so it can be called multiple times without side-effects
+func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
+	triggerAuthPromMetricsLock.Lock()
+	defer triggerAuthPromMetricsLock.Unlock()
 
-	if metricsData, ok := triggerAuthMetricsMap[namespacedName]; ok {
-		metrics.DecrementCRDTotal(metrics.TriggerAuthenticationResource, metricsData.namespace)
+	if metricsData, ok := triggerAuthPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.TriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	delete(triggerAuthMetricsMap, namespacedName)
+	delete(triggerAuthPromMetricsMap, namespacedName)
 }

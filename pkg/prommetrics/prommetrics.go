@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metrics
+package prommetrics
 
 // Server an HTTP serving instance to track metrics
 type Server interface {

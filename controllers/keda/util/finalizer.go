@@ -20,7 +20,7 @@ const (
 type authenticationReconciler interface {
 	client.Client
 	record.EventRecorder
-	UpdateMetricsOnDelete(string)
+	UpdatePromMetricsOnDelete(string)
 }
 
 func EnsureAuthenticationResourceFinalizer(ctx context.Context, logger logr.Logger, reconciler authenticationReconciler, authResource client.Object) error {
@@ -64,7 +64,7 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 			return err
 		}
 
-		reconciler.UpdateMetricsOnDelete(namespacedName)
+		reconciler.UpdatePromMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", authResourceType))
