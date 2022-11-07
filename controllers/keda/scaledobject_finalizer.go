@@ -79,7 +79,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 			return err
 		}
 
-		r.updateTriggerTotalsOnDelete(namespacedName)
+		r.updateMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info("Successfully finalized ScaledObject")

@@ -21,6 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const (
+	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"
+	TriggerAuthenticationResource        = "trigger_authentication"
+	ScaledObjectResource                 = "scaled_object"
+	ScaledJobResource                    = "scaled_job"
+)
+
 var (
 	triggerTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -30,10 +37,20 @@ var (
 		},
 		[]string{"type"},
 	)
+
+	crdTotalsGaugeVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "keda_operator",
+			Subsystem: "resource",
+			Name:      "totals",
+		},
+		[]string{"type", "namespace"},
+	)
 )
 
 func init() {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
+	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 }
 
 func IncrementTriggerTotal(triggerType string) {
@@ -46,4 +63,20 @@ func DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerTotalsGaugeVec.WithLabelValues(triggerType).Dec()
 	}
+}
+
+func IncrementCRDTotal(crdType, namespace string) {
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Inc()
+}
+
+func DecrementCRDTotal(crdType, namespace string) {
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
 }

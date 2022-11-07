@@ -15,6 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/kedacore/keda/v2/pkg/metrics"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -33,6 +34,7 @@ var (
 )
 
 type templateData struct {
+	TestName                string
 	TestNamespace           string
 	DeploymentName          string
 	ScaledObjectName        string
@@ -177,6 +179,51 @@ spec:
   selector:
     app: keda-operator
 `
+
+	authenticationTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.TestName}}-secret
+  namespace: {{.TestNamespace}}
+type: Opaque
+stringData:
+  key: value
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TestName}}-ta1
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: param
+    name: {{.TestName}}-secret
+    key: key
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TestName}}-ta2
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: param
+    name: {{.TestName}}-secret
+    key: key
+---
+apiVersion: keda.sh/v1alpha1
+kind: ClusterTriggerAuthentication
+metadata:
+  name: {{.TestName}}-cta
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: param
+    name: {{.TestName}}-secret
+    key: key
+---
+`
 )
 
 func TestScaler(t *testing.T) {
@@ -194,7 +241,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be 2 after 2 minute")
 
 	testHPAScalerMetricValue(t)
-	testTriggerTotalMetric(t, kc, data)
+	testOperatorMetrics(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -202,6 +249,7 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
+			TestName:                testName,
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
@@ -215,6 +263,7 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
+			{Name: "authenticatioNTemplate", Config: authenticationTemplate},
 		}
 }
 
@@ -225,10 +274,10 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*promMo
 	parser := expfmt.TextParser{}
 	// Ensure EOL
 	reader := strings.NewReader(strings.ReplaceAll(out, "\r\n", "\n"))
-	family, err := parser.TextToMetricFamilies(reader)
+	families, err := parser.TextToMetricFamilies(reader)
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
-	return family
+	return families
 }
 
 func testHPAScalerMetricValue(t *testing.T) {
@@ -254,29 +303,52 @@ func testHPAScalerMetricValue(t *testing.T) {
 	}
 }
 
-func testTriggerTotalMetric(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing trigger total metric ---")
-	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
+func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing operator metrics ---")
+	testOperatorMetricValues(t, kc)
 
 	KubectlApplyWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
-	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
+	testOperatorMetricValues(t, kc)
 
 	KubectlDeleteWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
-	testTriggerTotalMetricValue(t, getTriggerTotalsManually(t, kc))
+	testOperatorMetricValues(t, kc)
 }
 
-func getTriggerTotalsManually(t *testing.T, kc *kubernetes.Clientset) map[string]int {
+func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[string]int, map[string]map[string]int) {
 	kedaKc := GetKedaKubernetesClient(t)
 
 	triggerTotals := make(map[string]int)
+	crTotals := map[string]map[string]int{
+		"scaled_object":                  {},
+		"scaled_job":                     {},
+		"trigger_authentication":         {},
+		"cluster_trigger_authentication": {},
+	}
 
 	namespaceList, err := kc.CoreV1().Namespaces().List(context.Background(), v1.ListOptions{})
 	assert.NoErrorf(t, err, "failed to list namespaces - %s", err)
 
+	clusterTriggerAuthenticationList, err := kedaKc.ClusterTriggerAuthentications().List(context.Background(), v1.ListOptions{})
+	assert.NoErrorf(t, err, "failed to list clusterTriggerAuthentications with err - %s")
+
+	for _, clusterTriggerAuth := range clusterTriggerAuthenticationList.Items {
+		namespace := clusterTriggerAuth.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+		crTotals[metrics.ClusterTriggerAuthenticationResource][namespace]++
+	}
+
 	for _, namespace := range namespaceList.Items {
+		namespaceName := namespace.Name
+		if namespace.Name == "" {
+			namespaceName = "default"
+		}
+
 		scaledObjectList, err := kedaKc.ScaledObjects(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledObjects in namespace - %s with err - %s", namespace.Name, err)
 
+		crTotals[metrics.ScaledObjectResource][namespaceName] = len(scaledObjectList.Items)
 		for _, scaledObject := range scaledObjectList.Items {
 			for _, trigger := range scaledObject.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -286,34 +358,84 @@ func getTriggerTotalsManually(t *testing.T, kc *kubernetes.Clientset) map[string
 		scaledJobList, err := kedaKc.ScaledJobs(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledJobs in namespace - %s with err - %s", namespace.Name, err)
 
+		crTotals[metrics.ScaledJobResource][namespaceName] = len(scaledJobList.Items)
 		for _, scaledJob := range scaledJobList.Items {
 			for _, trigger := range scaledJob.Spec.Triggers {
 				triggerTotals[trigger.Type]++
 			}
 		}
+
+		triggerAuthList, err := kedaKc.TriggerAuthentications(namespace.Name).List(context.Background(), v1.ListOptions{})
+		assert.NoErrorf(t, err, "failed to list triggerAuthentications in namespace - %s with err - %s", namespace.Name, err)
+
+		crTotals[metrics.TriggerAuthenticationResource][namespaceName] = len(triggerAuthList.Items)
 	}
 
-	return triggerTotals
+	return triggerTotals, crTotals
 }
 
-func testTriggerTotalMetricValue(t *testing.T, expected map[string]int) {
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure http://%s.keda:8080/metrics", serviceName))
+func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure http://%s.keda:8080/metrics", serviceName))
+	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
 
-	if val, ok := family["keda_operator_trigger_totals"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == "type" {
-					assert.Equalf(t, float64(expected[*label.Value]), *metric.Gauge.Value, "expected %f got %f for type %s",
-						float64(expected[*label.Value]), *metric.Gauge.Value, *label.Value)
-					found = true
-				}
+	checkTriggerTotalValues(t, families, expectedTriggerTotals)
+	checkCRTotalValues(t, families, expectedCrTotals)
+}
+
+func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]int) {
+	t.Log("--- testing trigger total metrics ---")
+
+	family, ok := families["keda_operator_trigger_totals"]
+	if !ok {
+		t.Errorf("metric not available")
+		return
+	}
+
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == "type" {
+				triggerType := *label.Value
+				metricValue := *metric.Gauge.Value
+				expectedMetricValue := float64(expected[triggerType])
+
+				assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for trigger type %s",
+					expectedMetricValue, metricValue, triggerType)
+
+				delete(expected, triggerType)
 			}
 		}
-		assert.Equal(t, true, found)
-	} else {
+	}
+
+	assert.Equal(t, 0, len(expected))
+}
+
+func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
+	t.Log("--- testing resource total metrics ---")
+
+	family, ok := families["keda_operator_resource_totals"]
+	if !ok {
 		t.Errorf("metric not available")
+		return
+	}
+
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		var namespace, crType string
+		for _, label := range labels {
+			if *label.Name == "type" {
+				crType = *label.Value
+			} else if *label.Name == "namespace" {
+				namespace = *label.Value
+			}
+		}
+
+		metricValue := *metric.Gauge.Value
+		expectedMetricValue := float64(expected[crType][namespace])
+
+		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for cr type %s & namespace %s",
+			expectedMetricValue, metricValue, crType, namespace)
 	}
 }

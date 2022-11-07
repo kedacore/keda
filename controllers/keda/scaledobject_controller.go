@@ -77,12 +77,17 @@ type ScaledObjectReconciler struct {
 	kubeVersion              kedautil.K8sVersion
 }
 
+type scaledObjectMetricsData struct {
+	namespace    string
+	triggerTypes []string
+}
+
 var (
 	// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
 	isScalableCache *sync.Map
 
-	scaledObjectTriggers     map[string][]string
-	scaledObjectTriggersLock *sync.Mutex
+	scaledObjectMetricsMap  map[string]scaledObjectMetricsData
+	scaledObjectMetricsLock *sync.Mutex
 )
 
 func init() {
@@ -91,8 +96,8 @@ func init() {
 	isScalableCache.Store("deployments.apps", true)
 	isScalableCache.Store("statefulsets.apps", true)
 
-	scaledObjectTriggers = make(map[string][]string)
-	scaledObjectTriggersLock = &sync.Mutex{}
+	scaledObjectMetricsMap = make(map[string]scaledObjectMetricsData)
+	scaledObjectMetricsLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
@@ -177,7 +182,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if scaledObject.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject, req.NamespacedName.String())
 	}
-	r.updateTriggerTotals(reqLogger, scaledObject, req.NamespacedName.String())
+	r.updateMetrics(scaledObject, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
@@ -480,44 +485,42 @@ func (r *ScaledObjectReconciler) scaledObjectGenerationChanged(logger logr.Logge
 	return true, nil
 }
 
-func (r *ScaledObjectReconciler) updateTriggerTotals(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
-	specChanged, err := r.scaledObjectGenerationChanged(logger, scaledObject)
-	if err != nil {
-		logger.Error(err, "failed to update trigger totals")
-		return
-	}
+func (r *ScaledObjectReconciler) updateMetrics(scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
+	scaledObjectMetricsLock.Lock()
+	defer scaledObjectMetricsLock.Unlock()
 
-	if !specChanged {
-		return
-	}
+	metricsData, ok := scaledObjectMetricsMap[namespacedName]
 
-	scaledObjectTriggersLock.Lock()
-	defer scaledObjectTriggersLock.Unlock()
-
-	if triggerTypes, ok := scaledObjectTriggers[namespacedName]; ok {
-		for _, triggerType := range triggerTypes {
+	if ok {
+		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}
 	}
+
+	metrics.IncrementCRDTotal(metrics.ScaledObjectResource, scaledObject.Namespace)
+	metricsData.namespace = scaledObject.Namespace
 
 	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
 	for _, trigger := range scaledObject.Spec.Triggers {
 		metrics.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
 	}
+	metricsData.triggerTypes = triggerTypes
 
-	scaledObjectTriggers[namespacedName] = triggerTypes
+	scaledObjectMetricsMap[namespacedName] = metricsData
 }
 
-func (r *ScaledObjectReconciler) updateTriggerTotalsOnDelete(namespacedName string) {
-	scaledObjectTriggersLock.Lock()
-	defer scaledObjectTriggersLock.Unlock()
+func (r *ScaledObjectReconciler) updateMetricsOnDelete(namespacedName string) {
+	scaledObjectMetricsLock.Lock()
+	defer scaledObjectMetricsLock.Unlock()
 
-	if triggerTypes, ok := scaledObjectTriggers[namespacedName]; ok {
-		for _, triggerType := range triggerTypes {
+	if metricsData, ok := scaledObjectMetricsMap[namespacedName]; ok {
+		metrics.DecrementCRDTotal(metrics.ScaledObjectResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
 			metrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	delete(scaledObjectTriggers, namespacedName)
+	delete(scaledObjectMetricsMap, namespacedName)
 }

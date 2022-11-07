@@ -169,17 +169,15 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.TriggerAuthenticationReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: eventRecorder,
+		Client:        mgr.GetClient(),
+		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerAuthentication")
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ClusterTriggerAuthenticationReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: eventRecorder,
+		Client:        mgr.GetClient(),
+		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
