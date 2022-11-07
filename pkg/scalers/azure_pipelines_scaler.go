@@ -321,6 +321,33 @@ func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
+func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
+		},
+		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
+	}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
+}
+
+func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
+	// removed extra call to AzDO here as it was causing issues with the API throttling
+	err := s.GetAzurePipelinesQueueLength(ctx)
+
+	if err != nil {
+		s.logger.Error(err, "error getting pipelines queue length")
+		return false, err
+	}
+
+	return s.count > 0, nil
+}
+
+func (s *azurePipelinesScaler) Close(context.Context) error {
+	return nil
+}
+
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) error {
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
@@ -337,7 +364,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 
 	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
-	for _, job := range s.stripDeadJobs(jrs.Value) {
+	for _, job := range stripDeadJobs(jrs.Value) {
 		if !contains(s.activeRequests, job.RequestID) {
 			if s.metadata.parent == "" && s.metadata.demands == "" {
 				// no plan defined, just add a count
@@ -353,7 +380,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 					}
 				} else {
 					// does use parent
-					if s.getCanAgentParentFulfilJob(job, s.metadata) {
+					if getCanAgentParentFulfilJob(job, s.metadata) {
 						count++
 						s.activeRequests = append(s.activeRequests, job.RequestID)
 					}
@@ -388,7 +415,7 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
-func (s *azurePipelinesScaler) getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
+func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
 	matchedAgents := jr.MatchedAgents
 
 	// kill queue status
@@ -409,7 +436,7 @@ func (s *azurePipelinesScaler) getCanAgentParentFulfilJob(jr JobRequest, metadat
 	return false
 }
 
-func (s *azurePipelinesScaler) stripDeadJobs(jobs []JobRequest) []JobRequest {
+func stripDeadJobs(jobs []JobRequest) []JobRequest {
 	var filtered []JobRequest
 	for _, job := range jobs {
 		if job.Result == nil {
@@ -439,31 +466,4 @@ func contains(ids []int, id int) bool {
 	}
 
 	return false
-}
-
-func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	externalMetric := &v2.ExternalMetricSource{
-		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
-		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
-	}
-	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2.MetricSpec{metricSpec}
-}
-
-func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
-	// removed extra call to AzDO here as it was causing issues with the API throttling
-	err := s.GetAzurePipelinesQueueLength(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error getting pipelines queue length")
-		return false, err
-	}
-
-	return s.count > 0, nil
-}
-
-func (s *azurePipelinesScaler) Close(context.Context) error {
-	return nil
 }
