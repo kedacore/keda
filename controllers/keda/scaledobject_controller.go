@@ -246,6 +246,11 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
 
+	err = r.checkTriggerNamesAreUnique(scaledObject)
+	if err != nil {
+		return "ScaledObject doesn't have correct triggers specification", err
+	}
+
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(ctx, logger, scaledObject, &gvkr)
 	if err != nil {
@@ -355,6 +360,27 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	}
 
 	return gvkr, nil
+}
+
+// checkTriggerNamesAreUnique checks that all triggerNames in ScaledObject are unique
+func (r *ScaledObjectReconciler) checkTriggerNamesAreUnique(scaledObject *kedav1alpha1.ScaledObject) error {
+	triggersCount := len(scaledObject.Spec.Triggers)
+
+	if triggersCount > 1 {
+		triggerNames := make(map[string]bool, triggersCount)
+		for i := 0; i < triggersCount; i++ {
+			name := scaledObject.Spec.Triggers[i].Name
+			if name != "" {
+				if _, found := triggerNames[name]; found {
+					// found duplicate name
+					return fmt.Errorf("triggerName=%s is defined multiple times in the ScaledObject, but it must be unique", name)
+				}
+				triggerNames[name] = true
+			}
+		}
+	}
+
+	return nil
 }
 
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified

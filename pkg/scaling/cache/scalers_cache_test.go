@@ -73,8 +73,8 @@ func TestIsScaledJobActive(t *testing.T) {
 	scaledJobSingle := createScaledObject(0, 100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(20), int64(2), true, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
@@ -93,8 +93,8 @@ func TestIsScaledJobActive(t *testing.T) {
 	// Non-Active trigger only
 	scalerSingle = []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(0), int64(2), false, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(0), int64(2), false, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(0), int64(2), false, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
@@ -123,23 +123,23 @@ func TestIsScaledJobActive(t *testing.T) {
 		scaledJob := createScaledObject(scalerTestData.MinReplicaCount, scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalersToTest := []ScalerBuilder{{
 			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}}
 
@@ -167,8 +167,8 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	scaledJobSingle := createScaledObject(1, 100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(0), int64(1), true, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(0), int64(1), true, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(0), int64(1), true, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
