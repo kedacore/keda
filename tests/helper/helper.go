@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -47,13 +46,16 @@ const (
 
 var _ = godotenv.Load()
 
-var random = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 // Env variables required for setup and cleanup.
 var (
-	AzureADTenantID               = os.Getenv("AZURE_SP_TENANT")
+	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
+)
+
+// Cluster to split upstream resources for each cluster
+var (
+	Cluster = os.Getenv("TEST_CLUSTER_NAME")
 )
 
 var (
@@ -495,8 +497,11 @@ func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }
 
-func GetRandomNumber() int {
-	return random.Intn(10000)
+func GetClusterSuffix() string {
+	if Cluster == "" {
+		return "local"
+	}
+	return Cluster
 }
 
 func RemoveANSI(input string) string {

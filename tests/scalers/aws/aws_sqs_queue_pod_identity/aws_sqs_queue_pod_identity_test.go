@@ -108,7 +108,7 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
 	secretName         = fmt.Sprintf("%s-secret", testName)
-	sqsQueueName       = fmt.Sprintf("%s-keda-queue-%d", testName, GetRandomNumber())
+	sqsQueueName       = fmt.Sprintf("%s-keda-queue-%s", testName, GetClusterSuffix())
 	awsAccessKeyID     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_KEY")
 	awsRegion          = os.Getenv("AWS_REGION")

@@ -37,11 +37,11 @@ jobs:
 
       - name: Run end to end tests
         env:
-          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_SP_APP_ID: ${{ secrets.AZURE_SP_APP_ID }}
-          AZURE_SP_KEY: ${{ secrets.AZURE_SP_KEY }}
-          AZURE_SP_TENANT: ${{ secrets.AZURE_SP_TENANT }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
+          TF_AZURE_SUBSCRIPTION: ${{ secrets.TF_AZURE_SUBSCRIPTION }}
+          TF_AZURE_RESOURCE_GROUP: ${{ secrets.TF_AZURE_RESOURCE_GROUP }}
+          TF_AZURE_SP_APP_ID: ${{ secrets.TF_AZURE_SP_APP_ID }}
+          TF_AZURE_SP_KEY: ${{ secrets.TF_AZURE_SP_KEY }}
+          TF_AZURE_SP_TENANT: ${{ secrets.TF_AZURE_SP_TENANT }}
+          TF_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.TF_AZURE_STORAGE_CONNECTION_STRING }}
+          TF_AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.TF_AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
         run: make e2e-test

@@ -114,7 +114,7 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
 	secretName         = fmt.Sprintf("%s-secret", testName)
-	kinesisStreamName  = fmt.Sprintf("%s-keda-stream-%d", testName, GetRandomNumber())
+	kinesisStreamName  = fmt.Sprintf("%s-keda-stream-%s", testName, GetClusterSuffix())
 	awsAccessKeyID     = os.Getenv("AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_KEY")
 	awsRegion          = os.Getenv("AWS_REGION")

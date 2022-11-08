@@ -2,7 +2,7 @@
 
 - [go](https://go.dev/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure_queue_test.go` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure_queue_test.go` requires an env var `TF_AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 

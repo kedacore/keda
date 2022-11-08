@@ -79,11 +79,11 @@ test: manifests generate fmt vet envtest install-test-deps ## Run tests and expo
 
 .PHONY: get-cluster-context
 get-cluster-context: ## Get Azure cluster context.
-	@az login --service-principal -u $(AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(AZURE_SP_TENANT)
+	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(TF_AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
-		--subscription $(AZURE_SUBSCRIPTION) \
-		--resource-group $(AZURE_RESOURCE_GROUP)
+		--subscription $(TF_AZURE_SUBSCRIPTION) \
+		--resource-group $(TF_AZURE_RESOURCE_GROUP)
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
@@ -252,7 +252,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
-		$(KUSTOMIZE) edit add annotation --force azure.workload.identity/client-id:${AZURE_SP_APP_ID} azure.workload.identity/tenant-id:${AZURE_SP_TENANT}; \
+		$(KUSTOMIZE) edit add annotation --force azure.workload.identity/client-id:${TF_AZURE_IDENTITY_1_APP_ID} azure.workload.identity/tenant-id:${TF_AZURE_SP_TENANT}; \
 	fi
 	if [ "$(AWS_RUN_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
