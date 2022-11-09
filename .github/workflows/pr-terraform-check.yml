@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: ghcr.io/kedacore/build-tools:1.18.6
-    concurrency: e2e-tests
+    concurrency: dummy
     steps:
       - name: Check out code
         uses: actions/checkout@v3
