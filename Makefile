@@ -144,14 +144,10 @@ golangci: ## Run golangci against code.
 	golangci-lint run
 
 clientset-verify: ## Verify that generated client-go clientset, listers and informers are up to date.
-	go mod vendor
 	./hack/verify-codegen.sh
-	rm -rf vendor
 
 clientset-generate: ## Generate client-go clientset, listers and informers.
-	go mod vendor
 	./hack/update-codegen.sh
-	rm -rf vendor
 
 # Generate Liiklus proto
 pkg/scalers/liiklus/LiiklusService.pb.go: protoc-gen-go
@@ -172,10 +168,10 @@ pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
 pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
-pkg/mock/mock_scale/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m k8s.io/client-go)/scale/interfaces.go
-	$(MOCKGEN) -destination=$@ -package=mock_scale -source=$^
-pkg/mock/mock_client/mock_interfaces.go: $(shell go list -mod=readonly -f '{{ .Dir }}' -m sigs.k8s.io/controller-runtime)/pkg/client/interfaces.go
-	$(MOCKGEN) -destination=$@ -package=mock_client -source=$^
+pkg/mock/mock_scale/mock_interfaces.go: vendor/k8s.io/client-go/scale/interfaces.go
+	$(MOCKGEN) k8s.io/client-go/scale ScalesGetter,ScaleInterface > pkg/mock/mock_scale/mock_interfaces.go
+pkg/mock/mock_client/mock_interfaces.go: vendor/sigs.k8s.io/controller-runtime/pkg/client/interfaces.go
+	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer > pkg/mock/mock_client/mock_interfaces.go
 pkg/scalers/liiklus/mocks/mock_liiklus.go:
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 
@@ -188,10 +184,10 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go:
 build: generate fmt vet manager adapter ## Build Operator (manager) and Metrics Server (adapter) binaries.
 
 manager: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda main.go
 
 adapter: generate adapter/generated/openapi/zz_generated.openapi.go
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-adapter adapter/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-adapter adapter/main.go
 
 run: manifests generate ## Run a controller from your host.
 	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)

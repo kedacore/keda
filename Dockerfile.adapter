@@ -10,9 +10,7 @@ WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
-RUN go mod download
+
 
 COPY Makefile Makefile
 
@@ -24,6 +22,7 @@ COPY adapter/ adapter/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
+COPY vendor/ vendor/
 
 RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
 

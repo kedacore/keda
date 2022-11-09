@@ -1,0 +1,59 @@
+repos:
+- repo: local
+  hooks:
+  - id: generate
+    name: Generate
+    language: node
+    entry: make
+    files: '^(\.generator/.*|\.pre-commit-config\.yaml|Makefile|\tests/scenarios/features/.*)'
+    pass_filenames: false
+  - id: lint
+    name: Lint
+    language: golang
+    entry: goimports -w api examples
+    stages: [manual]
+    # files: '^api/.*\.go'
+    # types: ["file", "go"]
+    pass_filenames: false
+    additional_dependencies:
+      - golang.org/x/tools/cmd/goimports@latest
+  - id: docs
+    name: Format documentation
+    stages: [manual]
+    language: node
+    language_version: 14.12.0
+    entry: prettier --write --list-different --ignore-unknown
+    # "types": [text]
+    files: 'README.md'
+    pass_filenames: true
+    additional_dependencies:
+      # When updating the version of prettier, make sure to check the  pre-commit file
+      # And keep the `entry` here up to date https://github.com/pre-commit/mirrors-prettier/blob/master/.pre-commit-hooks.yaml
+      - prettier@2.5.1
+  - id: generator-v1
+    name: generator-v1
+    language: python
+    entry: bash -c "cd .generator && poetry install && poetry run python -m generator -i ./schemas/v1/openapi.yaml -o ../api/v1/datadog/"
+    files: "^.generator/(config|schemas/v1|src|poetry.lock|pyproject.toml)"
+    stages: [manual]
+    pass_filenames: false
+    additional_dependencies:
+      - "poetry"
+  - id: generator-v2
+    name: generator-v2
+    language: python
+    entry: bash -c "cd .generator && poetry install && poetry run python -m generator -i ./schemas/v2/openapi.yaml -o ../api/v2/datadog/"
+    files: "^.generator/(config|schemas/v2|src|poetry.lock|pyproject.toml)"
+    stages: [manual]
+    pass_filenames: false
+    additional_dependencies:
+      - "poetry"
+  - id: examples
+    name: examples
+    language: python
+    entry: bash -c "cd .generator && poetry install && poetry run pytest"
+    files: "^.generator/"
+    stages: [manual]
+    pass_filenames: false
+    additional_dependencies:
+      - "poetry"
