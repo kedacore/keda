@@ -195,7 +195,7 @@ func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
 
 	for _, consumer := range s.stream.Consumers {
 		if consumer.Name == consumerName {
-			return int64(consumer.NumPending)
+			return int64(consumer.NumPending + consumer.NumAckPending)
 		}
 	}
 	return s.stream.State.LastSequence
