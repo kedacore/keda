@@ -34,8 +34,8 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName    = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
-	topicName          = fmt.Sprintf("%s-topic-%s", testName, GetClusterSuffix())
-	subscriptionPrefix = fmt.Sprintf("%s-subscription-%s", testName, GetClusterSuffix())
+	topicName          = fmt.Sprintf("topic-%s", GetClusterSuffix())
+	subscriptionPrefix = fmt.Sprintf("subs-%s", GetClusterSuffix())
 )
 
 type templateData struct {

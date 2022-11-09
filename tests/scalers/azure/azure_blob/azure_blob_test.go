@@ -36,7 +36,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	containerName    = fmt.Sprintf("%s-container-%s", testName, GetClusterSuffix())
+	containerName    = fmt.Sprintf("container-%s", GetClusterSuffix())
 )
 
 type templateData struct {

@@ -30,7 +30,7 @@ var (
 	appInsightsAppID              = os.Getenv("TF_AZURE_APP_INSIGHTS_APP_ID")
 	appInsightsInstrumentationKey = os.Getenv("TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
 	appInsightsConnectionstring   = os.Getenv("TF_AZURE_APP_INSIGHTS_CONNECTION_STRING")
-	appInsightsMetricName         = fmt.Sprintf("%s-%s", testName, GetClusterSuffix())
+	appInsightsMetricName         = fmt.Sprintf("metric-%s", GetClusterSuffix())
 	appInsightsRole               = fmt.Sprintf("%s-role", testName)
 	azureADClientID               = os.Getenv("TF_AZURE_SP_APP_ID")
 	azureADSecret                 = os.Getenv("TF_AZURE_SP_KEY")

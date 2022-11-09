@@ -130,10 +130,10 @@ var (
 	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName               = fmt.Sprintf("%s-so", testName)
 	secretName                     = fmt.Sprintf("%s-secret", testName)
-	cloudwatchMetricName           = fmt.Sprintf("%s-keda-metric-%s", testName, GetClusterSuffix())
-	awsAccessKeyID                 = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretAccessKey             = os.Getenv("AWS_SECRET_KEY")
-	awsRegion                      = os.Getenv("AWS_REGION")
+	cloudwatchMetricName           = fmt.Sprintf("cw-%s", GetClusterSuffix())
+	awsAccessKeyID                 = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretAccessKey             = os.Getenv("TF_AWS_SECRET_KEY")
+	awsRegion                      = os.Getenv("TF_AWS_REGION")
 	cloudwatchMetricNamespace      = "KEDA"
 	cloudwatchMetricDimensionName  = "dimensionName"
 	cloudwatchMetricDimensionValue = "dimensionValue"

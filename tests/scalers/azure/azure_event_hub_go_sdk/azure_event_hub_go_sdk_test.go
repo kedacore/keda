@@ -37,7 +37,7 @@ var (
 	namespaceConnectionString = os.Getenv("TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING")
 	eventhubConnectionString  = fmt.Sprintf("%s;EntityPath=%s", namespaceConnectionString, eventHubName)
 	storageConnectionString   = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
-	checkpointContainerName   = fmt.Sprintf("keda-checkpoint-%s", GetClusterSuffix())
+	checkpointContainerName   = fmt.Sprintf("go-checkpoint-%s", GetClusterSuffix())
 	testNamespace             = fmt.Sprintf("%s-ns", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)

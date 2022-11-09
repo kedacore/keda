@@ -34,7 +34,7 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queuePrefix      = fmt.Sprintf("%s-queue-%s", testName, GetClusterSuffix())
+	queuePrefix      = fmt.Sprintf("queue-regex-%s", GetClusterSuffix())
 )
 
 type templateData struct {
