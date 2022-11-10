@@ -1,0 +1,96 @@
+variables:
+  GO111MODULE: 'on'
+  AMQP_BROKER_ADDR: 'amqp://127.0.0.1:25672'
+
+jobs:
+  - job: 'goamqp'
+    displayName: 'Run go-amqp CI Checks'
+
+    strategy:
+      matrix:
+        Linux_Go116:
+          vm.image: 'ubuntu-18.04'
+          go.version: '1.16.11'
+        Linux_Go117:
+          vm.image: 'ubuntu-18.04'
+          go.version: '1.17.4'
+
+    pool:
+      vmImage: '$(vm.image)'
+
+    steps:
+      - task: GoTool@0
+        inputs:
+          version: '$(go.version)'
+        displayName: "Select Go Version"
+
+      - script: |
+          set -e
+          export gopathbin=$(go env GOPATH)/bin
+          echo "##vso[task.prependpath]$gopathbin"
+          go get github.com/jstemmer/go-junit-report
+          go get github.com/axw/gocov/gocov
+          go get github.com/AlekSi/gocov-xml
+          go get github.com/matm/gocov-html
+        displayName: 'Install Dependencies'
+
+      - script: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
+          golangci-lint --version
+          golangci-lint run
+        displayName: 'Install and Run GoLintCLI.'
+
+      - script: |
+          go build -v ./...
+        displayName: 'Build'
+
+      - script: |
+          go vet ./...
+        displayName: 'Vet'
+
+      - task: UseDotNet@2
+        displayName: 'Use .NET sdk'
+        inputs:
+          packageType: sdk
+          version: 5.0.x
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+
+      - script: |
+          git clone https://github.com/jhendrixMSFT/azure-amqp $(Pipeline.Workspace)/azure-amqp
+          pushd $(Pipeline.Workspace)/azure-amqp/test/TestAmqpBroker
+          dotnet restore
+          dotnet build
+          chmod +x $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net461/TestAmqpBroker.exe
+        displayName: 'Clone and Build Broker'
+
+      - script: |
+          set -e
+          echo '##[command]Starting broker at $(AMQP_BROKER_ADDR)'
+          $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net461/TestAmqpBroker.exe $AMQP_BROKER_ADDR /headless &
+          brokerPID=$!
+          echo '##[section]Starting tests'
+          go test -tags -race -v -coverprofile=coverage.txt -covermode atomic ./... 2>&1 | tee gotestoutput.log 
+          go-junit-report < gotestoutput.log > report.xml
+          kill $brokerPID
+          gocov convert coverage.txt > coverage.json
+          gocov-xml < coverage.json > coverage.xml
+          gocov-html < coverage.json > coverage.html
+        displayName: 'Run Tests'
+
+      - script: |
+          gofmt -s -l -w . >&2
+        displayName: 'Format Check'
+        failOnStderr: true
+        condition: succeededOrFailed()
+
+      - task: PublishTestResults@2
+        inputs:
+          testRunner: JUnit
+          testResultsFiles: report.xml
+          failTaskOnFailedTests: true
+
+      - task: PublishCodeCoverageResults@1
+        inputs:
+          codeCoverageTool: Cobertura 
+          summaryFileLocation: coverage.xml
+          additionalCodeCoverageFiles: coverage.html

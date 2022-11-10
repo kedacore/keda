@@ -7,13 +7,6 @@ ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
-RUN go mod download
-
 COPY Makefile Makefile
 
 # Copy the go source
@@ -24,6 +17,9 @@ COPY adapter/ adapter/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
+COPY vendor/ vendor/
+COPY go.mod go.mod
+COPY go.sum go.sum
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/

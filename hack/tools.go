@@ -6,6 +6,10 @@ package tools
 
 import (
 	// Import code-generator to use in build tools
+	_ "github.com/golang/mock/mockgen"
 	_ "k8s.io/code-generator"
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
+	_ "sigs.k8s.io/controller-runtime/tools/setup-envtest"
+	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	_ "sigs.k8s.io/kustomize/kustomize/v4"
 )
