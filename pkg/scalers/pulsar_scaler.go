@@ -28,7 +28,6 @@ type pulsarScaler struct {
 type pulsarMetadata struct {
 	adminURL                      string
 	topic                         string
-	isPartitionedTopic            bool
 	subscription                  string
 	msgBacklogThreshold           int64
 	activationMsgBacklogThreshold int64
@@ -143,10 +142,8 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 
 	topic := strings.ReplaceAll(meta.topic, "persistent://", "")
 	if config.TriggerMetadata["isPartitionedTopic"] == stringTrue {
-		meta.isPartitionedTopic = true
 		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
 	} else {
-		meta.isPartitionedTopic = false
 		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/stats"
 	}
 

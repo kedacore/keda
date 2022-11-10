@@ -139,7 +139,6 @@ spec:
   cooldownPeriod: 30 # Optional. Default: 300 seconds
   maxReplicaCount: {{.MaxReplicaCount}}
   minReplicaCount: {{.MinReplicaCount}}
-  isPartitionedTopic: {{ if .NumPartitions }} "true" {{else}} "false" {{end}}
   triggers:
     - type: pulsar
       metadata:
@@ -147,6 +146,7 @@ spec:
         activationMsgBacklogThreshold: "5"
         adminURL: http://{{.TestName}}.{{.TestName}}:8080
         topic:  persistent://public/default/keda
+        isPartitionedTopic: {{ if .NumPartitions }} "true" {{else}} "false" {{end}}
         subscription: keda
           `
 

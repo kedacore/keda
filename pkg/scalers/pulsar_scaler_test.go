@@ -95,16 +95,10 @@ func TestParsePulsarMetadata(t *testing.T) {
 
 		if !testData.isError {
 			if testData.isPartitionedTopic {
-				if !meta.isPartitionedTopic {
-					t.Errorf("Expected isPartitionedTopic %t but got %t\n", testData.isPartitionedTopic, meta.isPartitionedTopic)
-				}
 				if !strings.HasSuffix(meta.statsURL, "/partitioned-stats") {
 					t.Errorf("Expected statsURL to end with /partitioned-stats but got %s\n", meta.statsURL)
 				}
 			} else {
-				if meta.isPartitionedTopic {
-					t.Errorf("Expected isPartitionedTopic %t but got %t\n", testData.isPartitionedTopic, meta.isPartitionedTopic)
-				}
 				if !strings.HasSuffix(meta.statsURL, "/stats") {
 					t.Errorf("Expected statsURL to end with /stats but got %s\n", meta.statsURL)
 				}
