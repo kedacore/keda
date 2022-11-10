@@ -10,6 +10,9 @@ RUN apt-add-repository ppa:git-core/ppa && \
 # Use Bash instead of Dash
 RUN ln -sf bash /bin/sh
 
+# Install protoc
+RUN apt install -y protobuf-compiler
+
 # Install python3
 RUN apt install -y python3 python3-pip
 
