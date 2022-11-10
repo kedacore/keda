@@ -80,6 +80,8 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v4 v4.5.7
 )
 
+require github.com/spf13/afero v1.6.0 // indirect
+
 replace (
 	// we need a version with license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
@@ -300,6 +302,7 @@ require (
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.30 // indirect
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221109083014-8da9760581ed
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/cmd/config v0.10.9 // indirect

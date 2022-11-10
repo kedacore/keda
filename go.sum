@@ -1566,6 +1566,8 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.30 h1:dUk62HQ3ZFhD4
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.30/go.mod h1:fEO7lRTdivWO2qYVCVG7dEADOMo/MLDCVr8So2g88Uw=
 sigs.k8s.io/controller-runtime v0.12.3 h1:FCM8xeY/FI8hoAfh/V4XbbYMY20gElh9yh+A98usMio=
 sigs.k8s.io/controller-runtime v0.12.3/go.mod h1:qKsk4WE6zW2Hfj0G4v10EnNB2jMG1C+NTb8h+DwCoU0=
+sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221109083014-8da9760581ed h1:zdGdiBIG8TpZatz/3eDzO8SPnHSZVZmmQSQbGrmsR+8=
+sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221109083014-8da9760581ed/go.mod h1:oiCXd8V7ZaS/wwvXKZ9pYkoU0BYM86CyEa0RvivM0nw=
 sigs.k8s.io/controller-tools v0.9.0 h1:b/vSEPpA8hiMiyzDfLbZdCn3hoAcy3/868OHhYtHY9w=
 sigs.k8s.io/controller-tools v0.9.0/go.mod h1:NUkn8FTV3Sad3wWpSK7dt/145qfuQ8CKJV6j4jHC5rM=
 sigs.k8s.io/custom-metrics-apiserver v1.24.0 h1:zCFOM10HKpqbvalU63t7L7AcFIRsRusXJmsMTtpwiuI=

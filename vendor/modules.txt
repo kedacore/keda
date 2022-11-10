@@ -959,6 +959,10 @@ github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+# github.com/spf13/afero v1.6.0
+## explicit; go 1.13
+github.com/spf13/afero
+github.com/spf13/afero/mem
 # github.com/spf13/cobra v1.5.0
 ## explicit; go 1.15
 github.com/spf13/cobra
@@ -2180,6 +2184,14 @@ sigs.k8s.io/controller-runtime/pkg/webhook
 sigs.k8s.io/controller-runtime/pkg/webhook/admission
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
+# sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221109083014-8da9760581ed
+## explicit; go 1.17
+sigs.k8s.io/controller-runtime/tools/setup-envtest
+sigs.k8s.io/controller-runtime/tools/setup-envtest/env
+sigs.k8s.io/controller-runtime/tools/setup-envtest/remote
+sigs.k8s.io/controller-runtime/tools/setup-envtest/store
+sigs.k8s.io/controller-runtime/tools/setup-envtest/versions
+sigs.k8s.io/controller-runtime/tools/setup-envtest/workflows
 # sigs.k8s.io/controller-tools v0.9.0
 ## explicit; go 1.17
 sigs.k8s.io/controller-tools/cmd/controller-gen
