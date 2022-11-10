@@ -1,0 +1,4 @@
+scan:
+  skip-dirs:
+    # otlpconfig/tls.go contains AsymmetricPrivateKey which is just an example
+    - vendor/go.opentelemetry.io/otel/exporters/otlp/internal/otlpconfig/tls.go
