@@ -98,6 +98,27 @@ spec:
     app: pulsar
 `
 
+const topicInitJobTemplate = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.TestName}}-topic-init
+  namespace: {{.TestName}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: pulsar-topic-init
+        image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        args: ["bin/pulsar-admin --admin-url http://{{.TestName}}.{{.TestName}}:8080 topics {{ if .NumPartitions }} create-partitioned-topic -p {{.NumPartitions}} {{ else }} create {{ end }} persistent://public/default/keda"]
+      restartPolicy: Never
+  backoffLimit: 4
+`
+
 const consumerTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -163,7 +184,10 @@ spec:
       - name: pulsar-producer
         image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
         imagePullPolicy: IfNotPresent
-        args: ["bin/pulsar-perf produce --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --num-messages {{.MessageCount}} {{ if .NumPartitions }} "--partitions {{.NumPartitions}}" {{ end }} persistent://public/default/keda"]
+        command:
+        - sh
+        - -c
+        args: ["bin/pulsar-perf produce --admin-url http://{{.TestName}}.{{.TestName}}:8080 --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --num-messages {{.MessageCount}} {{ if .NumPartitions }} --partitions {{.NumPartitions}} {{ end }} persistent://public/default/keda"]
       restartPolicy: Never
   backoffLimit: 4
 `
@@ -180,6 +204,11 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 
 	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, testName, testName, 1, 300, 1),
 		"replica count should be 1 after 5 minute")
+
+	helper.KubectlApplyWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
+
+	assert.True(t, helper.WaitForJobSuccess(t, kc, getTopicInitJobName(testName), testName, 300, 1),
+		"job should succeed within 5 minutes")
 
 	helper.KubectlApplyWithTemplate(t, data, "consumerTemplate", consumerTemplate)
 
@@ -201,6 +230,7 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 	// cleanup
 	helper.KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	helper.KubectlDeleteWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
+	helper.KubectlDeleteWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
 
 	helper.DeleteKubernetesResources(t, kc, testName, data, templates)
 }
@@ -244,4 +274,8 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, testName string) {
 
 func getConsumerDeploymentName(testName string) string {
 	return fmt.Sprintf("%s-consumer", testName)
+}
+
+func getTopicInitJobName(testName string) string {
+	return fmt.Sprintf("%s-topic-init", testName)
 }
