@@ -7,9 +7,6 @@ ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
 COPY Makefile Makefile
 
 # Copy the go source
@@ -21,6 +18,8 @@ COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 COPY vendor/ vendor/
+COPY go.mod go.mod
+COPY go.sum go.sum
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
