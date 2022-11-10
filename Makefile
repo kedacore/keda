@@ -120,7 +120,7 @@ manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition o
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-generate: controller-gen mockgen-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API) and mocks.
+generate: controller-gen mockgen-gen proto-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum ## Generate OpenAPI for KEDA Metrics Adapter.
@@ -148,17 +148,9 @@ clientset-verify: ## Verify that generated client-go clientset, listers and info
 clientset-generate: ## Generate client-go clientset, listers and informers.
 	./hack/update-codegen.sh
 
-# Generate Liiklus proto
-pkg/scalers/liiklus/LiiklusService.pb.go: protoc-gen-go
-	protoc --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
-
-# Generate ExternalScaler proto
-pkg/scalers/externalscaler/externalscaler.pb.go: protoc-gen-go
-	protoc --proto_path=pkg/scalers/externalscaler externalscaler.proto --go-grpc_out=pkg/scalers/externalscaler
-
-protoc-gen-go: ## Download protoc-gen-go
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
+proto-gen: protoc-gen ## Generate Liiklus, ExternalScaler and MetricsService proto
+	PATH=$(LOCALBIN):$(PATH) protoc -I vendor --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+	PATH=$(LOCALBIN):$(PATH) protoc -I vendor --proto_path=pkg/scalers/externalscaler externalscaler.proto --go_out=pkg/scalers/externalscaler --go-grpc_out=pkg/scalers/externalscaler
 
 .PHONY: mockgen-gen
 mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
@@ -272,6 +264,8 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 MOCKGEN ?= $(LOCALBIN)/mockgen
+PROTOCGEN ?= $(LOCALBIN)/protoc-gen-go
+PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
@@ -292,6 +286,13 @@ $(ENVTEST): $(LOCALBIN)
 mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.
 $(MOCKGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen
+
+.PHONY: protoc-gen
+protoc-gen: $(PROTOCGEN) $(PROTOCGEN_GRPC) ## Install protoc-gen from vendor dir if necessary.
+$(PROTOCGEN): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install google.golang.org/protobuf/cmd/protoc-gen-go
+$(PROTOCGEN_GRPC): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 
 ##################################################
