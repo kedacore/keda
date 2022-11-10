@@ -176,7 +176,7 @@ jobs:
   codeScanning:
     name: Code Scanning
     runs-on: ubuntu-latest
-
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
       fail-fast: false
       matrix:
@@ -190,6 +190,9 @@ jobs:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.
         fetch-depth: 2
+
+    - name: Register workspace path
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     # If this run was triggered by a pull request event, then checkout
     # the head of the pull request instead of the merge commit.
