@@ -504,13 +504,6 @@ func GetRandomNumber() int {
 	return random.Intn(10000)
 }
 
-func GetClusterSuffix() string {
-	if Cluster == "" {
-		return "local"
-	}
-	return Cluster
-}
-
 func RemoveANSI(input string) string {
 	reg := regexp.MustCompile(`(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]`)
 	return reg.ReplaceAllString(input, "")

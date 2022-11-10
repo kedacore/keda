@@ -33,11 +33,11 @@ const (
 )
 
 var (
-	eventHubName              = fmt.Sprintf("keda-eh-%s", GetClusterSuffix())
+	eventHubName              = fmt.Sprintf("keda-eh-%d", GetRandomNumber())
 	namespaceConnectionString = os.Getenv("TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING")
 	eventhubConnectionString  = fmt.Sprintf("%s;EntityPath=%s", namespaceConnectionString, eventHubName)
 	storageConnectionString   = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
-	checkpointContainerName   = fmt.Sprintf("go-checkpoint-%s", GetClusterSuffix())
+	checkpointContainerName   = fmt.Sprintf("go-checkpoint-%d", GetRandomNumber())
 	testNamespace             = fmt.Sprintf("%s-ns", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
@@ -169,7 +169,7 @@ func TestScaler(t *testing.T) {
 	addEvents(t, client, 1)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
-	time.Sleep(time.Duration(10) * time.Second)
+	time.Sleep(time.Duration(60) * time.Second)
 	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),

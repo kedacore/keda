@@ -498,6 +498,7 @@ metadata:
   name: generate-empty-load-graphite-metrics
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
