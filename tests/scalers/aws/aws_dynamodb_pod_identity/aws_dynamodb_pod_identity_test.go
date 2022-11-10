@@ -116,7 +116,7 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("table-identity-%s", GetClusterSuffix())
+	dynamoDBTableName         = fmt.Sprintf("table-identity-%d", GetRandomNumber())
 	awsAccessKeyID            = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey        = os.Getenv("TF_AWS_SECRET_KEY")
 	awsRegion                 = os.Getenv("TF_AWS_REGION")

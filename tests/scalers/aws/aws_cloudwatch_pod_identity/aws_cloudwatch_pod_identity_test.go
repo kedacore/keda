@@ -117,7 +117,7 @@ var (
 	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName               = fmt.Sprintf("%s-so", testName)
 	secretName                     = fmt.Sprintf("%s-secret", testName)
-	cloudwatchMetricName           = fmt.Sprintf("cw-identity-%s", GetClusterSuffix())
+	cloudwatchMetricName           = fmt.Sprintf("cw-identity-%d", GetRandomNumber())
 	awsAccessKeyID                 = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey             = os.Getenv("TF_AWS_SECRET_KEY")
 	awsRegion                      = os.Getenv("TF_AWS_REGION")

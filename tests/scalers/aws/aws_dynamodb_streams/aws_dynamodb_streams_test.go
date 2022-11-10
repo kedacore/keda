@@ -43,7 +43,7 @@ var (
 	deploymentName       = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	tableName            = fmt.Sprintf("stream-%s", GetClusterSuffix())
+	tableName            = fmt.Sprintf("stream-%d", GetRandomNumber())
 	shardCount           = 2 // default count
 	activationShardCount = 0 // default count
 )
