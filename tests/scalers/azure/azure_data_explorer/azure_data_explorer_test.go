@@ -28,7 +28,7 @@ var (
 	dataExplorerDB        = os.Getenv("TF_AZURE_DATA_EXPLORER_DB")
 	dataExplorerEndpoint  = os.Getenv("TF_AZURE_DATA_EXPLORER_ENDPOINT")
 	azureADClientID       = os.Getenv("TF_AZURE_SP_APP_ID")
-	azureADSecret         = os.Getenv("TF_AZURE_SP_KEY")
+	azureADSecret         = os.Getenv("AZURE_SP_KEY")
 	azureADTenantID       = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace         = fmt.Sprintf("%s-ns", testName)
 	secretName            = fmt.Sprintf("%s-secret", testName)
@@ -140,7 +140,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, dataExplorerDB, "TF_AZURE_DATA_EXPLORER_DB env variable is required for deployment bus tests")
 	require.NotEmpty(t, dataExplorerEndpoint, "TF_AZURE_DATA_EXPLORER_ENDPOINT env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for deployment bus tests")
-	require.NotEmpty(t, azureADSecret, "TF_AZURE_SP_KEY env variable is required for deployment bus tests")
+	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for deployment bus tests")
 
 	// Create kubernetes resources
