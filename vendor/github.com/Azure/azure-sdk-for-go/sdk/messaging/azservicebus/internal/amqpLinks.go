@@ -468,7 +468,9 @@ func (l *AMQPLinksImpl) initWithoutLocking(ctx context.Context) error {
 
 // close closes the link.
 // NOTE: No locking is done in this function, call `Close` if you require locking.
-func (l *AMQPLinksImpl) closeWithoutLocking(ctx context.Context, permanent bool) error {
+func (l *AMQPLinksImpl) closeWithoutLocking(_ context.Context, permanent bool) error {
+	ctx := context.Background()
+
 	if l.closedPermanently {
 		return nil
 	}

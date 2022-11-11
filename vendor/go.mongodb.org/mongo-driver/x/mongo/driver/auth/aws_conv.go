@@ -36,12 +36,13 @@ const (
 )
 
 type awsConversation struct {
-	state    clientState
-	valid    bool
-	nonce    []byte
-	username string
-	password string
-	token    string
+	state      clientState
+	valid      bool
+	nonce      []byte
+	username   string
+	password   string
+	token      string
+	httpClient *http.Client
 }
 
 type serverMessage struct {
@@ -147,14 +148,14 @@ func (ac *awsConversation) validateAndMakeCredentials() (*awsv4.StaticProvider, 
 	return nil, nil
 }
 
-func executeAWSHTTPRequest(req *http.Request) ([]byte, error) {
+func executeAWSHTTPRequest(httpClient *http.Client, req *http.Request) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close()
 
 	return ioutil.ReadAll(resp.Body)
 }
@@ -167,7 +168,7 @@ func (ac *awsConversation) getEC2Credentials() (*awsv4.StaticProvider, error) {
 	}
 	req.Header.Set("X-aws-ec2-metadata-token-ttl-seconds", "30")
 
-	token, err := executeAWSHTTPRequest(req)
+	token, err := executeAWSHTTPRequest(ac.httpClient, req)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +184,7 @@ func (ac *awsConversation) getEC2Credentials() (*awsv4.StaticProvider, error) {
 	}
 	req.Header.Set("X-aws-ec2-metadata-token", tokenStr)
 
-	role, err := executeAWSHTTPRequest(req)
+	role, err := executeAWSHTTPRequest(ac.httpClient, req)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,7 @@ func (ac *awsConversation) getEC2Credentials() (*awsv4.StaticProvider, error) {
 		return nil, err
 	}
 	req.Header.Set("X-aws-ec2-metadata-token", tokenStr)
-	creds, err := executeAWSHTTPRequest(req)
+	creds, err := executeAWSHTTPRequest(ac.httpClient, req)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +243,7 @@ func (ac *awsConversation) getCredentials() (*awsv4.StaticProvider, error) {
 			return nil, err
 		}
 
-		body, err := executeAWSHTTPRequest(req)
+		body, err := executeAWSHTTPRequest(ac.httpClient, req)
 		if err != nil {
 			return nil, err
 		}

@@ -59,7 +59,7 @@ func (es *EndSessions) Execute(ctx context.Context) error {
 		Deployment:        es.deployment,
 		Selector:          es.selector,
 		ServerAPI:         es.serverAPI,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 

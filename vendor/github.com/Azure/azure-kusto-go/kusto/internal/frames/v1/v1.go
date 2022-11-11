@@ -35,18 +35,24 @@ type DataType struct {
 	DataType   string
 }
 
+func (dt DataType) rawType() string {
+	if dt.ColumnType != "" {
+		return dt.ColumnType
+	}
+	return dt.DataType
+}
+
 func (dt DataType) toColumn() (table.Column, error) {
 	col := table.Column{Name: dt.ColumnName}
 
-	if dt.ColumnType != "" {
-		col.Type = types.Column(dt.ColumnType)
-		return col, nil
+	if dt.rawType() == "" {
+		return col, errors.ES(errors.OpMgmt, errors.KInternal, "DataTable.Columns(v1) did not have ColumnType or DataType provided")
 	}
 
 	var ok bool
-	col.Type, ok = translate[strings.ToLower(dt.DataType)]
+	col.Type, ok = translate[strings.ToLower(dt.rawType())]
 	if !ok {
-		return col, errors.ES(errors.OpMgmt, errors.KInternal, "DataTable.Columns(v1) had entry with .DataType set to %q type, which is not supported", dt.DataType)
+		return col, errors.ES(errors.OpMgmt, errors.KInternal, "DataTable.Columns(v1) had string entry with either .ColumnType/.DataType set to %s, which is not supported", dt.rawType())
 	}
 	return col, nil
 }

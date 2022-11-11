@@ -124,6 +124,7 @@ support for giving progress to APIs that want to know how far they are into a se
 should have the following structure and anything outside this should cause an error:
 
 Either:
+
 	TableHeader
 	Progress
 	DataTable
@@ -169,6 +170,14 @@ func (p *progressiveSM) rowIter() *RowIterator {
 }
 
 func (p *progressiveSM) nextFrame() (stateFn, error) {
+	// These are two separate select cases since we always want to check for context cancellation first, otherwise order is not guaranteed.
+
+	select {
+	case <-p.ctx.Done():
+		return nil, p.ctx.Err()
+	default:
+	}
+
 	select {
 	case <-p.ctx.Done():
 		return nil, p.ctx.Err()

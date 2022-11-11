@@ -215,14 +215,22 @@ func NewClientSession(pool *Pool, clientID uuid.UUID, sessionType Type, opts ...
 		return nil, errors.New("causal consistency and snapshot cannot both be set for a session")
 	}
 
-	servSess, err := pool.GetSession()
-	if err != nil {
-		return nil, err
+	// Server checkout for implicit sessions are deferred until after checking out a connection. This will limit the
+	// number of implicit sessions to no greater than an applications maxPoolSize.
+	if sessionType == Explicit {
+		if err := c.SetServer(); err != nil {
+			return nil, err
+		}
 	}
 
-	c.Server = servSess
-
 	return c, nil
+}
+
+// SetServer will check out a session from the client session pool.
+func (c *Client) SetServer() error {
+	var err error
+	c.Server, err = c.pool.GetSession()
+	return err
 }
 
 // AdvanceClusterTime updates the session's cluster time.
@@ -343,7 +351,6 @@ func (c *Client) EndSession() {
 	if c.Terminated {
 		return
 	}
-
 	c.Terminated = true
 	c.pool.ReturnSession(c.Server)
 }

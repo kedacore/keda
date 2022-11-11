@@ -110,7 +110,7 @@ func (i *Insert) Execute(ctx context.Context) error {
 		WriteConcern:      i.writeConcern,
 		ServerAPI:         i.serverAPI,
 		Timeout:           i.timeout,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 

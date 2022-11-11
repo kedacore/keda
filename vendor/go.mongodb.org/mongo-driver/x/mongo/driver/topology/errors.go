@@ -7,6 +7,7 @@
 package topology
 
 import (
+	"context"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/mongo/description"
@@ -78,8 +79,20 @@ type WaitQueueTimeoutError struct {
 // Error implements the error interface.
 func (w WaitQueueTimeoutError) Error() string {
 	errorMsg := "timed out while checking out a connection from connection pool"
-	if w.Wrapped != nil {
-		errorMsg = fmt.Sprintf("%s: %s", errorMsg, w.Wrapped.Error())
+	switch w.Wrapped {
+	case nil:
+	case context.Canceled:
+		errorMsg = fmt.Sprintf(
+			"%s: %s",
+			"canceled while checking out a connection from connection pool",
+			w.Wrapped.Error(),
+		)
+	default:
+		errorMsg = fmt.Sprintf(
+			"%s: %s",
+			errorMsg,
+			w.Wrapped.Error(),
+		)
 	}
 
 	return fmt.Sprintf(

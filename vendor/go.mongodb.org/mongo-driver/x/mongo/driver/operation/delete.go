@@ -111,7 +111,7 @@ func (d *Delete) Execute(ctx context.Context) error {
 		WriteConcern:      d.writeConcern,
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 

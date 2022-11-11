@@ -11,10 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -305,7 +305,7 @@ func (bc *BatchCursor) KillCursor(ctx context.Context) error {
 		Legacy:         LegacyKillCursors,
 		CommandMonitor: bc.cmdMonitor,
 		ServerAPI:      bc.serverAPI,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 }
 
 func (bc *BatchCursor) getMore(ctx context.Context) {
@@ -384,7 +384,7 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 		CommandMonitor: bc.cmdMonitor,
 		Crypt:          bc.crypt,
 		ServerAPI:      bc.serverAPI,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 	// Once the cursor has been drained, we can unpin the connection if one is currently pinned.
 	if bc.id == 0 {
@@ -455,14 +455,9 @@ func (lbcd *loadBalancedCursorDeployment) Connection(_ context.Context) (Connect
 	return lbcd.conn, nil
 }
 
-// MinRTT always returns 0. It implements the driver.Server interface.
-func (lbcd *loadBalancedCursorDeployment) MinRTT() time.Duration {
-	return 0
-}
-
-// RTT90 always returns 0. It implements the driver.Server interface.
-func (lbcd *loadBalancedCursorDeployment) RTT90() time.Duration {
-	return 0
+// RTTMonitor implements the driver.Server interface.
+func (lbcd *loadBalancedCursorDeployment) RTTMonitor() RTTMonitor {
+	return &internal.ZeroRTTMonitor{}
 }
 
 func (lbcd *loadBalancedCursorDeployment) ProcessError(err error, conn Connection) ProcessErrorResult {

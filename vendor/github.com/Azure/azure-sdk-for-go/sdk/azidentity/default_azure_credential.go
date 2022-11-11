@@ -31,9 +31,11 @@ type DefaultAzureCredentialOptions struct {
 // DefaultAzureCredential is a default credential chain for applications that will deploy to Azure.
 // It combines credentials suitable for deployment with credentials suitable for local development.
 // It attempts to authenticate with each of these credential types, in the following order, stopping when one provides a token:
-//  EnvironmentCredential
-//  ManagedIdentityCredential
-//  AzureCLICredential
+//
+//	EnvironmentCredential
+//	ManagedIdentityCredential
+//	AzureCLICredential
+//
 // Consult the documentation for these credential types for more information on how they authenticate.
 // Once a credential has successfully authenticated, DefaultAzureCredential will use that credential for
 // every subsequent authentication.
@@ -65,7 +67,7 @@ func NewDefaultAzureCredential(options *DefaultAzureCredentialOptions) (*Default
 	msiCred, err := NewManagedIdentityCredential(o)
 	if err == nil {
 		creds = append(creds, msiCred)
-		msiCred.client.imdsTimeout = time.Second
+		msiCred.mic.imdsTimeout = time.Second
 	} else {
 		errorMessages = append(errorMessages, credNameManagedIdentity+": "+err.Error())
 		creds = append(creds, &defaultCredentialErrorReporter{credType: credNameManagedIdentity, err: err})

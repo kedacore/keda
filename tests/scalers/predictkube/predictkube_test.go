@@ -171,7 +171,7 @@ spec:
 	generateHeavyLoadJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-requests
+  name: generate-heavy-requests
   namespace: {{.TestNamespace}}
 spec:
   ttlSecondsAfterFinished: 0
@@ -190,7 +190,7 @@ spec:
 	generateLightLoadJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: generate-requests
+  name: generate-light-requests
   namespace: {{.TestNamespace}}
 spec:
   ttlSecondsAfterFinished: 0

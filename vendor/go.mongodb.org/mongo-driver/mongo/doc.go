@@ -102,9 +102,11 @@
 // # Client Side Encryption
 //
 // Client-side encryption is a new feature in MongoDB 4.2 that allows specific data fields to be encrypted. Using this
-// feature requires specifying the "cse" build tag during compilation.
+// feature requires specifying the "cse" build tag during compilation:
 //
-// Note: Auto encryption is an enterprise-only feature.
+//	go build -tags cse
+//
+// Note: Auto encryption is an enterprise- and Atlas-only feature.
 //
 // The libmongocrypt C library is required when using client-side encryption. Specific versions of libmongocrypt
 // are required for different versions of the Go Driver:

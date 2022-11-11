@@ -25,6 +25,7 @@ func GetRows() []interface{} {
 // PutRows is used to put values that were used to decode Rows into a pool.
 func PutRows(rows []interface{}) {
 	rows = rows[0:0]
+	//nolint:staticcheck // ignore SA6002, we can't break the API
 	rowsPool.Put(rows)
 }
 
