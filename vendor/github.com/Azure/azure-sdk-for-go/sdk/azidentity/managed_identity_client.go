@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,6 +23,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
+	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
 const (
@@ -149,10 +149,18 @@ func newManagedIdentityClient(options *ManagedIdentityCredentialOptions) (*manag
 	return &c, nil
 }
 
-// authenticate creates an authentication request for a Managed Identity and returns the resulting Access Token if successful.
-// ctx: The current context for controlling the request lifetime.
-// clientID: The client (application) ID of the service principal.
-// scopes: The scopes required for the token.
+// provideToken acquires a token for MSAL's confidential.Client, which caches the token
+func (c *managedIdentityClient) provideToken(ctx context.Context, params confidential.TokenProviderParameters) (confidential.TokenProviderResult, error) {
+	result := confidential.TokenProviderResult{}
+	tk, err := c.authenticate(ctx, c.id, params.Scopes)
+	if err == nil {
+		result.AccessToken = tk.Token
+		result.ExpiresInSeconds = int(time.Until(tk.ExpiresOn).Seconds())
+	}
+	return result, err
+}
+
+// authenticate acquires an access token
 func (c *managedIdentityClient) authenticate(ctx context.Context, id ManagedIDKind, scopes []string) (azcore.AccessToken, error) {
 	var cancel context.CancelFunc
 	if c.imdsTimeout > 0 && c.msiType == msiTypeIMDS {
@@ -338,7 +346,7 @@ func (c *managedIdentityClient) getAzureArcSecretKey(ctx context.Context, resour
 	if pos == -1 {
 		return "", fmt.Errorf("did not receive a correct value from WWW-Authenticate header: %s", header)
 	}
-	key, err := ioutil.ReadFile(header[pos+1:])
+	key, err := os.ReadFile(header[pos+1:])
 	if err != nil {
 		return "", fmt.Errorf("could not read file (%s) contents: %v", header[pos+1:], err)
 	}

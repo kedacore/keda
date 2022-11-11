@@ -55,3 +55,8 @@ func (c *Context) Finish() (bsoncore.Document, error) {
 func (c *Context) Close() {
 	panic(cseNotSupportedMsg)
 }
+
+// ProvideKmsProviders provides the KMS providers when in the NeedKmsCredentials state.
+func (c *Context) ProvideKmsProviders(kmsProviders bsoncore.Document) error {
+	panic(cseNotSupportedMsg)
+}

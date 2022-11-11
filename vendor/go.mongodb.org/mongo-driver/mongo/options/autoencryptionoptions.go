@@ -8,6 +8,9 @@ package options
 
 import (
 	"crypto/tls"
+	"net/http"
+
+	"go.mongodb.org/mongo-driver/internal"
 )
 
 // AutoEncryptionOptions represents options used to configure auto encryption/decryption behavior for a mongo.Client
@@ -32,13 +35,16 @@ type AutoEncryptionOptions struct {
 	BypassAutoEncryption  *bool
 	ExtraOptions          map[string]interface{}
 	TLSConfig             map[string]*tls.Config
+	HTTPClient            *http.Client
 	EncryptedFieldsMap    map[string]interface{}
 	BypassQueryAnalysis   *bool
 }
 
 // AutoEncryption creates a new AutoEncryptionOptions configured with default values.
 func AutoEncryption() *AutoEncryptionOptions {
-	return &AutoEncryptionOptions{}
+	return &AutoEncryptionOptions{
+		HTTPClient: internal.DefaultHTTPClient,
+	}
 }
 
 // SetKeyVaultClientOptions specifies options for the client used to communicate with the key vault collection.
@@ -193,6 +199,9 @@ func MergeAutoEncryptionOptions(opts ...*AutoEncryptionOptions) *AutoEncryptionO
 		}
 		if opt.BypassQueryAnalysis != nil {
 			aeo.BypassQueryAnalysis = opt.BypassQueryAnalysis
+		}
+		if opt.HTTPClient != nil {
+			aeo.HTTPClient = opt.HTTPClient
 		}
 	}
 

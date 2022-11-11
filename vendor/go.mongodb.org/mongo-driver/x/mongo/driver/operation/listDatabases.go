@@ -163,7 +163,7 @@ func (ld *ListDatabases) Execute(ctx context.Context) error {
 		Crypt:          ld.crypt,
 		ServerAPI:      ld.serverAPI,
 		Timeout:        ld.timeout,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 

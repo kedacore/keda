@@ -1,5 +1,9 @@
 # Change Log
 
+## `v3.3.20`
+
+- Fixed issue with a lease existing on start [#277](https://github.com/Azure/azure-event-hubs-go/pull/277)
+
 ## `v3.3.19`
 
 - Vendor a copy of `azblob` to avoid compilation errors with mismatched versions [#261](https://github.com/Azure/azure-event-hubs-go/issues/261)

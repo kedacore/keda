@@ -57,7 +57,7 @@
 //
 //	req := &monitoringpb.ListAlertPoliciesRequest{
 //		// TODO: Fill request struct fields.
-//		// See https://pkg.go.dev/google.golang.org/genproto/googleapis/monitoring/v3#ListAlertPoliciesRequest.
+//		// See https://pkg.go.dev/cloud.google.com/go/monitoring/apiv3/v2/monitoringpb#ListAlertPoliciesRequest.
 //	}
 //	it := c.ListAlertPolicies(ctx, req)
 //	for {

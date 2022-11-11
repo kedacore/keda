@@ -1,11 +1,41 @@
 # Release History
 
+## 1.2.0 (2022-11-08)
+
+### Other Changes
+* This version includes all fixes and features from 1.2.0-beta.*
+
+## 1.2.0-beta.3 (2022-10-11)
+
+### Features Added
+* `ManagedIdentityCredential` caches tokens in memory
+
+### Bugs Fixed
+* `ClientCertificateCredential` sends only the leaf cert for SNI authentication
+
+## 1.2.0-beta.2 (2022-08-10)
+
+### Features Added
+* Added `ClientAssertionCredential` to enable applications to authenticate
+  with custom client assertions
+
+### Other Changes
+* Updated AuthenticationFailedError with links to TROUBLESHOOTING.md for relevant errors
+* Upgraded `microsoft-authentication-library-for-go` requirement to v0.6.0
+
+## 1.2.0-beta.1 (2022-06-07)
+
+### Features Added
+* `EnvironmentCredential` reads certificate passwords from `AZURE_CLIENT_CERTIFICATE_PASSWORD`
+  ([#17099](https://github.com/Azure/azure-sdk-for-go/pull/17099))
+
 ## 1.1.0 (2022-06-07)
 
 ### Features Added
 * `ClientCertificateCredential` and `ClientSecretCredential` support ESTS-R. First-party
   applications can set environment variable `AZURE_REGIONAL_AUTHORITY_NAME` with a
   region name.
+  ([#15605](https://github.com/Azure/azure-sdk-for-go/issues/15605))
 
 ## 1.0.1 (2022-06-07)
 

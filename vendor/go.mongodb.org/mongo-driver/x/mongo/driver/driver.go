@@ -10,6 +10,7 @@ import (
 	"context"
 	"time"
 
+	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -51,11 +52,8 @@ type Subscriber interface {
 type Server interface {
 	Connection(context.Context) (Connection, error)
 
-	// MinRTT returns the minimum round-trip time to the server observed over the window period.
-	MinRTT() time.Duration
-
-	// RTT90 returns the 90th percentile round-trip time to the server observed over the window period.
-	RTT90() time.Duration
+	// RTTMonitor returns the round-trip time monitor associated with this server.
+	RTTMonitor() RTTMonitor
 }
 
 // Connection represents a connection to a MongoDB server.
@@ -74,6 +72,23 @@ type Connection interface {
 	Address() address.Address
 	Stale() bool
 }
+
+// RTTMonitor represents a round-trip-time monitor.
+type RTTMonitor interface {
+	// EWMA returns the exponentially weighted moving average observed round-trip time.
+	EWMA() time.Duration
+
+	// Min returns the minimum observed round-trip time over the window period.
+	Min() time.Duration
+
+	// P90 returns the 90th percentile observed round-trip time over the window period.
+	P90() time.Duration
+
+	// Stats returns stringified stats of the current state of the monitor.
+	Stats() string
+}
+
+var _ RTTMonitor = &internal.ZeroRTTMonitor{}
 
 // PinnedConnection represents a Connection that can be pinned by one or more cursors or transactions. Implementations
 // of this interface should maintain the following invariants:
@@ -212,14 +227,9 @@ func (ssd SingleConnectionDeployment) Connection(context.Context) (Connection, e
 	return ssd.C, nil
 }
 
-// MinRTT always returns 0. It implements the driver.Server interface.
-func (ssd SingleConnectionDeployment) MinRTT() time.Duration {
-	return 0
-}
-
-// RTT90 always returns 0. It implements the driver.Server interface.
-func (ssd SingleConnectionDeployment) RTT90() time.Duration {
-	return 0
+// RTTMonitor implements the driver.Server interface.
+func (ssd SingleConnectionDeployment) RTTMonitor() RTTMonitor {
+	return &internal.ZeroRTTMonitor{}
 }
 
 // TODO(GODRIVER-617): We can likely use 1 type for both the Type and the RetryMode by using 2 bits for the mode and 1
@@ -241,15 +251,17 @@ const (
 // RetryMode specifies the way that retries are handled for retryable operations.
 type RetryMode uint
 
-// These are the modes available for retrying.
+// These are the modes available for retrying. Note that if Timeout is specified on the Client, the
+// operation will automatically retry as many times as possible within the context's deadline
+// unless RetryNone is used.
 const (
 	// RetryNone disables retrying.
 	RetryNone RetryMode = iota
-	// RetryOnce will enable retrying the entire operation once.
+	// RetryOnce will enable retrying the entire operation once if Timeout is not specified.
 	RetryOnce
-	// RetryOncePerCommand will enable retrying each command associated with an operation. For
-	// example, if an insert is batch split into 4 commands then each of those commands is eligible
-	// for one retry.
+	// RetryOncePerCommand will enable retrying each command associated with an operation if Timeout
+	// is not specified. For example, if an insert is batch split into 4 commands then each of
+	// those commands is eligible for one retry.
 	RetryOncePerCommand
 	// RetryContext will enable retrying until the context.Context's deadline is exceeded or it is
 	// cancelled.

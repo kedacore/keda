@@ -102,3 +102,14 @@ func (c *Context) createErrorFromStatus() error {
 	C.mongocrypt_ctx_status(c.wrapped, status)
 	return errorFromStatus(status)
 }
+
+// ProvideKmsProviders provides the KMS providers when in the NeedKmsCredentials state.
+func (c *Context) ProvideKmsProviders(kmsProviders bsoncore.Document) error {
+	kmsProvidersBinary := newBinaryFromBytes(kmsProviders)
+	defer kmsProvidersBinary.close()
+
+	if ok := C.mongocrypt_ctx_provide_kms_providers(c.wrapped, kmsProvidersBinary.wrapped); !ok {
+		return c.createErrorFromStatus()
+	}
+	return nil
+}

@@ -43,6 +43,9 @@ type FakeAMQPLinks struct {
 
 	Closed              int
 	CloseIfNeededCalled int
+	CloseIfNeededArgs   []error
+
+	GetFn func(ctx context.Context) (*LinksWithID, error)
 
 	// values to be returned for each `Get` call
 	Revision LinkID
@@ -188,6 +191,10 @@ func (l *FakeAMQPLinks) Get(ctx context.Context) (*LinksWithID, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
+		if l.GetFn != nil {
+			return l.GetFn(ctx)
+		}
+
 		return &LinksWithID{
 			Sender:   l.Sender,
 			Receiver: l.Receiver,
@@ -218,6 +225,7 @@ func (l *FakeAMQPLinks) Close(ctx context.Context, permanently bool) error {
 
 func (l *FakeAMQPLinks) CloseIfNeeded(ctx context.Context, err error) RecoveryKind {
 	l.CloseIfNeededCalled++
+	l.CloseIfNeededArgs = append(l.CloseIfNeededArgs, err)
 	return GetRecoveryKind(err)
 }
 

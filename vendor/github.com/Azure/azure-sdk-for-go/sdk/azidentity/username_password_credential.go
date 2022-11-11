@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
 )
 
@@ -37,20 +36,10 @@ type UsernamePasswordCredential struct {
 // NewUsernamePasswordCredential creates a UsernamePasswordCredential. clientID is the ID of the application the user
 // will authenticate to. Pass nil for options to accept defaults.
 func NewUsernamePasswordCredential(tenantID string, clientID string, username string, password string, options *UsernamePasswordCredentialOptions) (*UsernamePasswordCredential, error) {
-	if !validTenantID(tenantID) {
-		return nil, errors.New(tenantIDValidationErr)
-	}
 	if options == nil {
 		options = &UsernamePasswordCredentialOptions{}
 	}
-	authorityHost, err := setAuthorityHost(options.Cloud)
-	if err != nil {
-		return nil, err
-	}
-	c, err := public.New(clientID,
-		public.WithAuthority(runtime.JoinPaths(authorityHost, tenantID)),
-		public.WithHTTPClient(newPipelineAdapter(&options.ClientOptions)),
-	)
+	c, err := getPublicClient(clientID, tenantID, &options.ClientOptions)
 	if err != nil {
 		return nil, err
 	}

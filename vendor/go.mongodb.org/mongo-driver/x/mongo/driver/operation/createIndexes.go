@@ -25,7 +25,7 @@ import (
 type CreateIndexes struct {
 	commitQuorum bsoncore.Value
 	indexes      bsoncore.Document
-	maxTimeMS    *int64
+	maxTime      *time.Duration
 	session      *session.Client
 	clock        *session.ClusterClock
 	collection   string
@@ -112,11 +112,12 @@ func (ci *CreateIndexes) Execute(ctx context.Context) error {
 		Crypt:             ci.crypt,
 		Database:          ci.database,
 		Deployment:        ci.deployment,
+		MaxTime:           ci.maxTime,
 		Selector:          ci.selector,
 		WriteConcern:      ci.writeConcern,
 		ServerAPI:         ci.serverAPI,
 		Timeout:           ci.timeout,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 
@@ -130,10 +131,6 @@ func (ci *CreateIndexes) command(dst []byte, desc description.SelectedServer) ([
 	}
 	if ci.indexes != nil {
 		dst = bsoncore.AppendArrayElement(dst, "indexes", ci.indexes)
-	}
-	// Only append specified maxTimeMS if timeout is not also specified.
-	if ci.maxTimeMS != nil && ci.timeout == nil {
-		dst = bsoncore.AppendInt64Element(dst, "maxTimeMS", *ci.maxTimeMS)
 	}
 	return dst, nil
 }
@@ -160,13 +157,13 @@ func (ci *CreateIndexes) Indexes(indexes bsoncore.Document) *CreateIndexes {
 	return ci
 }
 
-// MaxTimeMS specifies the maximum amount of time to allow the query to run.
-func (ci *CreateIndexes) MaxTimeMS(maxTimeMS int64) *CreateIndexes {
+// MaxTime specifies the maximum amount of time to allow the query to run on the server.
+func (ci *CreateIndexes) MaxTime(maxTime *time.Duration) *CreateIndexes {
 	if ci == nil {
 		ci = new(CreateIndexes)
 	}
 
-	ci.maxTimeMS = &maxTimeMS
+	ci.maxTime = maxTime
 	return ci
 }
 

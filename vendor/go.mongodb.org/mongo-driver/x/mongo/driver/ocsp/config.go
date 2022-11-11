@@ -10,7 +10,9 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/http"
 
+	"go.mongodb.org/mongo-driver/internal"
 	"golang.org/x/crypto/ocsp"
 )
 
@@ -20,12 +22,18 @@ type config struct {
 	disableEndpointChecking bool
 	ocspRequest             *ocsp.Request
 	ocspRequestBytes        []byte
+	httpClient              *http.Client
 }
 
 func newConfig(certChain []*x509.Certificate, opts *VerifyOptions) (config, error) {
 	cfg := config{
 		cache:                   opts.Cache,
 		disableEndpointChecking: opts.DisableEndpointChecking,
+		httpClient:              opts.HTTPClient,
+	}
+
+	if cfg.httpClient == nil {
+		cfg.httpClient = internal.DefaultHTTPClient
 	}
 
 	if len(certChain) == 0 {

@@ -10,14 +10,16 @@ package mongocrypt
 type State int
 
 // These constants are valid values for the State type.
+// The values must match the values defined in the mongocrypt_ctx_state_t enum in libmongocrypt.
 const (
-	StateError State = iota
-	NeedMongoCollInfo
-	NeedMongoMarkings
-	NeedMongoKeys
-	NeedKms
-	Ready
-	Done
+	StateError         State = 0
+	NeedMongoCollInfo  State = 1
+	NeedMongoMarkings  State = 2
+	NeedMongoKeys      State = 3
+	NeedKms            State = 4
+	Ready              State = 5
+	Done               State = 6
+	NeedKmsCredentials State = 7
 )
 
 // String implements the Stringer interface.
@@ -37,6 +39,8 @@ func (s State) String() string {
 		return "Ready"
 	case Done:
 		return "Done"
+	case NeedKmsCredentials:
+		return "NeedKmsCredentials"
 	default:
 		return "Unknown State"
 	}

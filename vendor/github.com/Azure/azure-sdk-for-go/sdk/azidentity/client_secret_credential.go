@@ -9,11 +9,9 @@ package azidentity
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
@@ -31,25 +29,14 @@ type ClientSecretCredential struct {
 
 // NewClientSecretCredential constructs a ClientSecretCredential. Pass nil for options to accept defaults.
 func NewClientSecretCredential(tenantID string, clientID string, clientSecret string, options *ClientSecretCredentialOptions) (*ClientSecretCredential, error) {
-	if !validTenantID(tenantID) {
-		return nil, errors.New(tenantIDValidationErr)
-	}
 	if options == nil {
 		options = &ClientSecretCredentialOptions{}
-	}
-	authorityHost, err := setAuthorityHost(options.Cloud)
-	if err != nil {
-		return nil, err
 	}
 	cred, err := confidential.NewCredFromSecret(clientSecret)
 	if err != nil {
 		return nil, err
 	}
-	c, err := confidential.New(clientID, cred,
-		confidential.WithAuthority(runtime.JoinPaths(authorityHost, tenantID)),
-		confidential.WithHTTPClient(newPipelineAdapter(&options.ClientOptions)),
-		confidential.WithAzureRegion(os.Getenv(azureRegionalAuthorityName)),
-	)
+	c, err := getConfidentialClient(clientID, tenantID, cred, &options.ClientOptions)
 	if err != nil {
 		return nil, err
 	}

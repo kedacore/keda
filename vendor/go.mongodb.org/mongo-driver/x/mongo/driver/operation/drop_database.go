@@ -53,7 +53,7 @@ func (dd *DropDatabase) Execute(ctx context.Context) error {
 		Selector:       dd.selector,
 		WriteConcern:   dd.writeConcern,
 		ServerAPI:      dd.serverAPI,
-	}.Execute(ctx, nil)
+	}.Execute(ctx)
 
 }
 

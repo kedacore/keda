@@ -75,6 +75,22 @@ func (e *AuthenticationFailedError) Error() string {
 		fmt.Fprint(msg, "Response contained no body")
 	}
 	fmt.Fprintln(msg, "\n--------------------------------------------------------------------------------")
+	var anchor string
+	switch e.credType {
+	case credNameAzureCLI:
+		anchor = "azure-cli"
+	case credNameCert:
+		anchor = "client-cert"
+	case credNameSecret:
+		anchor = "client-secret"
+	case credNameManagedIdentity:
+		anchor = "managed-id"
+	case credNameUserPassword:
+		anchor = "username-password"
+	}
+	if anchor != "" {
+		fmt.Fprintf(msg, "To troubleshoot, visit https://aka.ms/azsdk/go/identity/troubleshoot#%s", anchor)
+	}
 	return msg.String()
 }
 

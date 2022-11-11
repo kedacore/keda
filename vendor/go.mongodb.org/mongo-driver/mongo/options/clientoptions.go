@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -104,6 +105,7 @@ type ClientOptions struct {
 	DisableOCSPEndpointCheck *bool
 	HeartbeatInterval        *time.Duration
 	Hosts                    []string
+	HTTPClient               *http.Client
 	LoadBalanced             *bool
 	LocalThreshold           *time.Duration
 	MaxConnIdleTime          *time.Duration
@@ -162,7 +164,9 @@ type ClientOptions struct {
 
 // Client creates a new ClientOptions instance.
 func Client() *ClientOptions {
-	return new(ClientOptions)
+	return &ClientOptions{
+		HTTPClient: internal.DefaultHTTPClient,
+	}
 }
 
 // Validate validates the client options. This method will return the first error found.
@@ -204,7 +208,7 @@ func (c *ClientOptions) validate() error {
 		if c.ReplicaSet != nil {
 			return internal.ErrLoadBalancedWithReplicaSet
 		}
-		if c.Direct != nil {
+		if c.Direct != nil && *c.Direct {
 			return internal.ErrLoadBalancedWithDirectConnection
 		}
 	}
@@ -728,9 +732,9 @@ func (c *ClientOptions) SetSocketTimeout(d time.Duration) *ClientOptions {
 // be honored if there is no deadline on the operation Context. Timeout can also be set through the "timeoutMS" URI option
 // (e.g. "timeoutMS=1000"). The default value is nil, meaning operations do not inherit a timeout from the Client.
 //
-// If any Timeout is set (even 0) on the Client, the values of MaxTime on operations, TransactionOptions.MaxCommitTime and
-// SessionOptions.DefaultMaxCommitTime will be ignored. Setting Timeout and ClientOptions.SocketTimeout or WriteConcern.wTimeout
-// will result in undefined behavior.
+// If any Timeout is set (even 0) on the Client, the values of MaxTime on operation options, TransactionOptions.MaxCommitTime and
+// SessionOptions.DefaultMaxCommitTime will be ignored. Setting Timeout and SocketTimeout or WriteConcern.wTimeout will result
+// in undefined behavior.
 //
 // NOTE(benjirewis): SetTimeout represents unstable, provisional API. The behavior of the driver when a Timeout is specified is
 // subject to change.
@@ -764,6 +768,14 @@ func (c *ClientOptions) SetTimeout(d time.Duration) *ClientOptions {
 // The default is nil, meaning no TLS will be enabled.
 func (c *ClientOptions) SetTLSConfig(cfg *tls.Config) *ClientOptions {
 	c.TLSConfig = cfg
+	return c
+}
+
+// SetHTTPClient specifies the http.Client to be used for any HTTP requests.
+//
+// This should only be used to set custom HTTP client configurations. By default, the connection will use an internal.DefaultHTTPClient.
+func (c *ClientOptions) SetHTTPClient(client *http.Client) *ClientOptions {
+	c.HTTPClient = client
 	return c
 }
 
@@ -888,6 +900,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		}
 		if len(opt.Hosts) > 0 {
 			c.Hosts = opt.Hosts
+		}
+		if opt.HTTPClient != nil {
+			c.HTTPClient = opt.HTTPClient
 		}
 		if opt.LoadBalanced != nil {
 			c.LoadBalanced = opt.LoadBalanced

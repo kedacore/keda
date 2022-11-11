@@ -246,7 +246,10 @@ func (c *Cursor) All(ctx context.Context, results interface{}) error {
 	var index int
 	var err error
 
-	defer c.Close(ctx)
+	// Defer a call to Close to try to clean up the cursor server-side when all
+	// documents have not been exhausted. Use context.Background() to ensure Close
+	// completes even if the context passed to All has errored.
+	defer c.Close(context.Background())
 
 	batch := c.batch // exhaust the current batch before iterating the batch cursor
 	for {

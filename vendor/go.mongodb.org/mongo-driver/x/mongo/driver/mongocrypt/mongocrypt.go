@@ -26,7 +26,8 @@ import (
 )
 
 type MongoCrypt struct {
-	wrapped *C.mongocrypt_t
+	wrapped      *C.mongocrypt_t
+	kmsProviders bsoncore.Document
 }
 
 // Version returns the version string for the loaded libmongocrypt, or an empty string
@@ -44,7 +45,8 @@ func NewMongoCrypt(opts *options.MongoCryptOptions) (*MongoCrypt, error) {
 		return nil, errors.New("could not create new mongocrypt object")
 	}
 	crypt := &MongoCrypt{
-		wrapped: wrapped,
+		wrapped:      wrapped,
+		kmsProviders: opts.KmsProviders,
 	}
 
 	// set options in mongocrypt
@@ -75,6 +77,8 @@ func NewMongoCrypt(opts *options.MongoCryptOptions) (*MongoCrypt, error) {
 			C.mongocrypt_setopt_set_crypt_shared_lib_path_override(crypt.wrapped, cryptSharedLibOverridePathStr)
 		}
 	}
+
+	C.mongocrypt_setopt_use_need_kms_credentials_state(crypt.wrapped)
 
 	// initialize handle
 	if !C.mongocrypt_init(crypt.wrapped) {
@@ -404,4 +408,9 @@ func (m *MongoCrypt) createErrorFromStatus() error {
 	defer C.mongocrypt_status_destroy(status)
 	C.mongocrypt_status(m.wrapped, status)
 	return errorFromStatus(status)
+}
+
+// GetKmsProviders returns the originally configured KMS providers.
+func (m *MongoCrypt) GetKmsProviders() bsoncore.Document {
+	return m.kmsProviders
 }

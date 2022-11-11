@@ -32,3 +32,27 @@ func MakeTimeoutContext(ctx context.Context, to time.Duration) (context.Context,
 func IsTimeoutContext(ctx context.Context) bool {
 	return ctx.Value(timeoutKey{}) != nil
 }
+
+// ZeroRTTMonitor implements the RTTMonitor interface and is used internally for testing. It returns 0 for all
+// RTT calculations and an empty string for RTT statistics.
+type ZeroRTTMonitor struct{}
+
+// EWMA implements the RTT monitor interface.
+func (zrm *ZeroRTTMonitor) EWMA() time.Duration {
+	return 0
+}
+
+// Min implements the RTT monitor interface.
+func (zrm *ZeroRTTMonitor) Min() time.Duration {
+	return 0
+}
+
+// P90 implements the RTT monitor interface.
+func (zrm *ZeroRTTMonitor) P90() time.Duration {
+	return 0
+}
+
+// Stats implements the RTT monitor interface.
+func (zrm *ZeroRTTMonitor) Stats() string {
+	return ""
+}

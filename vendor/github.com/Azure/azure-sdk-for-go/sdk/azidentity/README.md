@@ -133,8 +133,9 @@ client := armresources.NewResourceGroupsClient("subscription ID", chain, nil)
 
 |Credential|Usage
 |-|-
-|[ClientSecretCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientSecretCredential)|Authenticate a service principal with a secret
+|[ClientAssertionCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity@v1.2.0-beta.2#ClientAssertionCredential)|Authenticate a service principal with a signed client assertion
 |[ClientCertificateCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientCertificateCredential)|Authenticate a service principal with a certificate
+|[ClientSecretCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientSecretCredential)|Authenticate a service principal with a secret
 
 ### Authenticating Users
 
@@ -168,7 +169,8 @@ client := armresources.NewResourceGroupsClient("subscription ID", chain, nil)
 |-|-
 |`AZURE_CLIENT_ID`|ID of an Azure Active Directory application
 |`AZURE_TENANT_ID`|ID of the application's Azure Active Directory tenant
-|`AZURE_CLIENT_CERTIFICATE_PATH`|path to a certificate file including private key (without password protection)
+|`AZURE_CLIENT_CERTIFICATE_PATH`|path to a certificate file including private key
+|`AZURE_CLIENT_CERTIFICATE_PASSWORD`|password of the certificate file, if any
 
 #### Username and password
 

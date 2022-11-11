@@ -9,17 +9,12 @@ package azidentity
 import (
 	"context"
 	"crypto"
-	"crypto/rsa"
-	"crypto/sha1"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 	"golang.org/x/crypto/pkcs12"
 )
@@ -46,37 +41,18 @@ func NewClientCertificateCredential(tenantID string, clientID string, certs []*x
 	if len(certs) == 0 {
 		return nil, errors.New("at least one certificate is required")
 	}
-	pk, ok := key.(*rsa.PrivateKey)
-	if !ok {
-		return nil, errors.New("'key' must be an *rsa.PrivateKey")
-	}
-	if !validTenantID(tenantID) {
-		return nil, errors.New(tenantIDValidationErr)
-	}
 	if options == nil {
 		options = &ClientCertificateCredentialOptions{}
 	}
-	authorityHost, err := setAuthorityHost(options.Cloud)
+	cred, err := confidential.NewCredFromCertChain(certs, key)
 	if err != nil {
 		return nil, err
 	}
-	cert, err := newCertContents(certs, pk, options.SendCertificateChain)
-	if err != nil {
-		return nil, err
-	}
-	cred := confidential.NewCredFromCert(cert.c, key) // TODO: NewCredFromCert should take a slice
-	if err != nil {
-		return nil, err
-	}
-	o := []confidential.Option{
-		confidential.WithAuthority(runtime.JoinPaths(authorityHost, tenantID)),
-		confidential.WithHTTPClient(newPipelineAdapter(&options.ClientOptions)),
-		confidential.WithAzureRegion(os.Getenv(azureRegionalAuthorityName)),
-	}
+	var o []confidential.Option
 	if options.SendCertificateChain {
 		o = append(o, confidential.WithX5C())
 	}
-	c, err := confidential.New(clientID, cred, o...)
+	c, err := getConfidentialClient(clientID, tenantID, cred, &options.ClientOptions, o...)
 	if err != nil {
 		return nil, err
 	}
@@ -154,36 +130,6 @@ func ParseCertificates(certData []byte, password []byte) ([]*x509.Certificate, c
 		return nil, nil, errors.New("found no private key")
 	}
 	return certs, pk, nil
-}
-
-type certContents struct {
-	c   *x509.Certificate // the signing cert
-	fp  []byte            // the signing cert's fingerprint, a SHA-1 digest
-	pk  *rsa.PrivateKey   // the signing key
-	x5c []string          // concatenation of every provided cert, base64 encoded
-}
-
-func newCertContents(certs []*x509.Certificate, key *rsa.PrivateKey, sendCertificateChain bool) (*certContents, error) {
-	cc := certContents{pk: key}
-	// need the the signing cert's fingerprint: identify that cert by matching its public key to the private key
-	for _, cert := range certs {
-		certKey, ok := cert.PublicKey.(*rsa.PublicKey)
-		if ok && key.E == certKey.E && key.N.Cmp(certKey.N) == 0 {
-			fp := sha1.Sum(cert.Raw)
-			cc.fp = fp[:]
-			cc.c = cert
-			if sendCertificateChain {
-				// signing cert must be first in x5c
-				cc.x5c = append([]string{base64.StdEncoding.EncodeToString(cert.Raw)}, cc.x5c...)
-			}
-		} else if sendCertificateChain {
-			cc.x5c = append(cc.x5c, base64.StdEncoding.EncodeToString(cert.Raw))
-		}
-	}
-	if len(cc.fp) == 0 || cc.c == nil {
-		return nil, errors.New("found no certificate matching 'key'")
-	}
-	return &cc, nil
 }
 
 func loadPEMCert(certData []byte) ([]*pem.Block, error) {
