@@ -52,9 +52,6 @@ func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
 // and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If none are appropriate, a nil *tls.Config is returned.
 func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert string) (*tls.Config, error) {
-	// skipVerify := true is a hack to avoid the CodeQL error related with allowing insecure certificates in production environments.
-	// Skipping this validation is necessary and intended in our use case in order to be able to trust in the CA.
-	skipVerify := true
 	valid := false
 
 	config := &tls.Config{}
@@ -81,7 +78,6 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM([]byte(caCert))
 		config.RootCAs = caCertPool
-		config.InsecureSkipVerify = skipVerify
 		valid = true
 	}
 
