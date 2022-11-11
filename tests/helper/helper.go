@@ -56,11 +56,6 @@ var (
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 )
 
-// Cluster to split upstream resources for each cluster
-var (
-	Cluster = os.Getenv("TEST_CLUSTER_NAME")
-)
-
 var (
 	KubeClient     *kubernetes.Clientset
 	KedaKubeClient *v1alpha1.KedaV1alpha1Client
