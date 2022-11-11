@@ -103,21 +103,23 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if pulsarMetadata.pulsarAuth.CA != "" || pulsarMetadata.pulsarAuth.EnableTLS {
-		config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth)
-		if err != nil {
-			return nil, err
-		}
-		client.Transport = &http.Transport{TLSClientConfig: config}
-	}
-
-	if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
-		// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
-				addAuthHeaders(req, &pulsarMetadata)
+	if pulsarMetadata.pulsarAuth != nil {
+		if pulsarMetadata.pulsarAuth.CA != "" || pulsarMetadata.pulsarAuth.EnableTLS {
+			config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth)
+			if err != nil {
+				return nil, err
 			}
-			return nil
+			client.Transport = &http.Transport{TLSClientConfig: config}
+		}
+
+		if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
+			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
+					addAuthHeaders(req, &pulsarMetadata)
+				}
+				return nil
+			}
 		}
 	}
 
@@ -307,6 +309,9 @@ func (s *pulsarScaler) Close(context.Context) error {
 
 // addAuthHeaders add the relevant headers used by Pulsar to authenticate and authorize http requests
 func addAuthHeaders(req *http.Request, metadata *pulsarMetadata) {
+	if metadata.pulsarAuth == nil {
+		return
+	}
 	switch {
 	case metadata.pulsarAuth.EnableBearerAuth:
 		req.Header.Add("Authorization", authentication.GetBearerToken(metadata.pulsarAuth))
