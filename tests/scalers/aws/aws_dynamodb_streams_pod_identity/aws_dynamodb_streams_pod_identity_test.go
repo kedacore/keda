@@ -35,15 +35,15 @@ const (
 )
 
 var (
-	awsRegion            = os.Getenv("AWS_REGION")
-	awsAccessKey         = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretKey         = os.Getenv("AWS_SECRET_KEY")
+	awsRegion            = os.Getenv("TF_AWS_REGION")
+	awsAccessKey         = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretKey         = os.Getenv("TF_AWS_SECRET_KEY")
 	testNamespace        = fmt.Sprintf("%s-ns", testName)
 	secretName           = fmt.Sprintf("%s-secret", testName)
 	deploymentName       = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	tableName            = fmt.Sprintf("%s-table-%d", testName, GetRandomNumber())
+	tableName            = fmt.Sprintf("stream-identity-%d", GetRandomNumber())
 	shardCount           = 2 // default count
 	activationShardCount = 0 // default count
 )

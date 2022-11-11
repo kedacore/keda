@@ -129,10 +129,10 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, GetRandomNumber())
-	awsAccessKeyID            = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretAccessKey        = os.Getenv("AWS_SECRET_KEY")
-	awsRegion                 = os.Getenv("AWS_REGION")
+	dynamoDBTableName         = fmt.Sprintf("table-%d", GetRandomNumber())
+	awsAccessKeyID            = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretAccessKey        = os.Getenv("TF_AWS_SECRET_KEY")
+	awsRegion                 = os.Getenv("TF_AWS_REGION")
 	expressionAttributeNames  = "{ \"#k\" : \"event_type\"}"
 	keyConditionExpression    = "#k = :key"
 	expressionAttributeValues = "{ \":key\" : {\"S\":\"scaling_event\"}}"

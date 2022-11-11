@@ -458,6 +458,7 @@ metadata:
   name: generate-load-graphite-metrics
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
@@ -478,6 +479,7 @@ metadata:
   name: generate-low-load-graphite-metrics
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
@@ -498,6 +500,7 @@ metadata:
   name: generate-empty-load-graphite-metrics
   namespace: {{.TestNamespace}}
 spec:
+  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
