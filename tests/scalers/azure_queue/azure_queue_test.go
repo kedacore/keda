@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	connectionString = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
+	queueName        = fmt.Sprintf("queue-%d", GetRandomNumber())
 )
 
 type templateData struct {
@@ -116,7 +116,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
+	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
 
 	queueURL, messageURL := createQueue(t)
 

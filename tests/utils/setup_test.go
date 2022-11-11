@@ -71,7 +71,7 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace %s --set azureTenantID=%s --set image.release=v0.12.0",
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace %s --set azureTenantID=%s",
 		AzureWorkloadIdentityNamespace, AzureADTenantID))
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
 

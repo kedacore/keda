@@ -27,14 +27,14 @@ const (
 )
 
 var (
-	appInsightsAppID              = os.Getenv("AZURE_APP_INSIGHTS_APP_ID")
-	appInsightsInstrumentationKey = os.Getenv("AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
-	appInsightsConnectionstring   = os.Getenv("AZURE_APP_INSIGHTS_CONNECTION_STRING")
-	appInsightsMetricName         = fmt.Sprintf("%s-%d", testName, GetRandomNumber())
+	appInsightsAppID              = os.Getenv("TF_AZURE_APP_INSIGHTS_APP_ID")
+	appInsightsInstrumentationKey = os.Getenv("TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
+	appInsightsConnectionstring   = os.Getenv("TF_AZURE_APP_INSIGHTS_CONNECTION_STRING")
+	appInsightsMetricName         = fmt.Sprintf("metric-%d", GetRandomNumber())
 	appInsightsRole               = fmt.Sprintf("%s-role", testName)
-	azureADClientID               = os.Getenv("AZURE_SP_APP_ID")
+	azureADClientID               = os.Getenv("TF_AZURE_SP_APP_ID")
 	azureADSecret                 = os.Getenv("AZURE_SP_KEY")
-	azureADTenantID               = os.Getenv("AZURE_SP_TENANT")
+	azureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace                 = fmt.Sprintf("%s-ns", testName)
 	secretName                    = fmt.Sprintf("%s-secret", testName)
 	deploymentName                = fmt.Sprintf("%s-deployment", testName)
@@ -148,12 +148,12 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, appInsightsAppID, "AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
-	require.NotEmpty(t, appInsightsInstrumentationKey, "AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
-	require.NotEmpty(t, appInsightsConnectionstring, "AZURE_APP_INSIGHTS_CONNECTION_STRING env variable is required for application insights tests")
-	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for application insights tests")
+	require.NotEmpty(t, appInsightsAppID, "TF_AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
+	require.NotEmpty(t, appInsightsInstrumentationKey, "TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
+	require.NotEmpty(t, appInsightsConnectionstring, "TF_AZURE_APP_INSIGHTS_CONNECTION_STRING env variable is required for application insights tests")
+	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for application insights tests")
 	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for application insights tests")
-	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for application insights tests")
+	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for application insights tests")
 	client := appinsights.NewTelemetryClient(appInsightsInstrumentationKey)
 
 	// Create kubernetes resources
