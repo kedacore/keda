@@ -3,18 +3,20 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
 )
 
 type parsePulsarMetadataTestData struct {
-	metadata     map[string]string
-	isError      bool
-	isActive     bool
-	adminURL     string
-	topic        string
-	subscription string
+	metadata           map[string]string
+	isError            bool
+	isActive           bool
+	isPartitionedTopic bool
+	adminURL           string
+	topic              string
+	subscription       string
 }
 
 type parsePulsarAuthParamsTestData struct {
@@ -51,18 +53,20 @@ var validPulsarWithoutAuthParams = map[string]string{}
 
 var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	// failure, no adminURL
-	{map[string]string{}, true, false, "", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{}, true, false, false, "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 
 	// tls
-	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
 }
 
 var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
@@ -87,6 +91,18 @@ func TestParsePulsarMetadata(t *testing.T) {
 
 		if meta.adminURL != testData.adminURL {
 			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
+		}
+
+		if !testData.isError {
+			if testData.isPartitionedTopic {
+				if !strings.HasSuffix(meta.statsURL, "/partitioned-stats") {
+					t.Errorf("Expected statsURL to end with /partitioned-stats but got %s\n", meta.statsURL)
+				}
+			} else {
+				if !strings.HasSuffix(meta.statsURL, "/stats") {
+					t.Errorf("Expected statsURL to end with /stats but got %s\n", meta.statsURL)
+				}
+			}
 		}
 
 		if meta.topic != testData.topic {

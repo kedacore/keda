@@ -48,6 +48,7 @@ const (
 	pulsarMetricType           = "External"
 	defaultMsgBacklogThreshold = 10
 	enable                     = "enable"
+	stringTrue                 = "true"
 )
 
 type pulsarSubscription struct {
@@ -140,7 +141,11 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	}
 
 	topic := strings.ReplaceAll(meta.topic, "persistent://", "")
-	meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/stats"
+	if config.TriggerMetadata["isPartitionedTopic"] == stringTrue {
+		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
+	} else {
+		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/stats"
+	}
 
 	switch {
 	case config.TriggerMetadata["subscriptionFromEnv"] != "":
