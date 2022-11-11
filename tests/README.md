@@ -211,7 +211,7 @@ for executing shell commands.
 
 For improving the reliability of e2e test, we try to have all resources under kedacore control using kedacore docker images rather end-users registry images (without official support) and cloud resources in kedacore accounts.
 
-In order to manage these e2e resources, there are 2 different repositories: 
+In order to manage these e2e resources, there are 2 different repositories:
 - [kedacore/test-tools](https://github.com/kedacore/test-tools) for docker images management.
 - [kedacore/testing-infrastructure](https://github.com/kedacore/testing-infrastructure) for cloud resources.
 
