@@ -68,7 +68,7 @@ function run_tests {
         done
 
         wait_for_jobs
-    fi    
+    fi
 
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
