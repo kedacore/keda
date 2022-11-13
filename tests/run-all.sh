@@ -21,7 +21,7 @@ function run_setup {
 function excute_test {
     if [[ $1 != *_test.go ]] # Skip helper files
     then
-        continue
+        return
     fi
     counter=$((counter+1))
     go test -v -tags e2e -timeout 20m $1 > "$1.log" 2>&1 &
