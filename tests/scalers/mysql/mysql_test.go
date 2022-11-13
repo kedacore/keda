@@ -283,8 +283,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.ItemsToWrite = 4000
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 	// Check if deployment scale to 2 (the max)
-	maxReplicaCount := 10
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 1),
+	maxReplicaCount := 2
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
 		"Replica count should scale up in next 2 minutes")
 }
 
