@@ -66,9 +66,9 @@ function run_tests {
         do
             excute_test $test_case
         done
-    fi
 
-    wait_for_jobs
+        wait_for_jobs
+    fi    
 
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
@@ -89,6 +89,8 @@ function run_tests {
         do
             excute_test $test_case
         done
+
+        wait_for_jobs
     fi
 }
 
@@ -141,7 +143,6 @@ function print_failed {
 
 run_setup
 run_tests
-wait_for_jobs
 print_logs
 run_cleanup
 
