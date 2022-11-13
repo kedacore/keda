@@ -24,7 +24,7 @@ function excute_test {
         return
     fi
     counter=$((counter+1))
-    go test -v -tags e2e -timeout 20m $1 > "$1.log" 2>&1 &
+    go test -v -tags e2e -timeout 20m $1 > "$1.$2.log" 2>&1 &
     pid=$!
     echo "Running $1 with pid: $pid"
     pids+=($pid)
@@ -42,7 +42,7 @@ function run_tests {
     # randomize tests order using shuf
     for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX" | shuf)
     do
-        excute_test $test_case
+        excute_test $test_case 1
     done
 
     wait_for_jobs
@@ -64,7 +64,7 @@ function run_tests {
 
         for test_case in "${retry_lookup[@]}"
         do
-            excute_test $test_case
+            excute_test $test_case 2
         done
 
         wait_for_jobs
@@ -87,7 +87,7 @@ function run_tests {
 
         for test_case in "${retry_lookup[@]}"
         do
-            excute_test $test_case
+            excute_test $test_case 3
         done
 
         wait_for_jobs
