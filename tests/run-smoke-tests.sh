@@ -22,27 +22,34 @@ function run_setup {
     go test -v -tags e2e utils/setup_test.go
 }
 
+function excute_test {
+    if [[ $1 != *_test.go ]] # Skip helper files
+    then
+        return
+    fi
+    counter=$((counter+1))
+    go test -v -tags e2e -timeout 20m $1 > "$1.$2.log" 2>&1 &
+    pid=$!
+    echo "Running $1 with pid: $pid"
+    pids+=($pid)
+    lookup[$pid]=$1
+    # limit concurrent runs
+    if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
+        wait_for_jobs
+        counter=0
+        pids=()
+    fi
+}
+
 function run_tests {
     counter=0
 
     for test_case in ${test_files[@]}
     do
-        counter=$((counter+1))
-        go test -v -tags e2e $test_case > "${test_case}.log" 2>&1 &
-
-        pid=$!
-        echo "Running $test_case with pid: $pid"
-        pids+=($pid)
-        lookup[$pid]=$test_case
-        # limit concurrent runs
-        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
-            wait_for_jobs
-            counter=0
-            pids=()
-        fi
+        excute_test $test_case 1
     done
 
-     wait_for_jobs
+    wait_for_jobs
 
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
@@ -61,20 +68,33 @@ function run_tests {
 
         for test_case in "${retry_lookup[@]}"
         do
-            counter=$((counter+1))
-            go test -v -tags e2e $test_case > "${test_case}.retry.log" 2>&1 &
-
-            pid=$!
-            echo "Rerunning $test_case with pid: $pid"
-            pids+=($pid)
-            lookup[$pid]=$test_case
-            # limit concurrent runs
-            if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
-                wait_for_jobs
-                counter=0
-                pids=()
-            fi
+            excute_test $test_case 2
         done
+
+        wait_for_jobs
+    fi
+
+    # Retry failing tests
+    if [ ${#failed_lookup[@]} -ne 0 ]; then
+
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        printf "FINISHED SECOND EXECUTION, RETRYING FAILING TESTS"
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+
+        retry_lookup=("${failed_lookup[@]}")
+        counter=0
+        pids=()
+        failed_count=0
+        failed_lookup=()
+
+        for test_case in "${retry_lookup[@]}"
+        do
+            excute_test $test_case 3
+        done
+
+        wait_for_jobs
     fi
 }
 
@@ -126,7 +146,6 @@ function print_failed {
 
 run_setup
 run_tests
-wait_for_jobs
 print_logs
 run_cleanup
 
