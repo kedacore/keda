@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -32,11 +33,7 @@ type pulsarMetadata struct {
 	msgBacklogThreshold           int64
 	activationMsgBacklogThreshold int64
 
-	// TLS
-	enableTLS bool
-	cert      string
-	key       string
-	ca        string
+	pulsarAuth *authentication.AuthMeta
 
 	statsURL    string
 	metricName  string
@@ -49,6 +46,7 @@ const (
 	defaultMsgBacklogThreshold = 10
 	enable                     = "enable"
 	stringTrue                 = "true"
+	pulsarAuthModeHeader       = "X-Pulsar-Auth-Method-Name"
 )
 
 type pulsarSubscription struct {
@@ -105,12 +103,24 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if pulsarMetadata.enableTLS {
-		config, err := kedautil.NewTLSConfig(pulsarMetadata.cert, pulsarMetadata.key, pulsarMetadata.ca)
-		if err != nil {
-			return nil, err
+	if pulsarMetadata.pulsarAuth != nil {
+		if pulsarMetadata.pulsarAuth.CA != "" || pulsarMetadata.pulsarAuth.EnableTLS {
+			config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth)
+			if err != nil {
+				return nil, err
+			}
+			client.Transport = &http.Transport{TLSClientConfig: config}
 		}
-		client.Transport = &http.Transport{TLSClientConfig: config}
+
+		if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
+			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
+					addAuthHeaders(req, &pulsarMetadata)
+				}
+				return nil
+			}
+		}
 	}
 
 	return &pulsarScaler{
@@ -176,25 +186,21 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		}
 		meta.msgBacklogThreshold = t
 	}
-
-	meta.enableTLS = false
-	if val, ok := config.TriggerMetadata["tls"]; ok {
-		val = strings.TrimSpace(val)
-
-		if val == enable {
-			cert := config.AuthParams["cert"]
-			key := config.AuthParams["key"]
-			if key == "" || cert == "" {
-				return meta, errors.New("must be provided cert and key")
+	// For backwards compatibility, we need to map "tls: enable" to
+	if tls, ok := config.TriggerMetadata["tls"]; ok {
+		if tls == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
+			if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
+				config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
+			} else {
+				config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
 			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = cert
-			meta.key = key
-			meta.enableTLS = true
-		} else {
-			return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
 	}
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return meta, fmt.Errorf("error parsing %s: %s", msgBacklogMetricName, err)
+	}
+	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
@@ -206,6 +212,8 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)
 	}
+
+	addAuthHeaders(req, &s.metadata)
 
 	res, err := s.client.Do(req)
 	if res == nil || err != nil {
@@ -297,4 +305,23 @@ func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 func (s *pulsarScaler) Close(context.Context) error {
 	s.client = nil
 	return nil
+}
+
+// addAuthHeaders add the relevant headers used by Pulsar to authenticate and authorize http requests
+func addAuthHeaders(req *http.Request, metadata *pulsarMetadata) {
+	if metadata.pulsarAuth == nil {
+		return
+	}
+	switch {
+	case metadata.pulsarAuth.EnableBearerAuth:
+		req.Header.Add("Authorization", authentication.GetBearerToken(metadata.pulsarAuth))
+		req.Header.Add(pulsarAuthModeHeader, "token")
+	case metadata.pulsarAuth.EnableBasicAuth:
+		req.SetBasicAuth(metadata.pulsarAuth.Username, metadata.pulsarAuth.Password)
+		req.Header.Add(pulsarAuthModeHeader, "basic")
+	case metadata.pulsarAuth.EnableTLS:
+		// When BearerAuth or BasicAuth are also configured, let them take precedence for the purposes of
+		// the authMode header.
+		req.Header.Add(pulsarAuthModeHeader, "tls")
+	}
 }

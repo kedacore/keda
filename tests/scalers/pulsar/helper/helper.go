@@ -35,6 +35,17 @@ type templateData struct {
 	MsgBacklog          int
 }
 
+const authSecretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.TestName}}
+  namespace: {{.TestName}}
+data:
+  key.pub: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnkggprp2GTl/2oQgLvnspbH0Lxthhmw3O3qpcx1FVUcJeD1JlUsuK6rO8uexfY/3JuZffzEm5busJB/5zuXQqO52ph8xDRiEeHOuFY0RKv8DAfpss+oG8Ou/LdHPYCbbyjbJXK/iVE/rUhicp7n6udv2/AaqJj/9535Qo49Q+3S/fbWqhNR6r84+Q+KTHtfwuoLsE4AbZ+g7FRpnyH3iYDxC4ISr1zIJiv4o41cwglaho/cOqCpBFwRHYyZTgeEIf9+7bjTPbpPThFztxO6DOAw73ikU7iT3T0H6hgpQqKa79kw1R8PAfeTYvkeQ4juQwlYmyGePTb9F4LZ+0w7a8wIDAQAB
+  token.jwt: ZXlKaGJHY2lPaUpTVXpJMU5pSjkuZXlKemRXSWlPaUpoWkcxcGJpSjkubEg2TEVqcDU3Y2pFc2xhdWV2Z1ZKV1NTa19IaThFLVZGb29EZHVxUHRiQ1Q0U0NJQlluV0YtRlA5NzBMVUMxRzFWWnZFMmJFZGlkNGd3SzhKY3RnVHNMNGJTV2V5SW4yVVBNTnNnaDVGemhWQkQ4SXVaRnFLTXktLUZnUmtKWFZzWldrbUFwNW5yamU3MEZaRkJLME1uV0licWxSZ2Y2UUZKR2Vxd1FXbzlZV0RCOUh5cTRYR0oxUGx1SGR4T282eTJjVm1Ib3c2SFV3R0dfSDZfTmk0eTNBaU0zWEhvNlNvMkEtRGU5cGRBX3d6MHQzemFyXzhBNFJNeXdTYmtXYldNSVEwUnN5bEZhSk80SzYzT0lTRG5IQkp0TUNJTUNjNlo1WDFKYWt2eUdKek9FTVNQeDZRM1hXWG1MOFFDNjBrcG1xQkd0dXV4XzZlbWFSaHZTcDlB
+`
+
 const pulsarStatefulsetTemplate = `
 apiVersion: apps/v1
 kind: StatefulSet
@@ -58,6 +69,10 @@ spec:
       - name: pulsar
         image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
         imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: auth-data
+          mountPath: "/bin/pulsar"
+          readOnly: true
         readinessProbe:
           tcpSocket:
             port: 8080
@@ -71,10 +86,26 @@ spec:
         env:
         - name: PULSAR_PREFIX_tlsRequireTrustedClientCertOnConnect
           value: "true"
+        - name: brokerDeleteInactiveTopicsEnabled
+          value: "false"
+        - name: authenticationEnabled
+          value: "true"
+        - name: authenticationProviders
+          value: "org.apache.pulsar.broker.authentication.AuthenticationProviderToken"
+        - name: PULSAR_PREFIX_tokenPublicKey
+          value: "/bin/pulsar/key.pub"
+        - name: brokerClientAuthenticationPlugin
+          value: "org.apache.pulsar.client.impl.auth.AuthenticationToken"
+        - name: brokerClientAuthenticationParameters
+          value: "file:///bin/pulsar/token.jwt"
         command:
         - sh
         - -c
-        args: ["bin/apply-config-from-env.py conf/client.conf && bin/apply-config-from-env.py conf/standalone.conf && bin/pulsar standalone -nfw -nss"]
+        args: ["bin/apply-config-from-env.py conf/client.conf && bin/apply-config-from-env.py conf/standalone.conf && exec bin/pulsar standalone -nfw -nss"]
+      volumes:
+      - name: auth-data
+        secret:
+          secretName: {{.TestName}}
 `
 
 const pulsarServiceTemplate = `
@@ -111,11 +142,19 @@ spec:
       - name: pulsar-topic-init
         image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
         imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: auth-data
+          mountPath: "/pulsar/auth"
+          readOnly: true
         command:
         - sh
         - -c
-        args: ["bin/pulsar-admin --admin-url http://{{.TestName}}.{{.TestName}}:8080 topics {{ if .NumPartitions }} create-partitioned-topic -p {{.NumPartitions}} {{ else }} create {{ end }} persistent://public/default/keda"]
+        args: ["bin/pulsar-admin --admin-url http://{{.TestName}}.{{.TestName}}:8080 --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken --auth-params file:///pulsar/auth/token.jwt topics {{ if .NumPartitions }} create-partitioned-topic -p {{.NumPartitions}} {{ else }} create {{ end }} persistent://public/default/keda"]
       restartPolicy: Never
+      volumes:
+      - name: auth-data
+        secret:
+          secretName: {{.TestName}}
   backoffLimit: 4
 `
 
@@ -138,13 +177,20 @@ spec:
     spec:
       containers:
         - name: pulsar-consumer
-          image: ghcr.io/pulsar-sigs/pulsar-client:v0.3.1
+          image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
           imagePullPolicy: IfNotPresent
-          readinessProbe:
-            tcpSocket:
-              port: 9494
-          args: ["consumer","--broker","pulsar://{{.TestName}}.{{.TestName}}:6650","--topic","persistent://public/default/keda","--subscription-name","keda","--consume-time","200"]
-
+          volumeMounts:
+          - name: auth-data
+            mountPath: "/pulsar/auth"
+            readOnly: true
+          command:
+          - sh
+          - -c
+          args: ["bin/pulsar-perf consume --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken --auth-params file:///pulsar/auth/token.jwt --receiver-queue-size 1 --subscription-type Shared --rate 1 --subscriptions keda persistent://public/default/keda"]
+      volumes:
+      - name: auth-data
+        secret:
+          secretName: {{.TestName}}
 `
 
 const scaledObjectTemplate = `
@@ -168,8 +214,24 @@ spec:
         adminURL: http://{{.TestName}}.{{.TestName}}:8080
         topic:  persistent://public/default/keda
         isPartitionedTopic: {{ if .NumPartitions }} "true" {{else}} "false" {{end}}
+        authModes: "bearer"
         subscription: keda
+      authenticationRef:
+        name: {{.TestName}}
           `
+
+const authenticationRefTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TestName}}
+  namespace: {{.TestName}}
+spec:
+  secretTargetRef:
+    - parameter: bearerToken
+      name: {{.TestName}}
+      key: token.jwt
+`
 
 const topicPublishJobTemplate = `
 apiVersion: batch/v1
@@ -184,11 +246,19 @@ spec:
       - name: pulsar-producer
         image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
         imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: auth-data
+          mountPath: "/pulsar/auth"
+          readOnly: true
         command:
         - sh
         - -c
-        args: ["bin/pulsar-perf produce --admin-url http://{{.TestName}}.{{.TestName}}:8080 --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --num-messages {{.MessageCount}} {{ if .NumPartitions }} --partitions {{.NumPartitions}} {{ end }} persistent://public/default/keda"]
+        args: ["bin/pulsar-perf produce --admin-url http://{{.TestName}}.{{.TestName}}:8080 --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken --auth-params file:///pulsar/auth/token.jwt --num-messages {{.MessageCount}} {{ if .NumPartitions }} --partitions {{.NumPartitions}} {{ end }} --batch-max-messages 1 persistent://public/default/keda"]
       restartPolicy: Never
+      volumes:
+      - name: auth-data
+        secret:
+          secretName: {{.TestName}}
   backoffLimit: 4
 `
 
@@ -203,7 +273,7 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 	helper.CreateKubernetesResources(t, kc, testName, data, templates)
 
 	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, testName, testName, 1, 300, 1),
-		"replica count should be 1 after 5 minute")
+		"replica count should be 1 within 5 minutes")
 
 	helper.KubectlApplyWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
 
@@ -214,7 +284,7 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 
 	// run consumer for create subscription
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(testName), testName, 1, 300, 1),
-		"replica count should be 1 after 5 minute")
+		"replica count should be 1 within 5 minutes")
 
 	helper.KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
@@ -247,6 +317,8 @@ func getTemplateData(testName string, numPartitions int) (templateData, []helper
 		}, []helper.Template{
 			{Name: "statefulsetTemplate", Config: pulsarStatefulsetTemplate},
 			{Name: "serviceTemplate", Config: pulsarServiceTemplate},
+			{Name: "authenticationRefTemplate", Config: authenticationRefTemplate},
+			{Name: "secretTemplate", Config: authSecretTemplate},
 		}
 }
 
@@ -262,14 +334,14 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MessageCount = 100
 	helper.KubectlApplyWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(data.TestName), data.TestName, 5, 300, 1),
-		"replica count should be 5 after 5 minute")
+		"replica count should be 5 within 5 minute")
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, testName string) {
 	t.Log("--- testing scale down ---")
 	// Check if deployment scale down to 0 after 5 minutes
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(testName), testName, 0, 300, 1),
-		"Replica count should be 0 after 5 minutes")
+		"Replica count should be 0 within 5 minutes")
 }
 
 func getConsumerDeploymentName(testName string) string {
