@@ -24,7 +24,6 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -35,10 +34,11 @@ import (
 )
 
 type ScalersCache struct {
-	Generation int64
-	Scalers    []ScalerBuilder
-	Logger     logr.Logger
-	Recorder   record.EventRecorder
+	ScaledObject kedav1alpha1.ScaledObject
+	Generation   int64
+	Scalers      []ScalerBuilder
+	Logger       logr.Logger
+	Recorder     record.EventRecorder
 }
 
 type ScalerBuilder struct {
@@ -68,11 +68,11 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	return result
 }
 
-func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	if id < 0 || id >= len(c.Scalers) {
 		return nil, fmt.Errorf("scaler with id %d not found. Len = %d", id, len(c.Scalers))
 	}
-	m, err := c.Scalers[id].Scaler.GetMetrics(ctx, metricName, metricSelector)
+	m, err := c.Scalers[id].Scaler.GetMetrics(ctx, metricName)
 	if err == nil {
 		return m, nil
 	}
@@ -82,7 +82,7 @@ func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, id int, metricNa
 		return nil, err
 	}
 
-	return ns.GetMetrics(ctx, metricName, metricSelector)
+	return ns.GetMetrics(ctx, metricName)
 }
 
 func (c *ScalersCache) IsScaledObjectActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, []external_metrics.ExternalMetricValue) {
@@ -180,16 +180,16 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
 }
 
-func (c *ScalersCache) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (c *ScalersCache) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	var metrics []external_metrics.ExternalMetricValue
 	for i, s := range c.Scalers {
-		m, err := s.Scaler.GetMetrics(ctx, metricName, metricSelector)
+		m, err := s.Scaler.GetMetrics(ctx, metricName)
 		if err != nil {
 			ns, err := c.refreshScaler(ctx, i)
 			if err != nil {
 				return metrics, err
 			}
-			m, err = ns.GetMetrics(ctx, metricName, metricSelector)
+			m, err = ns.GetMetrics(ctx, metricName)
 			if err != nil {
 				return metrics, err
 			}
@@ -282,7 +282,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
-		metrics, err := s.Scaler.GetMetrics(ctx, metricSpecs[0].External.Metric.Name, nil)
+		metrics, err := s.Scaler.GetMetrics(ctx, metricSpecs[0].External.Metric.Name)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
 			c.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())

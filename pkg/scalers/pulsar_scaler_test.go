@@ -276,7 +276,7 @@ func TestPulsarGetMetric(t *testing.T) {
 		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
 
-		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName, nil)
+		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName)
 		if err != nil {
 			t.Fatal("Failed:", err)
 		}

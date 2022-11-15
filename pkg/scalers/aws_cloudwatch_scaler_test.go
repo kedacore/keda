@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -500,10 +499,9 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
-	var selector labels.Selector
 	for _, meta := range awsCloudwatchGetMetricTestData {
 		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}, logr.Discard()}
-		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName, selector)
+		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName)
 		switch meta.metricsName {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")

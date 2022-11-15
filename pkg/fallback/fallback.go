@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The KEDA Authors
+Copyright 2022 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package fallback
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
+func isFallbackEnabled(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
 	if scaledObject.Spec.Fallback == nil {
 		return false
 	}
@@ -42,7 +43,7 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 	return true
 }
 
-func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, logger logr.Logger, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
@@ -54,7 +55,7 @@ func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []ext
 		healthStatus.Status = kedav1alpha1.HealthStatusHappy
 		status.Health[metricName] = *healthStatus
 
-		p.updateStatus(ctx, scaledObject, status, metricSpec)
+		updateStatus(ctx, client, logger, scaledObject, status, metricSpec)
 		return metrics, nil
 	}
 
@@ -62,23 +63,23 @@ func (p *KedaProvider) getMetricsWithFallback(ctx context.Context, metrics []ext
 	*healthStatus.NumberOfFailures++
 	status.Health[metricName] = *healthStatus
 
-	p.updateStatus(ctx, scaledObject, status, metricSpec)
+	updateStatus(ctx, client, logger, scaledObject, status, metricSpec)
 
 	switch {
-	case !isFallbackEnabled(scaledObject, metricSpec):
+	case !isFallbackEnabled(logger, scaledObject, metricSpec):
 		return nil, suppressedError
 	case !validateFallback(scaledObject):
 		logger.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers")
 		return nil, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		return doFallback(scaledObject, metricSpec, metricName, suppressedError), nil
+		return doFallback(logger, scaledObject, metricSpec, metricName, suppressedError), nil
 	default:
 		return nil, suppressedError
 	}
 }
 
-func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
-	if !isFallbackEnabled(scaledObject, metricSpec) || !validateFallback(scaledObject) {
+func fallbackExistsInScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
+	if !isFallbackEnabled(logger, scaledObject, metricSpec) || !validateFallback(scaledObject) {
 		return false
 	}
 
@@ -96,7 +97,7 @@ func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		scaledObject.Spec.Fallback.Replicas >= 0
 }
 
-func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
+func doFallback(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
 	normalisationValue, _ := metricSpec.External.Target.AverageValue.AsInt64()
 	metric := external_metrics.ExternalMetricValue{
@@ -110,17 +111,17 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	return fallbackMetrics
 }
 
-func (p *KedaProvider) updateStatus(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
+func updateStatus(ctx context.Context, client runtimeclient.Client, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
-	if fallbackExistsInScaledObject(scaledObject, metricSpec) {
+	if fallbackExistsInScaledObject(logger, scaledObject, metricSpec) {
 		status.Conditions.SetFallbackCondition(metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object")
 	} else {
 		status.Conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")
 	}
 
 	scaledObject.Status = *status
-	err := p.client.Status().Patch(ctx, scaledObject, patch)
+	err := client.Status().Patch(ctx, scaledObject, patch)
 	if err != nil {
 		logger.Error(err, "Failed to patch ScaledObjects Status")
 	}

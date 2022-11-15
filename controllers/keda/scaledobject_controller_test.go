@@ -76,7 +76,7 @@ var _ = Describe("ScaledObjectController", func() {
 			mockStatusWriter = mock_client.NewMockStatusWriter(ctrl)
 
 			metricNameTestReconciler = ScaledObjectReconciler{
-				scaleHandler: mockScaleHandler,
+				ScaleHandler: mockScaleHandler,
 				Client:       mockClient,
 			}
 		})

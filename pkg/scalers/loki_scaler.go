@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
@@ -275,7 +274,7 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 }
 
 // GetMetrics returns an external metric value for the loki
-func (s *lokiScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *lokiScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecuteLokiQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing loki query")

@@ -54,7 +54,7 @@ var _ = Describe("hpa", func() {
 		logger = logr.Discard()
 		reconciler = ScaledObjectReconciler{
 			Client:       client,
-			scaleHandler: scaleHandler,
+			ScaleHandler: scaleHandler,
 		}
 	})
 

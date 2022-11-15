@@ -41,6 +41,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -137,13 +138,21 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
-	stopCh := make(chan struct{})
 
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+	// TODO make the address configurable
+	grpcServerAddr := "keda-operator.keda.svc.cluster.local:9666"
+	logger.Info("Connecting Metrics Service gRPC client to the server", "address", grpcServerAddr)
+	grpcClient, err := metricsservice.NewGrpcClient(grpcServerAddr)
+	if err != nil {
+		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", grpcServerAddr)
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
+	stopCh := make(chan struct{})
+	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+		return nil, nil, err
+	}
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
 func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
