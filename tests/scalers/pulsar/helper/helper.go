@@ -246,11 +246,19 @@ spec:
       - name: pulsar-producer
         image: apachepulsar/pulsar:{{.ApachePulsarVersion}}
         imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: auth-data
+          mountPath: "/pulsar/auth"
+          readOnly: true
         command:
         - sh
         - -c
-        args: ["bin/pulsar-perf produce --admin-url http://{{.TestName}}.{{.TestName}}:8080 --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --num-messages {{.MessageCount}} {{ if .NumPartitions }} --partitions {{.NumPartitions}} {{ end }} persistent://public/default/keda"]
+        args: ["bin/pulsar-perf produce --admin-url http://{{.TestName}}.{{.TestName}}:8080 --service-url pulsar://{{.TestName}}.{{.TestName}}:6650 --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken --auth-params file:///pulsar/auth/token.jwt --num-messages {{.MessageCount}} {{ if .NumPartitions }} --partitions {{.NumPartitions}} {{ end }} --batch-max-messages 1 persistent://public/default/keda"]
       restartPolicy: Never
+      volumes:
+      - name: auth-data
+        secret:
+          secretName: {{.TestName}}
   backoffLimit: 4
 `
 
