@@ -68,11 +68,13 @@ func main() {
 	var probeAddr string
 	var adapterClientRequestQPS float32
 	var adapterClientRequestBurst int
+	var disableCompression bool
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	pflag.BoolVar(&disableCompression, "disable-compression", false, "Disable response compression for k8s restAPI. ")
 	pflag.Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	opts := zap.Options{}
@@ -110,6 +112,7 @@ func main() {
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
+	cfg.DisableCompression = disableCompression
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
