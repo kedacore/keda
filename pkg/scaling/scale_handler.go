@@ -86,7 +86,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
 
 	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
@@ -123,7 +123,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 	result, ok := h.scaleLoopContexts.Load(key)
 	if ok {
 		cancel, ok := result.(context.CancelFunc)
@@ -170,7 +170,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 }
 
 func (h *scaleHandler) GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
-	key := kedav1alpha1.GenerateIdenitifier("ScaledObject", scaledObjectName, scaledObjectNamespace)
+	key := kedav1alpha1.GenerateIdentifier("ScaledObject", scaledObjectNamespace, scaledObjectName)
 
 	h.lock.RLock()
 	if cache, ok := h.scalerCaches[key]; ok {
@@ -225,7 +225,7 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 		return nil, err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 
 	h.lock.RLock()
 	if cache, ok := h.scalerCaches[key]; ok && cache.Generation == withTriggers.Generation {
@@ -275,12 +275,12 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 
 	h.lock.Lock()
 	defer h.lock.Unlock()
-
 	if cache, ok := h.scalerCaches[key]; ok {
+		h.logger.V(1).WithValues("key", key).Info("Removing entry from ScalersCache")
 		cache.Close(ctx)
 		delete(h.scalerCaches, key)
 	}
@@ -357,6 +357,9 @@ func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, cache *
 	// let's check metrics for all scalers in a ScaledObject
 	scalerError := false
 	scalers, scalerConfigs := cache.GetScalers()
+
+	h.logger.V(1).WithValues("name", scaledObject.Name, "namespace", scaledObject.Namespace, "metricName", metricName, "scalers", scalers).Info("Getting metric value")
+
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
 		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
 		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)

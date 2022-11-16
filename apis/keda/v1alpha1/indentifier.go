@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// GenerateIdenitifier returns identifier for the object in form "kind.namespace.name"
-func GenerateIdenitifier(kind, name, namespace string) string {
+// GenerateIdentifier returns identifier for the object in form "kind.namespace.name" (lowercase)
+func GenerateIdentifier(kind, namespace, name string) string {
 	return strings.ToLower(fmt.Sprintf("%s.%s.%s", kind, namespace, name))
 }

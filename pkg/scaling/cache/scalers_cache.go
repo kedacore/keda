@@ -180,6 +180,7 @@ func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1a
 	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
 }
 
+// TODO this is probably not needed, revisit whole package
 func (c *ScalersCache) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	var metrics []external_metrics.ExternalMetricValue
 	for i, s := range c.Scalers {
@@ -246,7 +247,9 @@ type scalerMetrics struct {
 	isActive    bool
 }
 
+// TODO needs refactor
 func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
+	// TODO this loop should be probably done similar way the ScaledObject loop is done
 	var scalersMetrics []scalerMetrics
 	for i, s := range c.Scalers {
 		var queueLength float64
@@ -282,6 +285,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 		targetAverageValue = getTargetAverageValue(metricSpecs)
 
+		// TODO this should probably be `cache.GetMetricsForScaler(ctx, scalerIndex, metricName)`
 		metrics, err := s.Scaler.GetMetrics(ctx, metricSpecs[0].External.Metric.Name)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics, but continue", "Error", err)
