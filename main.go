@@ -210,20 +210,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr)
+	if err := mgr.Add(&grpcServer); err != nil {
+		setupLog.Error(err, "unable to set up Metrics Service gRPC server")
+		os.Exit(1)
+	}
+
 	setupLog.Info("Starting manager")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
 	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
 	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	setupLog.Info(fmt.Sprintf("Running on Kubernetes %s", kubeVersion.PrettyVersion), "version", kubeVersion.Version)
-
-	go func() {
-		setupLog.Info("Starting Metrics Service gRPC Server", "address", metricsServiceAddr)
-		if err := metricsservice.StartServer(&scaledHandler, metricsServiceAddr); err != nil {
-			setupLog.Error(err, "unable to start Metrics Service gRPC server")
-			os.Exit(1)
-		}
-	}()
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
