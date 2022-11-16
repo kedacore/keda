@@ -45,8 +45,8 @@ type KedaProvider struct {
 	externalMetricsInfo     *[]provider.ExternalMetricInfo
 	externalMetricsInfoLock *sync.RWMutex
 
-	grpcClient  metricsservice.GrpcClient
-	grpcEnabled bool
+	grpcClient            metricsservice.GrpcClient
+	useMetricsServiceGrpc bool
 }
 
 var (
@@ -55,7 +55,7 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
 	provider := &KedaProvider{
 		client:                  client,
 		scaleHandler:            scaleHandler,
@@ -64,7 +64,7 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler sc
 		externalMetricsInfo:     externalMetricsInfo,
 		externalMetricsInfoLock: externalMetricsInfoLock,
 		grpcClient:              grpcClient,
-		grpcEnabled:             true,
+		useMetricsServiceGrpc:   useMetricsServiceGrpc,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
@@ -86,7 +86,8 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return nil, err
 	}
 
-	if p.grpcEnabled {
+	// Get Metrics from Metrics Service gRPC Server
+	if p.useMetricsServiceGrpc {
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
 		scaledObjectName := selector.Get("scaledobject.keda.sh/name")
 
@@ -95,7 +96,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return metrics, err
 	}
 
-	// get the scaled objects matching namespace and labels
+	// Get Metrics by querying directly the external service
 	scaledObjects := &kedav1alpha1.ScaledObjectList{}
 	opts := []client.ListOption{
 		client.InNamespace(namespace),

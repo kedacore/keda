@@ -99,7 +99,8 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 	go func() {
 		log.Info("Starting Metrics Service gRPC Server", "address", s.address)
 		if err := s.startServer(); err != nil {
-			log.Error(err, "unable to start Metrics Service gRPC server", "address", s.address)
+			err := fmt.Errorf("unable to start Metrics Service gRPC server on address %s, error: %w", s.address, err)
+			log.Error(err, "error starting Metrics Service gRPC server")
 			errChan <- err
 		}
 	}()
