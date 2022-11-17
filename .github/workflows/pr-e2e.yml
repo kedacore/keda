@@ -185,3 +185,9 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-logs
+          path: '${{ github.workspace }}/tests/**/*.log'
