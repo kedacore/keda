@@ -472,8 +472,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	testActivation(t, kc, data)
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -492,8 +492,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, edgeDeploymentName, testNamespace, minReplicaCount, 5)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 
 	data.JobName = "scaleup"
 	data.WithVersion = false
@@ -507,8 +507,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %s after 1 minute", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %s after 3 minutes", minReplicaCount)

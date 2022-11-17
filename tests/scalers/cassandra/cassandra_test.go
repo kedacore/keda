@@ -238,8 +238,8 @@ func TestCassandraScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc)
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -288,8 +288,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 	result, err := getCassandraInsertCmd(insertDataTemplateB)
 	assert.NoErrorf(t, err, "cannot parse log - %s", err)
 	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, result))
@@ -299,8 +299,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s %s.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, deploymentName, testNamespace, truncateData))
 	t.Logf("Output: %s, Error: %s", out, errOut)

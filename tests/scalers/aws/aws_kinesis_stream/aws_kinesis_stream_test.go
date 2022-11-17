@@ -150,8 +150,8 @@ func TestKiensisScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, kinesisClient)
-	testScaleUp(t, kc, kinesisClient)
-	testScaleDown(t, kc, kinesisClient)
+	testScaleOut(t, kc, kinesisClient)
+	testScaleIn(t, kc, kinesisClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -164,15 +164,15 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kines
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+	t.Log("--- testing scale out ---")
 	updateShardCount(t, kinesisClient, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+	t.Log("--- testing scale in ---")
 	updateShardCount(t, kinesisClient, 3)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),

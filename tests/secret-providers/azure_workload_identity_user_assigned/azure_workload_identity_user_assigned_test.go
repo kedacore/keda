@@ -134,9 +134,9 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUpWithIncorrectIdentity(t, kc, client)
-	testScaleUpWithCorrectIdentity(t, kc, data)
-	testScaleDown(t, kc, adminClient)
+	testScaleOutWithIncorrectIdentity(t, kc, client)
+	testScaleOutWithCorrectIdentity(t, kc, data)
+	testScaleIn(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -177,8 +177,8 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
-	t.Log("--- testing scale up with incorrect identity ---")
+func testScaleOutWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
+	t.Log("--- testing scale out with incorrect identity ---")
 	sender, err := client.NewSender(queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
 	for i := 0; i < 5; i++ {
@@ -188,13 +188,13 @@ func testScaleUpWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, cl
 		}, nil)
 	}
 
-	// scale up should fail as we are using the incorrect identity
+	// scale out should fail as we are using the incorrect identity
 	assert.True(t, WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 30, 1) == 0,
 		"replica count should be 0 after 1 minute")
 }
 
-func testScaleUpWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up with correct identity ---")
+func testScaleOutWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out with correct identity ---")
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlDeleteWithTemplate(t, data, "triggerAuthTemplate", triggerAuthTemplate)
 
@@ -205,8 +205,8 @@ func testScaleUpWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
+	t.Log("--- testing scale in ---")
 
 	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
 	assert.NoErrorf(t, err, "cannot delete the queue - %s", err)

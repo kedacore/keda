@@ -166,8 +166,8 @@ func TestScaler(t *testing.T) {
 	if createBucket(t) == nil {
 		// test scaling
 		testActivation(t, kc)
-		testScaleUp(t, kc)
-		testScaleDown(t, kc)
+		testScaleOut(t, kc)
+		testScaleIn(t, kc)
 	}
 
 	// cleanup
@@ -240,26 +240,26 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 
 	uploadFiles(t, "scaling", 30-activationThreshold)
 
-	t.Log("--- waiting for replicas to scale up ---")
+	t.Log("--- waiting for replicas to scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
 		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	// Delete files so we are still left with activationThreshold number of files which should be enough
-	// to scale down to 0.
+	// to scale in to 0.
 	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
-	t.Log("--- waiting for replicas to scale down to zero")
+	t.Log("--- waiting for replicas to scale in to zero")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after 5 minutes")
 }

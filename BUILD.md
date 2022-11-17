@@ -91,7 +91,7 @@ To have fully operational KEDA we need to deploy Metrics Server first.
    ```bash
    make deploy
    ```
-2. Scale down `keda-operator` Deployment
+2. Scale in `keda-operator` Deployment
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
@@ -148,7 +148,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
    ```bash
    make deploy
    ```
-3. Scale down `keda-operator` Deployment
+3. Scale in `keda-operator` Deployment
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```

@@ -237,8 +237,8 @@ func TestMySQLScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, data)
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -277,20 +277,20 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 	t.Log("--- applying job ---")
 	data.ItemsToWrite = 4000
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 	// Check if deployment scale to 2 (the max)
 	maxReplicaCount := 2
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 1),
-		"Replica count should scale up in next 2 minutes")
+		"Replica count should scale out in next 2 minutes")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
-	// Check if deployment scale down to 0 after 5 minutes
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
+	// Check if deployment scale in to 0 after 5 minutes
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
 		"Replica count should be 0 after 5 minutes")
 }

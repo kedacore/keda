@@ -167,8 +167,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, client)
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, client)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc, client)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -182,8 +182,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.T
 	close(stopCh)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
+	t.Log("--- testing scale out ---")
 	stopCh := make(chan struct{})
 	go setMetricValue(client, 100, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
@@ -191,8 +191,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client appinsights.Tele
 	close(stopCh)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
+	t.Log("--- testing scale in ---")
 	stopCh := make(chan struct{})
 	go setMetricValue(client, 0, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
