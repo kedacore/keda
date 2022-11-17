@@ -115,8 +115,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc)
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -127,7 +127,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, sutDeploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
@@ -139,7 +139,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 10 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),

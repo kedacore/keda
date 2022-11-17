@@ -165,7 +165,7 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, mongoPod)
-	testScaleUp(t, kc, mongoPod)
+	testScaleOut(t, kc, mongoPod)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -238,8 +238,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 		"job count should be 0 after 1 minute")
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
+	t.Log("--- testing scale out ---")
 
 	insertCmd := fmt.Sprintf(`db.%s.insert([
 		{"region":"eu-1","state":"running","plan":"planA","goods":"strawberry"},

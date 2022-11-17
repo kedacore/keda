@@ -212,7 +212,7 @@ func getTemplateData() (templateData, []Template) {
 }
 
 func testScale(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client, data templateData) {
-	t.Log("--- testing scale up ---")
+	t.Log("--- testing scale out ---")
 
 	// send messages to subscription 1
 	addMessages(t, client, fmt.Sprintf("%s-1", subscriptionPrefix), 2)

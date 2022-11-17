@@ -198,8 +198,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, data)
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -213,8 +213,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 	data.MetricValue = 50
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
@@ -222,8 +222,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale in ---")
 	data.MetricValue = 0
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 

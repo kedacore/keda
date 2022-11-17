@@ -127,16 +127,16 @@ func TestCpuScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
 
-	t.Log("--- testing scale up ---")
+	t.Log("--- testing scale out ---")
 	t.Log("--- applying job ---")
 
 	templateTriggerJob := []Template{{Name: "triggerJobTemplate", Config: triggerJob}}
 	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
-		"Replica count should scale up in next 3 minutes")
+		"Replica count should scale out in next 3 minutes")
 
-	t.Log("--- testing scale down ---")
+	t.Log("--- testing scale in ---")
 	t.Log("--- deleting job ---")
 
 	KubectlDeleteMultipleWithTemplate(t, data, templateTriggerJob)

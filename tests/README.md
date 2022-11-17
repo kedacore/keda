@@ -151,7 +151,7 @@ func TestScaler(t *testing.T) {
 
     CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-    testScaleUp(t)
+    testScaleOut(t)
 
     // Ensure that this gets run. Using defer is necessary
     DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -178,9 +178,9 @@ func getTemplateData() (templateData, []Template) {
     }
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-    t.Log("--- testing scale up ---")
-    // Use Go Redis Library to add stuff to redis to trigger scale up.
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+    t.Log("--- testing scale out ---")
+    // Use Go Redis Library to add stuff to redis to trigger scale out.
     ...
     ...
     // Sleep / poll for replica count using helper method.
