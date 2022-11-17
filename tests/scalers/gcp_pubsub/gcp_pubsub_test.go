@@ -187,8 +187,8 @@ func TestScaler(t *testing.T) {
 		if createPubsub(t) == nil {
 			// test scaling
 			testActivation(t, kc)
-			testScaleUp(t, kc)
-			testScaleDown(t, kc)
+			testScaleOut(t, kc)
+			testScaleIn(t, kc)
 
 			// cleanup
 			t.Log("--- cleanup ---")
@@ -275,23 +275,23 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 
 	publishMessages(t, 20-activationThreshold)
 
-	t.Log("--- waiting for replicas to scale up ---")
+	t.Log("--- waiting for replicas to scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
 		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=-P1S", gsPrefix, subscriptionID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot reset subscription position - %s", err)
 
-	t.Log("--- waiting for replicas to scale down to zero ---")
+	t.Log("--- waiting for replicas to scale in to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
 		"replica count should be 0 after five minute")
 }

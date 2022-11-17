@@ -143,8 +143,8 @@ func TestCloudWatchScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, cloudwatchClient)
-	testScaleUp(t, kc, cloudwatchClient)
-	testScaleDown(t, kc, cloudwatchClient)
+	testScaleOut(t, kc, cloudwatchClient)
+	testScaleIn(t, kc, cloudwatchClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -159,16 +159,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cl
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+	t.Log("--- testing scale out ---")
 	setCloudWatchCustomMetric(t, cloudwatchClient, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+	t.Log("--- testing scale in ---")
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
 

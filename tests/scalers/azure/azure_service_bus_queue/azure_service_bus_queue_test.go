@@ -135,8 +135,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, client)
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, adminClient)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -185,16 +185,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client *azservicebus
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
+	t.Log("--- testing scale out ---")
 	addMessages(t, client, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
+	t.Log("--- testing scale in ---")
 
 	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
 	assert.NoErrorf(t, err, "cannot delete the queue - %s", err)
