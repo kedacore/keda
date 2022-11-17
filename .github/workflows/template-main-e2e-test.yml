@@ -37,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: e2e-test-logs
-          path: '*.log'
+          path: '${{ github.workspace }}/tests/**/*.log'
