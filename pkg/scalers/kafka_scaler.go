@@ -29,6 +29,7 @@ type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
 	topic                  string
+	partitionLimitiation   []int32
 	lagThreshold           int64
 	activationLagThreshold int64
 	offsetResetPolicy      offsetResetPolicy
@@ -206,6 +207,21 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
+	meta.partitionLimitiation = nil
+	if config.TriggerMetadata["partitionLimitiation"] != "" {
+		if meta.topic == "" {
+			logger.V(1).Info("no specific topic set, ignoring partitionLimitiation setting")
+		} else {
+			pattern := config.TriggerMetadata["partitionLimitiation"]
+			parsed, err := kedautil.ParseInt32List(pattern)
+			if err != nil {
+				return meta, fmt.Errorf("error parsing in partitionLimitiation '%s': %s", pattern, err)
+			}
+			meta.partitionLimitiation = parsed
+			logger.V(0).Info(fmt.Sprintf("partition limit active '%s'", pattern))
+		}
+	}
+
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
 	if config.TriggerMetadata["offsetResetPolicy"] != "" {
@@ -379,13 +395,31 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 			s.logger.Error(errMsg, "")
 		}
 		partitionMetadata := topicMetadata.Partitions
-		partitions := make([]int32, len(partitionMetadata))
-		for i, p := range partitionMetadata {
-			partitions[i] = p.ID
+		var partitions []int32
+		for _, p := range partitionMetadata {
+			if s.isActivePartition(p.ID) {
+				partitions = append(partitions, p.ID)
+			}
 		}
+		if len(partitions) == 0 {
+			return nil, fmt.Errorf("expected at least one active partition within the topic '%s'", topicMetadata.Name)
+		}
+
 		topicPartitions[topicMetadata.Name] = partitions
 	}
 	return topicPartitions, nil
+}
+
+func (s *kafkaScaler) isActivePartition(pID int32) bool {
+	if s.metadata.partitionLimitiation == nil {
+		return true
+	}
+	for _, _pID := range s.metadata.partitionLimitiation {
+		if pID == _pID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
