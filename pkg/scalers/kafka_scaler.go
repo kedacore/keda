@@ -29,7 +29,7 @@ type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
 	topic                  string
-	partitionLimitiation   []int32
+	partitionLimitation    []int32
 	lagThreshold           int64
 	activationLagThreshold int64
 	offsetResetPolicy      offsetResetPolicy
@@ -207,17 +207,17 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
-	meta.partitionLimitiation = nil
-	if config.TriggerMetadata["partitionLimitiation"] != "" {
+	meta.partitionLimitation = nil
+	if config.TriggerMetadata["partitionLimitation"] != "" {
 		if meta.topic == "" {
-			logger.V(1).Info("no specific topic set, ignoring partitionLimitiation setting")
+			logger.V(1).Info("no specific topic set, ignoring partitionLimitation setting")
 		} else {
-			pattern := config.TriggerMetadata["partitionLimitiation"]
+			pattern := config.TriggerMetadata["partitionLimitation"]
 			parsed, err := kedautil.ParseInt32List(pattern)
 			if err != nil {
-				return meta, fmt.Errorf("error parsing in partitionLimitiation '%s': %s", pattern, err)
+				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %s", pattern, err)
 			}
-			meta.partitionLimitiation = parsed
+			meta.partitionLimitation = parsed
 			logger.V(0).Info(fmt.Sprintf("partition limit active '%s'", pattern))
 		}
 	}
@@ -411,10 +411,10 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 }
 
 func (s *kafkaScaler) isActivePartition(pID int32) bool {
-	if s.metadata.partitionLimitiation == nil {
+	if s.metadata.partitionLimitation == nil {
 		return true
 	}
-	for _, _pID := range s.metadata.partitionLimitiation {
+	for _, _pID := range s.metadata.partitionLimitation {
 		if pID == _pID {
 			return true
 		}

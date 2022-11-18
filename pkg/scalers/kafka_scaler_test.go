@@ -11,15 +11,15 @@ import (
 )
 
 type parseKafkaMetadataTestData struct {
-	metadata             map[string]string
-	isError              bool
-	numBrokers           int
-	brokers              []string
-	group                string
-	topic                string
-	partitionLimitiation []int32
-	offsetResetPolicy    offsetResetPolicy
-	allowIdleConsumers   bool
+	metadata            map[string]string
+	isError             bool
+	numBrokers          int
+	brokers             []string
+	group               string
+	topic               string
+	partitionLimitation []int32
+	offsetResetPolicy   offsetResetPolicy
+	allowIdleConsumers  bool
 }
 
 type parseKafkaAuthParamsTestData struct {
@@ -59,8 +59,8 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", nil, "latest", false},
 	// success, no topic
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false},
-	// success, ignore partitionLimitiation if no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitiation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false},
+	// success, ignore partitionLimitation if no topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
 	// failure, lagThreshold is negative value
@@ -71,14 +71,14 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
 	// success
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
-	// success, partitionLimitiation as list
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false},
-	// success, partitionLimitiation as range
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false},
-	// success, partitionLimitiation mixed list + ranges
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false},
-	// failure, partitionLimitiation wrong data type
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "a,b,c,d"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
+	// success, partitionLimitation as list
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false},
+	// success, partitionLimitation as range
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false},
+	// success, partitionLimitation mixed list + ranges
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false},
+	// failure, partitionLimitation wrong data type
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "a,b,c,d"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
 	// success, more brokers
 	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false},
 	// success, offsetResetPolicy policy latest
@@ -189,8 +189,8 @@ func TestGetBrokers(t *testing.T) {
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
 		}
-		if !reflect.DeepEqual(testData.partitionLimitiation, meta.partitionLimitiation) {
-			t.Errorf("Expected %v but got %v\n", testData.partitionLimitiation, meta.partitionLimitiation)
+		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
+			t.Errorf("Expected %v but got %v\n", testData.partitionLimitation, meta.partitionLimitation)
 		}
 		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
@@ -216,8 +216,8 @@ func TestGetBrokers(t *testing.T) {
 		if meta.topic != testData.topic {
 			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
 		}
-		if !reflect.DeepEqual(testData.partitionLimitiation, meta.partitionLimitiation) {
-			t.Errorf("Expected %v but got %v\n", testData.partitionLimitiation, meta.partitionLimitiation)
+		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
+			t.Errorf("Expected %v but got %v\n", testData.partitionLimitation, meta.partitionLimitation)
 		}
 		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
@@ -299,8 +299,8 @@ func TestGetTopicPartitions(t *testing.T) {
 		partitionIds []int32
 		exp          map[string][]int32
 	}{
-		{"success_all_partitions", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "1,2"}, []int32{1, 2}, map[string][]int32{"my-topic": {1, 2}}},
-		{"success_partial_partitions", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitiation": "1,2,3"}, []int32{1, 2, 3, 4, 5, 6}, map[string][]int32{"my-topic": {1, 2, 3}}},
+		{"success_all_partitions", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2"}, []int32{1, 2}, map[string][]int32{"my-topic": {1, 2}}},
+		{"success_partial_partitions", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2,3"}, []int32{1, 2, 3, 4, 5, 6}, map[string][]int32{"my-topic": {1, 2, 3}}},
 	}
 
 	for _, tt := range testData {
