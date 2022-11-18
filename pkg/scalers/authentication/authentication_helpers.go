@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	authModesKey = "authModes"
+	AuthModesKey = "authModes"
 )
 
 func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMeta, err error) {
 	out = &AuthMeta{}
 
-	authModes, ok := triggerMetadata[authModesKey]
+	authModes, ok := triggerMetadata[AuthModesKey]
 	// no authMode specified
 	if !ok {
 		return nil, nil
@@ -81,14 +81,22 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 	return out, err
 }
 
+func GetBearerToken(auth *AuthMeta) string {
+	return fmt.Sprintf("Bearer %s", auth.BearerToken)
+}
+
+func NewTLSConfig(auth *AuthMeta) (*tls.Config, error) {
+	return kedautil.NewTLSConfig(
+		auth.Cert,
+		auth.Key,
+		auth.CA,
+	)
+}
+
 func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf ...*HTTPTransport) (rt http.RoundTripper, err error) {
 	tlsConfig := &tls.Config{InsecureSkipVerify: false}
 	if auth != nil && (auth.CA != "" || auth.EnableTLS) {
-		tlsConfig, err = kedautil.NewTLSConfig(
-			auth.Cert,
-			auth.Key,
-			auth.CA,
-		)
+		tlsConfig, err = NewTLSConfig(auth)
 		if err != nil || tlsConfig == nil {
 			return nil, fmt.Errorf("error creating the TLS config: %s", err)
 		}

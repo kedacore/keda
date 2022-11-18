@@ -70,7 +70,9 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	parsedMetadata, err := parseAzureEventHubMetadata(config)
+	logger := InitializeLogger(config, "azure_eventhub_scaler")
+
+	parsedMetadata, err := parseAzureEventHubMetadata(logger, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
 	}
@@ -85,21 +87,36 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 		metadata:   parsedMetadata,
 		client:     hub,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
-		logger:     InitializeLogger(config, "azure_eventhub_scaler"),
+		logger:     logger,
 	}, nil
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error) {
+func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*eventHubMetadata, error) {
 	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
+
+	err := parseCommonAzureEventHubMetadata(config, &meta)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseAzureEventHubAuthenticationMetadata(logger, config, &meta)
+	if err != nil {
+		return nil, err
+	}
+
+	return &meta, nil
+}
+
+func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetadata) error {
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
 		}
 
 		meta.threshold = threshold
@@ -109,7 +126,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	if val, ok := config.TriggerMetadata[activationThresholdMetricName]; ok {
 		activationThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing azure eventhub metadata %s: %s", activationThresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", activationThresholdMetricName, err)
 		}
 
 		meta.activationThreshold = activationThreshold
@@ -119,10 +136,6 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		meta.eventHubInfo.StorageConnection = config.AuthParams["storageConnection"]
 	} else if config.TriggerMetadata["storageConnectionFromEnv"] != "" {
 		meta.eventHubInfo.StorageConnection = config.ResolvedEnv[config.TriggerMetadata["storageConnectionFromEnv"]]
-	}
-
-	if len(meta.eventHubInfo.StorageConnection) == 0 {
-		return nil, fmt.Errorf("no storage connection string given")
 	}
 
 	meta.eventHubInfo.EventHubConsumerGroup = defaultEventHubConsumerGroup
@@ -146,7 +159,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 			if resourceURL, ok := config.TriggerMetadata["eventHubResourceURL"]; ok {
 				meta.eventHubInfo.EventHubResourceURL = resourceURL
 			} else {
-				return nil, fmt.Errorf("eventHubResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+				return fmt.Errorf("eventHubResourceURL must be provided for %s cloud type", azure.PrivateCloud)
 			}
 		}
 	}
@@ -156,19 +169,30 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 	}
 	serviceBusEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, serviceBusEndpointSuffixProvider)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	meta.eventHubInfo.ServiceBusEndpointSuffix = serviceBusEndpointSuffix
 
 	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	meta.eventHubInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
+	meta.scalerIndex = config.ScalerIndex
+
+	return nil
+}
+
+func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *ScalerConfig, meta *eventHubMetadata) error {
 	meta.eventHubInfo.PodIdentity = config.PodIdentity
+
 	switch config.PodIdentity.Provider {
 	case "", v1alpha1.PodIdentityProviderNone:
+		if len(meta.eventHubInfo.StorageConnection) == 0 {
+			return fmt.Errorf("no storage connection string given")
+		}
+
 		if config.AuthParams["connection"] != "" {
 			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
 		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
@@ -176,9 +200,31 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		}
 
 		if len(meta.eventHubInfo.EventHubConnection) == 0 {
-			return nil, fmt.Errorf("no event hub connection string given")
+			return fmt.Errorf("no event hub connection string given")
 		}
 	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
+		meta.eventHubInfo.StorageAccountName = ""
+		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
+			meta.eventHubInfo.StorageAccountName = val
+		} else {
+			logger.Info("no 'storageAccountName' provided to enable identity based authentication to Blob Storage. Attempting to use connection string instead")
+		}
+
+		if len(meta.eventHubInfo.StorageAccountName) != 0 {
+			storageEndpointSuffixProvider := func(env az.Environment) (string, error) {
+				return env.StorageEndpointSuffix, nil
+			}
+			storageEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultStorageSuffixKey, storageEndpointSuffixProvider)
+			if err != nil {
+				return err
+			}
+			meta.eventHubInfo.BlobStorageEndpoint = "blob." + storageEndpointSuffix
+		}
+
+		if len(meta.eventHubInfo.StorageConnection) == 0 && len(meta.eventHubInfo.StorageAccountName) == 0 {
+			return fmt.Errorf("no storage connection string or storage account name for pod identity based authentication given")
+		}
+
 		if config.TriggerMetadata["eventHubNamespace"] != "" {
 			meta.eventHubInfo.Namespace = config.TriggerMetadata["eventHubNamespace"]
 		} else if config.TriggerMetadata["eventHubNamespaceFromEnv"] != "" {
@@ -186,7 +232,7 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		}
 
 		if len(meta.eventHubInfo.Namespace) == 0 {
-			return nil, fmt.Errorf("no event hub namespace string given")
+			return fmt.Errorf("no event hub namespace string given")
 		}
 
 		if config.TriggerMetadata["eventHubName"] != "" {
@@ -196,13 +242,11 @@ func parseAzureEventHubMetadata(config *ScalerConfig) (*eventHubMetadata, error)
 		}
 
 		if len(meta.eventHubInfo.EventHubName) == 0 {
-			return nil, fmt.Errorf("no event hub name string given")
+			return fmt.Errorf("no event hub name string given")
 		}
 	}
 
-	meta.scalerIndex = config.ScalerIndex
-
-	return &meta, nil
+	return nil
 }
 
 // GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition

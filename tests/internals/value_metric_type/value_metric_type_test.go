@@ -148,7 +148,7 @@ func testScaleByAverageValue(t *testing.T, kc *kubernetes.Clientset, data templa
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// Metric Value = 8, DesiredAverageMetricValue = 2
-	// should scale down to 8/2 = 4 replicas, irrespective of current replicas
+	// should scale in to 8/2 = 4 replicas, irrespective of current replicas
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
 		"replica count should be 4 after 1 minute")
 

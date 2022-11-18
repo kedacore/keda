@@ -35,15 +35,15 @@ const (
 )
 
 var (
-	awsRegion            = os.Getenv("AWS_REGION")
-	awsAccessKey         = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretKey         = os.Getenv("AWS_SECRET_KEY")
+	awsRegion            = os.Getenv("TF_AWS_REGION")
+	awsAccessKey         = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretKey         = os.Getenv("TF_AWS_SECRET_KEY")
 	testNamespace        = fmt.Sprintf("%s-ns", testName)
 	secretName           = fmt.Sprintf("%s-secret", testName)
 	deploymentName       = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName      = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	tableName            = fmt.Sprintf("%s-table-%d", testName, GetRandomNumber())
+	tableName            = fmt.Sprintf("stream-identity-%d", GetRandomNumber())
 	shardCount           = 2 // default count
 	activationShardCount = 0 // default count
 )
@@ -152,8 +152,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, data)
-	testScaleUp(t, kc, data, shardCount)
-	testScaleDown(t, kc, data, shardCount)
+	testScaleOut(t, kc, data, shardCount)
+	testScaleIn(t, kc, data, shardCount)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -258,27 +258,27 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
-	t.Log("--- testing scale up ---")
-	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale up to 1
-	t.Log("replicas should scale up to 1")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
+	t.Log("--- testing scale out ---")
+	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale out to 1
+	t.Log("replicas should scale out to 1")
 	data.ShardCount = shardCount
 	data.ActivationShardCount = int64(activationShardCount)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"replica count should increase to 1")
 
-	// Deploy scalerObject with its shardCount = 1 and check if replicas scale up to 2 (maxReplicaCount)
-	t.Log("then, replicas should scale up to 2")
+	// Deploy scalerObject with its shardCount = 1 and check if replicas scale out to 2 (maxReplicaCount)
+	t.Log("then, replicas should scale out to 2")
 	data.ShardCount = 1
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"replica count should increase to 2")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
-	t.Log("--- testing scale down ---")
-	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale down to 1
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData, shardCount int64) {
+	t.Log("--- testing scale in ---")
+	// Deploy scalerObject with its target shardCount = the current dynamodb streams shard count and check if replicas scale in to 1
 	data.ShardCount = shardCount
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 330, 1),

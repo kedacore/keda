@@ -78,6 +78,9 @@ type ScalerConfig struct {
 	// The timeout to be used on all HTTP requests from the controller
 	GlobalHTTPTimeout time.Duration
 
+	// Name of the trigger
+	TriggerName string
+
 	// TriggerMetadata
 	TriggerMetadata map[string]string
 

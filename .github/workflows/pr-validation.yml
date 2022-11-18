@@ -5,7 +5,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
       matrix:
         include:
@@ -33,13 +33,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v3.0.10
+        uses: actions/cache@v3.0.11
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v3.0.10
+        uses: actions/cache@v3.0.11
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -57,7 +57,7 @@ jobs:
         run: make test
 
       - name: Create test Summary
-        uses: test-summary/action@v1
+        uses: test-summary/action@v2
         with:
           paths: "report.xml"
         if: always()
@@ -65,7 +65,7 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:
@@ -96,7 +96,7 @@ jobs:
   validate-build-tools:
     name: Validate build-tools - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:
@@ -133,7 +133,7 @@ jobs:
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.18.6
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
        matrix:
         include:
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.2.0
+      - uses: actions/setup-python@v4.3.0
         with:
           python-version: 3.x
       - uses: actions/setup-go@v3
@@ -176,7 +176,7 @@ jobs:
   codeScanning:
     name: Code Scanning
     runs-on: ubuntu-latest
-
+    container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
       fail-fast: false
       matrix:
@@ -190,6 +190,9 @@ jobs:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.
         fetch-depth: 2
+
+    - name: Register workspace path
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     # If this run was triggered by a pull request event, then checkout
     # the head of the pull request instead of the merge commit.

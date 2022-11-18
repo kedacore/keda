@@ -105,8 +105,9 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return scalers.NewPrometheusScaler(config)
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							scaler, err := scalers.NewPrometheusScaler(config)
+							return scaler, config, err
 						},
 					})
 					for _, metricSpec := range s.GetMetricSpecForScaling(context.Background()) {
@@ -161,8 +162,8 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return s, nil
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							return s, config, nil
 						},
 					}},
 				}
@@ -205,8 +206,8 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return s, nil
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							return s, config, nil
 						},
 					})
 				}
@@ -644,6 +645,62 @@ var _ = Describe("ScaledObjectController", func() {
 								"timezone":        "UTC",
 								"start":           "0 * * * *",
 								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
+		})
+
+		It("doesn't allow non-unique triggerName in ScaledObject", func() {
+			deploymentName := "non-unique-triggername"
+			soName := "so-" + deploymentName
+
+			triggerName := "non-unique"
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject with two triggers
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					IdleReplicaCount: &ten,
+					MinReplicaCount:  &five,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Name: triggerName,
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+						{
+							Type: "cron",
+							Name: triggerName,
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "10 * * * *",
+								"end":             "11 * * * *",
 								"desiredReplicas": "1",
 							},
 						},

@@ -313,7 +313,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func testScaleFloat(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up float---")
+	t.Log("--- testing scale out float---")
 	data := runWriteJob(t, kc)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplateFloat", scaledObjectTemplateFloat)
@@ -322,7 +322,7 @@ func testScaleFloat(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func testScaleInt(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up with int ---")
+	t.Log("--- testing scale out with int ---")
 	data := runWriteJob(t, kc)
 	KubectlApplyWithTemplate(t, data, "basicDeploymentIntTemplate", basicDeploymentIntTemplate)
 

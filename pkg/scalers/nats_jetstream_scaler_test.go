@@ -3,7 +3,10 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type parseNATSJetStreamMetadataTestData struct {
@@ -30,13 +33,15 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	// Missing nats server monitoring endpoint, should fail
 	{map[string]string{"account": "$G", "stream": "mystream"}, map[string]string{}, true},
 	// All good.
-	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{}, false},
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "true"}, map[string]string{}, false},
 	// All good + activationLagThreshold
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "activationLagThreshold": "10"}, map[string]string{}, false},
 	// natsServerMonitoringEndpoint is defined in authParams
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
 	// Missing nats server monitoring endpoint , should fail
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": ""}, true},
+	// Misconfigured https, should fail
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "error"}, map[string]string{}, true},
 }
 
 var natsJetStreamMetricIdentifiers = []natsJetStreamMetricIdentifier{
@@ -50,7 +55,7 @@ func TestNATSJetStreamParseMetadata(t *testing.T) {
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Error("Expected error but got success" + testData.authParams["natsServerMonitoringEndpoint"] + "foo")
 		}
 	}
 }
@@ -74,4 +79,16 @@ func TestNATSJetStreamGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
+}
+
+func TestGetNATSJetStreamEndpointHTTPS(t *testing.T) {
+	endpoint := getNATSJetStreamEndpoint(true, "nats.nats:8222", "$G")
+
+	assert.True(t, strings.HasPrefix(endpoint, "https:"))
+}
+
+func TestGetNATSJetStreamEndpointHTTP(t *testing.T) {
+	endpoint := getNATSJetStreamEndpoint(false, "nats.nats:8222", "$G")
+
+	assert.True(t, strings.HasPrefix(endpoint, "http:"))
 }

@@ -33,12 +33,11 @@ const (
 )
 
 var (
-	random                    = GetRandomNumber()
-	eventHubName              = fmt.Sprintf("keda-eh-%d", random)
-	namespaceConnectionString = os.Getenv("AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING")
+	eventHubName              = fmt.Sprintf("keda-eh-%d", GetRandomNumber())
+	namespaceConnectionString = os.Getenv("TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING")
 	eventhubConnectionString  = fmt.Sprintf("%s;EntityPath=%s", namespaceConnectionString, eventHubName)
-	storageConnectionString   = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
-	checkpointContainerName   = fmt.Sprintf("keda-checkpoint-%d", random)
+	storageConnectionString   = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
+	checkpointContainerName   = fmt.Sprintf("go-checkpoint-%d", GetRandomNumber())
 	testNamespace             = fmt.Sprintf("%s-ns", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
@@ -154,8 +153,8 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, namespaceConnectionString, "AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING env variable is required for azure eventhub test")
-	require.NotEmpty(t, storageConnectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure eventhub test")
+	require.NotEmpty(t, namespaceConnectionString, "TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING env variable is required for azure eventhub test")
+	require.NotEmpty(t, storageConnectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure eventhub test")
 
 	adminClient, client := createEventHub(t)
 	container := createContainer(t)
@@ -170,7 +169,7 @@ func TestScaler(t *testing.T) {
 	addEvents(t, client, 1)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
-	time.Sleep(time.Duration(10) * time.Second)
+	time.Sleep(time.Duration(60) * time.Second)
 	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
@@ -178,8 +177,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, client)
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -259,16 +258,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client *eventhub.Hub
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *eventhub.Hub) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *eventhub.Hub) {
+	t.Log("--- testing scale out ---")
 	addEvents(t, client, 8)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")

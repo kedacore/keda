@@ -28,16 +28,23 @@ const (
 	testAWSSQSBadDataQueueURL = "https://sqs.eu-west-1.amazonaws.com/account_id/BadData"
 )
 
+var testAWSSQSEmptyResolvedEnv = map[string]string{}
+
+var testAWSSQSResolvedEnv = map[string]string{
+	"QUEUE_URL": testAWSSQSProperQueueURL,
+}
+
 var testAWSSQSAuthentication = map[string]string{
 	"awsAccessKeyId":     testAWSSQSAccessKeyID,
 	"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 }
 
 type parseAWSSQSMetadataTestData struct {
-	metadata   map[string]string
-	authParams map[string]string
-	isError    bool
-	comment    string
+	metadata    map[string]string
+	authParams  map[string]string
+	resolvedEnv map[string]string
+	isError     bool
+	comment     string
 }
 
 type awsSQSMetricIdentifier struct {
@@ -74,6 +81,7 @@ func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.G
 var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 	{map[string]string{},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"metadata empty"},
 	{map[string]string{
@@ -81,13 +89,24 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1",
+		"awsEndpoint": "http://localhost:4566"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"properly formed queue and region with custom endpoint"},
 	{map[string]string{
 		"queueURL":    testAWSSQSImproperQueueURL1,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"improperly formed queue, missing queueName"},
 	{map[string]string{
@@ -95,6 +114,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"improperly formed queue, missing path"},
 	{map[string]string{
@@ -102,6 +122,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "1",
 		"awsRegion":   ""},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"properly formed queue, empty region"},
 	{map[string]string{
@@ -109,6 +130,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue, integer queueLength"},
 	{map[string]string{
@@ -116,6 +138,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "a",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue, invalid queueLength"},
 	{map[string]string{
@@ -124,6 +147,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"activationQueueLength": "1",
 		"awsRegion":             "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue, integer activationQueueLength"},
 	{map[string]string{
@@ -132,6 +156,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"activationQueueLength": "a",
 		"awsRegion":             "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue, invalid activationQueueLength"},
 	{map[string]string{
@@ -142,6 +167,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsAccessKeyId":     testAWSSQSAccessKeyID,
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"with AWS static credentials from TriggerAuthentication"},
 	{map[string]string{
@@ -153,6 +179,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"with AWS temporary credentials from TriggerAuthentication"},
 	{map[string]string{
@@ -163,6 +190,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsAccessKeyId":     "",
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"with AWS static credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
@@ -173,6 +201,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsAccessKeyId":     testAWSSQSAccessKeyID,
 			"awsSecretAccessKey": "",
 		},
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
@@ -184,6 +213,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"with AWS temporary credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
@@ -195,6 +225,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": "",
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		true,
 		"with AWS static credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
@@ -204,6 +235,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{
 			"awsRoleArn": testAWSSQSRoleArn,
 		},
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"with AWS Role from TriggerAuthentication"},
 	{map[string]string{
@@ -215,6 +247,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsAccessKeyId":     "",
 			"awsSecretAccessKey": "",
 		},
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"with AWS Role assigned on KEDA operator itself"},
 	{map[string]string{
@@ -222,6 +255,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -230,6 +264,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":       "eu-west-1",
 		"scaleOnInFlight": "false"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -238,8 +273,34 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":       "eu-west-1",
 		"scaleOnInFlight": "true"},
 		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
 		false,
 		"properly formed queue and region"},
+	{map[string]string{
+		"queueURLFromEnv": "QUEUE_URL",
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1"},
+		testAWSSQSAuthentication,
+		testAWSSQSResolvedEnv,
+		false,
+		"properly formed queue loaded from env"},
+	{map[string]string{
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		true,
+		"missing queue url from both queueURL and queueURLFromEnv"},
+	{map[string]string{
+		"queueURLFromEnv": "QUEUE_URL",
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1"},
+		testAWSSQSAuthentication,
+		map[string]string{
+			"QUEUE_URL": "",
+		},
+		true,
+		"empty QUEUE_URL env value"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
@@ -255,7 +316,7 @@ var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -268,7 +329,7 @@ func TestSQSParseMetadata(t *testing.T) {
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSSQSAuthentication, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

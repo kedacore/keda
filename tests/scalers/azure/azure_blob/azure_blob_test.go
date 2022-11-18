@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	connectionString = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	containerName    = fmt.Sprintf("%s-container-%d", testName, GetRandomNumber())
+	containerName    = fmt.Sprintf("container-%d", GetRandomNumber())
 )
 
 type templateData struct {
@@ -126,7 +126,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure blob test")
+	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure blob test")
 
 	containerURL := createContainer(t)
 
@@ -141,8 +141,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, containerURL)
-	testScaleUp(t, kc, containerURL)
-	testScaleDown(t, kc, containerURL)
+	testScaleOut(t, kc, containerURL)
+	testScaleIn(t, kc, containerURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -190,15 +190,15 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+	t.Log("--- testing scale out ---")
 	addFiles(t, containerURL, 10)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+	t.Log("--- testing scale in ---")
 
 	for i := 0; i < 10; i++ {
 		blobName := fmt.Sprintf("blob-%d", i)

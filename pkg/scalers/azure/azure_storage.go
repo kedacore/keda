@@ -83,7 +83,7 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
+		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -111,7 +111,7 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAcessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
+		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -192,7 +192,7 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	return u, name, key, nil
 }
 
-func parseAcessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string,
+func parseAccessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string,
 	podIdentity kedav1alpha1.AuthPodIdentity) (string, *url.URL, error) {
 	var token AADToken
 	var err error

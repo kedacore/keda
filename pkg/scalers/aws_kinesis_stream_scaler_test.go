@@ -21,6 +21,7 @@ const (
 	testAWSKinesisSessionToken    = "none"
 	testAWSKinesisStreamName      = "test"
 	testAWSRegion                 = "eu-west-1"
+	testAWSEndpoint               = "http://localhost:4566"
 	testAWSKinesisErrorStream     = "Error"
 )
 
@@ -88,6 +89,31 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 		},
 		isError:     false,
 		comment:     "properly formed stream name and region",
+		scalerIndex: 0,
+	},
+	{
+		metadata: map[string]string{
+			"streamName":           testAWSKinesisStreamName,
+			"shardCount":           "2",
+			"activationShardCount": "1",
+			"awsRegion":            testAWSRegion,
+			"awsEndpoint":          testAWSEndpoint},
+		authParams: testAWSKinesisAuthentication,
+		expected: &awsKinesisStreamMetadata{
+			targetShardCount:           2,
+			activationTargetShardCount: 1,
+			streamName:                 testAWSKinesisStreamName,
+			awsRegion:                  testAWSRegion,
+			awsEndpoint:                testAWSEndpoint,
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     testAWSKinesisAccessKeyID,
+				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				podIdentityOwner:   true,
+			},
+			scalerIndex: 0,
+		},
+		isError:     false,
+		comment:     "properly formed stream name and region with custom endpoint",
 		scalerIndex: 0,
 	},
 	{

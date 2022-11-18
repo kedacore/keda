@@ -129,10 +129,10 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("%s-keda-table-%d", testName, GetRandomNumber())
-	awsAccessKeyID            = os.Getenv("AWS_ACCESS_KEY")
-	awsSecretAccessKey        = os.Getenv("AWS_SECRET_KEY")
-	awsRegion                 = os.Getenv("AWS_REGION")
+	dynamoDBTableName         = fmt.Sprintf("table-%d", GetRandomNumber())
+	awsAccessKeyID            = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretAccessKey        = os.Getenv("TF_AWS_SECRET_KEY")
+	awsRegion                 = os.Getenv("TF_AWS_REGION")
 	expressionAttributeNames  = "{ \"#k\" : \"event_type\"}"
 	keyConditionExpression    = "#k = :key"
 	expressionAttributeValues = "{ \":key\" : {\"S\":\"scaling_event\"}}"
@@ -155,8 +155,8 @@ func TestDynamoDBScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, dynamodbClient)
-	testScaleUp(t, kc, dynamodbClient)
-	testScaleDown(t, kc, dynamodbClient)
+	testScaleOut(t, kc, dynamodbClient)
+	testScaleIn(t, kc, dynamodbClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -169,15 +169,15 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dyna
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+	t.Log("--- testing scale out ---")
 	addMessages(t, dynamodbClient, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+	t.Log("--- testing scale in ---")
 
 	for i := 0; i < 6; i++ {
 		_, err := dynamodbClient.DeleteItemWithContext(context.Background(), &dynamodb.DeleteItemInput{

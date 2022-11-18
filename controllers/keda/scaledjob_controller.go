@@ -40,7 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -58,14 +58,19 @@ type ScaledJobReconciler struct {
 	scaleHandler         scaling.ScaleHandler
 }
 
+type scaledJobMetricsData struct {
+	namespace    string
+	triggerTypes []string
+}
+
 var (
-	scaledJobTriggers     map[string][]string
-	scaledJobTriggersLock *sync.Mutex
+	scaledJobPromMetricsMap  map[string]scaledJobMetricsData
+	scaledJobPromMetricsLock *sync.Mutex
 )
 
 func init() {
-	scaledJobTriggers = make(map[string][]string)
-	scaledJobTriggersLock = &sync.Mutex{}
+	scaledJobPromMetricsMap = make(map[string]scaledJobMetricsData)
+	scaledJobPromMetricsLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
@@ -107,7 +112,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if scaledJob.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob, req.NamespacedName.String())
 	}
-	r.updateTriggerTotals(reqLogger, scaledJob, req.NamespacedName.String())
+	r.updatePromMetrics(scaledJob, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledJob); err != nil {
@@ -263,62 +268,42 @@ func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Log
 	return nil
 }
 
-// scaledJobGenerationChanged returns true if ScaledJob's Generation was changed, ie. ScaledJob.Spec was changed
-func (r *ScaledJobReconciler) scaledJobGenerationChanged(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (bool, error) {
-	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
-	if err != nil {
-		logger.Error(err, "Error getting key for scaledJob")
-		return true, err
-	}
+func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
+	scaledJobPromMetricsLock.Lock()
+	defer scaledJobPromMetricsLock.Unlock()
 
-	value, loaded := r.scaledJobGenerations.Load(key)
-	if loaded {
-		generation := value.(int64)
-		if generation == scaledJob.Generation {
-			return false, nil
+	metricsData, ok := scaledJobPromMetricsMap[namespacedName]
+
+	if ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
 		}
 	}
-	return true, nil
-}
 
-func (r *ScaledJobReconciler) updateTriggerTotals(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
-	specChanged, err := r.scaledJobGenerationChanged(logger, scaledJob)
-	if err != nil {
-		logger.Error(err, "failed to update trigger totals")
-		return
-	}
-
-	if !specChanged {
-		return
-	}
-
-	scaledJobTriggersLock.Lock()
-	defer scaledJobTriggersLock.Unlock()
-
-	if triggerTypes, ok := scaledJobTriggers[namespacedName]; ok {
-		for _, triggerType := range triggerTypes {
-			metrics.DecrementTriggerTotal(triggerType)
-		}
-	}
+	prommetrics.IncrementCRDTotal(prommetrics.ScaledJobResource, scaledJob.Namespace)
+	metricsData.namespace = scaledJob.Namespace
 
 	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
-		metrics.IncrementTriggerTotal(trigger.Type)
+		prommetrics.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
 	}
+	metricsData.triggerTypes = triggerTypes
 
-	scaledJobTriggers[namespacedName] = triggerTypes
+	scaledJobPromMetricsMap[namespacedName] = metricsData
 }
 
-func (r *ScaledJobReconciler) updateTriggerTotalsOnDelete(namespacedName string) {
-	scaledJobTriggersLock.Lock()
-	defer scaledJobTriggersLock.Unlock()
+func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
+	scaledJobPromMetricsLock.Lock()
+	defer scaledJobPromMetricsLock.Unlock()
 
-	if triggerTypes, ok := scaledJobTriggers[namespacedName]; ok {
-		for _, triggerType := range triggerTypes {
-			metrics.DecrementTriggerTotal(triggerType)
+	if metricsData, ok := scaledJobPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	delete(scaledJobTriggers, namespacedName)
+	delete(scaledJobPromMetricsMap, namespacedName)
 }

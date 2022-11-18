@@ -101,7 +101,9 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		targetValue: 1,
 	}
 
-	if val, ok := config.TriggerMetadata["url"]; ok {
+	if val, ok := config.AuthParams["url"]; ok {
+		meta.url = val
+	} else if val, ok := config.TriggerMetadata["url"]; ok {
 		meta.url = val
 	} else {
 		return nil, fmt.Errorf("no selenium grid url given in metadata")
