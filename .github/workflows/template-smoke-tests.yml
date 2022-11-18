@@ -46,5 +46,5 @@ jobs:
       - name: Upload test logs
         uses: actions/upload-artifact@v3
         with:
-          name: e2e-test-logs
+          name: smoke-test-logs ${{ inputs.kubernetesVersion }}
           path: '${{ github.workspace }}/tests/**/*.log'
