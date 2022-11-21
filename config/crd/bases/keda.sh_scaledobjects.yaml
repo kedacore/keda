@@ -82,7 +82,7 @@ spec:
                         properties:
                           scaleDown:
                             description: scaleDown is scaling policy for scaling Down.
-                              If not set, the default value is to allow to scale down
+                              If not set, the default value is to allow to scale in
                               to minReplicas pods, with a 300 second stabilization
                               window (i.e., the highest recommendation for the last
                               300sec is used).
@@ -132,8 +132,8 @@ spec:
                                   StabilizationWindowSeconds must be greater than
                                   or equal to zero and less than or equal to 3600
                                   (one hour). If not set, use the default values:
-                                  - For scale up: 0 (i.e. no stabilization is done).
-                                  - For scale down: 300 (i.e. the stabilization window
+                                  - For scale out: 0 (i.e. no stabilization is done).
+                                  - For scale in: 300 (i.e. the stabilization window
                                   is 300 seconds long).'
                                 format: int32
                                 type: integer
@@ -189,8 +189,8 @@ spec:
                                   StabilizationWindowSeconds must be greater than
                                   or equal to zero and less than or equal to 3600
                                   (one hour). If not set, use the default values:
-                                  - For scale up: 0 (i.e. no stabilization is done).
-                                  - For scale down: 300 (i.e. the stabilization window
+                                  - For scale out: 0 (i.e. no stabilization is done).
+                                  - For scale in: 300 (i.e. the stabilization window
                                   is 300 seconds long).'
                                 format: int32
                                 type: integer

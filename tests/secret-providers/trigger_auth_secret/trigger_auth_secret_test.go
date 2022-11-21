@@ -145,8 +145,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc, messageURL)
-	testScaleDown(t, kc, messageURL)
+	testScaleOut(t, kc, messageURL)
+	testScaleIn(t, kc, messageURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -192,8 +192,8 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale out ---")
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
 		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
@@ -204,8 +204,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.Mess
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale in ---")
 	_, err := messageURL.Clear(context.Background())
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 

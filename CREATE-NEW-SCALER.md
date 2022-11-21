@@ -94,5 +94,5 @@ Scalers are created and cached until the ScaledObject is modified, or `.IsActive
 ## Note
 The scaler code is embedded into the two separate binaries comprising KEDA, the operator and the custom metrics server component. The metrics server must be occasionally rebuilt published and deployed to k8s for it to have the same code as your operator.
 
-GetMetricSpecForScaling() is executed by the operator for the purposes of scaling up to and down to 0 replicas.
+GetMetricSpecForScaling() is executed by the operator for the purposes of scaling out and in to 0 replicas.
 GetMetrics() is executed by the custom metrics server in response to a calls against the external metrics api, whether by the HPA loop or by curl

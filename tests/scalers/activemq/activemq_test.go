@@ -460,8 +460,8 @@ func TestActiveMQScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc)
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -496,16 +496,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s producer --destination %s --messageCount 900", activemqPath, activemqDestination))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 	_, _, err := ExecCommandOnSpecificPod(t, activemqPodName, testNamespace, fmt.Sprintf("%s consumer --destination %s --messageCount 1000", activemqPath, activemqDestination))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),

@@ -309,10 +309,10 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 		"replica count should be 0 after a minute")
 
 	testActivation(t, kc, data)
-	// scale up
-	testScaleUp(t, kc, data)
-	// scale down
-	testScaleDown(t, kc, testName)
+	// scale out
+	testScaleOut(t, kc, data)
+	// scale in
+	testScaleIn(t, kc, testName)
 
 	// cleanup
 	helper.KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -347,16 +347,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	helper.KubectlDeleteWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MessageCount = 100
 	helper.KubectlApplyWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(data.TestName), data.TestName, 5, 300, 1),
 		"replica count should be 5 within 5 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, testName string) {
-	t.Log("--- testing scale down ---")
-	// Check if deployment scale down to 0 after 5 minutes
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, testName string) {
+	t.Log("--- testing scale in ---")
+	// Check if deployment scale in to 0 after 5 minutes
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(testName), testName, 0, 300, 1),
 		"Replica count should be 0 within 5 minutes")
 }
