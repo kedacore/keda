@@ -33,10 +33,22 @@ type elasticsearchMetricIdentifier struct {
 
 var testCases = []parseElasticsearchMetadataTestData{
 	{
-		name:          "no addresses given",
+		name:          "must provide either endpoint addresses or cloud config",
 		metadata:      map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no addresses given"),
+		expectedError: errors.New("must provide either endpoint addresses or cloud config"),
+	},
+	{
+		name:          "no apiKey given",
+		metadata:      map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx"},
+		authParams:    map[string]string{},
+		expectedError: errors.New("no apiKey given"),
+	},
+	{
+		name:          "can't provide endpoint addresses and cloud config at the same time",
+		metadata:      map[string]string{"addresses": "http://localhost:9200", "cloudID": "my-cluster:xxxxxxxxxxx"},
+		authParams:    map[string]string{"username": "admin", "apiKey": "xxxxxxxxx"},
+		expectedError: errors.New("can't provide endpoint addresses and cloud config at the same time"),
 	},
 	{
 		name:          "no index given",
@@ -447,6 +459,10 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 			AuthParams:      testData.metadataTestData.authParams,
 			ScalerIndex:     testData.scalerIndex,
 		})
+		if testData.metadataTestData.expectedError != nil {
+			assert.Equal(t, err, testData.metadataTestData.expectedError)
+			continue
+		}
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

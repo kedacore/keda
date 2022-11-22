@@ -33,6 +33,8 @@ type elasticsearchMetadata struct {
 	unsafeSsl             bool
 	username              string
 	password              string
+	cloudID               string
+	apiKey                string
 	indexes               []string
 	searchTemplateName    string
 	parameters            []string
@@ -70,25 +72,36 @@ func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 
 const defaultUnsafeSsl = false
 
-func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, error) {
-	meta := elasticsearchMetadata{}
+func hasCloudConfig(meta *elasticsearchMetadata) bool {
+	if meta.cloudID != "" {
+		return true
+	}
+	if meta.apiKey != "" {
+		return true
+	}
+	return false
+}
 
-	var err error
+func hasEndpointsConfig(meta *elasticsearchMetadata) bool {
+	if len(meta.addresses) > 0 {
+		return true
+	}
+	if meta.username != "" {
+		return true
+	}
+	if meta.password != "" {
+		return true
+	}
+	return false
+}
+
+func extractEndpointsConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
 	addresses, err := GetFromAuthOrMeta(config, "addresses")
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	meta.addresses = splitAndTrimBySep(addresses, ",")
-
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		meta.unsafeSsl, err = strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
-		}
-	} else {
-		meta.unsafeSsl = defaultUnsafeSsl
-	}
-
 	if val, ok := config.AuthParams["username"]; ok {
 		meta.username = val
 	} else if val, ok := config.TriggerMetadata["username"]; ok {
@@ -99,6 +112,60 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.password = config.AuthParams["password"]
 	} else if config.TriggerMetadata["passwordFromEnv"] != "" {
 		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+	}
+
+	return nil
+}
+
+func extractCloudConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
+	cloudID, err := GetFromAuthOrMeta(config, "cloudID")
+	if err != nil {
+		return err
+	}
+	meta.cloudID = cloudID
+
+	apiKey, err := GetFromAuthOrMeta(config, "apiKey")
+	if err != nil {
+		return err
+	}
+	meta.apiKey = apiKey
+	return nil
+}
+
+func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, error) {
+	meta := elasticsearchMetadata{}
+
+	var err error
+	addresses, err := GetFromAuthOrMeta(config, "addresses")
+	cloudID, errCloudConfig := GetFromAuthOrMeta(config, "cloudID")
+	if err != nil && errCloudConfig != nil {
+		return nil, fmt.Errorf("must provide either endpoint addresses or cloud config")
+	}
+
+	if err == nil && addresses != "" {
+		err = extractEndpointsConfig(config, &meta)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if errCloudConfig == nil && cloudID != "" {
+		err = extractCloudConfig(config, &meta)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if hasEndpointsConfig(&meta) && hasCloudConfig(&meta) {
+		return nil, fmt.Errorf("can't provide endpoint addresses and cloud config at the same time")
+	}
+
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		meta.unsafeSsl, err = strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+	} else {
+		meta.unsafeSsl = defaultUnsafeSsl
 	}
 
 	index, err := GetFromAuthOrMeta(config, "index")
@@ -144,12 +211,23 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 
 // newElasticsearchClient creates elasticsearch db connection
 func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*elasticsearch.Client, error) {
-	config := elasticsearch.Config{Addresses: meta.addresses}
-	if meta.username != "" {
-		config.Username = meta.username
-	}
-	if meta.password != "" {
-		config.Password = meta.password
+	var config elasticsearch.Config
+
+	if hasCloudConfig(meta) {
+		config = elasticsearch.Config{
+			CloudID: meta.cloudID,
+			APIKey:  meta.apiKey,
+		}
+	} else {
+		config = elasticsearch.Config{
+			Addresses: meta.addresses,
+		}
+		if meta.username != "" {
+			config.Username = meta.username
+		}
+		if meta.password != "" {
+			config.Password = meta.password
+		}
 	}
 
 	transport := http.DefaultTransport.(*http.Transport)
