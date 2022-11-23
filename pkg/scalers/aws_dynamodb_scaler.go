@@ -8,14 +8,11 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -23,7 +20,7 @@ import (
 )
 
 type awsDynamoDBScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
 	dbClient   dynamodbiface.DynamoDBAPI
 	logger     logr.Logger
@@ -32,6 +29,7 @@ type awsDynamoDBScaler struct {
 type awsDynamoDBMetadata struct {
 	tableName                 string
 	awsRegion                 string
+	awsEndpoint               string
 	keyConditionExpression    string
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
@@ -74,6 +72,10 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
+	}
+
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
 	}
 
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
@@ -142,33 +144,12 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	return &meta, nil
 }
 
-func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(meta.awsRegion),
-	}))
+func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var dbClient *dynamodb.DynamoDB
-
-	if !meta.awsAuthorization.podIdentityOwner {
-		dbClient = dynamodb.New(sess, &aws.Config{
-			Region: aws.String(meta.awsRegion),
-		})
-
-		return dbClient
-	}
-
-	creds := credentials.NewStaticCredentials(meta.awsAuthorization.awsAccessKeyID, meta.awsAuthorization.awsSecretAccessKey, "")
-
-	if meta.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, meta.awsAuthorization.awsRoleArn)
-	}
-
-	dbClient = dynamodb.New(sess, &aws.Config{
-		Region:      aws.String(meta.awsRegion),
-		Credentials: creds,
-	})
-
-	return dbClient
+	return dynamodb.New(sess, config)
 }
 
 func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
@@ -183,16 +164,16 @@ func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 
-	return []v2beta2.MetricSpec{
+	return []v2.MetricSpec{
 		metricSpec,
 	}
 }

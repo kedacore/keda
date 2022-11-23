@@ -91,7 +91,7 @@ To have fully operational KEDA we need to deploy Metrics Server first.
    ```bash
    make deploy
    ```
-2. Scale down `keda-operator` Deployment
+2. Scale in `keda-operator` Deployment
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
@@ -148,7 +148,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
    ```bash
    make deploy
    ```
-3. Scale down `keda-operator` Deployment
+3. Scale in `keda-operator` Deployment
    ```bash
    kubectl scale deployment/keda-operator --replicas=0 -n keda
    ```
@@ -156,6 +156,8 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
 5. Select `Run > Start Debugging` or press `F5` to start debugging.
 
 ### Metrics server
+
+> **Note:** You will be able to manually query metrics to your local version of the KEDA Metrics server. You won't replace the KEDA Metrics server deployed on the Kubernetes cluster.
 
 Follow these instructions if you want to debug the KEDA metrics server using VS Code.
 
@@ -216,6 +218,12 @@ You can query list metrics executing `curl --insecure https://localhost:6443/api
 If you prefer to use an authenticated user, you can use a user or service account with access over external metrics API adding their token as authorization header in `curl`, ie: `curl -H "Authorization:Bearer TOKEN" --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/`
 
 ## Miscellaneous
+
+### How to use devcontainers and a local Kubernetes cluster
+
+When you are working with [devcontainers](https://code.visualstudio.com/docs/remote/containers), Visual Studio Code and all the related programs (like `kubectl` or debugging binary) run inside the container. This means that if you are using local clusters like Kind or minikube you won't be able to access them because localhost is the container itself and not the host machine where the cluster is running.
+
+To solve this and be able to work with devcontainers and a local cluster, you should follow [this official documentation from Microsoft](https://github.com/Microsoft/vscode-dev-containers/tree/main/containers/kubernetes-helm).
 
 ### Setting log levels
 

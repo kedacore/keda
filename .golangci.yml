@@ -7,6 +7,10 @@ run:
   - e2e
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 10m
+  # skip vendor directory
+  skip-dirs:
+    - vendor
+  modules-download-mode: vendor
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
@@ -17,7 +21,7 @@ linters:
     - goprintffuncname
     - govet
     - nolintlint
-    - rowserrcheck
+    #- rowserrcheck
     - gofmt
     - revive
     - goimports
@@ -27,8 +31,6 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    - structcheck
-    - deadcode
     - depguard
     - dogsled
     - errcheck
@@ -40,7 +42,6 @@ linters:
     - gosimple
     - stylecheck
     - unused
-    - varcheck
     - unparam
     - unconvert
     - whitespace
@@ -80,7 +81,7 @@ issues:
   # We need to use Golang 1.18 before update the SDK due to it's a prerrequisite
     - linters:
        - staticcheck
-      text: "SA1019: package github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
+      text: "SA1019: \"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
   # Exclude for stan_scaler and nats_jetstream_scaler, reason:
   # pkg/scalers/nats_jetstream_scaler.go:109: 109-153 lines are duplicate of `pkg/scalers/stan_scaler.go:83-127` (dupl)
     - path: nats_jetstream_scaler.go

@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/streadway/amqp"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -53,7 +53,7 @@ const (
 )
 
 type rabbitMQScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *rabbitMQMetadata
 	connection *amqp.Connection
 	channel    *amqp.Channel
@@ -68,7 +68,7 @@ type rabbitMQMetadata struct {
 	activationValue       float64       // activation value
 	host                  string        // connection string for either HTTP or AMQP protocol
 	protocol              string        // either http or amqp protocol
-	vhostName             *string       // override the vhost from the connection info
+	vhostName             string        // override the vhost from the connection info
 	useRegex              bool          // specify if the queueName contains a rexeg
 	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	pageSize              int64         // specify the page size if useRegex is enabled
@@ -121,12 +121,12 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.host
-		if meta.vhostName != nil {
+		if meta.vhostName != "" {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
 			}
-			hostURI.Vhost = *meta.vhostName
+			hostURI.Vhost = meta.vhostName
 			host = hostURI.String()
 		}
 
@@ -193,7 +193,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	// Resolve vhostName
 	if val, ok := config.TriggerMetadata["vhostName"]; ok {
-		meta.vhostName = &val
+		meta.vhostName = val
 	}
 
 	err := parseRabbitMQHttpProtocolMetadata(config, &meta)
@@ -201,11 +201,11 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, err
 	}
 
-	if meta.useRegex && meta.protocol == amqpProtocol {
+	if meta.useRegex && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("configure only useRegex with http protocol")
 	}
 
-	if meta.excludeUnacknowledged && meta.protocol == amqpProtocol {
+	if meta.excludeUnacknowledged && meta.protocol != httpProtocol {
 		return nil, fmt.Errorf("configure excludeUnacknowledged=true with http protocol only")
 	}
 
@@ -457,24 +457,11 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	// Extract vhost from URL's path.
 	vhost := parsedURL.Path
 
-	// If the URL's path only contains a slash, it represents the trailing slash and
-	// must be ignored because it may cause confusion with the '/' vhost.
-	if vhost == "/" {
-		vhost = ""
+	if s.metadata.vhostName != "" {
+		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
 	}
 
-	// Override vhost if requested.
-	if s.metadata.vhostName != nil {
-		// If the desired vhost is "All" vhosts, no path is necessary
-		if *s.metadata.vhostName == "" {
-			vhost = ""
-		} else {
-			vhost = "/" + url.QueryEscape(*s.metadata.vhostName)
-		}
-	}
-
-	// Encode the '/' vhost if necessary.
-	if vhost == "//" {
+	if vhost == "" || vhost == "/" || vhost == "//" {
 		vhost = rabbitRootVhostPath
 	}
 
@@ -499,18 +486,18 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: rabbitMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

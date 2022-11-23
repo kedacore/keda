@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -105,8 +105,9 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return scalers.NewPrometheusScaler(config)
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							scaler, err := scalers.NewPrometheusScaler(config)
+							return scaler, config, err
 						},
 					})
 					for _, metricSpec := range s.GetMetricSpecForScaling(context.Background()) {
@@ -161,8 +162,8 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return s, nil
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							return s, config, nil
 						},
 					}},
 				}
@@ -205,8 +206,8 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, error) {
-							return s, nil
+						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+							return s, config, nil
 						},
 					})
 				}
@@ -269,7 +270,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA.
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-clean-up-test", Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
@@ -329,7 +330,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA.
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
@@ -384,7 +385,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA.
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-cache-regenerate", Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
@@ -421,7 +422,7 @@ var _ = Describe("ScaledObjectController", func() {
 			time.Sleep(30 * time.Second)
 
 			// Get and confirm the HPA.
-			hpa2 := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa2 := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-cache-regenerate", Namespace: "default"}, hpa2)
 			}).ShouldNot(HaveOccurred())
@@ -469,7 +470,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Ω(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
@@ -523,7 +524,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Ω(err).ToNot(HaveOccurred())
 
 			// Get and confirm the HPA
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
 			}).ShouldNot(HaveOccurred())
@@ -659,6 +660,62 @@ var _ = Describe("ScaledObjectController", func() {
 				return so.Status.Conditions.GetReadyCondition().Status
 			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
 		})
+
+		It("doesn't allow non-unique triggerName in ScaledObject", func() {
+			deploymentName := "non-unique-triggername"
+			soName := "so-" + deploymentName
+
+			triggerName := "non-unique"
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			var five int32 = 5
+			var ten int32 = 10
+
+			// Create the ScaledObject with two triggers
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					IdleReplicaCount: &ten,
+					MinReplicaCount:  &five,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Name: triggerName,
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+						{
+							Type: "cron",
+							Name: triggerName,
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "10 * * * *",
+								"end":             "11 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetReadyCondition().Status
+			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
+		})
 	})
 
 	It("scaleobject ready condition 'False/Unknow' to 'True' will requeue", func() {
@@ -686,14 +743,14 @@ var _ = Describe("ScaledObjectController", func() {
 				Triggers: []kedav1alpha1.ScaleTriggers{
 					{
 						Type:       "cpu",
-						MetricType: autoscalingv2beta2.UtilizationMetricType,
+						MetricType: autoscalingv2.UtilizationMetricType,
 						Metadata: map[string]string{
 							"value": "50",
 						},
 					},
 					{
 						Type:       "external-mock",
-						MetricType: autoscalingv2beta2.AverageValueMetricType,
+						MetricType: autoscalingv2.AverageValueMetricType,
 						Metadata:   map[string]string{},
 					},
 				},
@@ -710,7 +767,7 @@ var _ = Describe("ScaledObjectController", func() {
 		}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
 
 		// check hpa
-		hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 		Eventually(func() int {
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 			Expect(err).ToNot(HaveOccurred())
@@ -730,12 +787,12 @@ var _ = Describe("ScaledObjectController", func() {
 		// mock kube-controller-manager request v1beta1.custom.metrics.k8s.io api GetMetrics
 		err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 		Expect(err).ToNot(HaveOccurred())
-		hpa.Status.CurrentMetrics = []autoscalingv2beta2.MetricStatus{
+		hpa.Status.CurrentMetrics = []autoscalingv2.MetricStatus{
 			{
-				Type: autoscalingv2beta2.ResourceMetricSourceType,
-				Resource: &autoscalingv2beta2.ResourceMetricStatus{
+				Type: autoscalingv2.ResourceMetricSourceType,
+				Resource: &autoscalingv2.ResourceMetricStatus{
 					Name: corev1.ResourceCPU,
-					Current: autoscalingv2beta2.MetricValueStatus{
+					Current: autoscalingv2.MetricValueStatus{
 						Value: resource.NewQuantity(int64(100), resource.DecimalSI),
 					},
 				},
@@ -746,7 +803,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 		// hpa metrics will only left CPU metric
 		Eventually(func() int {
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 			Expect(err).ToNot(HaveOccurred())
 			return len(hpa.Spec.Metrics)
@@ -764,7 +821,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 		// hpa will recover
 		Eventually(func() int {
-			hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 			Expect(err).ToNot(HaveOccurred())
 			return len(hpa.Spec.Metrics)

@@ -8,13 +8,10 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -33,7 +30,7 @@ var awsSqsQueueMetricNames = []string{
 }
 
 type awsSqsQueueScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *awsSqsQueueMetadata
 	sqsClient  sqsiface.SQSAPI
 	logger     logr.Logger
@@ -45,6 +42,7 @@ type awsSqsQueueMetadata struct {
 	queueURL                    string
 	queueName                   string
 	awsRegion                   string
+	awsEndpoint                 string
 	awsAuthorization            awsAuthorizationMetadata
 	scalerIndex                 int
 	scaleOnInFlight             bool
@@ -115,6 +113,12 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 
 	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
 		meta.queueURL = val
+	} else if val, ok := config.TriggerMetadata["queueURLFromEnv"]; ok && val != "" {
+		if val, ok := config.ResolvedEnv[val]; ok && val != "" {
+			meta.queueURL = val
+		} else {
+			return nil, fmt.Errorf("queueURLFromEnv `%s` env variable value is empty", config.TriggerMetadata["queueURLFromEnv"])
+		}
 	} else {
 		return nil, fmt.Errorf("no queueURL given")
 	}
@@ -139,6 +143,10 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -152,28 +160,11 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 }
 
 func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
-	}))
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var sqsClient *sqs.SQS
-	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
-
-		if metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
-		}
-
-		sqsClient = sqs.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		sqsClient = sqs.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
-		})
-	}
-	return sqsClient
+	return sqs.New(sess, config)
 }
 
 // IsActive determines if we need to scale from zero
@@ -191,15 +182,15 @@ func (s *awsSqsQueueScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

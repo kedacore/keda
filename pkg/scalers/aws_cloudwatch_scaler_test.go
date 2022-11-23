@@ -85,7 +85,8 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"metricCollectionTime":        "300",
 		"metricStat":                  "Average",
 		"metricStatPeriod":            "300",
-		"awsRegion":                   "eu-west-1"},
+		"awsRegion":                   "eu-west-1",
+		"awsEndpoint":                 "http://localhost:4566"},
 		testAWSAuthentication, false,
 		"Properly formed cloudwatch query with optional parameters"},
 	// properly formed cloudwatch query but Region is empty

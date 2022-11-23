@@ -9,7 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -18,7 +18,7 @@ import (
 
 type influxDBScaler struct {
 	client     influxdb2.Client
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *influxDBMetadata
 	logger     logr.Logger
 }
@@ -223,15 +223,15 @@ func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string, metr
 }
 
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
-func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.thresholdValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }

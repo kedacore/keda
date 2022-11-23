@@ -46,6 +46,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
 	// ignoreNullValues with wrong value
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "xxxx"}, true},
+
+	{map[string]string{"serverAddress": "https://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "unsafeSsl": "true"}, false},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -141,6 +143,7 @@ type prometheusQromQueryResultTestData struct {
 	expectedValue    float64
 	isError          bool
 	ignoreNullValues bool
+	unsafeSsl        bool
 }
 
 var testPromQueryResult = []prometheusQromQueryResultTestData{
@@ -151,6 +154,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    0,
 		isError:          false,
 		ignoreNullValues: true,
+		unsafeSsl:        false,
 	},
 	{
 		name:             "no values",
@@ -159,6 +163,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    0,
 		isError:          false,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
 	},
 	{
 		name:             "no values but shouldn't ignore",
@@ -167,6 +172,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: false,
+		unsafeSsl:        false,
 	},
 	{
 		name:             "value is empty list",
@@ -175,6 +181,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    0,
 		isError:          false,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
 	},
 	{
 		name:             "value is empty list but shouldn't ignore",
@@ -183,6 +190,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: false,
+		unsafeSsl:        false,
 	},
 	{
 		name:             "valid value",
@@ -191,6 +199,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    2,
 		isError:          false,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
 	},
 	{
 		name:             "not enough values",
@@ -199,6 +208,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
 	},
 	{
 		name:             "multiple results",
@@ -207,6 +217,7 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
 	},
 	{
 		name:             "error status response",
@@ -215,6 +226,43 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "+Inf",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "+Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "+Inf but shouldn't ignore ",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "+Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "-Inf",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "-Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "-Inf but shouldn't ignore ",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "-Inf"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
+		unsafeSsl:        true,
 	},
 }
 
@@ -233,6 +281,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 				metadata: &prometheusMetadata{
 					serverAddress:    server.URL,
 					ignoreNullValues: testData.ignoreNullValues,
+					unsafeSsl:        testData.unsafeSsl,
 				},
 				httpClient: http.DefaultClient,
 				logger:     logr.Discard(),

@@ -125,8 +125,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -151,8 +151,8 @@ func cleanupArgo(t *testing.T, kc *kubernetes.Clientset) {
 	DeleteNamespace(t, kc, argoNamespace)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
@@ -165,8 +165,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 10 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)

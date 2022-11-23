@@ -8,13 +8,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -29,7 +26,7 @@ const (
 )
 
 type awsCloudwatchScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *awsCloudwatchMetadata
 	cwClient   cloudwatchiface.CloudWatchAPI
 	logger     logr.Logger
@@ -52,7 +49,8 @@ type awsCloudwatchMetadata struct {
 	metricStatPeriod     int64
 	metricEndTimeOffset  int64
 
-	awsRegion string
+	awsRegion   string
+	awsEndpoint string
 
 	awsAuthorization awsAuthorizationMetadata
 
@@ -112,29 +110,11 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 }
 
 func createCloudwatchClient(metadata *awsCloudwatchMetadata) *cloudwatch.CloudWatch {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
-	}))
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var cloudwatchClient *cloudwatch.CloudWatch
-	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
-
-		if metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
-		}
-
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		cloudwatchClient = cloudwatch.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
-		})
-	}
-
-	return cloudwatchClient
+	return cloudwatch.New(sess, config)
 }
 
 func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
@@ -234,6 +214,10 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	meta.awsAuthorization, err = getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -303,7 +287,7 @@ func (s *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string,
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricNameSuffix string
 
 	if s.metadata.expression != "" {
@@ -312,14 +296,14 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2beta2
 		metricNameSuffix = s.metadata.dimensionName[0]
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-cloudwatch-%s", metricNameSuffix))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {

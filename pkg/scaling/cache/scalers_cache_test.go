@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -20,19 +20,19 @@ import (
 
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
-	specs := []v2beta2.MetricSpec{}
+	specs := []v2.MetricSpec{}
 	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, float64(0), targetAverageValue)
 	// 1 1
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(1, metricName),
 		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, float64(1), targetAverageValue)
 	// 5 5 3 -> 4.333333333333333
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
 		createMetricSpec(3, metricName),
@@ -41,7 +41,7 @@ func TestTargetAverageValue(t *testing.T) {
 	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
 	// 5 5 4 -> 4.666666666666667
-	specs = []v2beta2.MetricSpec{
+	specs = []v2.MetricSpec{
 		createMetricSpec(5, metricName),
 		createMetricSpec(5, metricName),
 		createMetricSpec(4, metricName),
@@ -50,14 +50,14 @@ func TestTargetAverageValue(t *testing.T) {
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
 
-func createMetricSpec(averageValue int64, metricName string) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Target: v2beta2.MetricTarget{
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
 				AverageValue: qty,
 			},
-			Metric: v2beta2.MetricIdentifier{
+			Metric: v2.MetricIdentifier{
 				Name: metricName,
 			},
 		},
@@ -73,8 +73,8 @@ func TestIsScaledJobActive(t *testing.T) {
 	scaledJobSingle := createScaledObject(0, 100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(20), int64(2), true, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
@@ -93,8 +93,8 @@ func TestIsScaledJobActive(t *testing.T) {
 	// Non-Active trigger only
 	scalerSingle = []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(0), int64(2), false, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(0), int64(2), false, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(0), int64(2), false, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
@@ -123,23 +123,23 @@ func TestIsScaledJobActive(t *testing.T) {
 		scaledJob := createScaledObject(scalerTestData.MinReplicaCount, scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalersToTest := []ScalerBuilder{{
 			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, error) {
-				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
 			},
 		}}
 
@@ -167,8 +167,8 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	scaledJobSingle := createScaledObject(1, 100, "") // testing default = max
 	scalerSingle := []ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(0), int64(1), true, metricName),
-		Factory: func() (scalers.Scaler, error) {
-			return createScaler(ctrl, int64(0), int64(1), true, metricName), nil
+		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return createScaler(ctrl, int64(0), int64(1), true, metricName), &scalers.ScalerConfig{}, nil
 		},
 	}}
 
@@ -270,7 +270,7 @@ func createScaledObject(minReplicaCount int32, maxReplicaCount int32, multipleSc
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool, metricName string) *mock_scalers.MockScaler {
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(averageValue, metricName)}
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(averageValue, metricName)}
 
 	metrics := []external_metrics.ExternalMetricValue{
 		{

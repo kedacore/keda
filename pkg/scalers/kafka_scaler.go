@@ -10,7 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -18,7 +18,7 @@ import (
 )
 
 type kafkaScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   kafkaMetadata
 	client     sarama.Client
 	admin      sarama.ClusterAdmin
@@ -43,6 +43,10 @@ type kafkaMetadata struct {
 	saslType kafkaSaslType
 	username string
 	password string
+
+	// OAUTHBEARER
+	scopes                []string
+	oauthTokenEndpointURI string
 
 	// TLS
 	enableTLS   bool
@@ -69,6 +73,7 @@ const (
 	KafkaSASLTypePlaintext   kafkaSaslType = "plaintext"
 	KafkaSASLTypeSCRAMSHA256 kafkaSaslType = "scram_sha256"
 	KafkaSASLTypeSCRAMSHA512 kafkaSaslType = "scram_sha512"
+	KafkaSASLTypeOAuthbearer kafkaSaslType = "oauthbearer"
 )
 
 const (
@@ -115,7 +120,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
-		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
+		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
 				return errors.New("no username given")
 			}
@@ -126,6 +131,15 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			}
 			meta.password = strings.TrimSpace(config.AuthParams["password"])
 			meta.saslType = mode
+
+			if mode == KafkaSASLTypeOAuthbearer {
+				meta.scopes = strings.Split(config.AuthParams["scopes"], ",")
+
+				if config.AuthParams["oauthTokenEndpointUri"] == "" {
+					return errors.New("no oauth token endpoint uri given")
+				}
+				meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+			}
 		} else {
 			return fmt.Errorf("err SASL mode %s given", mode)
 		}
@@ -306,6 +320,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 	}
 
+	if metadata.saslType == KafkaSASLTypeOAuthbearer {
+		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
+		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes)
+	}
+
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
@@ -427,7 +446,7 @@ func (s *kafkaScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
 	if s.metadata.topic != "" {
 		metricName = fmt.Sprintf("kafka-%s", s.metadata.topic)
@@ -435,14 +454,14 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.group)
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 type consumerOffsetResult struct {

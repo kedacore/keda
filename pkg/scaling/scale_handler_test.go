@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -39,13 +39,13 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
 
-	factory := func() (scalers.Scaler, error) {
+	factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	scaler, err := factory()
+	scaler, _, err := factory()
 	assert.Nil(t, err)
 
 	scaledObject := kedav1alpha1.ScaledObject{
@@ -80,25 +80,25 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2beta2.MetricSpec{createMetricSpec(1)}
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(1)}
 
-	activeFactory := func() (scalers.Scaler, error) {
+	activeFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(true, nil)
 		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Times(2).Return(metricsSpecs)
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	activeScaler, err := activeFactory()
+	activeScaler, _, err := activeFactory()
 	assert.Nil(t, err)
 
-	failingFactory := func() (scalers.Scaler, error) {
+	failingFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().IsActive(gomock.Any()).Return(false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
-		return scaler, nil
+		return scaler, &scalers.ScalerConfig{}, nil
 	}
-	failingScaler, err := failingFactory()
+	failingScaler, _, err := failingFactory()
 	assert.Nil(t, err)
 
 	scaledObject := &kedav1alpha1.ScaledObject{
@@ -134,11 +134,11 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, true, isError)
 }
 
-func createMetricSpec(averageValue int64) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int64) v2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Target: v2beta2.MetricTarget{
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
 				AverageValue: qty,
 			},
 		},

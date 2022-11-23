@@ -22,7 +22,7 @@ import (
 	"math"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
@@ -42,16 +42,20 @@ type ScalersCache struct {
 }
 
 type ScalerBuilder struct {
-	Scaler  scalers.Scaler
-	Factory func() (scalers.Scaler, error)
+	Scaler       scalers.Scaler
+	ScalerConfig scalers.ScalerConfig
+	Factory      func() (scalers.Scaler, *scalers.ScalerConfig, error)
 }
 
-func (c *ScalersCache) GetScalers() []scalers.Scaler {
-	result := make([]scalers.Scaler, 0, len(c.Scalers))
+func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
+	scalersList := make([]scalers.Scaler, 0, len(c.Scalers))
+	configsList := make([]scalers.ScalerConfig, 0, len(c.Scalers))
 	for _, s := range c.Scalers {
-		result = append(result, s.Scaler)
+		scalersList = append(scalersList, s.Scaler)
+		configsList = append(configsList, s.ScalerConfig)
 	}
-	return result
+
+	return scalersList, configsList
 }
 
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
@@ -202,22 +206,23 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	}
 
 	sb := c.Scalers[id]
-	ns, err := sb.Factory()
+	ns, sConfig, err := sb.Factory()
 	if err != nil {
 		return nil, err
 	}
 
 	c.Scalers[id] = ScalerBuilder{
-		Scaler:  ns,
-		Factory: sb.Factory,
+		Scaler:       ns,
+		ScalerConfig: *sConfig,
+		Factory:      sb.Factory,
 	}
 	sb.Scaler.Close(ctx)
 
 	return ns, nil
 }
 
-func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	var spec []v2beta2.MetricSpec
+func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var spec []v2.MetricSpec
 	for _, s := range c.Scalers {
 		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
 	}
@@ -311,7 +316,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	return scalersMetrics
 }
 
-func getTargetAverageValue(metricSpecs []v2beta2.MetricSpec) float64 {
+func getTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
 	var targetAverageValue float64
 	var metricValue float64
 	for _, metric := range metricSpecs {

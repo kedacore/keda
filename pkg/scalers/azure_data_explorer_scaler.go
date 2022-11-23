@@ -23,7 +23,7 @@ import (
 
 	"github.com/Azure/azure-kusto-go/kusto"
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -33,7 +33,7 @@ import (
 )
 
 type azureDataExplorerScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *azure.DataExplorerMetadata
 	client     *kusto.Client
 	name       string
@@ -180,15 +180,15 @@ func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName stri
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.MetricName,
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s azureDataExplorerScaler) IsActive(ctx context.Context) (bool, error) {

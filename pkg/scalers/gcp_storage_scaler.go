@@ -10,7 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -27,7 +27,7 @@ const (
 type gcsScaler struct {
 	client     *storage.Client
 	bucket     *storage.BucketHandle
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *gcsMetadata
 	logger     logr.Logger
 }
@@ -39,6 +39,8 @@ type gcsMetadata struct {
 	metricName                  string
 	targetObjectCount           int64
 	activationTargetObjectCount int64
+	blobDelimiter               string
+	blobPrefix                  string
 }
 
 // NewGcsScaler creates a new gcsScaler
@@ -136,6 +138,14 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		meta.maxBucketItemsToScan = maxBucketItemsToScan
 	}
 
+	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok {
+		meta.blobDelimiter = val
+	}
+
+	if val, ok := config.TriggerMetadata["blobPrefix"]; ok {
+		meta.blobPrefix = val
+	}
+
 	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -166,15 +176,15 @@ func (s *gcsScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetObjectCount),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
@@ -191,7 +201,7 @@ func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSel
 
 // getItemCount gets the number of items in the bucket, up to maxCount
 func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, error) {
-	query := &storage.Query{Prefix: ""}
+	query := &storage.Query{Delimiter: s.metadata.blobDelimiter, Prefix: s.metadata.blobPrefix}
 	err := query.SetAttrSelection([]string{"Name"})
 	if err != nil {
 		s.logger.Error(err, "failed to set attribute selection")

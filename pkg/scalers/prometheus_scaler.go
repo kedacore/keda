@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -29,6 +30,7 @@ const (
 	promCortexScopeOrgID    = "cortexOrgID"
 	promCortexHeaderKey     = "X-Scope-OrgID"
 	ignoreNullValues        = "ignoreNullValues"
+	unsafeSsl               = "unsafeSsl"
 )
 
 var (
@@ -36,7 +38,7 @@ var (
 )
 
 type prometheusScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *prometheusMetadata
 	httpClient *http.Client
 	logger     logr.Logger
@@ -57,6 +59,7 @@ type prometheusMetadata struct {
 	// change to false/f if can not accept prometheus return null values
 	// https://github.com/kedacore/keda/issues/3065
 	ignoreNullValues bool
+	unsafeSsl        bool
 }
 
 type promQueryResult struct {
@@ -85,7 +88,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
 		// create http.RoundTripper with auth settings from ScalerConfig
@@ -166,6 +169,16 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.ignoreNullValues = ignoreNullValues
 	}
 
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
+		unsafeSslValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %s", unsafeSsl, err)
+		}
+
+		meta.unsafeSsl = unsafeSslValue
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 
 	// parse auth configs from ScalerConfig
@@ -191,18 +204,18 @@ func (s *prometheusScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error) {
@@ -221,7 +234,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBearerAuth {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.prometheusAuth.BearerToken))
+		req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
 	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
 	}
@@ -283,6 +296,15 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 			s.logger.Error(err, "Error converting prometheus value", "prometheus_value", str)
 			return -1, err
 		}
+	}
+
+	if math.IsInf(v, 0) {
+		if s.metadata.ignoreNullValues {
+			return 0, nil
+		}
+		err := fmt.Errorf("promtheus query returns %f", v)
+		s.logger.Error(err, "Error converting prometheus value")
+		return -1, err
 	}
 
 	return v, nil

@@ -297,17 +297,18 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, error) {
+		factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
 				if err != nil {
-					return nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
 				}
 			}
 			config := &scalers.ScalerConfig{
 				ScalableObjectName:      withTriggers.Name,
 				ScalableObjectNamespace: withTriggers.Namespace,
 				ScalableObjectType:      withTriggers.Kind,
+				TriggerName:             trigger.Name,
 				TriggerMetadata:         trigger.Metadata,
 				ResolvedEnv:             resolvedEnv,
 				AuthParams:              make(map[string]string),
@@ -318,13 +319,14 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			return buildScaler(ctx, h.client, trigger.Type, config)
+			scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
+			return scaler, config, err
 		}
 
-		scaler, err := factory()
+		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			h.logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex, "object", withTriggers)
@@ -338,8 +340,9 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		}
 
 		result = append(result, cache.ScalerBuilder{
-			Scaler:  scaler,
-			Factory: factory,
+			Scaler:       scaler,
+			ScalerConfig: *config,
+			Factory:      factory,
 		})
 	}
 
@@ -418,6 +421,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
+	case "loki":
+		return scalers.NewLokiScaler(config)
 	case "memory":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":

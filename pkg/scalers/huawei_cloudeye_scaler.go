@@ -11,7 +11,7 @@ import (
 	"github.com/Huawei/gophercloud/openstack"
 	"github.com/Huawei/gophercloud/openstack/ces/v1/metricdata"
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -27,7 +27,7 @@ const (
 )
 
 type huaweiCloudeyeScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *huaweiCloudeyeMetadata
 	logger     logr.Logger
 }
@@ -253,15 +253,15 @@ func (s *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {

@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -38,6 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -51,12 +54,29 @@ type ScaledJobReconciler struct {
 	GlobalHTTPTimeout time.Duration
 	Recorder          record.EventRecorder
 
-	scaleHandler scaling.ScaleHandler
+	scaledJobGenerations *sync.Map
+	scaleHandler         scaling.ScaleHandler
+}
+
+type scaledJobMetricsData struct {
+	namespace    string
+	triggerTypes []string
+}
+
+var (
+	scaledJobPromMetricsMap  map[string]scaledJobMetricsData
+	scaledJobPromMetricsLock *sync.Mutex
+)
+
+func init() {
+	scaledJobPromMetricsMap = make(map[string]scaledJobMetricsData)
+	scaledJobPromMetricsLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"))
+	r.scaledJobGenerations = &sync.Map{}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
@@ -90,8 +110,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check if the ScaledJob instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledJob.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob)
+		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob, req.NamespacedName.String())
 	}
+	r.updatePromMetrics(scaledJob, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledJob); err != nil {
@@ -213,11 +234,76 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-	return r.scaleHandler.HandleScalableObject(ctx, scaledJob)
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledJob")
+		return err
+	}
+
+	if err = r.scaleHandler.HandleScalableObject(ctx, scaledJob); err != nil {
+		return err
+	}
+
+	r.scaledJobGenerations.Store(key, scaledJob.Generation)
+
+	return nil
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Stopping a ScaleLoop")
-	return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
+
+	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
+	if err != nil {
+		logger.Error(err, "Error getting key for scaledJob")
+		return err
+	}
+
+	if err = r.scaleHandler.DeleteScalableObject(ctx, scaledJob); err != nil {
+		return err
+	}
+
+	r.scaledJobGenerations.Delete(key)
+	return nil
+}
+
+func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
+	scaledJobPromMetricsLock.Lock()
+	defer scaledJobPromMetricsLock.Unlock()
+
+	metricsData, ok := scaledJobPromMetricsMap[namespacedName]
+
+	if ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	prommetrics.IncrementCRDTotal(prommetrics.ScaledJobResource, scaledJob.Namespace)
+	metricsData.namespace = scaledJob.Namespace
+
+	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
+	for _, trigger := range scaledJob.Spec.Triggers {
+		prommetrics.IncrementTriggerTotal(trigger.Type)
+		triggerTypes = append(triggerTypes, trigger.Type)
+	}
+	metricsData.triggerTypes = triggerTypes
+
+	scaledJobPromMetricsMap[namespacedName] = metricsData
+}
+
+func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
+	scaledJobPromMetricsLock.Lock()
+	defer scaledJobPromMetricsLock.Unlock()
+
+	if metricsData, ok := scaledJobPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	delete(scaledJobPromMetricsMap, namespacedName)
 }

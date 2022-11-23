@@ -19,7 +19,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,15 +28,21 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 )
 
 const (
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
+	AwsIdentityNamespace           = "aws-identity-system"
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
 
 	DefaultHTTPTimeOut = 3000
+
+	StringFalse = "false"
+	StringTrue  = "true"
 )
 
 var _ = godotenv.Load()
@@ -45,13 +51,15 @@ var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
-	AzureADTenantID               = os.Getenv("AZURE_SP_TENANT")
+	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
+	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 )
 
 var (
-	KubeClient *kubernetes.Clientset
-	KubeConfig *rest.Config
+	KubeClient     *kubernetes.Clientset
+	KedaKubeClient *v1alpha1.KedaV1alpha1Client
+	KubeConfig     *rest.Config
 )
 
 type ExecutionError struct {
@@ -171,6 +179,21 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
 
 	return KubeClient
+}
+
+func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {
+	if KedaKubeClient != nil && KubeConfig != nil {
+		return KedaKubeClient
+	}
+
+	var err error
+	KubeConfig, err = config.GetConfig()
+	assert.NoErrorf(t, err, "cannot fetch kube config file - %s", err)
+
+	KedaKubeClient, err = v1alpha1.NewForConfig(KubeConfig)
+	assert.NoErrorf(t, err, "cannot create keda kubernetes client - %s", err)
+
+	return KedaKubeClient
 }
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
@@ -375,11 +398,11 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 }
 
 func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
-	hpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+	iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	var err error
 	for i := 0; i < iterations; i++ {
-		hpa, err = kc.AutoscalingV2beta2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		hpa, err = kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		t.Log("Waiting for hpa creation")
 		if err == nil {
 			return hpa, err

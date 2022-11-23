@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -31,7 +31,7 @@ var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscripti
 
 type pubsubScaler struct {
 	client     *StackDriverClient
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *pubsubMetadata
 	logger     logr.Logger
 }
@@ -171,21 +171,21 @@ func (s *pubsubScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.value),
 	}
 
 	// Create the metric spec for the HPA
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric,
 		Type:     externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 )
 
 type testSolaceMetadata struct {
@@ -467,7 +467,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 				httpClient: http.DefaultClient,
 			}
 
-			var metric []v2beta2.MetricSpec
+			var metric []v2.MetricSpec
 			if metric = testSolaceScaler.GetMetricSpecForScaling(context.Background()); len(metric) == 0 {
 				err = fmt.Errorf("metric value not found")
 			} else {

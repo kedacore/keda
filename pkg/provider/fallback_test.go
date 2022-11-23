@@ -27,7 +27,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -208,10 +208,10 @@ var _ = Describe("fallback", func() {
 		)
 
 		qty := resource.NewQuantity(int64(3), resource.DecimalSI)
-		metricsSpec := v2beta2.MetricSpec{
-			External: &v2beta2.ExternalMetricSource{
-				Target: v2beta2.MetricTarget{
-					Type:  v2beta2.UtilizationMetricType,
+		metricsSpec := v2.MetricSpec{
+			External: &v2.ExternalMetricSource{
+				Target: v2.MetricTarget{
+					Type:  v2.UtilizationMetricType,
 					Value: qty,
 				},
 			},
@@ -436,12 +436,12 @@ func primeGetMetrics(scaler *mock_scalers.MockScaler, value int64) {
 	scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return([]external_metrics.ExternalMetricValue{expectedMetric}, nil)
 }
 
-func createMetricSpec(averageValue int) v2beta2.MetricSpec {
+func createMetricSpec(averageValue int) v2.MetricSpec {
 	qty := resource.NewQuantity(int64(averageValue), resource.DecimalSI)
-	return v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Target: v2beta2.MetricTarget{
-				Type:         v2beta2.AverageValueMetricType,
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
+				Type:         v2.AverageValueMetricType,
 				AverageValue: qty,
 			},
 		},

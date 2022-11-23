@@ -404,6 +404,28 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 		},
 		{
+			name: "valid url in AuthParams, browsername, and sessionbrowsername should return metadata",
+			args: args{
+				config: &ScalerConfig{
+					AuthParams: map[string]string{
+						"url": "http://user:password@selenium-hub:4444/graphql",
+					},
+					TriggerMetadata: map[string]string{
+						"browserName":        "MicrosoftEdge",
+						"sessionBrowserName": "msedge",
+					},
+				},
+			},
+			wantErr: false,
+			want: &seleniumGridScalerMetadata{
+				url:                "http://user:password@selenium-hub:4444/graphql",
+				browserName:        "MicrosoftEdge",
+				sessionBrowserName: "msedge",
+				targetValue:        1,
+				browserVersion:     "latest",
+			},
+		},
+		{
 			name: "valid url and browsername should return metadata",
 			args: args{
 				config: &ScalerConfig{

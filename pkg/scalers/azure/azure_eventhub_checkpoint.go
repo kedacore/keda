@@ -224,8 +224,22 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 }
 
 func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
+	var podIdentity = info.PodIdentity
+
+	// For back-compat, prefer a connection string over pod identity when present
+	if len(info.StorageConnection) != 0 {
+		podIdentity.Provider = kedav1alpha1.PodIdentityProviderNone
+	}
+
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure || podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		if len(info.StorageAccountName) == 0 {
+			return Checkpoint{}, fmt.Errorf("storageAccountName not supplied when PodIdentity authentication is enabled")
+		}
+	}
+
 	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient,
-		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, info.StorageConnection, "", "")
+		podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
+
 	if err != nil {
 		return Checkpoint{}, err
 	}

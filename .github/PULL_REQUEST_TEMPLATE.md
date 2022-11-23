@@ -8,6 +8,7 @@ _Provide a description of what has been changed_
 
 ### Checklist
 
+- [ ] When introducing a new scaler, I agree with the [scaling governance policy](https://github.com/kedacore/governance/blob/main/SCALERS.md)
 - [ ] Commits are signed with Developer Certificate of Origin (DCO - [learn more](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#developer-certificate-of-origin-signing-your-work))
 - [ ] Tests have been added
 - [ ] A PR is opened to update our Helm chart ([repo](https://github.com/kedacore/charts)) *(if applicable, ie. when deployment manifests are modified)*

@@ -52,15 +52,15 @@ For example:
 
 >**Note:** There is a naming helper function `GenerateMetricNameWithIndex(scalerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
 >```golang
->func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
->	externalMetric := &v2beta2.ExternalMetricSource{
->		Metric: v2beta2.MetricIdentifier{
+>func (s *artemisScaler) GetMetricSpecForScaling() []v2.MetricSpec {
+>	externalMetric := &v2.ExternalMetricSource{
+>		Metric: v2.MetricIdentifier{
 >			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
 >		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 >	}
->	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
->	return []v2beta2.MetricSpec{metricSpec}
+>	metricSpec := v2.MetricSpec{External: externalMetric, Type: artemisMetricType}
+>	return []v2.MetricSpec{metricSpec}
 >}
 >```
 
@@ -94,5 +94,5 @@ Scalers are created and cached until the ScaledObject is modified, or `.IsActive
 ## Note
 The scaler code is embedded into the two separate binaries comprising KEDA, the operator and the custom metrics server component. The metrics server must be occasionally rebuilt published and deployed to k8s for it to have the same code as your operator.
 
-GetMetricSpecForScaling() is executed by the operator for the purposes of scaling up to and down to 0 replicas.
+GetMetricSpecForScaling() is executed by the operator for the purposes of scaling out and in to 0 replicas.
 GetMetrics() is executed by the custom metrics server in response to a calls against the external metrics api, whether by the HPA loop or by curl

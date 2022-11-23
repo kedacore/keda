@@ -34,7 +34,8 @@ const (
 )
 
 // finalizeScaledObject runs finalization logic on ScaledObject if there's finalizer
-func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject,
+	namespacedName string) error {
 	if util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		// Run finalization logic for scaledObjectFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
@@ -77,6 +78,8 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}
+
+		r.updatePromMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info("Successfully finalized ScaledObject")

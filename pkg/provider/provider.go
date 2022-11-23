@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -103,11 +103,15 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
 
+	// let's check metrics for all scalers in a ScaledObject
 	scalerError := false
-
-	for scalerIndex, scaler := range cache.GetScalers() {
-		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
-		scalerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
+	scalers, scalerConfigs := cache.GetScalers()
+	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
+		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
+		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)
+		if scalerConfigs[scalerIndex].TriggerName != "" {
+			scalerName = scalerConfigs[scalerIndex].TriggerName
+		}
 
 		for _, metricSpec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -118,13 +122,12 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
 				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric, metricSelector)
 				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
-
 				if err != nil {
 					scalerError = true
-					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scaler)
+					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerName)
 				} else {
 					for _, metric := range metrics {
-						metricValue, _ := metric.Value.AsInt64()
+						metricValue := metric.Value.AsApproximateFloat64()
 						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)

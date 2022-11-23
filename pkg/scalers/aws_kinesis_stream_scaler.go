@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/go-logr/logr"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -25,7 +21,7 @@ const (
 )
 
 type awsKinesisStreamScaler struct {
-	metricType    v2beta2.MetricTargetType
+	metricType    v2.MetricTargetType
 	metadata      *awsKinesisStreamMetadata
 	kinesisClient kinesisiface.KinesisAPI
 	logger        logr.Logger
@@ -36,6 +32,7 @@ type awsKinesisStreamMetadata struct {
 	activationTargetShardCount int64
 	streamName                 string
 	awsRegion                  string
+	awsEndpoint                string
 	awsAuthorization           awsAuthorizationMetadata
 	scalerIndex                int
 }
@@ -98,6 +95,10 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -111,28 +112,11 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 }
 
 func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(metadata.awsRegion),
-	}))
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var kinesisClinent *kinesis.Kinesis
-	if metadata.awsAuthorization.podIdentityOwner {
-		creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken)
-
-		if metadata.awsAuthorization.awsRoleArn != "" {
-			creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
-		}
-
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region:      aws.String(metadata.awsRegion),
-			Credentials: creds,
-		})
-	} else {
-		kinesisClinent = kinesis.New(sess, &aws.Config{
-			Region: aws.String(metadata.awsRegion),
-		})
-	}
-	return kinesisClinent
+	return kinesis.New(sess, config)
 }
 
 // IsActive determines if we need to scale from zero
@@ -150,15 +134,15 @@ func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric

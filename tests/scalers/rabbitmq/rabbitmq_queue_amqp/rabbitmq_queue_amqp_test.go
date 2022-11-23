@@ -32,8 +32,8 @@ var (
 	queueName        = "hello"
 	user             = fmt.Sprintf("%s-user", testName)
 	password         = fmt.Sprintf("%s-password", testName)
-	vhost            = fmt.Sprintf("%s-vhost", testName)
-	connectionString = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/%s", user, password, rmqNamespace, vhost)
+	vhost            = "/"
+	connectionString = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local", user, password, rmqNamespace)
 	messageCount     = 100
 )
 
@@ -111,12 +111,12 @@ func getTemplateData() (templateData, []Template) {
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+	t.Log("--- testing scale out ---")
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
 		"replica count should be 4 after 1 minute")
 
-	t.Log("--- testing scale down ---")
+	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }

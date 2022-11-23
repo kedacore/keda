@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -46,7 +46,7 @@ func (*externalMockScaler) Close(ctx context.Context) error {
 }
 
 // GetMetricSpecForScaling implements Scaler
-func (*externalMockScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
+func (*externalMockScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
 		return nil
 	}
@@ -63,16 +63,16 @@ func (*externalMockScaler) GetMetrics(ctx context.Context, metricName string, me
 	return getMockExternalMetricsValue(), nil
 }
 
-func getMockMetricsSpecs() []v2beta2.MetricSpec {
-	return []v2beta2.MetricSpec{
+func getMockMetricsSpecs() []v2.MetricSpec {
+	return []v2.MetricSpec{
 		{
-			Type: v2beta2.ExternalMetricSourceType,
-			External: &v2beta2.ExternalMetricSource{
-				Metric: v2beta2.MetricIdentifier{
+			Type: v2.ExternalMetricSourceType,
+			External: &v2.ExternalMetricSource{
+				Metric: v2.MetricIdentifier{
 					Name: MockMetricName,
 				},
-				Target: v2beta2.MetricTarget{
-					Type:  v2beta2.ValueMetricType,
+				Target: v2.MetricTarget{
+					Type:  v2.ValueMetricType,
 					Value: resource.NewQuantity(MockMetricValue, resource.DecimalSI),
 				},
 			},

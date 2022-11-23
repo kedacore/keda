@@ -18,10 +18,9 @@ package scalers
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
 
@@ -35,16 +34,16 @@ const (
 	connectionSetting = "none"
 	namespaceName     = "ns"
 	messageCount      = "1000"
-	defaultSuffix     = "servicebus.windows.net"
+	defaultSuffix     = "ns.servicebus.windows.net"
 )
 
 type parseServiceBusMetadataTestData struct {
-	metadata       map[string]string
-	isError        bool
-	entityType     entityType
-	endpointSuffix string
-	authParams     map[string]string
-	podIdentity    kedav1alpha1.PodIdentityProvider
+	metadata                map[string]string
+	isError                 bool
+	entityType              entityType
+	fullyQualifiedNamespace string
+	authParams              map[string]string
+	podIdentity             kedav1alpha1.PodIdentityProvider
 }
 
 type azServiceBusMetricIdentifier struct {
@@ -84,11 +83,11 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	// valid cloud
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "AzureChinaCloud"}, false, queue, "servicebus.chinacloudapi.cn", map[string]string{}, ""},
 	// invalid cloud
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "InvalidCloud"}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "cloud": "InvalidCloud"}, true, none, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 	// private cloud with endpoint suffix
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private", "endpointSuffix": "servicebus.private.cloud"}, false, queue, "servicebus.private.cloud", map[string]string{}, ""},
 	// private cloud without endpoint suffix
-	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "cloud": "Private"}, true, none, "", map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "cloud": "Private"}, true, none, "", map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 	// endpoint suffix without cloud
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "endpointSuffix": "ignored"}, false, queue, defaultSuffix, map[string]string{}, ""},
 	// connection not set
@@ -105,15 +104,32 @@ var parseServiceBusMetadataDataset = []parseServiceBusMetadataTestData{
 	{map[string]string{"queueName": queueName, "namespace": namespaceName}, false, queue, defaultSuffix, map[string]string{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 	// invalid activation message count
 	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "messageCount": messageCount, "activationMessageCount": "AA"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// queue with incorrect useRegex value
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "ababa"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// properly formed queues with regex
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "false"}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": avgOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": sumOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": maxOperation}, false, queue, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "random"}, true, queue, defaultSuffix, map[string]string{}, ""},
+	// queue with invalid regex string
+	{map[string]string{"queueName": "*", "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "avg"}, true, queue, defaultSuffix, map[string]string{}, ""},
+
+	// subscription with incorrect useRegex value
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "ababa"}, true, subscription, defaultSuffix, map[string]string{}, ""},
+	// properly formed subscriptions with regex
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "false"}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": avgOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": sumOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": maxOperation}, false, subscription, defaultSuffix, map[string]string{}, ""},
+	{map[string]string{"topicName": topicName, "subscriptionName": subscriptionName, "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "random"}, true, subscription, defaultSuffix, map[string]string{}, ""},
+	// subscription with invalid regex string
+	{map[string]string{"topicName": topicName, "subscriptionName": "*", "connectionFromEnv": connectionSetting, "useRegex": "true", "operation": "avg"}, true, subscription, defaultSuffix, map[string]string{}, ""},
 }
 
 var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
 	{&parseServiceBusMetadataDataset[1], 0, "s0-azure-servicebus-testqueue"},
 	{&parseServiceBusMetadataDataset[3], 1, "s1-azure-servicebus-testtopic"},
-}
-
-var commonHTTPClient = &http.Client{
-	Timeout: 300 * time.Millisecond,
 }
 
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
@@ -122,7 +138,6 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			entityType: queue,
 			queueName:  queueName,
 		},
-		httpClient: commonHTTPClient,
 	},
 	{
 		metadata: &azureServiceBusMetadata{
@@ -130,7 +145,6 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			topicName:        topicName,
 			subscriptionName: subscriptionName,
 		},
-		httpClient: commonHTTPClient,
 	},
 	{
 		metadata: &azureServiceBusMetadata{
@@ -139,7 +153,6 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			subscriptionName: subscriptionName,
 		},
 		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
-		httpClient:  commonHTTPClient,
 	},
 	{
 		metadata: &azureServiceBusMetadata{
@@ -148,12 +161,11 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 			subscriptionName: subscriptionName,
 		},
 		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
-		httpClient:  commonHTTPClient,
 	},
 }
 
 func TestParseServiceBusMetadata(t *testing.T) {
-	for _, testData := range parseServiceBusMetadataDataset {
+	for index, testData := range parseServiceBusMetadataDataset {
 		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv,
 			TriggerMetadata: testData.metadata, AuthParams: testData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, ScalerIndex: 0},
@@ -165,12 +177,13 @@ func TestParseServiceBusMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+		fmt.Print(index)
 		if meta != nil {
 			if meta.entityType != testData.entityType {
 				t.Errorf("Expected entity type %v but got %v\n", testData.entityType, meta.entityType)
 			}
-			if meta.endpointSuffix != testData.endpointSuffix {
-				t.Errorf("Expected endpoint suffix %v but got %v\n", testData.endpointSuffix, meta.endpointSuffix)
+			if testData.podIdentity != "" && meta.fullyQualifiedNamespace != testData.fullyQualifiedNamespace {
+				t.Errorf("Expected endpoint suffix %v but got %v\n", testData.fullyQualifiedNamespace, meta.fullyQualifiedNamespace)
 			}
 		}
 	}
@@ -220,7 +233,6 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 		mockAzServiceBusScalerScaler := azureServiceBusScaler{
 			metadata:    meta,
 			podIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity},
-			httpClient:  http.DefaultClient,
 		}
 
 		metricSpec := mockAzServiceBusScalerScaler.GetMetricSpecForScaling(context.Background())

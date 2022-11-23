@@ -44,7 +44,7 @@ import (
 	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
-	prommetrics "github.com/kedacore/keda/v2/pkg/metrics"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -66,6 +66,8 @@ var (
 	prometheusMetricsPath     string
 	adapterClientRequestQPS   float32
 	adapterClientRequestBurst int
+	metricsAPIServerPort      int
+	disableCompression        bool
 )
 
 func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
@@ -74,6 +76,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	if cfg != nil {
 		cfg.QPS = adapterClientRequestQPS
 		cfg.Burst = adapterClientRequestBurst
+		cfg.DisableCompression = disableCompression
 	}
 
 	if err != nil {
@@ -115,12 +118,14 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
+	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:        scheme,
-		Namespace:     namespace,
-		LeaseDuration: leaseDuration,
-		RenewDeadline: renewDeadline,
-		RetryPeriod:   retryPeriod,
+		MetricsBindAddress: metricsBindAddress,
+		Scheme:             scheme,
+		Namespace:          namespace,
+		LeaseDuration:      leaseDuration,
+		RenewDeadline:      renewDeadline,
+		RetryPeriod:        retryPeriod,
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")
@@ -201,10 +206,12 @@ func main() {
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
+	cmd.Flags().IntVar(&metricsAPIServerPort, "port", 8080, "Set the port for the metrics API server")
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
+	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
 	}

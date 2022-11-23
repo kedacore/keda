@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
+	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/go-logr/logr"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -20,7 +20,7 @@ const (
 
 type stackdriverScaler struct {
 	client     *StackDriverClient
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *stackdriverMetadata
 	logger     logr.Logger
 }
@@ -184,21 +184,21 @@ func (s *stackdriverScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
 
 	// Create the metric spec for the HPA
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric,
 		Type:     externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics connects to Stack Driver and retrieves the metric
