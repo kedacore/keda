@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	connectionString = os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	connectionString = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	queueName        = fmt.Sprintf("%s-queue-%d", testName, GetRandomNumber())
+	queueName        = fmt.Sprintf("queue-%d", GetRandomNumber())
 )
 
 type templateData struct {
@@ -116,7 +116,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
+	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
 
 	queueURL, messageURL := createQueue(t)
 
@@ -131,8 +131,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, messageURL)
-	testScaleUp(t, kc, messageURL)
-	testScaleDown(t, kc, messageURL)
+	testScaleOut(t, kc, messageURL)
+	testScaleIn(t, kc, messageURL)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -183,16 +183,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.M
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale out ---")
 	addMessages(t, messageURL, 5)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+	t.Log("--- testing scale in ---")
 	_, err := messageURL.Clear(context.Background())
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 

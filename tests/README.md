@@ -2,7 +2,7 @@
 
 - [go](https://go.dev/)
 - `kubectl` logged into a Kubernetes cluster.
-- Each scaler test might define additional requirements. For example, `azure_queue_test.go` requires an env var `AZURE_STORAGE_CONNECTION_STRING`
+- Each scaler test might define additional requirements. For example, `azure_queue_test.go` requires an env var `TF_AZURE_STORAGE_CONNECTION_STRING`
 
 ## Running tests:
 
@@ -151,7 +151,7 @@ func TestScaler(t *testing.T) {
 
     CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-    testScaleUp(t)
+    testScaleOut(t)
 
     // Ensure that this gets run. Using defer is necessary
     DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -178,9 +178,9 @@ func getTemplateData() (templateData, []Template) {
     }
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-    t.Log("--- testing scale up ---")
-    // Use Go Redis Library to add stuff to redis to trigger scale up.
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+    t.Log("--- testing scale out ---")
+    // Use Go Redis Library to add stuff to redis to trigger scale out.
     ...
     ...
     // Sleep / poll for replica count using helper method.
@@ -206,3 +206,13 @@ you're trying to achieve is too complicated or tedious using above, use `ParseCo
 for executing shell commands.
 - Ensure, ensure, ensure that you're cleaning up resources.
 - You can use `VS Code` for easily debugging your tests.
+
+## E2E Test infrastructure
+
+For improving the reliability of e2e test, we try to have all resources under kedacore control using kedacore docker images rather end-users registry images (without official support) and cloud resources in kedacore accounts.
+
+In order to manage these e2e resources, there are 2 different repositories:
+- [kedacore/test-tools](https://github.com/kedacore/test-tools) for docker images management.
+- [kedacore/testing-infrastructure](https://github.com/kedacore/testing-infrastructure) for cloud resources.
+
+If any change is needed in e2e test infrastructure, please open a PR in those repositories and use kedacore resources for e2e tests.

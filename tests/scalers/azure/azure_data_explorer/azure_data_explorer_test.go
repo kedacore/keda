@@ -25,11 +25,11 @@ const (
 )
 
 var (
-	dataExplorerDB        = os.Getenv("AZURE_DATA_EXPLORER_DB")
-	dataExplorerEndpoint  = os.Getenv("AZURE_DATA_EXPLORER_ENDPOINT")
-	azureADClientID       = os.Getenv("AZURE_SP_APP_ID")
+	dataExplorerDB        = os.Getenv("TF_AZURE_DATA_EXPLORER_DB")
+	dataExplorerEndpoint  = os.Getenv("TF_AZURE_DATA_EXPLORER_ENDPOINT")
+	azureADClientID       = os.Getenv("TF_AZURE_SP_APP_ID")
 	azureADSecret         = os.Getenv("AZURE_SP_KEY")
-	azureADTenantID       = os.Getenv("AZURE_SP_TENANT")
+	azureADTenantID       = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace         = fmt.Sprintf("%s-ns", testName)
 	secretName            = fmt.Sprintf("%s-secret", testName)
 	deploymentName        = fmt.Sprintf("%s-deployment", testName)
@@ -137,11 +137,11 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, dataExplorerDB, "AZURE_DATA_EXPLORER_DB env variable is required for deployment bus tests")
-	require.NotEmpty(t, dataExplorerEndpoint, "AZURE_DATA_EXPLORER_ENDPOINT env variable is required for deployment bus tests")
-	require.NotEmpty(t, azureADClientID, "AZURE_SP_APP_ID env variable is required for deployment bus tests")
+	require.NotEmpty(t, dataExplorerDB, "TF_AZURE_DATA_EXPLORER_DB env variable is required for deployment bus tests")
+	require.NotEmpty(t, dataExplorerEndpoint, "TF_AZURE_DATA_EXPLORER_ENDPOINT env variable is required for deployment bus tests")
+	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for deployment bus tests")
-	require.NotEmpty(t, azureADTenantID, "AZURE_SP_TENANT env variable is required for deployment bus tests")
+	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for deployment bus tests")
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -154,8 +154,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, data)
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	templates = append(templates, Template{Name: "triggerAuthTemplate", Config: triggerAuthTemplate})
@@ -173,8 +173,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, scaleInReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 	data.ScaleMetricValue = scaleOutMetricValue
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -183,8 +183,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 1 minute", scaleOutReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale in ---")
 	data.ScaleMetricValue = scaleInMetricValue
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)

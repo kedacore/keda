@@ -133,8 +133,8 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scalersCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func() (scalers.Scaler, error) {
-				return scaler, nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return scaler, &scalers.ScalerConfig{}, nil
 			},
 		}},
 		Logger:   logr.Discard(),

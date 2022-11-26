@@ -116,9 +116,9 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	// till min replica count
-	testScaleUp(t, kc)
+	testScaleOut(t, kc)
 	// back to idle replica count
-	testScaleDown(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -137,8 +137,8 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
 
 	t.Log("--- scale to min replicas ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
@@ -151,8 +151,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 4 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	t.Log("--- scale to idle replicas ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)

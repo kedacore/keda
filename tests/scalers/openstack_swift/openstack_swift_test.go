@@ -167,8 +167,8 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	testActivation(t, kc, client)
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, client)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc, client)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -185,8 +185,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.ServiceClient) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.ServiceClient) {
+	t.Log("--- testing scale out ---")
 	for _, object := range containerObjects {
 		helper.CreateObject(t, client, containerName, object)
 	}
@@ -195,8 +195,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.Ser
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.ServiceClient) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.ServiceClient) {
+	t.Log("--- testing scale in ---")
 	for _, object := range containerObjects {
 		helper.DeleteObject(t, client, containerName, object)
 	}

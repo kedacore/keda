@@ -3,7 +3,10 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type parseStanMetadataTestData struct {
@@ -28,13 +31,15 @@ var testStanMetadata = []parseStanMetadataTestData{
 	// Missing nats server monitoring endpoint, should fail
 	{map[string]string{"queueGroup": "grp1", "subject": "mySubject"}, map[string]string{}, true},
 	// All good.
-	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, map[string]string{}, false},
+	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject", "useHttps": "true"}, map[string]string{}, false},
 	// All good + activationLagThreshold
 	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject", "activationLagThreshold": "10"}, map[string]string{}, false},
 	// natsServerMonitoringEndpoint is defined in authParams
 	{map[string]string{"queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss"}, false},
 	// Missing nats server monitoring endpoint , should fail
 	{map[string]string{"queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject"}, map[string]string{"natsServerMonitoringEndpoint": ""}, true},
+	// Misconfigured https, should fail
+	{map[string]string{"natsServerMonitoringEndpoint": "stan-nats-ss", "queueGroup": "grp1", "durableName": "ImDurable", "subject": "mySubject", "useHttps": "error"}, map[string]string{}, true},
 }
 
 var stanMetricIdentifiers = []stanMetricIdentifier{
@@ -72,4 +77,16 @@ func TestStanGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
+}
+
+func TestGetSTANChannelsEndpointHTTPS(t *testing.T) {
+	endpoint := getSTANChannelsEndpoint(true, "stan-nats-ss")
+
+	assert.True(t, strings.HasPrefix(endpoint, "https:"))
+}
+
+func TestGetSTANChannelsEndpointHTTP(t *testing.T) {
+	endpoint := getSTANChannelsEndpoint(false, "stan-nats-ss")
+
+	assert.True(t, strings.HasPrefix(endpoint, "http:"))
 }

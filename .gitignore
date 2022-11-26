@@ -37,8 +37,6 @@ apiserver.local.config/
 # VSCode specific files
 .vscode
 
-# GO Vendor
-vendor
 cover.out
 
 # GO debug binary

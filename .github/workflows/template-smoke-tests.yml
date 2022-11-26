@@ -35,10 +35,16 @@ jobs:
           fetch-depth: 1
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@main
+        uses: helm/kind-action@v1.4.0
         with:
           node_image: ${{ inputs.kindImage }}
           cluster_name: smoke-tests-cluster-${{ inputs.kubernetesVersion }}
 
       - name: Run smoke test
         run: make smoke-test
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoke-test-logs ${{ inputs.kubernetesVersion }}
+          path: '${{ github.workspace }}/tests/**/*.log'

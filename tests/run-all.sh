@@ -6,7 +6,7 @@ E2E_REGEX="./*${E2E_TEST_REGEX:-*_test.go}"
 DIR=$(dirname "$0")
 cd $DIR
 
-concurrent_tests_limit=8
+concurrent_tests_limit=12
 pids=()
 lookup=()
 failed_count=0
@@ -18,29 +18,31 @@ function run_setup {
     go test -v -tags e2e -timeout 15m utils/setup_test.go
 }
 
+function excute_test {
+    if [[ $1 != *_test.go ]] # Skip helper files
+    then
+        return
+    fi
+    counter=$((counter+1))
+    go test -v -tags e2e -timeout 20m $1 > "$1.$2.log" 2>&1 &
+    pid=$!
+    echo "Running $1 with pid: $pid"
+    pids+=($pid)
+    lookup[$pid]=$1
+    # limit concurrent runs
+    if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
+        wait_for_jobs
+        counter=0
+        pids=()
+    fi
+}
+
 function run_tests {
     counter=0
     # randomize tests order using shuf
     for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX" | shuf)
     do
-        if [[ $test_case != *_test.go ]] # Skip helper files
-        then
-            continue
-        fi
-
-        counter=$((counter+1))
-        go test -v -tags e2e -timeout 20m $test_case > "${test_case}.log" 2>&1 &
-
-        pid=$!
-        echo "Running $test_case with pid: $pid"
-        pids+=($pid)
-        lookup[$pid]=$test_case
-        # limit concurrent runs
-        if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
-            wait_for_jobs
-            counter=0
-            pids=()
-        fi
+        excute_test $test_case 1
     done
 
     wait_for_jobs
@@ -62,20 +64,33 @@ function run_tests {
 
         for test_case in "${retry_lookup[@]}"
         do
-            counter=$((counter+1))
-            go test -v -tags e2e -timeout 20m $test_case > "${test_case}.retry.log" 2>&1 &
-
-            pid=$!
-            echo "Rerunning $test_case with pid: $pid"
-            pids+=($pid)
-            lookup[$pid]=$test_case
-            # limit concurrent runs
-            if [[ "$counter" -ge "$concurrent_tests_limit" ]]; then
-                wait_for_jobs
-                counter=0
-                pids=()
-            fi
+            excute_test $test_case 2
         done
+
+        wait_for_jobs
+    fi
+
+    # Retry failing tests
+    if [ ${#failed_lookup[@]} -ne 0 ]; then
+
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        printf "FINISHED SECOND EXECUTION, RETRYING FAILING TESTS"
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+
+        retry_lookup=("${failed_lookup[@]}")
+        counter=0
+        pids=()
+        failed_count=0
+        failed_lookup=()
+
+        for test_case in "${retry_lookup[@]}"
+        do
+            excute_test $test_case 3
+        done
+
+        wait_for_jobs
     fi
 }
 
@@ -128,7 +143,6 @@ function print_failed {
 
 run_setup
 run_tests
-wait_for_jobs
 print_logs
 run_cleanup
 
