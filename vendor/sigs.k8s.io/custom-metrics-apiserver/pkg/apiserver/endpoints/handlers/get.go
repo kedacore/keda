@@ -17,7 +17,6 @@ limitations under the License.
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -120,7 +119,7 @@ func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.Request
 		trace.Step("Listing from storage done")
 
 		responsewriters.WriteObjectNegotiated(scope.Serializer, negotiation.DefaultEndpointRestrictions, scope.Kind.GroupVersion(), w, req, http.StatusOK, result)
-		trace.Step(fmt.Sprintf("Writing http response done"))
+		trace.Step("Writing http response done")
 	}
 }
 

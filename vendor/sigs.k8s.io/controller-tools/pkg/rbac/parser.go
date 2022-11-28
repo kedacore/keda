@@ -19,7 +19,7 @@ limitations under the License.
 //
 // The markers take the form:
 //
-//  +kubebuilder:rbac:groups=<groups>,resources=<resources>,resourceNames=<resource names>,verbs=<verbs>,urls=<non resource urls>
+//	+kubebuilder:rbac:groups=<groups>,resources=<resources>,resourceNames=<resource names>,verbs=<verbs>,urls=<non resource urls>
 package rbac
 
 import (

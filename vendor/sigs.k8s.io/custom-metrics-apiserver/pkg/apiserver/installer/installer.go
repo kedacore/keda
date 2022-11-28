@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emicklei/go-restful/v3"
+
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -32,7 +34,6 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/registry/rest"
 
-	"github.com/emicklei/go-restful"
 	cm_handlers "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/endpoints/handlers"
 	cm_rest "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 )
@@ -189,8 +190,7 @@ func addObjectParams(ws *restful.WebService, route *restful.RouteBuilder, obj in
 		return err
 	}
 	st := sv.Type()
-	switch st.Kind() {
-	case reflect.Struct:
+	if st.Kind() == reflect.Struct {
 		for i := 0; i < st.NumField(); i++ {
 			name := st.Field(i).Name
 			sf, ok := st.FieldByName(name)

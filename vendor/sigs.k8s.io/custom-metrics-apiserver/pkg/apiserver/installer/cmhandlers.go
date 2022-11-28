@@ -19,12 +19,13 @@ package installer
 import (
 	"net/http"
 
+	"github.com/emicklei/go-restful/v3"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 
-	"github.com/emicklei/go-restful"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 )
 
@@ -106,7 +107,7 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	}
 
 	mediaTypes, streamMediaTypes := negotiation.MediaTypesForSerializer(a.group.Serializer)
-	allMediaTypes := append(mediaTypes, streamMediaTypes...)
+	allMediaTypes := append(mediaTypes, streamMediaTypes...) //nolint: gocritic
 	ws.Produces(allMediaTypes...)
 
 	reqScope := handlers.RequestScope{

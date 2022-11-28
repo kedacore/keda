@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"sort"
 
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -127,7 +128,7 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 		crdVersions = []string{defaultVersion}
 	}
 
-	for groupKind := range kubeKinds {
+	for _, groupKind := range kubeKinds {
 		parser.NeedCRDFor(groupKind, g.MaxDescLen)
 		crdRaw := parser.CustomResourceDefinitions[groupKind]
 		addAttribution(&crdRaw)
@@ -216,7 +217,7 @@ func FindMetav1(roots []*loader.Package) *loader.Package {
 // FindKubeKinds locates all types that contain TypeMeta and ObjectMeta
 // (and thus may be a Kubernetes object), and returns the corresponding
 // group-kinds.
-func FindKubeKinds(parser *Parser, metav1Pkg *loader.Package) map[schema.GroupKind]struct{} {
+func FindKubeKinds(parser *Parser, metav1Pkg *loader.Package) []schema.GroupKind {
 	// TODO(directxman12): technically, we should be finding metav1 per-package
 	kubeKinds := map[schema.GroupKind]struct{}{}
 	for typeIdent, info := range parser.Types {
@@ -247,7 +248,12 @@ func FindKubeKinds(parser *Parser, metav1Pkg *loader.Package) map[schema.GroupKi
 			}
 			fieldPkgPath := loader.NonVendorPath(namedField.Obj().Pkg().Path())
 			fieldPkg := pkg.Imports()[fieldPkgPath]
-			if fieldPkg != metav1Pkg {
+
+			// Compare the metav1 package by ID and not by the actual instance
+			// of the object. The objects in memory could be different due to
+			// loading from different root paths, even when they both refer to
+			// the same metav1 package.
+			if fieldPkg == nil || fieldPkg.ID != metav1Pkg.ID {
 				continue
 			}
 
@@ -270,7 +276,15 @@ func FindKubeKinds(parser *Parser, metav1Pkg *loader.Package) map[schema.GroupKi
 		kubeKinds[groupKind] = struct{}{}
 	}
 
-	return kubeKinds
+	groupKindList := make([]schema.GroupKind, 0, len(kubeKinds))
+	for groupKind := range kubeKinds {
+		groupKindList = append(groupKindList, groupKind)
+	}
+	sort.Slice(groupKindList, func(i, j int) bool {
+		return groupKindList[i].String() < groupKindList[j].String()
+	})
+
+	return groupKindList
 }
 
 // filterTypesForCRDs filters out all nodes that aren't used in CRD generation,

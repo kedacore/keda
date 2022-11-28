@@ -25,7 +25,7 @@ import (
 	cmv1beta2 "k8s.io/metrics/pkg/apis/custom_metrics/v1beta2"
 )
 
-func Convert_url_Values_To_v1beta1_MetricListOptions(in *url.Values, out *cmv1beta1.MetricListOptions, s conversion.Scope) error {
+func ConvertURLValuesToV1beta1MetricListOptions(in *url.Values, out *cmv1beta1.MetricListOptions, s conversion.Scope) error {
 	if values, ok := map[string][]string(*in)["labelSelector"]; ok && len(values) > 0 {
 		if err := runtime.Convert_Slice_string_To_string(&values, &out.LabelSelector, s); err != nil {
 			return err
@@ -43,7 +43,7 @@ func Convert_url_Values_To_v1beta1_MetricListOptions(in *url.Values, out *cmv1be
 	return nil
 }
 
-func Convert_url_Values_To_v1beta2_MetricListOptions(in *url.Values, out *cmv1beta2.MetricListOptions, s conversion.Scope) error {
+func ConvertURLValuesToV1beta2MetricListOptions(in *url.Values, out *cmv1beta2.MetricListOptions, s conversion.Scope) error {
 	if values, ok := map[string][]string(*in)["labelSelector"]; ok && len(values) > 0 {
 		if err := runtime.Convert_Slice_string_To_string(&values, &out.LabelSelector, s); err != nil {
 			return err
@@ -64,12 +64,12 @@ func Convert_url_Values_To_v1beta2_MetricListOptions(in *url.Values, out *cmv1be
 // RegisterConversions adds conversion functions to the given scheme.
 func RegisterConversions(s *runtime.Scheme) error {
 	if err := s.AddConversionFunc((*url.Values)(nil), (*cmv1beta1.MetricListOptions)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_url_Values_To_v1beta1_MetricListOptions(a.(*url.Values), b.(*cmv1beta1.MetricListOptions), scope)
+		return ConvertURLValuesToV1beta1MetricListOptions(a.(*url.Values), b.(*cmv1beta1.MetricListOptions), scope)
 	}); err != nil {
 		return err
 	}
 	if err := s.AddConversionFunc((*url.Values)(nil), (*cmv1beta2.MetricListOptions)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_url_Values_To_v1beta2_MetricListOptions(a.(*url.Values), b.(*cmv1beta2.MetricListOptions), scope)
+		return ConvertURLValuesToV1beta2MetricListOptions(a.(*url.Values), b.(*cmv1beta2.MetricListOptions), scope)
 	}); err != nil {
 		return err
 	}

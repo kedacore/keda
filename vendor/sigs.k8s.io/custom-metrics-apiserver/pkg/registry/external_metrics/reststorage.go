@@ -27,6 +27,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 
@@ -52,6 +53,9 @@ func NewREST(emProvider provider.ExternalMetricsProvider) *REST {
 // New returns empty MetricValue.
 func (r *REST) New() runtime.Object {
 	return &external_metrics.ExternalMetricValue{}
+}
+
+func (r *REST) Destroy() {
 }
 
 // Implement Lister

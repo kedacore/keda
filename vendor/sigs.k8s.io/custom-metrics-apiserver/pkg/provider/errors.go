@@ -30,7 +30,7 @@ import (
 // NewMetricNotFoundError returns a StatusError indicating the given metric could not be found.
 // It is similar to NewNotFound, but more specialized
 func NewMetricNotFoundError(resource schema.GroupResource, metricName string) *apierr.StatusError {
-	return &apierr.StatusError{metav1.Status{
+	return &apierr.StatusError{ErrStatus: metav1.Status{
 		Status:  metav1.StatusFailure,
 		Code:    int32(http.StatusNotFound),
 		Reason:  metav1.StatusReasonNotFound,
@@ -41,7 +41,7 @@ func NewMetricNotFoundError(resource schema.GroupResource, metricName string) *a
 // NewMetricNotFoundForError returns a StatusError indicating the given metric could not be found for
 // the given named object. It is similar to NewNotFound, but more specialized
 func NewMetricNotFoundForError(resource schema.GroupResource, metricName string, resourceName string) *apierr.StatusError {
-	return &apierr.StatusError{metav1.Status{
+	return &apierr.StatusError{ErrStatus: metav1.Status{
 		Status:  metav1.StatusFailure,
 		Code:    int32(http.StatusNotFound),
 		Reason:  metav1.StatusReasonNotFound,
@@ -52,7 +52,7 @@ func NewMetricNotFoundForError(resource schema.GroupResource, metricName string,
 // NewMetricNotFoundForError returns a StatusError indicating the given metric could not be found for
 // the given named object. It is similar to NewNotFound, but more specialized
 func NewMetricNotFoundForSelectorError(resource schema.GroupResource, metricName string, resourceName string, selector labels.Selector) *apierr.StatusError {
-	return &apierr.StatusError{metav1.Status{
+	return &apierr.StatusError{ErrStatus: metav1.Status{
 		Status:  metav1.StatusFailure,
 		Code:    int32(http.StatusNotFound),
 		Reason:  metav1.StatusReasonNotFound,
