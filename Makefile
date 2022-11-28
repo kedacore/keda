@@ -245,6 +245,11 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:arn:aws:iam::${TF_AWS_ACCOUNT_ID}:role/${TEST_CLUSTER_NAME}-role; \
 	fi
+	if [ "$(GCP_RUN_IDENTITY_TESTS)" = true ]; then \
+		cd config/service_account && \
+		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${TF_GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SERVICE_ACCOUNT}; \
+	fi
+	
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml

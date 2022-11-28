@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -53,10 +54,16 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 		return nil, err
 	}
 	c := metadata.NewClient(&http.Client{})
-	project, err := c.ProjectID()
-	if err != nil {
-		return nil, err
+
+	// Running workload identity outside GKE, we can't use the metadata api and we need to use the env that it's provided from the hook
+	project := os.Getenv("CLOUDSDK_CORE_PROJECT")
+	if project != "" {
+		project, err = c.ProjectID()
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &StackDriverClient{
 		metricsClient: client,
 		projectID:     project,

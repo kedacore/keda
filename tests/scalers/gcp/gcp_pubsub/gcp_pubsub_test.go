@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package gcp_stackdriver_test
+package gcp_pubsub_test
 
 import (
 	"encoding/base64"
@@ -25,7 +25,7 @@ var _ = godotenv.Load("../../.env")
 var now = time.Now().UnixNano()
 
 const (
-	testName = "gcp-stackdriver-test"
+	testName = "gcp-pubsub-test"
 )
 
 var (
@@ -37,8 +37,7 @@ var (
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName    = fmt.Sprintf("%s-so", testName)
 	projectID           = creds["project_id"]
-	topicName           = fmt.Sprintf("keda-test-topic-%d", now)
-	topicID             = fmt.Sprintf("projects/%s/topics/%s", projectID, topicName)
+	topicID             = fmt.Sprintf("projects/%s/topics/keda-test-topic-%d", projectID, now)
 	subscriptionName    = fmt.Sprintf("keda-test-topic-sub-%d", now)
 	subscriptionID      = fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionName)
 	maxReplicaCount     = 4
@@ -52,8 +51,6 @@ type templateData struct {
 	GcpCreds            string
 	DeploymentName      string
 	ScaledObjectName    string
-	ProjectID           string
-	TopicName           string
 	SubscriptionName    string
 	SubscriptionID      string
 	MaxReplicaCount     int
@@ -125,15 +122,12 @@ spec:
   maxReplicaCount: {{.MaxReplicaCount}}
   cooldownPeriod: 10
   triggers:
-    - type: gcp-stackdriver
+    - type: gcp-pubsub
       metadata:
-        projectId: {{.ProjectID}}
-        filter: 'metric.type="pubsub.googleapis.com/topic/num_unacked_messages_by_region" AND resource.type="pubsub_topic" AND resource.label.topic_id="{{.TopicName}}"'
-        metricName: {{.TopicName}}
-        targetValue: "5"
-        activationTargetValue: "{{.ActivationThreshold}}"
-        alignmentPeriodSeconds: "60"
-        alignmentAligner: max
+        subscriptionName: {{.SubscriptionName}}
+        mode: SubscriptionSize
+        value: "5"
+        activationValue: "{{.ActivationThreshold}}"
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
@@ -174,7 +168,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, gcpKey, "GCP_KEY env variable is required for GCP storage test")
+	require.NotEmpty(t, gcpKey, "GCP_SP_KEY env variable is required for GCP storage test")
 	assert.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create kubernetes resources
@@ -249,8 +243,6 @@ func getTemplateData() (templateData, []Template) {
 			GcpCreds:            base64GcpCreds,
 			DeploymentName:      deploymentName,
 			ScaledObjectName:    scaledObjectName,
-			ProjectID:           fmt.Sprintf("%s", projectID),
-			TopicName:           topicName,
 			SubscriptionID:      subscriptionID,
 			SubscriptionName:    subscriptionName,
 			MaxReplicaCount:     maxReplicaCount,

@@ -35,6 +35,8 @@ import (
 const (
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
+	GcpIdentityNamespace           = "gcp-identity-system"
+	CertManagerNamespace           = "cert-manager"
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
@@ -54,6 +56,8 @@ var (
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
+	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
+	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 )
 
 var (
