@@ -132,6 +132,7 @@ jobs:
         env:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
+          GCP_RUN_IDENTITY_TESTS: true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           TEST_CLUSTER_NAME: keda-pr-run
         run: |
