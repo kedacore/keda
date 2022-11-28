@@ -32,9 +32,10 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
+
+//	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
@@ -50,8 +51,9 @@ type KedaProvider struct {
 }
 
 var (
-	logger        logr.Logger
-	metricsServer prommetrics.PrometheusMetricServer
+	logger logr.Logger
+
+// metricsServer prommetrics.PrometheusMetricServer
 )
 
 // NewProvider returns an instance of KedaProvider
@@ -109,14 +111,16 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return nil, fmt.Errorf("exactly one ScaledObject should match label %s", metricSelector.String())
 	}
 
-	scaledObject := &scaledObjects.Items[0]
-	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
-	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
-	if err != nil {
-		return nil, fmt.Errorf("error when getting scalers %s", err)
-	}
+	// scaledObject := &scaledObjects.Items[0]
+	// cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
+	// metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error when getting scalers %s", err)
+	// }
 
-	return p.scaleHandler.GetExternalMetricsValuesList(ctx, cache, scaledObject, info.Metric)
+	// TODO Fixme
+	return nil, nil
+	// return p.scaleHandler.GetExternalMetricsValuesList(ctx, cache, scaledObject, info.Metric)
 }
 
 // ListAllExternalMetrics returns the supported external metrics for this provider

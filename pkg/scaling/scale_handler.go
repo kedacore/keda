@@ -36,6 +36,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/fallback"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
@@ -50,8 +51,8 @@ type ScaleHandler interface {
 	GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error)
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 
-	GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error)
-	GetExternalMetricsValuesList(ctx context.Context, cache *cache.ScalersCache, scaledObject *kedav1alpha1.ScaledObject, metricName string) (*external_metrics.ExternalMetricValueList, error)
+	// GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error)
+	GetExternalMetricsValuesList(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
 }
 
 type scaleHandler struct {
@@ -169,7 +170,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	}
 }
 
-func (h *scaleHandler) GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
+func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
 	key := kedav1alpha1.GenerateIdentifier("ScaledObject", scaledObjectNamespace, scaledObjectName)
 
 	h.lock.RLock()
@@ -208,8 +209,7 @@ func (h *scaleHandler) GetScalersCacheForScaledObject(ctx context.Context, scale
 	}
 
 	h.scalerCaches[key] = &cache.ScalersCache{
-		ScaledObject: *scaledObject,
-		Generation:   withTriggers.Generation,
+		ScaledObject: scaledObject,
 		Scalers:      scalers,
 		Logger:       h.logger,
 		Recorder:     h.recorder,
@@ -260,7 +260,7 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		newCache.ScaledObject = *obj
+		newCache.ScaledObject = obj
 	default:
 	}
 
@@ -351,14 +351,29 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
-func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, cache *cache.ScalersCache, scaledObject *kedav1alpha1.ScaledObject, metricName string) (*external_metrics.ExternalMetricValueList, error) {
+func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	var matchingMetrics []external_metrics.ExternalMetricValue
+
+	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
+	prommetrics.RecordScalerObjectError(scaledObjectNamespace, scaledObjectName, err)
+	if err != nil {
+		return nil, fmt.Errorf("error when getting scalers %s", err)
+	}
+
+	var scaledObject *kedav1alpha1.ScaledObject
+	if cache.ScaledObject != nil {
+		scaledObject = cache.ScaledObject
+	} else {
+		err := fmt.Errorf("scaledObject not found in the cache")
+		h.logger.Error(err, "scaledObject not found in the cache", "name", scaledObjectName, "namespace", scaledObjectNamespace)
+		return nil, err
+	}
 
 	// let's check metrics for all scalers in a ScaledObject
 	scalerError := false
 	scalers, scalerConfigs := cache.GetScalers()
 
-	h.logger.V(1).WithValues("name", scaledObject.Name, "namespace", scaledObject.Namespace, "metricName", metricName, "scalers", scalers).Info("Getting metric value")
+	h.logger.V(1).WithValues("name", scaledObjectName, "namespace", scaledObjectNamespace, "metricName", metricName, "scalers", scalers).Info("Getting metric value")
 
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
 		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
@@ -379,17 +394,15 @@ func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, cache *
 				metrics, err = fallback.GetMetricsWithFallback(ctx, h.client, h.logger, metrics, err, metricName, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true
-					h.logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerName)
+					h.logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName, "scaler", scalerName)
 				} else {
-					// TODO fix Prom metrics recorder
-					// for _, metric := range metrics {
-					//	metricValue := metric.Value.AsApproximateFloat64()
-					//	metricsServer.RecordHPAScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
-					// }
+					for _, metric := range metrics {
+						metricValue := metric.Value.AsApproximateFloat64()
+						prommetrics.RecordHPAScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue)
+					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				// TODO fix Prom metrics recorder
-				// metricsServer.RecordHPAScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
+				prommetrics.RecordHPAScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err)
 			}
 		}
 	}

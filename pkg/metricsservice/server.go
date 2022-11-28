@@ -40,17 +40,8 @@ type GrpcServer struct {
 
 // GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject reference
 func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*v1beta1.ExternalMetricValueList, error) {
-	// TODO hit the metrics cache here first
-
-	cache, err := (*s.scalerHandler).GetScalersCacheForScaledObject(ctx, in.Name, in.Namespace)
-	// TODO fix Prom metrics recorder
-	// metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
-	if err != nil {
-		return nil, fmt.Errorf("error when getting scalers %s", err)
-	}
-
 	v1beta1ExtMetrics := &v1beta1.ExternalMetricValueList{}
-	extMetrics, err := (*s.scalerHandler).GetExternalMetricsValuesList(ctx, cache, &cache.ScaledObject, in.MetricName)
+	extMetrics, err := (*s.scalerHandler).GetExternalMetricsValuesList(ctx, in.Name, in.Namespace, in.MetricName)
 	if err != nil {
 		return nil, fmt.Errorf("error when getting metric values %s", err)
 	}

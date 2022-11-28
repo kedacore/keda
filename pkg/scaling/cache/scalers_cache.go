@@ -34,7 +34,7 @@ import (
 )
 
 type ScalersCache struct {
-	ScaledObject kedav1alpha1.ScaledObject
+	ScaledObject *kedav1alpha1.ScaledObject
 	Generation   int64
 	Scalers      []ScalerBuilder
 	Logger       logr.Logger

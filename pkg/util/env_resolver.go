@@ -52,13 +52,3 @@ func ResolveOsEnvDuration(envName string) (*time.Duration, error) {
 
 	return nil, nil
 }
-
-func ResolveOsEnvBool(envName string, defaultValue bool) (bool, error) {
-	valueStr, found := os.LookupEnv(envName)
-
-	if found && valueStr != "" {
-		return strconv.ParseBool(valueStr)
-	}
-
-	return defaultValue, nil
-}

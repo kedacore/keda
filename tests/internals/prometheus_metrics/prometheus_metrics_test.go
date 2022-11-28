@@ -24,13 +24,13 @@ const (
 )
 
 var (
-	testNamespace           = fmt.Sprintf("%s-ns", testName)
-	deploymentName          = fmt.Sprintf("%s-deployment", testName)
-	monitoredDeploymentName = fmt.Sprintf("%s-monitored", testName)
-	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	cronScaledJobName       = fmt.Sprintf("%s-cron-sj", testName)
-	clientName              = fmt.Sprintf("%s-client", testName)
-	serviceName             = fmt.Sprintf("%s-service", testName)
+	testNamespace             = fmt.Sprintf("%s-ns", testName)
+	deploymentName            = fmt.Sprintf("%s-deployment", testName)
+	monitoredDeploymentName   = fmt.Sprintf("%s-monitored", testName)
+	scaledObjectName          = fmt.Sprintf("%s-so", testName)
+	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
+	clientName                = fmt.Sprintf("%s-client", testName)
+	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
 )
 
 type templateData struct {
@@ -41,7 +41,6 @@ type templateData struct {
 	CronScaledJobName       string
 	MonitoredDeploymentName string
 	ClientName              string
-	ServiceName             string
 }
 
 const (
@@ -165,21 +164,6 @@ spec:
       - -c
       - "exec tail -f /dev/null"`
 
-	serviceTemplate = `
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{.ServiceName}}
-  namespace: keda
-spec:
-  ports:
-  - name: metrics
-    port: 8080
-    targetPort: 8080
-  selector:
-    app: keda-operator
-`
-
 	authenticationTemplate = `
 apiVersion: v1
 kind: Secret
@@ -255,14 +239,12 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:        scaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
 			ClientName:              clientName,
-			ServiceName:             serviceName,
 			CronScaledJobName:       cronScaledJobName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "authenticatioNTemplate", Config: authenticationTemplate},
 		}
 }
@@ -283,9 +265,9 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*promMo
 func testHPAScalerMetricValue(t *testing.T) {
 	t.Log("--- testing hpa scaler metric value ---")
 
-	family := fetchAndParsePrometheusMetrics(t, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
+	if val, ok := family["keda_operator_scaler_metrics_value"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -375,7 +357,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure http://%s.keda:8080/metrics", serviceName))
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
 
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
