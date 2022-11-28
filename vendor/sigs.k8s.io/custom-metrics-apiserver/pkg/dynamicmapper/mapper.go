@@ -75,35 +75,36 @@ func (m *RegeneratingDiscoveryRESTMapper) KindsFor(resource schema.GroupVersionR
 	defer m.mu.RUnlock()
 
 	return m.delegate.KindsFor(resource)
-
 }
+
 func (m *RegeneratingDiscoveryRESTMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.delegate.ResourceFor(input)
-
 }
+
 func (m *RegeneratingDiscoveryRESTMapper) ResourcesFor(input schema.GroupVersionResource) ([]schema.GroupVersionResource, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.delegate.ResourcesFor(input)
-
 }
+
 func (m *RegeneratingDiscoveryRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.delegate.RESTMapping(gk, versions...)
-
 }
+
 func (m *RegeneratingDiscoveryRESTMapper) RESTMappings(gk schema.GroupKind, versions ...string) ([]*meta.RESTMapping, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.delegate.RESTMappings(gk, versions...)
 }
+
 func (m *RegeneratingDiscoveryRESTMapper) ResourceSingularizer(resource string) (singular string, err error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

@@ -2,6 +2,7 @@
 package v2
 
 import (
+	"fmt"
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
 	"github.com/Azure/azure-kusto-go/kusto/data/table"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
@@ -95,7 +96,11 @@ func (DataSetCompletion) IsFrame() {}
 
 // UnmarshalRaw unmarshals the raw JSON representing a DataSetCompletion.
 func (d *DataSetCompletion) UnmarshalRaw(raw json.RawMessage) error {
-	return json.Unmarshal(raw, &d)
+	err := json.Unmarshal(raw, &d)
+	if err != nil {
+		err = errors.GetCombinedError(fmt.Errorf("json parsing failed: %v", raw), err)
+	}
+	return err
 }
 
 // TableHeader indicates that instead of receiving a dataTable, we will receive a

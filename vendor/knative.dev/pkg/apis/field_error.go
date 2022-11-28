@@ -83,11 +83,12 @@ var _ error = (*FieldError)(nil)
 
 // ViaField is used to propagate a validation error along a field access.
 // For example, if a type recursively validates its "spec" via:
-//   if err := foo.Spec.Validate(); err != nil {
-//     // Augment any field paths with the context that they were accessed
-//     // via "spec".
-//     return err.ViaField("spec")
-//   }
+//
+//	if err := foo.Spec.Validate(); err != nil {
+//	  // Augment any field paths with the context that they were accessed
+//	  // via "spec".
+//	  return err.ViaField("spec")
+//	}
 func (fe *FieldError) ViaField(prefix ...string) *FieldError {
 	if fe == nil {
 		return nil
@@ -114,11 +115,12 @@ func (fe *FieldError) ViaField(prefix ...string) *FieldError {
 
 // ViaIndex is used to attach an index to the next ViaField provided.
 // For example, if a type recursively validates a parameter that has a collection:
-//  for i, c := range spec.Collection {
-//    if err := doValidation(c); err != nil {
-//      return err.ViaIndex(i).ViaField("collection")
-//    }
-//  }
+//
+//	for i, c := range spec.Collection {
+//	  if err := doValidation(c); err != nil {
+//	    return err.ViaIndex(i).ViaField("collection")
+//	  }
+//	}
 func (fe *FieldError) ViaIndex(index int) *FieldError {
 	return fe.ViaField(asIndex(index))
 }
@@ -130,11 +132,12 @@ func (fe *FieldError) ViaFieldIndex(field string, index int) *FieldError {
 
 // ViaKey is used to attach a key to the next ViaField provided.
 // For example, if a type recursively validates a parameter that has a collection:
-//  for k, v := range spec.Bag {
-//    if err := doValidation(v); err != nil {
-//      return err.ViaKey(k).ViaField("bag")
-//    }
-//  }
+//
+//	for k, v := range spec.Bag {
+//	  if err := doValidation(v); err != nil {
+//	    return err.ViaKey(k).ViaField("bag")
+//	  }
+//	}
 func (fe *FieldError) ViaKey(key string) *FieldError {
 	return fe.ViaField(asKey(key))
 }
@@ -145,7 +148,8 @@ func (fe *FieldError) ViaFieldKey(field, key string) *FieldError {
 }
 
 // At is a way to alter the level of the diagnostics held in this FieldError.
-//    ErrMissingField("foo").At(WarningLevel)
+//
+//	ErrMissingField("foo").At(WarningLevel)
 func (fe *FieldError) At(l DiagnosticLevel) *FieldError {
 	if fe == nil {
 		return nil
@@ -166,9 +170,10 @@ func (fe *FieldError) At(l DiagnosticLevel) *FieldError {
 }
 
 // Filter is a way to access the set of diagnostics having a particular level.
-//    if err := x.Validate(ctx).Filter(ErrorLevel); err != nil {
-//       return err
-//    }
+//
+//	if err := x.Validate(ctx).Filter(ErrorLevel); err != nil {
+//	   return err
+//	}
 func (fe *FieldError) Filter(l DiagnosticLevel) *FieldError {
 	if fe == nil {
 		return nil
@@ -251,10 +256,15 @@ func (fe *FieldError) normalized() []*FieldError {
 	return errors
 }
 
+// WrappedErrors returns the value of the errors after normalizing and deduping using merge().
+func (fe *FieldError) WrappedErrors() []*FieldError {
+	return merge(fe.normalized())
+}
+
 // Error implements error
 func (fe *FieldError) Error() string {
 	// Get the list of errors as a flat merged list.
-	normedErrors := merge(fe.normalized())
+	normedErrors := fe.WrappedErrors()
 	errs := make([]string, 0, len(normedErrors))
 	for _, e := range normedErrors {
 		if e.Details == "" {
@@ -282,10 +292,11 @@ func asKey(key string) string {
 
 // flatten takes in a array of path components and looks for chances to flatten
 // objects that have index prefixes, examples:
-//   err([0]).ViaField(bar).ViaField(foo) -> foo.bar.[0] converts to foo.bar[0]
-//   err(bar).ViaIndex(0).ViaField(foo) -> foo.[0].bar converts to foo[0].bar
-//   err(bar).ViaField(foo).ViaIndex(0) -> [0].foo.bar converts to [0].foo.bar
-//   err(bar).ViaIndex(0).ViaIndex(1).ViaField(foo) -> foo.[1].[0].bar converts to foo[1][0].bar
+//
+//	err([0]).ViaField(bar).ViaField(foo) -> foo.bar.[0] converts to foo.bar[0]
+//	err(bar).ViaIndex(0).ViaField(foo) -> foo.[0].bar converts to foo[0].bar
+//	err(bar).ViaField(foo).ViaIndex(0) -> [0].foo.bar converts to [0].foo.bar
+//	err(bar).ViaIndex(0).ViaIndex(1).ViaField(foo) -> foo.[1].[0].bar converts to foo[1][0].bar
 func flatten(path []string) string {
 	var newPath []string
 	for _, part := range path {

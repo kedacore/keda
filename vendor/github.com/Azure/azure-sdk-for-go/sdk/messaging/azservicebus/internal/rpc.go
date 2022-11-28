@@ -11,11 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	azlog "github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/uuid"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 )
 
@@ -100,14 +98,6 @@ type RPCLinkArgs struct {
 	LogEvent azlog.Event
 }
 
-func closeOrLog(name string, closeable interface {
-	Close(ctx context.Context) error
-}) {
-	if err := closeable.Close(context.Background()); err != nil {
-		log.Writef(exported.EventAuth, "Failed closing %s for RPC Link: %s", name, err.Error())
-	}
-}
-
 // NewRPCLink will build a new request response link
 func NewRPCLink(ctx context.Context, args RPCLinkArgs) (*rpcLink, error) {
 	session, err := args.Client.NewSession(ctx, nil)
@@ -118,7 +108,6 @@ func NewRPCLink(ctx context.Context, args RPCLinkArgs) (*rpcLink, error) {
 
 	linkID, err := uuid.New()
 	if err != nil {
-		closeOrLog("session", session)
 		return nil, err
 	}
 
@@ -140,7 +129,6 @@ func NewRPCLink(ctx context.Context, args RPCLinkArgs) (*rpcLink, error) {
 		nil,
 	)
 	if err != nil {
-		closeOrLog("session", session)
 		return nil, err
 	}
 
@@ -161,8 +149,11 @@ func NewRPCLink(ctx context.Context, args RPCLinkArgs) (*rpcLink, error) {
 
 	receiver, err := session.NewReceiver(ctx, args.Address, receiverOpts)
 	if err != nil {
-		closeOrLog("sender", sender)
-		closeOrLog("session", session)
+		// make sure we close the sender
+		clsCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_ = sender.Close(clsCtx)
 		return nil, err
 	}
 
@@ -331,11 +322,7 @@ func (l *rpcLink) RPC(ctx context.Context, msg *amqp.Message) (*RPCResponse, err
 }
 
 // Close the link receiver, sender and session
-func (l *rpcLink) Close(_ context.Context) error {
-	// we're finding, in practice, that allowing cancellations when cleaning up state
-	// just results in inconsistencies. We'll cut cancellation off here for now.
-	ctx := context.Background()
-
+func (l *rpcLink) Close(ctx context.Context) error {
 	l.rpcLinkCtxCancel()
 
 	if err := l.closeReceiver(ctx); err != nil {

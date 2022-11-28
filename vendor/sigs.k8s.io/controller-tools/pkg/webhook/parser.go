@@ -19,7 +19,7 @@ limitations under the License.
 //
 // The markers take the form:
 //
-//  +kubebuilder:webhook:webhookVersions=<[]string>,failurePolicy=<string>,matchPolicy=<string>,groups=<[]string>,resources=<[]string>,verbs=<[]string>,versions=<[]string>,name=<string>,path=<string>,mutating=<bool>,sideEffects=<string>,admissionReviewVersions=<[]string>
+//	+kubebuilder:webhook:webhookVersions=<[]string>,failurePolicy=<string>,matchPolicy=<string>,groups=<[]string>,resources=<[]string>,verbs=<[]string>,versions=<[]string>,name=<string>,path=<string>,mutating=<bool>,sideEffects=<string>,admissionReviewVersions=<[]string>,reinvocationPolicy=<string>
 package webhook
 
 import (
@@ -111,6 +111,14 @@ type Config struct {
 	// AdmissionReviewVersions is an ordered list of preferred `AdmissionReview`
 	// versions the Webhook expects.
 	AdmissionReviewVersions []string `marker:"admissionReviewVersions"`
+
+	// ReinvocationPolicy allows mutating webhooks to request reinvocation after other mutations
+	//
+	// To allow mutating admission plugins to observe changes made by other plugins,
+	// built-in mutating admission plugins are re-run if a mutating webhook modifies
+	// an object, and mutating webhooks can specify a reinvocationPolicy to control
+	// whether they are reinvoked as well.
+	ReinvocationPolicy string `marker:"reinvocationPolicy,optional"`
 }
 
 // verbToAPIVariant converts a marker's verb to the proper value for the API.
@@ -151,6 +159,7 @@ func (c Config) ToMutatingWebhook() (admissionregv1.MutatingWebhook, error) {
 		ClientConfig:            c.clientConfig(),
 		SideEffects:             c.sideEffects(),
 		AdmissionReviewVersions: c.AdmissionReviewVersions,
+		ReinvocationPolicy:      c.reinvocationPolicy(),
 	}, nil
 }
 
@@ -261,6 +270,20 @@ func (c Config) sideEffects() *admissionregv1.SideEffectClass {
 		return nil
 	}
 	return &sideEffects
+}
+
+// reinvocationPolicy returns the reinvocationPolicy config for a mutating webhook.
+func (c Config) reinvocationPolicy() *admissionregv1.ReinvocationPolicyType {
+	var reinvocationPolicy admissionregv1.ReinvocationPolicyType
+	switch strings.ToLower(c.ReinvocationPolicy) {
+	case strings.ToLower(string(admissionregv1.NeverReinvocationPolicy)):
+		reinvocationPolicy = admissionregv1.NeverReinvocationPolicy
+	case strings.ToLower(string(admissionregv1.IfNeededReinvocationPolicy)):
+		reinvocationPolicy = admissionregv1.IfNeededReinvocationPolicy
+	default:
+		return nil
+	}
+	return &reinvocationPolicy
 }
 
 // webhookVersions returns the target API versions of the {Mutating,Validating}WebhookConfiguration objects for a webhook.
