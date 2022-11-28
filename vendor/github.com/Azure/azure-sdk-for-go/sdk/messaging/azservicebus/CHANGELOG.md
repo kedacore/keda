@@ -1,5 +1,13 @@
 # Release History
 
+## 1.1.3 (2022-11-16)
+
+### Bugs Fixed
+
+- Removing changes for client-side idle timer and closing without timeout. Combined these are 
+  causing issues with links not properly recovering or closing. Investigating an alternative
+  for a future release.
+
 ## 1.1.2 (2022-11-08)
 
 ### Features Added

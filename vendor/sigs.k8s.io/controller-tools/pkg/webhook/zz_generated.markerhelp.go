@@ -81,6 +81,10 @@ func (Config) Help() *markers.DefinitionHelp {
 				Summary: "is an ordered list of preferred `AdmissionReview` versions the Webhook expects.",
 				Details: "",
 			},
+			"ReinvocationPolicy": {
+				Summary: "allows mutating webhooks to request reinvocation after other mutations ",
+				Details: "To allow mutating admission plugins to observe changes made by other plugins, built-in mutating admission plugins are re-run if a mutating webhook modifies an object, and mutating webhooks can specify a reinvocationPolicy to control whether they are reinvoked as well.",
+			},
 		},
 	}
 }

@@ -149,11 +149,11 @@ type TypeCallback func(info *TypeInfo)
 // EachType collects all markers, then calls the given callback for each type declaration in a package.
 // Each individual spec is considered separate, so
 //
-//  type (
-//      Foo string
-//      Bar int
-//      Baz struct{}
-//  )
+//	type (
+//	    Foo string
+//	    Bar int
+//	    Baz struct{}
+//	)
 //
 // yields three calls to the callback.
 func EachType(col *Collector, pkg *loader.Package, cb TypeCallback) error {

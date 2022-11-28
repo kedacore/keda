@@ -21,12 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/version"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/informers"
-
 	cminstall "k8s.io/metrics/pkg/apis/custom_metrics/install"
 	eminstall "k8s.io/metrics/pkg/apis/external_metrics/install"
+
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/installer"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
@@ -41,7 +42,7 @@ func init() {
 	eminstall.Install(Scheme)
 
 	// we need custom conversion functions to list resources with options
-	installer.RegisterConversions(Scheme)
+	utilruntime.Must(installer.RegisterConversions(Scheme))
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -69,24 +70,24 @@ type CustomMetricsAdapterServer struct {
 	externalMetricsProvider provider.ExternalMetricsProvider
 }
 
-type completedConfig struct {
+type CompletedConfig struct {
 	genericapiserver.CompletedConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
-func (c *Config) Complete(informers informers.SharedInformerFactory) completedConfig {
+func (c *Config) Complete(informers informers.SharedInformerFactory) CompletedConfig {
 	c.GenericConfig.Version = &version.Info{
 		Major: "1",
 		Minor: "0",
 	}
-	return completedConfig{c.GenericConfig.Complete(informers)}
+	return CompletedConfig{c.GenericConfig.Complete(informers)}
 }
 
 // New returns a new instance of CustomMetricsAdapterServer from the given config.
 // name is used to differentiate for logging.
 // Each of the arguments: customMetricsProvider, externalMetricsProvider can be set either to
 // a provider implementation, or to nil to disable one of the APIs.
-func (c completedConfig) New(name string, customMetricsProvider provider.CustomMetricsProvider, externalMetricsProvider provider.ExternalMetricsProvider) (*CustomMetricsAdapterServer, error) {
+func (c CompletedConfig) New(name string, customMetricsProvider provider.CustomMetricsProvider, externalMetricsProvider provider.ExternalMetricsProvider) (*CustomMetricsAdapterServer, error) {
 	genericServer, err := c.CompletedConfig.New(name, genericapiserver.NewEmptyDelegate()) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
