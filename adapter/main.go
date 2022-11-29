@@ -28,8 +28,6 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
-	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -41,7 +39,6 @@ import (
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
-	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
@@ -200,9 +197,7 @@ func main() {
 	klog.InitFlags(nil)
 
 	cmd := &Adapter{}
-	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(scheme.Scheme))
-	cmd.OpenAPIConfig.Info.Title = "keda-adapter"
-	cmd.OpenAPIConfig.Info.Version = "1.0.0"
+	cmd.Name = "keda-adapter"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
