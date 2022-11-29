@@ -10,7 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	v2 "k8s.io/api/autoscaling/v2"
-	labels "k8s.io/apimachinery/pkg/labels"
 	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -66,18 +65,18 @@ func (mr *MockScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *gomo
 }
 
 // GetMetrics mocks base method.
-func (m *MockScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (m *MockScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName, metricSelector)
+	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName)
 	ret0, _ := ret[0].([]external_metrics.ExternalMetricValue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetrics indicates an expected call of GetMetrics.
-func (mr *MockScalerMockRecorder) GetMetrics(ctx, metricName, metricSelector interface{}) *gomock.Call {
+func (mr *MockScalerMockRecorder) GetMetrics(ctx, metricName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockScaler)(nil).GetMetrics), ctx, metricName, metricSelector)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockScaler)(nil).GetMetrics), ctx, metricName)
 }
 
 // IsActive mocks base method.
@@ -147,18 +146,18 @@ func (mr *MockPushScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *
 }
 
 // GetMetrics mocks base method.
-func (m *MockPushScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (m *MockPushScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName, metricSelector)
+	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName)
 	ret0, _ := ret[0].([]external_metrics.ExternalMetricValue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetrics indicates an expected call of GetMetrics.
-func (mr *MockPushScalerMockRecorder) GetMetrics(ctx, metricName, metricSelector interface{}) *gomock.Call {
+func (mr *MockPushScalerMockRecorder) GetMetrics(ctx, metricName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockPushScaler)(nil).GetMetrics), ctx, metricName, metricSelector)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockPushScaler)(nil).GetMetrics), ctx, metricName)
 }
 
 // IsActive mocks base method.

@@ -8,7 +8,6 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -55,7 +54,7 @@ func (*externalMockScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Met
 }
 
 // GetMetrics implements Scaler
-func (*externalMockScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (*externalMockScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
 		return nil, ErrMock
 	}

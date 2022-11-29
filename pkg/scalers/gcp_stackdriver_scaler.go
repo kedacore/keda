@@ -8,7 +8,6 @@ import (
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -202,7 +201,7 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 }
 
 // GetMetrics connects to Stack Driver and retrieves the metric
-func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	value, err := s.getMetrics(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting metric value")

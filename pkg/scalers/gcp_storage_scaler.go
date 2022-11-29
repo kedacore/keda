@@ -11,7 +11,6 @@ import (
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -188,7 +187,7 @@ func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 // GetMetrics returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
-func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	items, err := s.getItemCount(ctx, s.metadata.maxBucketItemsToScan)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err

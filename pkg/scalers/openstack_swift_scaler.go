@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -383,7 +382,7 @@ func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
 
 	if err != nil {

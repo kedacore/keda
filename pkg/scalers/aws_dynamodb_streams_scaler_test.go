@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -414,7 +413,6 @@ func TestAwsDynamoDBStreamsGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
-	var selector labels.Selector
 	for _, meta := range awsDynamoDBStreamsGetMetricTestData {
 		var value []external_metrics.ExternalMetricValue
 		var err error
@@ -423,7 +421,7 @@ func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
 		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
-			value, err = scaler.GetMetrics(context.Background(), "MetricName", selector)
+			value, err = scaler.GetMetrics(context.Background(), "MetricName")
 		}
 		switch meta.tableName {
 		case testAWSDynamoDBErrorTable:

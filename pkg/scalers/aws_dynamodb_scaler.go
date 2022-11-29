@@ -13,7 +13,6 @@ import (
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -152,7 +151,7 @@ func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	return dynamodb.New(sess, config)
 }
 
-func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := s.GetQueryMetrics()
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")

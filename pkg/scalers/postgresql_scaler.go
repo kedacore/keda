@@ -10,7 +10,6 @@ import (
 	// PostreSQL drive required for this scaler
 	_ "github.com/lib/pq"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -203,7 +202,7 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *postgreSQLScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getActiveNumber(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting postgreSQL: %s", err)

@@ -13,7 +13,6 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -174,7 +173,7 @@ func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(context.Context) []v2
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsDynamoDBStreamsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *awsDynamoDBStreamsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	shardCount, err := s.GetDynamoDBStreamShardCount(ctx)
 
 	if err != nil {

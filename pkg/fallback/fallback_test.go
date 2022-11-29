@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The KEDA Authors
+Copyright 2022 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package fallback
 
 import (
 	"context"
@@ -36,7 +36,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 )
 
 const metricName = "some_metric_name"
@@ -51,22 +50,15 @@ func TestFallback(t *testing.T) {
 
 var _ = Describe("fallback", func() {
 	var (
-		scaleHandler      *mock_scaling.MockScaleHandler
-		client            *mock_client.MockClient
-		providerUnderTest *KedaProvider
-		scaler            *mock_scalers.MockScaler
-		ctrl              *gomock.Controller
+		client *mock_client.MockClient
+		scaler *mock_scalers.MockScaler
+		ctrl   *gomock.Controller
+		logger logr.Logger
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		scaleHandler = mock_scaling.NewMockScaleHandler(ctrl)
 		client = mock_client.NewMockClient(ctrl)
-		providerUnderTest = &KedaProvider{
-			client:           client,
-			scaleHandler:     scaleHandler,
-			watchedNamespace: "",
-		}
 		scaler = mock_scalers.NewMockScaler(ctrl)
 
 		logger = logr.Discard()
@@ -84,8 +76,8 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(3)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		metrics, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -115,8 +107,8 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(3)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		metrics, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -125,21 +117,21 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should propagate the error when fallback is disabled", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		_, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
 	})
 
 	It("should bump the number of failures when metrics call fails", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(0)
 
 		so := buildScaledObject(
@@ -160,8 +152,8 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		_, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -169,7 +161,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should return a normalised metric when number of failures are beyond threshold", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(3)
 		expectedMetricValue := int64(100)
 
@@ -190,8 +182,8 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		metrics, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -217,12 +209,12 @@ var _ = Describe("fallback", func() {
 			},
 		}
 
-		isEnabled := isFallbackEnabled(so, metricsSpec)
+		isEnabled := isFallbackEnabled(logger, so, metricsSpec)
 		Expect(isEnabled).Should(BeFalse())
 	})
 
 	It("should ignore error if we fail to update kubernetes status", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(3)
 		expectedMetricValue := int64(100)
 
@@ -246,8 +238,8 @@ var _ = Describe("fallback", func() {
 		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
 		client.EXPECT().Status().Return(statusWriter)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		metrics, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -256,7 +248,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should return error when fallback is enabled but scaledobject has invalid parameter", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(3)
 
 		so := buildScaledObject(
@@ -276,15 +268,15 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		_, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
 	})
 
 	It("should set the fallback condition when a fallback exists in the scaled object", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(3)
 		failingNumberOfFailures := int32(6)
 		anotherMetricName := "another metric name"
@@ -310,15 +302,15 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		_, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 		Expect(err).ToNot(HaveOccurred())
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeTrue())
 	})
 
 	It("should set the fallback condition to false if the config is invalid", func() {
-		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return(nil, errors.New("Some error"))
+		scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return(nil, errors.New("Some error"))
 		startingNumberOfFailures := int32(3)
 		failingNumberOfFailures := int32(6)
 		anotherMetricName := "another metric name"
@@ -344,8 +336,8 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		metrics, err := scaler.GetMetrics(context.Background(), metricName, nil)
-		_, err = providerUnderTest.getMetricsWithFallback(context.Background(), metrics, err, metricName, so, metricSpec)
+		metrics, err := scaler.GetMetrics(context.Background(), metricName)
+		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
 		condition := so.Status.Conditions.GetFallbackCondition()
@@ -433,7 +425,7 @@ func primeGetMetrics(scaler *mock_scalers.MockScaler, value int64) {
 		Timestamp:  metav1.Now(),
 	}
 
-	scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName), gomock.Any()).Return([]external_metrics.ExternalMetricValue{expectedMetric}, nil)
+	scaler.EXPECT().GetMetrics(gomock.Any(), gomock.Eq(metricName)).Return([]external_metrics.ExternalMetricValue{expectedMetric}, nil)
 }
 
 func createMetricSpec(averageValue int) v2.MetricSpec {

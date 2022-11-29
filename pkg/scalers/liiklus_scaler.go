@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	liiklus_service "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
@@ -75,7 +74,7 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	return &scaler, nil
 }
 
-func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	totalLag, lags, err := s.getLag(ctx)
 	if err != nil {
 		return nil, err
