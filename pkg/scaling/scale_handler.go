@@ -36,6 +36,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/fallback"
+	metricsserviceapi "github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
@@ -52,7 +53,7 @@ type ScaleHandler interface {
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 
 	// GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error)
-	GetExternalMetricsValuesList(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
+	GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *metricsserviceapi.PromMetricsMsg, error)
 }
 
 type scaleHandler struct {
@@ -351,13 +352,23 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
-func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
+func (h *scaleHandler) GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *metricsserviceapi.PromMetricsMsg, error) {
 	var matchingMetrics []external_metrics.ExternalMetricValue
 
+	exportedPromMetrics := metricsserviceapi.PromMetricsMsg{
+		ScaledObjectErr: false,
+		ScalerMetric:    []*metricsserviceapi.ScalerMetricMsg{},
+		ScalerError:     []*metricsserviceapi.ScalerErrorMsg{},
+	}
+
 	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
-	prommetrics.RecordScalerObjectError(scaledObjectNamespace, scaledObjectName, err)
+	prommetrics.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err)
+
+	// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+	exportedPromMetrics.ScaledObjectErr = (err != nil)
+
 	if err != nil {
-		return nil, fmt.Errorf("error when getting scalers %s", err)
+		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %s", err)
 	}
 
 	var scaledObject *kedav1alpha1.ScaledObject
@@ -366,7 +377,7 @@ func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, scaledO
 	} else {
 		err := fmt.Errorf("scaledObject not found in the cache")
 		h.logger.Error(err, "scaledObject not found in the cache", "name", scaledObjectName, "namespace", scaledObjectNamespace)
-		return nil, err
+		return nil, &exportedPromMetrics, err
 	}
 
 	// let's check metrics for all scalers in a ScaledObject
@@ -398,11 +409,29 @@ func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, scaledO
 				} else {
 					for _, metric := range metrics {
 						metricValue := metric.Value.AsApproximateFloat64()
-						prommetrics.RecordHPAScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue)
+						prommetrics.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue)
+
+						// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+						scalerMetricMsg := metricsserviceapi.ScalerMetricMsg{
+							ScalerName:  scalerName,
+							ScalerIndex: int32(scalerIndex),
+							MetricName:  metricName,
+							MetricValue: float32(metricValue),
+						}
+						exportedPromMetrics.ScalerMetric = append(exportedPromMetrics.ScalerMetric, &scalerMetricMsg)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				prommetrics.RecordHPAScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err)
+				prommetrics.RecordScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err)
+
+				// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+				scalerErrMsg := metricsserviceapi.ScalerErrorMsg{
+					ScalerName:  scalerName,
+					ScalerIndex: int32(scalerIndex),
+					MetricName:  metricName,
+					Error:       (err != nil),
+				}
+				exportedPromMetrics.ScalerError = append(exportedPromMetrics.ScalerError, &scalerErrMsg)
 			}
 		}
 	}
@@ -418,12 +447,12 @@ func (h *scaleHandler) GetExternalMetricsValuesList(ctx context.Context, scaledO
 	}
 
 	if len(matchingMetrics) == 0 {
-		return nil, fmt.Errorf("no matching metrics found for " + metricName)
+		return nil, &exportedPromMetrics, fmt.Errorf("no matching metrics found for " + metricName)
 	}
 
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
-	}, nil
+	}, &exportedPromMetrics, nil
 }
 
 // buildScalers returns list of Scalers for the specified triggers

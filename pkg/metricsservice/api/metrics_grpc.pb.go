@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	v1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -23,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MetricsServiceClient interface {
-	GetMetrics(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*v1beta1.ExternalMetricValueList, error)
+	GetMetrics(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*Response, error)
 }
 
 type metricsServiceClient struct {
@@ -34,8 +33,8 @@ func NewMetricsServiceClient(cc grpc.ClientConnInterface) MetricsServiceClient {
 	return &metricsServiceClient{cc}
 }
 
-func (c *metricsServiceClient) GetMetrics(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*v1beta1.ExternalMetricValueList, error) {
-	out := new(v1beta1.ExternalMetricValueList)
+func (c *metricsServiceClient) GetMetrics(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
 	err := c.cc.Invoke(ctx, "/api.MetricsService/GetMetrics", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -47,7 +46,7 @@ func (c *metricsServiceClient) GetMetrics(ctx context.Context, in *ScaledObjectR
 // All implementations must embed UnimplementedMetricsServiceServer
 // for forward compatibility
 type MetricsServiceServer interface {
-	GetMetrics(context.Context, *ScaledObjectRef) (*v1beta1.ExternalMetricValueList, error)
+	GetMetrics(context.Context, *ScaledObjectRef) (*Response, error)
 	mustEmbedUnimplementedMetricsServiceServer()
 }
 
@@ -55,7 +54,7 @@ type MetricsServiceServer interface {
 type UnimplementedMetricsServiceServer struct {
 }
 
-func (UnimplementedMetricsServiceServer) GetMetrics(context.Context, *ScaledObjectRef) (*v1beta1.ExternalMetricValueList, error) {
+func (UnimplementedMetricsServiceServer) GetMetrics(context.Context, *ScaledObjectRef) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMetrics not implemented")
 }
 func (UnimplementedMetricsServiceServer) mustEmbedUnimplementedMetricsServiceServer() {}

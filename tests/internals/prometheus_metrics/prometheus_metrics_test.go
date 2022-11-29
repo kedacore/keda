@@ -224,7 +224,8 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2 after 2 minute")
 
-	testHPAScalerMetricValue(t)
+	testScalerMetricValue(t)
+	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 
 	// cleanup
@@ -262,12 +263,36 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*promMo
 	return families
 }
 
-func testHPAScalerMetricValue(t *testing.T) {
-	t.Log("--- testing hpa scaler metric value ---")
+func testScalerMetricValue(t *testing.T) {
+	t.Log("--- testing scaler metric value ---")
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_operator_scaler_metrics_value"]; ok {
+	if val, ok := family["keda_scaler_metrics_value"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+					assert.Equal(t, float64(4), *metric.Gauge.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+func testMetricsServerScalerMetricValue(t *testing.T) {
+	t.Log("--- testing scaler metric value in metrics server ---")
+
+	family := fetchAndParsePrometheusMetrics(t, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
+
+	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -367,7 +392,7 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
 
-	family, ok := families["keda_operator_trigger_totals"]
+	family, ok := families["keda_trigger_totals"]
 	if !ok {
 		t.Errorf("metric not available")
 		return
@@ -396,7 +421,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.Metric
 func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
 	t.Log("--- testing resource total metrics ---")
 
-	family, ok := families["keda_operator_resource_totals"]
+	family, ok := families["keda_resource_totals"]
 	if !ok {
 		t.Errorf("metric not available")
 		return

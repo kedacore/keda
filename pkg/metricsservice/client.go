@@ -54,17 +54,17 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 	return &GrpcClient{client: api.NewMetricsServiceClient(conn)}, nil
 }
 
-func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
-	v1beta1ExtMetrics, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
+func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+	response, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {
-		return nil, err
+		return nil, response.GetPromMetrics(), err
 	}
 
 	extMetrics := &external_metrics.ExternalMetricValueList{}
-	err = v1beta1.Convert_v1beta1_ExternalMetricValueList_To_external_metrics_ExternalMetricValueList(v1beta1ExtMetrics, extMetrics, nil)
+	err = v1beta1.Convert_v1beta1_ExternalMetricValueList_To_external_metrics_ExternalMetricValueList(response.GetMetrics(), extMetrics, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error when converting metric values %s", err)
+		return nil, response.GetPromMetrics(), fmt.Errorf("error when converting metric values %s", err)
 	}
 
-	return extMetrics, nil
+	return extMetrics, response.GetPromMetrics(), nil
 }

@@ -31,13 +31,15 @@ const (
 	TriggerAuthenticationResource        = "trigger_authentication"
 	ScaledObjectResource                 = "scaled_object"
 	ScaledJobResource                    = "scaled_job"
+
+	DefaultPromMetricsNamespace = "keda"
 )
 
 var (
 	metricLabels      = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
 	scalerErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "keda_operator",
+			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors_total",
 			Help:      "Total number of errors for all scalers",
@@ -46,7 +48,7 @@ var (
 	)
 	scalerMetricsValue = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: "keda_operator",
+			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_value",
 			Help:      "Metric Value used for HPA",
@@ -55,7 +57,7 @@ var (
 	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "keda_operator",
+			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors",
 			Help:      "Number of scaler errors",
@@ -64,8 +66,8 @@ var (
 	)
 	scaledObjectErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "keda_operator",
-			Subsystem: "scaled_object",
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled",
 			Name:      "errors",
 			Help:      "Number of scaled object errors",
 		},
@@ -74,7 +76,7 @@ var (
 
 	triggerTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: "keda_operator",
+			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "totals",
 		},
@@ -83,7 +85,7 @@ var (
 
 	crdTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: "keda_operator",
+			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "totals",
 		},
@@ -101,17 +103,17 @@ func init() {
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 }
 
-// RecordHPAScalerMetric create a measurement of the external metric used by the HPA
-func RecordHPAScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+// RecordScalerMetric create a measurement of the external metric used by the HPA
+func RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
-// RecordHPAScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func RecordHPAScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
+// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
+func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
 		// scaledObjectErrors.With(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}).Inc()
-		RecordScalerObjectError(namespace, scaledObject, err)
+		RecordScaledObjectError(namespace, scaledObject, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
@@ -122,8 +124,8 @@ func RecordHPAScalerError(namespace string, scaledObject string, scaler string, 
 	}
 }
 
-// RecordScalerObjectError counts the number of errors with the scaled object
-func RecordScalerObjectError(namespace string, scaledObject string, err error) {
+// RecordScaleObjectError counts the number of errors with the scaled object
+func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {
 		scaledObjectErrors.With(labels).Inc()

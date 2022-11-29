@@ -39,9 +39,9 @@ type GrpcServer struct {
 }
 
 // GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject reference
-func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*v1beta1.ExternalMetricValueList, error) {
+func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*api.Response, error) {
 	v1beta1ExtMetrics := &v1beta1.ExternalMetricValueList{}
-	extMetrics, err := (*s.scalerHandler).GetExternalMetricsValuesList(ctx, in.Name, in.Namespace, in.MetricName)
+	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetExternalMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	if err != nil {
 		return nil, fmt.Errorf("error when getting metric values %s", err)
 	}
@@ -53,7 +53,7 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 
 	log.V(1).WithValues("scaledObjectName", in.Name, "scaledObjectNamespace", in.Namespace, "metrics", v1beta1ExtMetrics).Info("Providing metrics")
 
-	return v1beta1ExtMetrics, nil
+	return &api.Response{Metrics: v1beta1ExtMetrics, PromMetrics: exportedMetrics}, nil
 }
 
 // NewGrpcServer creates a new instance of GrpcServer
