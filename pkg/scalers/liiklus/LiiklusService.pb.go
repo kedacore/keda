@@ -7,10 +7,10 @@
 package liiklus
 
 import (
+	empty "github.com/golang/protobuf/ptypes/empty"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -326,7 +326,6 @@ type SubscribeReply struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Reply:
-	//
 	//	*SubscribeReply_Assignment
 	Reply isSubscribeReply_Reply `protobuf_oneof:"reply"`
 }
@@ -537,7 +536,6 @@ type ReceiveReply struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Reply:
-	//
 	//	*ReceiveReply_Record_
 	Reply isReceiveReply_Reply `protobuf_oneof:"reply"`
 }
@@ -807,11 +805,11 @@ type ReceiveReply_Record struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Offset    uint64                 `protobuf:"varint,1,opt,name=offset,proto3" json:"offset,omitempty"`
-	Key       []byte                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Value     []byte                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	Timestamp *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Replay    bool                   `protobuf:"varint,5,opt,name=replay,proto3" json:"replay,omitempty"`
+	Offset    uint64               `protobuf:"varint,1,opt,name=offset,proto3" json:"offset,omitempty"`
+	Key       []byte               `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Value     []byte               `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Replay    bool                 `protobuf:"varint,5,opt,name=replay,proto3" json:"replay,omitempty"`
 }
 
 func (x *ReceiveReply_Record) Reset() {
@@ -867,7 +865,7 @@ func (x *ReceiveReply_Record) GetValue() []byte {
 	return nil
 }
 
-func (x *ReceiveReply_Record) GetTimestamp() *timestamppb.Timestamp {
+func (x *ReceiveReply_Record) GetTimestamp() *timestamp.Timestamp {
 	if x != nil {
 		return x.Timestamp
 	}
@@ -1073,8 +1071,8 @@ var file_LiiklusService_proto_goTypes = []interface{}{
 	(*ReceiveReply_Record)(nil),           // 13: com.github.bsideup.liiklus.ReceiveReply.Record
 	nil,                                   // 14: com.github.bsideup.liiklus.GetOffsetsReply.OffsetsEntry
 	nil,                                   // 15: com.github.bsideup.liiklus.GetEndOffsetsReply.OffsetsEntry
-	(*timestamppb.Timestamp)(nil),         // 16: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                 // 17: google.protobuf.Empty
+	(*timestamp.Timestamp)(nil),           // 16: google.protobuf.Timestamp
+	(*empty.Empty)(nil),                   // 17: google.protobuf.Empty
 }
 var file_LiiklusService_proto_depIdxs = []int32{
 	0,  // 0: com.github.bsideup.liiklus.SubscribeRequest.autoOffsetReset:type_name -> com.github.bsideup.liiklus.SubscribeRequest.AutoOffsetReset
