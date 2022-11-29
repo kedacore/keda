@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -191,7 +190,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")

@@ -32,9 +32,13 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/fallback"
+	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
+
+//	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
@@ -44,15 +48,18 @@ type KedaProvider struct {
 	ctx                     context.Context
 	externalMetricsInfo     *[]provider.ExternalMetricInfo
 	externalMetricsInfoLock *sync.RWMutex
+
+	grpcClient            metricsservice.GrpcClient
+	useMetricsServiceGrpc bool
 }
 
 var (
-	logger        logr.Logger
-	metricsServer prommetrics.PrometheusMetricServer
+	logger            logr.Logger
+	promMetricsServer prommetrics.PrometheusMetricServer
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
 	provider := &KedaProvider{
 		client:                  client,
 		scaleHandler:            scaleHandler,
@@ -60,6 +67,8 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler sc
 		ctx:                     ctx,
 		externalMetricsInfo:     externalMetricsInfo,
 		externalMetricsInfoLock: externalMetricsInfoLock,
+		grpcClient:              grpcClient,
+		useMetricsServiceGrpc:   useMetricsServiceGrpc,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
@@ -81,7 +90,37 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		return nil, err
 	}
 
-	// get the scaled objects matching namespace and labels
+	// Get Metrics from Metrics Service gRPC Server
+	if p.useMetricsServiceGrpc {
+		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
+		scaledObjectName := selector.Get("scaledobject.keda.sh/name")
+
+		metrics, promMetrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
+		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
+
+		// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+		var scaledObjectErr error
+		if promMetrics.ScaledObjectErr {
+			scaledObjectErr = fmt.Errorf("scaledObject error")
+		}
+		promMetricsServer.RecordScaledObjectError(namespace, scaledObjectName, scaledObjectErr)
+		for _, scalerMetric := range promMetrics.ScalerMetric {
+			promMetricsServer.RecordHPAScalerMetric(namespace, scaledObjectName, scalerMetric.ScalerName, int(scalerMetric.ScalerIndex), scalerMetric.MetricName, float64(scalerMetric.MetricValue))
+		}
+		for _, scalerError := range promMetrics.ScalerError {
+			var scalerErr error
+			if scalerError.Error {
+				scalerErr = fmt.Errorf("scaler error")
+			}
+			promMetricsServer.RecordHPAScalerError(namespace, scaledObjectName, scalerError.ScalerName, int(scalerError.ScalerIndex), scalerError.MetricName, scalerErr)
+		}
+
+		return metrics, err
+	}
+
+	// ------ Deprecated way of getting metric directly from MS ------ //
+	// --------------------------------------------------------------- //
+	// Get Metrics by querying directly the external service
 	scaledObjects := &kedav1alpha1.ScaledObjectList{}
 	opts := []client.ListOption{
 		client.InNamespace(namespace),
@@ -98,7 +137,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	var matchingMetrics []external_metrics.ExternalMetricValue
 
 	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
-	metricsServer.RecordScalerObjectError(scaledObject.Namespace, scaledObject.Name, err)
+	promMetricsServer.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return nil, fmt.Errorf("error when getting scalers %s", err)
 	}
@@ -120,19 +159,19 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric, metricSelector)
-				metrics, err = p.getMetricsWithFallback(ctx, metrics, err, info.Metric, scaledObject, metricSpec)
+				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
+				metrics, err = fallback.GetMetricsWithFallback(ctx, p.client, logger, metrics, err, info.Metric, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true
 					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerName)
 				} else {
 					for _, metric := range metrics {
 						metricValue := metric.Value.AsApproximateFloat64()
-						metricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
+						promMetricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				metricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
+				promMetricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
 			}
 		}
 	}

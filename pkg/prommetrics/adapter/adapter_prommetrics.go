@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package prommetrics
+package adapter
 
 import (
 	"log"
@@ -108,8 +108,7 @@ func (metricsServer PrometheusMetricServer) RecordHPAScalerMetric(namespace stri
 func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		// scaledObjectErrors.With(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}).Inc()
-		metricsServer.RecordScalerObjectError(namespace, scaledObject, err)
+		metricsServer.RecordScaledObjectError(namespace, scaledObject, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
@@ -121,7 +120,7 @@ func (metricsServer PrometheusMetricServer) RecordHPAScalerError(namespace strin
 }
 
 // RecordScalerObjectError counts the number of errors with the scaled object
-func (metricsServer PrometheusMetricServer) RecordScalerObjectError(namespace string, scaledObject string, err error) {
+func (metricsServer PrometheusMetricServer) RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {
 		scaledObjectErrors.With(labels).Inc()

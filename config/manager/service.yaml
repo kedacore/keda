@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/part-of: keda-operator
+  name: keda-operator
+  namespace: keda
+spec:
+  ports:
+  - name: metricsservice
+    port: 9666
+    targetPort: 9666
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: keda-operator

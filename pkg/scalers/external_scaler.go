@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
@@ -186,7 +185,7 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 }
 
 // GetMetrics connects calls the gRPC interface to get the metrics with a specific name
-func (s *externalScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *externalScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	var metrics []external_metrics.ExternalMetricValue
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {

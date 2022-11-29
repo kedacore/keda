@@ -30,7 +30,6 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -373,7 +372,7 @@ func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub
-func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
 	if err != nil {
