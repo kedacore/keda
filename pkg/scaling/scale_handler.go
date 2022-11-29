@@ -52,7 +52,6 @@ type ScaleHandler interface {
 	GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error)
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 
-	// GetScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error)
 	GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *metricsserviceapi.PromMetricsMsg, error)
 }
 

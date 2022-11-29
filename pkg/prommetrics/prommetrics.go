@@ -112,7 +112,6 @@ func RecordScalerMetric(namespace string, scaledObject string, scaler string, sc
 func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		// scaledObjectErrors.With(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}).Inc()
 		RecordScaledObjectError(namespace, scaledObject, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
