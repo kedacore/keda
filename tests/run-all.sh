@@ -49,7 +49,7 @@ function run_chaos {
         printf "\n\n##############################################\n"
         printf "##############################################\n\n"
         excute_test $test_case 1
-        wait_for_jobs    
+        wait_for_jobs
     fi
 }
 
