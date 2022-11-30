@@ -40,6 +40,7 @@ function excute_test {
 function run_chaos {
     counter=0
     test_case="chaos/chaos_test.go"
+    test_log="chaos/chaos_test.go.1.log"
 
     # execute the test only if the regex includes it
     if [[ "$test_case" =~ $E2E_REGEX ]]; then
@@ -50,6 +51,11 @@ function run_chaos {
         printf "##############################################\n\n"
         excute_test $test_case 1
         wait_for_jobs
+
+        echo ">>> $test_log <<<"
+        cat $test_log
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
     fi
 }
 
