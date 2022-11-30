@@ -46,7 +46,7 @@ function run_chaos {
     if [[ "$test_case" =~ $E2E_REGEX ]]; then
         printf "#################################################\n"
         printf "#################################################\n"
-        printf "===============STARTING CHAOS TEST==============="
+        printf "===============STARTING CHAOS TEST===============\n"
         printf "#################################################\n"
         printf "#################################################\n"
         excute_test $test_case 1
@@ -74,7 +74,7 @@ function run_tests {
 
         printf "#################################################\n"
         printf "#################################################\n"
-        printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS"
+        printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS\n"
         printf "#################################################\n"
         printf "#################################################\n"
 
@@ -97,7 +97,7 @@ function run_tests {
 
         printf "#################################################\n"
         printf "#################################################\n"
-        printf "FINISHED SECOND EXECUTION, RETRYING FAILING TESTS"
+        printf "FINISHED SECOND EXECUTION, RETRYING FAILING TESTS\n"
         printf "#################################################\n"
         printf "#################################################\n"
 
