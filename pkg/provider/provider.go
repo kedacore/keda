@@ -92,6 +92,11 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 
 	// Get Metrics from Metrics Service gRPC Server
 	if p.useMetricsServiceGrpc {
+		if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
+			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Server"), "timeout")
+			return nil, err
+		}
+
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
 		scaledObjectName := selector.Get("scaledobject.keda.sh/name")
 
@@ -99,20 +104,22 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
 
 		// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
-		var scaledObjectErr error
-		if promMetrics.ScaledObjectErr {
-			scaledObjectErr = fmt.Errorf("scaledObject error")
-		}
-		promMetricsServer.RecordScaledObjectError(namespace, scaledObjectName, scaledObjectErr)
-		for _, scalerMetric := range promMetrics.ScalerMetric {
-			promMetricsServer.RecordHPAScalerMetric(namespace, scaledObjectName, scalerMetric.ScalerName, int(scalerMetric.ScalerIndex), scalerMetric.MetricName, float64(scalerMetric.MetricValue))
-		}
-		for _, scalerError := range promMetrics.ScalerError {
-			var scalerErr error
-			if scalerError.Error {
-				scalerErr = fmt.Errorf("scaler error")
+		if promMetrics != nil {
+			var scaledObjectErr error
+			if promMetrics.ScaledObjectErr {
+				scaledObjectErr = fmt.Errorf("scaledObject error")
 			}
-			promMetricsServer.RecordHPAScalerError(namespace, scaledObjectName, scalerError.ScalerName, int(scalerError.ScalerIndex), scalerError.MetricName, scalerErr)
+			promMetricsServer.RecordScaledObjectError(namespace, scaledObjectName, scaledObjectErr)
+			for _, scalerMetric := range promMetrics.ScalerMetric {
+				promMetricsServer.RecordHPAScalerMetric(namespace, scaledObjectName, scalerMetric.ScalerName, int(scalerMetric.ScalerIndex), scalerMetric.MetricName, float64(scalerMetric.MetricValue))
+			}
+			for _, scalerError := range promMetrics.ScalerError {
+				var scalerErr error
+				if scalerError.Error {
+					scalerErr = fmt.Errorf("scaler error")
+				}
+				promMetricsServer.RecordHPAScalerError(namespace, scaledObjectName, scalerError.ScalerName, int(scalerError.ScalerIndex), scalerError.MetricName, scalerErr)
+			}
 		}
 
 		return metrics, err

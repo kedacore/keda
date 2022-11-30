@@ -19,8 +19,11 @@ package metricsservice
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/go-logr/logr"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
@@ -29,7 +32,8 @@ import (
 )
 
 type GrpcClient struct {
-	client api.MetricsServiceClient
+	client     api.MetricsServiceClient
+	connection *grpc.ClientConn
 }
 
 func NewGrpcClient(url string) (*GrpcClient, error) {
@@ -51,7 +55,7 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 		return nil, err
 	}
 
-	return &GrpcClient{client: api.NewMetricsServiceClient(conn)}, nil
+	return &GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}, nil
 }
 
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
@@ -67,4 +71,27 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 	}
 
 	return extMetrics, response.GetPromMetrics(), nil
+}
+
+// WaitForConnectionReady waits for gRPC connection to be ready
+// returns true if the connection was successful, false if we hit a timeut from context
+func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
+	currentState := c.connection.GetState()
+	if currentState != connectivity.Ready {
+		logger.Info("Waiting for establishing a gRPC connection to KEDA Metrics Server")
+		for {
+			select {
+			case <-ctx.Done():
+				return false
+			default:
+				c.connection.Connect()
+				time.Sleep(500 * time.Millisecond)
+				currentState := c.connection.GetState()
+				if currentState == connectivity.Ready {
+					return true
+				}
+			}
+		}
+	}
+	return true
 }
