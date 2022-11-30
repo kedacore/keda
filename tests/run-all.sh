@@ -37,10 +37,26 @@ function excute_test {
     fi
 }
 
+function run_chaos {
+    counter=0
+    test_case="chaos/chaos_test.go"
+
+    # execute the test only if the regex includes it
+    if [[ "$test_case" =~ $E2E_REGEX ]]; then
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        printf "==============STARTING CHAOS TEST================="
+        printf "\n\n##############################################\n"
+        printf "##############################################\n\n"
+        excute_test $test_case 1
+        wait_for_jobs    
+    fi
+}
+
 function run_tests {
     counter=0
     # randomize tests order using shuf
-    for test_case in $(find . -not -path '*/utils/*' -wholename "$E2E_REGEX" | shuf)
+    for test_case in $(find . -not -path '*/utils/*' -not -path '*/chaos/*' -wholename "$E2E_REGEX" | shuf)
     do
         excute_test $test_case 1
     done
@@ -144,6 +160,7 @@ function print_failed {
 run_setup
 run_tests
 print_logs
+run_chaos
 run_cleanup
 
 if [ "$executed_count" == "0" ];

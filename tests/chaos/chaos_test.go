@@ -1,0 +1,233 @@
+//go:build e2e
+// +build e2e
+
+package chaos_test
+
+import (
+	"fmt"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
+)
+
+const (
+	testName = "chaos-test"
+)
+
+var (
+	testNamespace           = fmt.Sprintf("%s-ns", testName)
+	monitoredDeploymentName = "monitored-deployment"
+	sutDeploymentName       = "sut-deployment-%d"
+	scaledObjectName        = "so-%d"
+	scaledObjectCount       = 5
+	minReplicaCount         = 0
+	maxReplicaCount         = 4
+)
+
+type templateData struct {
+	TestNamespace           string
+	MonitoredDeploymentName string
+	SutDeploymentName       string
+	ScaledObjectName        string
+	MinReplicaCount         int
+	MaxReplicaCount         int
+}
+
+const (
+	monitoredDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.MonitoredDeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    deploy: workload-test
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      pod: workload-test
+  template:
+    metadata:
+      labels:
+        pod: workload-test
+    spec:
+      containers:
+        - name: nginx
+          image: 'nginx'`
+
+	sutDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.SutDeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    deploy: workload-sut
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      pod: workload-sut
+  template:
+    metadata:
+      labels:
+        pod: workload-sut
+    spec:
+      containers:
+      - name: nginx
+        image: 'nginx'`
+
+	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.SutDeploymentName}}
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: {{ .MinReplicaCount }}
+  maxReplicaCount: {{ .MaxReplicaCount }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
+  triggers:
+  - type: kubernetes-workload
+    metadata:
+      podSelector: 'pod=workload-test'
+      value: '1'`
+)
+
+func TestScaler(t *testing.T) {
+	// setup
+	t.Log("--- setting up ---")
+	// Create kubernetes resources
+	kc := GetKubernetesClient(t)
+	data, _ := getTemplateData()
+	CreateNamespace(t, kc, testNamespace)
+	monitoredDeployment := []Template{{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate}}
+	KubectlApplyMultipleWithTemplate(t, data, monitoredDeployment)
+	for i := 0; i < scaledObjectCount; i++ {
+		data.ScaledObjectName = fmt.Sprintf(scaledObjectName, i)
+		data.SutDeploymentName = fmt.Sprintf(sutDeploymentName, i)
+		sutDeployment := []Template{{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate}}
+		scaledObject := []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}}
+		KubectlApplyMultipleWithTemplate(t, data, sutDeployment)
+		KubectlApplyMultipleWithTemplate(t, data, scaledObject)
+	}
+
+	quit := make(chan bool)
+	defer exit(quit)
+	go killKEDAPods(t, kc, quit)
+
+	// test scaling
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
+
+	// cleanup
+	KubectlDeleteMultipleWithTemplate(t, data, monitoredDeployment)
+	for i := 0; i < scaledObjectCount; i++ {
+		data.ScaledObjectName = fmt.Sprintf(scaledObjectName, i)
+		data.SutDeploymentName = fmt.Sprintf(sutDeploymentName, i)
+		sutDeployment := []Template{{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate}}
+		scaledObject := []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}}
+		KubectlDeleteMultipleWithTemplate(t, data, sutDeployment)
+		KubectlDeleteMultipleWithTemplate(t, data, scaledObject)
+	}
+	DeleteNamespace(t, kc, testNamespace)
+}
+
+func exit(quit chan bool) {
+	quit <- true
+}
+
+func killKEDAPods(t *testing.T, kc *kubernetes.Clientset, quit chan bool) {
+	for {
+		select {
+		case <-quit:
+			return
+		default:
+			DeletePodsInNamespace(t, kc, "keda")
+			time.Sleep(30 * time.Second)
+		}
+	}
+}
+
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	// scale monitored deployment to maxReplicaCount - 1 replicas
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(maxReplicaCount-1), testNamespace)
+
+	var wg sync.WaitGroup
+	wg.Add(scaledObjectCount)
+	for i := 0; i < scaledObjectCount; i++ {
+		go func(index int) {
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, maxReplicaCount-1, 60, 3),
+				"replica count should be 2 after 3 minute")
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	// scale monitored deployment to maxReplicaCount replicas
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(maxReplicaCount), testNamespace)
+	wg.Add(scaledObjectCount)
+	for i := 0; i < scaledObjectCount; i++ {
+		go func(index int) {
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, maxReplicaCount, 60, 3),
+				"replica count should be 2 after 3 minute")
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	// scale monitored deployment to minReplicaCount + 1 replicas
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(minReplicaCount+1), testNamespace)
+
+	var wg sync.WaitGroup
+	wg.Add(scaledObjectCount)
+	for i := 0; i < scaledObjectCount; i++ {
+		go func(index int) {
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, minReplicaCount+1, 60, 3),
+				"replica count should be 0 after 3 minute")
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	// scale monitored deployment to minReplicaCount replicas
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(minReplicaCount), testNamespace)
+
+	wg.Add(scaledObjectCount)
+	for i := 0; i < scaledObjectCount; i++ {
+		go func(index int) {
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, minReplicaCount, 60, 1),
+				"replica count should be 0 after 1 minute")
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
+func getTemplateData() (templateData, []Template) {
+	return templateData{
+			TestNamespace:           testNamespace,
+			MonitoredDeploymentName: monitoredDeploymentName,
+			SutDeploymentName:       sutDeploymentName,
+			ScaledObjectName:        scaledObjectName,
+			MinReplicaCount:         minReplicaCount,
+			MaxReplicaCount:         maxReplicaCount,
+		}, []Template{
+			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+			{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
+}
