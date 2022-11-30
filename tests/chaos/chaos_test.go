@@ -4,9 +4,12 @@
 package chaos_test
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -26,6 +29,8 @@ var (
 	kedaNamespace           = "keda"
 	operatorLabelSelector   = "app=keda-operator"
 	msLabelSelector         = "app=keda-metrics-apiserver"
+	operatorLogName         = fmt.Sprintf("%s-operator", testName)
+	msLogName               = fmt.Sprintf("%s-ms", testName)
 	scaledObjectCount       = 5
 	minReplicaCount         = 0
 	maxReplicaCount         = 4
@@ -146,6 +151,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount - 2 replicas
 	replicas := maxReplicaCount - 2
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	var wg sync.WaitGroup
 	wg.Add(scaledObjectCount)
@@ -161,6 +167,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount - 1 replicas
 	replicas = maxReplicaCount - 1
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
@@ -175,6 +182,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount replicas
 	replicas = maxReplicaCount
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	saveLogs(t, kc, msLogName, msLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, msLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
@@ -191,7 +199,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to minReplicaCount + 1 replicas
 	replicas := minReplicaCount + 1
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
+	saveLogs(t, kc, msLogName, msLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, msLabelSelector, kedaNamespace)
 	var wg sync.WaitGroup
 	wg.Add(scaledObjectCount)
@@ -207,6 +217,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to minReplicaCount replicas
 	replicas = minReplicaCount
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
@@ -217,6 +228,20 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func saveLogs(t *testing.T, kc *kubernetes.Clientset, logName, selector, namespace string) {
+	logs := FindPodLogs(t, kc, namespace, selector)
+	f, err := os.Create(fmt.Sprintf("%s-%s.log", logName, time.Now().Format("20060102150405")))
+	assert.NoErrorf(t, err, "cannot create log file - %s", err)
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	for _, line := range logs {
+		fmt.Fprintln(w, line)
+	}
+	err = w.Flush()
+	assert.NoErrorf(t, err, "cannot save log file - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -44,18 +44,18 @@ function run_chaos {
 
     # execute the test only if the regex includes it
     if [[ "$test_case" =~ $E2E_REGEX ]]; then
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
         printf "===============STARTING CHAOS TEST==============="
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
         excute_test $test_case 1
         wait_for_jobs
 
         echo ">>> $test_log <<<"
         cat $test_log
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
     fi
 }
 
@@ -72,11 +72,11 @@ function run_tests {
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
 
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
         printf "FINISHED FIRST EXECUTION, RETRYING FAILING TESTS"
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
 
         retry_lookup=("${failed_lookup[@]}")
         counter=0
@@ -95,11 +95,11 @@ function run_tests {
     # Retry failing tests
     if [ ${#failed_lookup[@]} -ne 0 ]; then
 
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
         printf "FINISHED SECOND EXECUTION, RETRYING FAILING TESTS"
-        printf "#################################################"
-        printf "#################################################"
+        printf "#################################################\n"
+        printf "#################################################\n"
 
         retry_lookup=("${failed_lookup[@]}")
         counter=0
@@ -137,19 +137,43 @@ function print_logs {
     do
         echo ">>> $test_log <<<"
         cat $test_log
-        printf "##############################################"
-        printf "##############################################"
+        printf "##############################################\n"
+        printf "##############################################\n"
     done
 
     echo ">>> KEDA Operator log <<<"
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-operator | xargs kubectl -n keda logs
-    printf "##############################################"
-    printf "##############################################"
+    printf "##############################################\n"
+    printf "##############################################\n"
 
     echo ">>> KEDA Metrics Server log <<<"
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs
-    printf "##############################################"
-    printf "##############################################"
+    printf "##############################################\n"
+    printf "##############################################\n"
+}
+
+function print_chaos_logs {
+    if [[ "chaos/chaos_test.go" =~ $E2E_REGEX ]]; then
+        echo ">>> KEDA Operator log <<<"
+        for test_log in $(find . -path '*/chaos/*' -name "*operator*.log")
+        do
+            printf "##############################################\n"
+            printf "##############################################\n"
+            echo ">>> $test_log <<<"
+            printf "##############################################\n"
+            cat $test_log        
+        done
+
+        echo ">>> KEDA Metrics Server log <<<"
+        for test_log in $(find . -path '*/chaos/*' -name "*ms*.log")
+        do
+            printf "##############################################\n"
+            printf "##############################################\n"
+            echo ">>> $test_log <<<"
+            printf "##############################################\n"
+            cat $test_log        
+        done
+    fi
 }
 
 function run_cleanup {
@@ -167,6 +191,7 @@ run_setup
 run_tests
 print_logs
 run_chaos
+print_chaos_logs
 run_cleanup
 
 if [ "$executed_count" == "0" ];
