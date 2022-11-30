@@ -161,7 +161,7 @@ function print_chaos_logs {
             printf "##############################################\n"
             echo ">>> $test_log <<<"
             printf "##############################################\n"
-            cat $test_log        
+            cat $test_log
         done
 
         echo ">>> KEDA Metrics Server log <<<"
@@ -171,7 +171,7 @@ function print_chaos_logs {
             printf "##############################################\n"
             echo ">>> $test_log <<<"
             printf "##############################################\n"
-            cat $test_log        
+            cat $test_log
         done
     fi
 }
