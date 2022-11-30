@@ -538,9 +538,11 @@ func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string
 	return podLogs
 }
 
-// Delete all pods in namespace
-func DeletePodsInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string) {
-	t.Logf("killing all pods in %s namespace", namespace)
-	err := kc.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{})
+// Delete all pods in namespace by selector
+func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, selector, namespace string) {
+	t.Logf("killing all pods in %s namespace with selector %s", namespace, selector)
+	err := kc.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: selector,
+	})
 	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
 }
