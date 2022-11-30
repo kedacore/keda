@@ -28,7 +28,7 @@ type stackdriverMetadata struct {
 	projectID             string
 	filter                string
 	targetValue           int64
-	activationTargetValue int64
+	activationTargetValue float64
 	metricName            string
 
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -102,7 +102,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 
 	meta.activationTargetValue = 0
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		activationTargetValue, err := strconv.ParseInt(val, 10, 64)
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
 		}
@@ -167,7 +167,7 @@ func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
 		s.logger.Error(err, "error getting metric value")
 		return false, err
 	}
-	return value > float64(s.metadata.activationTargetValue), nil
+	return value > s.metadata.activationTargetValue, nil
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {

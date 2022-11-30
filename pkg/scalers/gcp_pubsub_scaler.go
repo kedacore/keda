@@ -38,7 +38,7 @@ type pubsubScaler struct {
 type pubsubMetadata struct {
 	mode            string
 	value           int64
-	activationValue int64
+	activationValue float64
 
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -119,7 +119,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 
 	meta.activationValue = 0
 	if val, ok := config.TriggerMetadata["activationValue"]; ok {
-		activationValue, err := strconv.ParseInt(val, 10, 64)
+		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationValue parsing error %s", err.Error())
 		}
@@ -144,14 +144,14 @@ func (s *pubsubScaler) IsActive(ctx context.Context) (bool, error) {
 			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return size > float64(s.metadata.activationValue), nil
+		return size > s.metadata.activationValue, nil
 	case pubsubModeOldestUnackedMessageAge:
 		delay, err := s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			s.logger.Error(err, "error getting Active Status")
 			return false, err
 		}
-		return delay > float64(s.metadata.activationValue), nil
+		return delay > s.metadata.activationValue, nil
 	default:
 		return false, errors.New("unknown mode")
 	}
