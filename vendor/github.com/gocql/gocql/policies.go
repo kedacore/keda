@@ -133,12 +133,11 @@ type RetryPolicy interface {
 //
 // See below for examples of usage:
 //
-//     //Assign to the cluster
-//     cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
+//	//Assign to the cluster
+//	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
 //
-//     //Assign to a query
-//     query.RetryPolicy(&gocql.SimpleRetryPolicy{NumRetries: 1})
-//
+//	//Assign to a query
+//	query.RetryPolicy(&gocql.SimpleRetryPolicy{NumRetries: 1})
 type SimpleRetryPolicy struct {
 	NumRetries int //Number of times to retry a query
 }
@@ -258,6 +257,20 @@ type HostStateNotifier interface {
 type KeyspaceUpdateEvent struct {
 	Keyspace string
 	Change   string
+}
+
+type HostTierer interface {
+	// HostTier returns an integer specifying how far a host is from the client.
+	// Tier must start at 0.
+	// The value is used to prioritize closer hosts during host selection.
+	// For example this could be:
+	// 0 - local rack, 1 - local DC, 2 - remote DC
+	// or:
+	// 0 - local DC, 1 - remote DC
+	HostTier(host *HostInfo) uint
+
+	// This function returns the maximum possible host tier
+	MaxHostTier() uint
 }
 
 // HostSelectionPolicy is an interface for selecting
@@ -578,9 +591,22 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 
 	var (
 		fallbackIter NextHost
-		i, j         int
-		remote       []*HostInfo
+		i, j, k      int
+		remote       [][]*HostInfo
+		tierer       HostTierer
+		tiererOk     bool
+		maxTier      uint
 	)
+
+	if tierer, tiererOk = t.fallback.(HostTierer); tiererOk {
+		maxTier = tierer.MaxHostTier()
+	} else {
+		maxTier = 1
+	}
+
+	if t.nonLocalReplicasFallback {
+		remote = make([][]*HostInfo, maxTier)
+	}
 
 	used := make(map[*HostInfo]bool, len(replicas))
 	return func() SelectedHost {
@@ -588,8 +614,19 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 			h := replicas[i]
 			i++
 
-			if !t.fallback.IsLocal(h) {
-				remote = append(remote, h)
+			var tier uint
+			if tiererOk {
+				tier = tierer.HostTier(h)
+			} else if t.fallback.IsLocal(h) {
+				tier = 0
+			} else {
+				tier = 1
+			}
+
+			if tier != 0 {
+				if t.nonLocalReplicasFallback {
+					remote[tier-1] = append(remote[tier-1], h)
+				}
 				continue
 			}
 
@@ -600,9 +637,14 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 		}
 
 		if t.nonLocalReplicasFallback {
-			for j < len(remote) {
-				h := remote[j]
-				j++
+			for j < len(remote) && k < len(remote[j]) {
+				h := remote[j][k]
+				k++
+
+				if k >= len(remote[j]) {
+					j++
+					k = 0
+				}
 
 				if h.IsUp() {
 					used[h] = true
@@ -634,14 +676,13 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 // use an empty slice of hosts as the hostpool will be populated later by gocql.
 // See below for examples of usage:
 //
-//     // Create host selection policy using a simple host pool
-//     cluster.PoolConfig.HostSelectionPolicy = HostPoolHostPolicy(hostpool.New(nil))
+//	// Create host selection policy using a simple host pool
+//	cluster.PoolConfig.HostSelectionPolicy = HostPoolHostPolicy(hostpool.New(nil))
 //
-//     // Create host selection policy using an epsilon greedy pool
-//     cluster.PoolConfig.HostSelectionPolicy = HostPoolHostPolicy(
-//         hostpool.NewEpsilonGreedy(nil, 0, &hostpool.LinearEpsilonValueCalculator{}),
-//     )
-//
+//	// Create host selection policy using an epsilon greedy pool
+//	cluster.PoolConfig.HostSelectionPolicy = HostPoolHostPolicy(
+//	    hostpool.NewEpsilonGreedy(nil, 0, &hostpool.LinearEpsilonValueCalculator{}),
+//	)
 func HostPoolHostPolicy(hp hostpool.HostPool) HostSelectionPolicy {
 	return &hostPoolHostPolicy{hostMap: map[string]*HostInfo{}, hp: hp}
 }
@@ -858,6 +899,64 @@ func (d *dcAwareRR) Pick(q ExecutableQuery) NextHost {
 	return roundRobbin(int(nextStartOffset), d.localHosts.get(), d.remoteHosts.get())
 }
 
+// RackAwareRoundRobinPolicy is a host selection policies which will prioritize and
+// return hosts which are in the local rack, before hosts in the local datacenter but
+// a different rack, before hosts in all other datercentres
+
+type rackAwareRR struct {
+	localDC         string
+	localRack       string
+	hosts           []cowHostList
+	lastUsedHostIdx uint64
+}
+
+func RackAwareRoundRobinPolicy(localDC string, localRack string) HostSelectionPolicy {
+	hosts := make([]cowHostList, 3)
+	return &rackAwareRR{localDC: localDC, localRack: localRack, hosts: hosts}
+}
+
+func (d *rackAwareRR) Init(*Session)                       {}
+func (d *rackAwareRR) KeyspaceChanged(KeyspaceUpdateEvent) {}
+func (d *rackAwareRR) SetPartitioner(p string)             {}
+
+func (d *rackAwareRR) MaxHostTier() uint {
+	return 2
+}
+
+func (d *rackAwareRR) HostTier(host *HostInfo) uint {
+	if host.DataCenter() == d.localDC {
+		if host.Rack() == d.localRack {
+			return 0
+		} else {
+			return 1
+		}
+	} else {
+		return 2
+	}
+}
+
+func (d *rackAwareRR) IsLocal(host *HostInfo) bool {
+	return d.HostTier(host) == 0
+}
+
+func (d *rackAwareRR) AddHost(host *HostInfo) {
+	dist := d.HostTier(host)
+	d.hosts[dist].add(host)
+}
+
+func (d *rackAwareRR) RemoveHost(host *HostInfo) {
+	dist := d.HostTier(host)
+	d.hosts[dist].remove(host.ConnectAddress())
+}
+
+func (d *rackAwareRR) HostUp(host *HostInfo)   { d.AddHost(host) }
+func (d *rackAwareRR) HostDown(host *HostInfo) { d.RemoveHost(host) }
+
+func (d *rackAwareRR) Pick(q ExecutableQuery) NextHost {
+	nextStartOffset := atomic.AddUint64(&d.lastUsedHostIdx, 1)
+	return roundRobbin(int(nextStartOffset), d.hosts[0].get(), d.hosts[1].get(), d.hosts[2].get())
+}
+
 // ReadyPolicy defines a policy for when a HostSelectionPolicy can be used. After
 // each host connects during session initialization, the Ready method will be
 // called. If you only need a single Host to be up you can wrap a
@@ -926,7 +1025,6 @@ func (e *SimpleConvictionPolicy) Reset(host *HostInfo) {}
 // ReconnectionPolicy interface is used by gocql to determine if reconnection
 // can be attempted after connection error. The interface allows gocql users
 // to implement their own logic to determine how to attempt reconnection.
-//
 type ReconnectionPolicy interface {
 	GetInterval(currentRetry int) time.Duration
 	GetMaxRetries() int
@@ -936,8 +1034,7 @@ type ReconnectionPolicy interface {
 //
 // Examples of usage:
 //
-//     cluster.ReconnectionPolicy = &gocql.ConstantReconnectionPolicy{MaxRetries: 10, Interval: 8 * time.Second}
-//
+//	cluster.ReconnectionPolicy = &gocql.ConstantReconnectionPolicy{MaxRetries: 10, Interval: 8 * time.Second}
 type ConstantReconnectionPolicy struct {
 	MaxRetries int
 	Interval   time.Duration
