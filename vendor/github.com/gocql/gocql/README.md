@@ -2,7 +2,7 @@ gocql
 =====
 
 [![Join the chat at https://gitter.im/gocql/gocql](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gocql/gocql?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/gocql/gocql.svg?branch=master)](https://travis-ci.org/gocql/gocql)
+![go build](https://github.com/gocql/gocql/actions/workflows/main.yml/badge.svg)
 [![GoDoc](https://godoc.org/github.com/gocql/gocql?status.svg)](https://godoc.org/github.com/gocql/gocql)
 
 Package gocql implements a fast and robust Cassandra client for the
@@ -17,12 +17,14 @@ Supported Versions
 
 The following matrix shows the versions of Go and Cassandra that are tested with the integration test suite as part of the CI build:
 
-Go/Cassandra | 2.1.x | 2.2.x | 3.x.x
--------------| -------| ------| ---------
-1.17 | yes | yes | yes
-1.18 | yes | yes | yes
+Go/Cassandra | 3.0.x | 3.11.x | 4.0.x
+-------------| ------| -------| --------
+1.18 | yes | yes | WIP
+1.19 | yes | yes | WIP
 
-Gocql has been tested in production against many different versions of Cassandra. Due to limits in our CI setup we only test against the latest 3 major releases, which coincide with the official support from the Apache project.
+Gocql has been tested in production against many different versions of Cassandra. Due to limits in our CI setup we only
+test against the latest 3 major releases, which coincides with the official support from the Apache project. We are
+currently adding CI jobs against Cassandra 4.0.
 
 Sunsetting Model
 ----------------

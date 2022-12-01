@@ -91,13 +91,13 @@ func (p PasswordAuthenticator) Success(data []byte) error {
 // to true if no Config is set. Most users should set SslOptions.Config to a *tls.Config.
 // SslOptions and Config.InsecureSkipVerify interact as follows:
 //
-//  Config.InsecureSkipVerify | EnableHostVerification | Result
-//  Config is nil             | false                  | do not verify host
-//  Config is nil             | true                   | verify host
-//  false                     | false                  | verify host
-//  true                      | false                  | do not verify host
-//  false                     | true                   | verify host
-//  true                      | true                   | verify host
+//	Config.InsecureSkipVerify | EnableHostVerification | Result
+//	Config is nil             | false                  | do not verify host
+//	Config is nil             | true                   | verify host
+//	false                     | false                  | verify host
+//	true                      | false                  | do not verify host
+//	false                     | true                   | verify host
+//	true                      | true                   | verify host
 type SslOptions struct {
 	*tls.Config
 

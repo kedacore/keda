@@ -51,45 +51,45 @@ type Unmarshaler interface {
 //
 // Supported conversions are as follows, other type combinations may be added in the future:
 //
-//  CQL type                    | Go type (value)    | Note
-//  varchar, ascii, blob, text  | string, []byte     |
-//  boolean                     | bool               |
-//  tinyint, smallint, int      | integer types      |
-//  tinyint, smallint, int      | string             | formatted as base 10 number
-//  bigint, counter             | integer types      |
-//  bigint, counter             | big.Int            |
-//  bigint, counter             | string             | formatted as base 10 number
-//  float                       | float32            |
-//  double                      | float64            |
-//  decimal                     | inf.Dec            |
-//  time                        | int64              | nanoseconds since start of day
-//  time                        | time.Duration      | duration since start of day
-//  timestamp                   | int64              | milliseconds since Unix epoch
-//  timestamp                   | time.Time          |
-//  list, set                   | slice, array       |
-//  list, set                   | map[X]struct{}     |
-//  map                         | map[X]Y            |
-//  uuid, timeuuid              | gocql.UUID         |
-//  uuid, timeuuid              | [16]byte           | raw UUID bytes
-//  uuid, timeuuid              | []byte             | raw UUID bytes, length must be 16 bytes
-//  uuid, timeuuid              | string             | hex representation, see ParseUUID
-//  varint                      | integer types      |
-//  varint                      | big.Int            |
-//  varint                      | string             | value of number in decimal notation
-//  inet                        | net.IP             |
-//  inet                        | string             | IPv4 or IPv6 address string
-//  tuple                       | slice, array       |
-//  tuple                       | struct             | fields are marshaled in order of declaration
-//  user-defined type           | gocql.UDTMarshaler | MarshalUDT is called
-//  user-defined type           | map[string]interface{} |
-//  user-defined type           | struct             | struct fields' cql tags are used for column names
-//  date                        | int64              | milliseconds since Unix epoch to start of day (in UTC)
-//  date                        | time.Time          | start of day (in UTC)
-//  date                        | string             | parsed using "2006-01-02" format
-//  duration                    | int64              | duration in nanoseconds
-//  duration                    | time.Duration      |
-//  duration                    | gocql.Duration     |
-//  duration                    | string             | parsed with time.ParseDuration
+//	CQL type                    | Go type (value)    | Note
+//	varchar, ascii, blob, text  | string, []byte     |
+//	boolean                     | bool               |
+//	tinyint, smallint, int      | integer types      |
+//	tinyint, smallint, int      | string             | formatted as base 10 number
+//	bigint, counter             | integer types      |
+//	bigint, counter             | big.Int            |
+//	bigint, counter             | string             | formatted as base 10 number
+//	float                       | float32            |
+//	double                      | float64            |
+//	decimal                     | inf.Dec            |
+//	time                        | int64              | nanoseconds since start of day
+//	time                        | time.Duration      | duration since start of day
+//	timestamp                   | int64              | milliseconds since Unix epoch
+//	timestamp                   | time.Time          |
+//	list, set                   | slice, array       |
+//	list, set                   | map[X]struct{}     |
+//	map                         | map[X]Y            |
+//	uuid, timeuuid              | gocql.UUID         |
+//	uuid, timeuuid              | [16]byte           | raw UUID bytes
+//	uuid, timeuuid              | []byte             | raw UUID bytes, length must be 16 bytes
+//	uuid, timeuuid              | string             | hex representation, see ParseUUID
+//	varint                      | integer types      |
+//	varint                      | big.Int            |
+//	varint                      | string             | value of number in decimal notation
+//	inet                        | net.IP             |
+//	inet                        | string             | IPv4 or IPv6 address string
+//	tuple                       | slice, array       |
+//	tuple                       | struct             | fields are marshaled in order of declaration
+//	user-defined type           | gocql.UDTMarshaler | MarshalUDT is called
+//	user-defined type           | map[string]interface{} |
+//	user-defined type           | struct             | struct fields' cql tags are used for column names
+//	date                        | int64              | milliseconds since Unix epoch to start of day (in UTC)
+//	date                        | time.Time          | start of day (in UTC)
+//	date                        | string             | parsed using "2006-01-02" format
+//	duration                    | int64              | duration in nanoseconds
+//	duration                    | time.Duration      |
+//	duration                    | gocql.Duration     |
+//	duration                    | string             | parsed with time.ParseDuration
 func Marshal(info TypeInfo, value interface{}) ([]byte, error) {
 	if info.Version() < protoVersion1 {
 		panic("protocol version not set")
@@ -172,36 +172,36 @@ func Marshal(info TypeInfo, value interface{}) ([]byte, error) {
 //
 // Supported conversions are as follows, other type combinations may be added in the future:
 //
-//  CQL type                                | Go type (value)         | Note
-//  varchar, ascii, blob, text              | *string                 |
-//  varchar, ascii, blob, text              | *[]byte                 | non-nil buffer is reused
-//  bool                                    | *bool                   |
-//  tinyint, smallint, int, bigint, counter | *integer types          |
-//  tinyint, smallint, int, bigint, counter | *big.Int                |
-//  tinyint, smallint, int, bigint, counter | *string                 | formatted as base 10 number
-//  float                                   | *float32                |
-//  double                                  | *float64                |
-//  decimal                                 | *inf.Dec                |
-//  time                                    | *int64                  | nanoseconds since start of day
-//  time                                    | *time.Duration          |
-//  timestamp                               | *int64                  | milliseconds since Unix epoch
-//  timestamp                               | *time.Time              |
-//  list, set                               | *slice, *array          |
-//  map                                     | *map[X]Y                |
-//  uuid, timeuuid                          | *string                 | see UUID.String
-//  uuid, timeuuid                          | *[]byte                 | raw UUID bytes
-//  uuid, timeuuid                          | *gocql.UUID             |
-//  timeuuid                                | *time.Time              | timestamp of the UUID
-//  inet                                    | *net.IP                 |
-//  inet                                    | *string                 | IPv4 or IPv6 address string
-//  tuple                                   | *slice, *array          |
-//  tuple                                   | *struct                 | struct fields are set in order of declaration
-//  user-defined types                      | gocql.UDTUnmarshaler    | UnmarshalUDT is called
-//  user-defined types                      | *map[string]interface{} |
-//  user-defined types                      | *struct                 | cql tag is used to determine field name
-//  date                                    | *time.Time              | time of beginning of the day (in UTC)
-//  date                                    | *string                 | formatted with 2006-01-02 format
-//  duration                                | *gocql.Duration         |
+//	CQL type                                | Go type (value)         | Note
+//	varchar, ascii, blob, text              | *string                 |
+//	varchar, ascii, blob, text              | *[]byte                 | non-nil buffer is reused
+//	bool                                    | *bool                   |
+//	tinyint, smallint, int, bigint, counter | *integer types          |
+//	tinyint, smallint, int, bigint, counter | *big.Int                |
+//	tinyint, smallint, int, bigint, counter | *string                 | formatted as base 10 number
+//	float                                   | *float32                |
+//	double                                  | *float64                |
+//	decimal                                 | *inf.Dec                |
+//	time                                    | *int64                  | nanoseconds since start of day
+//	time                                    | *time.Duration          |
+//	timestamp                               | *int64                  | milliseconds since Unix epoch
+//	timestamp                               | *time.Time              |
+//	list, set                               | *slice, *array          |
+//	map                                     | *map[X]Y                |
+//	uuid, timeuuid                          | *string                 | see UUID.String
+//	uuid, timeuuid                          | *[]byte                 | raw UUID bytes
+//	uuid, timeuuid                          | *gocql.UUID             |
+//	timeuuid                                | *time.Time              | timestamp of the UUID
+//	inet                                    | *net.IP                 |
+//	inet                                    | *string                 | IPv4 or IPv6 address string
+//	tuple                                   | *slice, *array          |
+//	tuple                                   | *struct                 | struct fields are set in order of declaration
+//	user-defined types                      | gocql.UDTUnmarshaler    | UnmarshalUDT is called
+//	user-defined types                      | *map[string]interface{} |
+//	user-defined types                      | *struct                 | cql tag is used to determine field name
+//	date                                    | *time.Time              | time of beginning of the day (in UTC)
+//	date                                    | *string                 | formatted with 2006-01-02 format
+//	duration                                | *gocql.Duration         |
 func Unmarshal(info TypeInfo, data []byte, value interface{}) error {
 	if v, ok := value.(Unmarshaler); ok {
 		return v.UnmarshalCQL(info, data)
