@@ -51,8 +51,8 @@ github.com/Azure/azure-amqp-common-go/v3 v3.2.3 h1:uDF62mbd9bypXWi19V1bN5NZEO84J
 github.com/Azure/azure-amqp-common-go/v3 v3.2.3/go.mod h1:7rPmbSfszeovxGfc5fSAXE4ehlXQZHpMja2OtxC2Tas=
 github.com/Azure/azure-event-hubs-go/v3 v3.3.20 h1:LRAy00JlV5aDqd0LFXwfwFReYzl03CtH/kD91OHrT94=
 github.com/Azure/azure-event-hubs-go/v3 v3.3.20/go.mod h1:5GkwDWncbqGCPjf76khiylOAD2NjkrUrLFb/S99BiA8=
-github.com/Azure/azure-kusto-go v0.9.1 h1:DRYvfdynXbmicz6aV3buvO0opYyTaoLPuBN/OcD2TQM=
-github.com/Azure/azure-kusto-go v0.9.1/go.mod h1:i7WCtgt4XeHge3+Oi5sq84HYhneNi7VY7hr35wsUdrg=
+github.com/Azure/azure-kusto-go v0.9.2 h1:AP0bNhGyvc51XHi6nBMABDjCqgJb/KGrCrcm7KvYFyk=
+github.com/Azure/azure-kusto-go v0.9.2/go.mod h1:i7WCtgt4XeHge3+Oi5sq84HYhneNi7VY7hr35wsUdrg=
 github.com/Azure/azure-pipeline-go v0.1.8/go.mod h1:XA1kFWRVhSK+KNFiOhfv83Fv8L9achrP7OxIzeTn1Yg=
 github.com/Azure/azure-pipeline-go v0.2.3 h1:7U9HBg1JFK3jHl5qmo4CTZKFTVgMwdFHMVtCdfBE21U=
 github.com/Azure/azure-pipeline-go v0.2.3/go.mod h1:x841ezTBIMG6O3lAcl8ATHnsOPVl2bqk7S3ta6S6u4k=
@@ -160,8 +160,8 @@ github.com/armon/go-radix v1.0.0/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgI
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a h1:idn718Q4B6AGu/h5Sxe66HYVdqdGu2l9Iebqhi/AEoA=
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
-github.com/aws/aws-sdk-go v1.44.146 h1:7YdGgPxDPRJu/yYffzZp/H7yHzQ6AqmuNFZPYraaN8I=
-github.com/aws/aws-sdk-go v1.44.146/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
+github.com/aws/aws-sdk-go v1.44.150 h1:X9HBhXu0ZPi+tOHUaZkjx43int7g0Ejk+IVbW25+wYg=
+github.com/aws/aws-sdk-go v1.44.150/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -350,8 +350,8 @@ github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee/go.mod h1:L0fX3K22
 github.com/gobwas/pool v0.2.0/go.mod h1:q8bcK0KcYlCgd9e7WYLm9LpyS+YeLd8JVDW6WezmKEw=
 github.com/gobwas/ws v1.0.2/go.mod h1:szmBTxLgaFppYjEmNtny/v3w89xOydFnnZMcgRRu/EM=
 github.com/goccy/go-json v0.9.7/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
-github.com/gocql/gocql v1.2.1 h1:G/STxUzD6pGvRHzG0Fi7S04SXejMKBbRZb7pwre1edU=
-github.com/gocql/gocql v1.2.1/go.mod h1:3gM2c4D3AnkISwBxGnMMsS8Oy4y2lhbPRsH4xnJrHG8=
+github.com/gocql/gocql v1.3.0 h1:xAopLb2b1xCkWVrfWA5k8sOOr0wUwI4ewl9+ArNu0ag=
+github.com/gocql/gocql v1.3.0/go.mod h1:3gM2c4D3AnkISwBxGnMMsS8Oy4y2lhbPRsH4xnJrHG8=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/gofrs/uuid v3.3.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gofrs/uuid v4.2.0+incompatible h1:yyYWMnhkhrKwwr8gAOcOCYxOOscHgDS9yZgBrnJfGa0=
@@ -1372,8 +1372,8 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.33 h1:LYqFq+6Cj2D0g
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.33/go.mod h1:soWkSNf2tZC7aMibXEqVhCd73GOY5fJikn8qbdzemB0=
 sigs.k8s.io/controller-runtime v0.13.1 h1:tUsRCSJVM1QQOOeViGeX3GMT3dQF1eePPw6sEE3xSlg=
 sigs.k8s.io/controller-runtime v0.13.1/go.mod h1:Zbz+el8Yg31jubvAEyglRZGdLAjplZl+PgtYNI6WNTI=
-sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221128144407-9489eb5b6c77 h1:FxASXFYBbBgGhOJutMpHaF+7Mb3odcDkoaz/Jb9Opes=
-sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221128144407-9489eb5b6c77/go.mod h1:oiCXd8V7ZaS/wwvXKZ9pYkoU0BYM86CyEa0RvivM0nw=
+sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221201045826-d9912251cd81 h1:pL+hPQJQnRweJxIa5wT0EVbUwBN/g0Z28WgNLorN6vE=
+sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221201045826-d9912251cd81/go.mod h1:oiCXd8V7ZaS/wwvXKZ9pYkoU0BYM86CyEa0RvivM0nw=
 sigs.k8s.io/controller-tools v0.10.0 h1:0L5DTDTFB67jm9DkfrONgTGmfc/zYow0ZaHyppizU2U=
 sigs.k8s.io/controller-tools v0.10.0/go.mod h1:uvr0EW6IsprfB0jpQq6evtKy+hHyHCXNfdWI5ONPx94=
 sigs.k8s.io/custom-metrics-apiserver v1.25.1 h1:lKIvoLZR8bnFYPX7sdsUBeylGlZqeMQlJMeAI7GpHDE=
