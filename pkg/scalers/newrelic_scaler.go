@@ -71,7 +71,8 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	return &newrelicScaler{
 		metricType: metricType,
 		metadata:   meta,
-		nrClient:   nrClient}, nil
+		nrClient:   nrClient,
+		logger:     logger}, nil
 }
 
 func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicMetadata, error) {
