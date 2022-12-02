@@ -23,7 +23,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/api/autoscaling/v2beta2"
+	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -54,7 +54,7 @@ var _ = Describe("hpa", func() {
 		logger = logr.Discard()
 		reconciler = ScaledObjectReconciler{
 			Client:       client,
-			scaleHandler: scaleHandler,
+			ScaleHandler: scaleHandler,
 		}
 	})
 
@@ -133,21 +133,21 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scalersCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func() (scalers.Scaler, error) {
-				return scaler, nil
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return scaler, &scalers.ScalerConfig{}, nil
 			},
 		}},
 		Logger:   logr.Discard(),
 		Recorder: nil,
 	}
-	metricSpec := v2beta2.MetricSpec{
-		External: &v2beta2.ExternalMetricSource{
-			Metric: v2beta2.MetricIdentifier{
+	metricSpec := v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
 				Name: "some metric name",
 			},
 		},
 	}
-	metricSpecs := []v2beta2.MetricSpec{metricSpec}
+	metricSpecs := []v2.MetricSpec{metricSpec}
 	ctx := context.Background()
 	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(metricSpecs)
 	scaleHandler.EXPECT().GetScalersCache(context.Background(), gomock.Eq(scaledObject)).Return(&scalersCache, nil)

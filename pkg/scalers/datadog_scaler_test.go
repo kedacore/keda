@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 )
 
 type datadogQueries struct {
@@ -20,10 +21,35 @@ type datadogMetricIdentifier struct {
 }
 
 type datadogAuthMetadataTestData struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
+}
+
+func assertEqual(t *testing.T, a interface{}, b interface{}) {
+	if a == b {
+		return
+	}
+	t.Errorf("%v != %v", a, b)
+}
+
+func TestMaxFloatFromSlice(t *testing.T) {
+	input := []float64{1.0, 2.0, 3.0, 4.0}
+	expectedOutput := float64(4.0)
+
+	output := MaxFloatFromSlice(input)
+
+	assertEqual(t, output, expectedOutput)
+}
+
+func TestAvgFloatFromSlice(t *testing.T) {
+	input := []float64{1.0, 2.0, 3.0, 4.0}
+	expectedOutput := float64(2.5)
+
+	output := AvgFloatFromSlice(input)
+
+	assertEqual(t, output, expectedOutput)
 }
 
 var testParseQueries = []datadogQueries{
@@ -35,6 +61,8 @@ var testParseQueries = []datadogQueries{
 	{"top(per_second(abs(sum:http.requests{service:myapp,dc:us-west-2}.rollup(max, 2))), 5, 'mean', 'desc')", true, false},
 	{"system.cpu.user{*}.rollup(sum, 30)", true, false},
 	{"min:system.cpu.user{*}", true, false},
+	// Multi-query
+	{"avg:system.cpu.user{*}.rollup(sum, 30),sum:system.cpu.user{*}.rollup(30)", true, false},
 
 	// Missing filter
 	{"min:system.cpu.user", false, true},
@@ -62,6 +90,8 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 
 	// all properly formed
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// Multi-query all properly formed
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count(),sum:trace.redis.command.hits{env:none,service:redis}.as_count()/2", "queryValue": "7", "queryAggregator": "average", "metricUnavailableValue": "1.5", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default age
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default type
@@ -69,18 +99,21 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	// wrong type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "invalid", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// both metadata type and trigger type
-	{v2beta2.AverageValueMetricType, map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	{v2.AverageValueMetricType, map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// missing query
 	{"", map[string]string{"queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// missing queryValue
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// wrong query value type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	// wrong queryAggregator value
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "queryAggegrator": "1.0", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	// wrong activation query value type
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "1", "activationQueryValue": "notanint", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// malformed query
 	{"", map[string]string{"query": "sum:trace.redis.command.hits", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// wrong unavailableMetricValue type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "notafloat", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
-
 	// success api/app keys
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default datadogSite
@@ -95,7 +128,7 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 
 func TestDatadogScalerAuthParams(t *testing.T) {
 	for _, testData := range testDatadogMetadata {
-		_, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType})
+		_, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -113,7 +146,7 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range datadogMetricIdentifiers {
-		meta, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex, MetricType: testData.metadataTestData.metricType})
+		meta, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

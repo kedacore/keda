@@ -87,6 +87,8 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": "", "threshold": "1900000000"}, true},
 	// Missing threshold, should fail
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": ""}, true},
+	// Invalid activation threshold, should fail
+	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1", "activationThreshold": "A"}, true},
 	// All parameters set, should succeed
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000"}, false},
 	// Known Azure Cloud
@@ -102,8 +104,8 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 }
 
 var LogAnalyticsMetricIdentifiers = []LogAnalyticsMetricIdentifier{
-	{&testLogAnalyticsMetadata[7], 0, "s0-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
-	{&testLogAnalyticsMetadata[7], 1, "s1-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[8], 0, "s0-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
+	{&testLogAnalyticsMetadata[8], 1, "s1-azure-log-analytics-074dd9f8-c368-4220-9400-acb6e80fc325"},
 }
 
 var testLogAnalyticsMetadataWithEmptyAuthParams = []parseLogAnalyticsMetadataTestData{
@@ -127,7 +129,8 @@ var testLogAnalyticsMetadataWithPodIdentity = []parseLogAnalyticsMetadataTestDat
 
 func TestLogAnalyticsParseMetadata(t *testing.T) {
 	for _, testData := range testLogAnalyticsMetadata {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -138,7 +141,8 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with missing auth params should all fail
 	for _, testData := range testLogAnalyticsMetadataWithEmptyAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyLogAnalyticsAuthParams, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: emptyLogAnalyticsAuthParams, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -149,7 +153,8 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with complete auth params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithAuthParams {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: ""})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.AuthPodIdentity{}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -160,7 +165,9 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with podIdentity params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.PodIdentityProviderAzure})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -171,7 +178,9 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 	// test with workload identity params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
-		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams, PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload})
+		_, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -183,7 +192,9 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 
 func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range LogAnalyticsMetricIdentifiers {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -219,7 +230,9 @@ var testParseMetadataMetricName = []parseMetadataMetricNameTestData{
 
 func TestLogAnalyticsParseMetadataMetricName(t *testing.T) {
 	for _, testData := range testParseMetadataMetricName {
-		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil, PodIdentity: "", ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
+			TriggerMetadata: testData.metadata, AuthParams: nil,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Error("Expected success but got error", err)
 		}

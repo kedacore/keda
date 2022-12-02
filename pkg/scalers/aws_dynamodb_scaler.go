@@ -8,39 +8,36 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type awsDynamoDBScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
 	dbClient   dynamodbiface.DynamoDBAPI
+	logger     logr.Logger
 }
 
 type awsDynamoDBMetadata struct {
 	tableName                 string
 	awsRegion                 string
+	awsEndpoint               string
 	keyConditionExpression    string
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
 	targetValue               int64
+	activationTargetValue     int64
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
 	metricName                string
 }
-
-var dynamoDBLog = logf.Log.WithName("aws_dynamodb_scaler")
 
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -57,6 +54,7 @@ func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		dbClient:   createDynamoDBClient(meta),
+		logger:     InitializeLogger(config, "aws_dynamodb_scaler"),
 	}, nil
 }
 
@@ -73,6 +71,10 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
+	}
+
+	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+		meta.awsEndpoint = val
 	}
 
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
@@ -116,6 +118,17 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		return nil, fmt.Errorf("no targetValue given")
 	}
 
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata targetValue")
+		}
+
+		meta.activationTargetValue = n
+	} else {
+		meta.activationTargetValue = 0
+	}
+
 	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
@@ -130,39 +143,18 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	return &meta, nil
 }
 
-func createDynamoDBClient(meta *awsDynamoDBMetadata) *dynamodb.DynamoDB {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(meta.awsRegion),
-	}))
+func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
+	sess, config := getAwsConfig(metadata.awsRegion,
+		metadata.awsEndpoint,
+		metadata.awsAuthorization)
 
-	var dbClient *dynamodb.DynamoDB
-
-	if !meta.awsAuthorization.podIdentityOwner {
-		dbClient = dynamodb.New(sess, &aws.Config{
-			Region: aws.String(meta.awsRegion),
-		})
-
-		return dbClient
-	}
-
-	creds := credentials.NewStaticCredentials(meta.awsAuthorization.awsAccessKeyID, meta.awsAuthorization.awsSecretAccessKey, "")
-
-	if meta.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, meta.awsAuthorization.awsRoleArn)
-	}
-
-	dbClient = dynamodb.New(sess, &aws.Config{
-		Region:      aws.String(meta.awsRegion),
-		Credentials: creds,
-	})
-
-	return dbClient
+	return dynamodb.New(sess, config)
 }
 
-func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	metricValue, err := c.GetQueryMetrics()
+func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+	metricValue, err := s.GetQueryMetrics()
 	if err != nil {
-		dynamoDBLog.Error(err, "Error getting metric value")
+		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -171,44 +163,44 @@ func (c *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string, m
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (c *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
-			Name: c.metadata.metricName,
+func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(c.metricType, c.metadata.targetValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 
-	return []v2beta2.MetricSpec{
+	return []v2.MetricSpec{
 		metricSpec,
 	}
 }
 
-func (c *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := c.GetQueryMetrics()
+func (s *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
+	messages, err := s.GetQueryMetrics()
 	if err != nil {
 		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > float64(s.metadata.activationTargetValue), nil
 }
 
-func (c *awsDynamoDBScaler) Close(context.Context) error {
+func (s *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (c *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
+func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
-		TableName:                 aws.String(c.metadata.tableName),
-		KeyConditionExpression:    aws.String(c.metadata.keyConditionExpression),
-		ExpressionAttributeNames:  c.metadata.expressionAttributeNames,
-		ExpressionAttributeValues: c.metadata.expressionAttributeValues,
+		TableName:                 aws.String(s.metadata.tableName),
+		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
+		ExpressionAttributeNames:  s.metadata.expressionAttributeNames,
+		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
-	res, err := c.dbClient.Query(&dimensions)
+	res, err := s.dbClient.Query(&dimensions)
 	if err != nil {
-		dynamoDBLog.Error(err, "Failed to get output")
+		s.logger.Error(err, "Failed to get output")
 		return 0, err
 	}
 

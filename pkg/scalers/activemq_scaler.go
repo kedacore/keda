@@ -12,31 +12,32 @@ import (
 	"strings"
 	"text/template"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type activeMQScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *activeMQMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type activeMQMetadata struct {
-	managementEndpoint string
-	destinationName    string
-	brokerName         string
-	username           string
-	password           string
-	restAPITemplate    string
-	targetQueueSize    int64
-	corsHeader         string
-	metricName         string
-	scalerIndex        int
+	managementEndpoint        string
+	destinationName           string
+	brokerName                string
+	username                  string
+	password                  string
+	restAPITemplate           string
+	targetQueueSize           int64
+	activationTargetQueueSize int64
+	corsHeader                string
+	metricName                string
+	scalerIndex               int
 }
 
 type activeMQMonitoring struct {
@@ -46,11 +47,10 @@ type activeMQMonitoring struct {
 }
 
 const (
-	defaultTargetQueueSize         = 10
-	defaultActiveMQRestAPITemplate = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
+	defaultTargetQueueSize           = 10
+	defaultActivationTargetQueueSize = 0
+	defaultActiveMQRestAPITemplate   = "http://{{.ManagementEndpoint}}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName={{.BrokerName}},destinationType=Queue,destinationName={{.DestinationName}}/QueueSize"
 )
-
-var activeMQLog = logf.Log.WithName("activeMQ_scaler")
 
 // NewActiveMQScaler creates a new activeMQ Scaler
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
@@ -69,6 +69,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "active_mq_scaler"),
 	}, nil
 }
 
@@ -108,6 +109,16 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		meta.targetQueueSize = queueSize
 	} else {
 		meta.targetQueueSize = defaultTargetQueueSize
+	}
+
+	if val, ok := config.TriggerMetadata["activationTargetQueueSize"]; ok {
+		activationTargetQueueSize, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activationTargetQueueSize - must be an integer")
+		}
+		meta.activationTargetQueueSize = activationTargetQueueSize
+	} else {
+		meta.activationTargetQueueSize = defaultActivationTargetQueueSize
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
@@ -158,11 +169,11 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		activeMQLog.Error(err, "Unable to access activeMQ management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access activeMQ management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
 	}
 
-	return queueSize > 0, nil
+	return queueSize > s.metadata.activationTargetQueueSize, nil
 }
 
 // getRestAPIParameters parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
@@ -248,26 +259,26 @@ func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error
 		return -1, fmt.Errorf("ActiveMQ management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
 
-	activeMQLog.V(1).Info(fmt.Sprintf("ActiveMQ scaler: Providing metrics based on current queue size %d queue size limit %d", queueMessageCount, s.metadata.targetQueueSize))
+	s.logger.V(1).Info(fmt.Sprintf("ActiveMQ scaler: Providing metrics based on current queue size %d queue size limit %d", queueMessageCount, s.metadata.targetQueueSize))
 
 	return queueMessageCount, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueSize),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)

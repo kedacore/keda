@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -289,7 +289,7 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 		return resp.Header["X-Subject-Token"][0], nil
 	}
 
-	errBody, err := ioutil.ReadAll(resp.Body)
+	errBody, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return "", err
@@ -338,7 +338,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 		return keystoneCatalog.Catalog, nil
 	}
 
-	errBody, err := ioutil.ReadAll(resp.Body)
+	errBody, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return nil, err

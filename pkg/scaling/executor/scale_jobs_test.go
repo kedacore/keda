@@ -171,6 +171,48 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestRunningJobCountSmallerMinReplicaCount(t *testing.T) {
+	scaleExecutor := getMockScaleExecutor(nil)
+	scaledJob := getMockScaledJobWithMinReplicaCountAndDefaultStrategy(2)
+
+	var runningJobCount int64
+	var scaleTo int64
+	var maxScale int64
+	var pendingJobCount int64
+
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	assert.Equal(t, int64(2), effectiveMaxScale)
+	assert.Equal(t, int64(2), scaleTo)
+}
+
+func TestRunningJobCountIsDeductedFromMinReplicaCount(t *testing.T) {
+	scaleExecutor := getMockScaleExecutor(nil)
+	scaledJob := getMockScaledJobWithMinReplicaCountAndDefaultStrategy(2)
+
+	var runningJobCount int64 = 1
+	var scaleTo int64
+	var maxScale int64
+	var pendingJobCount int64
+
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	assert.Equal(t, int64(1), effectiveMaxScale)
+	assert.Equal(t, int64(1), scaleTo)
+}
+
+func TestRunningJobCountGreaterOrEqualMinReplicaCountExecutesScalingStrategy(t *testing.T) {
+	scaleExecutor := getMockScaleExecutor(nil)
+	scaledJob := getMockScaledJobWithMinReplicaCountAndDefaultStrategy(1)
+
+	var runningJobCount int64 = 1
+	var scaleTo int64 = 2
+	var maxScale int64 = 2
+	var pendingJobCount int64
+
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	assert.Equal(t, int64(2), effectiveMaxScale)
+	assert.Equal(t, int64(2), scaleTo)
+}
+
 func TestCleanUpDefaultValue(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -283,6 +325,17 @@ func getMockScaledJobWithDefault() *kedav1alpha1.ScaledJob {
 		Spec: kedav1alpha1.ScaledJobSpec{},
 	}
 	scaledJob.ObjectMeta.Name = "azure-storage-queue-consumer"
+	return scaledJob
+}
+
+func getMockScaledJobWithMinReplicaCountAndDefaultStrategy(minReplicaCount int32) *kedav1alpha1.ScaledJob {
+	maxReplicaCount := int32(100)
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			MinReplicaCount: &minReplicaCount,
+			MaxReplicaCount: &maxReplicaCount,
+		},
+	}
 	return scaledJob
 }
 

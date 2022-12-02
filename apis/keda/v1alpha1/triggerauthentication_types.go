@@ -115,6 +115,8 @@ const (
 // mechanism
 type AuthPodIdentity struct {
 	Provider PodIdentityProvider `json:"provider"`
+	// +optional
+	IdentityID string `json:"identityId"`
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
@@ -186,13 +188,15 @@ type AzureKeyVault struct {
 	// +optional
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
 	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+	// +optional
 	Cloud *AzureKeyVaultCloudInfo `json:"cloud"`
 }
 
 type AzureKeyVaultCredentials struct {
 	ClientID     string                     `json:"clientId"`
-	ClientSecret *AzureKeyVaultClientSecret `json:"clientSecret"`
 	TenantID     string                     `json:"tenantId"`
+	ClientSecret *AzureKeyVaultClientSecret `json:"clientSecret"`
 }
 
 type AzureKeyVaultClientSecret struct {

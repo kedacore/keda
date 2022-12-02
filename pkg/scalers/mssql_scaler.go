@@ -9,19 +9,19 @@ import (
 
 	// mssql driver required for this scaler
 	_ "github.com/denisenkom/go-mssqldb"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // mssqlScaler exposes a data pointer to mssqlMetadata and sql.DB connection
 type mssqlScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *mssqlMetadata
 	connection *sql.DB
+	logger     logr.Logger
 }
 
 // mssqlMetadata defines metadata used by KEDA to query a Microsoft SQL database
@@ -51,6 +51,9 @@ type mssqlMetadata struct {
 	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
 	// +required
 	targetValue float64
+	// The threshold that is used in activation phase
+	// +optional
+	activationTargetValue float64
 	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
 	// +optional
 	metricName string
@@ -59,8 +62,6 @@ type mssqlMetadata struct {
 	scalerIndex int
 }
 
-var mssqlLog = logf.Log.WithName("mssql_scaler")
-
 // NewMSSQLScaler creates a new mssql scaler
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -68,12 +69,14 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
+	logger := InitializeLogger(config, "mssql_scaler")
+
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing mssql metadata: %s", err)
 	}
 
-	conn, err := newMSSQLConnection(meta)
+	conn, err := newMSSQLConnection(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing mssql connection: %s", err)
 	}
@@ -82,6 +85,7 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		connection: conn,
+		logger:     logger,
 	}, nil
 }
 
@@ -105,6 +109,16 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		meta.targetValue = targetValue
 	} else {
 		return nil, fmt.Errorf("no targetValue given")
+	}
+
+	// Activation target value
+	meta.activationTargetValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	// Connection string, which can either be provided explicitly or via the helper fields
@@ -162,18 +176,18 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 }
 
 // newMSSQLConnection returns a new, opened SQL connection for the provided mssqlMetadata
-func newMSSQLConnection(meta *mssqlMetadata) (*sql.DB, error) {
+func newMSSQLConnection(meta *mssqlMetadata, logger logr.Logger) (*sql.DB, error) {
 	connStr := getMSSQLConnectionString(meta)
 
 	db, err := sql.Open("sqlserver", connStr)
 	if err != nil {
-		mssqlLog.Error(err, fmt.Sprintf("Found error opening mssql: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error opening mssql: %s", err))
 		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
-		mssqlLog.Error(err, fmt.Sprintf("Found error pinging mssql: %s", err))
+		logger.Error(err, fmt.Sprintf("Found error pinging mssql: %s", err))
 		return nil, err
 	}
 
@@ -214,23 +228,23 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
-func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric
-func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting mssql: %s", err)
@@ -249,7 +263,7 @@ func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	case err == sql.ErrNoRows:
 		value = 0
 	case err != nil:
-		mssqlLog.Error(err, fmt.Sprintf("Could not query mssql database: %s", err))
+		s.logger.Error(err, fmt.Sprintf("Could not query mssql database: %s", err))
 		return 0, err
 	}
 
@@ -263,14 +277,14 @@ func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetValue, nil
 }
 
 // Close closes the mssql database connections
 func (s *mssqlScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
-		mssqlLog.Error(err, "Error closing mssql connection")
+		s.logger.Error(err, "Error closing mssql connection")
 		return err
 	}
 

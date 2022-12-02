@@ -8,8 +8,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -102,6 +102,20 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		expectedError: errors.New("error parsing metadata targetValue"),
 	},
 	{
+		name: "invalid activationTargetValue given",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "1",
+			"activationTargetValue":     "no-valid",
+		},
+		authParams:    map[string]string{},
+		expectedError: errors.New("error parsing metadata targetValue"),
+	},
+	{
 		name: "malformed expressionAttributeNames",
 		metadata: map[string]string{
 			"tableName":                 "test",
@@ -168,6 +182,36 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		expectedMetadata: &awsDynamoDBMetadata{
 			tableName:                 "test",
 			awsRegion:                 "eu-west-1",
+			keyConditionExpression:    "#yr = :yyyy",
+			expressionAttributeNames:  map[string]*string{"#yr": &year},
+			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
+			targetValue:               3,
+			scalerIndex:               1,
+			metricName:                "s1-aws-dynamodb-test",
+			awsAuthorization: awsAuthorizationMetadata{
+				awsAccessKeyID:     "none",
+				awsSecretAccessKey: "none",
+				podIdentityOwner:   true,
+			},
+		},
+	},
+	{
+		name: "properly formed dynamo name and region with custom endpoint",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"awsEndpoint":               "http://localhost:4566",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams:    testAWSDynamoAuthentication,
+		expectedError: nil,
+		expectedMetadata: &awsDynamoDBMetadata{
+			tableName:                 "test",
+			awsRegion:                 "eu-west-1",
+			awsEndpoint:               "http://localhost:4566",
 			keyConditionExpression:    "#yr = :yyyy",
 			expressionAttributeNames:  map[string]*string{"#yr": &year},
 			expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
@@ -257,13 +301,11 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 }
 
 func TestDynamoGetMetrics(t *testing.T) {
-	var selector labels.Selector
-
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb", selector)
+			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb")
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.Error(t, err, "expect error because of dynamodb api error")
@@ -279,7 +321,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 func TestDynamoGetQueryMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.GetQueryMetrics()
 			switch meta.tableName {
@@ -297,7 +339,7 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 func TestDynamoIsActive(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.IsActive(context.Background())
 			switch meta.tableName {

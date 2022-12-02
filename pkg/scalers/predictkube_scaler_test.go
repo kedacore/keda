@@ -127,6 +127,12 @@ var testPredictKubeMetadata = []predictKubeMetadataTestData{
 
 		map[string]string{"apiKey": testAPIKey}, true,
 	},
+	// malformed activation threshold
+	{
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "1", "activationThreshold": "one", "query": "up"},
+
+		map[string]string{"apiKey": testAPIKey}, true,
+	},
 	// missing query
 	{
 		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://localhost:9090", "queryStep": "2m", "threshold": "one", "query": "", "metricName": "liveness_metric_3"},
@@ -212,6 +218,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		assert.NoError(t, err)
 
 		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), mockPredictKubeScaler.metadata.metricName, nil)
+		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), mockPredictKubeScaler.metadata.metricName)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))

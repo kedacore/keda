@@ -22,10 +22,9 @@ import (
 	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -33,16 +32,15 @@ import (
 )
 
 type azureDataExplorerScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *azure.DataExplorerMetadata
 	client     *kusto.Client
 	name       string
 	namespace  string
+	logger     logr.Logger
 }
 
 const adxName = "azure-data-explorer"
-
-var dataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 
 func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -50,7 +48,9 @@ func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scal
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	metadata, err := parseAzureDataExplorerMetadata(config)
+	logger := InitializeLogger(config, "azure_data_explorer_scaler")
+
+	metadata, err := parseAzureDataExplorerMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
 	}
@@ -64,13 +64,14 @@ func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scal
 		metricType: metricType,
 		metadata:   metadata,
 		client:     client,
-		name:       config.Name,
-		namespace:  config.Namespace,
+		name:       config.ScalableObjectName,
+		namespace:  config.ScalableObjectNamespace,
+		logger:     logger,
 	}, nil
 }
 
-func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
-	metadata, err := parseAzureDataExplorerAuthParams(config)
+func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
+	metadata, err := parseAzureDataExplorerAuthParams(config, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +106,16 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 		metadata.Threshold = threshold
 	}
 
+	// Get activationThreshold.
+	metadata.ActivationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %v", err)
+		}
+		metadata.ActivationThreshold = activationThreshold
+	}
+
 	// Generate metricName.
 	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 
@@ -114,7 +125,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 	}
 	metadata.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
-	dataExplorerLogger.V(1).Info("Parsed azureDataExplorerMetadata",
+	logger.V(1).Info("Parsed azureDataExplorerMetadata",
 		"database", metadata.DatabaseName,
 		"endpoint", metadata.Endpoint,
 		"metricName", metadata.MetricName,
@@ -126,14 +137,14 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig) (*azure.DataExplorerMe
 	return metadata, nil
 }
 
-func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorerMetadata, error) {
+func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
 	metadata := azure.DataExplorerMetadata{}
 
-	switch config.PodIdentity {
+	switch config.PodIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		dataExplorerLogger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
+		logger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 
 		tenantID, err := getParameterFromConfig(config, "tenantId", true)
 		if err != nil {
@@ -158,7 +169,7 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig) (*azure.DataExplorer
 	return &metadata, nil
 }
 
-func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	metricValue, err := azure.GetAzureDataExplorerMetricValue(ctx, s.client, s.metadata.DatabaseName, s.metadata.Query)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
@@ -168,15 +179,15 @@ func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName stri
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: s.metadata.MetricName,
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s azureDataExplorerScaler) IsActive(ctx context.Context) (bool, error) {
@@ -185,7 +196,7 @@ func (s azureDataExplorerScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to get azure data explorer metric value: %s", err)
 	}
 
-	return metricValue > 0, nil
+	return metricValue > s.metadata.ActivationThreshold, nil
 }
 
 func (s azureDataExplorerScaler) Close(context.Context) error {

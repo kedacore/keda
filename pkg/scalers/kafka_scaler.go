@@ -9,29 +9,30 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type kafkaScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   kafkaMetadata
 	client     sarama.Client
 	admin      sarama.ClusterAdmin
+	logger     logr.Logger
 }
 
 type kafkaMetadata struct {
-	bootstrapServers   []string
-	group              string
-	topic              string
-	lagThreshold       int64
-	offsetResetPolicy  offsetResetPolicy
-	allowIdleConsumers bool
-	version            sarama.KafkaVersion
+	bootstrapServers       []string
+	group                  string
+	topic                  string
+	lagThreshold           int64
+	activationLagThreshold int64
+	offsetResetPolicy      offsetResetPolicy
+	allowIdleConsumers     bool
+	version                sarama.KafkaVersion
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
@@ -42,11 +43,16 @@ type kafkaMetadata struct {
 	username string
 	password string
 
+	// OAUTHBEARER
+	scopes                []string
+	oauthTokenEndpointURI string
+
 	// TLS
-	enableTLS bool
-	cert      string
-	key       string
-	ca        string
+	enableTLS   bool
+	cert        string
+	key         string
+	keyPassword string
+	ca          string
 
 	scalerIndex int
 }
@@ -66,17 +72,18 @@ const (
 	KafkaSASLTypePlaintext   kafkaSaslType = "plaintext"
 	KafkaSASLTypeSCRAMSHA256 kafkaSaslType = "scram_sha256"
 	KafkaSASLTypeSCRAMSHA512 kafkaSaslType = "scram_sha512"
+	KafkaSASLTypeOAuthbearer kafkaSaslType = "oauthbearer"
 )
 
 const (
-	lagThresholdMetricName   = "lagThreshold"
-	kafkaMetricType          = "External"
-	defaultKafkaLagThreshold = 10
-	defaultOffsetResetPolicy = latest
-	invalidOffset            = -1
+	lagThresholdMetricName             = "lagThreshold"
+	activationLagThresholdMetricName   = "activationLagThreshold"
+	kafkaMetricType                    = "External"
+	defaultKafkaLagThreshold           = 10
+	defaultKafkaActivationLagThreshold = 0
+	defaultOffsetResetPolicy           = latest
+	invalidOffset                      = -1
 )
-
-var kafkaLog = logf.Log.WithName("kafka_scaler")
 
 // NewKafkaScaler creates a new kafkaScaler
 func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
@@ -85,7 +92,9 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	kafkaMetadata, err := parseKafkaMetadata(config)
+	logger := InitializeLogger(config, "kafka_scaler")
+
+	kafkaMetadata, err := parseKafkaMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
 	}
@@ -100,6 +109,7 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		admin:      admin,
 		metricType: metricType,
 		metadata:   kafkaMetadata,
+		logger:     logger,
 	}, nil
 }
 
@@ -109,7 +119,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
-		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 {
+		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
 				return errors.New("no username given")
 			}
@@ -120,6 +130,15 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			}
 			meta.password = strings.TrimSpace(config.AuthParams["password"])
 			meta.saslType = mode
+
+			if mode == KafkaSASLTypeOAuthbearer {
+				meta.scopes = strings.Split(config.AuthParams["scopes"], ",")
+
+				if config.AuthParams["oauthTokenEndpointUri"] == "" {
+					return errors.New("no oauth token endpoint uri given")
+				}
+				meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+			}
 		} else {
 			return fmt.Errorf("err SASL mode %s given", mode)
 		}
@@ -141,6 +160,11 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			meta.ca = config.AuthParams["ca"]
 			meta.cert = config.AuthParams["cert"]
 			meta.key = config.AuthParams["key"]
+			if value, found := config.AuthParams["keyPassword"]; found {
+				meta.keyPassword = value
+			} else {
+				meta.keyPassword = ""
+			}
 			meta.enableTLS = true
 		} else if val != "disable" {
 			return fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -150,7 +174,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	return nil
 }
 
-func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
+func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
@@ -177,7 +201,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 		meta.topic = config.TriggerMetadata["topic"]
 	default:
 		meta.topic = ""
-		kafkaLog.V(1).Info(fmt.Sprintf("consumer group %s has no topic specified, "+
+		logger.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
@@ -186,7 +210,7 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	if config.TriggerMetadata["offsetResetPolicy"] != "" {
 		policy := offsetResetPolicy(config.TriggerMetadata["offsetResetPolicy"])
 		if policy != earliest && policy != latest {
-			return meta, fmt.Errorf("err offsetResetPolicy policy %s given", policy)
+			return meta, fmt.Errorf("err offsetResetPolicy policy %q given", policy)
 		}
 		meta.offsetResetPolicy = policy
 	}
@@ -196,9 +220,25 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %q: %s", lagThresholdMetricName, err)
+		}
+		if t <= 0 {
+			return meta, fmt.Errorf("%q must be positive number", lagThresholdMetricName)
 		}
 		meta.lagThreshold = t
+	}
+
+	meta.activationLagThreshold = defaultKafkaActivationLagThreshold
+
+	if val, ok := config.TriggerMetadata[activationLagThresholdMetricName]; ok {
+		t, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing %q: %s", activationLagThresholdMetricName, err)
+		}
+		if t <= 0 {
+			return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
+		}
+		meta.activationLagThreshold = t
 	}
 
 	if err := parseKafkaAuthParams(config, &meta); err != nil {
@@ -238,31 +278,12 @@ func parseKafkaMetadata(config *ScalerConfig) (kafkaMetadata, error) {
 
 // IsActive determines if we need to scale from zero
 func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
-	topicPartitions, err := s.getTopicPartitions()
+	totalLag, err := s.getTotalLag()
 	if err != nil {
 		return false, err
 	}
 
-	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(topicPartitions)
-	if err != nil {
-		return false, err
-	}
-
-	for topic, partitionsOffsets := range producerOffsets {
-		for partitionID := range partitionsOffsets {
-			lag, err := s.getLagForPartition(topic, partitionID, consumerOffsets, producerOffsets)
-			if err != nil && lag == invalidOffset {
-				return true, nil
-			}
-			kafkaLog.V(1).Info(fmt.Sprintf("Group %s has a lag of %d for topic %s and partition %d\n", s.metadata.group, lag, topic, partitionID))
-
-			// Return as soon as a lag was detected for any partitionID
-			if lag > 0 {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return totalLag > s.metadata.activationLagThreshold, nil
 }
 
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
@@ -277,7 +298,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -296,6 +317,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	if metadata.saslType == KafkaSASLTypeSCRAMSHA512 {
 		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
+	}
+
+	if metadata.saslType == KafkaSASLTypeOAuthbearer {
+		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
+		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes)
 	}
 
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)
@@ -323,6 +349,12 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error listing cg offset: %s", err)
 		}
+
+		if listCGOffsetResponse.Err > 0 {
+			errMsg := fmt.Errorf("error listing cg offset: %s", listCGOffsetResponse.Err.Error())
+			s.logger.Error(errMsg, "")
+		}
+
 		for topicName := range listCGOffsetResponse.Blocks {
 			topicsToDescribe = append(topicsToDescribe, topicName)
 		}
@@ -341,6 +373,10 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 
 	topicPartitions := make(map[string][]int32, len(topicsMetadata))
 	for _, topicMetadata := range topicsMetadata {
+		if topicMetadata.Err > 0 {
+			errMsg := fmt.Errorf("error describing topics: %s", topicMetadata.Err.Error())
+			s.logger.Error(errMsg, "")
+		}
 		partitionMetadata := topicMetadata.Partitions
 		partitions := make([]int32, len(partitionMetadata))
 		for i, p := range partitionMetadata {
@@ -356,6 +392,10 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	if err != nil {
 		return nil, fmt.Errorf("error listing consumer group offsets: %s", err)
 	}
+	if offsets.Err > 0 {
+		errMsg := fmt.Errorf("error listing consumer group offsets: %s", offsets.Err.Error())
+		s.logger.Error(errMsg, "")
+	}
 	return offsets, nil
 }
 
@@ -363,9 +403,14 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
-		kafkaLog.Error(errMsg, "")
+		s.logger.Error(errMsg, "")
 		return 0, errMsg
 	}
+	if block.Err > 0 {
+		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
+		s.logger.Error(errMsg, "")
+	}
+
 	consumerOffset := block.Offset
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
 		retVal := int64(1)
@@ -375,7 +420,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		msg := fmt.Sprintf(
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
 			topic, s.metadata.group, partitionID, retVal)
-		kafkaLog.V(0).Info(msg)
+		s.logger.V(0).Info(msg)
 		return retVal, nil
 	}
 
@@ -400,7 +445,7 @@ func (s *kafkaScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
 	if s.metadata.topic != "" {
 		metricName = fmt.Sprintf("kafka-%s", s.metadata.topic)
@@ -408,14 +453,14 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricS
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.group)
 	}
 
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 type consumerOffsetResult struct {
@@ -455,15 +500,25 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	topicPartitions, err := s.getTopicPartitions()
+func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+	totalLag, err := s.getTotalLag()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err
+	}
+	metric := GenerateMetricInMili(metricName, float64(totalLag))
+
+	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+}
+
+func (s *kafkaScaler) getTotalLag() (int64, error) {
+	topicPartitions, err := s.getTopicPartitions()
+	if err != nil {
+		return 0, err
 	}
 
 	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(topicPartitions)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return 0, err
 	}
 
 	totalLag := int64(0)
@@ -476,7 +531,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 		}
 		totalTopicPartitions += (int64)(len(partitionsOffsets))
 	}
-	kafkaLog.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
+	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
 	if !s.metadata.allowIdleConsumers {
 		// don't scale out beyond the number of topicPartitions
@@ -484,10 +539,7 @@ func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricS
 			totalLag = totalTopicPartitions * s.metadata.lagThreshold
 		}
 	}
-
-	metric := GenerateMetricInMili(metricName, float64(totalLag))
-
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return totalLag, nil
 }
 
 type brokerOffsetResult struct {

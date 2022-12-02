@@ -10,6 +10,7 @@ import (
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -19,7 +20,9 @@ const (
 	eventHubConsumerGroup     = "testEventHubConsumerGroup"
 	eventHubConnectionSetting = "testEventHubConnectionSetting"
 	storageConnectionSetting  = "testStorageConnectionSetting"
+	eventHubsConnection       = "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;EntityPath=testEventHub"
 	serviceBusEndpointSuffix  = "serviceBusEndpointSuffix"
+	storageEndpointSuffix     = "storageEndpointSuffix"
 	activeDirectoryEndpoint   = "activeDirectoryEndpoint"
 	eventHubResourceURL       = "eventHubResourceURL"
 	testEventHubNamespace     = "kedatesteventhub"
@@ -29,8 +32,9 @@ const (
 )
 
 type parseEventHubMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata    map[string]string
+	resolvedEnv map[string]string
+	isError     bool
 }
 
 type eventHubMetricIdentifier struct {
@@ -39,52 +43,163 @@ type eventHubMetricIdentifier struct {
 	name             string
 }
 
-var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: "none", storageConnectionSetting: "none"}
+var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: eventHubsConnection, storageConnectionSetting: "none"}
 
 var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
-	{map[string]string{}, true},
+	{
+		metadata: map[string]string{},
+		isError:  true,
+	},
 	// properly formed event hub metadata
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
 	// missing event hub connection setting
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// missing storage connection setting
-	{map[string]string{"consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	{
+		metadata:    map[string]string{"consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// missing event hub consumer group - should replace with default
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, false},
+	{
+		metadata: map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, resolvedEnv: sampleEventHubResolvedEnv,
+		isError: false,
+	},
 	// missing unprocessed event threshold - should replace with default
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
+	// invalid activation unprocessed event threshold
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "activationUnprocessedEventThreshold": "AA"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// added blob container details
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName, "checkpointStrategy": "azureFunction"}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "blobContainer": testContainerName, "checkpointStrategy": "azureFunction"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
+	// connection string without EntityPath, no event hub name provided
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		resolvedEnv: map[string]string{eventHubConnectionSetting: "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;", storageConnectionSetting: "none"},
+		isError:     true,
+	},
+	// connection string without EntityPath, event hub name provided
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName},
+		resolvedEnv: map[string]string{eventHubConnectionSetting: "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;", storageConnectionSetting: "none"},
+		isError:     false,
+	},
 }
 
 var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestData{
-	{map[string]string{}, true},
+	{
+		metadata:    map[string]string{},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// Even though connection string is provided, this should fail because the eventhub Namespace is not provided explicitly when using Pod Identity
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"}, true},
+	{
+		metadata: map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		isError:  true},
 	// properly formed event hub metadata with Pod Identity
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
 	// missing eventHubname
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubNamespace": testEventHubNamespace}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// missing eventHubNamespace
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true},
 	// metadata with cloud specified
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "azurePublicCloud"}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "azurePublicCloud"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
 	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint and eventHubResourceURL
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private"}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "private"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// metadata with private cloud missing active directory endpoint and resourceURL
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true},
 	// metadata with private cloud missing service bus endpoint suffix and resource URL
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "activeDirectoryEndpoint": activeDirectoryEndpoint}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "private", "activeDirectoryEndpoint": activeDirectoryEndpoint},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true},
 	// metadata with private cloud missing service bus endpoint suffix and active directory endpoint
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "eventHubResourceURL": eventHubResourceURL}, true},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "private", "eventHubResourceURL": eventHubResourceURL},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
 	// properly formed metadata with private cloud
-	{map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName,
-		"eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint, "eventHubResourceURL": eventHubResourceURL}, false},
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace, "cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint, "eventHubResourceURL": eventHubResourceURL},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
+	// properly formed event hub metadata with Pod Identity and no storage connection string
+	{
+		metadata:    map[string]string{"storageAccountName": "blobstorage", "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
+	// event hub metadata with Pod Identity, no storage connection string, no storageAccountName - should fail
+	{
+		metadata:    map[string]string{"consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
+	// event hub metadata with Pod Identity, no storage connection string, empty storageAccountName - should fail
+	{
+		metadata:    map[string]string{"storageAccount": "", "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true},
+	// event hub metadata with Pod Identity, storage connection string, empty storageAccountName - should ignore pod identity for blob storage and succeed
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "storageAccountName": "", "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
+	// event hub metadata with Pod Identity and no storage connection string, private cloud and no storageEndpointSuffix - should fail
+	{
+		metadata:    map[string]string{"cloud": "private", "storageAccountName": "blobstorage", "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true},
+	// properly formed event hub metadata with Pod Identity and no storage connection string, private cloud and storageEndpointSuffix
+	{
+		metadata:    map[string]string{"cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint, "eventHubResourceURL": eventHubResourceURL, "storageAccountName": "aStorageAccount", "storageEndpointSuffix": storageEndpointSuffix, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     false,
+	},
 }
 
 var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
@@ -104,7 +219,7 @@ var testEventHubScaler = azureEventHubScaler{
 func TestParseEventHubMetadata(t *testing.T) {
 	// Test first with valid resolved environment
 	for _, testData := range parseEventHubMetadataDataset {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}})
+		_, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: map[string]string{}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -115,7 +230,8 @@ func TestParseEventHubMetadata(t *testing.T) {
 	}
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.PodIdentityProviderAzure})
+		_, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
+			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -126,7 +242,8 @@ func TestParseEventHubMetadata(t *testing.T) {
 	}
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload})
+		_, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
+			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s", err)
@@ -148,7 +265,8 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient, "none", storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
+			kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -471,7 +589,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

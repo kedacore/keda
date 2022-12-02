@@ -3,6 +3,8 @@ package scalers
 import (
 	"reflect"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
@@ -320,7 +322,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName)
+			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -402,6 +404,28 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 		},
 		{
+			name: "valid url in AuthParams, browsername, and sessionbrowsername should return metadata",
+			args: args{
+				config: &ScalerConfig{
+					AuthParams: map[string]string{
+						"url": "http://user:password@selenium-hub:4444/graphql",
+					},
+					TriggerMetadata: map[string]string{
+						"browserName":        "MicrosoftEdge",
+						"sessionBrowserName": "msedge",
+					},
+				},
+			},
+			wantErr: false,
+			want: &seleniumGridScalerMetadata{
+				url:                "http://user:password@selenium-hub:4444/graphql",
+				browserName:        "MicrosoftEdge",
+				sessionBrowserName: "msedge",
+				targetValue:        1,
+				browserVersion:     "latest",
+			},
+		},
+		{
 			name: "valid url and browsername should return metadata",
 			args: args{
 				config: &ScalerConfig{
@@ -424,26 +448,43 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "valid url, browsername and unsafeSsl should return metadata",
+			name: "valid url, browsername, unsafeSsl and activationThreshold should return metadata",
 			args: args{
 				config: &ScalerConfig{
 					TriggerMetadata: map[string]string{
-						"url":            "http://selenium-hub:4444/graphql",
-						"browserName":    "chrome",
-						"browserVersion": "91.0",
-						"unsafeSsl":      "true",
+						"url":                 "http://selenium-hub:4444/graphql",
+						"browserName":         "chrome",
+						"browserVersion":      "91.0",
+						"unsafeSsl":           "true",
+						"activationThreshold": "10",
 					},
 				},
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				url:                "http://selenium-hub:4444/graphql",
-				browserName:        "chrome",
-				sessionBrowserName: "chrome",
-				targetValue:        1,
-				browserVersion:     "91.0",
-				unsafeSsl:          true,
+				url:                 "http://selenium-hub:4444/graphql",
+				browserName:         "chrome",
+				sessionBrowserName:  "chrome",
+				targetValue:         1,
+				activationThreshold: 10,
+				browserVersion:      "91.0",
+				unsafeSsl:           true,
 			},
+		},
+		{
+			name: "valid url, browsername and unsafeSsl but invalid activationThreshold should throw an error",
+			args: args{
+				config: &ScalerConfig{
+					TriggerMetadata: map[string]string{
+						"url":                 "http://selenium-hub:4444/graphql",
+						"browserName":         "chrome",
+						"browserVersion":      "91.0",
+						"unsafeSsl":           "true",
+						"activationThreshold": "AA",
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

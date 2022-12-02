@@ -27,20 +27,21 @@ import (
 )
 
 type BlobMetadata struct {
-	TargetBlobCount   int64
-	BlobContainerName string
-	BlobDelimiter     string
-	BlobPrefix        string
-	Connection        string
-	AccountName       string
-	MetricName        string
-	EndpointSuffix    string
-	ScalerIndex       int
-	GlobPattern       *glob.Glob
+	TargetBlobCount           int64
+	ActivationTargetBlobCount int64
+	BlobContainerName         string
+	BlobDelimiter             string
+	BlobPrefix                string
+	Connection                string
+	AccountName               string
+	MetricName                string
+	EndpointSuffix            string
+	ScalerIndex               int
+	GlobPattern               *glob.Glob
 }
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.PodIdentityProvider, meta *BlobMetadata) (int64, error) {
+func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, meta *BlobMetadata) (int64, error) {
 	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
 	if err != nil {
 		return -1, err

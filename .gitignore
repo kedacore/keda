@@ -28,7 +28,6 @@ testbin/*
 # KEDA artifacts
 dist/
 .DS_Store
-node_modules
 *.log
 
 apiserver.local.config/
@@ -38,8 +37,6 @@ apiserver.local.config/
 # VSCode specific files
 .vscode
 
-# GO Vendor
-vendor
 cover.out
 
 # GO debug binary

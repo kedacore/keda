@@ -6,11 +6,12 @@ daysUntilClose: 7
 
 # Issues with these labels will never be considered stale
 exemptLabels:
-  - cant-touch-this
+  - stale-bot-ignore
   - feature
   - security
   - Epic
   - dependencies
+  - enhancement
 
 # Label to use when marking an issue as stale
 staleLabel: stale

@@ -32,7 +32,8 @@ const (
 )
 
 // finalizeScaledJob runs finalization logic on ScaledJob if there's finalizer
-func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob,
+	namespacedName string) error {
 	if util.Contains(scaledJob.GetFinalizers(), scaledJobFinalizer) {
 		// Run finalization logic for scaledJobFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
@@ -48,6 +49,8 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 			logger.Error(err, "Failed to update ScaledJob after removing a finalizer", "finalizer", scaledJobFinalizer)
 			return err
 		}
+
+		r.updatePromMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info("Successfully finalized ScaledJob")

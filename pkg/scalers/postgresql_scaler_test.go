@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parsePostgreSQLMetadataTestData struct {
@@ -14,6 +16,8 @@ var testPostgreSQLMetdata = []parsePostgreSQLMetadataTestData{
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "connectionFromEnv": "test_connection_string"}},
 	// connection with username
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "connectionFromEnv": "test_connection_string2"}},
+	// connection with activationTargetQueryValue
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "activationTargetQueryValue": "3", "connectionFromEnv": "test_connection_string2"}},
 	// connection without username and password
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "connection": "postgresql://localhost:5432"}},
 	// connection with password + metricname
@@ -43,7 +47,7 @@ func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil}
+		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, logr.Discard()}
 
 		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

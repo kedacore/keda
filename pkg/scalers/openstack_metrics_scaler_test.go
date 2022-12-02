@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -65,6 +66,9 @@ var invalidOpenstackMetricMetadaTestData = []parseOpenstackMetricMetadataTestDat
 
 	// threshold 0
 	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0z"}},
+
+	// activation threshold invalid
+	{metadata: map[string]string{"metricsURL": "http://localhost:8041/v1/metric", "metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "0", "activationThreshold": "z"}},
 }
 
 var invalidOpenstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetadataTestData{
@@ -103,7 +107,7 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 
 	for _, testData := range testCases {
 		testData := testData
-		meta, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex}, logr.Discard())
 
 		if err != nil {
 			t.Fatal("Could not parse metadata from openstack metrics scaler")
@@ -115,7 +119,7 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 			t.Fatal("could not parse openstack metric authentication metadata")
 		}
 
-		mockMetricsScaler := openstackMetricScaler{"", meta, openstack.Client{}}
+		mockMetricsScaler := openstackMetricScaler{"", meta, openstack.Client{}, logr.Discard()}
 		metricsSpec := mockMetricsScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricsSpec[0].External.Metric.Name
 
@@ -141,7 +145,7 @@ func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
+			_, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex}, logr.Discard())
 			assert.NotNil(t, err)
 		})
 	}

@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,8 +21,9 @@ const (
 )
 
 type cronScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *cronMetadata
+	logger     logr.Logger
 }
 
 type cronMetadata struct {
@@ -33,8 +33,6 @@ type cronMetadata struct {
 	desiredReplicas int64
 	scalerIndex     int
 }
-
-var cronLog = logf.Log.WithName("cron_scaler")
 
 // NewCronScaler creates a new cronScaler
 func NewCronScaler(config *ScalerConfig) (Scaler, error) {
@@ -51,6 +49,7 @@ func NewCronScaler(config *ScalerConfig) (Scaler, error) {
 	return &cronScaler{
 		metricType: metricType,
 		metadata:   meta,
+		logger:     InitializeLogger(config, "cron_scaler"),
 	}, nil
 }
 
@@ -157,24 +156,24 @@ func parseCronTimeFormat(s string) string {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var specReplicas int64 = 1
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
 		Target: GetMetricTarget(s.metricType, specReplicas),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: cronMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: cronMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics finds the current value of the metric
-func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *cronScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	var currentReplicas = int64(defaultDesiredReplicas)
 	isActive, err := s.IsActive(ctx)
 	if err != nil {
-		cronLog.Error(err, "error")
+		s.logger.Error(err, "error")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 	if isActive {

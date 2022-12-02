@@ -37,10 +37,11 @@ type DataExplorerMetadata struct {
 	DatabaseName            string
 	Endpoint                string
 	MetricName              string
-	PodIdentity             kedav1alpha1.PodIdentityProvider
+	PodIdentity             kedav1alpha1.AuthPodIdentity
 	Query                   string
 	TenantID                string
 	Threshold               float64
+	ActivationThreshold     float64
 	ActiveDirectoryEndpoint string
 }
 
@@ -68,7 +69,7 @@ func CreateAzureDataExplorerClient(ctx context.Context, metadata *DataExplorerMe
 func getDataExplorerAuthConfig(ctx context.Context, metadata *DataExplorerMetadata) (auth.AuthorizerConfig, error) {
 	var authConfig auth.AuthorizerConfig
 
-	switch metadata.PodIdentity {
+	switch metadata.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		if metadata.ClientID != "" && metadata.ClientSecret != "" && metadata.TenantID != "" {
 			config := auth.NewClientCredentialsConfig(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
@@ -82,13 +83,14 @@ func getDataExplorerAuthConfig(ctx context.Context, metadata *DataExplorerMetada
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = metadata.Endpoint
+		config.ClientID = metadata.PodIdentity.IdentityID
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Pod Identity")
 
 		authConfig = config
 		return authConfig, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		azureDataExplorerLogger.V(1).Info("Creating Azure Data Explorer Client using Workload Identity")
-		authConfig = NewAzureADWorkloadIdentityConfig(ctx, metadata.Endpoint)
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, metadata.PodIdentity.IdentityID, metadata.Endpoint)
 		return authConfig, nil
 	}
 

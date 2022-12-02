@@ -10,10 +10,9 @@ import (
 	"github.com/Huawei/gophercloud/auth/aksk"
 	"github.com/Huawei/gophercloud/openstack"
 	"github.com/Huawei/gophercloud/openstack/ces/v1/metricdata"
-	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -27,8 +26,9 @@ const (
 )
 
 type huaweiCloudeyeScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *huaweiCloudeyeMetadata
+	logger     logr.Logger
 }
 
 type huaweiCloudeyeMetadata struct {
@@ -37,8 +37,8 @@ type huaweiCloudeyeMetadata struct {
 	dimensionName  string
 	dimensionValue string
 
-	targetMetricValue float64
-	minMetricValue    float64
+	targetMetricValue           float64
+	activationTargetMetricValue float64
 
 	metricCollectionTime int64
 	metricFilter         string
@@ -70,8 +70,6 @@ type huaweiAuthorizationMetadata struct {
 	SecretKey string // Secret key
 }
 
-var cloudeyeLog = logf.Log.WithName("huawei_cloudeye_scaler")
-
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
 func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -79,7 +77,9 @@ func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := parseHuaweiCloudeyeMetadata(config)
+	logger := InitializeLogger(config, "huawei_cloudeye_scaler")
+
+	meta, err := parseHuaweiCloudeyeMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
 	}
@@ -87,10 +87,11 @@ func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 	return &huaweiCloudeyeScaler{
 		metricType: metricType,
 		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 
-func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata, error) {
+func parseHuaweiCloudeyeMetadata(config *ScalerConfig, logger logr.Logger) (*huaweiCloudeyeMetadata, error) {
 	meta := huaweiCloudeyeMetadata{}
 
 	meta.metricCollectionTime = defaultCloudeyeMetricCollectionTime
@@ -124,7 +125,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	if val, ok := config.TriggerMetadata["targetMetricValue"]; ok && val != "" {
 		targetMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			cloudeyeLog.Error(err, "Error parsing targetMetricValue metadata")
+			logger.Error(err, "Error parsing targetMetricValue metadata")
 		} else {
 			meta.targetMetricValue = targetMetricValue
 		}
@@ -132,12 +133,22 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 		return nil, fmt.Errorf("target Metric Value not given")
 	}
 
+	meta.activationTargetMetricValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetMetricValue"]; ok && val != "" {
+		activationTargetMetricValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			logger.Error(err, "Error parsing activationTargetMetricValue metadata")
+		}
+		meta.activationTargetMetricValue = activationTargetMetricValue
+	}
+
 	if val, ok := config.TriggerMetadata["minMetricValue"]; ok && val != "" {
 		minMetricValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			cloudeyeLog.Error(err, "Error parsing minMetricValue metadata")
+			logger.Error(err, "Error parsing minMetricValue metadata")
 		} else {
-			meta.minMetricValue = minMetricValue
+			logger.Error(err, "minMetricValue is deprecated and will be removed in next versions, please use activationTargetMetricValue instead")
+			meta.activationTargetMetricValue = minMetricValue
 		}
 	} else {
 		return nil, fmt.Errorf("min Metric Value not given")
@@ -146,7 +157,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	if val, ok := config.TriggerMetadata["metricCollectionTime"]; ok && val != "" {
 		metricCollectionTime, err := strconv.Atoi(val)
 		if err != nil {
-			cloudeyeLog.Error(err, "Error parsing metricCollectionTime metadata")
+			logger.Error(err, "Error parsing metricCollectionTime metadata")
 		} else {
 			meta.metricCollectionTime = int64(metricCollectionTime)
 		}
@@ -159,7 +170,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig) (*huaweiCloudeyeMetadata,
 	if val, ok := config.TriggerMetadata["metricPeriod"]; ok && val != "" {
 		_, err := strconv.Atoi(val)
 		if err != nil {
-			cloudeyeLog.Error(err, "Error parsing metricPeriod metadata")
+			logger.Error(err, "Error parsing metricPeriod metadata")
 		} else {
 			meta.metricPeriod = val
 		}
@@ -229,11 +240,11 @@ func gethuaweiAuthorization(authParams map[string]string) (huaweiAuthorizationMe
 	return meta, nil
 }
 
-func (h *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	metricValue, err := h.GetCloudeyeMetrics()
+func (s *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+	metricValue, err := s.GetCloudeyeMetrics()
 
 	if err != nil {
-		cloudeyeLog.Error(err, "Error getting metric value")
+		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
@@ -241,55 +252,55 @@ func (h *huaweiCloudeyeScaler) GetMetrics(ctx context.Context, metricName string
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (h *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(h.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", h.metadata.metricsName))),
+func (s *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
 		},
-		Target: GetMetricTargetMili(h.metricType, h.metadata.targetMetricValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: externalMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
-func (h *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := h.GetCloudeyeMetrics()
+func (s *huaweiCloudeyeScaler) IsActive(ctx context.Context) (bool, error) {
+	val, err := s.GetCloudeyeMetrics()
 
 	if err != nil {
 		return false, err
 	}
 
-	return val > h.metadata.minMetricValue, nil
+	return val > s.metadata.activationTargetMetricValue, nil
 }
 
-func (h *huaweiCloudeyeScaler) Close(context.Context) error {
+func (s *huaweiCloudeyeScaler) Close(context.Context) error {
 	return nil
 }
 
-func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
+func (s *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 	options := aksk.AKSKOptions{
-		IdentityEndpoint: h.metadata.huaweiAuthorization.IdentityEndpoint,
-		ProjectID:        h.metadata.huaweiAuthorization.ProjectID,
-		AccessKey:        h.metadata.huaweiAuthorization.AccessKey,
-		SecretKey:        h.metadata.huaweiAuthorization.SecretKey,
-		Region:           h.metadata.huaweiAuthorization.Region,
-		Domain:           h.metadata.huaweiAuthorization.Domain,
-		DomainID:         h.metadata.huaweiAuthorization.DomainID,
-		Cloud:            h.metadata.huaweiAuthorization.Cloud,
+		IdentityEndpoint: s.metadata.huaweiAuthorization.IdentityEndpoint,
+		ProjectID:        s.metadata.huaweiAuthorization.ProjectID,
+		AccessKey:        s.metadata.huaweiAuthorization.AccessKey,
+		SecretKey:        s.metadata.huaweiAuthorization.SecretKey,
+		Region:           s.metadata.huaweiAuthorization.Region,
+		Domain:           s.metadata.huaweiAuthorization.Domain,
+		DomainID:         s.metadata.huaweiAuthorization.DomainID,
+		Cloud:            s.metadata.huaweiAuthorization.Cloud,
 	}
 
 	provider, err := openstack.AuthenticatedClient(options)
 	if err != nil {
-		cloudeyeLog.Error(err, "Failed to get the provider")
+		s.logger.Error(err, "Failed to get the provider")
 		return -1, err
 	}
 	sc, err := openstack.NewCESV1(provider, gophercloud.EndpointOpts{})
 
 	if err != nil {
-		cloudeyeLog.Error(err, "get ces client failed")
+		s.logger.Error(err, "get ces client failed")
 		if ue, ok := err.(*gophercloud.UnifiedError); ok {
-			cloudeyeLog.Info("ErrCode:", ue.ErrorCode())
-			cloudeyeLog.Info("Message:", ue.Message())
+			s.logger.Info("ErrCode:", ue.ErrorCode())
+			s.logger.Info("Message:", ue.Message())
 		}
 		return -1, err
 	}
@@ -297,38 +308,38 @@ func (h *huaweiCloudeyeScaler) GetCloudeyeMetrics() (float64, error) {
 	opts := metricdata.BatchQueryOpts{
 		Metrics: []metricdata.Metric{
 			{
-				Namespace: h.metadata.namespace,
+				Namespace: s.metadata.namespace,
 				Dimensions: []map[string]string{
 					{
-						"name":  h.metadata.dimensionName,
-						"value": h.metadata.dimensionValue,
+						"name":  s.metadata.dimensionName,
+						"value": s.metadata.dimensionValue,
 					},
 				},
-				MetricName: h.metadata.metricsName,
+				MetricName: s.metadata.metricsName,
 			},
 		},
-		From:   time.Now().Truncate(time.Minute).Add(time.Second*-1*time.Duration(h.metadata.metricCollectionTime)).UnixNano() / 1e6,
+		From:   time.Now().Truncate(time.Minute).Add(time.Second*-1*time.Duration(s.metadata.metricCollectionTime)).UnixNano() / 1e6,
 		To:     time.Now().Truncate(time.Minute).UnixNano() / 1e6,
-		Period: h.metadata.metricPeriod,
-		Filter: h.metadata.metricFilter,
+		Period: s.metadata.metricPeriod,
+		Filter: s.metadata.metricFilter,
 	}
 
 	metricdatas, err := metricdata.BatchQuery(sc, opts).ExtractMetricDatas()
 	if err != nil {
-		cloudeyeLog.Error(err, "query metrics failed")
+		s.logger.Error(err, "query metrics failed")
 		if ue, ok := err.(*gophercloud.UnifiedError); ok {
-			cloudeyeLog.Info("ErrCode:", ue.ErrorCode())
-			cloudeyeLog.Info("Message:", ue.Message())
+			s.logger.Info("ErrCode:", ue.ErrorCode())
+			s.logger.Info("Message:", ue.Message())
 		}
 		return -1, err
 	}
 
-	cloudeyeLog.V(1).Info("Received Metric Data", "data", metricdatas)
+	s.logger.V(1).Info("Received Metric Data", "data", metricdatas)
 
 	var metricValue float64
 
 	if metricdatas[0].Datapoints != nil && len(metricdatas[0].Datapoints) > 0 {
-		v, ok := metricdatas[0].Datapoints[0][h.metadata.metricFilter].(float64)
+		v, ok := metricdatas[0].Datapoints[0][s.metadata.metricFilter].(float64)
 		if ok {
 			metricValue = v
 		} else {

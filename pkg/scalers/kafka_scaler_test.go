@@ -3,7 +3,10 @@ package scalers
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parseKafkaMetadataTestData struct {
@@ -56,6 +59,12 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", offsetResetPolicy("latest"), false},
 	// failure, version not supported
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is negative value
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, lagThreshold is 0
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
+	// failure, activationLagThreshold is not int
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", offsetResetPolicy("latest"), false},
 	// success, more brokers
@@ -85,12 +94,22 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, TLS cert/key and assumed public CA
 	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key + key password and assumed public CA
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
 	// success, TLS CA only
 	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, SASL + TLS explicitly disabled
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
+	// success, SASL OAUTHBEARER + TLS
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// failure, SASL OAUTHBEARER + TLS bad sasl type
+	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	// success, SASL OAUTHBEARER + TLS missing scope
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
 	// failure, SASL incorrect type
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false},
 	// failure, SASL missing username
@@ -117,15 +136,28 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
 
+var parseKafkaOAuthbreakerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
+	// success, SASL OAUTHBEARER + TLS
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// success, SASL OAUTHBEARER + TLS multiple scopes
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope1, scope2", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// success, SASL OAUTHBEARER + TLS missing scope
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// failure, SASL OAUTHBEARER + TLS bad sasl type
+	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+}
+
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[4], 0, "s0-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[4], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[7], 0, "s0-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[7], 1, "s1-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -149,7 +181,7 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
-		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams})
+		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -180,7 +212,7 @@ func TestGetBrokers(t *testing.T) {
 
 func TestKafkaAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -201,17 +233,38 @@ func TestKafkaAuthParams(t *testing.T) {
 			if meta.key != testData.authParams["key"] {
 				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
 			}
+			if meta.keyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
+			}
+		}
+	}
+}
+
+func TestKafkaOAuthbreakerAuthParams(t *testing.T) {
+	for _, testData := range parseKafkaOAuthbreakerAuthParamsTestDataset {
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if testData.authParams["scopes"] == "" {
+			if len(meta.scopes) != strings.Count(testData.authParams["scopes"], ",")+1 {
+				t.Errorf("Expected scopes to be set to %v but got %v\n", strings.Count(testData.authParams["scopes"], ","), len(meta.scopes))
+			}
 		}
 	}
 }
 
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaScaler{"", meta, nil, nil}
+		mockKafkaScaler := kafkaScaler{"", meta, nil, nil, logr.Discard()}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

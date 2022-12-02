@@ -10,32 +10,33 @@ import (
 	"strconv"
 	"strings"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type artemisScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *artemisMetadata
 	httpClient *http.Client
+	logger     logr.Logger
 }
 
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
-	managementEndpoint string
-	queueName          string
-	brokerName         string
-	brokerAddress      string
-	username           string
-	password           string
-	restAPITemplate    string
-	queueLength        int64
-	corsHeader         string
-	scalerIndex        int
+	managementEndpoint    string
+	queueName             string
+	brokerName            string
+	brokerAddress         string
+	username              string
+	password              string
+	restAPITemplate       string
+	queueLength           int64
+	activationQueueLength int64
+	corsHeader            string
+	scalerIndex           int
 }
 
 //revive:enable:var-naming
@@ -47,13 +48,12 @@ type artemisMonitoring struct {
 }
 
 const (
-	artemisMetricType         = "External"
-	defaultArtemisQueueLength = 10
-	defaultRestAPITemplate    = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
-	defaultCorsHeader         = "http://%s"
+	artemisMetricType                   = "External"
+	defaultArtemisQueueLength           = 10
+	defaultArtemisActivationQueueLength = 0
+	defaultRestAPITemplate              = "http://<<managementEndpoint>>/console/jolokia/read/org.apache.activemq.artemis:broker=\"<<brokerName>>\",component=addresses,address=\"<<brokerAddress>>\",subcomponent=queues,routing-type=\"anycast\",queue=\"<<queueName>>\"/MessageCount"
+	defaultCorsHeader                   = "http://%s"
 )
-
-var artemisLog = logf.Log.WithName("artemis_queue_scaler")
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
@@ -76,6 +76,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   artemisMetadata,
 		httpClient: httpClient,
+		logger:     InitializeLogger(config, "artemis_queue_scaler"),
 	}, nil
 }
 
@@ -83,6 +84,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
+	meta.activationQueueLength = defaultArtemisActivationQueueLength
 
 	if val, ok := config.TriggerMetadata["restApiTemplate"]; ok && val != "" {
 		meta.restAPITemplate = config.TriggerMetadata["restApiTemplate"]
@@ -128,6 +130,15 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		meta.queueLength = queueLength
 	}
 
+	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok {
+		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse activationQueueLength: %s", err)
+		}
+
+		meta.activationQueueLength = activationQueueLength
+	}
+
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
 	} else if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
@@ -169,11 +180,11 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
 	messages, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return false, err
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationQueueLength, nil
 }
 
 // getAPIParameters parse restAPITemplate to provide managementEndpoint , brokerName, brokerAddress, queueName
@@ -250,28 +261,28 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 		return -1, fmt.Errorf("artemis management endpoint response error code : %d %d", resp.StatusCode, monitoringInfo.Status)
 	}
 
-	artemisLog.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
+	s.logger.V(1).Info(fmt.Sprintf("Artemis scaler: Providing metrics based on current queue length %d queue length limit %d", messageCount, s.metadata.queueLength))
 
 	return messageCount, nil
 }
 
-func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 	}
-	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
-	return []v2beta2.MetricSpec{metricSpec}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: artemisMetricType}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {
-		artemisLog.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 

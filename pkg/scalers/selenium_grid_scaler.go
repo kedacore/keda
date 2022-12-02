@@ -6,34 +6,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type seleniumGridScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *seleniumGridScalerMetadata
 	client     *http.Client
+	logger     logr.Logger
 }
 
 type seleniumGridScalerMetadata struct {
-	url                string
-	browserName        string
-	sessionBrowserName string
-	targetValue        int64
-	browserVersion     string
-	unsafeSsl          bool
-	scalerIndex        int
+	url                 string
+	browserName         string
+	sessionBrowserName  string
+	targetValue         int64
+	activationThreshold int64
+	browserVersion      string
+	unsafeSsl           bool
+	scalerIndex         int
 }
 
 type seleniumResponse struct {
@@ -70,13 +71,13 @@ const (
 	DefaultBrowserVersion string = "latest"
 )
 
-var seleniumGridLog = logf.Log.WithName("selenium_grid_scaler")
-
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
+
+	logger := InitializeLogger(config, "selenium_grid_scaler")
 
 	meta, err := parseSeleniumGridScalerMetadata(config)
 
@@ -90,6 +91,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		client:     httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -98,7 +100,9 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		targetValue: 1,
 	}
 
-	if val, ok := config.TriggerMetadata["url"]; ok {
+	if val, ok := config.AuthParams["url"]; ok {
+		meta.url = val
+	} else if val, ok := config.TriggerMetadata["url"]; ok {
 		meta.url = val
 	} else {
 		return nil, fmt.Errorf("no selenium grid url given in metadata")
@@ -114,6 +118,15 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.sessionBrowserName = val
 	} else {
 		meta.sessionBrowserName = meta.browserName
+	}
+
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+		meta.activationThreshold = activationThreshold
 	}
 
 	if val, ok := config.TriggerMetadata["browserVersion"]; ok && val != "" {
@@ -139,8 +152,8 @@ func (s *seleniumGridScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	sessions, err := s.getSessionsCount(ctx)
+func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+	sessions, err := s.getSessionsCount(ctx, s.logger)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
 	}
@@ -150,30 +163,30 @@ func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string, 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
-func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
+func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.browserName))
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
-	v, err := s.getSessionsCount(ctx)
+	v, err := s.getSessionsCount(ctx, s.logger)
 	if err != nil {
 		return false, err
 	}
 
-	return v > 0, nil
+	return v > s.metadata.activationThreshold, nil
 }
 
-func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error) {
+func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.Logger) (int64, error) {
 	body, err := json.Marshal(map[string]string{
 		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
@@ -198,18 +211,18 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context) (int64, error
 	}
 
 	defer res.Body.Close()
-	b, err := ioutil.ReadAll(res.Body)
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName, logger)
 	if err != nil {
 		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string) (int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, logger logr.Logger) (int64, error) {
 	var count int64
 	var seleniumResponse = seleniumResponse{}
 
@@ -229,7 +242,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 				}
 			}
 		} else {
-			seleniumGridLog.Error(err, fmt.Sprintf("Error when unmarshaling session queue requests: %s", err))
+			logger.Error(err, fmt.Sprintf("Error when unmarshaling session queue requests: %s", err))
 		}
 	}
 
@@ -245,7 +258,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 				}
 			}
 		} else {
-			seleniumGridLog.Error(err, fmt.Sprintf("Error when unmarshaling sessions info: %s", err))
+			logger.Error(err, fmt.Sprintf("Error when unmarshaling sessions info: %s", err))
 		}
 	}
 

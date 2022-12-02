@@ -8,7 +8,7 @@ In order to develop a scaler, a developer should do the following:
 2. Create the new scaler struct under the `pkg/scalers` folder.
 3. Implement the methods defined in the [scaler interface](#scaler-interface) section.
 4. Create a constructor according to [this](#constructor).
-5. Change the `getScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
+5. Change the `buildScaler` function in `pkg/scaling/scale_handler.go` by adding another switch case that matches your scaler. Scalers in the switch are ordered alphabetically, please follow the same pattern.
 6. Run `make build` from the root of KEDA and your scaler is ready.
 
 If you want to deploy locally
@@ -40,7 +40,6 @@ KEDA works in conjunction with Kubernetes Horizontal Pod Autoscaler (HPA). When 
 
 The return type of this function is `MetricSpec`, but in KEDA's case we will mostly write External metrics. So the property that should be filled is `ExternalMetricSource`, where the:
 - `MetricName`: the name of our metric we are returning in this scaler. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
-- `MetricSelector`: //TODO
 - `TargetValue`: is the value of the metric we want to reach at all times at all costs. As long as the current metric doesn't match TargetValue, HPA will increase the number of the pods until it reaches the maximum number of pods allowed to scale to.
 - `TargetAverageValue`: the value of the metric for which we require one pod to handle. e.g. if we are have a scaler based on the length of a message queue, and we specificy 10 for `TargetAverageValue`, we are saying that each pod will handle 10 messages. So if the length of the queue becomes 30, we expect that we have 3 pods in our cluster. (`TargetAverage` and `TargetValue` are mutually exclusive)
 
@@ -52,15 +51,15 @@ For example:
 
 >**Note:** There is a naming helper function `GenerateMetricNameWithIndex(scalerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
 >```golang
->func (s *artemisScaler) GetMetricSpecForScaling() []v2beta2.MetricSpec {
->	externalMetric := &v2beta2.ExternalMetricSource{
->		Metric: v2beta2.MetricIdentifier{
+>func (s *artemisScaler) GetMetricSpecForScaling() []v2.MetricSpec {
+>	externalMetric := &v2.ExternalMetricSource{
+>		Metric: v2.MetricIdentifier{
 >			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
 >		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 >	}
->	metricSpec := v2beta2.MetricSpec{External: externalMetric, Type: artemisMetricType}
->	return []v2beta2.MetricSpec{metricSpec}
+>	metricSpec := v2.MetricSpec{External: externalMetric, Type: artemisMetricType}
+>	return []v2.MetricSpec{metricSpec}
 >}
 >```
 
@@ -94,5 +93,5 @@ Scalers are created and cached until the ScaledObject is modified, or `.IsActive
 ## Note
 The scaler code is embedded into the two separate binaries comprising KEDA, the operator and the custom metrics server component. The metrics server must be occasionally rebuilt published and deployed to k8s for it to have the same code as your operator.
 
-GetMetricSpecForScaling() is executed by the operator for the purposes of scaling up to and down to 0 replicas.
+GetMetricSpecForScaling() is executed by the operator for the purposes of scaling out and in to 0 replicas.
 GetMetrics() is executed by the custom metrics server in response to a calls against the external metrics api, whether by the HPA loop or by curl

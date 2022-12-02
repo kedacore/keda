@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
@@ -52,6 +53,8 @@ var invalidOpenstackSwiftMetadataTestData = []parseOpenstackSwiftMetadataTestDat
 	{metadata: map[string]string{"swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5"}},
 	// objectCount is not an integer value
 	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5.5"}},
+	// activationObjectCount is not an integer value
+	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5", "activationObjectCount": "5.5"}},
 	// timeout is not an integer value
 	{metadata: map[string]string{"containerName": "my-container", "swiftURL": "http://localhost:8080/v1/my-account-id", "objectCount": "5", "timeout": "2.5"}},
 	// onlyFiles is not a boolean value
@@ -110,7 +113,7 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse auth metadata:", err)
 		}
 
-		mockSwiftScaler := openstackSwiftScaler{"", meta, openstack.Client{}}
+		mockSwiftScaler := openstackSwiftScaler{"", meta, openstack.Client{}, logr.Discard()}
 
 		metricSpec := mockSwiftScaler.GetMetricSpecForScaling(context.Background())
 

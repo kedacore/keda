@@ -25,6 +25,7 @@ import (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=scaledjobs,scope=Namespaced,shortName=sj
+// +kubebuilder:printcolumn:name="Min",type="integer",JSONPath=".spec.minReplicaCount"
 // +kubebuilder:printcolumn:name="Max",type="integer",JSONPath=".spec.maxReplicaCount"
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
@@ -53,7 +54,11 @@ type ScaledJobSpec struct {
 	// +optional
 	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
 	// +optional
+	Rollout Rollout `json:"rollout,omitempty"`
+	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
+	// +optional
+	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
@@ -93,6 +98,15 @@ type ScalingStrategy struct {
 	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
 }
 
+// Rollout defines the strategy for job rollouts
+// +optional
+type Rollout struct {
+	// +optional
+	Strategy string `json:"strategy,omitempty"`
+	// +optional
+	PropagationPolicy string `json:"propagationPolicy,omitempty"`
+}
+
 func init() {
 	SchemeBuilder.Register(&ScaledJob{}, &ScaledJobList{})
 }
@@ -100,8 +114,19 @@ func init() {
 // MaxReplicaCount returns MaxReplicaCount
 func (s ScaledJob) MaxReplicaCount() int64 {
 	if s.Spec.MaxReplicaCount != nil {
-		return int64(*s.Spec.MaxReplicaCount)
+		return int64(*s.Spec.MaxReplicaCount) - s.MinReplicaCount()
 	}
 
 	return 100
+}
+
+// MinReplicaCount returns MinReplicaCount
+func (s ScaledJob) MinReplicaCount() int64 {
+	if s.Spec.MinReplicaCount != nil {
+		if *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
+			return int64(*s.Spec.MaxReplicaCount)
+		}
+		return int64(*s.Spec.MinReplicaCount)
+	}
+	return 0
 }

@@ -31,11 +31,12 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "a", "podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "test", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
+	{map[string]string{"value": "1", "activationValue": "aa", "podSelector": "app=demo"}, "test", true},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {
 	for _, testData := range parseWorkloadMetadataTestDataset {
-		_, err := parseWorkloadMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, Namespace: testData.namespace})
+		_, err := parseWorkloadMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ScalableObjectNamespace: testData.namespace})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -68,10 +69,10 @@ func TestWorkloadIsActive(t *testing.T) {
 		s, _ := NewKubernetesWorkloadScaler(
 			fake.NewClientBuilder().WithRuntimeObjects(createPodlist(testData.podCount)).Build(),
 			&ScalerConfig{
-				TriggerMetadata:   testData.metadata,
-				AuthParams:        map[string]string{},
-				GlobalHTTPTimeout: 1000 * time.Millisecond,
-				Namespace:         testData.namespace,
+				TriggerMetadata:         testData.metadata,
+				AuthParams:              map[string]string{},
+				GlobalHTTPTimeout:       1000 * time.Millisecond,
+				ScalableObjectNamespace: testData.namespace,
 			},
 		)
 		isActive, _ := s.IsActive(context.TODO())
@@ -107,11 +108,11 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 		s, _ := NewKubernetesWorkloadScaler(
 			fake.NewClientBuilder().Build(),
 			&ScalerConfig{
-				TriggerMetadata:   testData.metadata,
-				AuthParams:        map[string]string{},
-				GlobalHTTPTimeout: 1000 * time.Millisecond,
-				Namespace:         testData.namespace,
-				ScalerIndex:       testData.scalerIndex,
+				TriggerMetadata:         testData.metadata,
+				AuthParams:              map[string]string{},
+				GlobalHTTPTimeout:       1000 * time.Millisecond,
+				ScalableObjectNamespace: testData.namespace,
+				ScalerIndex:             testData.scalerIndex,
 			},
 		)
 		metric := s.GetMetricSpecForScaling(context.Background())
@@ -174,9 +175,9 @@ func TestWorkloadPhase(t *testing.T) {
 					"podSelector": "app=testphases",
 					"value":       "1",
 				},
-				AuthParams:        map[string]string{},
-				GlobalHTTPTimeout: 1000 * time.Millisecond,
-				Namespace:         "default",
+				AuthParams:              map[string]string{},
+				GlobalHTTPTimeout:       1000 * time.Millisecond,
+				ScalableObjectNamespace: "default",
 			},
 		)
 		if err != nil {

@@ -190,7 +190,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			// AND
 			// there is no minimum configured or minimum is set to ZERO
 
-			// Try to scale the deployment down, HPA will handle other scale down operations
+			// Try to scale the deployment down, HPA will handle other scale in operations
 			e.scaleToZeroOrIdle(ctx, logger, scaledObject, currentScale)
 		case currentReplicas < minReplicas && scaledObject.Spec.IdleReplicaCount == nil:
 			// there are no active triggers
@@ -257,7 +257,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 	// In this case we will ignore the cooldown period and scale it down
 	if scaledObject.Status.LastActiveTime == nil ||
 		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
-		// or last time a trigger was active was > cooldown period, so scale down.
+		// or last time a trigger was active was > cooldown period, so scale in.
 
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 

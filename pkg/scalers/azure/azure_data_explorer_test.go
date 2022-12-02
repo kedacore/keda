@@ -66,9 +66,9 @@ var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	// Auth with aad app - pass
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID}, isError: false},
 	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.PodIdentityProviderAzure}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}}, isError: false},
 	// Auth with workload identity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}}, isError: false},
 	// Empty metadata - fail
 	{testMetadata: &DataExplorerMetadata{}, isError: true},
 	// Empty tenantID - fail

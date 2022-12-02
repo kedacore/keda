@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,11 +29,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/fallback"
+	metricsserviceapi "github.com/kedacore/keda/v2/pkg/metricsservice/api"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
@@ -46,6 +51,8 @@ type ScaleHandler interface {
 	DeleteScalableObject(ctx context.Context, scalableObject interface{}) error
 	GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error)
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
+
+	GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *metricsserviceapi.PromMetricsMsg, error)
 }
 
 type scaleHandler struct {
@@ -80,7 +87,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
 
 	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
@@ -117,7 +124,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 	result, ok := h.scaleLoopContexts.Load(key)
 	if ok {
 		cancel, ok := result.(context.CancelFunc)
@@ -163,13 +170,62 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	}
 }
 
+func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
+	key := kedav1alpha1.GenerateIdentifier("ScaledObject", scaledObjectNamespace, scaledObjectName)
+
+	h.lock.RLock()
+	if cache, ok := h.scalerCaches[key]; ok {
+		h.lock.RUnlock()
+		return cache, nil
+	}
+	h.lock.RUnlock()
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	if cache, ok := h.scalerCaches[key]; ok {
+		return cache, nil
+	}
+
+	scaledObject := &kedav1alpha1.ScaledObject{}
+	err := h.client.Get(ctx, types.NamespacedName{Name: scaledObjectName, Namespace: scaledObjectNamespace}, scaledObject)
+	if err != nil {
+		h.logger.Error(err, "failed to get ScaledObject", "name", scaledObjectName, "namespace", scaledObjectNamespace)
+		return nil, err
+	}
+
+	podTemplateSpec, containerName, err := resolver.ResolveScaleTargetPodSpec(ctx, h.client, h.logger, scaledObject)
+	if err != nil {
+		return nil, err
+	}
+
+	withTriggers, err := asDuckWithTriggers(scaledObject)
+	if err != nil {
+		return nil, err
+	}
+
+	scalers, err := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
+	if err != nil {
+		return nil, err
+	}
+
+	h.scalerCaches[key] = &cache.ScalersCache{
+		ScaledObject: scaledObject,
+		Scalers:      scalers,
+		Logger:       h.logger,
+		Recorder:     h.recorder,
+	}
+
+	return h.scalerCaches[key], nil
+}
+
+// TODO refactor this together with GetScalersCacheForScaledObject()
 func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject interface{}) (*cache.ScalersCache, error) {
 	withTriggers, err := asDuckWithTriggers(scalableObject)
 	if err != nil {
 		return nil, err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 
 	h.lock.RLock()
 	if cache, ok := h.scalerCaches[key]; ok && cache.Generation == withTriggers.Generation {
@@ -196,12 +252,19 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 		return nil, err
 	}
 
-	h.scalerCaches[key] = &cache.ScalersCache{
+	newCache := &cache.ScalersCache{
 		Generation: withTriggers.Generation,
 		Scalers:    scalers,
 		Logger:     h.logger,
 		Recorder:   h.recorder,
 	}
+	switch obj := scalableObject.(type) {
+	case *kedav1alpha1.ScaledObject:
+		newCache.ScaledObject = obj
+	default:
+	}
+
+	h.scalerCaches[key] = newCache
 
 	return h.scalerCaches[key], nil
 }
@@ -212,12 +275,12 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 		return err
 	}
 
-	key := withTriggers.GenerateIdenitifier()
+	key := withTriggers.GenerateIdentifier()
 
 	h.lock.Lock()
 	defer h.lock.Unlock()
-
 	if cache, ok := h.scalerCaches[key]; ok {
+		h.logger.V(1).WithValues("key", key).Info("Removing entry from ScalersCache")
 		cache.Close(ctx)
 		delete(h.scalerCaches, key)
 	}
@@ -288,6 +351,109 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 	}
 }
 
+func (h *scaleHandler) GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *metricsserviceapi.PromMetricsMsg, error) {
+	var matchingMetrics []external_metrics.ExternalMetricValue
+
+	exportedPromMetrics := metricsserviceapi.PromMetricsMsg{
+		ScaledObjectErr: false,
+		ScalerMetric:    []*metricsserviceapi.ScalerMetricMsg{},
+		ScalerError:     []*metricsserviceapi.ScalerErrorMsg{},
+	}
+
+	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
+	prommetrics.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err)
+
+	// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+	exportedPromMetrics.ScaledObjectErr = (err != nil)
+
+	if err != nil {
+		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %s", err)
+	}
+
+	var scaledObject *kedav1alpha1.ScaledObject
+	if cache.ScaledObject != nil {
+		scaledObject = cache.ScaledObject
+	} else {
+		err := fmt.Errorf("scaledObject not found in the cache")
+		h.logger.Error(err, "scaledObject not found in the cache", "name", scaledObjectName, "namespace", scaledObjectNamespace)
+		return nil, &exportedPromMetrics, err
+	}
+
+	// let's check metrics for all scalers in a ScaledObject
+	scalerError := false
+	scalers, scalerConfigs := cache.GetScalers()
+
+	h.logger.V(1).WithValues("name", scaledObjectName, "namespace", scaledObjectNamespace, "metricName", metricName, "scalers", scalers).Info("Getting metric value")
+
+	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
+		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
+		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)
+		if scalerConfigs[scalerIndex].TriggerName != "" {
+			scalerName = scalerConfigs[scalerIndex].TriggerName
+		}
+
+		for _, metricSpec := range metricSpecs {
+			// skip cpu/memory resource scaler
+			if metricSpec.External == nil {
+				continue
+			}
+
+			// Filter only the desired metric
+			if strings.EqualFold(metricSpec.External.Metric.Name, metricName) {
+				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, metricName)
+				metrics, err = fallback.GetMetricsWithFallback(ctx, h.client, h.logger, metrics, err, metricName, scaledObject, metricSpec)
+				if err != nil {
+					scalerError = true
+					h.logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName, "scaler", scalerName)
+				} else {
+					for _, metric := range metrics {
+						metricValue := metric.Value.AsApproximateFloat64()
+						prommetrics.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue)
+
+						// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+						scalerMetricMsg := metricsserviceapi.ScalerMetricMsg{
+							ScalerName:  scalerName,
+							ScalerIndex: int32(scalerIndex),
+							MetricName:  metricName,
+							MetricValue: float32(metricValue),
+						}
+						exportedPromMetrics.ScalerMetric = append(exportedPromMetrics.ScalerMetric, &scalerMetricMsg)
+					}
+					matchingMetrics = append(matchingMetrics, metrics...)
+				}
+				prommetrics.RecordScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err)
+
+				// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
+				scalerErrMsg := metricsserviceapi.ScalerErrorMsg{
+					ScalerName:  scalerName,
+					ScalerIndex: int32(scalerIndex),
+					MetricName:  metricName,
+					Error:       (err != nil),
+				}
+				exportedPromMetrics.ScalerError = append(exportedPromMetrics.ScalerError, &scalerErrMsg)
+			}
+		}
+	}
+
+	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
+	// in this case we try to build all scalers (and resolve all secrets/creds) again in the next call
+	if scalerError {
+		err := h.ClearScalersCache(ctx, scaledObject)
+		if err != nil {
+			h.logger.Error(err, "error clearing scalers cache")
+		}
+		h.logger.V(1).Info("scaler error encountered, clearing scaler cache")
+	}
+
+	if len(matchingMetrics) == 0 {
+		return nil, &exportedPromMetrics, fmt.Errorf("no matching metrics found for " + metricName)
+	}
+
+	return &external_metrics.ExternalMetricValueList{
+		Items: matchingMetrics,
+	}, &exportedPromMetrics, nil
+}
+
 // buildScalers returns list of Scalers for the specified triggers
 func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string) ([]cache.ScalerBuilder, error) {
 	logger := h.logger.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
@@ -298,33 +464,36 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, error) {
+		factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
 				if err != nil {
-					return nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
 				}
 			}
 			config := &scalers.ScalerConfig{
-				Name:              withTriggers.Name,
-				Namespace:         withTriggers.Namespace,
-				TriggerMetadata:   trigger.Metadata,
-				ResolvedEnv:       resolvedEnv,
-				AuthParams:        make(map[string]string),
-				GlobalHTTPTimeout: h.globalHTTPTimeout,
-				ScalerIndex:       triggerIndex,
-				MetricType:        trigger.MetricType,
+				ScalableObjectName:      withTriggers.Name,
+				ScalableObjectNamespace: withTriggers.Namespace,
+				ScalableObjectType:      withTriggers.Kind,
+				TriggerName:             trigger.Name,
+				TriggerMetadata:         trigger.Metadata,
+				ResolvedEnv:             resolvedEnv,
+				AuthParams:              make(map[string]string),
+				GlobalHTTPTimeout:       h.globalHTTPTimeout,
+				ScalerIndex:             triggerIndex,
+				MetricType:              trigger.MetricType,
 			}
 
 			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			return buildScaler(ctx, h.client, trigger.Type, config)
+			scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
+			return scaler, config, err
 		}
 
-		scaler, err := factory()
+		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			h.logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex, "object", withTriggers)
@@ -338,8 +507,9 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		}
 
 		result = append(result, cache.ScalerBuilder{
-			Scaler:  scaler,
-			Factory: factory,
+			Scaler:       scaler,
+			ScalerConfig: *config,
+			Factory:      factory,
 		})
 	}
 
@@ -357,6 +527,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAwsCloudwatchScaler(config)
 	case "aws-dynamodb":
 		return scalers.NewAwsDynamoDBScaler(config)
+	case "aws-dynamodb-streams":
+		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(config)
 	case "aws-sqs-queue":
@@ -416,6 +588,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
 		return scalers.NewLiiklusScaler(config)
+	case "loki":
+		return scalers.NewLokiScaler(config)
 	case "memory":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
@@ -426,6 +600,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewMSSQLScaler(config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
+	case "nats-jetstream":
+		return scalers.NewNATSJetStreamScaler(config)
 	case "new-relic":
 		return scalers.NewNewRelicScaler(config)
 	case "openstack-metric":
@@ -438,6 +614,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
 		return scalers.NewPrometheusScaler(config)
+	case "pulsar":
+		return scalers.NewPulsarScaler(config)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
 	case "redis":

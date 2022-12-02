@@ -20,11 +20,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -32,8 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -42,12 +39,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -64,57 +61,59 @@ import (
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
-	Client            client.Client
-	Scheme            *runtime.Scheme
-	GlobalHTTPTimeout time.Duration
-	Recorder          record.EventRecorder
+	Client       client.Client
+	Scheme       *runtime.Scheme
+	Recorder     record.EventRecorder
+	ScaleClient  scale.ScalesGetter
+	ScaleHandler scaling.ScaleHandler
 
-	scaleClient              scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
-	scaleHandler             scaling.ScaleHandler
-	kubeVersion              kedautil.K8sVersion
 }
 
-// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
-var isScalableCache *sync.Map
+type scaledObjectMetricsData struct {
+	namespace    string
+	triggerTypes []string
+}
+
+var (
+	// A cache mapping "resource.group" to true or false if we know if this resource is scalable.
+	isScalableCache *sync.Map
+
+	scaledObjectPromMetricsMap  map[string]scaledObjectMetricsData
+	scaledObjectPromMetricsLock *sync.Mutex
+)
 
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
 	isScalableCache = &sync.Map{}
 	isScalableCache.Store("deployments.apps", true)
 	isScalableCache.Store("statefulsets.apps", true)
+
+	scaledObjectPromMetricsMap = make(map[string]scaledObjectMetricsData)
+	scaledObjectPromMetricsLock = &sync.Mutex{}
 }
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	setupLog := log.Log.WithName("setup")
-
-	// create Discovery clientset
-	// TODO If we need to increase the QPS of scaling API calls, copy and tweak this RESTConfig.
-	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		setupLog.Error(err, "Not able to create Discovery clientset")
-		return err
-	}
-
-	// Find out Kubernetes version
-	version, err := clientset.ServerVersion()
-	if err == nil {
-		r.kubeVersion = kedautil.NewK8sVersion(version)
-		setupLog.Info("Running on Kubernetes "+r.kubeVersion.PrettyVersion, "version", version)
-	} else {
-		setupLog.Error(err, "Not able to get Kubernetes version")
-	}
-
-	// Create Scale Client
-	scaleClient := initScaleClient(mgr, clientset)
-	r.scaleClient = scaleClient
-
-	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
 	r.scaledObjectsGenerations = &sync.Map{}
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.GlobalHTTPTimeout, r.Recorder)
+
+	if r.ScaleHandler == nil {
+		return fmt.Errorf("ScaledObjectReconciler.ScaleHandler is not initialized")
+	}
+	if r.Client == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Client is not initialized")
+	}
+	if r.ScaleClient == nil {
+		return fmt.Errorf("ScaledObjectReconciler.ScaleClient is not initialized")
+	}
+	if r.Scheme == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Scheme is not initialized")
+	}
+	if r.Recorder == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Recorder is not initialized")
+	}
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
@@ -129,20 +128,11 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
-		Owns(&autoscalingv2beta2.HorizontalPodAutoscaler{}).
+		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
 		Complete(r)
 }
 
-func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) scale.ScalesGetter {
-	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(clientset)
-	return scale.New(
-		clientset.RESTClient(), mgr.GetRESTMapper(),
-		dynamic.LegacyAPIPathResolverFunc,
-		scaleKindResolver,
-	)
-}
-
-//  Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
+// Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
 func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
 
@@ -166,8 +156,9 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledObject.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject)
+		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject, req.NamespacedName.String())
 	}
+	r.updatePromMetrics(scaledObject, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
@@ -229,6 +220,11 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	err = r.checkReplicaCountBoundsAreValid(scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
+	}
+
+	err = r.checkTriggerNamesAreUnique(scaledObject)
+	if err != nil {
+		return "ScaledObject doesn't have correct triggers specification", err
 	}
 
 	// Create a new HPA or update existing one according to ScaledObject
@@ -299,7 +295,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
@@ -342,6 +338,27 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	return gvkr, nil
 }
 
+// checkTriggerNamesAreUnique checks that all triggerNames in ScaledObject are unique
+func (r *ScaledObjectReconciler) checkTriggerNamesAreUnique(scaledObject *kedav1alpha1.ScaledObject) error {
+	triggersCount := len(scaledObject.Spec.Triggers)
+
+	if triggersCount > 1 {
+		triggerNames := make(map[string]bool, triggersCount)
+		for i := 0; i < triggersCount; i++ {
+			name := scaledObject.Spec.Triggers[i].Name
+			if name != "" {
+				if _, found := triggerNames[name]; found {
+					// found duplicate name
+					return fmt.Errorf("triggerName=%s is defined multiple times in the ScaledObject, but it must be unique", name)
+				}
+				triggerNames[name] = true
+			}
+		}
+	}
+
+	return nil
+}
+
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // ie. that Min is not greater then Max or Idle greater or equal to Min
 func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *kedav1alpha1.ScaledObject) error {
@@ -364,8 +381,13 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
-	hpaName := getHPAName(scaledObject)
-	foundHpa := &autoscalingv2beta2.HorizontalPodAutoscaler{}
+	var hpaName string
+	if scaledObject.Status.HpaName != "" {
+		hpaName = scaledObject.Status.HpaName
+	} else {
+		hpaName = getHPAName(scaledObject)
+	}
+	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
 	if err != nil && errors.IsNotFound(err) {
@@ -375,14 +397,21 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 			return false, err
 		}
 
-		// check if scaledObject.spec.behavior was defined, because it is supported only on k8s >= 1.18
-		r.checkMinK8sVersionforHPABehavior(logger, scaledObject)
-
 		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
 		return true, nil
 	} else if err != nil {
 		logger.Error(err, "Failed to get HPA from cluster")
 		return false, err
+	}
+
+	// check if hpa name is changed, and if so we need to delete the old hpa before creating new one
+	if isHpaRenamed(scaledObject, foundHpa) {
+		err = r.renameHPA(ctx, logger, scaledObject, foundHpa, gvkr)
+		if err != nil {
+			return false, err
+		}
+		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
+		return true, nil
 	}
 
 	// HPA was found -> let's check if we need to update it
@@ -395,6 +424,15 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	return false, nil
 }
 
+func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler) bool {
+	// if HPA name defined in SO -> check if equals to the found HPA
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
+		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != foundHpa.Name
+	}
+	// if HPA name not defined in SO -> check if the found HPA is equals to the default
+	return foundHpa.Name != getDefaultHpaName(scaledObject)
+}
+
 // requestScaleLoop tries to start ScaleLoop handler for the respective ScaledObject
 func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
@@ -405,7 +443,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger lo
 		return err
 	}
 
-	if err = r.scaleHandler.HandleScalableObject(ctx, scaledObject); err != nil {
+	if err = r.ScaleHandler.HandleScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 
@@ -423,7 +461,7 @@ func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.
 		return err
 	}
 
-	if err := r.scaleHandler.DeleteScalableObject(ctx, scaledObject); err != nil {
+	if err := r.ScaleHandler.DeleteScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 	// delete ScaledObject's current Generation
@@ -447,4 +485,44 @@ func (r *ScaledObjectReconciler) scaledObjectGenerationChanged(logger logr.Logge
 		}
 	}
 	return true, nil
+}
+
+func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.ScaledObject, namespacedName string) {
+	scaledObjectPromMetricsLock.Lock()
+	defer scaledObjectPromMetricsLock.Unlock()
+
+	metricsData, ok := scaledObjectPromMetricsMap[namespacedName]
+
+	if ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	prommetrics.IncrementCRDTotal(prommetrics.ScaledObjectResource, scaledObject.Namespace)
+	metricsData.namespace = scaledObject.Namespace
+
+	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
+	for _, trigger := range scaledObject.Spec.Triggers {
+		prommetrics.IncrementTriggerTotal(trigger.Type)
+		triggerTypes = append(triggerTypes, trigger.Type)
+	}
+	metricsData.triggerTypes = triggerTypes
+
+	scaledObjectPromMetricsMap[namespacedName] = metricsData
+}
+
+func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string) {
+	scaledObjectPromMetricsLock.Lock()
+	defer scaledObjectPromMetricsLock.Unlock()
+
+	if metricsData, ok := scaledObjectPromMetricsMap[namespacedName]; ok {
+		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
+		for _, triggerType := range metricsData.triggerTypes {
+			prommetrics.DecrementTriggerTotal(triggerType)
+		}
+	}
+
+	delete(scaledObjectPromMetricsMap, namespacedName)
 }

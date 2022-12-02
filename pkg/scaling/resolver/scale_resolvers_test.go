@@ -143,6 +143,78 @@ var testMetadatas = []testMetadata{
 			}},
 		},
 	},
+	{
+		isError: false,
+		comment: "configmap does not exist, but it is marked as an optional, there should not be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-optional-explicitly",
+						},
+						Key:      "test",
+						Optional: &trueValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: false,
+		comment: "secret does not exist, but it is marked as an optional, there should not be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-optional-explicitly",
+						},
+						Key:      "test",
+						Optional: &trueValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: true,
+		comment: "configmap does not exist, and it is not marked as an optional, there should be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-not-optional",
+						},
+						Key:      "test",
+						Optional: &falseValue,
+					},
+				},
+			}},
+		},
+	},
+	{
+		isError: true,
+		comment: "secret does not exist, and it is not marked as an optional, there should be an error",
+		container: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name: "test",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "do-not-exist-and-not-optional",
+						},
+						Key:      "test",
+						Optional: &falseValue,
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
@@ -173,7 +245,7 @@ func TestResolveAuthRef(t *testing.T) {
 		soar                *kedav1alpha1.ScaledObjectAuthRef
 		podSpec             *corev1.PodSpec
 		expected            map[string]string
-		expectedPodIdentity kedav1alpha1.PodIdentityProvider
+		expectedPodIdentity kedav1alpha1.AuthPodIdentity
 	}{
 		{
 			name:     "foo",
@@ -241,7 +313,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
 			name: "clustertriggerauth exists, podidentity nil",
@@ -293,7 +365,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": secretData},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
 			name: "clustertriggerauth exists and secret in the wrong namespace",
@@ -324,7 +396,7 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.ScaledObjectAuthRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": ""},
-			expectedPodIdentity: kedav1alpha1.PodIdentityProviderNone,
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 	}
 	for _, test := range tests {

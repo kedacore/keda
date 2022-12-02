@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,7 +93,7 @@ func TestIsActiveRange(t *testing.T) {
 
 func TestGetMetrics(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
-	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
+	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount")
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentDay == "Thursday" {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
@@ -103,7 +104,7 @@ func TestGetMetrics(t *testing.T) {
 
 func TestGetMetricsRange(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata2})
-	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount", nil)
+	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount")
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentHour%2 == 0 {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
@@ -118,7 +119,7 @@ func TestCronGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockCronScaler := cronScaler{"", meta}
+		mockCronScaler := cronScaler{"", meta, logr.Discard()}
 
 		metricSpec := mockCronScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

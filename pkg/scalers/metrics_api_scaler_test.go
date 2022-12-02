@@ -24,6 +24,8 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42"}, raisesError: false},
 	// Target not an int
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
+	// Activation target not an int
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "1", "activationTargetValue": "aa"}, raisesError: true},
 	// Missing metric name
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "targetValue": "aa"}, raisesError: true},
 	// Missing url
@@ -65,6 +67,12 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{"token": "bearerTokenValue"}, false},
 	// fail bearerAuth without token
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "bearer"}, map[string]string{}, true},
+	// success unsafeSsl true
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "true"}, map[string]string{}, false},
+	// success unsafeSsl false
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "false"}, map[string]string{}, false},
+	// failed unsafeSsl non bool
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "yes"}, map[string]string{}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -211,7 +219,7 @@ func TestBearerAuth(t *testing.T) {
 		t.Errorf("Error creating the Scaler")
 	}
 
-	_, err = s.GetMetrics(context.TODO(), "test-metric", nil)
+	_, err = s.GetMetrics(context.TODO(), "test-metric")
 	if err != nil {
 		t.Errorf("Error getting the metric")
 	}

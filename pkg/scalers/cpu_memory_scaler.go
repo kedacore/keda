@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"k8s.io/api/autoscaling/v2beta2"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type cpuMemoryScaler struct {
@@ -19,16 +18,17 @@ type cpuMemoryScaler struct {
 }
 
 type cpuMemoryMetadata struct {
-	Type               v2beta2.MetricTargetType
+	Type               v2.MetricTargetType
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
+	ContainerName      string
 }
-
-var cpuMemoryLog = logf.Log.WithName("cpu_memory_scaler")
 
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Scaler, error) {
-	meta, parseErr := parseResourceMetadata(config)
+	logger := InitializeLogger(config, "cpu_memory_scaler")
+
+	meta, parseErr := parseResourceMetadata(config, logger)
 	if parseErr != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %s", resourceName, parseErr)
 	}
@@ -39,7 +39,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 	}, nil
 }
 
-func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
+func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemoryMetadata, error) {
 	meta := &cpuMemoryMetadata{}
 	var value string
 	var ok bool
@@ -48,8 +48,8 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 	case ok && value != "" && config.MetricType != "":
 		return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 	case ok && value != "":
-		cpuMemoryLog.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
-		meta.Type = v2beta2.MetricTargetType(value)
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		meta.Type = v2.MetricTargetType(value)
 	case config.MetricType != "":
 		meta.Type = config.MetricType
 	default:
@@ -60,10 +60,10 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 		return nil, fmt.Errorf("no value given")
 	}
 	switch meta.Type {
-	case v2beta2.AverageValueMetricType:
+	case v2.AverageValueMetricType:
 		averageValueQuantity := resource.MustParse(value)
 		meta.AverageValue = &averageValueQuantity
-	case v2beta2.UtilizationMetricType:
+	case v2.UtilizationMetricType:
 		valueNum, err := strconv.ParseInt(value, 10, 32)
 		if err != nil {
 			return nil, err
@@ -73,6 +73,11 @@ func parseResourceMetadata(config *ScalerConfig) (*cpuMemoryMetadata, error) {
 	default:
 		return nil, fmt.Errorf("unsupported metric type, allowed values are 'Utilization' or 'AverageValue'")
 	}
+
+	if value, ok = config.TriggerMetadata["containerName"]; ok && value != "" {
+		meta.ContainerName = value
+	}
+
 	return meta, nil
 }
 
@@ -87,20 +92,36 @@ func (s *cpuMemoryScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2beta2.MetricSpec {
-	cpuMemoryMetric := &v2beta2.ResourceMetricSource{
-		Name: s.resourceName,
-		Target: v2beta2.MetricTarget{
-			Type:               s.metadata.Type,
-			AverageUtilization: s.metadata.AverageUtilization,
-			AverageValue:       s.metadata.AverageValue,
-		},
+func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	var metricSpec v2.MetricSpec
+
+	if s.metadata.ContainerName != "" {
+		containerCPUMemoryMetric := &v2.ContainerResourceMetricSource{
+			Name: s.resourceName,
+			Target: v2.MetricTarget{
+				Type:               s.metadata.Type,
+				AverageUtilization: s.metadata.AverageUtilization,
+				AverageValue:       s.metadata.AverageValue,
+			},
+			Container: s.metadata.ContainerName,
+		}
+		metricSpec = v2.MetricSpec{ContainerResource: containerCPUMemoryMetric, Type: v2.ContainerResourceMetricSourceType}
+	} else {
+		cpuMemoryMetric := &v2.ResourceMetricSource{
+			Name: s.resourceName,
+			Target: v2.MetricTarget{
+				Type:               s.metadata.Type,
+				AverageUtilization: s.metadata.AverageUtilization,
+				AverageValue:       s.metadata.AverageValue,
+			},
+		}
+		metricSpec = v2.MetricSpec{Resource: cpuMemoryMetric, Type: v2.ResourceMetricSourceType}
 	}
-	metricSpec := v2beta2.MetricSpec{Resource: cpuMemoryMetric, Type: v2beta2.ResourceMetricSourceType}
-	return []v2beta2.MetricSpec{metricSpec}
+
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics no need for cpu/memory scaler
-func (s *cpuMemoryScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *cpuMemoryScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	return nil, nil
 }

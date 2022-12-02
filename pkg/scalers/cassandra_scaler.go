@@ -6,38 +6,37 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gocql/gocql"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/apimachinery/pkg/labels"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // cassandraScaler exposes a data pointer to CassandraMetadata and gocql.Session connection.
 type cassandraScaler struct {
-	metricType v2beta2.MetricTargetType
+	metricType v2.MetricTargetType
 	metadata   *CassandraMetadata
 	session    *gocql.Session
+	logger     logr.Logger
 }
 
 // CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
 type CassandraMetadata struct {
-	username         string
-	password         string
-	clusterIPAddress string
-	port             int
-	consistency      gocql.Consistency
-	protocolVersion  int
-	keyspace         string
-	query            string
-	targetQueryValue int64
-	metricName       string
-	scalerIndex      int
+	username                   string
+	password                   string
+	clusterIPAddress           string
+	port                       int
+	consistency                gocql.Consistency
+	protocolVersion            int
+	keyspace                   string
+	query                      string
+	targetQueryValue           int64
+	activationTargetQueryValue int64
+	metricName                 string
+	scalerIndex                int
 }
-
-var cassandraLog = logf.Log.WithName("cassandra_scaler")
 
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
@@ -46,12 +45,14 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
 	}
 
-	meta, err := ParseCassandraMetadata(config)
+	logger := InitializeLogger(config, "cassandra_scaler")
+
+	meta, err := parseCassandraMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
 	}
 
-	session, err := NewCassandraSession(meta)
+	session, err := newCassandraSession(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing cassandra session: %s", err)
 	}
@@ -60,11 +61,12 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		session:    session,
+		logger:     logger,
 	}, nil
 }
 
-// ParseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
-func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
+// parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
+func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	meta := CassandraMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -81,6 +83,15 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		meta.targetQueryValue = targetQueryValue
 	} else {
 		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	meta.activationTargetQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
+		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+		}
+		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["username"]; ok {
@@ -149,8 +160,8 @@ func ParseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	return &meta, nil
 }
 
-// NewCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
-func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
+// newCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
+func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(meta.clusterIPAddress)
 	cluster.ProtoVersion = meta.protocolVersion
 	cluster.Consistency = meta.consistency
@@ -161,7 +172,7 @@ func NewCassandraSession(meta *CassandraMetadata) (*gocql.Session, error) {
 
 	session, err := cluster.CreateSession()
 	if err != nil {
-		cassandraLog.Error(err, "found error creating session")
+		logger.Error(err, "found error creating session")
 		return nil, err
 	}
 
@@ -175,26 +186,26 @@ func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
-	return messages > 0, nil
+	return messages > s.metadata.activationTargetQueryValue, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
-func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2beta2.MetricSpec {
-	externalMetric := &v2beta2.ExternalMetricSource{
-		Metric: v2beta2.MetricIdentifier{
+func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}
-	metricSpec := v2beta2.MetricSpec{
+	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
 	}
 
-	return []v2beta2.MetricSpec{metricSpec}
+	return []v2.MetricSpec{metricSpec}
 }
 
 // GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric.
-func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)
@@ -210,7 +221,7 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 	var value int64
 	if err := s.session.Query(s.metadata.query).WithContext(ctx).Scan(&value); err != nil {
 		if err != gocql.ErrNotFound {
-			cassandraLog.Error(err, "query failed")
+			s.logger.Error(err, "query failed")
 			return 0, err
 		}
 	}
