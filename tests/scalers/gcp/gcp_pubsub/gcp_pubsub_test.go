@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	gcpKey              = os.Getenv("GCP_SP_KEY")
+	gcpKey              = os.Getenv("TF_GCP_SA_CREDENTIALS")
 	creds               = make(map[string]interface{})
 	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
@@ -168,7 +168,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, gcpKey, "GCP_SP_KEY env variable is required for GCP storage test")
+	require.NotEmpty(t, gcpKey, "TF_GCP_SA_CREDENTIALS env variable is required for GCP storage test")
 	assert.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create kubernetes resources
