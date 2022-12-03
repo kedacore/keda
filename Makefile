@@ -38,7 +38,7 @@ DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 TEST_CLUSTER_NAME ?= keda-nightly-run-3
 NON_ROOT_USER_ID ?= 1000
 
-GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
+GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
