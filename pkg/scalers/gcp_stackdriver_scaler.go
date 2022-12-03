@@ -150,7 +150,7 @@ func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcpAutho
 	var client *StackDriverClient
 	var err error
 	if gcpAuthorization.podIdentityProviderEnabled {
-		client, err = NewStackDriverClientPodIdentity(ctx)
+		client, err = NewStackDriverClientPodIdentity(ctx, logger)
 	} else {
 		client, err = NewStackDriverClient(ctx, gcpAuthorization.GoogleApplicationCredentials)
 	}

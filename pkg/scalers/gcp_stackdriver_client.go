@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
+	"github.com/go-logr/logr"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -48,7 +49,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 }
 
 // NewStackDriverClient creates a new stackdriver client with the credentials underlying
-func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
+func NewStackDriverClientPodIdentity(ctx context.Context, logger logr.Logger) (*StackDriverClient, error) {
 	client, err := monitoring.NewMetricClient(ctx)
 	if err != nil {
 		return nil, err
@@ -56,8 +57,9 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	c := metadata.NewClient(&http.Client{})
 
 	// Running workload identity outside GKE, we can't use the metadata api and we need to use the env that it's provided from the hook
-	project := os.Getenv("CLOUDSDK_CORE_PROJECT")
-	if project != "" {
+	project, found := os.LookupEnv("CLOUDSDK_CORE_PROJECT")
+	logger.Info(fmt.Sprintf("Found: %t -- Project detected: %s", found, project))
+	if !found {
 		project, err = c.ProjectID()
 		if err != nil {
 			return nil, err
