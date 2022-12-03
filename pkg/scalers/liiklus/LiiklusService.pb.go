@@ -326,7 +326,6 @@ type SubscribeReply struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Reply:
-	//
 	//	*SubscribeReply_Assignment
 	Reply isSubscribeReply_Reply `protobuf_oneof:"reply"`
 }
@@ -537,7 +536,6 @@ type ReceiveReply struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Reply:
-	//
 	//	*ReceiveReply_Record_
 	Reply isReceiveReply_Reply `protobuf_oneof:"reply"`
 }
