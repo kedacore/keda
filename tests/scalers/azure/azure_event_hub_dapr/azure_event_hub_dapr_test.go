@@ -120,7 +120,8 @@ spec:
           secretName: {{.SecretName}}
       containers:
         - name: dapr
-          image: daprio/daprd:edge
+          image: daprio/daprd:1.9.5-mariner
+          imagePullPolicy: Always
           command: ["./daprd", "-app-id", "azure-eventhub-dapr", "-app-port", "3000", "-components-path", "/components", "-log-level", "debug"]
           resources:
           volumeMounts:
