@@ -37,7 +37,7 @@ type pubsubScaler struct {
 
 type pubsubMetadata struct {
 	mode            string
-	value           int64
+	value           float64
 	activationValue float64
 
 	subscriptionName string
@@ -79,7 +79,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		}
 		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
-		subSizeValue, err := strconv.ParseInt(subSize, 10, 64)
+		subSizeValue, err := strconv.ParseFloat(subSize, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %s", err.Error())
 		}
@@ -99,7 +99,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		}
 
 		if valuePresent {
-			triggerValue, err := strconv.ParseInt(value, 10, 64)
+			triggerValue, err := strconv.ParseFloat(value, 64)
 			if err != nil {
 				return nil, fmt.Errorf("value parsing error %s", err.Error())
 			}
@@ -175,7 +175,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
 
 	// Create the metric spec for the HPA

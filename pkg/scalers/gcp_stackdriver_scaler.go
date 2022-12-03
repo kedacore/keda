@@ -27,7 +27,7 @@ type stackdriverScaler struct {
 type stackdriverMetadata struct {
 	projectID             string
 	filter                string
-	targetValue           int64
+	targetValue           float64
 	activationTargetValue float64
 	metricName            string
 
@@ -91,7 +91,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseInt(val, 10, 64)
+		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing targetValue")
 			return nil, fmt.Errorf("error parsing targetValue: %s", err.Error())
@@ -188,7 +188,7 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 
 	// Create the metric spec for the HPA
