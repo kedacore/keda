@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ const (
 )
 
 var (
-	gcpKey              = "{\"type\":\"service_account\",\"project_id\":\"cncf-keda-testing\",\"private_key_id\":\"af00fb2db9490b41cc06917b23b573c8fb5b1859\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCShKXOpGBV4NIn\\nklaaY+xodpai0fsASpr5lYk1BwnTmjj0huuVgsCSZuhUSbXkKNBdeX2QN9V0zuM7\\nLws0BmunMrMw1ho5cO7VQtPYF0fw4PcyGm4zIFhChB5MD4SlqI7L8Q3X5jZLnHv7\\nof9FEeuyTZo2NP7VK9vRrupdcsOspIhtCSOz+tvIbARvtgwjUZILETrEDpSjGVto\\nodwetdmeeJGbmdv4EesN8Bu6i5YlU/qB6I9eBOq5ezIOKp5GW57+GYEqZe+6zAtb\\nhecZfTiTI0EGoR6JDmOB3fTswTDmYIQqz/9nx3OteBDQ6m94fdyoJqvu1FPAaIM0\\nK1hMlJgpAgMBAAECggEAEe9JBQUHskdrbhLahTpFREm82Wga4X+gXfv1ED/A7w0O\\nGvd/c50OUbVlS7j8mfW5gLGoAizldO+ErthMtqTxDUW2W7xfeCfH4mS0XfuGj7iX\\n5aMI2XsEdrrpov2UyvrZpOLoQwTf4UxBvGzpXHTrvRcE8Qz2YxVj6lQvBbqQM2v+\\nf8qfGZRrQREIt4OacJSeORMdRoG95hfGOiBna+KOJcKBNOFgvPTSB14ANxyFAoIK\\n2MkAyM5CbP/hlvlVXhUkzRbf7o83q/YOg6wZjzadPTkrI8gGDJO2z1eaegnn5Rva\\nYB8yIxUbzgboTxh3ZUc+c9ie6RGPYHJMY7PCdzHd4QKBgQDJpBa4X3o5CSDKpBqt\\nWf+03X/Jmydf2gWJOirs/ek759XvCyAg3/PfPSciM2fW7LESShkr3dN7X1QUqHog\\n31PqLIWgcriNC6J6YcQ9SeVIUWK/cjfFKT0OjtNoxHrkUkr7CbDfLttwnX4RfKdn\\nkmCvSmKd1qcWgS+2ak9sFM/8SQKBgQC6BFnOB9qWmOko77mLVloVYmc5PRIhaIju\\nT5W1G3qO1ykUjH3oUYVPHY1C35p8l7Y01OaEuyDy+9wYb4I7GbtE+fz+kaxx1zE9\\n6wFxil8TyKZc5AvKDzZS+yQ+AkeJr1tUxV9/4odr+NBWfO22CpvLr39ZTvEz+fSx\\njUQQufD84QKBgQCQiuqqge64Yf26pUZmS6SMf1cyKuFfyYa8ZxEMT7tYcQkfUSdX\\nyZIkzc52qsjd/U+1X56JnnsR7jT0lgzt8YlSzVWAvZvjp5pyBhFJKeaNH6IcwICP\\n+c7F18ZeTLIXZ5JOQBUk947gPFV5rZTHHtvl6/mjUZL3A+Yy6iRCwuyQ2QKBgDmn\\nyZIDeyv8XyBSFUdrz2YbZvUlya3TMcXzoupMhxMo+1GkLg5I3jHkbflRRxfhCheb\\n+YsgWRkXGWP1g/7/fbzmYxUgX7u1QEz5vyvLAKcoJPBbuo+5YVQdBWG24Sd606sV\\ntgD0XJcJusFj3WX0Kc/bKHSs9DPxAHfb2kH48AnhAoGBAJ6lbFEjuFV8z0RTVURk\\npfcwrfZ9epgjkils8KyDDeMOyoK/Ay+g/B3xkPvfdeczQV6FZVmJICtKfJa5CV5Q\\nDRHXQdGpYTiBKv/pu/mlZHTTX0/qVhLudLXv+EN1D6CdaX3YdaK2vULCXPnWxcIB\\nkZee5bzQnA783QVZ9Ok6WBLF\\n-----END PRIVATE KEY-----\\n\",\"client_email\":\"e2e-test-user@cncf-keda-testing.iam.gserviceaccount.com\",\"client_id\":\"107657704857365440469\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/e2e-test-user%40cncf-keda-testing.iam.gserviceaccount.com\"}"
+	gcpKey              = os.Getenv("TF_GCP_SA_CREDENTIALS")
 	creds               = make(map[string]interface{})
 	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
