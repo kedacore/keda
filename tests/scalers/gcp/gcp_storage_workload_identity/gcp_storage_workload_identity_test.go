@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package gcp_stackdriver_workload_identity_test
+package gcp_storage_workload_identity_test
 
 import (
 	"encoding/base64"
@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -22,26 +21,18 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
-var now = time.Now().UnixNano()
-
 const (
-	testName = "gcp-stackdriver-workload-identity-test"
+	testName = "gcp-storage-workload-identity-test"
 )
 
 var (
 	gcpKey              = os.Getenv("TF_GCP_SA_CREDENTIALS")
-	creds               = make(map[string]interface{})
-	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
 	secretName          = fmt.Sprintf("%s-secret", testName)
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName    = fmt.Sprintf("%s-so", testName)
-	projectID           = creds["project_id"]
-	topicName           = fmt.Sprintf("keda-test-topic-%d", now)
-	topicID             = fmt.Sprintf("projects/%s/topics/%s", projectID, topicName)
-	subscriptionName    = fmt.Sprintf("keda-test-topic-sub-%d", now)
-	subscriptionID      = fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionName)
-	maxReplicaCount     = 4
+	bucketName          = fmt.Sprintf("%s-bucket", testName)
+	maxReplicaCount     = 3
 	activationThreshold = 5
 	gsPrefix            = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
@@ -52,10 +43,7 @@ type templateData struct {
 	GcpCreds            string
 	DeploymentName      string
 	ScaledObjectName    string
-	ProjectID           string
-	TopicName           string
-	SubscriptionName    string
-	SubscriptionID      string
+	BucketName          string
 	MaxReplicaCount     int
 	ActivationThreshold int
 }
@@ -90,26 +78,18 @@ spec:
         app: {{.DeploymentName}}
     spec:
       containers:
-        - name: {{.DeploymentName}}-processor
-          image: google/cloud-sdk:slim
-          # Consume a message
-          command: [ "/bin/bash", "-c", "--" ]
-          args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && \
-          while true; do gcloud pubsub subscriptions pull {{.SubscriptionID}} --auto-ack; sleep 20; done" ]
+        - name: noop-processor
+          image: ubuntu:20.04
+          command: ["/bin/bash"]
+          args: ["-c", "sleep 60"]
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
               valueFrom:
                 secretKeyRef:
                   name: {{.SecretName}}
-                  key: creds.json
-          volumeMounts:
-            - name: secret-volume
-              mountPath: /etc/secret-volume
-      volumes:
-        - name: secret-volume
-          secret:
-            secretName: {{.SecretName}}
+                  key:  creds.json
 `
+
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
@@ -133,17 +113,13 @@ spec:
   maxReplicaCount: {{.MaxReplicaCount}}
   cooldownPeriod: 10
   triggers:
-    - type: gcp-stackdriver
+    - type: gcp-storage
       authenticationRef:
         name: keda-trigger-auth-gcp-credentials
       metadata:
-        projectId: {{.ProjectID}}
-        filter: 'metric.type="pubsub.googleapis.com/topic/num_unacked_messages_by_region" AND resource.type="pubsub_topic" AND resource.label.topic_id="{{.TopicName}}"'
-        metricName: {{.TopicName}}
-        targetValue: "5"
-        activationTargetValue: "{{.ActivationThreshold}}"
-        alignmentPeriodSeconds: "60"
-        alignmentAligner: max
+        bucketName: {{.BucketName}}
+        targetObjectCount: '5'
+        activationTargetObjectCount: '{{.ActivationThreshold}}'
 `
 
 	gcpSdkTemplate = `
@@ -184,7 +160,6 @@ func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, gcpKey, "TF_GCP_SA_CREDENTIALS env variable is required for GCP storage test")
-	assert.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -193,60 +168,47 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 
-	sdkReady := WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
-	assert.True(t, sdkReady, "gcp-sdk deployment should be ready after a minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1),
+		"gcp-sdk deployment should be ready after 1 minute")
 
-	if sdkReady {
-		if createPubsub(t) == nil {
-			// test scaling
-			testActivation(t, kc)
-			testScaleOut(t, kc)
-			testScaleIn(t, kc)
-
-			// cleanup
-			t.Log("--- cleanup ---")
-			cleanupPubsub(t)
-		}
+	if createBucket(t) == nil {
+		// test scaling
+		testActivation(t, kc)
+		testScaleOut(t, kc)
+		testScaleIn(t, kc)
 	}
 
+	// cleanup
+	t.Log("--- cleanup ---")
+	cleanupBucket(t)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func createPubsub(t *testing.T) error {
+func createBucket(t *testing.T) error {
 	// Authenticate to GCP
-	t.Log("--- authenticate to GCP ---")
-	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], projectID)
-	_, err := ExecuteCommand(cmd)
+	creds := make(map[string]interface{})
+	err := json.Unmarshal([]byte(gcpKey), &creds)
+	assert.NoErrorf(t, err, "Failed to load credentials from gcpKey - %s", err)
+
+	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], creds["project_id"])
+	_, err = ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "Failed to set GCP authentication on gcp-sdk - %s", err)
-	if err != nil {
-		return err
-	}
 
-	// Create topic
-	t.Log("--- create topic ---")
-	cmd = fmt.Sprintf("%sgcloud pubsub topics create %s", gsPrefix, topicID)
+	cleanupBucket(t)
+
+	// Create bucket
+	cmd = fmt.Sprintf("%sgsutil mb gs://%s", gsPrefix, bucketName)
 	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "Failed to create Pubsub topic %s: %s", topicID, err)
-	if err != nil {
-		return err
-	}
-
-	// Create subscription
-	t.Log("--- create subscription ---")
-	cmd = fmt.Sprintf("%sgcloud pubsub subscriptions create %s --topic=%s", gsPrefix, subscriptionID, topicID)
-	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "Failed to create Pubsub subscription %s: %s", subscriptionID, err)
-
+	assert.NoErrorf(t, err, "Failed to create GCS bucket - %s", err)
 	return err
 }
 
-func cleanupPubsub(t *testing.T) {
-	// Delete the topic and subscription
-	t.Log("--- cleaning up the subscription and topic ---")
-	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub subscriptions delete %s", gsPrefix, subscriptionID))
-	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud pubsub topics delete %s", gsPrefix, topicID))
+func cleanupBucket(t *testing.T) {
+	// Cleanup the bucket
+	t.Log("--- cleaning up the bucket ---")
+	_, _ = ExecuteCommand(fmt.Sprintf("%sgsutil -m rm -r gs://%s", gsPrefix, bucketName))
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -258,10 +220,7 @@ func getTemplateData() (templateData, []Template) {
 			GcpCreds:            base64GcpCreds,
 			DeploymentName:      deploymentName,
 			ScaledObjectName:    scaledObjectName,
-			ProjectID:           fmt.Sprintf("%s", projectID),
-			TopicName:           topicName,
-			SubscriptionID:      subscriptionID,
-			SubscriptionName:    subscriptionName,
+			BucketName:          bucketName,
 			MaxReplicaCount:     maxReplicaCount,
 			ActivationThreshold: activationThreshold,
 		}, []Template{
@@ -273,21 +232,20 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func publishMessages(t *testing.T, count int) {
-	t.Logf("--- publishing %d messages ---", count)
-	publish := fmt.Sprintf(
-		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud pubsub topics publish %s --message=AAAAAAAAAA;done'",
-		gsPrefix,
-		count,
-		topicID)
-	_, err := ExecuteCommand(publish)
-	assert.NoErrorf(t, err, "cannot publish messages to pubsub topic - %s", err)
+func uploadFiles(t *testing.T, prefix string, count int) {
+	t.Logf("--- uploading %d files ---", count)
+
+	for i := 0; i < count; i++ {
+		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil-%s%d", gsPrefix, bucketName, prefix, i)
+		_, err := ExecuteCommand(cmd)
+		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing not scaling if below threshold ---")
 
-	publishMessages(t, activationThreshold)
+	uploadFiles(t, "active", activationThreshold)
 
 	t.Log("--- waiting to see replicas are not scaled up ---")
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
@@ -296,20 +254,23 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
-	publishMessages(t, 20-activationThreshold)
+	uploadFiles(t, "scaling", 30-activationThreshold)
 
 	t.Log("--- waiting for replicas to scale out ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
 		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	cmd := fmt.Sprintf("%sgcloud pubsub subscriptions seek %s --time=-P1S", gsPrefix, subscriptionID)
-	_, err := ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "cannot reset subscription position - %s", err)
 
-	t.Log("--- waiting for replicas to scale in to zero ---")
+	// Delete files so we are still left with activationThreshold number of files which should be enough
+	// to scale in to 0.
+	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
+	_, err := ExecuteCommand(cmd)
+	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
+
+	t.Log("--- waiting for replicas to scale in to zero")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
-		"replica count should be 0 after five minute")
+		"replica count should be 0 after 5 minutes")
 }
