@@ -217,7 +217,7 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 	var client *StackDriverClient
 	var err error
 	if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
-		client, err = NewStackDriverClientPodIdentity(ctx, s.logger)
+		client, err = NewStackDriverClientPodIdentity(ctx)
 	} else {
 		client, err = NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 	}
