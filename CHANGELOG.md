@@ -96,6 +96,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Metrics Server: use gRPC connection to get metrics from Operator ([#3920](https://github.com/kedacore/keda/issues/3920))
 - **General**: Metrics Server: use OpenAPI definitions served by custom-metrics-apiserver ([#3929](https://github.com/kedacore/keda/issues/3929))
 - **Azure EventHub**: Add e2e tests ([#2792](https://github.com/kedacore/keda/issues/2792))
+- **Apache Kafka Scaler:** Increase logging V-level  ([#3948](https://github.com/kedacore/keda/issues/3948))
 
 ## v2.8.1
 
