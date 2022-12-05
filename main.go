@@ -162,7 +162,11 @@ func main() {
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
-	kubeClientset, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	kubeClientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		setupLog.Error(err, "Unable to create kube clientset")
+		os.Exit(1)
+	}
 	objectNamespace, err := kedautil.GetClusterObjectNamespace()
 	if err != nil {
 		setupLog.Error(err, "Unable to get cluster object namespace")

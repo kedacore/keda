@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -43,17 +42,19 @@ const (
 	referenceCloser   = ')'
 )
 
-var kedaNamespace, _ = util.GetClusterObjectNamespace()
+var (
+	kedaNamespace, _ = util.GetClusterObjectNamespace()
+	restrictSecretAccess = util.GetRestrictSecretAccess()
+)
+
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
 func isSecretAccessRestricted(logger logr.Logger) bool {
-	const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
-	restrictSecretAccess, found := os.LookupEnv(RestrictSecretAccessEnvVar)
-	if !found {
+	if restrictSecretAccess == "" {
 		return false
 	}
 	if strings.ToLower(restrictSecretAccess) == "true" {
-		logger.V(1).Info("Secret Access is restricted to be in KEDA namespace, pls. use ClusterTriggerAuthentication instead of TriggerAuthentication", "Env Var", RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
+		logger.V(1).Info("Secret Access is restricted to be in Cluster Object Namespace, please use ClusterTriggerAuthentication instead of TriggerAuthentication", "Cluster Object Namespace", kedaNamespace, "Env Var", util.RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
 		return true
 	}
 	return false

@@ -22,6 +22,8 @@ import (
 	"time"
 )
 
+const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
+
 var clusterObjectNamespaceCache *string
 
 func ResolveOsEnvBool(envName string, defaultValue bool) (bool, error) {
@@ -72,4 +74,9 @@ func GetClusterObjectNamespace() (string, error) {
 	strData := string(data)
 	clusterObjectNamespaceCache = &strData
 	return strData, nil
+}
+
+// GetRestrictSecretAccess retrieves the value of the environment variable of KEDA_RESTRICT_SECRET_ACCESS
+func GetRestrictSecretAccess() string {
+	return os.Getenv(RestrictSecretAccessEnvVar)
 }

@@ -135,7 +135,11 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	broadcaster := record.NewBroadcaster()
 	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
 
-	kubeClientset, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	kubeClientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		logger.Error(err, "Unable to create kube clientset")
+		return nil, nil, err
+	}
 	objectNamespace, err := kedautil.GetClusterObjectNamespace()
 	if err != nil {
 		logger.Error(err, "Unable to get cluster object namespace")
