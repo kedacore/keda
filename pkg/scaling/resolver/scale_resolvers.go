@@ -43,10 +43,9 @@ const (
 )
 
 var (
-	kedaNamespace, _ = util.GetClusterObjectNamespace()
+	kedaNamespace, _     = util.GetClusterObjectNamespace()
 	restrictSecretAccess = util.GetRestrictSecretAccess()
 )
-
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
 func isSecretAccessRestricted(logger logr.Logger) bool {
