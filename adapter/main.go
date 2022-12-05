@@ -33,7 +33,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
@@ -70,19 +69,6 @@ var (
 )
 
 func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
-	// Get a config to talk to the apiserver
-	cfg, err := config.GetConfig()
-	if cfg != nil {
-		cfg.QPS = adapterClientRequestQPS
-		cfg.Burst = adapterClientRequestBurst
-		cfg.DisableCompression = disableCompression
-	}
-
-	if err != nil {
-		logger.Error(err, "failed to get the config")
-		return nil, nil, fmt.Errorf("failed to get the config (%s)", err)
-	}
-
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
@@ -123,8 +109,14 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
 	}
 
+	// Get a config to talk to the apiserver
+	cfg := ctrl.GetConfigOrDie()
+	cfg.QPS = adapterClientRequestQPS
+	cfg.Burst = adapterClientRequestBurst
+	cfg.DisableCompression = disableCompression
+
 	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		MetricsBindAddress: metricsBindAddress,
 		Scheme:             scheme,
 		Namespace:          namespace,
