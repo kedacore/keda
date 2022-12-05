@@ -1,4 +1,4 @@
-name: "Static Analizers"
+name: "Static Analysers"
 
 on:
   push:
