@@ -9,8 +9,8 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  analyze:
-    name: Analyze
+  codeQl:
+    name: Analyze CodeQL ${{ matrix.language }}
     runs-on: ubuntu-latest
     container: ghcr.io/kedacore/build-tools:1.18.8
     strategy:
