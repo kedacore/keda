@@ -66,6 +66,9 @@ var testParseQueries = []datadogQueries{
 
 	// Missing filter
 	{"min:system.cpu.user", false, true},
+	{"avg:system.cpu.user{*}.rollup(sum, 30),sum:system.cpu.user{*}.rollup(30)", true, false},
+	// #3448 Find out last point != nil 
+	{"sum:trace.express.request.hits{*}.as_rate()/avg:kubernetes.cpu.requests{*}.rollup(10)", true, false}
 }
 
 func TestDatadogScalerParseQueries(t *testing.T) {
