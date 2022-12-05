@@ -38,8 +38,8 @@ type pubsubScaler struct {
 
 type pubsubMetadata struct {
 	mode            string
-	value           int64
-	activationValue int64
+	value           float64
+	activationValue float64
 
 	subscriptionName string
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -80,7 +80,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		}
 		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		meta.mode = pubsubModeSubscriptionSize
-		subSizeValue, err := strconv.ParseInt(subSize, 10, 64)
+		subSizeValue, err := strconv.ParseFloat(subSize, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %s", err.Error())
 		}
@@ -100,7 +100,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		}
 
 		if valuePresent {
-			triggerValue, err := strconv.ParseInt(value, 10, 64)
+			triggerValue, err := strconv.ParseFloat(value, 64)
 			if err != nil {
 				return nil, fmt.Errorf("value parsing error %s", err.Error())
 			}
@@ -120,7 +120,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 
 	meta.activationValue = 0
 	if val, ok := config.TriggerMetadata["activationValue"]; ok {
-		activationValue, err := strconv.ParseInt(val, 10, 64)
+		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationValue parsing error %s", err.Error())
 		}
@@ -176,7 +176,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 		Metric: v2beta2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
 
 	// Create the metric spec for the HPA
@@ -190,7 +190,7 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2beta2.Metric
 
 // GetMetrics connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
-	var value int64
+	var value float64
 	var err error
 
 	switch s.metadata.mode {
@@ -208,7 +208,7 @@ func (s *pubsubScaler) GetMetrics(ctx context.Context, metricName string, metric
 		}
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(value))
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
@@ -230,7 +230,7 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (int64, error) {
+func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
