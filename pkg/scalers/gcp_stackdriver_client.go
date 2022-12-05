@@ -166,7 +166,7 @@ func (s StackDriverClient) GetMetrics(
 	ctx context.Context,
 	filter string,
 	projectID string,
-	aggregation *monitoringpb.Aggregation) (int64, error) {
+	aggregation *monitoringpb.Aggregation) (float64, error) {
 	// Set the start time to 1 minute ago
 	startTime := time.Now().UTC().Add(time.Minute * -2)
 
@@ -197,7 +197,7 @@ func (s StackDriverClient) GetMetrics(
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
 
-	var value int64 = -1
+	var value float64 = -1
 
 	// Get the value from the first metric returned
 	resp, err := it.Next()
@@ -212,10 +212,26 @@ func (s StackDriverClient) GetMetrics(
 
 	if len(resp.GetPoints()) > 0 {
 		point := resp.GetPoints()[0]
-		value = point.GetValue().GetInt64Value()
+		value, err = extractValueFromPoint(point)
+
+		if err != nil {
+			return value, err
+		}
 	}
 
 	return value, nil
+}
+
+// extractValueFromPoint attempts to extract a float64 by asserting the point's value type
+func extractValueFromPoint(point *monitoringpb.Point) (float64, error) {
+	typedValue := point.GetValue()
+	switch typedValue.Value.(type) {
+	case *monitoringpb.TypedValue_DoubleValue:
+		return typedValue.GetDoubleValue(), nil
+	case *monitoringpb.TypedValue_Int64Value:
+		return float64(typedValue.GetInt64Value()), nil
+	}
+	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
 }
 
 // GoogleApplicationCredentials is a struct representing the format of a service account

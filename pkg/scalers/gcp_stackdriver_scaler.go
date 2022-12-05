@@ -27,8 +27,8 @@ type stackdriverScaler struct {
 type stackdriverMetadata struct {
 	projectID             string
 	filter                string
-	targetValue           int64
-	activationTargetValue int64
+	targetValue           float64
+	activationTargetValue float64
 	metricName            string
 
 	gcpAuthorization *gcpAuthorizationMetadata
@@ -91,7 +91,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseInt(val, 10, 64)
+		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing targetValue")
 			return nil, fmt.Errorf("error parsing targetValue: %s", err.Error())
@@ -102,7 +102,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 
 	meta.activationTargetValue = 0
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		activationTargetValue, err := strconv.ParseInt(val, 10, 64)
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
 		}
@@ -188,7 +188,7 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
 
 	// Create the metric spec for the HPA
@@ -208,17 +208,17 @@ func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string) (
 		return []external_metrics.ExternalMetricValue{}, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(value))
+	metric := GenerateMetricInMili(metricName, value)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *stackdriverScaler) getMetrics(ctx context.Context) (int64, error) {
+func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
 	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation)
 	if err == nil {
 		s.logger.V(1).Info(
-			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %d",
+			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %f",
 				s.metadata.projectID,
 				s.metadata.filter,
 				s.metadata.aggregation,
