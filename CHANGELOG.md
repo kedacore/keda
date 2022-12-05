@@ -42,7 +42,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Disable response compression for k8s restAPI in client-go ([#3863](https://github.com/kedacore/keda/issues/3863)). Kubernetes issue for reference (https://github.com/kubernetes/kubernetes/issues/112296)
 - **General**: Expand Prometheus metric with label "ScalerName" to distinguish different triggers. The scaleName is defined per Trigger.Name ([#3588](https://github.com/kedacore/keda/issues/3588))
 - **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
-- **General**: Add ratelimitting parameters to KEDA manager to allow override of client defaults ([#3730](https://github.com/kedacore/keda/issues/2920))
+- **General**: Introduce rate-limitting parameters to KEDA manager to allow override of client defaults ([#3730](https://github.com/kedacore/keda/issues/3730))
 - **General**: Provide off-the-shelf Grafana dashboard for application autoscaling ([Docs](https://keda.sh/docs/2.9/operate/prometheus/) | [#3911](https://github.com/kedacore/keda/issues/3911))
 - **General**: Provide Prometheus metric with indication of total number of custom resources per namespace for each custom resource type (CRD). ([#2637](https://github.com/kedacore/keda/issues/2637)|[#2638](https://github.com/kedacore/keda/issues/2638)|[#2639](https://github.com/kedacore/keda/issues/2639))
 - **General**: Provide Prometheus metric with indication of total number of triggers per trigger type in `ScaledJob`/`ScaledObject`. ([#3663](https://github.com/kedacore/keda/issues/3663))
@@ -97,6 +97,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Metrics Server: use gRPC connection to get metrics from Operator ([#3920](https://github.com/kedacore/keda/issues/3920))
 - **General**: Metrics Server: use OpenAPI definitions served by custom-metrics-apiserver ([#3929](https://github.com/kedacore/keda/issues/3929))
 - **Azure EventHub**: Add e2e tests ([#2792](https://github.com/kedacore/keda/issues/2792))
+- **Apache Kafka Scaler:** Increase logging V-level  ([#3948](https://github.com/kedacore/keda/issues/3948))
 
 ## v2.8.1
 
