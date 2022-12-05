@@ -3,8 +3,7 @@ name: "Static Analysers"
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  pull_request_target: {}
 
 jobs:
   codeQl:
@@ -19,6 +18,18 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
+    - name: Register workspace path
+      if: github.ref != 'refs/heads/main'
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+    - name: Checkout Pull Request
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: checkout
+      if: github.ref != 'refs/heads/main'
+      run: |
+        gh pr checkout ${{ github.event.number }}
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -40,3 +51,32 @@ jobs:
       uses: github/codeql-action/analyze@v2
       with:
         category: "/language:${{matrix.language}}"
+
+  semgrep:
+    name: Analyze Semgrep
+    runs-on: ubuntu-latest
+    container: returntocorp/semgrep
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v3
+      - name: Register workspace path
+        if: github.ref != 'refs/heads/main'
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        if: github.ref != 'refs/heads/main'
+        run: |
+          gh pr checkout ${{ github.event.number }}
+
+      - run: semgrep ci --sarif --output=semgrep.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Upload SARIF file for GitHub Advanced Security Dashboard
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+        if: github.ref == 'refs/heads/main'
