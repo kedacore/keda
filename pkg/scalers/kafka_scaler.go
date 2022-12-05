@@ -420,7 +420,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		msg := fmt.Sprintf(
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
 			topic, s.metadata.group, partitionID, retVal)
-		s.logger.V(0).Info(msg)
+		s.logger.V(1).Info(msg)
 		return retVal, nil
 	}
 
