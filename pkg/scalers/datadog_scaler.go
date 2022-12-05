@@ -306,7 +306,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		index := len(points) - 1
 		// Find out the last point != nil
 		for i := len(points) - 1; i >= 0; i-- {
-			if points[i][1] != nil {
+			if len(points[index]) >= 2 && points[i][1] != nil {
 				index = i
 				break
 			}
