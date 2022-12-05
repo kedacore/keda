@@ -66,6 +66,7 @@ var testParseQueries = []datadogQueries{
 
 	// Missing filter
 	{"min:system.cpu.user", false, true},
+
 	// Find out last point with value
 	{"sum:trace.express.request.hits{*}.as_rate()/avg:kubernetes.cpu.requests{*}.rollup(10)", true, false},
 }
