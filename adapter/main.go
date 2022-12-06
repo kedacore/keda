@@ -145,6 +145,8 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		logger.Error(err, "Unable to get cluster object namespace")
 		return nil, nil, err
 	}
+	// the namespaced kubeInformerFactory is used to restrict secret informer to only list/watch secrets in KEDA cluster object namespace,
+	// refer to https://github.com/kedacore/keda/issues/3668
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Hour, kubeinformers.WithNamespace(objectNamespace))
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
