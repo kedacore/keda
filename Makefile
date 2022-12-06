@@ -36,6 +36,9 @@ GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 TEST_CLUSTER_NAME ?= keda-nightly-run-3
+NON_ROOT_USER_ID ?= 1000
+
+GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -236,6 +239,11 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:arn:aws:iam::${TF_AWS_ACCOUNT_ID}:role/${TEST_CLUSTER_NAME}-role; \
 	fi
+	if [ "$(GCP_RUN_IDENTITY_TESTS)" = true ]; then \
+		cd config/service_account && \
+		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID}; \
+	fi
+
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml

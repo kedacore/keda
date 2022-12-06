@@ -173,46 +173,6 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
       - uses: pre-commit/action@v3.0.0
 
-  codeScanning:
-    name: Code Scanning
-    runs-on: ubuntu-latest
-    container: ghcr.io/kedacore/build-tools:1.18.8
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ['go']
-        # Learn more... https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
-        fetch-depth: 2
-
-    - name: Register workspace path
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-    # If this run was triggered by a pull request event, then checkout
-    # the head of the pull request instead of the merge commit.
-    - run: git checkout HEAD^2
-      if: ${{ github.event_name == 'pull_request' }}
-
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-
-    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-    # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-
   trivy-scan:
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:

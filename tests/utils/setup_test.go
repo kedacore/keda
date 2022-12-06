@@ -97,6 +97,28 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	require.True(t, success, "expected workload identity webhook deployment to start 2 pods successfully")
 }
 
+func TestSetupCertManager(t *testing.T) {
+	if !InstallCertManager {
+		t.Skip("skipping cert manager is not required")
+	}
+
+	_, err := ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add jetstack https://charts.jetstack.io")
+	require.NoErrorf(t, err, "cannot add jetstack helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update jetstack")
+	require.NoErrorf(t, err, "cannot update jetstack helm repo - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, CertManagerNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install cert-manager jetstack/cert-manager --namespace %s --set installCRDs=true --wait",
+		CertManagerNamespace))
+	require.NoErrorf(t, err, "cannot install cert-manager - %s", err)
+}
+
 func TestSetupAwsIdentityComponents(t *testing.T) {
 	if AwsIdentityTests == "" || AwsIdentityTests == StringFalse {
 		t.Skip("skipping aws identity tests are disabled")
@@ -111,23 +133,36 @@ func TestSetupAwsIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update jkroepke")
 	require.NoErrorf(t, err, "cannot update jkroepke helm repo - %s", err)
 
-	_, err = ExecuteCommand("helm repo add jetstack https://charts.jetstack.io")
-	require.NoErrorf(t, err, "cannot add jetstack helm repo - %s", err)
-
-	_, err = ExecuteCommand("helm repo update jetstack")
-	require.NoErrorf(t, err, "cannot update jetstack helm repo - %s", err)
-
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AwsIdentityNamespace)
-
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install cert-manager jetstack/cert-manager --namespace %s --set installCRDs=true --wait",
-		AwsIdentityNamespace))
-	require.NoErrorf(t, err, "cannot install cert-manager - %s", err)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set fullnameOverride=aws-identity-webhook --wait",
 		AwsIdentityNamespace))
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
-	time.Sleep(2 * time.Minute) // sleep for some time for webhook to setup properly
+	time.Sleep(1 * time.Minute) // sleep for some time for webhook to setup properly
+}
+
+func TestSetupGcpIdentityComponents(t *testing.T) {
+	if GcpIdentityTests == "" || GcpIdentityTests == StringFalse {
+		t.Skip("skipping gcp identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add gcp-workload-identity-federation-webhook https://pfnet-research.github.io/gcp-workload-identity-federation-webhook")
+	require.NoErrorf(t, err, "cannot add gcp-workload-identity-federation-webhook helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update gcp-workload-identity-federation-webhook")
+	require.NoErrorf(t, err, "cannot update gcp-workload-identity-federation-webhook helm repo - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, GcpIdentityNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install gcp-identity-webhook gcp-workload-identity-federation-webhook/gcp-workload-identity-federation-webhook --namespace %s --set fullnameOverride=gcp-identity-webhook --set controllerManager.manager.args[0]=--token-default-mode=0444 --wait",
+		GcpIdentityNamespace))
+	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
+	time.Sleep(1 * time.Minute) // sleep for some time for webhook to setup properly
 }
 
 func TestDeployKEDA(t *testing.T) {
