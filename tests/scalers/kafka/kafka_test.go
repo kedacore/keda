@@ -22,19 +22,22 @@ const (
 )
 
 var (
-	testNamespace          = fmt.Sprintf("%s-ns", testName)
-	deploymentName         = fmt.Sprintf("%s-deployment", testName)
-	kafkaName              = fmt.Sprintf("%s-kafka", testName)
-	kafkaClientName        = fmt.Sprintf("%s-client", testName)
-	scaledObjectName       = fmt.Sprintf("%s-so", testName)
-	bootstrapServer        = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
-	strimziOperatorVersion = "0.30.0"
-	topic1                 = "kafka-topic"
-	topic2                 = "kafka-topic2"
-	zeroInvalidOffsetTopic = "kafka-topic-zero-invalid-offset"
-	oneInvalidOffsetTopic  = "kafka-topic-one-invalid-offset"
-	invalidOffsetGroup     = "invalidOffset"
-	topicPartitions        = 3
+	testNamespace                = fmt.Sprintf("%s-ns", testName)
+	deploymentName               = fmt.Sprintf("%s-deployment", testName)
+	kafkaName                    = fmt.Sprintf("%s-kafka", testName)
+	kafkaClientName              = fmt.Sprintf("%s-client", testName)
+	scaledObjectName             = fmt.Sprintf("%s-so", testName)
+	bootstrapServer              = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
+	strimziOperatorVersion       = "0.30.0"
+	topic1                       = "kafka-topic"
+	topic2                       = "kafka-topic2"
+	zeroInvalidOffsetTopic       = "kafka-topic-zero-invalid-offset"
+	oneInvalidOffsetTopic        = "kafka-topic-one-invalid-offset"
+	invalidOffsetGroup           = "invalidOffset"
+	persistentLagTopic           = "kafka-topic-persistent-lag"
+	persistentLagGroup           = "persistentLag"
+	persistentLagDeploymentGroup = "persistentLagDeploymentGroup"
+	topicPartitions              = 3
 )
 
 type templateData struct {
@@ -53,6 +56,7 @@ type templateData struct {
 	Params               string
 	Commit               string
 	ScaleToZeroOnInvalid string
+	ExcludePersistentLag string
 }
 
 const (
@@ -183,6 +187,42 @@ spec:
       scaleToZeroOnInvalidOffset: '{{.ScaleToZeroOnInvalid}}'
       offsetResetPolicy: 'latest'`
 
+	persistentLagScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+  triggers:
+  - type: kafka
+    metadata:
+      topic: {{.TopicName}}
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup: {{.ResetPolicy}}
+      lagThreshold: '1'
+      excludePersistentLag: '{{.ExcludePersistentLag}}'
+      offsetResetPolicy: 'latest'`
+
 	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -261,6 +301,7 @@ func TestScaler(t *testing.T) {
 	addTopic(t, data, topic2, topicPartitions)
 	addTopic(t, data, zeroInvalidOffsetTopic, 1)
 	addTopic(t, data, oneInvalidOffsetTopic, 1)
+	addTopic(t, data, persistentLagTopic, topicPartitions)
 
 	// test scaling
 	testEarliestPolicy(t, kc, data)
@@ -268,6 +309,7 @@ func TestScaler(t *testing.T) {
 	testMultiTopic(t, kc, data)
 	testZeroOnInvalidOffset(t, kc, data)
 	testOneOnInvalidOffset(t, kc, data)
+	testPersistentLag(t, kc, data)
 
 	// cleanup
 	uninstallKafkaOperator(t)
@@ -424,6 +466,49 @@ func publishMessage(t *testing.T, topic string) {
 func commitPartition(t *testing.T, topic string, group string) {
 	_, _, err := ExecCommandOnSpecificPod(t, kafkaClientName, testNamespace, fmt.Sprintf(`kafka-console-consumer --bootstrap-server %s --topic %s --group %s --from-beginning --consumer-property enable.auto.commit=true --timeout-ms 15000`, bootstrapServer, topic, group))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func testPersistentLag(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing  persistentLag: no scale out ---")
+
+	// Simulate Consumption from topic by consumer group
+	// To avoid edge case where where scaling could be effectively disabled (Consumer never makes a commit)
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", persistentLagTopic, persistentLagGroup)
+	data.Commit = StringTrue
+	data.TopicName = persistentLagTopic
+	data.ResetPolicy = persistentLagGroup
+	data.ExcludePersistentLag = StringTrue
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "persistentLagScaledObjectTemplate", persistentLagScaledObjectTemplate)
+
+	// Scale application with kafka messages in persistentLagTopic
+	publishMessage(t, persistentLagTopic)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minute", 1)
+	// Recreate Deployment to delibrately assign different consumer group to deployment and scaled object
+	// This is to simulate inability to consume from topic
+	// Scaled Object remains unchanged
+	KubernetesScaleDeployment(t, kc, deploymentName, 0, testNamespace)
+	assert.True(t, WaitForPodsTerminated(t, kc, "app=kafka-consumer", testNamespace, 60, 2),
+		"pod should be terminated after %d minute", 2)
+
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", persistentLagTopic, persistentLagDeploymentGroup)
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+
+	messages := 5
+	for i := 0; i < messages; i++ {
+		publishMessage(t, persistentLagTopic)
+	}
+
+	// Persistent Lag should not scale pod above minimum replicas after 2 reconciliation cycles
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minute", 1)
+
+	// Shouldn't scale pods
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 180)
+
+	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "persistentLagScaledObjectTemplate", persistentLagScaledObjectTemplate)
 }
 
 func installKafkaOperator(t *testing.T) {
