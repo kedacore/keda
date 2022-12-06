@@ -44,9 +44,8 @@ type ExternalMetricInfo struct {
 func (i CustomMetricInfo) String() string {
 	if i.Namespaced {
 		return fmt.Sprintf("%s/%s(namespaced)", i.GroupResource.String(), i.Metric)
-	} else {
-		return fmt.Sprintf("%s/%s", i.GroupResource.String(), i.Metric)
 	}
+	return fmt.Sprintf("%s/%s", i.GroupResource.String(), i.Metric)
 }
 
 // Normalized returns a copy of the current MetricInfo with the GroupResource resolved using the
@@ -93,7 +92,7 @@ type CustomMetricsProvider interface {
 
 	// ListAllMetrics provides a list of all available metrics at
 	// the current time.  Note that this is not allowed to return
-	// an error, so it is reccomended that implementors cache and
+	// an error, so it is recommended that implementors cache and
 	// periodically update this list, instead of querying every time.
 	ListAllMetrics() []CustomMetricInfo
 }

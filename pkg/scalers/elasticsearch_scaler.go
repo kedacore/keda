@@ -15,7 +15,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -341,7 +340,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting elasticsearch: %s", err)

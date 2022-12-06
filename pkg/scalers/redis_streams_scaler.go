@@ -8,7 +8,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-redis/redis/v8"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -223,7 +222,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 }
 
 // GetMetrics fetches the number of pending entries for a consumer group in a stream
-func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	pendingEntriesCount, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {

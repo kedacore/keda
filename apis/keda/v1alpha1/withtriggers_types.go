@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -89,7 +87,7 @@ func (t *WithTriggers) GetPollingInterval() time.Duration {
 	return time.Second * time.Duration(defaultPollingInterval)
 }
 
-// GenerateIdenitifier returns identifier for the object in for "kind.namespace.name"
-func (t *WithTriggers) GenerateIdenitifier() string {
-	return strings.ToLower(fmt.Sprintf("%s.%s.%s", t.Kind, t.Namespace, t.Name))
+// GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
+func (t *WithTriggers) GenerateIdentifier() string {
+	return GenerateIdentifier(t.Kind, t.Namespace, t.Name)
 }

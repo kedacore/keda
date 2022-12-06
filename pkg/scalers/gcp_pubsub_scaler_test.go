@@ -56,6 +56,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full (bad) link to subscription
 	{nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// properly formed float value and activationTargetValue
+	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{

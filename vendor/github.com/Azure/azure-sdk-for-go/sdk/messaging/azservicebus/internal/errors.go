@@ -169,10 +169,6 @@ func GetRecoveryKind(err error) RecoveryKind {
 		return RecoveryKindFatal
 	}
 
-	if IsLocalIdleError(err) {
-		return RecoveryKindLink
-	}
-
 	var netErr net.Error
 
 	// these are errors that can flow from the go-amqp connection to

@@ -13,7 +13,6 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
@@ -271,7 +270,7 @@ func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error requesting stats from url: %s", err)

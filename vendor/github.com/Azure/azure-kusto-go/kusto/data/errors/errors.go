@@ -221,6 +221,7 @@ func ES(o Op, k Kind, s string, args ...interface{}) *Error {
 
 // HTTP constructs an *Error from an *http.Response and a prefix to the error message.
 func HTTP(o Op, status string, statusCode int, body io.ReadCloser, prefix string) *HttpError {
+	defer body.Close()
 	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
 		bodyBytes = []byte(fmt.Sprintf("Failed to read body: %v", err))

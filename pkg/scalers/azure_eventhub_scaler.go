@@ -30,7 +30,6 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -193,15 +192,33 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *Scaler
 			return fmt.Errorf("no storage connection string given")
 		}
 
+		connection := ""
 		if config.AuthParams["connection"] != "" {
-			meta.eventHubInfo.EventHubConnection = config.AuthParams["connection"]
+			connection = config.AuthParams["connection"]
 		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
-			meta.eventHubInfo.EventHubConnection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
+			connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 		}
 
-		if len(meta.eventHubInfo.EventHubConnection) == 0 {
+		if len(connection) == 0 {
 			return fmt.Errorf("no event hub connection string given")
 		}
+
+		if !strings.Contains(connection, "EntityPath") {
+			eventHubName := ""
+			if config.TriggerMetadata["eventHubName"] != "" {
+				eventHubName = config.TriggerMetadata["eventHubName"]
+			} else if config.TriggerMetadata["eventHubNameFromEnv"] != "" {
+				eventHubName = config.ResolvedEnv[config.TriggerMetadata["eventHubNameFromEnv"]]
+			}
+
+			if eventHubName == "" {
+				return fmt.Errorf("connection string does not contain event hub name, and parameter eventHubName not provided")
+			}
+
+			connection = fmt.Sprintf("%s;EntityPath=%s", connection, eventHubName)
+		}
+
+		meta.eventHubInfo.EventHubConnection = connection
 	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
 		meta.eventHubInfo.StorageAccountName = ""
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
@@ -286,7 +303,7 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 
 	// Partition is a circular buffer, so it is possible that
 	// partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
-	unprocessedEventCountInPartition = (math.MaxInt64 - partitionInfo.LastSequenceNumber) + checkpoint.SequenceNumber
+	unprocessedEventCountInPartition = (math.MaxInt64 - checkpoint.SequenceNumber) + partitionInfo.LastSequenceNumber
 
 	// Checkpointing may or may not be always behind partition's LastSequenceNumber.
 	// The partition information read could be stale compared to checkpoint,
@@ -355,7 +372,7 @@ func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 // GetMetrics returns metric using total number of unprocessed events in event hub
-func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
 	if err != nil {

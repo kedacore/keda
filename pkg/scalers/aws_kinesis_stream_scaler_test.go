@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -350,10 +349,9 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
-	var selector labels.Selector
 	for _, meta := range awsKinesisGetMetricTestData {
 		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
-		value, err := scaler.GetMetrics(context.Background(), "MetricName", selector)
+		value, err := scaler.GetMetrics(context.Background(), "MetricName")
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:
 			assert.Error(t, err, "expect error because of kinesis api error")

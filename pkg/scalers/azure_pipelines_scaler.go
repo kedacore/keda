@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -310,7 +309,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 	return b, nil
 }
 
-func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {

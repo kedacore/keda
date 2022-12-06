@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -302,13 +301,11 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 }
 
 func TestDynamoGetMetrics(t *testing.T) {
-	var selector labels.Selector
-
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb", selector)
+			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb")
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.Error(t, err, "expect error because of dynamodb api error")

@@ -10,7 +10,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-redis/redis/v8"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -251,7 +250,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 // GetMetrics connects to Redis and finds the length of the list
-func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *redisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	listLen, err := s.getListLengthFn(ctx)
 
 	if err != nil {

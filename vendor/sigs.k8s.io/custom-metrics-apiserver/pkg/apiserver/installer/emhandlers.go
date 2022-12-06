@@ -19,13 +19,13 @@ package installer
 import (
 	"net/http"
 
+	"github.com/emicklei/go-restful/v3"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/registry/rest"
-
-	"github.com/emicklei/go-restful"
 )
 
 type EMHandlers struct{}
@@ -72,7 +72,7 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	externalMetricPath := "namespaces" + "/{namespace}/{resource}"
 
 	mediaTypes, streamMediaTypes := negotiation.MediaTypesForSerializer(a.group.Serializer)
-	allMediaTypes := append(mediaTypes, streamMediaTypes...)
+	allMediaTypes := append(mediaTypes, streamMediaTypes...) //nolint: gocritic
 	ws.Produces(allMediaTypes...)
 
 	reqScope := handlers.RequestScope{

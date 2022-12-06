@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -279,7 +278,7 @@ func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metric
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {

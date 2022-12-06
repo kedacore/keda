@@ -20,9 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	cm_rest "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest"
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
-
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +29,9 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
+
+	cm_rest "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 
 type REST struct {
@@ -51,6 +51,9 @@ func NewREST(cmProvider provider.CustomMetricsProvider) *REST {
 
 func (r *REST) New() runtime.Object {
 	return &custom_metrics.MetricValue{}
+}
+
+func (r *REST) Destroy() {
 }
 
 // Implement ListerWithOptions
@@ -118,9 +121,8 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 	// handle namespaced and root metrics
 	if name == "*" {
 		return r.handleWildcardOp(ctx, namespace, groupResource, selector, metricName, metricLabelSelector)
-	} else {
-		return r.handleIndividualOp(ctx, namespace, groupResource, name, metricName, metricLabelSelector)
 	}
+	return r.handleIndividualOp(ctx, namespace, groupResource, name, metricName, metricLabelSelector)
 }
 
 func (r *REST) handleIndividualOp(ctx context.Context, namespace string, groupResource schema.GroupResource, name string, metricName string, metricLabelSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
