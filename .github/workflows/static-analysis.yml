@@ -69,6 +69,7 @@ jobs:
         id: checkout
         if: ${{ github.event.number > 0 }}
         run: |
+          apk add github-cli
           gh pr checkout ${{ github.event.number }}
 
       - run: semgrep ci --sarif --output=semgrep.sarif
