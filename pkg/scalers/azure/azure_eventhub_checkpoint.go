@@ -82,6 +82,11 @@ type goSdkCheckpointer struct {
 	containerName string
 }
 
+type daprCheckpointer struct {
+	partitionID   string
+	containerName string
+}
+
 type defaultCheckpointer struct {
 	partitionID   string
 	containerName string
@@ -97,6 +102,11 @@ func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	switch {
 	case (info.CheckpointStrategy == "goSdk"):
 		return &goSdkCheckpointer{
+			containerName: info.BlobContainer,
+			partitionID:   partitionID,
+		}
+	case (info.CheckpointStrategy == "dapr"):
+		return &daprCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
@@ -174,8 +184,32 @@ func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL,
 	return path, nil
 }
 
+// resolve path for daprCheckpointer
+func (checkpointer *daprCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+	_, eventHubName, err := getHubAndNamespace(info)
+	if err != nil {
+		return nil, err
+	}
+
+	path, err := url.Parse(fmt.Sprintf("/%s/dapr-%s-%s-%s", info.BlobContainer, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
+	if err != nil {
+		return nil, err
+	}
+
+	return path, nil
+}
+
+// extract checkpoint for DaprCheckpointer
+func (checkpointer *daprCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+	return newGoSdkCheckpoint(get)
+}
+
 // extract checkpoint for goSdkCheckpointer
 func (checkpointer *goSdkCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+	return newGoSdkCheckpoint(get)
+}
+
+func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 	var checkpoint goCheckpoint
 	err := readToCheckpointFromBody(get, &checkpoint)
 	if err != nil {
