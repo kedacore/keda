@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 
@@ -216,7 +217,7 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 		}
 
 		if meta.port > 0 {
-			connectionURL.Host = fmt.Sprintf("%s:%d", meta.host, meta.port)
+			connectionURL.Host = net.JoinHostPort(meta.host, fmt.Sprintf("%d", meta.port))
 		} else {
 			connectionURL.Host = meta.host
 		}

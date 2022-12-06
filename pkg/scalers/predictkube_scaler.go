@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -124,7 +125,7 @@ func (s *PredictKubeScaler) setupClientConn() error {
 		return err
 	}
 
-	s.grpcConn, err = grpc.Dial(fmt.Sprintf("%s:%d", mlEngineHost, mlEnginePort), clientOpt...)
+	s.grpcConn, err = grpc.Dial(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
 	if err != nil {
 		return err
 	}

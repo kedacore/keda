@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -111,7 +112,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
 		switch p := meta.port; {
 		case p > 0:
-			meta.clusterIPAddress = fmt.Sprintf("%s:%d", val, meta.port)
+			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
 		case strings.Contains(val, ":"):
 			meta.clusterIPAddress = val
 		default:
