@@ -20,14 +20,14 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Register workspace path
-      if: github.ref != 'refs/heads/main'
+      if: ${{ github.event.number > 0 }}
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - name: Checkout Pull Request
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: checkout
-      if: github.ref != 'refs/heads/main'
+      if: ${{ github.event.number > 0 }}
       run: |
         gh pr checkout ${{ github.event.number }}
 
@@ -60,14 +60,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Register workspace path
-        if: github.ref != 'refs/heads/main'
+        if: ${{ github.event.number > 0 }}
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: checkout
-        if: github.ref != 'refs/heads/main'
+        if: ${{ github.event.number > 0 }}
         run: |
           gh pr checkout ${{ github.event.number }}
 
