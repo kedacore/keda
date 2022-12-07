@@ -560,6 +560,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewDatadogScaler(ctx, config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
+	case "etcd":
+		return scalers.NewEtcdScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
 	// TODO: use other way for test.
