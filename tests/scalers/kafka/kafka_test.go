@@ -196,19 +196,20 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
+  pollingInterval: 15
   scaleTargetRef:
     name: {{.DeploymentName}}
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleUp:
-          stabilizationWindowSeconds: 60
+          stabilizationWindowSeconds: 30
           policies:
           - type: Percent
             value: 100
             periodSeconds: 15
         scaleDown:
-          stabilizationWindowSeconds: 60
+          stabilizationWindowSeconds: 30
           policies:
           - type: Percent
             value: 100
@@ -505,7 +506,7 @@ func testPersistentLag(t *testing.T, kc *kubernetes.Clientset, data templateData
 		"replica count should be %d after 2 minute", 1)
 
 	// Shouldn't scale pods
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 180)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 30)
 
 	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "persistentLagScaledObjectTemplate", persistentLagScaledObjectTemplate)
