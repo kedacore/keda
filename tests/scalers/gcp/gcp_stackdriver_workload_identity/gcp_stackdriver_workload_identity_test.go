@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package gcp_stackdriver_test
+package gcp_stackdriver_workload_identity_test
 
 import (
 	"encoding/base64"
@@ -25,11 +25,11 @@ var _ = godotenv.Load("../../.env")
 var now = time.Now().UnixNano()
 
 const (
-	testName = "gcp-stackdriver-test"
+	testName = "gcp-stackdriver-workload-identity-test"
 )
 
 var (
-	gcpKey              = os.Getenv("GCP_SP_KEY")
+	gcpKey              = os.Getenv("TF_GCP_SA_CREDENTIALS")
 	creds               = make(map[string]interface{})
 	errGcpKey           = json.Unmarshal([]byte(gcpKey), &creds)
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
@@ -110,6 +110,14 @@ spec:
           secret:
             secretName: {{.SecretName}}
 `
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-gcp-credentials
+  namespace: {{.TestNamespace}}
+spec:
+  podIdentity:
+    provider: gcp`
 
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
@@ -126,6 +134,8 @@ spec:
   cooldownPeriod: 10
   triggers:
     - type: gcp-stackdriver
+      authenticationRef:
+        name: keda-trigger-auth-gcp-credentials
       metadata:
         projectId: {{.ProjectID}}
         filter: 'metric.type="pubsub.googleapis.com/topic/num_unacked_messages_by_region" AND resource.type="pubsub_topic" AND resource.label.topic_id="{{.TopicName}}"'
@@ -134,7 +144,6 @@ spec:
         activationTargetValue: "{{.ActivationThreshold}}"
         alignmentPeriodSeconds: "60"
         alignmentAligner: max
-        credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
 
 	gcpSdkTemplate = `
@@ -174,7 +183,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, gcpKey, "GCP_KEY env variable is required for GCP storage test")
+	require.NotEmpty(t, gcpKey, "TF_GCP_SA_CREDENTIALS env variable is required for GCP storage test")
 	assert.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create kubernetes resources
@@ -258,6 +267,7 @@ func getTemplateData() (templateData, []Template) {
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
 		}

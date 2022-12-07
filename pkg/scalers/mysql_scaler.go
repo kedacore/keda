@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -145,7 +146,7 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 	} else {
 		// Build connection str
 		config := mysql.NewConfig()
-		config.Addr = fmt.Sprintf("%s:%s", meta.host, meta.port)
+		config.Addr = net.JoinHostPort(meta.host, meta.port)
 		config.DBName = meta.dbName
 		config.Passwd = meta.password
 		config.User = meta.username

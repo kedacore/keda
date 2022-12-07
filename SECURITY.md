@@ -22,6 +22,7 @@ We have a few preventive measures in place to detect security vulnerabilities:
   - Published images on GitHub Container Registry are monitored to detect new vulnerabilities so we can ship patches
 - [Whitesource Bolt for GitHub](https://www.whitesourcesoftware.com/free-developer-tools/bolt/) helps us with identifying vulnerabilities in our dependencies to raise awareness.
 - [Trivy](https://aquasecurity.github.io/trivy/latest/) helps us with identifying vulnerabilities in our dependencies and docker images to raise awareness as part of our CI.
+- [Semgrep](https://semgrep.dev/) helps us with identifying vulnerabilities in our code and docker images to raise awareness as part of our CI.
 - [GitHub's security features](https://github.com/features/security) are constantly monitoring our repo and dependencies:
   - All pull requests (PRs) are using CodeQL to scan our source code for vulnerabilities
   - Dependabot will automatically identify vulnerabilities based on GitHub Advisory Database and open PRs with patches

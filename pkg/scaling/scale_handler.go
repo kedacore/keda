@@ -300,7 +300,6 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 		go func(s scalers.PushScaler) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
-			defer s.Close(ctx)
 			for {
 				select {
 				case <-ctx.Done():

@@ -65,6 +65,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure AD Pod Identity Authentication:** Improve error messages to emphasize problems around the integration with aad-pod-identity itself ([#3610](https://github.com/kedacore/keda/issues/3610))
 - **Azure Event Hub Scaler:** Support Azure Active Direcotry Pod & Workload Identity for Storage Blobs ([#3569](https://github.com/kedacore/keda/issues/3569))
 - **Azure Event Hub Scaler:** Support using connection strings for Event Hub namespace instead of the Event Hub itself. ([#3922](https://github.com/kedacore/keda/issues/3922))
+- **Azure Eventhub Scaler:** Support for `dapr` checkpoint strategy ([#3022](https://github.com/kedacore/keda/issues/3022))
 - **Azure Pipelines Scaler:** Improved speed of profiling large set of Job Requests from Azure Pipelines ([#3702](https://github.com/kedacore/keda/issues/3702))
 - **GCP Storage Scaler:** Add prefix and delimiter support ([#3756](https://github.com/kedacore/keda/issues/3756))
 - **Metrics API Scaler:** Add unsafeSsl paramater to skip certificate validation when connecting over HTTPS ([#3728](https://github.com/kedacore/keda/discussions/3728))
@@ -78,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General:** Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
 - **General:** Respect optional parameter inside envs for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
+- **General:** Close is called twice on PushScaler's deletion ([#3881](https://github.com/kedacore/keda/issues/3881))
 - **Azure Blob Scaler** Store forgotten logger ([#3811](https://github.com/kedacore/keda/issues/3811))
 - **GCP Stackdriver Scalar:** Update Stackdriver client to handle detecting double and int64 value types ([#3777](https://github.com/kedacore/keda/issues/3777))
 - **New Relic Scaler** Store forgotten logger ([#3945](https://github.com/kedacore/keda/issues/3945))
@@ -86,7 +88,17 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- Prometheus metrics on KEDA Metric Server are deprecated in favor of Prometheus metrics on KEDA Operator ([#3972](https://github.com/kedacore/keda/issues/3972) | [Discussion](https://github.com/kedacore/keda/discussions/3973))
+
+Previously announced deprecation(s):
+
+- `rolloutStrategy` is deprecated in favor of `rollout.strategy` in ScaledJobs ([#3596](https://github.com/kedacore/keda/issues/3596) | [Discussion](https://github.com/kedacore/keda/discussions/3552))
+- `metadata.type` is deprecated in favor of the global `metricType` for CPU, Memory, Datadog scalers ([#2844](https://github.com/kedacore/keda/issues/2844) | [Discussion](https://github.com/kedacore/keda/discussions/3002))
+- Default checkpointing strategy for Azure Event Hubs scaler `azureFunctions` is deprecated in favor of `blobMetadata` ([#XXX](https://github.com/kedacore/keda/issues/3596) | [Discussion](https://github.com/kedacore/keda/discussions/3552))
 
 ### Breaking Changes
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"time"
 
@@ -187,7 +188,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		connStr = meta.connectionString
 	} else {
 		// Build connection str
-		addr := fmt.Sprintf("%s:%s", meta.host, meta.port)
+		addr := net.JoinHostPort(meta.host, meta.port)
 		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
 		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
 	}
