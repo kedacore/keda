@@ -10,6 +10,7 @@ There are many areas we can use contributions - ranging from code, documentation
 
 - [Project governance](#project-governance)
 - [Getting Help](#getting-help)
+- [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
 - [Changelog](#changelog)
