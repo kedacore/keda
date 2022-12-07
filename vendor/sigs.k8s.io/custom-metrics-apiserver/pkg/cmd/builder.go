@@ -22,7 +22,10 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -34,6 +37,9 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/cmd/server"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/dynamicmapper"
+	generatedcore "sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/core"
+	generatedcustommetrics "sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/custommetrics"
+	generatedexternalmetrics "sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/externalmetrics"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 
@@ -92,7 +98,6 @@ func (b *AdapterBase) InstallFlags() {
 	b.flagOnce.Do(func() {
 		if b.CustomMetricsAdapterServerOptions == nil {
 			b.CustomMetricsAdapterServerOptions = server.NewCustomMetricsAdapterServerOptions()
-			b.CustomMetricsAdapterServerOptions.OpenAPIConfig = b.OpenAPIConfig
 		}
 
 		b.SecureServing.AddFlags(b.FlagSet)
@@ -215,13 +220,50 @@ func (b *AdapterBase) WithExternalMetrics(p provider.ExternalMetricsProvider) {
 	b.emProvider = p
 }
 
-// Config fetches the configuration used to ulitmately create the custom metrics adapter's
+func mergeOpenAPIDefinitions(definitionsGetters []openapicommon.GetOpenAPIDefinitions) openapicommon.GetOpenAPIDefinitions {
+	return func(ref openapicommon.ReferenceCallback) map[string]openapicommon.OpenAPIDefinition {
+		defsMap := make(map[string]openapicommon.OpenAPIDefinition)
+		for _, definitionsGetter := range definitionsGetters {
+			definitions := definitionsGetter(ref)
+			for k, v := range definitions {
+				defsMap[k] = v
+			}
+		}
+		return defsMap
+	}
+}
+
+func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
+	definitionsGetters := []openapicommon.GetOpenAPIDefinitions{generatedcore.GetOpenAPIDefinitions}
+	if b.cmProvider != nil {
+		definitionsGetters = append(definitionsGetters, generatedcustommetrics.GetOpenAPIDefinitions)
+	}
+	if b.emProvider != nil {
+		definitionsGetters = append(definitionsGetters, generatedexternalmetrics.GetOpenAPIDefinitions)
+	}
+	getAPIDefinitions := mergeOpenAPIDefinitions(definitionsGetters)
+	openAPIConfig := genericapiserver.DefaultOpenAPIConfig(getAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
+	openAPIConfig.Info.Title = b.Name
+	openAPIConfig.Info.Version = "1.0.0"
+	return openAPIConfig
+}
+
+// Config fetches the configuration used to ultimately create the custom metrics adapter's
 // API server.  While this method is idempotent, it does "cement" values of some of the other
 // fields, so make sure to only call it just before `Server` or `Run`.
 // Normal users should not need to call this method -- it's for advanced use cases.
 func (b *AdapterBase) Config() (*apiserver.Config, error) {
 	if b.config == nil {
 		b.InstallFlags() // just to be sure
+
+		if b.Name == "" {
+			b.Name = "custom-metrics-adapter"
+		}
+
+		if b.OpenAPIConfig == nil {
+			b.OpenAPIConfig = b.defaultOpenAPIConfig()
+		}
+		b.CustomMetricsAdapterServerOptions.OpenAPIConfig = b.OpenAPIConfig
 
 		config, err := b.CustomMetricsAdapterServerOptions.Config()
 		if err != nil {
@@ -233,7 +275,7 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 	return b.config, nil
 }
 
-// Server fetches API server object used to ulitmately run the custom metrics adapter.
+// Server fetches API server object used to ultimately run the custom metrics adapter.
 // While this method is idempotent, it does "cement" values of some of the other
 // fields, so make sure to only call it just before `Run`.
 // Normal users should not need to call this method -- it's for advanced use cases.
@@ -242,10 +284,6 @@ func (b *AdapterBase) Server() (*apiserver.CustomMetricsAdapterServer, error) {
 		config, err := b.Config()
 		if err != nil {
 			return nil, err
-		}
-
-		if b.Name == "" {
-			b.Name = "custom-metrics-adapter"
 		}
 
 		// we add in the informers if they're not nil, but we don't try and

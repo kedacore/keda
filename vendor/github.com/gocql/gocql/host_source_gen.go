@@ -1,3 +1,4 @@
+//go:build genhostinfo
 // +build genhostinfo
 
 package main

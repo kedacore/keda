@@ -14,7 +14,6 @@ import (
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
@@ -283,7 +282,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *metricsAPIScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.getMetricValue(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting metrics endpoint: %s", err)

@@ -59,7 +59,6 @@ type Receiver struct {
 	receiving bool
 
 	defaultTimeAfterFirstMsg time.Duration
-	idleTracker              *internal.LocalIdleTracker
 
 	cancelReleaser *atomic.Value
 }
@@ -135,7 +134,6 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 		lastPeekedSequenceNumber: 0,
 		cleanupOnClose:           args.cleanupOnClose,
 		defaultTimeAfterFirstMsg: 20 * time.Millisecond,
-		idleTracker:              &internal.LocalIdleTracker{MaxDuration: 5 * time.Minute},
 		retryOptions:             args.retryOptions,
 		cancelReleaser:           &atomic.Value{},
 	}
@@ -204,20 +202,8 @@ func (r *Receiver) ReceiveMessages(ctx context.Context, maxMessages int, options
 		return nil, errors.New("receiver is already receiving messages. ReceiveMessages() cannot be called concurrently")
 	}
 
-	for {
-		messages, err := r.receiveMessagesImpl(ctx, maxMessages, options)
-
-		// when we have a client-side idle error it just means we went too long without
-		// any activity. The user didn't make this happen (nor did the service) so we treat it
-		// as just an internal "state reset" and try the receive again.
-		//
-		// When this does happen there aren't any messages or anything to return.
-		if internal.IsLocalIdleError(err) {
-			continue
-		}
-
-		return messages, internal.TransformError(err)
-	}
+	messages, err := r.receiveMessagesImpl(ctx, maxMessages, options)
+	return messages, internal.TransformError(err)
 }
 
 // ReceiveDeferredMessagesOptions contains optional parameters for the ReceiveDeferredMessages function.
@@ -421,10 +407,6 @@ func (r *Receiver) receiveMessagesImpl(ctx context.Context, maxMessages int, opt
 		log.Writef(EventReceiver, "Failure when receiving messages: %s", result.Error)
 	}
 
-	if internal.IsLocalIdleError(result.Error) {
-		return nil, result.Error
-	}
-
 	// If the user does get some messages we ignore 'error' and return only the messages.
 	//
 	// Doing otherwise would break the idiom that people are used to where people expected
@@ -435,8 +417,7 @@ func (r *Receiver) receiveMessagesImpl(ctx context.Context, maxMessages int, opt
 	// function on Receiver).will have the same issue and will return the relevant error
 	// at that time
 	if len(result.Messages) == 0 {
-		if internal.IsCancelError(result.Error) ||
-			rk == internal.RecoveryKindFatal {
+		if internal.IsCancelError(result.Error) || rk == internal.RecoveryKindFatal {
 			return nil, result.Error
 		}
 
@@ -532,19 +513,14 @@ type fetchMessagesResult struct {
 //
 // Note, if you want to only receive prefetched messages send the parentCtx in
 // pre-cancelled. This will cause us to only flush the prefetch buffer.
-func (r *Receiver) fetchMessages(usersCtx context.Context, receiver amqpwrap.AMQPReceiver, count int, timeAfterFirstMessage time.Duration) fetchMessagesResult {
-	firstReceiveCtx, cancelFirstReceive := r.idleTracker.NewContextWithDeadline(usersCtx)
-	defer cancelFirstReceive()
-
-	start := time.Now()
-
+func (r *Receiver) fetchMessages(parentCtx context.Context, receiver amqpwrap.AMQPReceiver, count int, timeAfterFirstMessage time.Duration) fetchMessagesResult {
 	// The first receive is a bit special - we activate a short timer after this
 	// so the user doesn't end up in a situation where we're holding onto a bunch
 	// of messages but never return because they never cancelled and we never
 	// received all 'count' number of messages.
-	firstMsg, err := receiver.Receive(firstReceiveCtx)
+	firstMsg, err := receiver.Receive(parentCtx)
 
-	if err := r.idleTracker.Check(usersCtx, start, err); err != nil {
+	if err != nil {
 		// drain the prefetch buffer - we're stopping because of a
 		// failure on the link/connection _or_ the user cancelled the
 		// operation.
@@ -564,7 +540,7 @@ func (r *Receiver) fetchMessages(usersCtx context.Context, receiver amqpwrap.AMQ
 
 	// after we get one message we will try to receive as much as we can
 	// during the `timeAfterFirstMessage` duration.
-	ctx, cancel := context.WithTimeout(usersCtx, timeAfterFirstMessage)
+	ctx, cancel := context.WithTimeout(parentCtx, timeAfterFirstMessage)
 	defer cancel()
 
 	var lastErr error
@@ -593,7 +569,7 @@ func (r *Receiver) fetchMessages(usersCtx context.Context, receiver amqpwrap.AMQ
 			//
 			// If we cancel: we want a nil error since there's no failure. In that case parentCtx.Err() is nil
 			// If they cancel: we want to forward on their cancellation error.
-			Error: usersCtx.Err(),
+			Error: parentCtx.Err(),
 		}
 	} else {
 		return fetchMessagesResult{

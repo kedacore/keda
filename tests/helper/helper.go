@@ -35,6 +35,8 @@ import (
 const (
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
+	GcpIdentityNamespace           = "gcp-identity-system"
+	CertManagerNamespace           = "cert-manager"
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
@@ -54,6 +56,8 @@ var (
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
+	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
+	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 )
 
 var (
@@ -536,4 +540,13 @@ func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string
 		}
 	}
 	return podLogs
+}
+
+// Delete all pods in namespace by selector
+func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, selector, namespace string) {
+	t.Logf("killing all pods in %s namespace with selector %s", namespace, selector)
+	err := kc.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: selector,
+	})
+	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
 }

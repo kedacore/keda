@@ -25,7 +25,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gobwas/glob"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -214,7 +213,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
 		s.httpClient,

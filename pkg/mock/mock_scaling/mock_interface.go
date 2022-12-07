@@ -9,7 +9,9 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	api "github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
+	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 // MockScaleHandler is a mock of ScaleHandler interface.
@@ -61,6 +63,22 @@ func (m *MockScaleHandler) DeleteScalableObject(ctx context.Context, scalableObj
 func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), ctx, scalableObject)
+}
+
+// GetExternalMetrics mocks base method.
+func (m *MockScaleHandler) GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetExternalMetrics", ctx, scaledObjectName, scaledObjectNamespace, metricName)
+	ret0, _ := ret[0].(*external_metrics.ExternalMetricValueList)
+	ret1, _ := ret[1].(*api.PromMetricsMsg)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetExternalMetrics indicates an expected call of GetExternalMetrics.
+func (mr *MockScaleHandlerMockRecorder) GetExternalMetrics(ctx, scaledObjectName, scaledObjectNamespace, metricName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalMetrics", reflect.TypeOf((*MockScaleHandler)(nil).GetExternalMetrics), ctx, scaledObjectName, scaledObjectNamespace, metricName)
 }
 
 // GetScalersCache mocks base method.

@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
@@ -310,7 +309,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	return v, nil
 }
 
-func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing prometheus query")

@@ -18,6 +18,7 @@ package manager
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -142,18 +143,36 @@ type Options struct {
 	LeaderElection bool
 
 	// LeaderElectionResourceLock determines which resource lock to use for leader election,
-	// defaults to "configmapsleases". Change this value only if you know what you are doing.
-	// Otherwise, users of your controller might end up with multiple running instances that
+	// defaults to "leases". Change this value only if you know what you are doing.
+	//
+	// If you are using `configmaps`/`endpoints` resource lock and want to migrate to "leases",
+	// you might do so by migrating to the respective multilock first ("configmapsleases" or "endpointsleases"),
+	// which will acquire a leader lock on both resources.
+	// After all your users have migrated to the multilock, you can go ahead and migrate to "leases".
+	// Please also keep in mind, that users might skip versions of your controller.
+	//
+	// Note: before controller-runtime version v0.7, it was set to "configmaps".
+	// And from v0.7 to v0.11, the default was "configmapsleases", which was
+	// used to migrate from configmaps to leases.
+	// Since the default was "configmapsleases" for over a year, spanning five minor releases,
+	// any actively maintained operators are very likely to have a released version that uses
+	// "configmapsleases". Therefore defaulting to "leases" should be safe since v0.12.
+	//
+	// So, what do you have to do when you are updating your controller-runtime dependency
+	// from a lower version to v0.12 or newer?
+	// - If your operator matches at least one of these conditions:
+	//   - the LeaderElectionResourceLock in your operator has already been explicitly set to "leases"
+	//   - the old controller-runtime version is between v0.7.0 and v0.11.x and the
+	//     LeaderElectionResourceLock wasn't set or was set to "leases"/"configmapsleases"/"endpointsleases"
+	//   feel free to update controller-runtime to v0.12 or newer.
+	// - Otherwise, you may have to take these steps:
+	//   1. update controller-runtime to v0.12 or newer in your go.mod
+	//   2. set LeaderElectionResourceLock to "configmapsleases" (or "endpointsleases")
+	//   3. package your operator and upgrade it in all your clusters
+	//   4. only if you have finished 3, you can remove the LeaderElectionResourceLock to use the default "leases"
+	// Otherwise, your operator might end up with multiple running instances that
 	// each acquired leadership through different resource locks during upgrades and thus
 	// act on the same resources concurrently.
-	// If you want to migrate to the "leases" resource lock, you might do so by migrating to the
-	// respective multilock first ("configmapsleases" or "endpointsleases"), which will acquire a
-	// leader lock on both resources. After all your users have migrated to the multilock, you can
-	// go ahead and migrate to "leases". Please also keep in mind, that users might skip versions
-	// of your controller.
-	//
-	// Note: before controller-runtime version v0.7, the resource lock was set to "configmaps".
-	// Please keep this in mind, when planning a proper migration path for your controller.
 	LeaderElectionResourceLock string
 
 	// LeaderElectionNamespace determines the namespace in which the leader
@@ -222,6 +241,9 @@ type Options struct {
 	// must be named tls.key and tls.crt, respectively.
 	// It is used to set webhook.Server.CertDir if WebhookServer is not set.
 	CertDir string
+
+	// TLSOpts is used to allow configuring the TLS config used for the webhook server.
+	TLSOpts []func(*tls.Config)
 
 	// WebhookServer is an externally configured webhook.Server. By default,
 	// a Manager will create a default server using Port, Host, and CertDir;
@@ -403,6 +425,7 @@ func New(config *rest.Config, options Options) (Manager, error) {
 		port:                          options.Port,
 		host:                          options.Host,
 		certDir:                       options.CertDir,
+		tlsOpts:                       options.TLSOpts,
 		webhookServer:                 options.WebhookServer,
 		leaseDuration:                 *options.LeaseDuration,
 		renewDeadline:                 *options.RenewDeadline,

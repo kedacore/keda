@@ -140,7 +140,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
 
-	values, err := scaler.GetMetrics(context.Background(), "m", nil)
+	values, err := scaler.GetMetrics(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return
@@ -157,7 +157,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 	mockClient.EXPECT().
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
-	values, err = scaler.GetMetrics(context.Background(), "m", nil)
+	values, err = scaler.GetMetrics(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return

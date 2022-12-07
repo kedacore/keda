@@ -73,7 +73,7 @@ func (c *CloudWatch) DeleteAlarmsRequest(input *DeleteAlarmsInput) (req *request
 // To get out of such a situation, you must break the cycle by changing the
 // rule of one of the composite alarms in the cycle to remove a dependency that
 // creates the cycle. The simplest change to make to break a cycle is to change
-// the AlarmRule of one of the alarms to False.
+// the AlarmRule of one of the alarms to false.
 //
 // Additionally, the evaluation of composite alarms stops if CloudWatch detects
 // a cycle in the evaluation path.
@@ -2639,14 +2639,19 @@ func (c *CloudWatch) ListMetricsRequest(input *ListMetricsInput) (req *request.R
 // List the specified metrics. You can use the returned metrics with GetMetricData
 // (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
 // or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
-// to obtain statistical data.
+// to get statistical data.
 //
 // Up to 500 results are returned for any one call. To retrieve additional results,
 // use the returned token with subsequent calls.
 //
-// After you create a metric, allow up to 15 minutes before the metric appears.
-// You can see statistics about the metric sooner by using GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// After you create a metric, allow up to 15 minutes for the metric to appear.
+// To see metric statistics sooner, use GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
 // or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html).
+//
+// If you are using CloudWatch cross-account observability, you can use this
+// operation in a monitoring account and view metrics from the linked source
+// accounts. For more information, see CloudWatch cross-account observability
+// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html).
 //
 // ListMetrics doesn't return information about metrics if those metrics haven't
 // reported data in the past two weeks. To retrieve those metrics, use GetMetricData
@@ -2994,7 +2999,7 @@ func (c *CloudWatch) PutCompositeAlarmRequest(input *PutCompositeAlarmInput) (re
 // To get out of such a situation, you must break the cycle by changing the
 // rule of one of the composite alarms in the cycle to remove a dependency that
 // creates the cycle. The simplest change to make to break a cycle is to change
-// the AlarmRule of one of the alarms to False.
+// the AlarmRule of one of the alarms to false.
 //
 // Additionally, the evaluation of composite alarms stops if CloudWatch detects
 // a cycle in the evaluation path.
@@ -3631,12 +3636,12 @@ func (c *CloudWatch) PutMetricStreamRequest(input *PutMetricStreamInput) (req *r
 // PutMetricStream API operation for Amazon CloudWatch.
 //
 // Creates or updates a metric stream. Metric streams can automatically stream
-// CloudWatch metrics to Amazon Web Services destinations including Amazon S3
-// and to many third-party solutions.
+// CloudWatch metrics to Amazon Web Services destinations, including Amazon
+// S3, and to many third-party solutions.
 //
 // For more information, see Using Metric Streams (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Metric-Streams.html).
 //
-// To create a metric stream, you must be logged on to an account that has the
+// To create a metric stream, you must be signed in to an account that has the
 // iam:PassRole permission and either the CloudWatchFullAccess policy or the
 // cloudwatch:PutMetricStream permission.
 //
@@ -3651,9 +3656,9 @@ func (c *CloudWatch) PutMetricStreamRequest(input *PutMetricStreamInput) (req *r
 //
 // By default, a metric stream always sends the MAX, MIN, SUM, and SAMPLECOUNT
 // statistics for each metric that is streamed. You can use the StatisticsConfigurations
-// parameter to have the metric stream also send additional statistics in the
-// stream. Streaming additional statistics incurs additional costs. For more
-// information, see Amazon CloudWatch Pricing (https://aws.amazon.com/cloudwatch/pricing/).
+// parameter to have the metric stream send additional statistics in the stream.
+// Streaming additional statistics incurs additional costs. For more information,
+// see Amazon CloudWatch Pricing (https://aws.amazon.com/cloudwatch/pricing/).
 //
 // When you use PutMetricStream to create a new metric stream, the stream is
 // created in the running state. If you use it to update an existing stream,
@@ -7408,8 +7413,8 @@ type GetMetricStreamOutput struct {
 	// metric stream.
 	ExcludeFilters []*MetricStreamFilter `type:"list"`
 
-	// The ARN of the Amazon Kinesis Firehose delivery stream that is used by this
-	// metric stream.
+	// The ARN of the Amazon Kinesis Data Firehose delivery stream that is used
+	// by this metric stream.
 	FirehoseArn *string `min:"1" type:"string"`
 
 	// If this array of metric namespaces is present, then these namespaces are
@@ -8313,6 +8318,12 @@ type ListMetricsInput struct {
 	// will be returned.
 	Dimensions []*DimensionFilter `type:"list"`
 
+	// If you are using this operation in a monitoring account, specify true to
+	// include metrics from source accounts in the returned data.
+	//
+	// The default is false.
+	IncludeLinkedAccounts *bool `type:"boolean"`
+
 	// The name of the metric to filter against. Only the metrics with names that
 	// match exactly will be returned.
 	MetricName *string `min:"1" type:"string"`
@@ -8324,6 +8335,11 @@ type ListMetricsInput struct {
 	// The token returned by a previous call to indicate that there is more data
 	// available.
 	NextToken *string `type:"string"`
+
+	// When you use this operation in a monitoring account, use this field to return
+	// metrics only from one source account. To do so, specify that source account
+	// ID in this field, and also specify true for IncludeLinkedAccounts.
+	OwningAccount *string `min:"1" type:"string"`
 
 	// To filter the results to show only metrics that have had data points published
 	// in the past three hours, specify this parameter with a value of PT3H. This
@@ -8362,6 +8378,9 @@ func (s *ListMetricsInput) Validate() error {
 	if s.Namespace != nil && len(*s.Namespace) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Namespace", 1))
 	}
+	if s.OwningAccount != nil && len(*s.OwningAccount) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("OwningAccount", 1))
+	}
 	if s.Dimensions != nil {
 		for i, v := range s.Dimensions {
 			if v == nil {
@@ -8385,6 +8404,12 @@ func (s *ListMetricsInput) SetDimensions(v []*DimensionFilter) *ListMetricsInput
 	return s
 }
 
+// SetIncludeLinkedAccounts sets the IncludeLinkedAccounts field's value.
+func (s *ListMetricsInput) SetIncludeLinkedAccounts(v bool) *ListMetricsInput {
+	s.IncludeLinkedAccounts = &v
+	return s
+}
+
 // SetMetricName sets the MetricName field's value.
 func (s *ListMetricsInput) SetMetricName(v string) *ListMetricsInput {
 	s.MetricName = &v
@@ -8403,6 +8428,12 @@ func (s *ListMetricsInput) SetNextToken(v string) *ListMetricsInput {
 	return s
 }
 
+// SetOwningAccount sets the OwningAccount field's value.
+func (s *ListMetricsInput) SetOwningAccount(v string) *ListMetricsInput {
+	s.OwningAccount = &v
+	return s
+}
+
 // SetRecentlyActive sets the RecentlyActive field's value.
 func (s *ListMetricsInput) SetRecentlyActive(v string) *ListMetricsInput {
 	s.RecentlyActive = &v
@@ -8417,6 +8448,14 @@ type ListMetricsOutput struct {
 
 	// The token that marks the start of the next batch of returned results.
 	NextToken *string `type:"string"`
+
+	// If you are using this operation in a monitoring account, this array contains
+	// the account IDs of the source accounts where the metrics in the returned
+	// data are from.
+	//
+	// This field is a 1:1 mapping between each metric that is returned and the
+	// ID of the owning account.
+	OwningAccounts []*string `type:"list"`
 }
 
 // String returns the string representation.
@@ -8446,6 +8485,12 @@ func (s *ListMetricsOutput) SetMetrics(v []*Metric) *ListMetricsOutput {
 // SetNextToken sets the NextToken field's value.
 func (s *ListMetricsOutput) SetNextToken(v string) *ListMetricsOutput {
 	s.NextToken = &v
+	return s
+}
+
+// SetOwningAccounts sets the OwningAccounts field's value.
+func (s *ListMetricsOutput) SetOwningAccounts(v []*string) *ListMetricsOutput {
+	s.OwningAccounts = v
 	return s
 }
 
@@ -9160,7 +9205,7 @@ func (s *MetricAlarm) SetUnit(v string) *MetricAlarm {
 // in the array. The 20 structures can include as many as 10 structures that
 // contain a MetricStat parameter to retrieve a metric, and as many as 10 structures
 // that contain the Expression parameter to perform a math expression. Of those
-// Expression structures, one must have True as the value for ReturnData. The
+// Expression structures, one must have true as the value for ReturnData. The
 // result of this expression is the value the alarm watches.
 //
 // Any expression used in a PutMetricAlarm operation must return a single time
@@ -9173,11 +9218,13 @@ func (s *MetricAlarm) SetUnit(v string) *MetricAlarm {
 type MetricDataQuery struct {
 	_ struct{} `type:"structure"`
 
-	// The ID of the account where the metrics are located, if this is a cross-account
-	// alarm.
+	// The ID of the account where the metrics are located.
 	//
-	// Use this field only for PutMetricAlarm operations. It is not used in GetMetricData
-	// operations.
+	// If you are performing a GetMetricData operation in a monitoring account,
+	// use this to specify which account to retrieve this metric from.
+	//
+	// If you are performing a PutMetricAlarm operation, use this to specify which
+	// account contains the metric that the alarm is watching.
 	AccountId *string `min:"1" type:"string"`
 
 	// This field can contain either a Metrics Insights query, or a metric math
@@ -9234,9 +9281,9 @@ type MetricDataQuery struct {
 	// When used in GetMetricData, this option indicates whether to return the timestamps
 	// and raw data values of this metric. If you are performing this call just
 	// to do math expressions and do not also need the raw data returned, you can
-	// specify False. If you omit this, the default of True is used.
+	// specify false. If you omit this, the default of true is used.
 	//
-	// When used in PutMetricAlarm, specify True for the one expression result to
+	// When used in PutMetricAlarm, specify true for the one expression result to
 	// use as the alarm. For all other metrics and expressions in the same PutMetricAlarm
 	// operation, specify ReturnData as False.
 	ReturnData *bool `type:"boolean"`
@@ -9603,9 +9650,9 @@ type MetricMathAnomalyDetector struct {
 	// detector based on the result of a metric math expression. Each item in MetricDataQueries
 	// gets a metric or performs a math expression. One item in MetricDataQueries
 	// is the expression that provides the time series that the anomaly detector
-	// uses as input. Designate the expression by setting ReturnData to True for
+	// uses as input. Designate the expression by setting ReturnData to true for
 	// this object in the array. For all other expressions and metrics, set ReturnData
-	// to False. The designated expression must return a single time series.
+	// to false. The designated expression must return a single time series.
 	MetricDataQueries []*MetricDataQuery `type:"list"`
 }
 
@@ -11475,9 +11522,9 @@ type PutMetricStreamInput struct {
 	// You cannot include ExcludeFilters and IncludeFilters in the same operation.
 	ExcludeFilters []*MetricStreamFilter `type:"list"`
 
-	// The ARN of the Amazon Kinesis Firehose delivery stream to use for this metric
-	// stream. This Amazon Kinesis Firehose delivery stream must already exist and
-	// must be in the same account as the metric stream.
+	// The ARN of the Amazon Kinesis Data Firehose delivery stream to use for this
+	// metric stream. This Amazon Kinesis Data Firehose delivery stream must already
+	// exist and must be in the same account as the metric stream.
 	//
 	// FirehoseArn is a required field
 	FirehoseArn *string `min:"1" type:"string" required:"true"`
@@ -11507,8 +11554,8 @@ type PutMetricStreamInput struct {
 	OutputFormat *string `min:"1" type:"string" required:"true" enum:"MetricStreamOutputFormat"`
 
 	// The ARN of an IAM role that this metric stream will use to access Amazon
-	// Kinesis Firehose resources. This IAM role must already exist and must be
-	// in the same account as the metric stream. This IAM role must include the
+	// Kinesis Data Firehose resources. This IAM role must already exist and must
+	// be in the same account as the metric stream. This IAM role must include the
 	// following permissions:
 	//
 	//    * firehose:PutRecord
@@ -11529,7 +11576,7 @@ type PutMetricStreamInput struct {
 	// is json, you can stream any additional statistic that is supported by CloudWatch,
 	// listed in CloudWatch statistics definitions (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Statistics-definitions.html.html).
 	// If the OutputFormat is opentelemetry0.7, you can stream percentile statistics
-	// such as p95, p99.9 and so on.
+	// such as p95, p99.9, and so on.
 	StatisticsConfigurations []*MetricStreamStatisticsConfiguration `type:"list"`
 
 	// A list of key-value pairs to associate with the metric stream. You can associate
@@ -12819,6 +12866,9 @@ const (
 
 	// StatusCodePartialData is a StatusCode enum value
 	StatusCodePartialData = "PartialData"
+
+	// StatusCodeForbidden is a StatusCode enum value
+	StatusCodeForbidden = "Forbidden"
 )
 
 // StatusCode_Values returns all elements of the StatusCode enum
@@ -12827,5 +12877,6 @@ func StatusCode_Values() []string {
 		StatusCodeComplete,
 		StatusCodeInternalError,
 		StatusCodePartialData,
+		StatusCodeForbidden,
 	}
 }

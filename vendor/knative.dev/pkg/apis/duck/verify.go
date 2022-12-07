@@ -31,10 +31,10 @@ type Populatable = ducktypes.Populatable
 // the provided Implementable duck type.  It is expected that under the resource
 // definition implementing a particular "Fooable" that one would write:
 //
-//   type ConcreteResource struct { ... }
+//	type ConcreteResource struct { ... }
 //
-//   // Check that ConcreteResource properly implement Fooable.
-//   err := duck.VerifyType(&ConcreteResource{}, &something.Fooable{})
+//	// Check that ConcreteResource properly implement Fooable.
+//	err := duck.VerifyType(&ConcreteResource{}, &something.Fooable{})
 //
 // This will return an error if the duck typing is not satisfied.
 func VerifyType(instance interface{}, iface Implementable) error {

@@ -3,13 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gocql/gocql"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -112,7 +112,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
 		switch p := meta.port; {
 		case p > 0:
-			meta.clusterIPAddress = fmt.Sprintf("%s:%d", val, meta.port)
+			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
 		case strings.Contains(val, ":"):
 			meta.clusterIPAddress = val
 		default:
@@ -206,7 +206,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metr
 }
 
 // GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric.
-func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)

@@ -350,7 +350,7 @@ func (pool *hostConnPool) Pick() *Conn {
 	return leastBusyConn
 }
 
-//Size returns the number of connections currently active in the pool
+// Size returns the number of connections currently active in the pool
 func (pool *hostConnPool) Size() int {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
@@ -358,7 +358,7 @@ func (pool *hostConnPool) Size() int {
 	return len(pool.conns)
 }
 
-//Close the connection pool
+// Close the connection pool
 func (pool *hostConnPool) Close() {
 	pool.mu.Lock()
 

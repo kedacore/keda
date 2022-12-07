@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -224,7 +223,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.query)
 }
 
-func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing graphite query")
