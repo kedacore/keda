@@ -30,6 +30,10 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 
 If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
 
+## Making Breaking Changes
+
+All contributions must follow [our deprecation breaking changes policy](https://github.com/kedacore/governance/blob/main/DEPRECATIONS.md).
+
 ## Contributing Scalers
 
 One of the easiest ways to contribute is adding scalers.  Scalers are the logic on when to activate a container (scaling from zero to one) and also how to serve metrics for an event source.  You can view [the code for existing scalers here](https://github.com/kedacore/keda/tree/main/pkg/scalers).  When writing a scaler, please consider:
@@ -38,7 +42,7 @@ One of the easiest ways to contribute is adding scalers.  Scalers are the logic 
 1. Provide tests
 1. Provide [documentation and examples](https://github.com/kedacore/keda-docs#adding-scaler-documentation) for [keda.sh](https://keda.sh)
 
-Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW-SCALER.md).
+Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW-SCALER.md) and read our [scaler governance policy](https://github.com/kedacore/governance/blob/main/SCALERS.md).
 
 ### Testing
 
